@@ -3,6 +3,27 @@ import test from "node:test";
 import { NextRequest } from "next/server";
 import proxy from "../src/proxy";
 
+test("domínio de Guarama abre o login do sistema e mantém o portal público acessível", () => {
+  const hostname = "guarama.celeriflow.com.br";
+  const request = (path: string) => new NextRequest(`https://${hostname}${path}`, {
+    headers: { host: hostname },
+  });
+
+  const home = proxy(request("/"));
+  assert.equal(new URL(home.headers.get("x-middleware-rewrite")!).pathname, "/app-domain/login");
+
+  const privatePage = proxy(request("/dashboard"));
+  assert.equal(privatePage.status, 307);
+  const login = new URL(privatePage.headers.get("location")!);
+  assert.equal(login.hostname, hostname);
+  assert.equal(login.pathname, "/login");
+  assert.equal(login.searchParams.get("returnTo"), "/dashboard");
+
+  const portal = proxy(request("/portal"));
+  assert.equal(portal.headers.get("x-middleware-next"), "1");
+  assert.equal(portal.headers.get("x-middleware-rewrite"), null);
+});
+
 test("navegação, prefetch e ações do portal não consomem o limite de validação pública", () => {
   const ip = "192.0.2.180";
    const routes = ["/portal", "/portal/historia", "/portal/contato", "/portal/minha-area", "/portal-protocolos", "/portal/portaldatransparencia"];

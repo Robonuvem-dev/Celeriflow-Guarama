@@ -5,6 +5,7 @@ import { EMPLOYEE_PORTAL_PATH_HEADER, isEmployeePublicRoute } from "@/lib/portal
 
 // O Proxy separa as rotas públicas das rotas internas do sistema.
 const SESSION_COOKIE_NAME = "celeriflow_session";
+const GUARAMA_SYSTEM_HOSTNAME = "guarama.celeriflow.com.br";
 
 function configuredSystemHostname() {
   const configuredUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL;
@@ -83,7 +84,7 @@ export default function proxy(req: NextRequest) {
   const hostname = (req.headers.get("host") || "").toLowerCase().split(":")[0];
 
   const systemDomain = configuredSystemHostname();
-  const isSystemDomain = hostname === systemDomain || hostname === "app.localhost" || hostname.endsWith(".vercel.app");
+  const isSystemDomain = hostname === GUARAMA_SYSTEM_HOSTNAME || hostname === systemDomain || hostname === "app.localhost" || hostname.endsWith(".vercel.app");
 
   // Se o usuário tentar acessar a pasta interna via URL, reescreve ou redireciona
   if (url.pathname.startsWith("/app-domain")) {
