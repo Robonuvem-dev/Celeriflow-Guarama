@@ -1,0 +1,584 @@
+{
+  "kind": "FIPE",
+  "reference": "Modelos Hyundai HB20S · consulta 2026-10",
+  "sourceReference": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos · API pública de consulta FIPE Parallelum; amostra de modelos Hyundai HB20S",
+  "complete": false,
+  "entries": [
+    {
+      "code": "Hyundai-7260",
+      "name": "HB20S  Impress 1.6 Flex 16V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S  Impress 1.6 Flex 16V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-7261",
+      "name": "HB20S  Impress 1.6 Flex 16v Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S  Impress 1.6 Flex 16v Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8453",
+      "name": "HB20S 1 Million 1.6 Flex 16V Aut. 4p",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S 1 Million 1.6 Flex 16V Aut. 4p",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8013",
+      "name": "HB20S 5 Anos 1.0 Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S 5 Anos 1.0 Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8014",
+      "name": "HB20S 5 Anos 1.6 Flex 16V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S 5 Anos 1.6 Flex 16V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6436",
+      "name": "HB20S C.Plus/C.Style 1.6 Flex 16V Mec.4p",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S C.Plus/C.Style 1.6 Flex 16V Mec.4p",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6434",
+      "name": "HB20S C.Plus/C.Style1.0 Flex 12V Mec. 4P",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S C.Plus/C.Style1.0 Flex 12V Mec. 4P",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6435",
+      "name": "HB20S C.Style/C.Plus1.6 Flex 16V Aut. 4p",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S C.Style/C.Plus1.6 Flex 16V Aut. 4p",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-11131",
+      "name": "HB20S Com. Plus Tech 1.0 TB Flex 12V Aut",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Com. Plus Tech 1.0 TB Flex 12V Aut",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10012",
+      "name": "HB20S Comfort 1.0  Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Comfort 1.0  Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10013",
+      "name": "HB20S Comfort 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Comfort 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10820",
+      "name": "HB20S Comfort Plus 1.0 Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Comfort Plus 1.0 Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10821",
+      "name": "HB20S Comfort Plus 1.0 TB Flex 12V Aut",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Comfort Plus 1.0 TB Flex 12V Aut",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-7548",
+      "name": "HB20S Comfort Plus 1.0 TB Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Comfort Plus 1.0 TB Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-7549",
+      "name": "HB20S Comfort Style 1.0 TB Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Comfort Style 1.0 TB Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6742",
+      "name": "HB20S Copa do Mundo 1.0 Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Copa do Mundo 1.0 Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6744",
+      "name": "HB20S Copa do Mundo 1.6 Flex 16V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Copa do Mundo 1.6 Flex 16V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6743",
+      "name": "HB20S Copa do Mundo 1.6 Flex 16V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Copa do Mundo 1.6 Flex 16V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10169",
+      "name": "HB20S Copa Mundo Qatar 1.0 Flex Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Copa Mundo Qatar 1.0 Flex Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10170",
+      "name": "HB20S Copa Mundo Qatar 1.0 TB Flex Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Copa Mundo Qatar 1.0 TB Flex Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8896",
+      "name": "HB20S Diamond 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Diamond 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8897",
+      "name": "HB20S Diamond Plus 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Diamond Plus 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10214",
+      "name": "HB20S Edição Especial 1.0 Flex Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Edição Especial 1.0 Flex Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10215",
+      "name": "HB20S Edição Especial 1.0 TB Flex Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Edição Especial 1.0 TB Flex Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9476",
+      "name": "HB20S Evol. Bluelink 1.0 Flex 12 Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Evol. Bluelink 1.0 Flex 12 Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9477",
+      "name": "HB20S Evol. Bluelink 1.0 TB Flex 12V Aut",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Evol. Bluelink 1.0 TB Flex 12V Aut",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8898",
+      "name": "HB20S Evolution 1.0 Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Evolution 1.0 Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8899",
+      "name": "HB20S Evolution 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Evolution 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9620",
+      "name": "HB20S For You 1.0 Flex 12V 4p",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S For You 1.0 Flex 12V 4p",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10014",
+      "name": "HB20S Limited 1.0  Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Limited 1.0  Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-11459",
+      "name": "HB20S Limited 1.0  TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Limited 1.0  TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10822",
+      "name": "HB20S Limited Plus 1.0  Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Limited Plus 1.0  Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-7700",
+      "name": "HB20S Ocean 1.6 Flex 16v 4p Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Ocean 1.6 Flex 16v 4p Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-7701",
+      "name": "HB20S Ocean 1.6 Flex 16V 4p Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Ocean 1.6 Flex 16V 4p Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-10823",
+      "name": "HB20S Plat. Safety 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Plat. Safety 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9621",
+      "name": "HB20S Platinum 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Platinum 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9622",
+      "name": "HB20S Platinum 1.0 TB Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Platinum 1.0 TB Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9623",
+      "name": "HB20S Platinum Plus 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Platinum Plus 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6437",
+      "name": "HB20S Premium 1.6 Flex 16V Aut. 4p",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Premium 1.6 Flex 16V Aut. 4p",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-6438",
+      "name": "HB20S Premium 1.6 Flex 16V Mec. 4p",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Premium 1.6 Flex 16V Mec. 4p",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8240",
+      "name": "HB20S Style 1.6 Flex 16V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Style 1.6 Flex 16V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8475",
+      "name": "HB20S Unique 1.0 Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Unique 1.0 Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8858",
+      "name": "HB20S Vision 1.0 Flex 12V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Vision 1.0 Flex 12V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9795",
+      "name": "HB20S Vision 1.0 TB Flex 12V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Vision 1.0 TB Flex 12V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8859",
+      "name": "HB20S Vision 1.6 Flex 16V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Vision 1.6 Flex 16V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-8900",
+      "name": "HB20S Vision 1.6 Flex 16V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Vision 1.6 Flex 16V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9478",
+      "name": "HB20S Vision Bluelink 1.6 Flex 16V Aut.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Vision Bluelink 1.6 Flex 16V Aut.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    },
+    {
+      "code": "Hyundai-9479",
+      "name": "HB20S Vision Bluelink 1.6 Flex 16V Mec.",
+      "details": {
+        "brand": "Hyundai",
+        "model": "HB20S Vision Bluelink 1.6 Flex 16V Mec.",
+        "yearLabel": "Anos/modelo consultáveis na fonte",
+        "referenceMonth": "2026-10",
+        "sourceUrl": "https://parallelum.com.br/fipe/api/v1/carros/marcas/26/modelos",
+        "sourceHash": "301a1af3b91fe87a0f0612e3196f317bc8c4c165fffb0b419d0a31811ce83e34"
+      }
+    }
+  ]
+}

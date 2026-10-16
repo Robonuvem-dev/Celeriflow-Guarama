@@ -1,0 +1,46 @@
+{
+  "mode": "ADDITIVE_IDEMPOTENT",
+  "versionId": "p1-poc-tax-matrix-2026-v1",
+  "matrixHash": "6ddcc9d7f8d55851e447b647b91c19f7cd3e032858543d9987d3efc6f76b162d",
+  "sourceVersionId": "p1-tce-pr-account-2026-1.0d",
+  "sourceHash": "824d3dc03ad3f2d40abdbb10b2e2c5a30b590854af974be0a403fb12349d851a",
+  "pocOnly": true,
+  "homologated": false,
+  "accounts": [
+    {
+      "code": "1.1.1.1.1.19.00.00.00.00.00.00",
+      "name": "BANCOS CONTA MOVIMENTO - DEMAIS CONTAS",
+      "canonicalId": "p1-poc-account:1.1.1.1.1.19.00.00.00.00.00.00"
+    },
+    {
+      "code": "1.1.2.1.1.01.99.00.00.00.00.00",
+      "name": "OUTROS IMPOSTOS A RECEBER",
+      "canonicalId": "p1-poc-account:1.1.2.1.1.01.99.00.00.00.00.00"
+    },
+    {
+      "code": "2.1.8.8.1.99.99.00.00.00.00.00",
+      "name": "OUTROS VALORES RESTITUÍVEIS",
+      "canonicalId": "p1-poc-account:2.1.8.8.1.99.99.00.00.00.00.00"
+    }
+  ],
+  "events": [
+    {
+      "code": "TAX_COLLECTION_EXCESS",
+      "name": "POC — excedente tributário a restituir",
+      "debit": "1.1.1.1.1.19.00.00.00.00.00.00",
+      "credit": "2.1.8.8.1.99.99.00.00.00.00.00"
+    },
+    {
+      "code": "TAX_CREDIT_REFUNDED",
+      "name": "POC — restituição tributária paga",
+      "debit": "2.1.8.8.1.99.99.00.00.00.00.00",
+      "credit": "1.1.1.1.1.19.00.00.00.00.00.00"
+    },
+    {
+      "code": "TAX_CREDIT_COMPENSATED",
+      "name": "POC — compensação de crédito tributário",
+      "debit": "2.1.8.8.1.99.99.00.00.00.00.00",
+      "credit": "1.1.2.1.1.01.99.00.00.00.00.00"
+    }
+  ]
+}

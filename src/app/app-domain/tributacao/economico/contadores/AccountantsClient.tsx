@@ -1,0 +1,12 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { publishAccountantAction } from "./actions";
+
+export default function AccountantsClient(props: { taxpayers: { id: string; label: string }[]; entries: { id: string; taxpayerId: string; version: number; crc: string; reason: string; date: string; actorId: string | null }[] }) {
+  const [taxpayerId, setTaxpayerId] = useState("");
+  const [notice, setNotice] = useState(""); const [pending, startTransition] = useTransition();
+  const entries = props.entries.filter(entry => entry.taxpayerId === taxpayerId); const latest = entries[0];
+  const field = "mt-1 w-full rounded border p-2 text-sm";
+  return <div className="h-full space-y-3 overflow-auto p-4"><h1 className="text-lg font-bold">Cadastro único de contadores</h1><p className="text-xs">As correções de CRC preservam as versões anteriores e os perfis econômicos já registrados. Nos novos perfis, informe o CRC vigente.</p>{notice && <p role="status" className="rounded border bg-amber-50 p-2 text-sm">{notice}</p>}<label className="block text-xs">Contribuinte<select value={taxpayerId} onChange={event => setTaxpayerId(event.target.value)} className={field}><option value="">Selecione</option>{props.taxpayers.map(taxpayer => <option key={taxpayer.id} value={taxpayer.id}>{taxpayer.label}</option>)}</select></label>{taxpayerId && <form key={`${taxpayerId}:${latest?.version ?? 0}`} action={form => startTransition(async () => { const result = await publishAccountantAction({ taxpayerId, crc: String(form.get("crc")), expectedVersion: latest?.version ?? 0, reason: String(form.get("reason")) }); setNotice(result.error ?? "Versão do contador publicada."); })} className="space-y-3 rounded border bg-white p-3"><label className="block text-xs">CRC<input name="crc" required maxLength={80} defaultValue={latest?.crc} className={field}/></label><label className="block text-xs">Fundamento da inclusão ou correção<textarea name="reason" required className={field}/></label><button disabled={pending} className="rounded bg-emerald-700 px-3 py-2 text-xs text-white">Publicar versão {(latest?.version ?? 0)+1}</button></form>}<table className="w-full text-left text-xs"><thead><tr><th>Versão</th><th>CRC</th><th>Data / usuário</th><th>Fundamento</th></tr></thead><tbody>{entries.map(entry => <tr key={entry.id} className="border-t"><td className="p-2">{entry.version}</td><td>{entry.crc}</td><td>{new Date(entry.date).toLocaleString("pt-BR")} · {entry.actorId}</td><td>{entry.reason}</td></tr>)}</tbody></table></div>;
+}

@@ -1,0 +1,72 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
+import { createRevenue, createTreasuryTransfer, getBankAccountBalance, redistributeRevenueResourceSource, createCommitment, createSettlement, createPayment, updatePaymentStatus, closeDailyTreasuryByAccountAndSource } from "../src/lib/financeiro";
+import { configureBankResourceSources, getBankResourceSourceBalance } from "../src/lib/financeiro/bank-resource-sources";
+import { generatePlanningSchedule } from "../src/lib/planejamento/scheduling";
+import { readResourceAvailability } from "../src/lib/financeiro/resource-availability";
+
+for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
+  test(`Conta multifonte ${jurisdiction}: autorização explícita, disponibilidade e concorrência por fonte`, async () => {
+    const f = await createPlanningExecutionFixture(2026, 2, jurisdiction);
+    try {
+      await f.db.financialYear.update({ where: { id: "ano" }, data: { status: "Aberto" } });
+      await f.db.resourceSource.create({ data: { id: "linked", code: "VINCULADA", name: "Saúde" } });
+      const line = await f.db.planningBudgetLine.create({ data: { instrumentId: f.loa, code: "LINKED-REVENUE", kind: "REVENUE", description: "Receita vinculada", year: 2026, budgetUnitId: "ug", resourceSourceId: "linked", revenueNatureId: "receita", originalValue: "2.00" } });
+      await generatePlanningSchedule(f.context, { instrumentId: f.loa, lineId: line.id, method: "TWELFTHS", periodMonths: 2, reason: "Metas da receita vinculada" });
+      await f.db.accountingPlan.create({ data: { id: "other-bank-account", code: "ISOLATED.BANK", name: "Banco de destino", type: "Ativo" } });
+      await f.db.bankAccount.create({ data: { id: "destination", bankName: "Banco Municipal", agency: "0001", accountNumber: "1001", resourceSourceId: "linked", budgetUnitId: "ug", accountingPlanId: "other-bank-account" } });
+      await f.db.accountingEventCatalog.create({ data: { code: "TRANSFERENCIA_BANCARIA", name: "Transferência", rules: { create: { debitAccountId: "debito", creditAccountId: "credito", isReference: true } } } });
+      const date = new Date("2026-09-03");
+      const receipt = { date, value: "2.00", revenueNatureId: "receita", resourceSourceId: "linked", bankAccountId: "banco", sourceModule: "FINANCEIRO", sourceType: "REVENUE", eventType: "RECEIPT", idempotencyKey: "linked-funding" };
+      await assert.rejects(createRevenue(f.db, f.actor, receipt), /fonte.*autorizada/);
+      await assert.rejects(configureBankResourceSources(f.db, { ...f.actor, allowedBudgetUnitIds: [] }, "banco", ["livre", "linked"]), /autorizadas/);
+      await configureBankResourceSources(f.db, f.actor, "banco", ["livre", "linked"]);
+      const revenue = await createRevenue(f.db, f.actor, receipt);
+      await createRevenue(f.db, f.actor, { ...receipt, value: "10.00", resourceSourceId: "livre", idempotencyKey: "free-funding" });
+      assert.equal((await getBankResourceSourceBalance(f.db, "banco", "linked")).toFixed(2), "2.00");
+      assert.equal((await getBankResourceSourceBalance(f.db, "banco", "livre")).toFixed(2), "10.00");
+      const transfer = { date, value: "1.50", sourceBankAccountId: "banco", destinationBankAccountId: "destination", resourceSourceId: "linked", idempotencyKey: "transfer-linked" };
+      const concurrent = await Promise.allSettled([createTreasuryTransfer(f.db, f.actor, transfer), createTreasuryTransfer(f.db, f.actor, { ...transfer, idempotencyKey: "transfer-linked-other" })]);
+      assert.equal(concurrent.filter(result => result.status === "fulfilled").length, 1, "Saldo agregado de R$ 12 não permite gastar R$ 3 da fonte com R$ 2");
+      assert.equal((await getBankResourceSourceBalance(f.db, "banco", "linked")).toFixed(2), "0.50");
+      assert.equal((await getBankResourceSourceBalance(f.db, "destination", "linked")).toFixed(2), "1.50");
+      assert.equal((await getBankResourceSourceBalance(f.db, "banco", "livre")).toFixed(2), "10.00");
+      await assert.rejects(configureBankResourceSources(f.db, f.actor, "banco", ["livre"]), /saldo bancário pendente/);
+      await assert.rejects(redistributeRevenueResourceSource(f.db, f.actor, { revenueId: revenue.id, date, value: "1.00", destinationResourceSourceId: "livre", history: "Redistribuição fundamentada" }), /saldo bancário disponível/);
+      await redistributeRevenueResourceSource(f.db, f.actor, { revenueId: revenue.id, date, value: "0.50", destinationResourceSourceId: "livre", history: "Redistribuição fundamentada" });
+      assert.equal((await getBankResourceSourceBalance(f.db, "banco", "linked")).toFixed(2), "0.00");
+      assert.equal((await getBankResourceSourceBalance(f.db, "banco", "livre")).toFixed(2), "10.50");
+      assert.equal((await getBankAccountBalance(f.db, "banco")).toFixed(2), "10.50");
+      const linkedClose = await closeDailyTreasuryByAccountAndSource(f.db, f.actor, { bankAccountId: "banco", resourceSourceId: "linked", date });
+      assert.equal(linkedClose.totalEntries, 2);
+      assert.equal(linkedClose.totalExits, 1.5);
+      assert.equal(linkedClose.closingBalance, 0, "Fechamento inclui redistribuição de R$ 0,50 sem misturar caixa da fonte livre");
+      await configureBankResourceSources(f.db, f.actor, "banco", ["livre"]);
+      await assert.rejects(createRevenue(f.db, f.actor, { ...receipt, idempotencyKey: "disabled-source" }), /fonte.*autorizada/);
+      await assert.rejects(f.db.treasuryMovement.create({ data: { bankAccountId: "banco", financialYearId: "ano", type: "Unclassified", direction: "Entrada", valueDecimal: "1.00" } }), /fonte documental/);
+      const reservation = await f.reserve("availability-commitment", "2.25");
+      const commitment = await createCommitment(f.db, f.actor, { date, number: "NE-AVAILABILITY", value: "2.25", type: "Ordinário", history: "Despesa municipal", appropriationId: f.appropriationId, reservationId: reservation.id, supplierId: "fornecedor" });
+      const reportInput = { financialYearId: "ano", governmentEntityId: "ente", resourceSourceIds: ["livre"] };
+      await assert.rejects(readResourceAvailability(f.db, { allowedBudgetUnitIds: [] }, reportInput), /autorizada/);
+      const beforePayment = await readResourceAvailability(f.db, f.actor, reportInput);
+      assert.equal(beforePayment.rows.length, 1);
+      assert.equal(beforePayment.rows[0].availableBalance, "10.50");
+      assert.equal(beforePayment.rows[0].commitmentsPayable, "2.25");
+      assert.equal(beforePayment.rows[0].deficitSurplus, "8.25");
+      await f.db.retentionRule.create({ data: { id: "availability-retention", code: "IRRF-AVAILABILITY", type: "IRRF", description: "Retenção", beneficiaryName: "Ente", calculationBasePercentage: 100, ratePercentage: 20, financialYearId: "ano", effectiveFrom: new Date("2026-01-01"), isActive: true } });
+      const settlement = await createSettlement(f.db, f.actor, { date, value: "2.25", commitmentId: commitment.id, authorId: "servidora-ana", documentId: "documento-fiscal", retentionRuleIds: ["availability-retention"] });
+      const payment = await createPayment(f.db, f.actor, { date, orderNumber: "OP-AVAILABILITY", value: "2.25", commitmentId: commitment.id, settlementId: settlement.id, bankAccountId: "banco", supplierId: "fornecedor", paymentMethod: "Transferência" });
+      await updatePaymentStatus(f.db, f.actor, payment.id, "Paga");
+      const afterPayment = await readResourceAvailability(f.db, f.actor, reportInput);
+      assert.equal(afterPayment.rows[0].availableBalance, "8.70");
+      assert.equal(afterPayment.rows[0].commitmentsPayable, "0.00");
+      assert.equal(afterPayment.rows[0].extraPayables, "0.45");
+      assert.equal(afterPayment.rows[0].deficitSurplus, "8.25", "Retenção pendente é obrigação extra, sem dupla contagem do empenho pago");
+      await configureBankResourceSources(f.db, f.actor, "destination", ["linked", "livre"]);
+      await createTreasuryTransfer(f.db, f.actor, { ...transfer, date: new Date("2026-09-05"), value: "8.00", resourceSourceId: "livre", idempotencyKey: "later-free-debit" });
+      await assert.rejects(createTreasuryTransfer(f.db, f.actor, { ...transfer, value: "1.00", resourceSourceId: "livre", idempotencyKey: "backdated-free-debit" }), /Saldo por fonte insuficiente/, "Saldo de R$ 8,70 na data anterior não autoriza débito que tornaria negativo o saldo posterior");
+      assert.equal((await getBankResourceSourceBalance(f.db, "banco", "livre")).toFixed(2), "0.70");
+    } finally { await f.close(); }
+  });
+}

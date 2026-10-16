@@ -1,0 +1,9 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { requestPortalItbiContestationAction } from "./actions";
+
+export default function PortalItbiContestationClient(props: { declarationId: string; updatedAt: string; declaredValue: string; documents: { id: string; title: string }[] }) {
+  const [notice, setNotice] = useState(""); const [pending, startTransition] = useTransition(); const field = "mt-1 w-full rounded border p-2 text-sm";
+  return <details className="rounded border bg-white p-4"><summary className="cursor-pointer font-semibold">Impugnar avaliação municipal com justificativa e anexos</summary>{notice && <p role="status" className="mt-3 text-sm">{notice}</p>}<form action={form => startTransition(async () => { const result = await requestPortalItbiContestationAction({ declarationId: props.declarationId, expectedUpdatedAt: props.updatedAt, proposedPropertyValue: String(form.get("value") ?? ""), reason: String(form.get("reason") ?? ""), documentIds: form.getAll("documents").map(String) }); setNotice(result.error ?? "Impugnação encaminhada para decisão fiscal. Acompanhe o resultado no histórico."); })} className="mt-3 space-y-3"><label className="block text-sm">Valor integral proposto (R$)<input name="value" type="number" min="0.01" step="0.01" defaultValue={props.declaredValue} required className={field}/></label><label className="block text-sm">Justificativa<textarea name="reason" required maxLength={8000} className={field}/></label><label className="block text-sm">Anexos comprobatórios enviados ao processo<select name="documents" multiple required className={field}>{props.documents.map(row => <option key={row.id} value={row.id}>{row.title}</option>)}</select></label><button disabled={pending} className="rounded border p-2 text-sm">Encaminhar impugnação</button></form></details>;
+}

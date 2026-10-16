@@ -1,0 +1,22 @@
+{
+  "referenceDate": "2026-10-13",
+  "method": "Campos essenciais transcritos e conferidos nas imagens das fichas anexas aos PDFs oficiais; hash do PDF é incluído pelo importador.",
+  "entries": [
+    { "code": "694-73", "name": "Conduzir cargas nas partes externas do veículo.", "article": "Art. 235.", "nature": "GRAVE", "points": 5, "amount": "195.23", "penalty": "Multa", "validFrom": "2024-01-02", "sourceFile": "RESOLUCAO_CONTRAN_N_1.003__ANEXO.pdf", "sourcePage": 1 },
+    { "code": "779-00", "name": "Dirigir veículo sem realizar o exame toxicológico previsto no caput do art. 148-A.", "article": "Art. 165-B, caput.", "nature": "GRAVISSIMA", "points": 7, "amount": "1467.35", "penalty": "Multa (5x); reincidência em 12 meses: multa (10x) e suspensão do direito de dirigir.", "validFrom": "2024-04-25", "sourceFile": "Resolucao10092024.pdf", "sourcePage": 4 },
+    { "code": "780-30", "name": "Dirigir veículo sem realizar o exame toxicológico previsto no § 2º do art. 148-A.", "article": "Art. 165-B c/c o parágrafo único.", "nature": "GRAVISSIMA", "points": 7, "amount": "1467.35", "penalty": "Multa (5x)", "validFrom": "2024-04-25", "sourceFile": "Resolucao10092024.pdf", "sourcePage": 5 },
+    { "code": "781-10", "name": "Dirigir veículo tendo obtido resultado positivo no exame toxicológico previsto no caput do art. 148-A.", "article": "Art. 165-C.", "nature": "GRAVISSIMA", "points": 7, "amount": "1467.35", "penalty": "Multa (5x)", "validFrom": "2024-04-25", "sourceFile": "Resolucao10092024.pdf", "sourcePage": 6 },
+    { "code": "782-00", "name": "Deixar de realizar o exame toxicológico previsto no § 2º do art. 148-A, após 30 dias do vencimento.", "article": "Art. 165-D.", "nature": "GRAVISSIMA", "points": 7, "amount": "1467.35", "penalty": "Multa (5x)", "validFrom": "2024-04-25", "sourceFile": "Resolucao10092024.pdf", "sourcePage": 7 },
+    { "code": "762-51", "name": "Estacionar nas vagas reservadas às pessoas com deficiência, sem credencial.", "article": "Art. 181, XX.", "nature": "GRAVISSIMA", "points": 7, "amount": "293.47", "penalty": "Multa", "validFrom": "2024-10-16", "sourceFile": "Resolucao10122024.pdf", "sourcePage": 7 },
+    { "code": "762-52", "name": "Estacionar nas vagas reservadas a idosos, sem credencial.", "article": "Art. 181, XX.", "nature": "GRAVISSIMA", "points": 7, "amount": "293.47", "penalty": "Multa", "validFrom": "2024-10-16", "sourceFile": "Resolucao10122024.pdf", "sourcePage": 11 },
+    { "code": "773-02", "name": "Deixar de efetuar pagamento pelo uso de rodovias e vias urbanas, na forma estabelecida.", "article": "Art. 209-A.", "nature": "GRAVE", "points": 5, "amount": "195.23", "penalty": "Multa", "validFrom": "2024-10-16", "sourceFile": "Resolucao10132024.pdf", "sourcePage": 9 },
+    { "code": "707-22", "name": "Conduzir motocicleta, motoneta ou ciclomotor transportando criança sem condição de cuidar da própria segurança.", "article": "Art. 244, V.", "nature": "GRAVISSIMA", "points": 7, "amount": "293.47", "penalty": "Multa e suspensão do direito de dirigir", "validFrom": "2026-07-01", "sourceFile": "resolucao10222026c.pdf", "sourcePage": 9 },
+    { "code": "574-61", "name": "Transitar em local ou horário não permitido pela regulamentação estabelecida pela autoridade.", "article": "Art. 187, I.", "nature": "MEDIA", "points": 4, "amount": "130.16", "penalty": "Multa", "validFrom": "2026-07-03", "sourceFile": "resolucao10232026c.pdf", "sourcePage": 11 },
+    { "code": "658-00", "name": "Conduzir o veículo sem qualquer uma das placas de identificação.", "article": "Art. 230, IV.", "nature": "GRAVISSIMA", "points": 7, "amount": "293.47", "penalty": "Multa", "validFrom": "2026-07-03", "sourceFile": "resolucao10232026c.pdf", "sourcePage": 13 },
+    { "code": "659-91", "name": "Conduzir o veículo que não esteja registrado.", "article": "Art. 230, V.", "nature": "GRAVISSIMA", "points": 7, "amount": "293.47", "penalty": "Multa", "validFrom": "2026-07-03", "sourceFile": "resolucao10232026c.pdf", "sourcePage": 15 }
+  ],
+  "historicalCodes": [
+    { "code": "764-10", "validUntil": "2024-04-24", "sourceFile": "Resolucao10092024.pdf", "reason": "Ficha antiga do art. 165-B; substituída pela classificação do anexo da Resolução 1009/2024." },
+    { "code": "765-00", "validUntil": "2024-04-24", "sourceFile": "Resolucao10092024.pdf", "reason": "Ficha antiga do art. 165-B, parágrafo único; preservada para consulta histórica." }
+  ]
+}

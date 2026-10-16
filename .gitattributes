@@ -1,0 +1,10 @@
+# Preserve the exact mixed line endings of the historical applied migration.
+/prisma/migrations-ibema/20261011030000_hr_workforce_foundation/migration.sql -text whitespace=cr-at-eol
+# Document attachments must retain their exact binary bytes across notebooks.
+*.pdf binary
+*.png binary
+*.zip binary
+*.zip.part* binary
+# These two applied migrations were recorded with uniform LF bytes.
+/prisma/migrations-ibema/20261011130000_hr_contract_temporal_revisions/migration.sql text eol=lf
+/prisma/migrations-ibema/20261011160000_hr_consignment_schedule/migration.sql text eol=lf

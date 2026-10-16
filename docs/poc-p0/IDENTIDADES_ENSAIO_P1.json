@@ -1,0 +1,135 @@
+{
+  "generatedAt": "2026-10-12T17:54:31.921Z",
+  "mode": "ADDITIVE_IDEMPOTENT",
+  "nature": "FICTITIOUS_POC_ONLY",
+  "documentGeneration": "Deterministic synthetic CPF with checksum, prefix 980000; not verified against any official taxpayer registry.",
+  "links": [
+    {
+      "taxpayerId": "p0-current-taxpayer-1",
+      "personId": "p1-poc-person-1",
+      "supplierId": "p1-poc-supplier-1",
+      "creditorId": "p1-poc-creditor-1"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-2",
+      "personId": "p1-poc-person-2",
+      "supplierId": "p1-poc-supplier-2",
+      "creditorId": "p1-poc-creditor-2"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-3",
+      "personId": "p1-poc-person-3",
+      "supplierId": "p1-poc-supplier-3",
+      "creditorId": "p1-poc-creditor-3"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-4",
+      "personId": "p1-poc-person-4",
+      "supplierId": "p1-poc-supplier-4",
+      "creditorId": "p1-poc-creditor-4"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-5",
+      "personId": "p1-poc-person-5",
+      "supplierId": "p1-poc-supplier-5",
+      "creditorId": "p1-poc-creditor-5"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-6",
+      "personId": "p1-poc-person-6",
+      "supplierId": "p1-poc-supplier-6",
+      "creditorId": "p1-poc-creditor-6"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-7",
+      "personId": "p1-poc-person-7",
+      "supplierId": "p1-poc-supplier-7",
+      "creditorId": "p1-poc-creditor-7"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-8",
+      "personId": "p1-poc-person-8",
+      "supplierId": "p1-poc-supplier-8",
+      "creditorId": "p1-poc-creditor-8"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-9",
+      "personId": "p1-poc-person-9",
+      "supplierId": "p1-poc-supplier-9",
+      "creditorId": "p1-poc-creditor-9"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-10",
+      "personId": "p1-poc-person-10",
+      "supplierId": "p1-poc-supplier-10",
+      "creditorId": "p1-poc-creditor-10"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-11",
+      "personId": "p1-poc-person-11",
+      "supplierId": "p1-poc-supplier-11",
+      "creditorId": "p1-poc-creditor-11"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-12",
+      "personId": "p1-poc-person-12",
+      "supplierId": "p1-poc-supplier-12",
+      "creditorId": "p1-poc-creditor-12"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-13",
+      "personId": "p1-poc-person-13",
+      "supplierId": "p1-poc-supplier-13",
+      "creditorId": "p1-poc-creditor-13"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-14",
+      "personId": "p1-poc-person-14",
+      "supplierId": "p1-poc-supplier-14",
+      "creditorId": "p1-poc-creditor-14"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-15",
+      "personId": "p1-poc-person-15",
+      "supplierId": "p1-poc-supplier-15",
+      "creditorId": "p1-poc-creditor-15"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-16",
+      "personId": "p1-poc-person-16",
+      "supplierId": "p1-poc-supplier-16",
+      "creditorId": "p1-poc-creditor-16"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-17",
+      "personId": "p1-poc-person-17",
+      "supplierId": "p1-poc-supplier-17",
+      "creditorId": "p1-poc-creditor-17"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-18",
+      "personId": "p1-poc-person-18",
+      "supplierId": "p1-poc-supplier-18",
+      "creditorId": "p1-poc-creditor-18"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-19",
+      "personId": "p1-poc-person-19",
+      "supplierId": "p1-poc-supplier-19",
+      "creditorId": "p1-poc-creditor-19"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-20",
+      "personId": "p1-poc-person-20",
+      "supplierId": "p1-poc-supplier-20",
+      "creditorId": "p1-poc-creditor-20"
+    },
+    {
+      "taxpayerId": "p0-current-taxpayer-21",
+      "personId": "p1-poc-person-21",
+      "supplierId": "p1-poc-supplier-21",
+      "creditorId": "p1-poc-creditor-21"
+    }
+  ],
+  "conclusion": "IDs dos contribuintes, imóveis e inscrições preservados; PF compartilhada por contribuinte, fornecedor e credor de ensaio."
+}

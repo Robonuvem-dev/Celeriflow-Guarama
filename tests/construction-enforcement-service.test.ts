@@ -1,0 +1,86 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+import { assignConstructionEnforcement, recordConstructionEnforcementVisit, issueConstructionEnforcementAct, acknowledgeConstructionEnforcementAct } from "../src/lib/obras/construction-enforcement-service";
+
+// Execute after the parent regenerates Prisma: node --conditions=react-server --import tsx --test tests/construction-enforcement*.test.ts
+test("serviço PostgreSQL: designação vigente, autorização, replay, GED, embargo, ciência e levantamento", async () => {
+  const db = new PGlite();
+  const server = new PGLiteSocketServer({ db, port: 0, host: "127.0.0.1" });
+  let prisma: PrismaClient | undefined;
+  try {
+    await db.exec(`
+      CREATE TABLE "Department" (id TEXT PRIMARY KEY, "isActive" BOOLEAN NOT NULL DEFAULT true);
+      CREATE TABLE "Employee" (id TEXT PRIMARY KEY, "isActive" BOOLEAN NOT NULL DEFAULT true, "departmentId" TEXT);
+      CREATE TABLE "RealEstate" (id TEXT PRIMARY KEY);
+      CREATE TABLE "ConstructionCase" (id TEXT PRIMARY KEY);
+      CREATE TABLE "ConstructionStaffRole" (id TEXT PRIMARY KEY,"employeeId" TEXT,"departmentId" TEXT,role TEXT,"startsAt" DATE,"endsAt" DATE,"isActive" BOOLEAN NOT NULL DEFAULT true);
+      CREATE TABLE "Process" (id TEXT PRIMARY KEY,"currentDepartmentId" TEXT,"currentResponsibleEmployeeId" TEXT,"completedAt" TIMESTAMP(3),status TEXT NOT NULL DEFAULT 'Em andamento',"updatedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE "ProcessEvent" (id TEXT PRIMARY KEY,"processId" TEXT,"eventType" TEXT,description TEXT,"previousStatus" TEXT,"newStatus" TEXT,"departmentId" TEXT,"employeeId" TEXT,metadata TEXT,"createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE "AuditEvent" (id TEXT PRIMARY KEY,"eventType" TEXT,"targetType" TEXT,"targetId" TEXT,"actorUsuarioId" TEXT,"createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE "Document" (id TEXT PRIMARY KEY,title TEXT,"documentType" TEXT,status TEXT,"validUntil" TIMESTAMP(3));
+      CREATE TABLE "DocumentVersion" (id TEXT PRIMARY KEY,"documentId" TEXT,"versionNumber" INT,"hashSha256" TEXT,status TEXT,"fileUrl" TEXT);
+      CREATE TABLE "ProcessDocument" (id TEXT PRIMARY KEY,"processId" TEXT,"documentId" TEXT);
+    `);
+    await db.exec(readFileSync("prisma/migrations-ibema/20261010250000_construction_enforcement/migration.sql", "utf8"));
+    await db.exec(`
+      INSERT INTO "Department" (id) VALUES ('sector'),('other');
+      INSERT INTO "Employee" (id,"departmentId") VALUES ('fiscal','sector'),('expired','sector'),('other-fiscal','other');
+      INSERT INTO "ConstructionStaffRole" (id,"employeeId","departmentId",role,"startsAt","endsAt") VALUES ('role','fiscal','sector','INSPECTOR','2020-01-01',NULL),('expired-role','expired','sector','INSPECTOR','2020-01-01','2021-01-01'),('other-role','other-fiscal','other','INSPECTOR','2020-01-01',NULL);
+      INSERT INTO "RealEstate" VALUES ('property'); INSERT INTO "Process" (id,"currentDepartmentId") VALUES ('process','sector');
+      INSERT INTO "ConstructionEnforcementCase" (id,"requestKey","requestHash","processId","realEstateId","locationType","permitStatus",reason,"cadastralSnapshot","createdBy") VALUES ('case','opening','hash','process','property','RURAL','WITHOUT_PERMIT','Obra demonstrativa sem alvará','{}','actor');
+      INSERT INTO "Document" VALUES ('photo','Foto de diligência','Foto','Válido',NULL),('proof','Comprovante de ciência','Comprovante','Válido',NULL),('foreign','Documento de outro processo','Documento','Válido',NULL);
+      INSERT INTO "DocumentVersion" VALUES ('photo-version','photo',1,'photo-hash','FINAL','https://example.test/photo.jpg'),('proof-version','proof',1,'proof-hash','FINAL','https://example.test/proof.pdf'),('foreign-version','foreign',1,'foreign-hash','FINAL','https://example.test/foreign.pdf');
+      INSERT INTO "ProcessDocument" VALUES ('photo-link','process','photo'),('proof-link','process','proof');
+    `);
+    await server.start();
+    prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`, max: 1 }) });
+    const client = prisma;
+    const manager = { id: "manager-user", access: { administrator: false, employeeId: "manager", departmentId: "sector", roles: ["MANAGER"] } };
+    const fiscal = { id: "fiscal-user", access: { administrator: false, employeeId: "fiscal", departmentId: "sector", roles: ["INSPECTOR"] } };
+    const assignment = { caseId: "case", requestKey: randomUUID(), revision: 0, employeeId: "fiscal", reason: "Designação de fiscalização demonstrativa" };
+    await assert.rejects(client.$transaction((tx) => assignConstructionEnforcement(tx, fiscal, assignment)), /gestor/);
+    await assert.rejects(client.$transaction((tx) => assignConstructionEnforcement(tx, { ...manager, access: { ...manager.access, departmentId: "other" } }, assignment)), /indisponível/);
+    await assert.rejects(client.$transaction((tx) => assignConstructionEnforcement(tx, manager, { ...assignment, employeeId: "expired" })), /vigente/);
+    await assert.rejects(client.$transaction((tx) => assignConstructionEnforcement(tx, manager, { ...assignment, employeeId: "other-fiscal" })), /vigente/);
+    const assignmentId = await client.$transaction((tx) => assignConstructionEnforcement(tx, manager, assignment));
+    assert.equal(await client.$transaction((tx) => assignConstructionEnforcement(tx, manager, assignment)), assignmentId);
+    await assert.rejects(client.$transaction((tx) => assignConstructionEnforcement(tx, manager, { ...assignment, reason: "Outro motivo de designação" })), /reutilizada/);
+    const visit = { caseId: "case", requestKey: randomUUID(), revision: 1, visitedAt: "2026-01-01T12:00:00Z", findings: "Obra rural sem alvará verificado na diligência", evidence: [{ documentId: "photo", kind: "PHOTO" }] };
+    await assert.rejects(client.$transaction((tx) => recordConstructionEnforcementVisit(tx, manager, visit)), /fiscal designado/);
+    await assert.rejects(client.$transaction((tx) => recordConstructionEnforcementVisit(tx, fiscal, { ...visit, revision: 0 })), /mudou/);
+    await assert.rejects(client.$transaction((tx) => recordConstructionEnforcementVisit(tx, fiscal, { ...visit, evidence: [{ documentId: "foreign", kind: "DOCUMENT" }] })), /GED atual/);
+    await assert.rejects(client.$transaction((tx) => recordConstructionEnforcementVisit(tx, fiscal, { ...visit, evidence: [{ documentId: "proof", kind: "PHOTO" }] })), /arquivo de imagem/);
+    const visitId = await client.$transaction((tx) => recordConstructionEnforcementVisit(tx, fiscal, visit));
+    assert.equal(await client.$transaction((tx) => recordConstructionEnforcementVisit(tx, fiscal, visit)), visitId);
+    const embargo = { caseId: "case", requestKey: randomUUID(), revision: 2, kind: "EMBARGO", visitId, reason: "Suspensão demonstrativa da obra irregular", legalBasis: "Regra demonstrativa, sem fundamento oficial presumido", issuedAt: "2026-01-02T12:00:00Z", deadlineAt: "", evidence: [{ documentId: "photo", kind: "PHOTO" }] };
+    const embargoId = await client.$transaction((tx) => issueConstructionEnforcementAct(tx, fiscal, embargo));
+    assert.equal(await client.$transaction((tx) => issueConstructionEnforcementAct(tx, fiscal, embargo)), embargoId);
+    assert.equal((await client.constructionEnforcementCase.findUniqueOrThrow({ where: { id: "case" } })).status, "EMBARGOED");
+    assert.match((await client.constructionEnforcementAct.findUniqueOrThrow({ where: { id: embargoId } })).number, /^DEMO-FISC-2026-EMBARGO-000001$/);
+    await assert.rejects(client.$transaction((tx) => issueConstructionEnforcementAct(tx, fiscal, { ...embargo, requestKey: randomUUID(), revision: 3 })), /Já existe embargo/);
+    await db.exec(`UPDATE "Document" SET status='Assinado' WHERE id='proof'; UPDATE "DocumentVersion" SET status='SIGNED' WHERE id='proof-version'`);
+    const ack = { caseId: "case", requestKey: randomUUID(), revision: 3, actId: embargoId, acknowledgedAt: "2026-01-03T12:00:00Z", method: "PERSONAL", recipient: "Destinatário demonstrativo", notes: "Recebimento pessoal documentado em comprovante", evidence: [{ documentId: "proof", kind: "SERVICE_PROOF" }] };
+    await assert.rejects(client.$transaction((tx) => acknowledgeConstructionEnforcementAct(tx, fiscal, { ...ack, acknowledgedAt: "2026-01-01T12:00:00Z" })), /posterior/);
+    const ackId = await client.$transaction((tx) => acknowledgeConstructionEnforcementAct(tx, fiscal, ack));
+    assert.equal(await client.$transaction((tx) => acknowledgeConstructionEnforcementAct(tx, fiscal, ack)), ackId);
+    const lifting = { ...embargo, requestKey: randomUUID(), revision: 4, kind: "LIFT_EMBARGO", relatedActId: embargoId, issuedAt: "2026-01-04T12:00:00Z", reason: "Condições demonstrativas de levantamento verificadas" };
+    await assert.rejects(client.$transaction((tx) => issueConstructionEnforcementAct(tx, fiscal, { ...lifting, relatedActId: "foreign-act" })), /pertencer/);
+    const liftingId = await client.$transaction((tx) => issueConstructionEnforcementAct(tx, fiscal, lifting));
+    assert.equal(await client.$transaction((tx) => issueConstructionEnforcementAct(tx, fiscal, lifting)), liftingId);
+    assert.equal((await client.constructionEnforcementCase.findUniqueOrThrow({ where: { id: "case" } })).status, "OPEN");
+    assert.equal(await client.constructionEnforcementAct.count(), 2);
+    assert.equal(await client.constructionEnforcementEvidence.count(), 4);
+    assert.equal((await db.query<{ count: number }>(`SELECT COUNT(*)::int AS count FROM "ProcessEvent"`)).rows[0].count, 5);
+    await assert.rejects(db.exec(`UPDATE "ConstructionEnforcementAct" SET reason='Alteração'`), /imutavel/);
+    await db.exec(`UPDATE "ConstructionStaffRole" SET "isActive"=false WHERE id='role'`);
+    await assert.rejects(client.$transaction((tx) => recordConstructionEnforcementVisit(tx, fiscal, { ...visit, requestKey: randomUUID(), revision: 5 })), /vigente/);
+    await db.exec(`UPDATE "ConstructionStaffRole" SET "isActive"=true WHERE id='role'; UPDATE "Process" SET status='Arquivado'`);
+    await assert.rejects(client.$transaction((tx) => recordConstructionEnforcementVisit(tx, fiscal, { ...visit, requestKey: randomUUID(), revision: 5 })), /ativo/);
+  } finally { await prisma?.$disconnect(); await server.stop(); await db.close(); }
+});

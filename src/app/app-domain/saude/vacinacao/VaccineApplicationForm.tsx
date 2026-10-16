@@ -1,0 +1,31 @@
+"use client";
+import Link from "next/link";
+import { useState } from "react";
+import type { VaccinationFormOptions } from "@/lib/saude/vaccination-form-options";
+import { recordVaccinationAction } from "./actions";
+const field = "min-w-0 rounded border bg-white p-2 text-sm";
+export function VaccineApplicationForm({ options, patients, patientId, appointmentId, medicalRecordId, idempotencyKey }: { options: VaccinationFormOptions; patients?: { id: string; name: string }[]; patientId?: string; appointmentId?: string | null; medicalRecordId?: string | null; idempotencyKey: string }) {
+  const [vaccineId, setVaccineId] = useState("");
+  const [stockId, setStockId] = useState("");
+  const [appliedAt, setAppliedAt] = useState(options.initialDate);
+  const vaccine = options.vaccines.find(row => row.id === vaccineId), stock = options.stocks.find(row => row.id === stockId);
+  const time = Date.parse(`${appliedAt}:00-03:00`);
+  return <form action={recordVaccinationAction} className="mt-3 grid gap-3 sm:grid-cols-2">
+    <input type="hidden" name="idempotencyKey" value={idempotencyKey} /><input type="hidden" name="quantity" value="1" />
+    <input type="hidden" name="stockId" value={stockId} /><input type="hidden" name="warehouseId" value={stock?.warehouseId || ""} /><input type="hidden" name="batchNumber" value={stock?.batchNumber || ""} />
+    <input type="hidden" name="appointmentId" value={appointmentId || ""} /><input type="hidden" name="medicalRecordId" value={medicalRecordId || ""} />
+    {patientId ? <input type="hidden" name="patientId" value={patientId} /> : <label className="grid gap-1 text-sm">Paciente<select name="patientId" required className={field}><option value="">Selecione</option>{patients?.map(patient => <option key={patient.id} value={patient.id}>{patient.name}</option>)}</select></label>}
+    <label className="grid gap-1 text-sm">Data e hora da vacinação<input name="appliedAt" type="datetime-local" required value={appliedAt} onChange={event => setAppliedAt(event.target.value)} className={field} /></label>
+    <label className="grid gap-1 text-sm">Imunobiológico<select name="vaccineId" required value={vaccineId} onChange={event => { setVaccineId(event.target.value); setStockId(""); }} className={field}><option value="">Selecione</option>{options.vaccines.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm">Estoque, lote e doses disponíveis<select required value={stockId} onChange={event => setStockId(event.target.value)} className={field}><option value="">Selecione</option>{options.stocks.filter(row => row.vaccineId === vaccineId).map(row => <option key={row.id} value={row.id} disabled={row.blocked || !row.configured}>{row.warehouseName} · {row.batchNumber} · {row.quantity} doses{row.blocked ? " · bloqueado" : !row.configured ? " · configurar dados do lote" : ""}</option>)}</select></label>
+    <label className="grid gap-1 text-sm">Profissional responsável pela aplicação<select name="professionalId" required key={stock?.unitId || "no-unit"} defaultValue={options.currentProfessionalId} className={field}><option value="">Selecione</option>{options.professionals.filter(row => stock && row.unitIds.includes(stock.unitId)).map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm">Dose do esquema<input name="doseNumber" type="number" min="1" required className={field} /></label>
+    <label className="grid gap-1 text-sm">Estratégia<input name="strategy" defaultValue="ROTINA" required className={field} /></label><label className="grid gap-1 text-sm">Grupo de atendimento<input name="careGroup" required placeholder="Grupo registrado para esta aplicação" className={field} /></label>
+    <label className="grid gap-1 text-sm">Local de aplicação<input name="applicationSite" required className={field} /></label><label className="grid gap-1 text-sm">Motivo<input name="applicationReason" required className={field} /></label><label className="grid gap-1 text-sm">Via de administração<input name="administrationRoute" required className={field} /></label><label className="grid gap-1 text-sm">Turno<input name="shift" required className={field} /></label>
+    <label className="grid gap-1 text-sm">Condição do cidadão<select name="citizenCondition" className={field}><option value="NONE">Sem condição específica informada</option><option value="PREGNANT">Gestante</option><option value="POSTPARTUM">Puérpera</option><option value="TRAVELER">Viajante</option></select></label>
+    <label className="grid gap-1 text-sm">Campanha<select name="campaignId" className={field}><option value="">Sem campanha</option>{options.campaigns.filter(row => Date.parse(row.startsAt) <= time && Date.parse(row.endsAt) >= time).map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm">Frasco já aberto<select key={stockId} name="openedVialId" className={field}><option value="">Abrir novo ou utilizar o único frasco disponível</option>{options.vials.filter(row => row.stockId === stockId && Date.parse(row.openedAt) <= time && (!row.expiresAt || Date.parse(row.expiresAt) >= time)).map(row => <option key={row.id} value={row.id}>Aberto {new Date(row.openedAt).toLocaleString("pt-BR")} · {row.remainingDoses} doses</option>)}</select></label>
+    {vaccine?.diluentMaterialId && <label className="grid gap-1 text-sm">Diluente para abertura de novo frasco<select key={stockId} name="diluentStockId" className={field}><option value="">Selecione quando for preparar novo frasco</option>{options.diluents.filter(row => !row.blocked && row.warehouseId === stock?.warehouseId && row.materialId === vaccine.diluentMaterialId).map(row => <option key={row.id} value={row.id}>{row.name} · lote {row.batchNumber} · saldo {row.quantity}</option>)}</select></label>}
+    <div className="flex flex-wrap items-center gap-3 sm:col-span-2"><button className="rounded bg-emerald-700 p-2 text-sm font-semibold text-white">Confirmar aplicação de uma dose e baixa vinculada</button><Link href="/saude/vacinacao/gestao" className="text-xs underline">Entrada, dados de lote, diluentes e calendário</Link></div>
+  </form>;
+}

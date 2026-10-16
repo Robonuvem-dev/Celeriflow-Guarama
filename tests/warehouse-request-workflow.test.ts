@@ -1,0 +1,71 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
+import { createMaterialRequest, approveMaterialRequest, issueMaterialRequestItem, issueMaterialRequestInFull } from "../src/lib/compras/procurement-lifecycle";
+
+test("requisição: origem/destino, aprovação, entrega parcial, replay, saldo final e equipamento sem tombamento", async () => {
+  const previousMode = process.env.CELERIFLOW_ACCOUNTING_MODE;
+  process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
+  const f = await createPlanningExecutionFixture();
+  try {
+    await f.pg.exec(`
+      CREATE TABLE "SequenceCounter" (id TEXT PRIMARY KEY, key TEXT UNIQUE NOT NULL, value INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE "EquipmentCustody" (id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, "serialNumber" TEXT, status TEXT DEFAULT 'Em uso', "deliveredAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "materialId" TEXT NOT NULL, "departmentId" TEXT NOT NULL, "responsibleId" TEXT NOT NULL, "stockMovementId" TEXT NOT NULL, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+      CREATE UNIQUE INDEX "request_stock_identity" ON "MaterialStock" ("warehouseId","materialId","batchNumber");
+      ALTER TABLE "MaterialMovement" ADD COLUMN IF NOT EXISTS "quantityDecimal" NUMERIC(18,6);
+      ALTER TABLE "MaterialMovement" ADD COLUMN IF NOT EXISTS "unitValueDecimal" NUMERIC(18,6);
+      ALTER TABLE "MaterialMovement" ADD COLUMN IF NOT EXISTS "totalValueDecimal" NUMERIC(18,2);
+    `);
+    await f.db.department.create({ data: { id: "request-department", name: "Setor destinatário", secretariatId: "secretaria" } });
+    await f.db.employee.create({ data: { id: "requester", name: "Servidor requisitante", cpf: "00000000001", departmentId: "request-department", isActive: true } });
+    await f.db.warehouse.createMany({ data: [{ id: "source", name: "Origem" }, { id: "wrong-source", name: "Outra origem" }] });
+    await f.db.materialCategory.create({ data: { id: "request-category", code: "TEST", name: "Material de teste" } });
+    await f.db.material.createMany({ data: [{ id: "paper", code: "MAT000001", name: "Papel", categoryId: "request-category" }, { id: "monitor", code: "EQP000001", name: "Monitor", type: "PATRIMONIO", categoryId: "request-category" }] });
+    await f.db.materialStock.createMany({ data: [{ id: "paper-stock", materialId: "paper", warehouseId: "source", quantity: 20, unitCost: 5 }, { id: "other-stock", materialId: "paper", warehouseId: "wrong-source", quantity: 20 }, { id: "equipment-stock", materialId: "monitor", warehouseId: "source", quantity: 3, unitCost: 800 }] });
+    const requester = { usuarioId: "ana", employeeId: "requester" };
+    const input = { sourceWarehouseId: "source", departmentId: "request-department", idempotencyKey: "request-create", items: [{ materialId: "paper", quantityRequested: 10 }] };
+    await assert.rejects(createMaterialRequest(f.db, requester, { ...input, number: "letras" }), /gerado automaticamente/);
+    await assert.rejects(createMaterialRequest(f.db, requester, { ...input, departmentId: "outro-setor" }), /setor de destino/);
+    const request = await createMaterialRequest(f.db, requester, input);
+    assert.match(request.number, /^REQ-\d{4}-\d{6}$/);
+    assert.equal((await createMaterialRequest(f.db, requester, input)).id, request.id);
+    assert.equal(request.sourceWarehouseId, "source");
+    assert.equal(request.departmentId, "request-department");
+    const item = await f.db.materialRequestItem.findFirstOrThrow({ where: { requestId: request.id } });
+    const approval = { requestId: request.id, quantities: [{ itemId: item.id, quantityApproved: 10 }] };
+    await assert.rejects(approveMaterialRequest(f.db, requester, approval), /própria requisição/);
+    await approveMaterialRequest(f.db, f.actor, approval);
+    await assert.rejects(issueMaterialRequestItem(f.db, f.actor, { requestItemId: item.id, stockId: "other-stock", quantity: 1 }), /origem/);
+    await f.db.materialStock.update({ where: { id: "paper-stock" }, data: { blockedAt: new Date() } });
+    await assert.rejects(issueMaterialRequestItem(f.db, f.actor, { requestItemId: item.id, stockId: "paper-stock", quantity: 1 }), /bloqueado/);
+    await f.db.materialStock.update({ where: { id: "paper-stock" }, data: { blockedAt: null } });
+    const delivery = { requestItemId: item.id, stockId: "paper-stock", quantity: 4, idempotencyKey: "partial-1" };
+    await issueMaterialRequestItem(f.db, f.actor, delivery);
+    await issueMaterialRequestItem(f.db, f.actor, delivery);
+    assert.equal((await f.db.materialStock.findUniqueOrThrow({ where: { id: "paper-stock" } })).quantity, 16);
+    assert.equal((await f.db.materialRequest.findUniqueOrThrow({ where: { id: request.id } })).status, "Atendida Parcialmente");
+    await assert.rejects(issueMaterialRequestItem(f.db, f.actor, { ...delivery, quantity: 5 }), /outros dados/);
+    const full = { requestId: request.id, stockByItem: [{ requestItemId: item.id, stockId: "paper-stock" }] };
+    await issueMaterialRequestInFull(f.db, f.actor, full);
+    await issueMaterialRequestInFull(f.db, f.actor, full);
+    assert.equal((await f.db.materialStock.findUniqueOrThrow({ where: { id: "paper-stock" } })).quantity, 10);
+    assert.equal((await f.db.materialRequestItem.findUniqueOrThrow({ where: { id: item.id } })).quantityDelivered, 10);
+    assert.equal((await f.db.materialRequest.findUniqueOrThrow({ where: { id: request.id } })).status, "Atendida");
+    assert.equal(await f.db.materialMovement.count({ where: { materialRequestItemId: item.id } }), 2);
+    await assert.rejects(createMaterialRequest(f.db, requester, { ...input, idempotencyKey: "fractional-equipment", items: [{ materialId: "monitor", quantityRequested: 0.5 }] }), /unidades inteiras/);
+    const equipment = await createMaterialRequest(f.db, requester, { ...input, idempotencyKey: "equipment-request", items: [{ materialId: "monitor", quantityRequested: 2 }] });
+    const equipmentItem = await f.db.materialRequestItem.findFirstOrThrow({ where: { requestId: equipment.id } });
+    await approveMaterialRequest(f.db, f.actor, { requestId: equipment.id, quantities: [{ itemId: equipmentItem.id, quantityApproved: 2 }] });
+    await issueMaterialRequestInFull(f.db, f.actor, { requestId: equipment.id, stockByItem: [{ requestItemId: equipmentItem.id, stockId: "equipment-stock" }] });
+    const physical = await f.db.equipmentCustody.findMany();
+    assert.equal(physical.length, 2);
+    assert.deepEqual(physical.map(row => row.code), ["EQP000002", "EQP000003"]);
+    assert.ok(physical.every(row => row.departmentId === "request-department" && row.responsibleId === "requester" && row.stockMovementId));
+    assert.equal(await f.db.asset.count(), 0);
+    assert.equal((await f.db.materialStock.findUniqueOrThrow({ where: { id: "equipment-stock" } })).quantity, 1);
+  } finally {
+    if (previousMode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE;
+    else process.env.CELERIFLOW_ACCOUNTING_MODE = previousMode;
+    await f.close();
+  }
+});

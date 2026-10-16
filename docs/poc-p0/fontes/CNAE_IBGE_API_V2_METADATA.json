@@ -1,0 +1,9 @@
+{
+  "url": "https://servicodados.ibge.gov.br/api/v2/cnae/subclasses",
+  "capturedAt": "2026-10-12T20:10:28.161Z",
+  "sha256": "787e14982265b0ffedf5f0180cbec8a2ea64d117fca459b76608ebc99dd668a7",
+  "entries": 1332,
+  "status": "SOURCE_CAPTURED_NOT_ADOPTED",
+  "versionDeclaredByEndpoint": null,
+  "effectiveDatesVerified": false
+}

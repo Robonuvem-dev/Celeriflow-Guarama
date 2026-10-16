@@ -1,0 +1,15 @@
+http://transparencia.pibema.pr.gov.br:8087/portaltransparencia-api/swagger-ui/index.html
+
+Documentos Assistencia Social:
+http://transparencia.pibema.pr.gov.br:8087/portaltransparencia/1/publicacoes/1195/436
+
+cMDCA - CONSELHO MUNICIPAL DOS DIREITOS DA CRIANÇA E DO ADOLESCENTE
+http://transparencia.pibema.pr.gov.br:8087/portaltransparencia/1/publicacoes/1195/437
+
+ADIATAMENTO DE DESPESAS
+O MUNICÍPIO DE IBEMA NÃO ADOTA ESSE PROCEDIMENTO ADMINISTRATIVO. - Sem arquivos
+
+VERBAS DE GABINETE
+O MUNICÍPIO DE IBEMA NÃO ADOTA ESSE PROCEDIMENTO ADMINISTRATIVO. - Sem arquivos
+
+http://transparencia.pibema.pr.gov.br:8087/portaltransparencia/1/

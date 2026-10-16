@@ -1,0 +1,31 @@
+# Environment is configured in Vercel, not uploaded from a notebook.
+.env
+.env.*
+
+# Development references stay in GitHub for both notebooks.
+# Only the root archive is excluded; public/docs remains available to the app.
+/docs/
+/docs/*
+/image/
+/AGENTS.md
+/CLAUDE.md
+/README.md
+/.github/
+/.agent/
+
+# Tests and their artifacts are not part of the production build.
+/tests/
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+/coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Keep src, public, scripts/build.mjs, Prisma schema/migrations,
+# package-lock.json and build configuration available to Vercel.

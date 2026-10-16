@@ -1,0 +1,6 @@
+CREATE TABLE "HealthRegulationQuotaAllocation" (
+ id TEXT PRIMARY KEY, "quotaId" TEXT NOT NULL REFERENCES "HealthRegulationQuota"(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+ "requestUnitId" TEXT NOT NULL, "totalQuantity" INTEGER NOT NULL, "reservedQuantity" INTEGER NOT NULL DEFAULT 0,
+ "realizedQuantity" INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE("quotaId","requestUnitId")
+);

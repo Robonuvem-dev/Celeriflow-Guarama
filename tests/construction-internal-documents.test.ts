@@ -1,0 +1,86 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+import { stageConstructionInternalDocument, validateConstructionInternalOpeningDocuments, linkConstructionInternalOpeningDocuments } from "../src/lib/obras/construction-internal-documents";
+
+test("Prisma/PostgreSQL: pré-upload isolado por ator/chave/categoria, GED atual válido, idempotência e vínculo transacional", async () => {
+  const db = new PGlite(); const server = new PGLiteSocketServer({ db, port: 0, host: "127.0.0.1" });
+  let prisma: PrismaClient | undefined;
+  const definition = { fields: [], checks: [{ key: "ownership", label: "Titularidade conferida", required: true }], documents: [{ label: "Projeto", required: true }, { label: "Representação", required: false }] };
+  const access = { administrator: false, employeeId: "employee", departmentId: "sector", roles: ["ANALYST"] };
+  const requestKey = randomUUID(); const uploadKey = randomUUID();
+  const upload = { requestKey, uploadKey, formVersion: 1, label: "Projeto" };
+  const file = { fileUrl: "https://private.blob.test/project.pdf", hashSha256: "a".repeat(64), filename: "project.pdf", mimeType: "application/pdf" };
+  try {
+    await db.exec(`
+      CREATE TABLE "Usuario" (id TEXT PRIMARY KEY);
+      CREATE TABLE "Department" (id TEXT PRIMARY KEY, "isActive" BOOLEAN DEFAULT true);
+      CREATE TABLE "Employee" (id TEXT PRIMARY KEY, "departmentId" TEXT, "isActive" BOOLEAN DEFAULT true);
+      CREATE TABLE "ConstructionStaffRole" (id TEXT PRIMARY KEY, "employeeId" TEXT, "departmentId" TEXT, role TEXT, "isActive" BOOLEAN DEFAULT true, "startsAt" DATE, "endsAt" DATE);
+      CREATE TABLE "ConstructionDefinitionVersion" (id TEXT PRIMARY KEY, kind TEXT, version INTEGER, definition JSONB);
+      CREATE TABLE "Process" (id TEXT PRIMARY KEY);
+      CREATE TABLE "ConstructionCase" (id TEXT PRIMARY KEY, "requestKey" TEXT UNIQUE, "processId" TEXT, "createdBy" TEXT);
+      CREATE TABLE "Document" (id TEXT PRIMARY KEY, title TEXT NOT NULL, "documentType" TEXT NOT NULL, "fileUrl" TEXT NOT NULL, status TEXT DEFAULT 'Válido', "validUntil" TIMESTAMP(3), "publicLabel" TEXT DEFAULT 'Documento autenticado', "retentionMonths" INTEGER DEFAULT 60, "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE "DocumentVersion" (id TEXT PRIMARY KEY, "documentId" TEXT REFERENCES "Document"(id), "versionNumber" INTEGER, "fileUrl" TEXT, "hashSha256" TEXT, status TEXT DEFAULT 'FINAL', "lockedAt" TIMESTAMP(3), "finalizedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP, "publicValidationCode" TEXT, "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP, UNIQUE("documentId","versionNumber"));
+      CREATE TABLE "ProcessDocument" (id TEXT PRIMARY KEY, "processId" TEXT REFERENCES "Process"(id), "documentId" TEXT REFERENCES "Document"(id), purpose TEXT, "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE "ProcessEvent" (id TEXT PRIMARY KEY, "processId" TEXT REFERENCES "Process"(id), "eventType" TEXT, description TEXT, metadata TEXT, "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP);
+      INSERT INTO "Usuario" VALUES ('actor'),('other'); INSERT INTO "Department" (id) VALUES ('sector');
+      INSERT INTO "Employee" (id,"departmentId") VALUES ('employee','sector');
+      INSERT INTO "ConstructionStaffRole" (id,"employeeId","departmentId",role,"startsAt") VALUES ('role','employee','sector','ANALYST','2026-01-01');
+    `);
+    await db.query(`INSERT INTO "ConstructionDefinitionVersion" VALUES ('form','FORM',1,$1)`, [JSON.stringify(definition)]);
+    await db.exec(readFileSync("prisma/migrations-ibema/20261010300000_construction_internal_documents/migration.sql", "utf8"));
+    await server.start();
+    prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`, max: 1 }) });
+    const client = prisma;
+    await assert.rejects(client.$transaction((tx) => stageConstructionInternalDocument(tx, { ...access, roles: [] }, "actor", upload, file)), /analista\/gestor/);
+    await assert.rejects(client.$transaction((tx) => stageConstructionInternalDocument(tx, access, "actor", { ...upload, label: "Unknown" }, file)), /Categoria documental/);
+    await assert.rejects(client.$transaction((tx) => stageConstructionInternalDocument(tx, access, "actor", { ...upload, formVersion: 0 }, file)), /formulário mudou/);
+    const staged = await client.$transaction((tx) => stageConstructionInternalDocument(tx, access, "actor", upload, file));
+    assert.equal(staged.created, true);
+    const repeated = await client.$transaction((tx) => stageConstructionInternalDocument(tx, access, "actor", upload, file));
+    assert.deepEqual(repeated, { id: staged.id, created: false });
+    assert.equal((await db.query<{ count: number }>(`SELECT count(*)::int AS count FROM "Document"`)).rows[0].count, 1);
+    await assert.rejects(client.$transaction((tx) => stageConstructionInternalDocument(tx, access, "other", upload, file)), /Referência de envio/);
+    await assert.rejects(client.$transaction((tx) => stageConstructionInternalDocument(tx, access, "actor", upload, { ...file, hashSha256: "b".repeat(64) })), /conteúdo alterado/);
+    const input = { requestKey, formVersion: 1, documentIds: { Projeto: staged.id }, checks: { ownership: true } };
+    await assert.rejects(client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "actor", { ...input, documentIds: {} }, definition)), /documentos obrigatórios/);
+    await assert.rejects(client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "actor", { ...input, checks: {} }, definition)), /critérios obrigatórios/);
+    await assert.rejects(client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "other", input, definition)), /sua conta/);
+    await assert.rejects(client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "actor", { ...input, requestKey: randomUUID() }, definition)), /sua conta/);
+    await assert.rejects(client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "actor", { ...input, documentIds: { Projeto: "arbitrary-document" } }, definition)), /não foi preparado/);
+    await db.query(`UPDATE "Document" SET "validUntil"='2020-01-01' WHERE id=$1`, [staged.id]);
+    await assert.rejects(client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "actor", input, definition)), /GED alterado, vencido/);
+    await db.query(`UPDATE "Document" SET "validUntil"=NULL WHERE id=$1`, [staged.id]);
+    await db.query(`INSERT INTO "DocumentVersion" (id,"documentId","versionNumber","fileUrl","hashSha256") VALUES ('new-version',$1,2,'new-url',$2)`, [staged.id, "b".repeat(64)]);
+    await assert.rejects(client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "actor", input, definition)), /GED alterado/);
+    await db.exec(`DELETE FROM "DocumentVersion" WHERE id='new-version'`);
+    const selected = await client.$transaction((tx) => validateConstructionInternalOpeningDocuments(tx, "actor", input, definition));
+    assert.equal(selected[0].documentId, staged.id); assert.equal(selected[0].hashSha256, file.hashSha256);
+    await assert.rejects(client.$transaction(async (tx) => {
+      await tx.$executeRaw`INSERT INTO "Process" VALUES ('rollback-process')`;
+      await tx.$executeRaw`INSERT INTO "ConstructionCase" VALUES ('rollback-case',${requestKey},'rollback-process','actor')`;
+      await linkConstructionInternalOpeningDocuments(tx, "actor", requestKey, "rollback-case", "rollback-process", selected);
+      throw new Error("Simulated downstream failure");
+    }), /Simulated downstream/);
+    assert.equal((await db.query<{ count: number }>(`SELECT count(*)::int AS count FROM "ProcessDocument"`)).rows[0].count, 0);
+    assert.equal((await db.query<{ caseId: string | null }>(`SELECT "caseId" FROM "ConstructionInternalOpeningDocument"`)).rows[0].caseId, null);
+    await client.$transaction(async (tx) => {
+      await tx.$executeRaw`INSERT INTO "Process" VALUES ('process')`;
+      await tx.$executeRaw`INSERT INTO "ConstructionCase" VALUES ('case',${requestKey},'process','actor')`;
+      await linkConstructionInternalOpeningDocuments(tx, "actor", requestKey, "case", "process", selected);
+    });
+    const link = (await db.query<{ processId: string; documentId: string }>(`SELECT "processId","documentId" FROM "ProcessDocument"`)).rows[0];
+    assert.deepEqual(link, { processId: "process", documentId: staged.id });
+    assert.equal((await db.query<{ caseId: string }>(`SELECT "caseId" FROM "ConstructionInternalOpeningDocument"`)).rows[0].caseId, "case");
+    await assert.rejects(client.$transaction((tx) => linkConstructionInternalOpeningDocuments(tx, "actor", requestKey, "case", "process", selected)), /já consumido/);
+    await assert.rejects(client.$transaction((tx) => stageConstructionInternalDocument(tx, access, "actor", { ...upload, uploadKey: randomUUID() }, file)), /já protocolada/);
+    await assert.rejects(db.exec(`DELETE FROM "Usuario" WHERE id='actor'`), /foreign key/);
+    await assert.rejects(db.exec(`DELETE FROM "ConstructionCase" WHERE id='case'`), /foreign key/);
+  } finally { await prisma?.$disconnect(); await server.stop(); await db.close(); }
+});

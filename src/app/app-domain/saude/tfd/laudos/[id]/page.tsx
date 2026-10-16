@@ -1,0 +1,58 @@
+import Link from "next/link";
+import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { tfdRequestForActor } from "@/lib/saude/tfd-clinical-service";
+import { authorizeTfdReportAction, requestTfdBenefitAction, saveTfdReportAction, supplementTfdReportAction, transitionTfdBenefitAction, transitionTfdReportAction } from "../actions";
+
+const field = "w-full rounded border border-slate-300 bg-white p-2 text-sm";
+
+export default async function TfdReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
+  const request = await context.prisma.$transaction(tx => tfdRequestForActor(tx, context, id));
+  const report = request.clinicalReport;
+  const [events, benefits, revisions, supplements, professional, records, procedures] = await Promise.all([
+    context.prisma.healthTfdRequestEvent.findMany({ where: { requestId: id }, orderBy: { createdAt: "asc" } }),
+    context.prisma.healthTfdBenefit.findMany({ where: { requestId: id }, orderBy: { createdAt: "desc" } }),
+    report ? context.prisma.healthTfdReportRevision.findMany({ where: { reportId: report.id }, orderBy: { version: "desc" }, select: { version: true, reason: true, actorUsuarioId: true, createdAt: true } }) : [],
+    report ? context.prisma.healthTfdReportSupplement.findMany({ where: { reportId: report.id }, orderBy: { createdAt: "asc" } }) : [],
+    context.prisma.healthProfessional.findFirst({ where: { employeeId: context.user.employeeId || "__SEM_PROFISSIONAL__", isActive: true }, include: { employee: { select: { name: true } } } }),
+    context.prisma.medicalRecord.findMany({ where: { patientId: request.patientId, ...(request.originUnitId ? { unitId: request.originUnitId } : {}) }, take: 100, orderBy: { date: "desc" }, select: { id: true, date: true } }),
+    context.prisma.healthSusProcedure.findMany({ take: 300, orderBy: { code: "asc" }, select: { id: true, code: true, description: true } }),
+  ]);
+  const documentUrl = `/api/saude/tfd/${encodeURIComponent(id)}/documento`;
+  const editable = ["SOLICITADA", "GLOSADA", "ALTERACAO"].includes(request.status);
+  return <main className="space-y-4 p-4">
+    <header className="space-y-1"><Link href="/saude/tfd/laudos" className="text-sm underline">Laudos TFD</Link><h1 className="text-xl font-semibold">{request.patient.person.fullName} · {request.status}</h1><p className="text-sm">{request.originUnit?.name || "Sem unidade"} → {request.destination} · processo {request.id}</p></header>
+    {report && <nav className="flex flex-wrap gap-4 text-sm"><a href={`${documentUrl}?tipo=LAUDO`} target="_blank" rel="noreferrer" className="underline">Imprimir laudo · versão {report.version}</a>{request.status === "AUTORIZADA" && <><a href={`${documentUrl}?tipo=PEDIDO`} target="_blank" rel="noreferrer" className="underline">Imprimir pedido autorizado</a><Link href={`/saude/tfd/viagens?requestId=${encodeURIComponent(id)}`} className="underline">Agendar transporte autorizado</Link></>}</nav>}
+    {editable && professional && <details open={!report} className="rounded border bg-white p-3"><summary className="cursor-pointer font-semibold">{report ? "Alterar laudo com nova versão" : "Incluir laudo clínico"}</summary>
+      <form action={saveTfdReportAction} className="mt-3 grid gap-3 md:grid-cols-2">
+        <input type="hidden" name="requestId" value={id}/><input type="hidden" name="expectedVersion" value={report?.version || 0}/><input type="hidden" name="professionalId" value={professional.id}/>
+        <p className="text-sm md:col-span-2">Profissional emissor: {professional.employee.name}. Ao salvar, o PDF da versão será aberto.</p>
+        <label className="text-sm">Atendimento de origem<select name="medicalRecordId" defaultValue={report?.medicalRecordId || ""} className={field}><option value="">Laudo sem atendimento vinculado</option>{records.map(record => <option key={record.id} value={record.id}>{record.date.toLocaleString("pt-BR")} · {record.id}</option>)}</select></label>
+        <label className="text-sm">Procedimento SUS<select name="procedureId" defaultValue={report?.procedureId || ""} className={field}><option value="">Não informado</option>{procedures.map(procedure => <option key={procedure.id} value={procedure.id}>{procedure.code} · {procedure.description}</option>)}</select></label>
+        <label className="text-sm">Diagnóstico<textarea name="diagnosis" required minLength={3} defaultValue={report?.diagnosis} className={field}/></label>
+        <label className="text-sm">Código diagnóstico<input name="diagnosticCode" maxLength={30} defaultValue={report?.diagnosticCode || ""} className={field}/></label>
+        <label className="text-sm">História clínica<textarea name="clinicalHistory" required minLength={3} defaultValue={report?.clinicalHistory} className={field}/></label>
+        <label className="text-sm">Exames realizados<textarea name="examinations" required minLength={3} defaultValue={report?.examinations} className={field}/></label>
+        <label className="text-sm">Tratamento proposto<textarea name="treatment" required minLength={3} defaultValue={report?.treatment} className={field}/></label>
+        <label className="text-sm">Justificativa da indisponibilidade local<textarea name="localTreatmentUnavailableReason" required minLength={3} defaultValue={report?.localTreatmentUnavailableReason} className={field}/></label>
+        <label className="text-sm">Tipo de transporte<select name="transportType" defaultValue={report?.transportType || "TERRESTRE"} className={field}>{["TERRESTRE", "AEREO", "FLUVIAL", "SANITARIO", "OUTRO"].map(value => <option key={value}>{value}</option>)}</select></label>
+        <label className="text-sm">Justificativa do transporte<textarea name="transportJustification" required minLength={3} defaultValue={report?.transportJustification} className={field}/></label>
+        <label className="text-sm"><input name="companionRequired" type="checkbox" defaultChecked={report?.companionRequired}/> Necessita acompanhante</label>
+        <label className="text-sm">Justificativa do acompanhante<textarea name="companionJustification" defaultValue={report?.companionJustification || ""} className={field}/></label>
+        <label className="text-sm md:col-span-2">Motivo da inclusão/alteração<input name="reason" required minLength={3} className={field}/></label>
+        <button className="rounded bg-amber-700 p-2 font-semibold text-white md:col-span-2">Salvar versão e abrir laudo PDF</button>
+      </form>
+    </details>}
+    {!professional && editable && <p className="rounded border bg-amber-50 p-3 text-sm">A inclusão ou revisão clínica exige o profissional de Saúde autenticado.</p>}
+    {report && <section className="grid gap-3 md:grid-cols-2">
+      <form action={supplementTfdReportAction} className="space-y-2 rounded border bg-white p-3"><h2 className="font-semibold">Complementar laudo</h2><input type="hidden" name="requestId" value={id}/><textarea name="narrative" required minLength={3} placeholder="Complemento datado, preservando a versão original" className={field}/><button className="rounded border p-2">Registrar complemento</button></form>
+      <div className="space-y-3 rounded border bg-white p-3"><form action={transitionTfdReportAction} className="space-y-2"><h2 className="font-semibold">Tramitar processo</h2><input type="hidden" name="requestId" value={id}/><select name="status" className={field}>{["APROVADA", "GLOSADA", "ALTERACAO", "NEGADA", "CANCELADA", "ARQUIVADA"].map(value => <option key={value}>{value}</option>)}</select><textarea name="reason" required minLength={3} placeholder="Parecer / motivo" className={field}/><button className="rounded border p-2">Registrar decisão</button></form>{request.status === "APROVADA" && <form action={authorizeTfdReportAction}><input type="hidden" name="requestId" value={id}/><button className="rounded bg-emerald-700 p-2 text-white">Autorizar tratamento aprovado</button></form>}</div>
+    </section>}
+    <section className="space-y-3"><h2 className="font-semibold">Benefícios vinculados ao tratamento</h2>
+      {request.status === "AUTORIZADA" && report && <form action={requestTfdBenefitAction} className="grid gap-2 rounded border bg-white p-3 md:grid-cols-3"><input type="hidden" name="requestId" value={id}/><label className="text-sm">Tipo<select name="kind" className={field}>{["PASSAGEM", "ALIMENTACAO", "HOSPEDAGEM", "OUTRO"].map(value => <option key={value}>{value}</option>)}</select></label><label className="text-sm">Quantidade<input type="number" name="quantity" min={1} max={10000} required className={field}/></label><label className="text-sm">Valor unitário (R$)<input name="unitValue" type="number" min="0" step="0.01" className={field}/></label><label className="text-sm md:col-span-3">Descrição<input name="description" required minLength={3} className={field}/></label><button className="rounded border p-2 md:col-span-3">Cadastrar benefício para autorização</button></form>}
+      {benefits.map(benefit => <article key={benefit.id} className="space-y-2 rounded border bg-white p-3 text-sm"><h3 className="font-semibold">{benefit.kind} · {benefit.quantity} · {benefit.status}</h3><p>{benefit.description} · laudo versão {benefit.reportVersion}{benefit.unitValue !== null ? ` · R$ ${benefit.unitValue.toFixed(2)} por unidade` : ""}</p>{benefit.authorizedAt && <p>Autorizado em {benefit.authorizedAt.toLocaleString("pt-BR")} por {benefit.authorizedByUsuarioId}</p>}{benefit.deliveredAt && <p>Entregue em {benefit.deliveredAt.toLocaleString("pt-BR")} por {benefit.deliveredByUsuarioId} · recebedor {benefit.receivedByPersonId} · comprovante {benefit.deliveryReceipt}</p>}{["SOLICITADO", "AUTORIZADO"].includes(benefit.status) && <form action={transitionTfdBenefitAction} className="grid gap-2 md:grid-cols-2"><input type="hidden" name="benefitId" value={benefit.id}/><select name="status" className={field}><option value={benefit.status === "SOLICITADO" ? "AUTORIZADO" : "ENTREGUE"}>{benefit.status === "SOLICITADO" ? "Autorizar" : "Registrar entrega"}</option><option value="CANCELADO">Cancelar</option></select><input name="reason" required minLength={3} placeholder="Justificativa" className={field}/>{benefit.status === "AUTORIZADO" && <><label>Identificador da pessoa recebedora<input name="receivedByPersonId" defaultValue={request.patient.personId} required className={field}/></label><label>Comprovante de entrega<input name="deliveryReceipt" required className={field}/></label></>}<button className="rounded border p-2 md:col-span-2">Confirmar benefício</button></form>}</article>)}
+    </section>
+    <section className="space-y-2"><h2 className="font-semibold">Versões e complementos</h2>{revisions.map(revision => <p key={revision.version} className="text-sm"><a className="underline" target="_blank" rel="noreferrer" href={`${documentUrl}?tipo=LAUDO&versao=${revision.version}`}>Laudo versão {revision.version}</a> · {revision.createdAt.toLocaleString("pt-BR")} · {revision.actorUsuarioId} · {revision.reason}</p>)}{supplements.map(supplement => <p key={supplement.id} className="whitespace-pre-wrap rounded border p-2 text-sm">Versão {supplement.reportVersion} · {supplement.createdAt.toLocaleString("pt-BR")} · {supplement.actorUsuarioId}{"\n"}{supplement.narrative}</p>)}</section>
+    <section className="space-y-2"><h2 className="font-semibold">Trâmites do processo</h2>{events.map(event => <p key={event.id} className="rounded border p-2 text-sm">{event.createdAt.toLocaleString("pt-BR")} · {event.actorUsuarioId} · {event.eventType} · {event.fromStatus || "—"} → {event.toStatus}<br/>{event.reason}</p>)}</section>
+  </main>;
+}

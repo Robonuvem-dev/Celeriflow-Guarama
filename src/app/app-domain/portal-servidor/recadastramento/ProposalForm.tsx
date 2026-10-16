@@ -1,0 +1,48 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { submitMyRecertification } from "./actions";
+import type { RecertificationDetails } from "@/lib/rh/recertification-details";
+
+const labels: Record<string, string> = { email: "E-mail cadastral", emailSecondary: "E-mail secundário", phonePrimary: "Telefone principal", phoneSecondary: "Telefone secundário", whatsapp: "WhatsApp", maritalStatus: "Estado civil", profession: "Profissão", educationLevel: "Escolaridade", socialName: "Nome social", rg: "RG", rgIssuer: "Órgão emissor do RG", motherName: "Filiação materna", fatherName: "Filiação paterna", nationality: "Nacionalidade", birthPlace: "Naturalidade", gender: "Gênero", raceColor: "Raça/cor" };
+const inputClass = "mt-1 block h-8 w-full rounded border bg-white px-2";
+
+export function ProposalForm({ campaignRuleId, values, sections = [], initialDetails, documents = [], canUpload = false }: { campaignRuleId: string; values: Record<string, string>; sections?: string[]; initialDetails?: RecertificationDetails; documents?: { id: string; title: string }[]; canUpload?: boolean }) {
+  const [message, setMessage] = useState(""), [pending, setPending] = useState(false), [uploading, setUploading] = useState(false);
+  const [details, setDetails] = useState<RecertificationDetails>(initialDetails || { addresses: [], dependents: [], previousEmployment: [], documentVersionIds: [] });
+  const [availableDocuments, setAvailableDocuments] = useState(documents);
+  const router = useRouter();
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const data = new FormData(event.currentTarget); setPending(true); setMessage("");
+    try {
+      const result = await submitMyRecertification({ ...Object.fromEntries([...data].map(([key, value]) => [key, String(value)])), detailsJson: JSON.stringify(details) });
+      setMessage(result.error || `Proposta registrada: ${result.id}`); if (!result.error) router.refresh();
+    } catch { setMessage("Falha de comunicação. Consulte o pedido antes de repetir."); } finally { setPending(false); }
+  }
+  async function upload(file: File) {
+    setUploading(true); setMessage("");
+    try {
+      const data = new FormData(); data.set("campaignRuleId", campaignRuleId); data.set("file", file);
+      const response = await fetch("/api/portal-servidor/recadastramento/anexos", { method: "POST", body: data });
+      const result = await response.json() as { error?: string; documentVersionId?: string; title?: string };
+      if (!response.ok || !result.documentVersionId) throw new Error(result.error || "Não foi possível enviar o documento.");
+      const id = result.documentVersionId;
+      setAvailableDocuments(rows => [...rows, { id, title: result.title || file.name }]);
+      setDetails(value => ({ ...value, documentVersionIds: [...value.documentVersionIds, id] }));
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Não foi possível enviar o documento."); } finally { setUploading(false); }
+  }
+  function updateAddress(index: number, field: string, value: string) { setDetails(current => ({ ...current, addresses: current.addresses.map((row, position) => position === index ? { ...row, [field]: field === "neighborhoodId" ? value || null : value } : row) })); }
+  function updateDependent(index: number, field: string, value: string | boolean) { setDetails(current => ({ ...current, dependents: current.dependents.map((row, position) => position === index ? { ...row, [field]: value } : row) })); }
+  function updateJob(index: number, field: string, value: string) { setDetails(current => ({ ...current, previousEmployment: current.previousEmployment.map((row, position) => position === index ? { ...row, [field]: value } : row) })); }
+  return <form onSubmit={submit} className="mt-3 space-y-3 text-xs"><input type="hidden" name="campaignRuleId" value={campaignRuleId} />
+    <fieldset disabled={pending || uploading} className="space-y-4">
+      <div className="grid gap-2 sm:grid-cols-3">{Object.entries(values).map(([name, value]) => <label key={name}>{labels[name] || name}<input name={name} type={name === "email" || name === "emailSecondary" ? "email" : "text"} defaultValue={value} maxLength={250} className={inputClass} /></label>)}</div>
+      {sections.includes("ENDERECOS") && <section className="space-y-3 rounded border p-3"><h3 className="font-semibold">Endereços propostos</h3>{details.addresses.map((row, index) => <fieldset key={row.id || index} className="grid gap-2 rounded border p-3 sm:grid-cols-3"><legend>Endereço {index + 1}</legend>{[["zipCode", "CEP"], ["streetName", "Logradouro"], ["number", "Número"], ["complement", "Complemento"], ["referencePoint", "Referência"], ["addressType", "Tipo de endereço"], ["zone", "Zona"], ["neighborhoodId", "Identificador do bairro cadastrado"]].map(([field, label]) => <label key={field}>{label}<input value={String(row[field as keyof typeof row] || "")} onChange={event => updateAddress(index, field, event.target.value)} required={field === "streetName" || field === "addressType"} maxLength={250} className={inputClass} /></label>)}</fieldset>)}<button type="button" className="rounded border px-3 py-2" onClick={() => setDetails(current => ({ ...current, addresses: [...current.addresses, { zipCode: "", streetName: "", number: "", complement: "", referencePoint: "", addressType: "Residencial", zone: "", neighborhoodId: null }] }))}>Adicionar endereço</button></section>}
+      {sections.includes("DEPENDENTES") && <section className="space-y-3 rounded border p-3"><h3 className="font-semibold">Dependentes propostos</h3><p>Nome, CPF e nascimento serão conciliados pelo RH com a pessoa física no Cadastro Único. Elegibilidade tributária não é aplicada antes da análise.</p>{details.dependents.map((row, index) => <fieldset key={row.id || index} className="grid gap-2 rounded border p-3 sm:grid-cols-2"><legend>Dependente {index + 1}</legend>{[["name", "Nome"], ["cpf", "CPF"], ["birthDate", "Nascimento"], ["relationship", "Parentesco"]].map(([field, label]) => <label key={field}>{label}<input value={String(row[field as keyof typeof row] || "")} onChange={event => updateDependent(index, field, event.target.value)} type={field === "birthDate" ? "date" : "text"} required maxLength={250} className={inputClass} /></label>)}{[["irrfDependent", "Dependente para IRRF"], ["familyWage", "Salário-família"]].map(([field, label]) => <label key={field} className="flex items-center gap-2"><input type="checkbox" checked={Boolean(row[field as keyof typeof row])} onChange={event => updateDependent(index, field, event.target.checked)} />{label}</label>)}</fieldset>)}<button type="button" className="rounded border px-3 py-2" onClick={() => setDetails(current => ({ ...current, dependents: [...current.dependents, { cpf: "", name: "", birthDate: "", relationship: "", irrfDependent: false, familyWage: false }] }))}>Adicionar dependente</button></section>}
+      {sections.includes("EMPREGOS_ANTERIORES") && <section className="space-y-3 rounded border p-3"><h3 className="font-semibold">Empregos anteriores declarados</h3><p>A conferência preserva os períodos e documentos. Averbação de tempo e reconhecimento de direitos dependem da operação própria do RH.</p>{details.previousEmployment.map((row, index) => <fieldset key={index} className="grid gap-2 rounded border p-3 sm:grid-cols-2"><legend>Emprego anterior {index + 1}</legend>{[["employer", "Empregador"], ["role", "Cargo/função"], ["startsAt", "Início"], ["endsAt", "Fim"], ["evidenceReference", "Referência documental"]].map(([field, label]) => <label key={field}>{label}<input value={row[field as keyof typeof row]} onChange={event => updateJob(index, field, event.target.value)} type={field.endsWith("At") ? "date" : "text"} required maxLength={field === "evidenceReference" ? 2000 : 250} className={inputClass} /></label>)}</fieldset>)}<button type="button" className="rounded border px-3 py-2" onClick={() => setDetails(current => ({ ...current, previousEmployment: [...current.previousEmployment, { employer: "", role: "", startsAt: "", endsAt: "", evidenceReference: "" }] }))}>Adicionar emprego anterior</button></section>}
+      <section className="space-y-2 rounded border p-3"><h3 className="font-semibold">Comprovação documental</h3>{availableDocuments.map(document => <label key={document.id} className="flex items-center gap-2"><input type="checkbox" checked={details.documentVersionIds.includes(document.id)} onChange={event => setDetails(current => ({ ...current, documentVersionIds: event.target.checked ? [...current.documentVersionIds, document.id] : current.documentVersionIds.filter(id => id !== document.id) }))} />{document.title}</label>)}{canUpload && <label className="block">Enviar comprovação (PDF, JPG ou PNG)<input type="file" accept="application/pdf,image/jpeg,image/png" onChange={event => { const file = event.target.files?.[0]; if (file) void upload(file); event.target.value = ""; }} className={inputClass} /></label>}{!availableDocuments.length && !canUpload && <p>Nenhum documento pessoal disponível. Consulte a orientação documental do RH.</p>}</section>
+      <p className="text-slate-600">Alterar e-mail cadastral não altera sua credencial de acesso institucional. A proposta permanece separada do cadastro até a conferência do RH.</p>
+      <button className="rounded bg-emerald-800 px-3 py-2 font-semibold text-white">{pending ? "Enviando…" : uploading ? "Recebendo documento…" : "Enviar proposta para análise"}</button>
+    </fieldset>{message && <p role="status">{message}</p>}
+  </form>;
+}

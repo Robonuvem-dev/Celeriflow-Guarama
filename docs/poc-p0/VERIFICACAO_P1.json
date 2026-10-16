@@ -1,0 +1,147 @@
+{
+  "generatedAt": "2026-10-12T20:18:56.185Z",
+  "mode": "READ_ONLY",
+  "migrations": [
+    {
+      "migration_name": "20261012100000_accounting_entity_unit_scope",
+      "finished": true,
+      "rolledBack": false
+    },
+    {
+      "migration_name": "20261012110000_entity_scoped_financial_years",
+      "finished": true,
+      "rolledBack": false
+    },
+    {
+      "migration_name": "20261012120000_accounting_year_entity_guard",
+      "finished": true,
+      "rolledBack": false
+    },
+    {
+      "migration_name": "20261012130000_scoped_year_requires_accounting_scope",
+      "finished": true,
+      "rolledBack": false
+    },
+    {
+      "migration_name": "20261012140000_revenue_budget_unit_scope",
+      "finished": true,
+      "rolledBack": false
+    },
+    {
+      "migration_name": "20261012150000_accounting_year_scope_update_guard",
+      "finished": true,
+      "rolledBack": false
+    },
+    {
+      "migration_name": "20261012160000_internal_control_budget_scope",
+      "finished": true,
+      "rolledBack": false
+    }
+  ],
+  "migrationsApplied": true,
+  "columns": {
+    "entity": true,
+    "unit": true
+  },
+  "entityUnitTrigger": true,
+  "ledger": {
+    "total": 0,
+    "scoped": 0,
+    "unscoped": 0,
+    "mismatched": 0
+  },
+  "p0Fixtures": {
+    "entities": 2,
+    "units": 42,
+    "years": 12,
+    "instruments": 18
+  },
+  "financialYearKeys": {
+    "scopedYearKey": true,
+    "legacyYearKey": true
+  },
+  "financialYearIndexes": [
+    {
+      "indexname": "FinancialYear_governmentEntityId_year_key",
+      "indexdef": "CREATE UNIQUE INDEX \"FinancialYear_governmentEntityId_year_key\" ON public.\"FinancialYear\" USING btree (\"governmentEntityId\", year)"
+    },
+    {
+      "indexname": "FinancialYear_legacy_year_key",
+      "indexdef": "CREATE UNIQUE INDEX \"FinancialYear_legacy_year_key\" ON public.\"FinancialYear\" USING btree (year) WHERE (\"governmentEntityId\" IS NULL)"
+    },
+    {
+      "indexname": "FinancialYear_pkey",
+      "indexdef": "CREATE UNIQUE INDEX \"FinancialYear_pkey\" ON public.\"FinancialYear\" USING btree (id)"
+    },
+    {
+      "indexname": "FinancialYear_year_status_idx",
+      "indexdef": "CREATE INDEX \"FinancialYear_year_status_idx\" ON public.\"FinancialYear\" USING btree (year, status)"
+    }
+  ],
+  "revenueScope": {
+    "total": 0,
+    "unscoped": 0,
+    "mismatched": 0
+  },
+  "catalogReadiness": {
+    "versions": 10,
+    "entries": 18775,
+    "sourcesWithoutYear": 21,
+    "revenueNaturesWithoutYear": 21,
+    "expenseNaturesWithoutVersion": 0
+  },
+  "identity": [
+    {
+      "model": "Taxpayer",
+      "total": 24,
+      "missing": 0,
+      "ambiguous": 0
+    },
+    {
+      "model": "Supplier",
+      "total": 21,
+      "missing": 0,
+      "ambiguous": 0
+    },
+    {
+      "model": "Creditor",
+      "total": 21,
+      "missing": 0,
+      "ambiguous": 0
+    }
+  ],
+  "decimals": [
+    {
+      "model": "AccountingEntry",
+      "total": 0,
+      "missing": 0,
+      "mismatched": 0
+    },
+    {
+      "model": "Revenue",
+      "total": 0,
+      "missing": 0,
+      "mismatched": 0
+    },
+    {
+      "model": "Commitment",
+      "total": 0,
+      "missing": 0,
+      "mismatched": 0
+    },
+    {
+      "model": "Settlement",
+      "total": 0,
+      "missing": 0,
+      "mismatched": 0
+    },
+    {
+      "model": "Payment",
+      "total": 0,
+      "missing": 0,
+      "mismatched": 0
+    }
+  ],
+  "scopeConclusion": "Verifica fundação de escopo; não certifica homologação de catálogos nem o aceite integral da P1.",
+  "preservation": "SELECT-only; no rows updated or inserted"
+}

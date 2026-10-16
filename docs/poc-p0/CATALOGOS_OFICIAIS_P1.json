@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-10-12T19:10:44.310Z",
+  "mode": "ADDITIVE_IDEMPOTENT",
+  "catalogs": [
+    {
+      "id": "p1-tce-pr-account-2026-1.0d",
+      "kind": "ACCOUNT",
+      "file": "PCASPM_PR_2026_v1.0d.xlsx",
+      "sheet": "PCASP-TCE-PR-2026",
+      "header": 5,
+      "codeColumn": 14,
+      "yearColumn": 15,
+      "nameColumn": 16,
+      "version": "1.0d",
+      "publishedAt": "2026-03-24",
+      "hash": "824d3dc03ad3f2d40abdbb10b2e2c5a30b590854af974be0a403fb12349d851a",
+      "entries": 8760,
+      "postingAllowed": 6740,
+      "status": "DRAFT",
+      "mapped": false
+    },
+    {
+      "id": "p1-tce-pr-revenue-2026-1.0e",
+      "kind": "REVENUE",
+      "file": "PC_RECEITA_PR_2026_v1.0e.xlsx",
+      "sheet": "Plano Receita 2026",
+      "header": 7,
+      "codeColumn": 14,
+      "yearColumn": 15,
+      "nameColumn": 16,
+      "version": "1.0e",
+      "publishedAt": "2026-10-09",
+      "hash": "2ee071dfb6ecf33462ff4ea047445dd1122786c735bb46ac0b8008952b501e97",
+      "entries": 1808,
+      "postingAllowed": 1015,
+      "status": "DRAFT",
+      "mapped": false
+    },
+    {
+      "id": "p1-tce-pr-expense-2026-1.0h",
+      "kind": "EXPENSE",
+      "file": "PC_DESPESA_PR_2026_v1.0h.xlsx",
+      "sheet": "PC Desp-2026",
+      "header": 7,
+      "codeColumn": 8,
+      "yearColumn": 9,
+      "nameColumn": 10,
+      "version": "1.0h",
+      "publishedAt": "2026-08-05",
+      "hash": "e98bff8e02c48e92c762ab425d64d219849754e4dab34f4be491dfa7f3ef4ecb",
+      "entries": 3926,
+      "postingAllowed": 2856,
+      "status": "DRAFT",
+      "mapped": false
+    }
+  ]
+}

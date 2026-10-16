@@ -1,0 +1,9 @@
+"use client";
+import { useState } from "react";
+import { foodMarkerQuestions, type FoodAgeGroup } from "@/lib/saude/primary-care-contract";
+import { recordFoodMarkersAction } from "./actions";
+const field = "h-9 rounded border bg-white px-2 text-sm";
+export function FoodMarkerForm({ patients, units }: { patients: { id: string; name: string }[]; units: { id: string; name: string }[] }) {
+  const [group, setGroup] = useState<FoodAgeGroup>("TWO_YEARS_PLUS");
+  return <form action={recordFoodMarkersAction} className="mt-3 grid gap-2 sm:grid-cols-2"><select name="patientId" required className={field}><option value="">Paciente</option>{patients.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select><select name="unitId" required className={field}><option value="">Unidade</option>{units.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select><label className="grid gap-1 text-sm">Data<input name="recordedAt" type="date" required className={field} /></label><input name="place" required placeholder="Local da coleta" className={field} /><select name="ageGroup" value={group} onChange={event => setGroup(event.target.value as FoodAgeGroup)} className={field}><option value="UNDER_6_MONTHS">Menor de seis meses</option><option value="SIX_TO_23_MONTHS">De seis a 23 meses</option><option value="TWO_YEARS_PLUS">A partir de dois anos</option></select>{foodMarkerQuestions[group].map(([key, label]) => <label key={`${group}-${key}`} className="grid gap-1 text-sm">{label}<select name={`marker.${key}`} required className={field}><option value="">Informe</option><option value="YES">Sim</option><option value="NO">Não</option><option value="UNKNOWN">Não sabe</option></select></label>)}<button className="rounded bg-emerald-700 p-2 font-semibold text-white">Gravar marcadores alimentares</button></form>;
+}

@@ -1,0 +1,18 @@
+import Link from "next/link";
+import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { vaccinationActiveSearch } from "@/lib/saude/vaccination-active-search";
+export default async function VaccinationCardsPage({ searchParams }: { searchParams: Promise<{ q?: string; mode?: string; page?: string }> }) {
+  const { q = "", mode = "pending", page: rawPage } = await searchParams, context = await getTenantContextForModule("SAUDE");
+  const result = await vaccinationActiveSearch(context, q);
+  const rows = mode === "all" ? result.rows : result.rows.filter(row => row.pending.length > 0 || row.birthDateMissing);
+  const total = rows.length, page = Math.min(Math.max(1, Number.parseInt(rawPage || "1") || 1), Math.max(1, Math.ceil(total / 20)));
+  const href = (next: number) => `/saude/vacinacao/carteiras?${new URLSearchParams({ q, mode, page: String(next) })}`;
+  return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"><header className="flex flex-wrap justify-between gap-3"><h1 className="font-semibold">Carteiras e busca ativa vacinal</h1><nav className="flex gap-3 text-sm"><Link href="/saude/vacinacao" className="underline">Aplicações</Link><Link href="/saude/vacinacao/gestao" className="underline">Calendário e estoque</Link></nav></header>
+    <form className="flex flex-wrap gap-3"><label className="grid gap-1 text-sm">Nome, CPF ou CNS<input name="q" defaultValue={q} className="rounded border p-2" /></label><label className="grid gap-1 text-sm">Consulta<select name="mode" defaultValue={mode} className="rounded border p-2"><option value="pending">Pendências e cadastro a complementar</option><option value="all">Todos os pacientes da pesquisa</option></select></label><button className="self-end rounded border p-2 text-sm">Pesquisar</button></form>
+    <p className="text-sm">{result.totalPatients} paciente(s) no recorte autorizado · {result.registrationPending} sem nascimento completo{result.configured ? ` · ${result.pendingPatients} com doses obrigatórias exigíveis pendentes` : " · cálculo pendente de calendário vigente cadastrado"}</p>
+    {!result.configured && <p className="rounded border bg-amber-50 p-3 text-sm">Cadastre o calendário para calcular as pendências e a regularidade. O histórico individual continua disponível pela consulta de todos os pacientes.</p>}
+    <p className="text-sm">{total} resultado(s) · página {page}</p>
+    {rows.slice((page - 1) * 20, page * 20).map(row => <article key={row.patientId} className="space-y-2 rounded border bg-white p-3 text-sm"><header className="flex flex-wrap justify-between gap-2"><h2 className="font-semibold">{row.name} · {row.unit}</h2><Link href={`/saude/vacinacao/carteira/${row.patientId}`} className="font-semibold underline">Abrir carteira e ações vacinais</Link></header><p>CNS {row.cns || "Não informado"} · telefone {row.phone}</p><p>Endereço: {row.address}</p>{row.birthDateMissing && <p>Nascimento a complementar para cálculo da faixa etária.</p>}{row.pending.map(pending => <p key={pending.ruleId} className="text-amber-900">{pending.vaccineName} · dose {pending.doseNumber} · {pending.strategy} · exigível desde {pending.dueAt.toLocaleDateString("pt-BR")}{pending.status === "MISSING_PREVIOUS" ? " · dose anterior pendente" : ""}</p>)}{!row.birthDateMissing && result.configured && !row.pending.length && <p>Sem doses obrigatórias exigíveis pendentes neste calendário.</p>}</article>)}
+    <nav className="flex gap-3 text-sm">{page > 1 && <Link href={href(page - 1)} className="underline">Anterior</Link>}{page * 20 < total && <Link href={href(page + 1)} className="underline">Próxima</Link>}</nav>
+  </div>;
+}

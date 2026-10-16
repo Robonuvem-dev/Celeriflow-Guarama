@@ -1,0 +1,63 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFile } from "node:fs/promises";
+import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
+import { configureTaxFinancialMapping,configureTaxServiceActivity } from "../src/lib/tributacao";
+import { publishEconomicActivity } from "../src/lib/tributacao/economic-activity-registry";
+import { unifyEconomicActivities } from "../src/lib/tributacao/economic-activity-operations";
+import { createEconomicRegistrationWithProfile,saveEconomicProfile } from "../src/lib/tributacao/economic-profile";
+import { updateEconomicRegistrationWithHistory } from "../src/lib/tributacao/economic-history";
+import { publishFiscalCatalog } from "../src/lib/tributacao/configurable-cadastres";
+
+test("ISS: atividade relaciona CNAE/serviços/CBO e unificação preserva versões, origem e rollback",async()=>{
+  const f=await createPlanningExecutionFixture();
+  try{
+    for(const migration of ["20261015100000_tax_property_cadastral_history","20261015130000_economic_profile_history","20261015170000_economic_activity_registry"]) await f.pg.exec(await readFile(`prisma/migrations-ibema/${migration}/migration.sql`,"utf8"));
+    await f.pg.exec(await readFile("prisma/migrations-ibema/20261015120000_configured_fiscal_records/migration.sql", "utf8"));
+    await f.db.tax.create({data:{id:"ISS",name:"ISS",taxType:"Imposto"}});
+    await configureTaxFinancialMapping(f.db,f.actor,{taxId:"ISS",revenueNatureId:"receita",resourceSourceId:"livre",defaultBankAccountId:"banco"});
+    const service=await configureTaxServiceActivity(f.db,f.actor,{taxId:"ISS",code:"1.01",name:"Serviço municipal",issRate:"2"});
+    await f.db.healthCbo.create({data:{code:"123456",description:"Ocupação cadastrada",isActive:true}});
+    const activityInput={expectedVersion:0,governmentEntityId:"ente",budgetUnitId:"ug",cnae:"1234567",name:"Atividade de origem",risk:"BAIXO" as const,active:true,serviceActivityIds:[service.id],cboCodes:["123456"],legalBasis:"Enquadramento municipal"};
+    await assert.rejects(publishEconomicActivity(f.db,{...f.actor,allowedBudgetUnitIds:[]},activityInput),/autorizado/);
+    await assert.rejects(publishEconomicActivity(f.db,f.actor,{...activityInput,cboCodes:["999999"]}),/CBO ativas/);
+    const source=await publishEconomicActivity(f.db,f.actor,activityInput);
+    await assert.rejects(publishEconomicActivity(f.db,f.actor,activityInput),/já cadastrado/);
+    const revised=await publishEconomicActivity(f.db,f.actor,{...activityInput,activityId:source.entityId,expectedVersion:1,risk:"ALTO",name:"Atividade revisada"});
+    assert.equal((source.data as {risk:string}).risk,"BAIXO");assert.equal((revised.data as {risk:string}).risk,"ALTO");
+    await assert.rejects(f.db.taxRegistryEntry.update({where:{id:source.id},data:{data:{}}}),/imutável/);
+    const target=await publishEconomicActivity(f.db,f.actor,{...activityInput,cnae:"7654321",name:"Atividade de destino"});
+    await f.db.taxpayer.create({data:{id:"payer",taxpayerType:"PF",status:"Ativo"}});
+    const address={street:"Rua",number:"1",complement:"",neighborhood:"Centro",city:"Município",state:"PR",zipCode:""};
+    const profile={registrationId:"NEW",expectedVersion:0,governmentEntityId:"ente",budgetUnitId:"ug",accountantTaxpayerId:null,accountantCrc:"",companyType:"Autônomo",realEstateIds:[],primaryCnae:"1234567",secondaryCnaes:["7654321"],partners:[],contractNumber:"",contractDate:null,companyAddress:address,correspondenceAddress:address,latitude:null,longitude:null,provisionalUntil:null,validateCompanyDebt:false,validatePartnerDebts:false,documentIds:[],processId:null,reason:"Inclusão com atividades"};
+    const registration=await createEconomicRegistrationWithProfile(f.db,f.actor,{municipalInsc:"ACTIVITY-1",taxpayerId:"payer",taxRegime:"Normal",profile});
+    const second=await createEconomicRegistrationWithProfile(f.db,f.actor,{municipalInsc:"ACTIVITY-2",taxpayerId:"payer",taxRegime:"Normal",profile:{...profile,primaryCnae:"7654321",secondaryCnaes:["1234567"]}});
+    await f.db.economicRegistration.create({data:{id:"legacy",municipalInsc:"ACTIVITY-LEGACY",taxpayerId:"payer",primaryCnae:"1234567"}});
+    const unify={governmentEntityId:"ente",budgetUnitId:"ug",sourceId:source.entityId,sourceVersion:2,targetId:target.entityId,targetVersion:1,processId:null,reason:"Unificação dos códigos municipais"};
+    const zoneInput = { governmentEntityId: "ente", budgetUnitId: "ug", expectedVersion: 0, kind: "ZONEAMENTO" as const, code: "Z1", name: "Zona municipal", active: true, fields: [], neighborhoodId: null, streetId: null, landUnitValue: null, legalBasis: "Plano diretor municipal", zoningActivities: [{ cnae: "1234567", treatment: "PERMITIDA" as const, condition: "" }, { cnae: "7654321", treatment: "PROIBIDA" as const, condition: "" }] };
+    const zone = await publishFiscalCatalog(f.db, f.actor, zoneInput);
+    await assert.rejects(unifyEconomicActivities(f.db, f.actor, unify), /Concilie a regra urbanística/);
+    assert.equal((await f.db.economicRegistration.findUniqueOrThrow({ where: { id: registration.id } })).primaryCnae, "1234567");
+    await publishFiscalCatalog(f.db, f.actor, { ...zoneInput, catalogId: zone.entityId, expectedVersion: 1, zoningActivities: [zoneInput.zoningActivities[0]] });
+    await assert.rejects(unifyEconomicActivities(f.db,f.actor,{...unify,sourceVersion:1}),/alterada/);
+    await f.pg.exec(`CREATE FUNCTION reject_activity_profile() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.category='ECONOMIC_PROFILE' AND NEW.version=2 THEN RAISE EXCEPTION 'activity rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_activity_profile BEFORE INSERT ON "TaxRegistryEntry" FOR EACH ROW EXECUTE FUNCTION reject_activity_profile();`);
+    await assert.rejects(unifyEconomicActivities(f.db,f.actor,unify),/activity rollback/);
+    assert.equal((await f.db.economicRegistration.findUniqueOrThrow({where:{id:registration.id}})).primaryCnae,"1234567");
+    assert.equal(await f.db.taxRegistryEntry.count({where:{category:"ECONOMIC_ACTIVITY_UNIFICATION"}}),0);
+    assert.equal((await f.db.taxRegistryEntry.findFirstOrThrow({ where: { entityId: zone.entityId, category: "TYPED_FISCAL_CATALOG" }, orderBy: { version: "desc" } })).version, 2);
+    await f.pg.exec('DROP TRIGGER reject_activity_profile ON "TaxRegistryEntry"; DROP FUNCTION reject_activity_profile();');
+    const result=await unifyEconomicActivities(f.db,f.actor,unify);
+    assert.equal(result.count,2);assert.equal(result.unscopedRegistrationsNotAttributed,1);
+    const currentZone = await f.db.taxRegistryEntry.findFirstOrThrow({ where: { entityId: zone.entityId, category: "TYPED_FISCAL_CATALOG" }, orderBy: { version: "desc" } });
+    assert.equal(currentZone.version, 3); assert.deepEqual((currentZone.data as { zoningActivities: object[] }).zoningActivities, [{ cnae: "7654321", treatment: "PERMITIDA", condition: "" }]);
+    assert.deepEqual((zone.data as { zoningActivities: object[] }).zoningActivities, zoneInput.zoningActivities);
+    assert.equal((await f.db.economicRegistration.findUniqueOrThrow({where:{id:registration.id}})).primaryCnae,"7654321");
+    assert.equal((await f.db.economicRegistration.findUniqueOrThrow({where:{id:"legacy"}})).primaryCnae,"1234567");
+    for(const id of [registration.id,second.id]) {const current=await f.db.taxRegistryEntry.findFirstOrThrow({where:{entityId:id,category:"ECONOMIC_PROFILE"},orderBy:{version:"desc"}});assert.deepEqual((current.data as {secondaryCnaes:string[]}).secondaryCnaes,[]);}
+    await updateEconomicRegistrationWithHistory(f.db,f.actor,registration.id,{primaryCnae:"1234567"});
+    assert.equal((await f.db.economicRegistration.findUniqueOrThrow({where:{id:registration.id}})).primaryCnae,"7654321");
+    await saveEconomicProfile(f.db,f.actor,{...profile,registrationId:registration.id,expectedVersion:2});
+    assert.equal((await f.db.economicRegistration.findUniqueOrThrow({where:{id:registration.id}})).primaryCnae,"7654321");
+    await assert.rejects(unifyEconomicActivities(f.db,f.actor,unify),/alterada/);
+  }finally{await f.close();}
+});

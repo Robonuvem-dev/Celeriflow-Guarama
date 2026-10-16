@@ -1,0 +1,19 @@
+import Link from "next/link";
+import { assertHealthUnitAccess, getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { followupPresentation } from "@/lib/saude/followup-presentation";
+
+export default async function FollowupReceiverPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string; page?: string }> }) {
+  const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id), query = await searchParams;
+  const receiver = await context.prisma.healthFollowupReceiver.findUniqueOrThrow({ where: { id }, include: { unit: { select: { name: true } }, binding: { select: { id: true, connectionId: true } } } });
+  assertHealthUnitAccess(context.user, receiver.unitId);
+  const q = typeof query.q === "string" ? query.q.trim().slice(0, 120) : "";
+  const where = { receiverId: id, ...(q ? { patient: { person: { fullName: { contains: q, mode: "insensitive" as const } } } } : {}) };
+  const total = await context.prisma.healthFollowupRecord.count({ where });
+  const page = Math.min(Math.max(1, /^\d+$/.test(query.page || "") ? Number(query.page) : 1), Math.max(1, Math.ceil(total / 30)));
+  const records = await context.prisma.healthFollowupRecord.findMany({ where, orderBy: [{ lastReceivedAt: "desc" }, { id: "asc" }], skip: (page - 1) * 30, take: 30, include: { patient: { select: { status: true, person: { select: { fullName: true } } } }, lastBatch: { select: { id: true, receipt: { select: { protocol: true } } } } } });
+  const pageUrl = (value: number) => `/saude/acompanhamento/receptores/${encodeURIComponent(id)}?${new URLSearchParams({ q, page: String(value) })}`;
+  return <main className="space-y-4 p-4"><header><Link href={receiver.binding ? `/saude/acompanhamento?binding=${encodeURIComponent(receiver.binding.id)}` : "/saude/acompanhamento"} className="text-sm underline">Remessas de acompanhamento</Link><h1 className="text-xl font-semibold">{receiver.name}</h1><p className="text-sm">{receiver.unit.name} · {receiver.code} · {receiver.contractName} · {receiver.schemaVersion}</p></header><form className="flex gap-2 text-sm"><input name="q" defaultValue={q} placeholder="Nome atual do paciente" className="w-full rounded border p-2"/><button className="shrink-0 rounded border p-2">Pesquisar recebidos</button></form><p className="text-sm">{total} origens acompanhadas · página {page}</p>{records.map(record => {
+    const info = followupPresentation(record.originType, record.payload);
+    return <article key={record.id} className="space-y-2 rounded border bg-white p-3 text-sm"><h2 className="font-semibold">{record.patient.person.fullName} · cadastro {record.patient.status}</h2><p>Último retrato recebido: {info.patientName || "Nome não informado na origem"} · {info.summary}</p><p>Profissional da origem: {info.professionalName || "Não informado"}</p><p>Alteração da origem {record.sourceUpdatedAt.toLocaleString("pt-BR")} · retrato {record.snapshotAt.toLocaleString("pt-BR")} · recebimento {record.lastReceivedAt.toLocaleString("pt-BR")}</p><p className="break-all text-xs">{record.originType}:{record.originId} · versão {record.sourceVersion}</p><nav className="flex flex-wrap gap-4"><Link className="underline" href={`/saude/acompanhamento/remessas/${encodeURIComponent(record.lastBatchId)}`}>Remessa de referência · {record.lastBatch.receipt?.protocol || record.lastBatch.id}</Link>{info.sourceHref && <Link className="underline" href={info.sourceHref}>{info.sourceLabel}</Link>}</nav><details><summary className="cursor-pointer">Conteúdo recebido do acompanhamento</summary><pre className="overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(record.payload, null, 2)}</pre></details></article>;
+  })}<nav className="flex gap-4 text-sm">{page > 1 && <Link className="underline" href={pageUrl(page - 1)}>Anterior</Link>}{page * 30 < total && <Link className="underline" href={pageUrl(page + 1)}>Próxima</Link>}</nav></main>;
+}

@@ -1,0 +1,41 @@
+﻿id;cenario;entrada_json;resultado_esperado_json;criterio;base_referencia;tipo
+T01;Quinquênio 10 anos;"{""vencimento"": 4000, ""anos"": 10}";"{""ATS"": 400, ""total"": 4400}";5% por quinquênio, máximo 30%, sem incorporar demais vantagens;Ibema art56;calculado
+T02;Quinquênio teto 35 anos;"{""vencimento"": 4000, ""anos"": 35}";"{""ATS"": 1200}";7 quinquênios gerariam 35%, porém teto=30%;Ibema art56;calculado
+T03;Quinquênio incompleto;"{""vencimento"": 4000, ""anos"": 4, ""meses"": 11}";"{""ATS"": 0}";Sem quinquênio adquirido;Ibema art56;calculado
+T04;Terço férias 30 dias;"{""remuneracao_ferias"": 4400}";"{""terco"": 1466.67}";Arredondar BRL 2 casas, evitar dupla remuneração;Ibema art63;calculado
+T05;13º 8/12 base fixa;"{""base_dezembro"": 4400, ""avos"": 8}";"{""bruto_13"": 2933.33}";Adicionar médias quando cabíveis em outro teste;Ibema art57;calculado
+T06;13º mês com 15 dias;"{""dias_exercicio_no_mes"": 15}";"{""avo"": 1}";15 dias contam como um avo;Ibema art57 §2;calculado
+T07;13º mês com 14 dias;"{""dias_exercicio_no_mes"": 14}";"{""avo"": 0}";14 dias não contam como avo;Ibema art57 §2;calculado
+T08;Adicional hora extra 50%;"{""hora_base"": 20, ""horas"": 2, ""perc_adicional"": 0.5}";"{""total"": 60}";Necessita ato de autorização, limite e horário;Ibema arts60-61;calculado
+T09;Adicional hora extra 100%;"{""hora_base"": 20, ""horas"": 2, ""perc_adicional"": 1}";"{""total"": 80}";Exemplo de horário abrangido;Ibema art60;calculado
+T10;Hora noturna reduzida;"{""minutos_reais_noturnos"": 420, ""minutos_hora_noturna"": 52.5}";"{""horas_fictas"": 8}";Converter apenas se aplicável ao vínculo/jornada;Ibema art62;calculado
+T11;INSS progressivo RGPS 4400;"{""base_rgps"": 4400, ""ano"": 2026}";"{""desconto_inss"": 417.51}";Faixas progressivas RGPS, 13º em separado;INSS Jan2026;calculado
+T12;INSS 2026 1621;"{""base_rgps"": 1621, ""ano"": 2026}";"{""desconto_inss"": 121.58}";Arredondamento centavo somente no ponto normativo;INSS Jan2026;calculado
+T13;IRRF 2026 renda 5000;"{""rendimento_tributavel_mensal"": 5000, ""deducoes_permitidas"": {""previdenciaria"": 509.6, ""simplificada"": 607.2}}";"{""irrf_devido"": 0}";IR preliminar 312,89 e redução de 312,89;RFB exemplos Lei15270;calculado
+T14;IRRF 2026 renda acima 7350;"{""rendimento_tributavel_mensal"": 7500}";{};Não aplicar redução Lei15270 acima de R$7.350, mas calcular IR normal;Lei15270;definir_base
+T15;IRRF base vs total remuneracao;"{""bruto"": 5100, ""previdencia"": 525}";{};Redução 2026 olha rendimentos tributáveis sujeitos ao ajuste, não a base de cálculo deduzida;RFB exemplos;validacao
+T16;RRA 6 meses anos anteriores;"{""valor_bruto"": 18000, ""meses_rra"": 6}";"{""valor_distribuido_referencia"": 3000}";"Não assumir imposto de renda mensal comum; usar cálculo próprio eSocial/RFB";RFB RRA;nao_calcular_IRRF_sem_regra
+T17;Licença-premio direito;"{""anos_efetivos"": 5, ""impedimentos"": []}";"{""dias_direito"": 90}";Conceder só observados pré-requisitos históricos;Ibema art73;sob_validacao_legislação_atual
+T18;Licença-premio 20 faltas;"{""anos_efetivos"": 5, ""faltas_periodo"": 20}";{};Checar perda do direito no estatuto antigo;Ibema art73;sob_validacao_legislação_atual
+T19;Licença-premio conversão;"{""saldo"": 90, ""solicitado_pecunia"": 45}";"{""dias_gozo"": 45, ""dias_pecunia"": 45}";Exigir necessidade de serviço, autorização, processo e RH, não executar sem validação;Ibema art75;controle_fluxo
+T20;Férias 6 faltas - lacuna redação antiga;"{""faltas"": 6}";"{""deve_bloquear_por_pendencia_legal"": true}";"Art101 emprega mais de 5 / mais de 6, 6 é lacuna; pedir interpretação";Ibema art101;pendencia_juridica
+T21;Férias 15 faltas - lacuna;"{""faltas"": 15}";"{""deve_bloquear_por_pendencia_legal"": true}";Faixas do art101 não cobrem o limite de 15;Ibema art101;pendencia_juridica
+T22;Férias 24 faltas - lacuna;"{""faltas"": 24}";"{""deve_bloquear_por_pendencia_legal"": true}";Faixas do art101 não cobrem 24;Ibema art101;pendencia_juridica
+T23;Férias 33 faltas - lacuna;"{""faltas"": 33}";"{""deve_bloquear_por_pendencia_legal"": true}";Art101 >33 perda, faixa 25..32;Ibema art101;pendencia_juridica
+T24;Férias 5 faltas;"{""faltas"": 5}";"{""dias_direito"": 30}";Até 5 faltas 30 dias no texto antigo;Ibema art101;sob_validacao_legislação_atual
+T25;Férias 7 faltas;"{""faltas"": 7}";"{""dias_direito"": 24}";Mais de 6 a 14 faltas no texto antigo;Ibema art101;sob_validacao_legislação_atual
+T26;Férias 16 faltas;"{""faltas"": 16}";"{""dias_direito"": 18}";Mais de 15 até 23 faltas;Ibema art101;sob_validacao_legislação_atual
+T27;Férias 25 faltas;"{""faltas"": 25}";"{""dias_direito"": 12}";Mais de 24 até 32 faltas;Ibema art101;sob_validacao_legislação_atual
+T28;Férias 34 faltas;"{""faltas"": 34}";"{""dias_direito"": 0}";Texto antigo prevê perda se mais 33;Ibema art101;sob_validacao_legislação_atual
+T29;Proporcional férias exoneração;"{""base"": 4400, ""avos"": 8}";"{""indenizacao_férias_proporcionais"": 2933.33}";Sem extrapolar a regimes celetistas;Ibema art104;sob_validacao_legislação_atual
+T30;Terço sobre férias proporcionais;"{""ferias_proporcionais"": 2933.33}";"{""terco"": 977.78}";Conferir reflexos previstos na lei;Ibema art63 e CF;calculado
+T31;Pensão alimentícia dupla;"{""contrato"": ""A"", ""beneficiarios"": 2}";{};Respeitar cada decisão judicial, prazo e bases;POC Folha 74-77;fluxo
+T32;Provisão estorno desligamento;"{""competencia"": ""2026-10""}";{};Estornar apenas saldo, contabilizar ajuste e reconciliar;POC Folha 85-89;fluxo
+T33;Trabalhador dois vínculos RGPS;"{""contratos"": 2}";{};Somar remunerações segundo regra RGPS, limitar teto, distinguir retenção por fonte;"POC Folha 79; INSS";fluxo
+T34;Folha reprocessada;"{""competencia"": ""2026-10""}";{};"Não duplicar lançamento; manter versão e histórico";POC Folha 52-53;fluxo
+T35;Regra eSocial versão futura;"{""data_envio"": ""2026-10-11""}";"{""usar_xsd_nt07_26_out"": false}";Aplicar apenas XSD em produção na data;Nota Técnica 07/2026;validacao
+T36;eSocial transmissão inexistente;"{""certificado"": false}";"{""exibir_status"": ""NAO_TRANSMITIDO""}";XML local não é recibo real;POC eSocial 10-16;validacao
+T37;Espelho ponto 05/10;"{""jornada"": ""08:00-12:00;13:00-17:00"", ""batidas"": ""08:03;12:00;13:00;17:18""}";"{""minutos_trabalhados"": 495, ""minutos_previstos"": 480, ""saldo_bruto_minutos"": 15}";Não converter automaticamente em banco de horas sem autorização;"POC portal; modelo PBH";demonstrativo
+T38;Banco horas exemplo;"{""saldo_anterior_min"": 0, ""creditos_aprovados_min"": 510, ""compensacoes_min"": 300}";"{""saldo_minutos"": 210}";Saldo 3h30, usar minutos inteiros;Modelo PBH;demonstrativo
+T39;Contracheque privado;"{""perfil"": ""servidor_A"", ""outro_usuario"": ""servidor_B""}";"{""acesso_indevido"": ""NEGADO""}";Validar acesso servidor à própria folha;"LGPD; POC Portal";seguranca
+T40;Certificado A1 sem permissão;"{""perfil"": ""operador_comum""}";"{""acesso_chave_privada"": ""NEGADO""}";Logs sem pfx/senha, certificado cifrado;POC eSocial 15;seguranca

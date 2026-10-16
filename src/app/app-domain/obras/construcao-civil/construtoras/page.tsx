@@ -1,0 +1,19 @@
+import { notFound } from "next/navigation";
+import { PageFrame } from "@/components/app-ui/PageFrame";
+import { PageHeader } from "@/components/app-ui/PageHeader";
+import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { resolveConstructionAccess } from "@/lib/obras/construction-access";
+import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import ConstructionCompaniesClient from "./ConstructionCompaniesClient";
+
+export default async function ConstructionCompaniesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string }> }) {
+  const context = await getTenantContextForModule("OBRAS"); const access = await resolveConstructionAccess(context);
+  if (!access.administrator && !access.roles.length) notFound();
+  const query = await searchParams; const q = (query.q || "").trim().slice(0,160); const status = query.status === "inactive" ? "inactive" : query.status === "all" ? "all" : "active";
+  const where = { ...(status !== "all" ? { isActive: status === "active" } : {}), ...(q ? { company: { corporateName: { contains: q, mode: "insensitive" as const } } } : {}) };
+  const total = await context.prisma.constructionCompanyProfile.count({ where }); const page = Math.min(Math.max(1, Math.ceil(total/20)), Math.max(1, Number.parseInt(query.page || "1",10) || 1));
+  const [rows, companies] = await Promise.all([context.prisma.constructionCompanyProfile.findMany({ where, include: { company: { select: { corporateName: true } } }, orderBy: [{ company: { corporateName: "asc" } }, { id: "asc" }], skip: (page-1)*20, take: 20 }), context.prisma.company.findMany({ select: { id: true, corporateName: true }, orderBy: { corporateName: "asc" } })]);
+  const today = new Date(new Date().toISOString().slice(0,10) + "T00:00:00Z");
+  const href = (target: number) => `?${new URLSearchParams({ q,status,page:String(target) })}`;
+  return <PageFrame className="space-y-3 p-3"><PageHeader title="Habilitação e validade de construtoras" /><ConstructionCompaniesClient canManage={access.administrator || access.roles.includes("MANAGER")} companies={companies.map((company) => ({ id: company.id, name: company.corporateName }))} profiles={rows.map((row) => ({ companyId: row.companyId, startsAt: row.startsAt.toISOString().slice(0,10), endsAt: row.endsAt.toISOString().slice(0,10), isActive: row.isActive, legalReference: row.legalReference }))} /><section className="rounded border"><form className="flex gap-2 border-b p-2"><input name="q" aria-label="Buscar construtora" defaultValue={q} placeholder="Buscar construtora" className="min-w-0 flex-1 rounded border bg-transparent px-2 text-sm" /><select aria-label="Situação" name="status" defaultValue={status} className="rounded border bg-transparent text-xs"><option value="active">Ativas</option><option value="inactive">Inativas</option><option value="all">Todas</option></select><button className="rounded bg-blue-600 px-3 text-xs text-white">Filtrar</button></form><table className="w-full table-fixed text-left text-xs"><thead><tr><th className="p-2">Empresa</th><th className="w-24 p-2">Início</th><th className="w-24 p-2">Validade</th><th className="w-20 p-2">Situação</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="h-9 border-t"><td className="truncate p-2">{row.company.corporateName}</td><td className="p-2">{row.startsAt.toLocaleDateString("pt-BR")}</td><td className="p-2">{row.endsAt.toLocaleDateString("pt-BR")}</td><td className="p-2">{row.isActive ? row.endsAt < today ? "Vencida" : row.startsAt > today ? "Futura" : "Ativa" : "Inativa"}</td></tr>)}</tbody></table><div className="border-t p-2"><ErpPagination page={page} total={total} pageSize={20} previousHref={href(page-1)} nextHref={href(page+1)} label="construtoras" /></div></section></PageFrame>;
+}

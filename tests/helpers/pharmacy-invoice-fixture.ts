@@ -1,0 +1,3 @@
+export function pharmacyInvoiceFixture(batches = true) {
+  return `<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe><infNFe Id="NFe41261011222333000181550010000001231000001234" versao="4.00"><ide><mod>55</mod><nNF>123</nNF><serie>1</serie><dhEmi>2026-10-01T10:00:00-03:00</dhEmi></ide><emit><CNPJ>11222333000181</CNPJ><xNome>Fornecedor de teste &amp; Cia</xNome></emit><det nItem="1"><prod><cProd>FORN-1</cProd><cEAN>SEM GTIN</cEAN><xProd>Produto de teste</xProd><uCom>CX</uCom><qCom>2.0000</qCom><vUnCom>12.500000</vUnCom>${batches ? "<rastro><nLote>NF-LOTE</nLote><qLote>2</qLote><dFab>2026-01-01</dFab><dVal>2030-12-31</dVal></rastro>" : ""}</prod></det></infNFe></NFe></nfeProc>`;
+}

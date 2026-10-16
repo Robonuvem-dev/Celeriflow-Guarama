@@ -1,0 +1,2067 @@
+{
+  "generatedAt": "2026-10-12T17:54:15.726Z",
+  "mode": "ADDITIVE_IDEMPOTENT",
+  "versions": [
+    {
+      "id": "p1-poc-catalog-2024",
+      "sourceHash": "03911a8ea3b3e5f643ac07f6f99618906f8d90cd76201afb147eb293f1cbebac",
+      "nature": "SYNTHETIC_POC_ONLY",
+      "origin": "scripts/prepare-poc-p0-current.ts",
+      "year": 2024,
+      "effectiveFrom": "2024-01-01",
+      "effectiveUntil": "2024-12-31",
+      "rows": [
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-1",
+          "code": "POC.P0.SOURCE.1",
+          "name": "POC P0 — Fonte 1 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-10",
+          "code": "POC.P0.SOURCE.10",
+          "name": "POC P0 — Fonte 10 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-11",
+          "code": "POC.P0.SOURCE.11",
+          "name": "POC P0 — Fonte 11 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-12",
+          "code": "POC.P0.SOURCE.12",
+          "name": "POC P0 — Fonte 12 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-13",
+          "code": "POC.P0.SOURCE.13",
+          "name": "POC P0 — Fonte 13 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-14",
+          "code": "POC.P0.SOURCE.14",
+          "name": "POC P0 — Fonte 14 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-15",
+          "code": "POC.P0.SOURCE.15",
+          "name": "POC P0 — Fonte 15 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-16",
+          "code": "POC.P0.SOURCE.16",
+          "name": "POC P0 — Fonte 16 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-17",
+          "code": "POC.P0.SOURCE.17",
+          "name": "POC P0 — Fonte 17 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-18",
+          "code": "POC.P0.SOURCE.18",
+          "name": "POC P0 — Fonte 18 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-19",
+          "code": "POC.P0.SOURCE.19",
+          "name": "POC P0 — Fonte 19 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-2",
+          "code": "POC.P0.SOURCE.2",
+          "name": "POC P0 — Fonte 2 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-20",
+          "code": "POC.P0.SOURCE.20",
+          "name": "POC P0 — Fonte 20 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-21",
+          "code": "POC.P0.SOURCE.21",
+          "name": "POC P0 — Fonte 21 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-3",
+          "code": "POC.P0.SOURCE.3",
+          "name": "POC P0 — Fonte 3 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-4",
+          "code": "POC.P0.SOURCE.4",
+          "name": "POC P0 — Fonte 4 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-5",
+          "code": "POC.P0.SOURCE.5",
+          "name": "POC P0 — Fonte 5 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-6",
+          "code": "POC.P0.SOURCE.6",
+          "name": "POC P0 — Fonte 6 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-7",
+          "code": "POC.P0.SOURCE.7",
+          "name": "POC P0 — Fonte 7 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-8",
+          "code": "POC.P0.SOURCE.8",
+          "name": "POC P0 — Fonte 8 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-9",
+          "code": "POC.P0.SOURCE.9",
+          "name": "POC P0 — Fonte 9 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-1",
+          "code": "POC.P0.REVENUE.1",
+          "name": "POC P0 — Receita 1 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-10",
+          "code": "POC.P0.REVENUE.10",
+          "name": "POC P0 — Receita 10 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-11",
+          "code": "POC.P0.REVENUE.11",
+          "name": "POC P0 — Receita 11 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-12",
+          "code": "POC.P0.REVENUE.12",
+          "name": "POC P0 — Receita 12 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-13",
+          "code": "POC.P0.REVENUE.13",
+          "name": "POC P0 — Receita 13 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-14",
+          "code": "POC.P0.REVENUE.14",
+          "name": "POC P0 — Receita 14 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-15",
+          "code": "POC.P0.REVENUE.15",
+          "name": "POC P0 — Receita 15 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-16",
+          "code": "POC.P0.REVENUE.16",
+          "name": "POC P0 — Receita 16 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-17",
+          "code": "POC.P0.REVENUE.17",
+          "name": "POC P0 — Receita 17 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-18",
+          "code": "POC.P0.REVENUE.18",
+          "name": "POC P0 — Receita 18 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-19",
+          "code": "POC.P0.REVENUE.19",
+          "name": "POC P0 — Receita 19 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-2",
+          "code": "POC.P0.REVENUE.2",
+          "name": "POC P0 — Receita 2 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-20",
+          "code": "POC.P0.REVENUE.20",
+          "name": "POC P0 — Receita 20 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-21",
+          "code": "POC.P0.REVENUE.21",
+          "name": "POC P0 — Receita 21 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-3",
+          "code": "POC.P0.REVENUE.3",
+          "name": "POC P0 — Receita 3 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-4",
+          "code": "POC.P0.REVENUE.4",
+          "name": "POC P0 — Receita 4 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-5",
+          "code": "POC.P0.REVENUE.5",
+          "name": "POC P0 — Receita 5 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-6",
+          "code": "POC.P0.REVENUE.6",
+          "name": "POC P0 — Receita 6 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-7",
+          "code": "POC.P0.REVENUE.7",
+          "name": "POC P0 — Receita 7 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-8",
+          "code": "POC.P0.REVENUE.8",
+          "name": "POC P0 — Receita 8 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-9",
+          "code": "POC.P0.REVENUE.9",
+          "name": "POC P0 — Receita 9 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-1",
+          "code": "POC.P0.EXPENSE.1",
+          "name": "POC P0 — Despesa 1 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-10",
+          "code": "POC.P0.EXPENSE.10",
+          "name": "POC P0 — Despesa 10 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-11",
+          "code": "POC.P0.EXPENSE.11",
+          "name": "POC P0 — Despesa 11 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-12",
+          "code": "POC.P0.EXPENSE.12",
+          "name": "POC P0 — Despesa 12 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-13",
+          "code": "POC.P0.EXPENSE.13",
+          "name": "POC P0 — Despesa 13 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-14",
+          "code": "POC.P0.EXPENSE.14",
+          "name": "POC P0 — Despesa 14 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-15",
+          "code": "POC.P0.EXPENSE.15",
+          "name": "POC P0 — Despesa 15 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-16",
+          "code": "POC.P0.EXPENSE.16",
+          "name": "POC P0 — Despesa 16 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-17",
+          "code": "POC.P0.EXPENSE.17",
+          "name": "POC P0 — Despesa 17 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-18",
+          "code": "POC.P0.EXPENSE.18",
+          "name": "POC P0 — Despesa 18 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-19",
+          "code": "POC.P0.EXPENSE.19",
+          "name": "POC P0 — Despesa 19 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-2",
+          "code": "POC.P0.EXPENSE.2",
+          "name": "POC P0 — Despesa 2 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-20",
+          "code": "POC.P0.EXPENSE.20",
+          "name": "POC P0 — Despesa 20 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-21",
+          "code": "POC.P0.EXPENSE.21",
+          "name": "POC P0 — Despesa 21 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-3",
+          "code": "POC.P0.EXPENSE.3",
+          "name": "POC P0 — Despesa 3 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-4",
+          "code": "POC.P0.EXPENSE.4",
+          "name": "POC P0 — Despesa 4 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-5",
+          "code": "POC.P0.EXPENSE.5",
+          "name": "POC P0 — Despesa 5 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-6",
+          "code": "POC.P0.EXPENSE.6",
+          "name": "POC P0 — Despesa 6 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-7",
+          "code": "POC.P0.EXPENSE.7",
+          "name": "POC P0 — Despesa 7 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-8",
+          "code": "POC.P0.EXPENSE.8",
+          "name": "POC P0 — Despesa 8 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-9",
+          "code": "POC.P0.EXPENSE.9",
+          "name": "POC P0 — Despesa 9 (sintética)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-1",
+          "code": "POC.P0.ACCOUNT.1",
+          "name": "POC P0 — Conta 1 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-10",
+          "code": "POC.P0.ACCOUNT.10",
+          "name": "POC P0 — Conta 10 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-11",
+          "code": "POC.P0.ACCOUNT.11",
+          "name": "POC P0 — Conta 11 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-12",
+          "code": "POC.P0.ACCOUNT.12",
+          "name": "POC P0 — Conta 12 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-13",
+          "code": "POC.P0.ACCOUNT.13",
+          "name": "POC P0 — Conta 13 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-14",
+          "code": "POC.P0.ACCOUNT.14",
+          "name": "POC P0 — Conta 14 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-15",
+          "code": "POC.P0.ACCOUNT.15",
+          "name": "POC P0 — Conta 15 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-16",
+          "code": "POC.P0.ACCOUNT.16",
+          "name": "POC P0 — Conta 16 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-17",
+          "code": "POC.P0.ACCOUNT.17",
+          "name": "POC P0 — Conta 17 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-18",
+          "code": "POC.P0.ACCOUNT.18",
+          "name": "POC P0 — Conta 18 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-19",
+          "code": "POC.P0.ACCOUNT.19",
+          "name": "POC P0 — Conta 19 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-2",
+          "code": "POC.P0.ACCOUNT.2",
+          "name": "POC P0 — Conta 2 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-20",
+          "code": "POC.P0.ACCOUNT.20",
+          "name": "POC P0 — Conta 20 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-21",
+          "code": "POC.P0.ACCOUNT.21",
+          "name": "POC P0 — Conta 21 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-3",
+          "code": "POC.P0.ACCOUNT.3",
+          "name": "POC P0 — Conta 3 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-4",
+          "code": "POC.P0.ACCOUNT.4",
+          "name": "POC P0 — Conta 4 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-5",
+          "code": "POC.P0.ACCOUNT.5",
+          "name": "POC P0 — Conta 5 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-6",
+          "code": "POC.P0.ACCOUNT.6",
+          "name": "POC P0 — Conta 6 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-7",
+          "code": "POC.P0.ACCOUNT.7",
+          "name": "POC P0 — Conta 7 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-8",
+          "code": "POC.P0.ACCOUNT.8",
+          "name": "POC P0 — Conta 8 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-9",
+          "code": "POC.P0.ACCOUNT.9",
+          "name": "POC P0 — Conta 9 (não PCASP homologado)"
+        }
+      ]
+    },
+    {
+      "id": "p1-poc-catalog-2025",
+      "sourceHash": "a37432183d7c4ac4d4d71e8cb9ae10f4cd438eb2cee8d0adefb42e67353f9bad",
+      "nature": "SYNTHETIC_POC_ONLY",
+      "origin": "scripts/prepare-poc-p0-current.ts",
+      "year": 2025,
+      "effectiveFrom": "2025-01-01",
+      "effectiveUntil": "2025-12-31",
+      "rows": [
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-1",
+          "code": "POC.P0.SOURCE.1",
+          "name": "POC P0 — Fonte 1 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-10",
+          "code": "POC.P0.SOURCE.10",
+          "name": "POC P0 — Fonte 10 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-11",
+          "code": "POC.P0.SOURCE.11",
+          "name": "POC P0 — Fonte 11 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-12",
+          "code": "POC.P0.SOURCE.12",
+          "name": "POC P0 — Fonte 12 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-13",
+          "code": "POC.P0.SOURCE.13",
+          "name": "POC P0 — Fonte 13 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-14",
+          "code": "POC.P0.SOURCE.14",
+          "name": "POC P0 — Fonte 14 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-15",
+          "code": "POC.P0.SOURCE.15",
+          "name": "POC P0 — Fonte 15 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-16",
+          "code": "POC.P0.SOURCE.16",
+          "name": "POC P0 — Fonte 16 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-17",
+          "code": "POC.P0.SOURCE.17",
+          "name": "POC P0 — Fonte 17 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-18",
+          "code": "POC.P0.SOURCE.18",
+          "name": "POC P0 — Fonte 18 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-19",
+          "code": "POC.P0.SOURCE.19",
+          "name": "POC P0 — Fonte 19 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-2",
+          "code": "POC.P0.SOURCE.2",
+          "name": "POC P0 — Fonte 2 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-20",
+          "code": "POC.P0.SOURCE.20",
+          "name": "POC P0 — Fonte 20 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-21",
+          "code": "POC.P0.SOURCE.21",
+          "name": "POC P0 — Fonte 21 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-3",
+          "code": "POC.P0.SOURCE.3",
+          "name": "POC P0 — Fonte 3 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-4",
+          "code": "POC.P0.SOURCE.4",
+          "name": "POC P0 — Fonte 4 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-5",
+          "code": "POC.P0.SOURCE.5",
+          "name": "POC P0 — Fonte 5 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-6",
+          "code": "POC.P0.SOURCE.6",
+          "name": "POC P0 — Fonte 6 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-7",
+          "code": "POC.P0.SOURCE.7",
+          "name": "POC P0 — Fonte 7 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-8",
+          "code": "POC.P0.SOURCE.8",
+          "name": "POC P0 — Fonte 8 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-9",
+          "code": "POC.P0.SOURCE.9",
+          "name": "POC P0 — Fonte 9 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-1",
+          "code": "POC.P0.REVENUE.1",
+          "name": "POC P0 — Receita 1 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-10",
+          "code": "POC.P0.REVENUE.10",
+          "name": "POC P0 — Receita 10 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-11",
+          "code": "POC.P0.REVENUE.11",
+          "name": "POC P0 — Receita 11 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-12",
+          "code": "POC.P0.REVENUE.12",
+          "name": "POC P0 — Receita 12 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-13",
+          "code": "POC.P0.REVENUE.13",
+          "name": "POC P0 — Receita 13 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-14",
+          "code": "POC.P0.REVENUE.14",
+          "name": "POC P0 — Receita 14 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-15",
+          "code": "POC.P0.REVENUE.15",
+          "name": "POC P0 — Receita 15 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-16",
+          "code": "POC.P0.REVENUE.16",
+          "name": "POC P0 — Receita 16 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-17",
+          "code": "POC.P0.REVENUE.17",
+          "name": "POC P0 — Receita 17 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-18",
+          "code": "POC.P0.REVENUE.18",
+          "name": "POC P0 — Receita 18 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-19",
+          "code": "POC.P0.REVENUE.19",
+          "name": "POC P0 — Receita 19 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-2",
+          "code": "POC.P0.REVENUE.2",
+          "name": "POC P0 — Receita 2 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-20",
+          "code": "POC.P0.REVENUE.20",
+          "name": "POC P0 — Receita 20 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-21",
+          "code": "POC.P0.REVENUE.21",
+          "name": "POC P0 — Receita 21 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-3",
+          "code": "POC.P0.REVENUE.3",
+          "name": "POC P0 — Receita 3 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-4",
+          "code": "POC.P0.REVENUE.4",
+          "name": "POC P0 — Receita 4 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-5",
+          "code": "POC.P0.REVENUE.5",
+          "name": "POC P0 — Receita 5 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-6",
+          "code": "POC.P0.REVENUE.6",
+          "name": "POC P0 — Receita 6 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-7",
+          "code": "POC.P0.REVENUE.7",
+          "name": "POC P0 — Receita 7 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-8",
+          "code": "POC.P0.REVENUE.8",
+          "name": "POC P0 — Receita 8 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-9",
+          "code": "POC.P0.REVENUE.9",
+          "name": "POC P0 — Receita 9 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-1",
+          "code": "POC.P0.EXPENSE.1",
+          "name": "POC P0 — Despesa 1 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-10",
+          "code": "POC.P0.EXPENSE.10",
+          "name": "POC P0 — Despesa 10 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-11",
+          "code": "POC.P0.EXPENSE.11",
+          "name": "POC P0 — Despesa 11 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-12",
+          "code": "POC.P0.EXPENSE.12",
+          "name": "POC P0 — Despesa 12 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-13",
+          "code": "POC.P0.EXPENSE.13",
+          "name": "POC P0 — Despesa 13 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-14",
+          "code": "POC.P0.EXPENSE.14",
+          "name": "POC P0 — Despesa 14 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-15",
+          "code": "POC.P0.EXPENSE.15",
+          "name": "POC P0 — Despesa 15 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-16",
+          "code": "POC.P0.EXPENSE.16",
+          "name": "POC P0 — Despesa 16 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-17",
+          "code": "POC.P0.EXPENSE.17",
+          "name": "POC P0 — Despesa 17 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-18",
+          "code": "POC.P0.EXPENSE.18",
+          "name": "POC P0 — Despesa 18 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-19",
+          "code": "POC.P0.EXPENSE.19",
+          "name": "POC P0 — Despesa 19 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-2",
+          "code": "POC.P0.EXPENSE.2",
+          "name": "POC P0 — Despesa 2 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-20",
+          "code": "POC.P0.EXPENSE.20",
+          "name": "POC P0 — Despesa 20 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-21",
+          "code": "POC.P0.EXPENSE.21",
+          "name": "POC P0 — Despesa 21 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-3",
+          "code": "POC.P0.EXPENSE.3",
+          "name": "POC P0 — Despesa 3 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-4",
+          "code": "POC.P0.EXPENSE.4",
+          "name": "POC P0 — Despesa 4 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-5",
+          "code": "POC.P0.EXPENSE.5",
+          "name": "POC P0 — Despesa 5 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-6",
+          "code": "POC.P0.EXPENSE.6",
+          "name": "POC P0 — Despesa 6 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-7",
+          "code": "POC.P0.EXPENSE.7",
+          "name": "POC P0 — Despesa 7 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-8",
+          "code": "POC.P0.EXPENSE.8",
+          "name": "POC P0 — Despesa 8 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-9",
+          "code": "POC.P0.EXPENSE.9",
+          "name": "POC P0 — Despesa 9 (sintética)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-1",
+          "code": "POC.P0.ACCOUNT.1",
+          "name": "POC P0 — Conta 1 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-10",
+          "code": "POC.P0.ACCOUNT.10",
+          "name": "POC P0 — Conta 10 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-11",
+          "code": "POC.P0.ACCOUNT.11",
+          "name": "POC P0 — Conta 11 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-12",
+          "code": "POC.P0.ACCOUNT.12",
+          "name": "POC P0 — Conta 12 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-13",
+          "code": "POC.P0.ACCOUNT.13",
+          "name": "POC P0 — Conta 13 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-14",
+          "code": "POC.P0.ACCOUNT.14",
+          "name": "POC P0 — Conta 14 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-15",
+          "code": "POC.P0.ACCOUNT.15",
+          "name": "POC P0 — Conta 15 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-16",
+          "code": "POC.P0.ACCOUNT.16",
+          "name": "POC P0 — Conta 16 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-17",
+          "code": "POC.P0.ACCOUNT.17",
+          "name": "POC P0 — Conta 17 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-18",
+          "code": "POC.P0.ACCOUNT.18",
+          "name": "POC P0 — Conta 18 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-19",
+          "code": "POC.P0.ACCOUNT.19",
+          "name": "POC P0 — Conta 19 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-2",
+          "code": "POC.P0.ACCOUNT.2",
+          "name": "POC P0 — Conta 2 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-20",
+          "code": "POC.P0.ACCOUNT.20",
+          "name": "POC P0 — Conta 20 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-21",
+          "code": "POC.P0.ACCOUNT.21",
+          "name": "POC P0 — Conta 21 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-3",
+          "code": "POC.P0.ACCOUNT.3",
+          "name": "POC P0 — Conta 3 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-4",
+          "code": "POC.P0.ACCOUNT.4",
+          "name": "POC P0 — Conta 4 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-5",
+          "code": "POC.P0.ACCOUNT.5",
+          "name": "POC P0 — Conta 5 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-6",
+          "code": "POC.P0.ACCOUNT.6",
+          "name": "POC P0 — Conta 6 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-7",
+          "code": "POC.P0.ACCOUNT.7",
+          "name": "POC P0 — Conta 7 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-8",
+          "code": "POC.P0.ACCOUNT.8",
+          "name": "POC P0 — Conta 8 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-9",
+          "code": "POC.P0.ACCOUNT.9",
+          "name": "POC P0 — Conta 9 (não PCASP homologado)"
+        }
+      ]
+    },
+    {
+      "id": "p1-poc-catalog-2026",
+      "sourceHash": "3d0a40d3f348a3afe755126e54d367a7e51093687a5f25fc4ef120e305c1099d",
+      "nature": "SYNTHETIC_POC_ONLY",
+      "origin": "scripts/prepare-poc-p0-current.ts",
+      "year": 2026,
+      "effectiveFrom": "2026-01-01",
+      "effectiveUntil": "2026-12-31",
+      "rows": [
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-1",
+          "code": "POC.P0.SOURCE.1",
+          "name": "POC P0 — Fonte 1 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-10",
+          "code": "POC.P0.SOURCE.10",
+          "name": "POC P0 — Fonte 10 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-11",
+          "code": "POC.P0.SOURCE.11",
+          "name": "POC P0 — Fonte 11 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-12",
+          "code": "POC.P0.SOURCE.12",
+          "name": "POC P0 — Fonte 12 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-13",
+          "code": "POC.P0.SOURCE.13",
+          "name": "POC P0 — Fonte 13 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-14",
+          "code": "POC.P0.SOURCE.14",
+          "name": "POC P0 — Fonte 14 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-15",
+          "code": "POC.P0.SOURCE.15",
+          "name": "POC P0 — Fonte 15 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-16",
+          "code": "POC.P0.SOURCE.16",
+          "name": "POC P0 — Fonte 16 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-17",
+          "code": "POC.P0.SOURCE.17",
+          "name": "POC P0 — Fonte 17 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-18",
+          "code": "POC.P0.SOURCE.18",
+          "name": "POC P0 — Fonte 18 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-19",
+          "code": "POC.P0.SOURCE.19",
+          "name": "POC P0 — Fonte 19 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-2",
+          "code": "POC.P0.SOURCE.2",
+          "name": "POC P0 — Fonte 2 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-20",
+          "code": "POC.P0.SOURCE.20",
+          "name": "POC P0 — Fonte 20 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-21",
+          "code": "POC.P0.SOURCE.21",
+          "name": "POC P0 — Fonte 21 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-3",
+          "code": "POC.P0.SOURCE.3",
+          "name": "POC P0 — Fonte 3 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-4",
+          "code": "POC.P0.SOURCE.4",
+          "name": "POC P0 — Fonte 4 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-5",
+          "code": "POC.P0.SOURCE.5",
+          "name": "POC P0 — Fonte 5 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-6",
+          "code": "POC.P0.SOURCE.6",
+          "name": "POC P0 — Fonte 6 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-7",
+          "code": "POC.P0.SOURCE.7",
+          "name": "POC P0 — Fonte 7 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-8",
+          "code": "POC.P0.SOURCE.8",
+          "name": "POC P0 — Fonte 8 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-9",
+          "code": "POC.P0.SOURCE.9",
+          "name": "POC P0 — Fonte 9 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-1",
+          "code": "POC.P0.REVENUE.1",
+          "name": "POC P0 — Receita 1 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-10",
+          "code": "POC.P0.REVENUE.10",
+          "name": "POC P0 — Receita 10 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-11",
+          "code": "POC.P0.REVENUE.11",
+          "name": "POC P0 — Receita 11 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-12",
+          "code": "POC.P0.REVENUE.12",
+          "name": "POC P0 — Receita 12 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-13",
+          "code": "POC.P0.REVENUE.13",
+          "name": "POC P0 — Receita 13 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-14",
+          "code": "POC.P0.REVENUE.14",
+          "name": "POC P0 — Receita 14 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-15",
+          "code": "POC.P0.REVENUE.15",
+          "name": "POC P0 — Receita 15 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-16",
+          "code": "POC.P0.REVENUE.16",
+          "name": "POC P0 — Receita 16 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-17",
+          "code": "POC.P0.REVENUE.17",
+          "name": "POC P0 — Receita 17 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-18",
+          "code": "POC.P0.REVENUE.18",
+          "name": "POC P0 — Receita 18 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-19",
+          "code": "POC.P0.REVENUE.19",
+          "name": "POC P0 — Receita 19 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-2",
+          "code": "POC.P0.REVENUE.2",
+          "name": "POC P0 — Receita 2 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-20",
+          "code": "POC.P0.REVENUE.20",
+          "name": "POC P0 — Receita 20 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-21",
+          "code": "POC.P0.REVENUE.21",
+          "name": "POC P0 — Receita 21 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-3",
+          "code": "POC.P0.REVENUE.3",
+          "name": "POC P0 — Receita 3 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-4",
+          "code": "POC.P0.REVENUE.4",
+          "name": "POC P0 — Receita 4 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-5",
+          "code": "POC.P0.REVENUE.5",
+          "name": "POC P0 — Receita 5 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-6",
+          "code": "POC.P0.REVENUE.6",
+          "name": "POC P0 — Receita 6 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-7",
+          "code": "POC.P0.REVENUE.7",
+          "name": "POC P0 — Receita 7 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-8",
+          "code": "POC.P0.REVENUE.8",
+          "name": "POC P0 — Receita 8 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-9",
+          "code": "POC.P0.REVENUE.9",
+          "name": "POC P0 — Receita 9 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-1",
+          "code": "POC.P0.EXPENSE.1",
+          "name": "POC P0 — Despesa 1 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-10",
+          "code": "POC.P0.EXPENSE.10",
+          "name": "POC P0 — Despesa 10 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-11",
+          "code": "POC.P0.EXPENSE.11",
+          "name": "POC P0 — Despesa 11 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-12",
+          "code": "POC.P0.EXPENSE.12",
+          "name": "POC P0 — Despesa 12 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-13",
+          "code": "POC.P0.EXPENSE.13",
+          "name": "POC P0 — Despesa 13 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-14",
+          "code": "POC.P0.EXPENSE.14",
+          "name": "POC P0 — Despesa 14 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-15",
+          "code": "POC.P0.EXPENSE.15",
+          "name": "POC P0 — Despesa 15 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-16",
+          "code": "POC.P0.EXPENSE.16",
+          "name": "POC P0 — Despesa 16 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-17",
+          "code": "POC.P0.EXPENSE.17",
+          "name": "POC P0 — Despesa 17 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-18",
+          "code": "POC.P0.EXPENSE.18",
+          "name": "POC P0 — Despesa 18 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-19",
+          "code": "POC.P0.EXPENSE.19",
+          "name": "POC P0 — Despesa 19 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-2",
+          "code": "POC.P0.EXPENSE.2",
+          "name": "POC P0 — Despesa 2 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-20",
+          "code": "POC.P0.EXPENSE.20",
+          "name": "POC P0 — Despesa 20 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-21",
+          "code": "POC.P0.EXPENSE.21",
+          "name": "POC P0 — Despesa 21 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-3",
+          "code": "POC.P0.EXPENSE.3",
+          "name": "POC P0 — Despesa 3 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-4",
+          "code": "POC.P0.EXPENSE.4",
+          "name": "POC P0 — Despesa 4 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-5",
+          "code": "POC.P0.EXPENSE.5",
+          "name": "POC P0 — Despesa 5 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-6",
+          "code": "POC.P0.EXPENSE.6",
+          "name": "POC P0 — Despesa 6 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-7",
+          "code": "POC.P0.EXPENSE.7",
+          "name": "POC P0 — Despesa 7 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-8",
+          "code": "POC.P0.EXPENSE.8",
+          "name": "POC P0 — Despesa 8 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-9",
+          "code": "POC.P0.EXPENSE.9",
+          "name": "POC P0 — Despesa 9 (sintética)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-1",
+          "code": "POC.P0.ACCOUNT.1",
+          "name": "POC P0 — Conta 1 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-10",
+          "code": "POC.P0.ACCOUNT.10",
+          "name": "POC P0 — Conta 10 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-11",
+          "code": "POC.P0.ACCOUNT.11",
+          "name": "POC P0 — Conta 11 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-12",
+          "code": "POC.P0.ACCOUNT.12",
+          "name": "POC P0 — Conta 12 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-13",
+          "code": "POC.P0.ACCOUNT.13",
+          "name": "POC P0 — Conta 13 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-14",
+          "code": "POC.P0.ACCOUNT.14",
+          "name": "POC P0 — Conta 14 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-15",
+          "code": "POC.P0.ACCOUNT.15",
+          "name": "POC P0 — Conta 15 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-16",
+          "code": "POC.P0.ACCOUNT.16",
+          "name": "POC P0 — Conta 16 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-17",
+          "code": "POC.P0.ACCOUNT.17",
+          "name": "POC P0 — Conta 17 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-18",
+          "code": "POC.P0.ACCOUNT.18",
+          "name": "POC P0 — Conta 18 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-19",
+          "code": "POC.P0.ACCOUNT.19",
+          "name": "POC P0 — Conta 19 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-2",
+          "code": "POC.P0.ACCOUNT.2",
+          "name": "POC P0 — Conta 2 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-20",
+          "code": "POC.P0.ACCOUNT.20",
+          "name": "POC P0 — Conta 20 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-21",
+          "code": "POC.P0.ACCOUNT.21",
+          "name": "POC P0 — Conta 21 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-3",
+          "code": "POC.P0.ACCOUNT.3",
+          "name": "POC P0 — Conta 3 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-4",
+          "code": "POC.P0.ACCOUNT.4",
+          "name": "POC P0 — Conta 4 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-5",
+          "code": "POC.P0.ACCOUNT.5",
+          "name": "POC P0 — Conta 5 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-6",
+          "code": "POC.P0.ACCOUNT.6",
+          "name": "POC P0 — Conta 6 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-7",
+          "code": "POC.P0.ACCOUNT.7",
+          "name": "POC P0 — Conta 7 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-8",
+          "code": "POC.P0.ACCOUNT.8",
+          "name": "POC P0 — Conta 8 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-9",
+          "code": "POC.P0.ACCOUNT.9",
+          "name": "POC P0 — Conta 9 (não PCASP homologado)"
+        }
+      ]
+    },
+    {
+      "id": "p1-poc-catalog-2027",
+      "sourceHash": "24e5aaa279948bdf85452a034373e831d3bb143a90844622cff127fa1affe91e",
+      "nature": "SYNTHETIC_POC_ONLY",
+      "origin": "scripts/prepare-poc-p0-current.ts",
+      "year": 2027,
+      "effectiveFrom": "2027-01-01",
+      "effectiveUntil": "2027-12-31",
+      "rows": [
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-1",
+          "code": "POC.P0.SOURCE.1",
+          "name": "POC P0 — Fonte 1 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-10",
+          "code": "POC.P0.SOURCE.10",
+          "name": "POC P0 — Fonte 10 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-11",
+          "code": "POC.P0.SOURCE.11",
+          "name": "POC P0 — Fonte 11 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-12",
+          "code": "POC.P0.SOURCE.12",
+          "name": "POC P0 — Fonte 12 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-13",
+          "code": "POC.P0.SOURCE.13",
+          "name": "POC P0 — Fonte 13 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-14",
+          "code": "POC.P0.SOURCE.14",
+          "name": "POC P0 — Fonte 14 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-15",
+          "code": "POC.P0.SOURCE.15",
+          "name": "POC P0 — Fonte 15 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-16",
+          "code": "POC.P0.SOURCE.16",
+          "name": "POC P0 — Fonte 16 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-17",
+          "code": "POC.P0.SOURCE.17",
+          "name": "POC P0 — Fonte 17 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-18",
+          "code": "POC.P0.SOURCE.18",
+          "name": "POC P0 — Fonte 18 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-19",
+          "code": "POC.P0.SOURCE.19",
+          "name": "POC P0 — Fonte 19 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-2",
+          "code": "POC.P0.SOURCE.2",
+          "name": "POC P0 — Fonte 2 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-20",
+          "code": "POC.P0.SOURCE.20",
+          "name": "POC P0 — Fonte 20 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-21",
+          "code": "POC.P0.SOURCE.21",
+          "name": "POC P0 — Fonte 21 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-3",
+          "code": "POC.P0.SOURCE.3",
+          "name": "POC P0 — Fonte 3 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-4",
+          "code": "POC.P0.SOURCE.4",
+          "name": "POC P0 — Fonte 4 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-5",
+          "code": "POC.P0.SOURCE.5",
+          "name": "POC P0 — Fonte 5 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-6",
+          "code": "POC.P0.SOURCE.6",
+          "name": "POC P0 — Fonte 6 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-7",
+          "code": "POC.P0.SOURCE.7",
+          "name": "POC P0 — Fonte 7 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-8",
+          "code": "POC.P0.SOURCE.8",
+          "name": "POC P0 — Fonte 8 (sintética)"
+        },
+        {
+          "kind": "SOURCE",
+          "canonicalId": "p0-current-source-9",
+          "code": "POC.P0.SOURCE.9",
+          "name": "POC P0 — Fonte 9 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-1",
+          "code": "POC.P0.REVENUE.1",
+          "name": "POC P0 — Receita 1 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-10",
+          "code": "POC.P0.REVENUE.10",
+          "name": "POC P0 — Receita 10 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-11",
+          "code": "POC.P0.REVENUE.11",
+          "name": "POC P0 — Receita 11 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-12",
+          "code": "POC.P0.REVENUE.12",
+          "name": "POC P0 — Receita 12 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-13",
+          "code": "POC.P0.REVENUE.13",
+          "name": "POC P0 — Receita 13 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-14",
+          "code": "POC.P0.REVENUE.14",
+          "name": "POC P0 — Receita 14 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-15",
+          "code": "POC.P0.REVENUE.15",
+          "name": "POC P0 — Receita 15 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-16",
+          "code": "POC.P0.REVENUE.16",
+          "name": "POC P0 — Receita 16 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-17",
+          "code": "POC.P0.REVENUE.17",
+          "name": "POC P0 — Receita 17 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-18",
+          "code": "POC.P0.REVENUE.18",
+          "name": "POC P0 — Receita 18 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-19",
+          "code": "POC.P0.REVENUE.19",
+          "name": "POC P0 — Receita 19 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-2",
+          "code": "POC.P0.REVENUE.2",
+          "name": "POC P0 — Receita 2 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-20",
+          "code": "POC.P0.REVENUE.20",
+          "name": "POC P0 — Receita 20 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-21",
+          "code": "POC.P0.REVENUE.21",
+          "name": "POC P0 — Receita 21 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-3",
+          "code": "POC.P0.REVENUE.3",
+          "name": "POC P0 — Receita 3 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-4",
+          "code": "POC.P0.REVENUE.4",
+          "name": "POC P0 — Receita 4 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-5",
+          "code": "POC.P0.REVENUE.5",
+          "name": "POC P0 — Receita 5 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-6",
+          "code": "POC.P0.REVENUE.6",
+          "name": "POC P0 — Receita 6 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-7",
+          "code": "POC.P0.REVENUE.7",
+          "name": "POC P0 — Receita 7 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-8",
+          "code": "POC.P0.REVENUE.8",
+          "name": "POC P0 — Receita 8 (sintética)"
+        },
+        {
+          "kind": "REVENUE",
+          "canonicalId": "p0-current-revenue-9",
+          "code": "POC.P0.REVENUE.9",
+          "name": "POC P0 — Receita 9 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-1",
+          "code": "POC.P0.EXPENSE.1",
+          "name": "POC P0 — Despesa 1 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-10",
+          "code": "POC.P0.EXPENSE.10",
+          "name": "POC P0 — Despesa 10 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-11",
+          "code": "POC.P0.EXPENSE.11",
+          "name": "POC P0 — Despesa 11 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-12",
+          "code": "POC.P0.EXPENSE.12",
+          "name": "POC P0 — Despesa 12 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-13",
+          "code": "POC.P0.EXPENSE.13",
+          "name": "POC P0 — Despesa 13 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-14",
+          "code": "POC.P0.EXPENSE.14",
+          "name": "POC P0 — Despesa 14 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-15",
+          "code": "POC.P0.EXPENSE.15",
+          "name": "POC P0 — Despesa 15 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-16",
+          "code": "POC.P0.EXPENSE.16",
+          "name": "POC P0 — Despesa 16 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-17",
+          "code": "POC.P0.EXPENSE.17",
+          "name": "POC P0 — Despesa 17 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-18",
+          "code": "POC.P0.EXPENSE.18",
+          "name": "POC P0 — Despesa 18 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-19",
+          "code": "POC.P0.EXPENSE.19",
+          "name": "POC P0 — Despesa 19 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-2",
+          "code": "POC.P0.EXPENSE.2",
+          "name": "POC P0 — Despesa 2 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-20",
+          "code": "POC.P0.EXPENSE.20",
+          "name": "POC P0 — Despesa 20 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-21",
+          "code": "POC.P0.EXPENSE.21",
+          "name": "POC P0 — Despesa 21 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-3",
+          "code": "POC.P0.EXPENSE.3",
+          "name": "POC P0 — Despesa 3 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-4",
+          "code": "POC.P0.EXPENSE.4",
+          "name": "POC P0 — Despesa 4 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-5",
+          "code": "POC.P0.EXPENSE.5",
+          "name": "POC P0 — Despesa 5 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-6",
+          "code": "POC.P0.EXPENSE.6",
+          "name": "POC P0 — Despesa 6 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-7",
+          "code": "POC.P0.EXPENSE.7",
+          "name": "POC P0 — Despesa 7 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-8",
+          "code": "POC.P0.EXPENSE.8",
+          "name": "POC P0 — Despesa 8 (sintética)"
+        },
+        {
+          "kind": "EXPENSE",
+          "canonicalId": "p0-current-expense-9",
+          "code": "POC.P0.EXPENSE.9",
+          "name": "POC P0 — Despesa 9 (sintética)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-1",
+          "code": "POC.P0.ACCOUNT.1",
+          "name": "POC P0 — Conta 1 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-10",
+          "code": "POC.P0.ACCOUNT.10",
+          "name": "POC P0 — Conta 10 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-11",
+          "code": "POC.P0.ACCOUNT.11",
+          "name": "POC P0 — Conta 11 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-12",
+          "code": "POC.P0.ACCOUNT.12",
+          "name": "POC P0 — Conta 12 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-13",
+          "code": "POC.P0.ACCOUNT.13",
+          "name": "POC P0 — Conta 13 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-14",
+          "code": "POC.P0.ACCOUNT.14",
+          "name": "POC P0 — Conta 14 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-15",
+          "code": "POC.P0.ACCOUNT.15",
+          "name": "POC P0 — Conta 15 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-16",
+          "code": "POC.P0.ACCOUNT.16",
+          "name": "POC P0 — Conta 16 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-17",
+          "code": "POC.P0.ACCOUNT.17",
+          "name": "POC P0 — Conta 17 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-18",
+          "code": "POC.P0.ACCOUNT.18",
+          "name": "POC P0 — Conta 18 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-19",
+          "code": "POC.P0.ACCOUNT.19",
+          "name": "POC P0 — Conta 19 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-2",
+          "code": "POC.P0.ACCOUNT.2",
+          "name": "POC P0 — Conta 2 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-20",
+          "code": "POC.P0.ACCOUNT.20",
+          "name": "POC P0 — Conta 20 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-21",
+          "code": "POC.P0.ACCOUNT.21",
+          "name": "POC P0 — Conta 21 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-3",
+          "code": "POC.P0.ACCOUNT.3",
+          "name": "POC P0 — Conta 3 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-4",
+          "code": "POC.P0.ACCOUNT.4",
+          "name": "POC P0 — Conta 4 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-5",
+          "code": "POC.P0.ACCOUNT.5",
+          "name": "POC P0 — Conta 5 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-6",
+          "code": "POC.P0.ACCOUNT.6",
+          "name": "POC P0 — Conta 6 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-7",
+          "code": "POC.P0.ACCOUNT.7",
+          "name": "POC P0 — Conta 7 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-8",
+          "code": "POC.P0.ACCOUNT.8",
+          "name": "POC P0 — Conta 8 (não PCASP homologado)"
+        },
+        {
+          "kind": "ACCOUNT",
+          "canonicalId": "p0-current-account-9",
+          "code": "POC.P0.ACCOUNT.9",
+          "name": "POC P0 — Conta 9 (não PCASP homologado)"
+        }
+      ]
+    }
+  ],
+  "conclusion": "Origem e vigência de ensaio documentadas. As versões permanecem DRAFT e não homologam nem substituem catálogos oficiais."
+}

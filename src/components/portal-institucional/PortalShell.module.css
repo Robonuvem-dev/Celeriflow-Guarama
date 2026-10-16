@@ -1,0 +1,25 @@
+.shell {
+  font-size: calc(1rem * var(--portal-font-scale, 1));
+  --text-xs: calc(0.75rem * var(--portal-font-scale, 1));
+  --text-sm: calc(0.875rem * var(--portal-font-scale, 1));
+  --text-base: calc(1rem * var(--portal-font-scale, 1));
+  --text-lg: calc(1.125rem * var(--portal-font-scale, 1));
+  --text-xl: calc(1.25rem * var(--portal-font-scale, 1));
+  --text-2xl: calc(1.5rem * var(--portal-font-scale, 1));
+  --text-3xl: calc(1.875rem * var(--portal-font-scale, 1));
+  --text-4xl: calc(2.25rem * var(--portal-font-scale, 1));
+  --text-5xl: calc(3rem * var(--portal-font-scale, 1));
+  --text-6xl: calc(3.75rem * var(--portal-font-scale, 1));
+}
+
+/* Fixed-size labels need the same scale as Tailwind's rem-based text utilities. */
+.shell [class~="text-[10px]"] { font-size: calc(0.625rem * var(--portal-font-scale, 1)); }
+.shell [class~="text-[11px]"] { font-size: calc(0.6875rem * var(--portal-font-scale, 1)); }
+.shell [class~="text-[12px]"] { font-size: calc(0.75rem * var(--portal-font-scale, 1)); }
+.shell [class~="text-[12.5px]"] { font-size: calc(0.78125rem * var(--portal-font-scale, 1)); }
+.shell [class~="text-[13px]"] { font-size: calc(0.8125rem * var(--portal-font-scale, 1)); }
+.shell [class~="text-[1.02rem]"] { font-size: calc(1.02rem * var(--portal-font-scale, 1)); }
+
+@media (min-width: 40rem) {
+  .shell [class~="sm:text-xs"] { font-size: var(--text-xs); }
+}

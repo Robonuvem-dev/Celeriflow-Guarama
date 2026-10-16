@@ -1,0 +1,10 @@
+"use client";
+
+import { useState,useTransition } from "react";
+import { issuePortalLicenseAction } from "./actions";
+
+export default function PortalLicensesClient(props:{registrations:{id:string;label:string;updatedAt:string;budgetUnitId:string}[];policies:{id:string;version:number;name:string;budgetUnitId:string}[]}) {
+  const [registrationId,setRegistrationId]=useState(props.registrations[0]?.id ?? "");const [notice,setNotice]=useState("");const [pending,startTransition]=useTransition();
+  const registration=props.registrations.find(row=>row.id===registrationId);const field="mt-1 w-full rounded border p-2 text-sm";
+  return <section className="space-y-3">{notice && <p role="status" className="rounded border bg-amber-50 p-2 text-sm">{notice}</p>}<form action={form=>startTransition(async()=>{const policy=props.policies.find(row=>row.id===form.get("policy"));const result=await issuePortalLicenseAction({policyId:policy?.id ?? "",expectedPolicyVersion:policy?.version ?? 0,registrationId,expectedRegistrationUpdatedAt:registration?.updatedAt ?? "",feeAssessmentId:String(form.get("fee") ?? "").trim() || null});setNotice(result.error ?? "Alvará emitido. Consulte o documento na lista de emissões.");})} className="space-y-3 rounded border p-4"><label className="block text-sm">Inscrição municipal<select value={registrationId} onChange={event=>setRegistrationId(event.target.value)} required className={field}><option value="">Selecione</option>{props.registrations.map(row=><option key={row.id} value={row.id}>{row.label}</option>)}</select></label><label className="block text-sm">Tipo disponível para emissão<select key={registrationId} name="policy" required className={field}><option value="">Selecione</option>{props.policies.filter(row=>row.budgetUnitId===registration?.budgetUnitId).map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label><label className="block text-sm">Identificador do lançamento da taxa, quando exigida<input name="fee" className={field}/></label><button disabled={pending} className="rounded bg-emerald-700 p-2 text-sm text-white">Emitir alvará</button></form></section>;
+}

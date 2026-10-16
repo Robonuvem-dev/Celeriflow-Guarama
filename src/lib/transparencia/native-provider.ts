@@ -1,0 +1,85 @@
+import "server-only";
+import { createHash } from "node:crypto";
+import { Prisma, type PrismaClient } from "@prisma/client";
+import type { PublicCollection, PublicDataset, PublicRecord, TransparencyQuery } from "./query-contract";
+import type { TransparencySettings } from "./presentation-settings";
+import { publicPublicationValues } from "./document-provider";
+import { readNativePublicBinding } from "./native-domain-provider";
+import {nativeRevenueForecasts} from "./native-revenue-forecast";
+import {nativePersonnelCounts} from "./native-personnel-counts";
+const date = (value: Date | null | undefined) => value?.toISOString().slice(0, 10) || null;
+const money = (value: Prisma.Decimal.Value | null | undefined) => value === null || value === undefined ? null : new Prisma.Decimal(value).toFixed(2);
+const key = (entity: string, collection: string, natural: string) => createHash("sha256").update(`${entity}:${collection}:${natural}`).digest("hex").slice(0, 40);
+const yearRange = (year: number) => ({ gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) });
+
+export async function nativeTransparencyDataset(db: PrismaClient, collection: PublicCollection, query: TransparencyQuery, settings: TransparencySettings): Promise<PublicDataset> {
+   const entities = settings.entities.filter(entity => entity.enabled && (query.entity === "consolidado" || entity.key === query.entity));
+   if(["servidores","estagiarios","autonomos","inativos","cessoes"].includes(collection.slug)&&!settings.nativePersonnelPublication)return {records:[],status:"UNAVAILABLE",source:"NATIVO",updatedAt:null,complete:false,provenance:"Publicação nominal nativa Celeriflow",message:"A publicação nominal está desativada pela gestão. Documentos pessoais e folhas privadas não são disponibilizados automaticamente."};
+  if (!entities.length || entities.some(entity => !entity.nativeIds.length)) return { records: [], status: "UNAVAILABLE", source: "NATIVO", provenance: "Registros nativos Celeriflow", updatedAt: null, complete: false, message: "Configure a correspondência de entidades nativas na gestão da Transparência antes de consultar esta fonte." };
+  const records: PublicRecord[] = []; let updatedAt: string | null = null;
+  for (const entity of entities) {
+    const entityIds = entity.nativeIds;
+    if(collection.slug==="quantitativo-pessoal")records.push(...await nativePersonnelCounts(db,entity.key,entityIds,query));
+    else if (collection.slug === "restos-a-pagar") {
+      const rows=await db.payableCarryForward.findMany({where:{financialYear:{governmentEntityId:{in:entityIds},year:{lte:query.year}},originFinancialYear:{year:{lt:query.year}},successorPayableCarryForward:null},include:{originFinancialYear:true,commitment:{include:{creditor:true,supplier:{include:{company:true,person:{select:{fullName:true}}}}}},events:{orderBy:{createdAt:"asc"},include:{payment:{select:{status:true,date:true,value:true,valueDecimal:true}}}}},orderBy:{id:"asc"},take:20001});
+      if(rows.length>20000) throw new Error("Conjunto de restos a pagar amplo demais.");
+      for(const row of rows){
+        const paid=row.events.reduce((sum,event)=>event.action==="PAGAMENTO_RASTREADO"&&event.payment&&event.payment.date.getUTCFullYear()<=query.year&&["Paga","Pago"].includes(event.payment.status)?sum.add(event.valueDecimal??0):sum,new Prisma.Decimal(0));
+        const canceled=row.status==="CANCELADO"?row.valueDecimal.sub(paid):new Prisma.Decimal(0);
+        records.push({key:key(entity.key,collection.slug,row.id),entity:entity.key,year:query.year,values:{number:row.commitment.number,originalYear:row.originFinancialYear.year,date:date(row.createdAt),beneficiary:row.commitment.creditor?.name||row.commitment.supplier.company?.corporateName||row.commitment.supplier.person?.fullName||null,type:row.type,status:row.status,registered:money(row.valueDecimal),paid:money(paid),canceled:money(canceled),balance:money(row.valueDecimal.sub(paid).sub(canceled))},events:row.events.map(event=>({stage:event.action,number:event.payment?"Pagamento vinculado":"Evento de inscrição",date:date(event.payment?.date||event.createdAt)!,value:money(event.valueDecimal)??"0.00",status:row.status}))});
+        const time=row.updatedAt.toISOString();if(!updatedAt||time>updatedAt) updatedAt=time;
+      }
+    } else if (["despesas", "liquidacoes", "pagamentos"].includes(collection.slug)) {
+      const cutoff=new Date(Date.UTC(query.year+1,0,1));
+      const rows = await db.commitment.findMany({ where: { appropriation: { financialYear: { governmentEntityId: { in: entityIds } } }, status: { in: ["Emitido", "Liquidado", "Pago","Anulado"] }, ...(collection.slug === "despesas" ? { date: yearRange(query.year) } : collection.slug==="liquidacoes"?{settlements:{some:{date:yearRange(query.year),status:"Liquidado"}}}:{payments:{some:{date:yearRange(query.year),status:{in:["Paga","Pago"]}}}}) }, include: { creditor: {select:{name:true}}, supplier: { include: { company: {select:{corporateName:true}}, person: { select: { fullName: true } } } },reservation:{select:{expense:{select:{sourceModule:true,sourceType:true}}}}, appropriation: { include: { budgetUnit: true, resourceSource: true, expenseNature: true, programPPA: true, actionPPA: true,planningLine:{select:{functionCode:true,subfunctionCode:true}} } },movements:{where:{date:{lt:cutoff}}}, settlements: { where: { status: "Liquidado",date:{lt:cutoff} } }, payments: { where: { status: { in: ["Paga", "Pago"] },date:{lt:cutoff} } } }, orderBy: [{ date: "desc" }, { id: "desc" }], take: 20001 });
+      if (rows.length > 20000) throw new Error("Restrinja o escopo nativo para exportar integralmente mais de 20.000 empenhos.");
+      for (const row of rows) {
+        const beneficiary = row.creditor?.name || row.supplier?.company?.corporateName || row.supplier?.person?.fullName || "Não informado";
+        const initial=new Prisma.Decimal(row.valueDecimal??row.value),canceled=row.movements.filter(movement=>movement.type==="Anulação").reduce((sum,movement)=>sum.add(movement.valueDecimal),new Prisma.Decimal(0)),reinforced=row.movements.filter(movement=>movement.type==="Reforço").reduce((sum,movement)=>sum.add(movement.valueDecimal),new Prisma.Decimal(0));
+        const committed = initial.add(reinforced).sub(canceled), settled = row.settlements.reduce((sum, entry) => sum.add(entry.valueDecimal ?? entry.value), new Prisma.Decimal(0)), paid = row.payments.reduce((sum, entry) => sum.add(entry.valueDecimal ?? entry.value), new Prisma.Decimal(0));
+        const protectedOrigin=["RH","SAUDE","SOCIAL"].includes(row.reservation?.expense?.sourceModule||"");
+        const common = { number: row.number, date: date(row.date), beneficiary, description: protectedOrigin?`Despesa de ${row.reservation?.expense?.sourceModule}; detalhamento conforme classificação pública, sem narrativa pessoal/clínica`:row.history || "Histórico não cadastrado", unit: row.appropriation.budgetUnit.name, sourceCode: row.appropriation.resourceSource.code, nature: row.appropriation.expenseNature.code, program: row.appropriation.programPPA?.name || null, action: row.appropriation.actionPPA?.name || null,function:row.appropriation.planningLine?.functionCode||null,subfunction:row.appropriation.planningLine?.subfunctionCode||null, originalYear: row.date.getUTCFullYear(),initialValue:initial.toFixed(2),canceled:canceled.toFixed(2),reinforced:reinforced.toFixed(2),committed: committed.toFixed(2), settled: settled.toFixed(2), paid: paid.toFixed(2), balance: committed.sub(paid).toFixed(2), status: row.status };
+        const events = [...row.settlements.map(entry => ({ stage: "Liquidação", number: entry.id.slice(-8), date: date(entry.date)!, value: money(entry.valueDecimal ?? entry.value)!, status: entry.status })), ...row.payments.map(entry => ({ stage: "Pagamento", number: entry.orderNumber, date: date(entry.date)!, value: money(entry.valueDecimal ?? entry.value)!, status: entry.status }))];
+        if (collection.slug === "despesas") records.push({ key: key(entity.key, collection.slug, row.number), entity: entity.key, year: query.year, values: common, events });
+        else if (collection.slug === "liquidacoes") for (const entry of row.settlements.filter(entry => entry.date.getUTCFullYear() === query.year)) records.push({ key: key(entity.key, collection.slug, entry.id), entity: entity.key, year: query.year, values: { ...common, commitment: row.number, number: entry.id.slice(-8), date: date(entry.date), value: money(entry.valueDecimal ?? entry.value) }, events });
+        else if (collection.slug === "pagamentos") for (const entry of row.payments.filter(entry => entry.date.getUTCFullYear() === query.year)) records.push({ key: key(entity.key, collection.slug, entry.orderNumber), entity: entity.key, year: query.year, values: { ...common, commitment: row.number, number: entry.orderNumber, date: date(entry.date), value: money(entry.valueDecimal ?? entry.value), netPaid: money(entry.netValueDecimal), withheld: entry.valueDecimal && entry.netValueDecimal ? entry.valueDecimal.sub(entry.netValueDecimal).toFixed(2) : null }, events });
+        else if (row.date.getUTCFullYear() < query.year) for (const entry of row.payments.filter(entry => entry.date.getUTCFullYear() === query.year)) records.push({ key: key(entity.key, collection.slug, entry.id), entity: entity.key, year: query.year, values: { ...common, date: date(entry.date), type: "Movimento de exercício anterior", paid: money(entry.valueDecimal ?? entry.value) }, events });
+        const time = row.updatedAt.toISOString(); if (!updatedAt || time > updatedAt) updatedAt = time;
+      }
+    } else if (collection.slug === "receitas") {
+      const rows = await db.revenue.findMany({ where: { financialYear: { governmentEntityId: { in: entityIds } }, date: yearRange(query.year), stage: "ARRECADADA" }, include: { revenueNature: true, resourceSource: true,financialYear:{select:{governmentEntity:{select:{code:true}}}} }, orderBy: [{ date: "desc" }, { id: "desc" }], take: 20001 });
+      if (rows.length > 20000) throw new Error("Consulta ampla demais para confirmação integral.");
+      const revenueMovements:PublicRecord[]=[];
+      for (const row of rows) { revenueMovements.push({ key: key(entity.key, collection.slug, row.id), entity: entity.key, year: query.year,excludedFromTotals:["predicted","updated"], values: { number: row.revenueNature.code, name: row.revenueNature.name, date: date(row.collectionDate || row.date), sourceCode: row.resourceSource.code,nativeEntityCode:row.financialYear?.governmentEntity?.code||null, type: row.classification,stage:"ARRECADACAO", status: row.status, value: money(row.valueDecimal ?? row.value), predicted: null, updated: null, description: null } }); const time = row.updatedAt.toISOString(); if (!updatedAt || time > updatedAt) updatedAt = time; }
+      const filtered=revenueMovements.filter(row=>(!query.from||String(row.values.date)>=query.from)&&(!query.until||String(row.values.date)<=query.until));
+      records.push(...revenueMovements,...await nativeRevenueForecasts(db,entity.key,entityIds,query,filtered));
+    } else if (collection.slug === "contratos" || collection.slug === "licitacoes") {
+      const units = await db.planningEntityUnit.findMany({ where: { governmentEntityId: { in: entityIds } }, select: { budgetUnitId: true } });
+      const ids = units.map(unit => unit.budgetUnitId);
+      if (collection.slug === "contratos") {
+        const rows = await db.contract.findMany({ where: { sourceBudgetUnitId: { in: ids }, status: { notIn: ["Minuta", "Rascunho", "Em Elaboração"] }, startDate: { lt: new Date(Date.UTC(query.year + 1, 0, 1)) }, endDate: { gte: new Date(Date.UTC(query.year, 0, 1)) } }, include: { supplier: { include: { company: true, person: { select: { fullName: true } } } }, amendments: true, inspector: { select: { name: true } } }, orderBy: { number: "asc" } });
+        for (const row of rows) records.push({ key: key(entity.key, collection.slug, row.number), entity: entity.key, year: query.year, values: { number: row.number, date: date(row.startDate), endDate: date(row.endDate), beneficiary: row.supplier.company?.corporateName || row.supplier.person?.fullName || "Não informado", description: row.object, status: row.status, value: money(row.updatedValue), initialValue: money(row.initialValue), inspector: row.inspector?.name || null }, events: row.amendments.filter(amendment => amendment.status !== "Minuta").map(amendment => ({ stage: "Aditivo", number: "Número não cadastrado na fonte", date: date(amendment.createdAt)!, value: amendment.newValue !== null ? new Prisma.Decimal(amendment.newValue).sub(amendment.previousValue || 0).toFixed(2) : "0.00", status: amendment.type })) });
+      } else {
+        const processes = await db.purchaseProcess.findMany({ where: { OR:[{commitments: { some: { appropriation: { budgetUnitId: { in: ids } } } }},{items:{some:{requestItemOrigins:{some:{purchaseRequestItem:{budgetAllocations:{some:{budgetAppropriation:{budgetUnitId:{in:ids}}}}}}}}}}] }, select: { id: true } });
+        const rows = await db.bidding.findMany({ where: { processId: { in: processes.map(process => process.id) }, publicationDate: yearRange(query.year), status: { notIn: ["Rascunho", "Em Elaboração"] } }, include: { process: { select: { number: true, object: true, estimatedValue: true } } }, orderBy: { number: "asc" } });
+        for (const row of rows) records.push({ key: key(entity.key, collection.slug, row.number), entity: entity.key, year: query.year, values: { number: row.number, date: date(row.publicationDate), openingDate: date(row.sessionDate), process: row.process.number, description: row.process.object, modality: row.modality, status: row.status, value: money(row.process.estimatedValue) } });
+      }
+    } else if (collection.slug === "legislacao") {
+      const rows = await db.legalText.findMany({ where: { governmentEntityId: { in: entityIds }, publicationDate: yearRange(query.year) }, select: { id: true, type: true, number: true, summary: true, publicationDate: true, status: true }, orderBy: { number: "asc" } });
+      for (const row of rows) records.push({ key: key(entity.key, collection.slug, row.id), entity: entity.key, year: query.year, values: { number: row.number, name: row.summary, type: row.type, date: date(row.publicationDate), status: row.status, format: "Texto de origem" } });
+      const diaryBindings=await db.transparencyNativeBinding.findMany({where:{collectionSlug:collection.slug,sourceType:"OFFICIAL_DIARY",enabled:true,governmentEntityId:{in:entityIds}}});
+      for(const binding of diaryBindings)records.push(...await readNativePublicBinding(db,binding,entity.key,query,settings));
+    } else {
+      const bindings=await db.transparencyNativeBinding.findMany({where:{collectionSlug:collection.slug,enabled:true,governmentEntityId:{in:entityIds}},orderBy:{publicKey:"asc"},take:10001});
+      if(bindings.length>10000)throw new Error("Escopo nativo acima de 10.000 vínculos.");
+      for(const binding of bindings){records.push(...await readNativePublicBinding(db,binding,entity.key,query,settings));const time=binding.updatedAt.toISOString();if(!updatedAt||time>updatedAt)updatedAt=time;}
+      const publications = (await db.transparencyPublication.findMany({ where: { entity: entity.key, year: query.year, collectionSlug: collection.slug, status: "PUBLISHED", source: "NATIVO" }, orderBy: [{ publishedAt: "desc" }, { publicKey: "asc" }] })).filter(publication=>collection.slug==="publicacoes"||(publication.values as Record<string,unknown>).artifactKind!=="CONSULTATION_REPORT");
+      if(!publications.length&&!bindings.length) return {records:[],status:"UNAVAILABLE",source:"NATIVO",provenance:"Registros nativos Celeriflow",updatedAt:null,complete:false,message:"Nenhum registro desta família está vinculado ao escopo público. Configure os registros e suas entidades em Gestão → Fontes nativas."};
+      for (const publication of publications) records.push({ key: publication.publicKey, entity: entity.key, year: query.year, values: publicPublicationValues(publication.values), links: [{ title: publication.title, url: `/api/transparencia/publicacoes/${publication.publicKey}` }] });
+    }
+  }
+  const remunerationKeys=new Set(records.filter(row=>row.values.payrollType).map(row=>`${row.entity}:${row.values.registration}:${row.values.competence}`));
+  for(const row of records){const time=typeof row.values.nativeUpdatedAt==="string"?row.values.nativeUpdatedAt:null;if(time&&(!updatedAt||time>updatedAt))updatedAt=time;}
+  const distinct=records.filter(row=>!row.values.registration||row.values.value!==null||!remunerationKeys.has(`${row.entity}:${row.values.registration}:${row.values.competence}`));
+  return { records:distinct, source: "NATIVO", status: "AVAILABLE", updatedAt, provenance: "Dados lidos dos módulos Celeriflow, nas entidades e vínculos de publicação configurados. Complementos públicos preservam referência documental; campos ausentes não são completados com valores fictícios.", complete: true };
+}
