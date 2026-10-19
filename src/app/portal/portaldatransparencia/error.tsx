@@ -1,0 +1,6 @@
+"use client";
+import Link from "next/link";
+
+export default function TransparencyError({ unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
+  return <main className="mx-auto w-full max-w-5xl px-4 py-8"><section role="alert" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h1 className="text-2xl font-bold text-slate-900">Não foi possível carregar esta página</h1><p className="mt-3 text-sm leading-6 text-slate-600">Tente novamente. A indisponibilidade não significa ausência de registros ou recursos públicos.</p><div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={unstable_retry} className="min-h-11 rounded-lg bg-[#0e4c7e] px-4 py-2 font-semibold text-white focus-visible:outline-3 focus-visible:outline-offset-2">Tentar novamente</button><Link href="/portal/portaldatransparencia" className="inline-flex min-h-11 items-center rounded-lg border px-4 py-2 font-semibold text-[#0e4c7e] underline">Todos os assuntos</Link><Link href="/portal/acesso-informacao" className="inline-flex min-h-11 items-center rounded-lg px-4 py-2 text-[#0e4c7e] underline">Solicitar informação pelo e-SIC</Link></div></section></main>;
+}

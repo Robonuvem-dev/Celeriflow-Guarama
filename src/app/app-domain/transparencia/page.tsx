@@ -21,7 +21,9 @@ export default async function TransparenciaPage() {
          <h2 className="font-bold text-slate-900">Portal da Transparência — acesso público e gestão</h2>
          <p className="mt-1 text-sm text-slate-600">Configure as consultas e publique documentos municipais para consulta e download pelo cidadão.</p>
          <div className="mt-3 flex flex-wrap gap-3">
-           <Link href="/transparencia/publicacoes" className="rounded bg-sky-900 px-4 py-2 text-sm font-semibold text-white">Configurações e upload de documentos</Link>
+            <Link href="/transparencia/publicacoes" className="rounded bg-sky-900 px-4 py-2 text-sm font-semibold text-white">Configurações e upload de documentos</Link>
+            <Link href="/transparencia/apresentacao" className="rounded border px-4 py-2 text-sm font-semibold">Apresentação e navegação</Link>
+            <Link href="/transparencia/avaliacoes" className="rounded border px-4 py-2 text-sm font-semibold">Avaliações das páginas</Link>
             <Link href="/portal/portaldatransparencia" target="_blank" className="rounded border px-4 py-2 text-sm font-semibold">Abrir portal público ↗</Link>
             <Link href="/transparencia/solicitacoes" className="rounded border px-4 py-2 text-sm font-semibold">Pedidos e-SIC e manifestações</Link>
             <Link href="/transparencia/acessos" className="rounded border px-4 py-2 text-sm font-semibold">Inventário e acessos</Link>

@@ -16430,6 +16430,19 @@ model TransparencyCitizenAppeal {
   @@unique([requestId, level])
 }
 
+model TransparencyPageFeedback {
+  id             String   @id @default(cuid())
+  submissionKey  String   @unique
+  page           String
+  collectionSlug String?
+  rating         Int
+  comment        String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([page, createdAt])
+}
+
 model TransparencyAccess {
   id String @id @default(cuid())
   collectionSlug String

@@ -89,6 +89,11 @@ export default function PrivacidadePage() {
           </p>
         </section>
 
+        <section aria-labelledby="avaliacoes-transparencia">
+          <h2 id="avaliacoes-transparencia" className="text-lg font-bold text-slate-900">Avaliações das páginas de transparência</h2>
+          <p className="mt-2">O formulário de avaliação registra nota de 1 a 5, comentário opcional, tipo de página e assunto da consulta, quando aplicável, para melhorar a usabilidade do portal. Não solicita nome ou e-mail, não armazena a pesquisa digitada ou o endereço IP junto à avaliação e não substitui pedidos formais pelo e-SIC ou pela Ouvidoria. Comentários são acessíveis somente à equipe autorizada; relatórios públicos apresentam apenas resultados agregados. As avaliações são mantidas por até 365 dias, com rotina diária de exclusão e limpeza complementar no recebimento de avaliações.</p>
+        </section>
+
         <section aria-labelledby="direitos">
           <h2 id="direitos" className="text-lg font-bold text-slate-900">5. Direitos da pessoa titular</h2>
           <p className="mt-2">

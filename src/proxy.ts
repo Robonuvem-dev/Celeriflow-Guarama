@@ -34,6 +34,7 @@ export const config = {
 
 export default function proxy(req: NextRequest) {
   const url = req.nextUrl;
+  if (url.pathname === "/robots.txt" || url.pathname === "/sitemap.xml") return NextResponse.next();
   // Entradas institucionais reutilizam os portais existentes e seus filtros.
    if (url.pathname === "/portal/portaldoservidor") {
     const destination = url.clone();
