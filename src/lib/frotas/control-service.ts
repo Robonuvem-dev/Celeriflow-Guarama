@@ -10,8 +10,9 @@ import { arriveFleetTrip, cancelFleetBooking, createFleetBooking, departFleetTri
 import { cancelFleetAuthorization, confirmFleetFuel, issueFleetFuel, renewFleetCredential, saveFleetFuelAgreement, saveFleetProvider, saveFleetQuota } from "./control-fuel";
 import { executeFleetService, installFleetComponent, issueFleetService, removeFleetComponent, reviewFleetWorkshop, saveFleetComponent } from "./control-maintenance";
 import { changeFleetClaim, changeFleetFineStatus, openFleetClaim, recordFleetFinePayment, registerFleetFine, registerFleetOccurrence, reverseFleetFinePayment } from "./control-incidents";
+import { payFleetDebt, registerFleetDebt, reverseFleetDebtPayment, saveFleetDebtSettings } from "./control-debts";
 
-const updateOperations = new Set<FleetControlOperation>(["unitControl", "cancelBooking", "arrive", "quota", "cancelAuthorization", "renewCredential", "confirmFuel", "executeService", "reviewWorkshop", "installComponent", "removeComponent", "fineStatus", "payFine", "reverseFinePayment", "claimStatus"]);
+const updateOperations = new Set<FleetControlOperation>(["unitControl", "cancelBooking", "arrive", "quota", "cancelAuthorization", "renewCredential", "confirmFuel", "executeService", "reviewWorkshop", "installComponent", "removeComponent", "debtSettings", "payDebt", "reverseDebtPayment", "fineStatus", "payFine", "reverseFinePayment", "claimStatus"]);
 export function fleetControlPermission(operation: FleetControlOperation, data: Record<string, unknown>): "create" | "update" { return updateOperations.has(operation) || (operation === "driver" || operation === "machineType") && Boolean(data.id) ? "update" : "create"; }
 
 async function replayScope(tx: FleetControlTx, context: AppContext, event: { targetType: string; targetId: string; unitId: string | null }) {
@@ -52,6 +53,15 @@ async function applyControl(tx: FleetControlTx, context: AppContext, operation: 
     case "component": return saveFleetComponent(tx, scope, data);
     case "installComponent": return installFleetComponent(tx, scope, data);
     case "removeComponent": return removeFleetComponent(tx, scope, data);
+    case "debtSettings": return saveFleetDebtSettings(tx, scope, data);
+    case "debtDocument": return registerFleetDebt(tx, scope, data);
+    case "payDebt": {
+      const payment = controlSchemas.payDebt.parse(data);
+      if (payment.financialPaymentId && !canViewModule(context.user, "FINANCEIRO")) throw new FleetControlError("Vínculo de pagamento exige leitura de Financeiro.");
+      if (payment.financialPaymentId && !scope.administrator && !await tx.payment.findFirst({ where: { id: payment.financialPaymentId, bankAccount: { budgetUnitId: { in: context.user.allowedBudgetUnitIds } } }, select: { id: true } })) throw new FleetControlError("Ordem de pagamento fora das unidades gestoras autorizadas.");
+      return payFleetDebt(tx, scope, payment);
+    }
+    case "reverseDebtPayment": return reverseFleetDebtPayment(tx, scope, data);
     case "fine": return registerFleetFine(tx, scope, data);
     case "fineStatus": return changeFleetFineStatus(tx, scope, data);
     case "payFine": {

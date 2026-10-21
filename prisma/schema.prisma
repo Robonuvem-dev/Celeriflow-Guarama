@@ -139,6 +139,7 @@ model Department {
   obrasServices    ObrasServico[]     @relation("ObrasServicoDepartment")
   obrasTeams       ObrasEquipe[]
   costCenters      CostCenter[]
+  fleetDebtSettings FleetDebtSettings?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -17345,9 +17346,37 @@ model FleetDocument {
   createdById     String
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  debtPayments    FleetDebtPayment[]
 
   @@unique([unitId, kind, type, reference])
   @@index([unitId, dueAt, status, id])
+}
+
+model FleetDebtPayment {
+  id                 String        @id @default(cuid())
+  documentId         String
+  document           FleetDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  paidAt             DateTime      @db.Date
+  amount             Decimal       @db.Decimal(18, 2)
+  proofVersionId     String?
+  financialPaymentId String?
+  reason             String
+  reversedAt         DateTime?
+  createdById        String
+  expenseId          String?       @unique
+  createdAt          DateTime      @default(now())
+
+  @@index([documentId, paidAt, id])
+  @@index([financialPaymentId])
+}
+
+model FleetDebtSettings {
+  departmentId    String   @id
+  department      Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  warningDays     Int      @default(30)
+  criticalDays    Int      @default(7)
+  requireEvidence Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
 }
 
 model FleetOccurrence {
