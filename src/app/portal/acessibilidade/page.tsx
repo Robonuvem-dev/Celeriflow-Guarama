@@ -29,6 +29,10 @@ export default function AcessibilidadePage() {
           <p className="mt-2">As preferências são salvas no seu navegador e mantidas entre visitas.</p>
         </section>
         <section>
+          <h2 className="font-bold text-slate-900">Libras</h2>
+          <p className="mt-2">A barra superior contém o atalho <strong>Libras</strong>, que abre a ferramenta pública VLibras em uma nova aba para apoio à tradução em Língua Brasileira de Sinais.</p>
+        </section>
+        <section>
           <h2 className="font-bold text-slate-900">Leitores de tela</h2>
           <p className="mt-2">
             O portal é compatível com leitores de tela. Recomendamos o{" "}

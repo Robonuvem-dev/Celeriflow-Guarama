@@ -4,10 +4,19 @@ import { runTransparencyConsultation,publishedTransparencyCatalog } from "@/lib/
 import {getTransparencySettings} from "@/lib/transparencia/presentation-settings";
 import {getTransparencyCollection} from "@/lib/transparencia/consultation-catalog";
 import { renderTransparencyFile, byteStream } from "@/lib/transparencia/export-files";
+import { checkRateLimit } from "@/lib/platform/rate-limit";
+import { isIP } from "node:net";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  // Consulta pública não exige CAPTCHA: proteção equivalente não deve criar
+  // barreira de acesso à informação. Limita automação por origem/IP inclusive
+  // em downloads potencialmente custosos.
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || request.headers.get("x-real-ip") || "";
+  const ip = isIP(forwarded) ? forwarded : "unknown";
+  const rate = checkRateLimit(`transparency-query:${ip}`);
+  if (!rate.allowed) return Response.json({ error: "Muitas consultas em sequência. Aguarde e tente novamente." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds || 60) } });
   const search = new URL(request.url).searchParams;
   const requestedFormat=search.get("format");if(requestedFormat&&!["csv","txt","xlsx","pdf","docx","jpeg","json","schema"].includes(requestedFormat))return Response.json({error:"Formato de exportação não suportado."},{status:400});
   let query;

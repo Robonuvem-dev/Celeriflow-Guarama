@@ -10,6 +10,7 @@ import {
   Cloud,
   Contrast,
   Home,
+  Languages,
   Mail,
   Menu,
   Scale,
@@ -225,6 +226,9 @@ function TopAccessibilityBar({
           <Link href="/portal/acessibilidade" className="inline-flex items-center gap-1 rounded px-1 py-0.5 font-semibold hover:bg-white/15 hover:underline">
             <Accessibility className="size-3.5" aria-hidden="true" /> Acessibilidade
           </Link>
+          <a href="https://www.gov.br/governodigital/pt-br/vlibras" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded px-1 py-0.5 font-semibold hover:bg-white/15 hover:underline" aria-label="Abrir ferramenta VLibras em nova aba">
+            <Languages className="size-3.5" aria-hidden="true" /> <span className="hidden sm:inline">Libras</span>
+          </a>
           <Link href="/portal/dados-abertos" className="rounded px-1 py-0.5 font-semibold hover:bg-white/15 hover:underline">Dados Abertos</Link>
           <Link href="/portal/mapa-do-site" className="rounded px-1 py-0.5 font-semibold hover:bg-white/15 hover:underline">Mapa do Site</Link>
           <Link href="/portal/contato" title="Contato" aria-label="Contato institucional" className="inline-flex items-center gap-1 rounded px-1 py-0.5 font-semibold hover:bg-white/15 hover:underline">
