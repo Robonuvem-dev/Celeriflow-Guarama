@@ -26,3 +26,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Actions usadas em `<form action={...}>`**: Devem retornar `void` ou `Promise<void>`. Usar `throw new Error()` para erros.
 - **Actions chamadas via `await` em client components**: Devem retornar `{ error: string }` para que o componente trate o erro na UI. **NÃO** trocar para `throw`.
 - **Sempre verifique** como a action é usada antes de decidir o padrão de erro.
+
+## 5. Identidade e deploy pelo GitHub
+- Os commits e pushes de deploy realizados pelos agentes devem usar a conta GitHub **Robonuvem-dev**.
+- Configure a identidade **local deste repositório** como `Robonuvem-dev <343586278+Robonuvem-dev@users.noreply.github.com>` e selecione a credencial GitHub `Robonuvem-dev` antes de enviar.
+- O remoto de deploy é `https://github.com/Robonuvem-dev/Celeriflow-Guarama.git`; publique pelo fluxo GitHub → Vercel conectado ao projeto.
+- Para republicar uma versão existente com a identidade correta, crie um novo commit com essa identidade e confirme o resultado do deploy; preserve o histórico já publicado.
