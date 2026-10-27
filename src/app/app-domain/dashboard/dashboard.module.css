@@ -1,0 +1,97 @@
+/* Include smaller tablets, while allowing phones in landscape to scroll. */
+@media (min-width: 600px) and (min-height: 480px) {
+  .workspace {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .frame {
+    flex: 1;
+    animation: none;
+  }
+
+  .grid {
+    flex: 1;
+    min-height: 0;
+    grid-auto-rows: minmax(0, 1fr);
+  }
+
+  @media (max-width: 767px) {
+    .grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .card {
+    min-height: 0;
+    padding: 8px;
+    container: dashboard-card / size;
+  }
+
+  .content {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Adapt the card contents to the row height left by the header and footer. */
+  @container dashboard-card (max-height: 112px) {
+    .content {
+      gap: 4px;
+    }
+
+    .icon {
+      width: 32px;
+      height: 32px;
+    }
+
+    .title {
+      font-size: 12px;
+    }
+
+    .description {
+      display: none;
+    }
+  }
+
+  @container dashboard-card (max-height: 80px) {
+    .icon {
+      width: 24px;
+      height: 24px;
+    }
+
+    .icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .access,
+    .status {
+      display: none;
+    }
+  }
+
+  @container dashboard-card (max-height: 56px) {
+    .content {
+      flex-direction: row;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .title {
+      font-size: 11px;
+      line-height: 1.15;
+    }
+
+    .lockBadge {
+      top: 3px;
+      right: 3px;
+      padding: 2px;
+    }
+
+    .lockBadge svg {
+      width: 10px;
+      height: 10px;
+    }
+  }
+}

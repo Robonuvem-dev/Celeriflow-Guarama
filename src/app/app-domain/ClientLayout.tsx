@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { APP_VERSION } from "@/lib/version";
 import UsageAuditTracker from "@/components/platform/UsageAuditTracker";
+import dashboardStyles from "./dashboard/dashboard.module.css";
 
 type UserInfo = {
   id: string;
@@ -44,6 +45,7 @@ export default function ClientLayout({
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === "/login" || pathname === "/";
+  const isDashboard = pathname === "/dashboard";
   const isEmployeePortal = pathname === "/portal-servidor" || pathname.startsWith("/portal-servidor/");
 
   const handleLogout = async () => {
@@ -127,7 +129,7 @@ export default function ClientLayout({
   ].includes(pathname) || pathname === "/planejamento" || pathname.startsWith("/planejamento/") || pathname === "/sst" || pathname.startsWith("/sst/") || isFixedRhWorkspace || isFixedComprasWorkspace || isFixedLote2Workspace || isFixedLote3Workspace;
 
   return (
-    <div className={isFixedErpWorkspace ? "flex h-dvh w-full flex-col overflow-hidden bg-slate-100" : "flex min-h-dvh w-full flex-col bg-slate-100"}>
+    <div className={isFixedErpWorkspace ? "flex h-dvh w-full flex-col overflow-hidden bg-slate-100" : `${isDashboard ? dashboardStyles.workspace : ""} flex min-h-dvh w-full flex-col bg-slate-100`}>
       <UsageAuditTracker />
       <header className="sticky top-0 z-30 flex h-15 shrink-0 items-center gap-3 border-b border-slate-300 bg-white px-3 shadow-sm sm:px-5">
         <div className="flex min-w-0 flex-1 items-center">

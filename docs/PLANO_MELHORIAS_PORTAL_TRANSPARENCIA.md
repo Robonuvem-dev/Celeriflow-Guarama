@@ -1,7 +1,7 @@
 # Plano de melhorias — Portal da Transparência CeleriFlow
 
 **Data:** 19/10/2026  
-**Status:** funcionalidades das etapas de implementação entregues; validações técnicas finais em andamento  
+**Status:** funcionalidades das etapas de implementação entregues; validações técnicas concluídas, incluindo build de produção  
 **Referência:** `docs/ANALISE_FRONTEND_PORTAL_TRANSPARENCIA_PAU_DOS_FERROS (1).md`  
 **Base de diagnóstico:** leitura do documento, inspeção do código atual e análise de cinco capturas da referência em `docs/imagens`. As capturas permitem confirmar a composição visual desktop da referência; aparência renderizada do CeleriFlow, dados em produção, acessibilidade e desempenho ainda precisam de medição no navegador.
 
@@ -383,4 +383,4 @@ Também foram acrescentados estados de carregamento/erro, URLs canônicas, sitem
 
 O guia `docs/PORTAL_TRANSPARENCIA_OPERACAO.md` descreve os caminhos de gestão, o comportamento da busca, as avaliações e o comando de monitoramento de destinos. A revisão institucional de conteúdo e as medições de desempenho de campo continuam sendo atividades operacionais do portal publicado.
 
-Validação complementar: os 33 testes de transparência passaram, assim como o ESLint dos arquivos alterados. A verificação HTTP dos 40 destinos do hub confirmou respostas 200; Planejamento e Mapa das consultas excederam inicialmente o limite de 20 segundos e responderam na nova verificação em aproximadamente 2,7 s e 0,9 s, respectivamente. O build de produção permanece aguardando confirmação.
+Validação complementar: os 33 testes de transparência passaram, assim como o ESLint dos arquivos alterados. A verificação HTTP dos 40 destinos do hub confirmou respostas 200; Planejamento e Mapa das consultas excederam inicialmente o limite de 20 segundos e responderam na nova verificação em aproximadamente 2,7 s e 0,9 s, respectivamente. O comando `npm run build` foi concluído com código 0: as quatro partições de checagem de tipos passaram, a compilação de produção foi concluída e as 95 páginas estáticas foram geradas.

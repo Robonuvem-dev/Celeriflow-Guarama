@@ -7,7 +7,6 @@ import {
   Eye, 
   Building2, 
   Settings,
-  Database,
   Landmark,
   CircleDollarSign,
   Users,
@@ -32,6 +31,7 @@ import {
 import { canShowDashboardCard, canViewModule, getOptionalTenantContext, isModuleBlockedForUser } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import styles from "./dashboard.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -111,9 +111,9 @@ export default async function PainelPage() {
     });
 
   return (
-    <PageFrame className="flex flex-col gap-2 px-1 py-1 md:px-2">
-      <PageHeader title="Módulos do sistema" />
-      <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7">
+    <PageFrame className={`${styles.frame} flex min-h-0 flex-col gap-2 px-1 py-1 md:px-2`}>
+      <PageHeader title="Módulos do sistema" className="shrink-0" />
+      <div className={`${styles.grid} grid w-full grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7`}>
         {visibleMenuItems.map((item) => {
           const accessCode = item.accessCode ?? item.code;
           const isProfileBlocked = !context || isModuleBlockedForUser(context.user, accessCode) || !canViewModule(context.user, accessCode);
@@ -123,25 +123,25 @@ export default async function PainelPage() {
               <div
                 key={item.name}
                 title="Acesso bloqueado ou sem permissão de visualização neste perfil."
-                className="relative flex h-full min-h-[126px] cursor-not-allowed flex-col justify-center overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-100/90 px-2 py-3 text-center opacity-60 grayscale select-none dark:border-slate-800 dark:bg-slate-900/60"
+                className={`${styles.card} relative flex h-full min-h-[126px] cursor-not-allowed flex-col justify-center overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-100/90 px-2 py-3 text-center opacity-60 grayscale select-none dark:border-slate-800 dark:bg-slate-900/60`}
               >
                 {/* Top Gray Bar */}
                 <div className="absolute top-0 left-0 h-[3px] w-full bg-slate-400/50" />
 
                 {/* Lock Badge */}
-                <div className="absolute right-2 top-2 rounded-full bg-slate-200 p-1 text-slate-500 dark:bg-slate-800">
+                <div className={`${styles.lockBadge} absolute right-2 top-2 rounded-full bg-slate-200 p-1 text-slate-500 dark:bg-slate-800`}>
                   <Lock className="w-3.5 h-3.5" />
                 </div>
 
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex size-10 items-center justify-center rounded-md bg-slate-200 ring-1 ring-inset ring-black/5 dark:bg-slate-800">
+                <div className={`${styles.content} flex flex-col items-center gap-2`}>
+                  <div className={`${styles.icon} flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-200 ring-1 ring-inset ring-black/5 dark:bg-slate-800`}>
                     <item.icon className="size-[19px] text-slate-500" strokeWidth={2} />
                   </div>
-                  <div>
-                    <h3 className="text-[12px] sm:text-[13px] font-bold leading-tight text-slate-600 dark:text-slate-400">
+                  <div className="min-w-0">
+                    <h3 className={`${styles.title} text-[12px] sm:text-[13px] font-bold leading-tight text-slate-600 dark:text-slate-400`}>
                       {item.name}
                     </h3>
-                    <span className="mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                    <span className={`${styles.status} mt-1 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400`}>
                        Acesso Bloqueado
                     </span>
                   </div>
@@ -151,25 +151,25 @@ export default async function PainelPage() {
           }
 
           return (
-            <Link key={item.name} href={item.href} className="group block outline-none">
-              <div className="relative flex h-full min-h-[126px] cursor-pointer flex-col justify-center overflow-hidden rounded-md border border-slate-300 bg-white px-2 py-3 text-center shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600 active:bg-slate-100 dark:bg-slate-950">
+            <Link key={item.name} href={item.href} title={`${item.name} — ${item.description}`} className="group block min-h-0 min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
+              <div className={`${styles.card} relative flex h-full min-h-[126px] cursor-pointer flex-col justify-center overflow-hidden rounded-md border border-slate-300 bg-white px-2 py-3 text-center shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 active:bg-slate-100 dark:bg-slate-950`}>
                 
                 {/* Colored Top Bar */}
                 <div className={`absolute top-0 left-0 h-[3px] w-full ${item.solid} opacity-85`} />
                 
-                <div className="flex flex-col items-center gap-2">
-                  <div className={`flex size-10 items-center justify-center rounded-md ${item.bg} ring-1 ring-inset ring-black/5 transition-transform duration-200 group-hover:scale-105`}>
+                <div className={`${styles.content} flex flex-col items-center gap-2`}>
+                  <div className={`${styles.icon} flex size-10 shrink-0 items-center justify-center rounded-md ${item.bg} ring-1 ring-inset ring-black/5 transition-transform duration-200 group-hover:scale-105`}>
                     <item.icon className={`size-[19px] ${item.color}`} strokeWidth={2.5} />
                   </div>
-                  <div>
-                    <h3 className="text-[12px] font-bold leading-tight text-slate-800 transition-colors group-hover:text-primary sm:text-[13px]">
+                  <div className="min-w-0">
+                    <h3 className={`${styles.title} text-[12px] font-bold leading-tight text-slate-800 transition-colors group-hover:text-primary sm:text-[13px]`}>
                       {item.name}
                     </h3>
-                    <p className="mt-1 line-clamp-2 px-1 text-[10px] font-medium leading-tight text-slate-500">
+                    <p className={`${styles.description} mt-1 line-clamp-2 px-1 text-[10px] font-medium leading-tight text-slate-500`}>
                       {item.description}
                     </p>
                   </div>
-                  <span className="flex items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 group-hover:text-emerald-700">
+                  <span className={`${styles.access} flex items-center justify-center gap-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 group-hover:text-emerald-700`}>
                     Acessar <ArrowUpRight className="size-3" />
                   </span>
                 </div>

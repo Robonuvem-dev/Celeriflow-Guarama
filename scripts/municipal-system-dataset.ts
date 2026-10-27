@@ -17,7 +17,9 @@ function recorder() { const stats: Stats = {}; return { stats, save: async (mode
 
 export async function seedFoundation({ tx }: Context) {
   const { save, stats } = recorder();
-  await save("Institution", tx.institution.createMany({ skipDuplicates: true, data: { id: key("institution"), name: "Prefeitura Municipal de Aurora das Veredas", legalName: "Município de Aurora das Veredas", city: "Aurora das Veredas", state: "MG", address: "Praça das Veredas, 100, Centro", phone: "(31) 3550-2100", email: "atendimento@auroradasveredas.example" } }));
+  if (!await tx.institution.count()) {
+    await save("Institution", tx.institution.createMany({ skipDuplicates: true, data: { id: key("institution"), name: "Prefeitura Municipal de Aurora das Veredas", legalName: "Município de Aurora das Veredas", city: "Aurora das Veredas", state: "MG", address: "Praça das Veredas, 100, Centro", phone: "(31) 3550-2100", email: "atendimento@auroradasveredas.example" } }));
+  }
   await save("Secretariat", tx.secretariat.createMany({ skipDuplicates: true, data: units.map((name, i) => ({ id: key("secretariat", i), name: `Secretaria Municipal de ${name}`, acronym: ["SEMAD", "SEMED", "SEMUS", "SEMAS", "SEMOB", "SEMUC", "SEMMA", "SESEG", "SEFAZ"][i] })) }));
   await save("Secretariat", tx.secretariat.createMany({ skipDuplicates: true, data: { id: "p0-current-secretariat-leg", name: "Diretoria Administrativa da Câmara Municipal", acronym: "DIRADM" } }));
   await save("Department", tx.department.createMany({ skipDuplicates: true, data: units.map((name, i) => ({ id: key("department", i), name: `Coordenação de ${name}`, secretariatId: key("secretariat", i), description: `Planejamento e acompanhamento das atividades de ${name.toLowerCase()}.` })) }));

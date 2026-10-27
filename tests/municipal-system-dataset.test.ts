@@ -16,12 +16,15 @@ test("carga municipal preserva cadastros, integra pessoas e repete sem duplicaç
     const profile = await db.configuracaoPerfil.findFirstOrThrow();
     const actor = await db.usuario.create({ data: { nome: "Marina Azevedo", email: "marina@auroradasveredas.example", perfilId: profile.id } });
     const existing = await db.person.create({ data: { fullName: "Cadastro preservado", cpf: "52998224725" } });
+    const institution = await db.institution.create({ data: { name: "Prefeitura cadastrada pelo responsável", city: "Aurora das Veredas", state: "MG" } });
     const operations = [seedFoundation, seedAdministration, seedCitizenServices, seedEducationHealthSocial, seedEnvironmentSanitation, seedCultureWorksSecurity, seedLegislative, seedPlanningProcurement, seedStockSstHealth, seedPortal, seedCommunityOperations];
     for (const operation of operations) await db.$transaction(tx => operation({ tx, actorId: actor.id }), { timeout: 120000 });
     assert.equal(await db.person.count(), 61); assert.equal(await db.company.count(), 20);
     const names = await db.person.findMany({ where: { id: { startsWith: "aurora-system-v1:person:" } }, select: { fullName: true } });
     assert.equal(new Set(names.map(row => row.fullName)).size, 60, "Nomes completos não repetem a cada 36 registros");
     assert.deepEqual(await db.person.findUniqueOrThrow({ where: { id: existing.id } }), existing);
+    assert.equal(await db.institution.count(), 1);
+    assert.deepEqual(await db.institution.findUniqueOrThrow({ where: { id: institution.id } }), institution);
     const student = await db.student.findUniqueOrThrow({ where: { id: key("student") }, include: { person: true, guardians: { include: { person: true } }, enrollments: { include: { schoolClass: { include: { school: true } } } } } });
     assert.equal(student.person.id, key("person", 40)); assert.equal(student.guardians[0].person.id, key("person"));
     assert.equal(student.person.fullName.split(" ").slice(1).join(" "), student.guardians[0].person.fullName.split(" ").slice(1).join(" "));
