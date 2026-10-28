@@ -1,0 +1,74 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { listPatientTimeline } from "../src/lib/saude/patient-timeline-service";
+
+test("linha do tempo Drizzle mantém as origens clínicas, datas UTC, titular e limite global", async () => {
+  const fixture = await createLocalDrizzleDatabase();
+  try {
+    await fixture.database.exec(`
+      CREATE TABLE "HealthUnit" (id text PRIMARY KEY, name text);
+      CREATE TABLE "HealthAppointment" (id text PRIMARY KEY, "patientId" text, "unitId" text, date timestamp(3), status text, specialty text);
+      CREATE TABLE "HealthTriage" ("appointmentId" text, "chiefComplaint" text, "riskClassification" text, "createdAt" timestamp(3));
+      CREATE TABLE "MedicalRecord" (id text PRIMARY KEY, "patientId" text, "unitId" text, date timestamp(3), type text, outcome text);
+      CREATE TABLE "HealthDiagnosis" ("medicalRecordId" text, "cidReferenceId" text);
+      CREATE TABLE "HealthSusReference" (id text PRIMARY KEY, code text);
+      CREATE TABLE "HealthPrescription" (id text PRIMARY KEY, "medicalRecordId" text);
+      CREATE TABLE "Medicine" (id text PRIMARY KEY, name text);
+      CREATE TABLE "MedicineDispensation" (id text PRIMARY KEY, "patientId" text, "medicineId" text, "unitId" text, date timestamp(3), quantity integer, status text, "cancellationReason" text);
+      CREATE TABLE "Vaccine" (id text PRIMARY KEY, name text);
+      CREATE TABLE "VaccinationRecord" (id text PRIMARY KEY, "patientId" text, "vaccineId" text, "unitId" text, date timestamp(3), "doseNumber" integer);
+      CREATE TABLE "HealthExamRequest" (id text PRIMARY KEY, "patientId" text, date timestamp(3), "examName" text, status text);
+      CREATE TABLE "HealthLabExamModel" (id text PRIMARY KEY, name text);
+      CREATE TABLE "HealthLabOrder" (id text PRIMARY KEY, "patientId" text, "examRequestId" text, "examModelId" text, "createdAt" timestamp(3), status text);
+      CREATE TABLE "Document" (id text PRIMARY KEY, title text);
+      CREATE TABLE "HealthLabReport" (id text PRIMARY KEY, "orderId" text, "documentId" text, "createdAt" timestamp(3), "publishedAt" timestamp(3), status text);
+      CREATE TABLE "HealthReferral" (id text PRIMARY KEY, "patientId" text, date timestamp(3), specialty text, status text);
+      CREATE TABLE "HealthSpecialty" (id text PRIMARY KEY, name text);
+      CREATE TABLE "HealthService" (id text PRIMARY KEY, name text);
+      CREATE TABLE "HealthRegulationRequest" (id text PRIMARY KEY, "patientId" text, "specialtyId" text, "serviceId" text, "createdAt" timestamp(3), status text, "guideNumber" text);
+      CREATE TABLE "HealthTfdRequest" (id text PRIMARY KEY, "patientId" text, "createdAt" timestamp(3), destination text, status text);
+      CREATE TABLE "HealthHomeVisit" (id text PRIMARY KEY, "visitedAt" timestamp(3), actions text);
+      CREATE TABLE "HealthHomeVisitParticipant" ("patientId" text, "visitId" text);
+      CREATE TABLE "HealthTeam" (id text PRIMARY KEY, name text);
+      CREATE TABLE "SpecializedTherapeuticPlan" (id text PRIMARY KEY, "patientId" text, "teamId" text, "startedAt" timestamp(3), status text);
+      INSERT INTO "HealthUnit" VALUES ('unit','UBS');
+      INSERT INTO "HealthAppointment" VALUES ('own','patient','unit','2026-10-01 12:00:00.123','Agendado','Clínica'),('other','other-patient','unit','2026-10-28','Agendado','Sigiloso');
+      INSERT INTO "HealthTriage" VALUES ('own','Dor','Normal','2026-10-02'),('other','Sigiloso','Normal','2026-10-28');
+      INSERT INTO "MedicalRecord" VALUES ('record','patient','unit','2026-10-03','Consulta','Alta');
+      INSERT INTO "HealthSusReference" VALUES ('cid','I10');
+      INSERT INTO "HealthDiagnosis" VALUES ('record','cid');
+      INSERT INTO "HealthPrescription" VALUES ('prescription','record');
+      INSERT INTO "Medicine" VALUES ('medicine','Medicamento');
+      INSERT INTO "MedicineDispensation" VALUES ('dispensation','patient','medicine',NULL,'2026-10-04',1,'CANCELLED','Estorno documentado');
+      INSERT INTO "Vaccine" VALUES ('vaccine','Vacina');
+      INSERT INTO "VaccinationRecord" VALUES ('vaccination','patient','vaccine','unit','2026-10-05',2);
+      INSERT INTO "HealthExamRequest" VALUES ('exam','patient','2026-10-06','Exame','Solicitado');
+      INSERT INTO "HealthLabExamModel" VALUES ('model','Modelo');
+      INSERT INTO "HealthLabOrder" VALUES ('order','patient','exam','model','2026-10-07','COLLECTED');
+      INSERT INTO "Document" VALUES ('document','Laudo');
+      INSERT INTO "HealthLabReport" VALUES ('report','order','document','2026-10-08','2026-10-08','RELEASED');
+      INSERT INTO "HealthReferral" VALUES ('referral','patient','2026-10-09','Cardiologia','Encaminhado');
+      INSERT INTO "HealthSpecialty" VALUES ('specialty','Cardiologia');
+      INSERT INTO "HealthRegulationRequest" VALUES ('regulation','patient','specialty',NULL,'2026-10-10','AUTORIZADA','GUIA-1');
+      INSERT INTO "HealthTfdRequest" VALUES ('tfd','patient','2026-10-11','Destino','AUTORIZADA');
+      INSERT INTO "HealthHomeVisit" VALUES ('visit','2026-10-12','Acompanhamento');
+      INSERT INTO "HealthHomeVisitParticipant" VALUES ('patient','visit');
+      INSERT INTO "HealthTeam" VALUES ('team','Equipe multiprofissional');
+      INSERT INTO "SpecializedTherapeuticPlan" VALUES ('plan','patient','team','2026-10-13','ACTIVE');
+    `);
+    const timeline = await listPatientTimeline(fixture.connection.db, "patient");
+    assert.equal(timeline.length, 15);
+    assert.deepEqual(timeline.map(event => event.kind).sort(), ["AGENDAMENTO", "ACOLHIMENTO", "ATENDIMENTO", "DIAGNOSTICO", "PRESCRICAO", "DISPENSACAO", "VACINA", "EXAME", "COLETA", "LAUDO", "ENCAMINHAMENTO", "REGULACAO", "TFD", "VISITA", "CENTRO_ESPECIALIZADO"].sort());
+    assert.ok(timeline.every(event => event.date instanceof Date && !event.title.includes("Sigiloso")));
+    assert.ok(timeline.every((event, index) => index === 0 || event.date <= timeline[index - 1].date));
+    assert.equal(timeline.find(event => event.id === "agendamento:own")?.date.toISOString(), "2026-10-01T12:00:00.123Z");
+    assert.equal(timeline.find(event => event.id === "dispensacao:dispensation")?.detail, "Estorno documentado");
+    assert.equal(timeline.find(event => event.id === "diagnostico:record:I10")?.href, "/saude/atendimentos/record");
+    assert.match(timeline[0].title, /Equipe multiprofissional/);
+    assert.deepEqual((await listPatientTimeline(fixture.connection.db, "patient", 3)).map(event => event.id), timeline.slice(0, 3).map(event => event.id));
+    assert.deepEqual(await listPatientTimeline(fixture.connection.db, "unknown-patient"), []);
+  } finally {
+    await fixture.close();
+  }
+});

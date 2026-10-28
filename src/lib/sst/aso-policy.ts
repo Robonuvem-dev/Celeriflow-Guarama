@@ -57,7 +57,7 @@ export function asoOccasion(kind: keyof typeof asoKinds) {
 }
 
 export const asoGroupSnapshot = z.object({
-  code: z.string(), name: z.string(), departmentIds: z.array(z.string()), roleIds: z.array(z.string()),
+  code: z.string(), name: z.string(), departmentIds: z.array(z.string()).nullable().transform(value => value ?? []), roleIds: z.array(z.string()).nullable().transform(value => value ?? []),
   startsAt: z.string(), endsAt: z.string().nullable(),
 });
 function programCivilDay(value: Date) {

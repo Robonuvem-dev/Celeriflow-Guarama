@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProcurementExportDownload, ProcurementExportError } from "@/lib/integrations/procurement-exports";
+import { db } from "@/db/client";
 import { AccessError, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 
 export const runtime = "nodejs";
@@ -10,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ run
   try {
     const { runId } = await params;
     const context = await getTenantContextForModuleOperation("COMPRAS", "issueReports");
-    const download = await getProcurementExportDownload(context.prisma, z.string().min(1).max(191).parse(runId), context.user.id);
+    const download = await getProcurementExportDownload(context.database ?? db, z.string().min(1).max(191).parse(runId), context.user.id);
     return new Response(download.content, {
       headers: {
         "Content-Type": "application/json; charset=utf-8",

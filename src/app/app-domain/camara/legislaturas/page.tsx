@@ -1,16 +1,11 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import LegislaturasClient from "./LegislaturasClient";
+import { db } from "@/db/client";
+import { listLegislatures } from "@/db/repositories/chamber/queries";
 
 export default async function LegislaturasPage() {
-  const { prisma } = await getTenantContextForModule("CAMARA");
-  const legislaturas = await prisma.camLegislatura.findMany({
-    orderBy: { numero: 'desc' },
-    include: {
-      _count: {
-        select: { vereadores: true }
-      }
-    }
-  });
+  await getTenantContextForModule("CAMARA");
+  const legislaturas = await listLegislatures(db);
 
   return <LegislaturasClient legislaturas={legislaturas} />;
 }

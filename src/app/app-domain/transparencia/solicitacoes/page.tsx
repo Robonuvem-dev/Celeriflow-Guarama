@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { respondCitizenRequest, extendCitizenDeadline, respondCitizenAppeal } from "./actions";
+import { db } from "@/db/client";
+import { asc, count, desc, eq, inArray } from "drizzle-orm";
+import { transparencyCitizenRequests, transparencyCitizenAppeals } from "@/db/schema/citizen-channels";
 export const dynamic = "force-dynamic";
 export default async function CitizenManagementPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const context = await getTenantContextForModule("TRANSPARENCIA"), raw = await searchParams;
-  const page = Math.min(100000, Math.max(1, Number.parseInt(raw.page || "1") || 1)), where = raw.status && ["RECEBIDO", "EM_ANALISE", "RESPONDIDO"].includes(raw.status) ? { status: raw.status } : {};
-  const [entries, total] = await Promise.all([context.prisma.transparencyCitizenRequest.findMany({ where, include: { appeals: { orderBy: { level: "asc" } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 }), context.prisma.transparencyCitizenRequest.count({ where })]);
+  const page = Math.min(100000, Math.max(1, Number.parseInt(raw.page || "1") || 1)), where = raw.status && ["RECEBIDO", "EM_ANALISE", "RESPONDIDO"].includes(raw.status) ? eq(transparencyCitizenRequests.status,raw.status) : undefined;
+  const [requests, [{ total }]] = await Promise.all([db.select().from(transparencyCitizenRequests).where(where).orderBy(desc(transparencyCitizenRequests.createdAt),asc(transparencyCitizenRequests.id)).limit(20).offset((page-1)*20),db.select({total:count()}).from(transparencyCitizenRequests).where(where)]);
+  const appeals=requests.length?await db.select().from(transparencyCitizenAppeals).where(inArray(transparencyCitizenAppeals.requestId,requests.map(row=>row.id))).orderBy(asc(transparencyCitizenAppeals.level)):[];
+  const entries=requests.map(row=>({...row,appeals:appeals.filter(appeal=>appeal.requestId===row.id)}));
   const canUpdate = canPerformModuleOperation(context.user, "TRANSPARENCIA", "update");
   return <main className="mx-auto max-w-5xl space-y-4 p-5"><Link href="/transparencia" className="underline">← Portal e Transparência</Link><h1 className="text-2xl font-bold">Pedidos, prazos e recursos do cidadão</h1><p className="text-sm">Área restrita. Acompanhamento por protocolo e chave privada; casos integrados são respondidos no módulo de Atendimento/Ouvidoria.</p><form className="flex gap-3"><select name="status" defaultValue={raw.status} className="rounded border p-2"><option value="">Todas as situações</option><option>RECEBIDO</option><option>EM_ANALISE</option><option>RESPONDIDO</option></select><button className="rounded border p-2">Filtrar</button></form>
     {entries.map(entry => <article key={entry.id} className="space-y-3 rounded border bg-white p-4"><h2 className="font-bold">{entry.protocol} · {entry.entity} · {entry.type} · {entry.status}</h2><p>{entry.subject}</p><p className="text-sm">{entry.name || "Não identificado"} · {entry.email || "Sem e-mail"} · recebido {entry.createdAt.toISOString().slice(0, 10)} · prazo {entry.dueAt.toISOString().slice(0, 10)}</p><p className="whitespace-pre-wrap text-sm">{entry.message}</p>

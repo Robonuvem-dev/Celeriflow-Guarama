@@ -4,6 +4,8 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getIntegrationDefinition } from "@/lib/integrations/registry";
+import { db } from "@/db/client";
+import { healthIntegrationPageData } from "@/db/repositories/health-pages/catalogs";
 
 const HEALTH_CODES = ["MS_RENAME", "HORUS", "SIGAF", "TRANSPARENCIA_SAUDE", "ESUS_VACINACAO", "DISPOSITIVO_ASSISTENCIAL"];
 const EXECUTORS: Record<string, { label: string; href: string }> = {
@@ -17,9 +19,7 @@ const EXECUTORS: Record<string, { label: string; href: string }> = {
 
 export default async function SaudeIntegracoesPage() {
   const context = await getTenantContextForModule("SAUDE");
-  const connections = await context.prisma.integrationConnection.findMany({ where: { code: { in: HEALTH_CODES } }, include: { runs: { orderBy: { createdAt: "desc" }, take: 5, select: { operation: true, status: true, message: true, createdAt: true } } }, orderBy: { code: "asc" } });
-  const files = await context.prisma.healthSusFile.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { fileType: true, status: true, createdAt: true, competence: { select: { period: true } } } });
-  const batches = await context.prisma.healthEsusBatch.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { competence: true, status: true, createdAt: true } });
+  const { connections, files, batches } = await healthIntegrationPageData(context.database ?? db, HEALTH_CODES);
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
       <PageHeader title="Integrações da Saúde" icon={<PlugZap className="size-4 text-slate-700" />} action={<Link href="/app-domain/configuracoes/integracoes" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700">Configuração global</Link>} />

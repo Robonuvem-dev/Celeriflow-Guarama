@@ -1,6 +1,14 @@
 import { config } from "dotenv";
 import { createHash } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
+import { createDatabaseConnection } from "../src/db/connection";
+import type { JsonObject, JsonValue } from "../src/db/json";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { planningCatalogEntries, planningCatalogVersions } from "../src/db/schema/planning-catalog";
+import { accountingEvents, accountingPlans, accountingRules } from "../src/db/schema/finance-accounting";
+import { financialAuditLogs } from "../src/db/schema/finance-identity";
+import { assetCategories } from "../src/db/schema/assets";
+import { users } from "../src/db/schema/identity";
 
 config({ path: ".env.local", quiet: true });
 const apply = process.argv.includes("--apply");
@@ -17,60 +25,75 @@ const groups = [
   { code: "MUNICIPAL:IMOVEIS", group: "02.99" },
 ];
 
+function attributes(value: JsonValue): JsonObject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Atributos patrimoniais inválidos.");
+  return value;
+}
+
 async function main() {
-  const { prisma } = await import("../src/lib/prisma");
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL não configurada.");
+  const connection = createDatabaseConnection(url);
   try {
-    const result = await prisma.$transaction(async tx => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${versionId}, 0))::text`;
-      const source = await tx.planningCatalogVersion.findUniqueOrThrow({ where: { id: sourceId } });
-      if (source.sourceHash !== sourceHash || source.year !== 2026) throw new Error("Origem oficial patrimonial divergente.");
+    const result = await withDatabaseTransaction(connection, async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${versionId}, 0))::text`);
+      const [source] = await tx.select().from(planningCatalogVersions).where(eq(planningCatalogVersions.id, sourceId)).limit(1);
+      if (!source || source.sourceHash !== sourceHash || source.year !== 2026) throw new Error("Origem oficial patrimonial divergente.");
       const codes = groups.flatMap(row => [`3.6.1.5.1.${row.group}.00.00.00.00.00`, `1.2.3.9.1.${row.group}.00.00.00.00.00`]);
-      const entries = await tx.planningCatalogEntry.findMany({ where: { versionId: sourceId, kind: "ACCOUNT", code: { in: codes } }, orderBy: { code: "asc" } });
+      const entries = await tx.select().from(planningCatalogEntries).where(and(eq(planningCatalogEntries.versionId, sourceId), eq(planningCatalogEntries.kind, "ACCOUNT"), inArray(planningCatalogEntries.code, codes))).orderBy(asc(planningCatalogEntries.code));
       if (entries.length !== codes.length) throw new Error("Contas oficiais de impairment incompletas.");
       const canonical = new Map<string, string>();
       for (const entry of entries) {
-        const a = entry.attributes as Prisma.JsonObject;
+        const a = attributes(entry.attributes);
         if (a.postingAllowed !== true || a.informationNature !== "P" || a.balanceNature !== (entry.code.startsWith("1.") ? "C" : "D") || a.effectiveFrom !== "2026-01-01" || a.effectiveUntil !== "2026-12-31") throw new Error(`Conta inválida: ${entry.code}.`);
-        const existing = await tx.accountingPlan.findUnique({ where: { code: entry.code } });
+        const [existing] = await tx.select().from(accountingPlans).where(eq(accountingPlans.code, entry.code)).limit(1);
         const type = entry.code.startsWith("1.") ? "Ativo" : "VPD";
         if (existing && (existing.name !== entry.name || existing.type !== type)) throw new Error(`Conta existente divergente: ${entry.code}.`);
         canonical.set(entry.code, existing?.id ?? `aurora-account:${entry.code}`);
       }
       const hash = createHash("sha256").update(JSON.stringify({ sourceHash, decision, entries: entries.map(row => ({ code: row.code, name: row.name, attributes: row.attributes })) })).digest("hex");
-      const catalog = await tx.planningCatalogVersion.findUnique({ where: { id: versionId }, include: { entries: true } });
-      if (catalog && (catalog.status !== "PUBLISHED" || catalog.sourceHash !== hash || catalog.entries.length !== entries.length || catalog.entries.some(row => {
+      const [catalog] = await tx.select().from(planningCatalogVersions).where(eq(planningCatalogVersions.id, versionId)).limit(1);
+      const catalogEntries = catalog ? await tx.select().from(planningCatalogEntries).where(eq(planningCatalogEntries.versionId, versionId)) : [];
+      if (catalog && (catalog.status !== "PUBLISHED" || catalog.sourceHash !== hash || catalogEntries.length !== entries.length || catalogEntries.some(row => {
         const original = entries.find(entry => entry.code === row.code);
-        const a = row.attributes as Prisma.JsonObject;
+        const a = attributes(row.attributes);
         return !original || row.name !== original.name || row.canonicalId !== canonical.get(row.code) || a.sourceEntryId !== original.id || a.operational !== true || a.pocOnly !== false || a.postingAllowed !== true;
       }))) throw new Error("Edição publicada de impairment divergente.");
       const profiles = [];
       for (const row of groups) {
-        const category = await tx.assetCategory.findUniqueOrThrow({ where: { code: row.code } });
+        const [category] = await tx.select().from(assetCategories).where(eq(assetCategories.code, row.code)).limit(1);
+        if (!category) throw new Error(`Categoria indisponível: ${row.code}.`);
         if (!category.isActive) throw new Error(`Categoria inativa: ${row.code}.`);
         const eventCode = `ASSET_IMPAIRMENT:${category.id}`;
         const debitAccountId = canonical.get(`3.6.1.5.1.${row.group}.00.00.00.00.00`)!;
         const creditAccountId = canonical.get(`1.2.3.9.1.${row.group}.00.00.00.00.00`)!;
-        const event = await tx.accountingEventCatalog.findUnique({ where: { code: eventCode }, include: { rules: { where: { isActive: true } } } });
-        if (event && (!event.isActive || event.rules.length !== 1 || event.rules[0].isReference || event.rules[0].debitAccountId !== debitAccountId || event.rules[0].creditAccountId !== creditAccountId)) throw new Error(`Matriz existente divergente: ${eventCode}.`);
+        const [event] = await tx.select().from(accountingEvents).where(eq(accountingEvents.code, eventCode)).limit(1);
+        const rules = event ? await tx.select().from(accountingRules).where(and(eq(accountingRules.eventId, event.id), eq(accountingRules.isActive, true))) : [];
+        if (event && (!event.isActive || rules.length !== 1 || rules[0].isReference || rules[0].debitAccountId !== debitAccountId || rules[0].creditAccountId !== creditAccountId)) throw new Error(`Matriz existente divergente: ${eventCode}.`);
         profiles.push({ categoryId: category.id, eventCode, debitAccountId, creditAccountId, exists: !!event });
       }
-      const audit = await tx.financialAuditLog.findFirst({ where: { action: "ADOPT_ASSET_IMPAIRMENT_PROFILES", entityId: versionId } });
+      const [audit] = await tx.select({ id: financialAuditLogs.id }).from(financialAuditLogs).where(and(eq(financialAuditLogs.action, "ADOPT_ASSET_IMPAIRMENT_PROFILES"), eq(financialAuditLogs.entityId, versionId))).limit(1);
       if (audit && (!catalog || profiles.some(row => !row.exists))) throw new Error("Adoção auditada incompleta.");
       if (apply) {
-        const actor = await tx.usuario.findFirstOrThrow({ where: { ativo: true }, orderBy: { createdAt: "asc" }, select: { id: true } });
-        for (const entry of entries) await tx.accountingPlan.upsert({ where: { code: entry.code }, update: {}, create: { id: canonical.get(entry.code)!, code: entry.code, name: entry.name, type: entry.code.startsWith("1.") ? "Ativo" : "VPD" } });
+        const [actor] = await tx.select({ id: users.id }).from(users).where(eq(users.ativo, true)).orderBy(asc(users.createdAt)).limit(1);
+        if (!actor) throw new Error("Usuário ativo para adoção patrimonial indisponível.");
+        for (const entry of entries) await tx.insert(accountingPlans).values({ id: canonical.get(entry.code)!, code: entry.code, name: entry.name, type: entry.code.startsWith("1.") ? "Ativo" : "VPD" }).onConflictDoNothing({ target: accountingPlans.code });
         if (!catalog) {
-          await tx.planningCatalogVersion.create({ data: { id: versionId, year: 2026, label: "Aurora das Veredas — impairment patrimonial 2026 v1", sourceHash: hash, normativeReference: decision, status: "DRAFT", createdById: actor.id, entries: { create: entries.map(entry => ({ kind: "ACCOUNT", code: entry.code, name: entry.name, degree: entry.degree, canonicalId: canonical.get(entry.code)!, attributes: { ...(entry.attributes as Prisma.JsonObject), mapped: true, operational: true, pocOnly: false, sourceEntryId: entry.id, sourceVersionId: sourceId, decision } })) } } });
-          await tx.planningCatalogVersion.update({ where: { id: versionId }, data: { status: "PUBLISHED" } });
+          await tx.insert(planningCatalogVersions).values({ id: versionId, year: 2026, label: "Aurora das Veredas — impairment patrimonial 2026 v1", sourceHash: hash, normativeReference: decision, status: "DRAFT", createdById: actor.id });
+          await tx.insert(planningCatalogEntries).values(entries.map(entry => ({ versionId, kind: "ACCOUNT", code: entry.code, name: entry.name, degree: entry.degree, canonicalId: canonical.get(entry.code)!, attributes: { ...attributes(entry.attributes), mapped: true, operational: true, pocOnly: false, sourceEntryId: entry.id, sourceVersionId: sourceId, decision } })));
+          await tx.update(planningCatalogVersions).set({ status: "PUBLISHED" }).where(eq(planningCatalogVersions.id, versionId));
         }
-        for (const profile of profiles.filter(row => !row.exists)) await tx.accountingEventCatalog.create({ data: { code: profile.eventCode, name: `Redução a valor recuperável — ${profile.categoryId}`, description: decision, rules: { create: { debitAccountId: profile.debitAccountId, creditAccountId: profile.creditAccountId, isReference: false, description: versionId } } } });
-        if (!audit) await tx.financialAuditLog.create({ data: { action: "ADOPT_ASSET_IMPAIRMENT_PROFILES", entityType: "PlanningCatalogVersion", entityId: versionId, authorUsuarioId: actor.id, payload: { hash, sourceHash, decision, profiles } } });
+        for (const profile of profiles.filter(row => !row.exists)) {
+          const [event] = await tx.insert(accountingEvents).values({ code: profile.eventCode, name: `Redução a valor recuperável — ${profile.categoryId}`, description: decision }).returning({ id: accountingEvents.id });
+          await tx.insert(accountingRules).values({ eventId: event.id, debitAccountId: profile.debitAccountId, creditAccountId: profile.creditAccountId, isReference: false, description: versionId });
+        }
+        if (!audit) await tx.insert(financialAuditLogs).values({ action: "ADOPT_ASSET_IMPAIRMENT_PROFILES", entityType: "PlanningCatalogVersion", entityId: versionId, authorUsuarioId: actor.id, payload: { hash, sourceHash, decision, profiles } });
       }
-      const auditCount = await tx.financialAuditLog.count({ where: { action: "ADOPT_ASSET_IMPAIRMENT_PROFILES", entityId: versionId } });
+      const [{ total: auditCount }] = await tx.select({ total: count() }).from(financialAuditLogs).where(and(eq(financialAuditLogs.action, "ADOPT_ASSET_IMPAIRMENT_PROFILES"), eq(financialAuditLogs.entityId, versionId)));
       if ((audit || apply) && auditCount !== 1) throw new Error("Auditoria de impairment divergente.");
       return { mode: apply ? "ADDITIVE_IDEMPOTENT" : "READ_ONLY", versionId, hash, auditCount, accountCount: entries.length, profiles };
-    }, { timeout: 60000 });
+    }, { timeoutMs: 60000 });
     console.log(JSON.stringify(result, null, 2));
-  } finally { await prisma.$disconnect(); }
+  } finally { await connection.pool.end(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

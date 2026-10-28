@@ -3,7 +3,11 @@
 import { getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Prisma, type TrafficInfractionTicket } from "@prisma/client";
+import type { TrafficInfractionTicket } from "@/lib/contracts/security-mobility";
+import { db } from "@/db/client";
+import { Decimal } from "@/db/decimal";
+import { trafficTickets } from "@/db/schema/security-mobility";
+import { listTrafficTickets } from "@/db/repositories/security-mobility/queries";
 
 type ActionResult<T = unknown> = { error?: string; data?: T };
 
@@ -22,25 +26,23 @@ export async function issueTrafficTicketAction(input: z.infer<typeof ticketSchem
 
   try {
     const context = await getTenantContextForModuleOperation("SEGURANCA", "create");
-    const { prisma, user } = context;
+    const { user } = context;
 
     const numeroAit = `AIT-GM-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
     const qrCodePix = `00020126580014BR.GOV.BCB.PIX0136ait-multas-${numeroAit}5204000053039865405${parsed.data.valorMulta.toFixed(2)}5802BR5925GUARDA MUNICIPAL6009CAMPINA GR62070503***6304E2B1`;
 
-    const ticket = await prisma.trafficInfractionTicket.create({
-      data: {
+    const [ticket] = await db.insert(trafficTickets).values({
         numeroAit,
         placaVeiculo: parsed.data.placaVeiculo.toUpperCase(),
         chassi: parsed.data.chassi,
         codigoCtb: parsed.data.codigoCtb,
         descricaoInfracao: parsed.data.descricaoInfracao,
-        valorMulta: new Prisma.Decimal(parsed.data.valorMulta),
+        valorMulta: new Decimal(parsed.data.valorMulta),
         geolocalizacao: parsed.data.geolocalizacao,
         agenteMatricula: user.employeeId || "GM-1092",
         status: "TRANSMITIDO_SNA",
         qrCodePix,
-      },
-    });
+    }).returning();
 
     revalidatePath("/seguranca/infracoes");
     return { data: ticket };
@@ -51,11 +53,8 @@ export async function issueTrafficTicketAction(input: z.infer<typeof ticketSchem
 
 export async function getTrafficTicketsAction(): Promise<ActionResult<TrafficInfractionTicket[]>> {
   try {
-    const context = await getTenantContextForModule("SEGURANCA");
-    const tickets = await context.prisma.trafficInfractionTicket.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
+    await getTenantContextForModule("SEGURANCA");
+    const tickets = await listTrafficTickets(db);
     return { data: tickets };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Erro ao carregar autos de infração." };

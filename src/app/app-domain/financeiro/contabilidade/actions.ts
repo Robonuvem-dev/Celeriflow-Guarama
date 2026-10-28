@@ -1,4 +1,5 @@
 "use server";
+import { databaseConnection } from "@/db/client";
 
 import { FinanceError, authorizeAccountingMonthClose, authorizeAccountingMonthReopen, configureAccountingPostingRule, finalizeAnnualAccountingClose, postAccountingTransaction, prepareAnnualAccountingClose, requestAccountingMonthClose, requestAccountingMonthReopen } from "@/lib/financeiro";
 import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
@@ -19,7 +20,7 @@ const financeActor = (context: Awaited<ReturnType<typeof getTenantContextForModu
 export async function captureAnnualConsistency(financialYearId: string) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "issueReports");
-    return { report: await captureAnnualConsistencyReport(context.prisma, financeActor(context), financialYearId) };
+    return { report: await captureAnnualConsistencyReport(databaseConnection, financeActor(context), financialYearId) };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Não foi possível emitir a conferência anual." };
   }
@@ -28,7 +29,7 @@ export async function captureAnnualConsistency(financialYearId: string) {
 export async function executeAnnualRegistration(data: { financialYearId: string; operation: "REGISTER" | "UNDO"; reason: string; requestKey: string }) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const result = await executeAnnualPayableRegistration(context.prisma, financeActor(context), data);
+    const result = await executeAnnualPayableRegistration(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
     revalidatePath("/financeiro/restos-a-pagar");
@@ -41,7 +42,7 @@ export async function executeAnnualRegistration(data: { financialYearId: string;
 export async function executeEstimativeBalances(data: { financialYearId: string; operation: "KEEP" | "CANCEL_UNSETTLED"; reason: string; requestKey: string }) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const result = await executeAnnualEstimativeBalances(context.prisma, financeActor(context), data);
+    const result = await executeAnnualEstimativeBalances(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
     revalidatePath("/financeiro/empenhos");
@@ -56,7 +57,7 @@ export async function executeEstimativeBalances(data: { financialYearId: string;
 export async function executeAnnualStage(data: { stage: "OPENING" | "RESULT_CLOSE" | "BUDGET_CLOSE"; sourceFinancialYearId: string; targetFinancialYearId: string; resultAccountId: string; reason: string; requestKey: string }): Promise<{ error?: string; editionId?: string; replay?: boolean; provisional?: boolean }> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const result = await executeAnnualBalanceStage(context.prisma, financeActor(context), data);
+    const result = await executeAnnualBalanceStage(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/lancamentos");
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
@@ -69,7 +70,7 @@ export async function executeAnnualStage(data: { stage: "OPENING" | "RESULT_CLOS
 export async function undoAnnualResult(data: { editionId: string; reason: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await undoAnnualResultStage(context.prisma, financeActor(context), data);
+    await undoAnnualResultStage(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/lancamentos");
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
@@ -82,7 +83,7 @@ export async function undoAnnualResult(data: { editionId: string; reason: string
 export async function undoAnnualBudget(data: { editionId: string; reason: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await undoAnnualBudgetStage(context.prisma, financeActor(context), data);
+    await undoAnnualBudgetStage(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/lancamentos");
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
@@ -95,7 +96,7 @@ export async function undoAnnualBudget(data: { editionId: string; reason: string
 export async function publishAnnualRapPostings(data: { financialYearId: string; reason: string; requestKey: string }) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const result = await executeAnnualRapPostings(context.prisma, financeActor(context), data);
+    const result = await executeAnnualRapPostings(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/lancamentos");
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
@@ -106,7 +107,7 @@ export async function publishAnnualRapPostings(data: { financialYearId: string; 
 export async function undoAnnualRapPostings(data: { editionId: string; reason: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await undoAnnualRapPostingStage(context.prisma, financeActor(context), data);
+    await undoAnnualRapPostingStage(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/lancamentos");
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
@@ -117,7 +118,7 @@ export async function undoAnnualRapPostings(data: { editionId: string; reason: s
 export async function transportAnnualExtraNotes(data: { sourceFinancialYearId: string; targetFinancialYearId: string; reason: string; requestKey: string }) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const result = await executeAnnualExtraNoteTransport(context.prisma, financeActor(context), data);
+    const result = await executeAnnualExtraNoteTransport(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
     return { stageId: result.stageId, replay: result.replay };
   } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível transportar as notas extraorçamentárias." }; }
@@ -126,7 +127,7 @@ export async function transportAnnualExtraNotes(data: { sourceFinancialYearId: s
 export async function undoAnnualExtraNotes(data: { stageId: string; reason: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await undoAnnualExtraNoteTransport(context.prisma, financeActor(context), data);
+    await undoAnnualExtraNoteTransport(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
     return {};
   } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível desmovimentar as notas extraorçamentárias." }; }
@@ -135,7 +136,7 @@ export async function undoAnnualExtraNotes(data: { stageId: string; reason: stri
 export async function transportAnnualPrograms(data: { sourceFinancialYearId: string; targetFinancialYearId: string; paymentIds: string[]; reason: string; requestKey: string }) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const result = await transportAnnualPaymentPrograms(context.prisma, financeActor(context), data);
+    const result = await transportAnnualPaymentPrograms(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
     revalidatePath("/financeiro/pagamentos");
     revalidatePath("/financeiro/restos-a-pagar");
@@ -146,7 +147,7 @@ export async function transportAnnualPrograms(data: { sourceFinancialYearId: str
 export async function prepareAnnualPrograms(data: { sourceFinancialYearId: string; targetFinancialYearId: string; paymentIds: string[]; reason: string; requestKey: string }) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const result = await prepareAnnualPaymentPrograms(context.prisma, financeActor(context), data);
+    const result = await prepareAnnualPaymentPrograms(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
     revalidatePath("/financeiro/contabilidade");
     return { stageId: result.stageId, replay: result.replay };
@@ -156,7 +157,7 @@ export async function prepareAnnualPrograms(data: { sourceFinancialYearId: strin
 export async function undoAnnualPrograms(data: { stageId: string; reason: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await undoAnnualPaymentPrograms(context.prisma, financeActor(context), data);
+    await undoAnnualPaymentPrograms(databaseConnection, financeActor(context), data);
     revalidatePath("/financeiro/contabilidade/etapas-anuais");
     revalidatePath("/financeiro/pagamentos");
     revalidatePath("/financeiro/restos-a-pagar");
@@ -167,7 +168,7 @@ export async function undoAnnualPrograms(data: { stageId: string; reason: string
 export async function postManualAccountingTransaction(data: { financialYearId: string; governmentEntityId: string; budgetUnitId: string; date: string; history: string; debitAccountId: string; creditAccountId: string; value: number }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    await postAccountingTransaction(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, {
+    await postAccountingTransaction(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, {
       financialYearId: data.financialYearId,
       governmentEntityId: data.governmentEntityId,
       budgetUnitId: data.budgetUnitId,
@@ -185,7 +186,7 @@ export async function postManualAccountingTransaction(data: { financialYearId: s
 export async function requestMonthClose(data: { financialYearId: string; competence: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await requestAccountingMonthClose(context.prisma, financeActor(context), data.financialYearId, new Date(data.competence));
+    await requestAccountingMonthClose(databaseConnection, financeActor(context), data.financialYearId, new Date(data.competence));
     revalidatePath("/financeiro/contabilidade");
     return {};
   } catch (error) {
@@ -196,7 +197,7 @@ export async function requestMonthClose(data: { financialYearId: string; compete
 export async function authorizeMonthClose(data: { financialYearId: string; competence: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await authorizeAccountingMonthClose(context.prisma, financeActor(context), data.financialYearId, new Date(data.competence));
+    await authorizeAccountingMonthClose(databaseConnection, financeActor(context), data.financialYearId, new Date(data.competence));
     revalidatePath("/financeiro/contabilidade");
     return {};
   } catch (error) {
@@ -207,7 +208,7 @@ export async function authorizeMonthClose(data: { financialYearId: string; compe
 export async function requestMonthReopen(data: { financialYearId: string; competence: string; justification: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await requestAccountingMonthReopen(context.prisma, financeActor(context), data.financialYearId, new Date(data.competence), data.justification);
+    await requestAccountingMonthReopen(databaseConnection, financeActor(context), data.financialYearId, new Date(data.competence), data.justification);
     revalidatePath("/financeiro/contabilidade");
     return {};
   } catch (error) {
@@ -218,7 +219,7 @@ export async function requestMonthReopen(data: { financialYearId: string; compet
 export async function authorizeMonthReopen(data: { financialYearId: string; competence: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await authorizeAccountingMonthReopen(context.prisma, financeActor(context), data.financialYearId, new Date(data.competence));
+    await authorizeAccountingMonthReopen(databaseConnection, financeActor(context), data.financialYearId, new Date(data.competence));
     revalidatePath("/financeiro/contabilidade");
     return {};
   } catch (error) {
@@ -229,7 +230,7 @@ export async function authorizeMonthReopen(data: { financialYearId: string; comp
 export async function prepareAnnualClose(financialYearId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await prepareAnnualAccountingClose(context.prisma, financeActor(context), financialYearId);
+    await prepareAnnualAccountingClose(databaseConnection, financeActor(context), financialYearId);
     revalidatePath("/financeiro/contabilidade");
     return {};
   } catch (error) {
@@ -240,7 +241,7 @@ export async function prepareAnnualClose(financialYearId: string): Promise<Actio
 export async function finalizeAnnualClose(financialYearId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await finalizeAnnualAccountingClose(context.prisma, financeActor(context), financialYearId);
+    await finalizeAnnualAccountingClose(databaseConnection, financeActor(context), financialYearId);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/orcamento");
     return {};
@@ -252,7 +253,7 @@ export async function finalizeAnnualClose(financialYearId: string): Promise<Acti
 export async function savePostingRule(data: { eventCode: string; eventName: string; debitAccountId: string; creditAccountId: string; isReference?: boolean; components?: { debitAccountId: string; creditAccountId: string; valueBasis: "EVENT_VALUE" | "PAYMENT_NET" | "PAYMENT_RETENTION"; creditFromOriginBank?: boolean }[] }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await configureAccountingPostingRule(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId }, data);
+    await configureAccountingPostingRule(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId }, data);
     revalidatePath("/financeiro/contabilidade");
     revalidatePath("/financeiro/contabilidade/eventos");
     return {};

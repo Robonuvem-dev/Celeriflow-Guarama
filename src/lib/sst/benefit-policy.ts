@@ -1,8 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { z } from "zod";
 
 // Exact from submitted string through persistence and totals; never uses Float.
-export const ExactDecimal = Prisma.Decimal.clone({ precision: 40 });
+export const ExactDecimal = Decimal.clone({ precision: 40 });
 export const benefitMoney = z.string().trim().regex(/^\d{1,14}([.,]\d{1,2})?$/, "Informe valor monetário com até duas casas decimais.").transform((value) => new ExactDecimal(value.replace(",", ".")).toFixed(2));
 export const benefitDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
   const date = new Date(`${value}T00:00:00Z`);
@@ -45,7 +45,7 @@ export function benefitCoversCompetence(startsAt: Date, endsAt: Date, competence
 }
 export type BenefitLedgerRow = { beneficiaryId: string; competence: string; kind: string; amount: { toString(): string } };
 export function summarizeBenefitLedger(rows: BenefitLedgerRow[]) {
-  const groups = new Map<string, { beneficiaryId: string; competence: string; monthly: Prisma.Decimal; extraordinary: Prisma.Decimal; refunds: Prisma.Decimal; net: Prisma.Decimal }>();
+  const groups = new Map<string, { beneficiaryId: string; competence: string; monthly: Decimal; extraordinary: Decimal; refunds: Decimal; net: Decimal }>();
   for (const row of rows) {
     const key = `${row.beneficiaryId}:${row.competence}`;
     const group = groups.get(key) ?? { beneficiaryId: row.beneficiaryId, competence: row.competence, monthly: new ExactDecimal(0), extraordinary: new ExactDecimal(0), refunds: new ExactDecimal(0), net: new ExactDecimal(0) };

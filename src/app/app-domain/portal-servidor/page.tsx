@@ -2,6 +2,9 @@ import { BadgeCheck, CalendarDays, Clock3, FileSignature, LockKeyhole, UserRound
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import Link from "next/link";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount } from "@/db/repositories/portal-servidor/records";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +41,12 @@ export default async function PortalServidorPage() {
   const currentMonthStart = new Date();
   currentMonthStart.setUTCDate(1);
   currentMonthStart.setUTCHours(0, 0, 0, 0);
+  const executor = context.database ?? db;
   const [pendingSignatures, plannedVacations, activeLeaves, currentMonthAttendance] = await Promise.all([
-    context.prisma.documentSignature.count({ where: { signerEmployeeId: employee.id, status: "PENDING" } }),
-    context.prisma.vacation.count({ where: { employeeId: employee.id, status: "Programada" } }),
-    context.prisma.leave.count({ where: { employeeId: employee.id, status: "Ativa" } }),
-    context.prisma.attendanceRecord.count({ where: { employeeId: employee.id, date: { gte: currentMonthStart } } }),
+    portalCount(executor, sql`SELECT count(*) FROM "DocumentSignature" WHERE "signerEmployeeId"=${employee.id} AND status='PENDING'`),
+    portalCount(executor, sql`SELECT count(*) FROM "Vacation" WHERE "employeeId"=${employee.id} AND status='Programada'`),
+    portalCount(executor, sql`SELECT count(*) FROM "Leave" WHERE "employeeId"=${employee.id} AND status='Ativa'`),
+    portalCount(executor, sql`SELECT count(*) FROM "AttendanceRecord" WHERE "employeeId"=${employee.id} AND date>=${currentMonthStart}`),
   ]);
 
   return (

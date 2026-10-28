@@ -3,14 +3,18 @@ import { z } from "zod";
 import { notFound } from "next/navigation";
 import { getTenantContextForModule, assertBudgetUnitAccess } from "@/lib/platform/tenant-context";
 import { riskInput, examOccasions } from "@/lib/sst/program-policy";
+import { findSstProgramScope, findSstProgramPage } from "@/db/repositories/sst-pages/programs";
+import { sstDatabase } from "@/lib/sst/database";
 
 export default async function SstProgramVersionPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SST");
   const { id } = await params;
-  const scope = await context.prisma.sstOccupationalProgram.findUnique({ where: { id }, select: { budgetUnitId: true } });
+  const database = sstDatabase(context);
+  const scope = await findSstProgramScope(database, id);
   if (!scope) notFound();
   assertBudgetUnitAccess(context.user, scope.budgetUnitId);
-  const record = await context.prisma.sstOccupationalProgram.findUniqueOrThrow({ where: { id }, include: { budgetUnit: { select: { name: true } }, groups: true } });
+  const record = await findSstProgramPage(database, id);
+  if (!record) notFound();
   const responsible = z.object({ name: z.string(), council: z.string() }).parse(record.responsibleSnapshot);
   const program = { ...record, responsible: { fullName: responsible.name }, responsibleCouncil: responsible.council };
   const content = z.record(z.string(), z.string()).parse(program.content);

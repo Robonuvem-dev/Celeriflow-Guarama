@@ -2,29 +2,32 @@ import Link from "next/link";
 import { z } from "zod";
 import { readAccountingMonthlySources } from "@/lib/financeiro/accounting-monthly-sources";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { db, databaseConnection } from "@/db/client";
+import { listAccountingReportUnits, listAccountingReportYears } from "@/db/repositories/finance/accounting-reports";
 
 export const dynamic = "force-dynamic";
 
 const filtersSchema = z.object({ governmentEntityId: z.string().min(1).optional(), financialYearId: z.string().min(1).optional(), budgetUnitId: z.string().min(1).optional(), account: z.string().trim().max(150).optional(), page: z.coerce.number().int().min(1).max(100000).default(1) });
 
 export default async function MonthlySourceBalancesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { prisma, user } = await getTenantContextForModule("FINANCEIRO");
+  const { database, user } = await getTenantContextForModule("FINANCEIRO");
+  const executor = database ?? db;
   const raw = await searchParams;
   const parsed = filtersSchema.safeParse(Object.fromEntries(Object.entries(raw).filter(([, value]) => typeof value === "string" && value !== "")));
   if (!parsed.success) return <p className="p-5">{parsed.error.issues[0]?.message}</p>;
   const filters = parsed.data;
   const allowedBudgetUnitIds = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const units = await prisma.planningEntityUnit.findMany({ where: allowedBudgetUnitIds ? { budgetUnitId: { in: allowedBudgetUnitIds } } : {}, select: { governmentEntityId: true, budgetUnitId: true, governmentEntity: { select: { name: true } }, budgetUnit: { select: { code: true, name: true } } }, orderBy: [{ governmentEntityId: "asc" }, { budgetUnitId: "asc" }] });
+  const units = await listAccountingReportUnits(executor, allowedBudgetUnitIds);
   const entities = [...new Map(units.map(unit => [unit.governmentEntityId, unit.governmentEntity.name])).entries()];
   const governmentEntityId = filters.governmentEntityId ?? entities[0]?.[0];
   if (!governmentEntityId || !entities.some(([id]) => id === governmentEntityId)) return <p className="p-5">Selecione entidade autorizada.</p>;
   const entityUnits = units.filter(unit => unit.governmentEntityId === governmentEntityId);
   if (filters.budgetUnitId && !entityUnits.some(unit => unit.budgetUnitId === filters.budgetUnitId)) return <p className="p-5">UG fora do ente ou do acesso autorizado.</p>;
-  const years = await prisma.financialYear.findMany({ where: { governmentEntityId }, select: { id: true, year: true, status: true }, orderBy: { year: "desc" } });
+  const years = await listAccountingReportYears(executor, governmentEntityId);
   const financialYearId = filters.financialYearId ?? years.find(year => year.status === "Aberto")?.id ?? years[0]?.id;
   if (!financialYearId || !years.some(year => year.id === financialYearId)) return <p className="p-5">Exercício fora da entidade selecionada.</p>;
   let report: Awaited<ReturnType<typeof readAccountingMonthlySources>>;
-  try { report = await readAccountingMonthlySources(prisma, { allowedBudgetUnitIds }, { governmentEntityId, financialYearId, budgetUnitId: filters.budgetUnitId, account: filters.account }); }
+  try { report = await readAccountingMonthlySources(databaseConnection, { allowedBudgetUnitIds }, { governmentEntityId, financialYearId, budgetUnitId: filters.budgetUnitId, account: filters.account }); }
   catch (error) { return <section className="space-y-3 p-5"><Link href="/financeiro/contabilidade" className="underline">Voltar à Contabilidade</Link><p>{error instanceof Error ? error.message : "Não foi possível conciliar a consulta de saldos."}</p></section>; }
   const unitLabels = new Map(entityUnits.map(unit => [unit.budgetUnitId, `${unit.budgetUnit.code} · ${unit.budgetUnit.name}`]));
   const visible = report.rows.slice((filters.page - 1) * 50, filters.page * 50);

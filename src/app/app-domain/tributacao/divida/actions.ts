@@ -1,11 +1,8 @@
 "use server";
 
-import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
+import { taxActionContext } from "@/db/repositories/tax-actions/context";
+import { insertActionDebt, updateActionDebt } from "@/db/repositories/tax-actions/records";
 import { revalidatePath } from "next/cache";
-
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("TRIBUTACAO", operation)).prisma;
-}
 
 export async function createActiveDebt(data: {
   cdaNumber: string;
@@ -15,9 +12,8 @@ export async function createActiveDebt(data: {
   updatedValue: number;
   taxpayerId: string;
 }) {
-  const prisma = await getTenantPrisma("create");
-  const result = await prisma.activeDebt.create({
-    data: {
+  const { database } = await taxActionContext("create");
+  const result = await insertActionDebt(database, {
       cdaNumber: data.cdaNumber,
       year: data.year,
       originDebtType: data.originDebtType,
@@ -25,7 +21,6 @@ export async function createActiveDebt(data: {
       updatedValue: data.updatedValue,
       taxpayerId: data.taxpayerId,
       status: "Inscrita"
-    }
   });
 
   revalidatePath("/tributacao/divida");
@@ -39,33 +34,24 @@ export async function updateActiveDebt(id: string, data: {
   originalValue?: number;
   updatedValue?: number;
 }) {
-  const prisma = await getTenantPrisma("update");
-  const result = await prisma.activeDebt.update({
-    where: { id },
-    data
-  });
+  const { database } = await taxActionContext("update");
+  const result = await updateActionDebt(database, id, data);
 
   revalidatePath("/tributacao/divida");
   return result;
 }
 
 export async function cancelActiveDebt(id: string) {
-  const prisma = await getTenantPrisma("update");
-  const result = await prisma.activeDebt.update({
-    where: { id },
-    data: { status: "Cancelada" }
-  });
+  const { database } = await taxActionContext("update");
+  const result = await updateActionDebt(database, id, { status: "Cancelada" });
 
   revalidatePath("/tributacao/divida");
   return result;
 }
 
 export async function reactivateActiveDebt(id: string) {
-  const prisma = await getTenantPrisma("update");
-  const result = await prisma.activeDebt.update({
-    where: { id },
-    data: { status: "Inscrita" }
-  });
+  const { database } = await taxActionContext("update");
+  const result = await updateActionDebt(database, id, { status: "Inscrita" });
 
   revalidatePath("/tributacao/divida");
   return result;

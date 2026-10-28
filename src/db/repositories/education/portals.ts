@@ -1,0 +1,39 @@
+import { and, asc, desc, eq, exists, inArray, isNotNull } from "drizzle-orm";
+import type { DatabaseExecutor } from "../../transaction";
+import { people } from "../../schema/people";
+import { employees } from "../../schema/administration";
+import { educationalGuardians, enrollments, schoolClasses, schools, schoolSubjects, students, teachers } from "../../schema/education-core";
+import { educationAttendances, educationGrades, learningActivities, learningSubmissions } from "../../schema/education-teaching";
+import { pedagogicalAttempts, pedagogicalCatalogItems, pedagogicalReleases } from "../../schema/education-interactive";
+import type { EducationGuardianPortalData, EducationInteractiveData } from "@/lib/contracts/education-portals";
+
+export async function loadEducationInteractiveData(database: DatabaseExecutor): Promise<EducationInteractiveData> {
+  const [subjects, teacherRows, classes, studentRows, catalog, releases, attemptRows] = await Promise.all([
+    database.select({ id: schoolSubjects.id, name: schoolSubjects.name }).from(schoolSubjects).where(eq(schoolSubjects.isActive, true)).orderBy(asc(schoolSubjects.name)),
+    database.select({ id: teachers.id, registration: employees.registration, person: { fullName: people.fullName } }).from(teachers).innerJoin(employees, eq(employees.id, teachers.employeeId)).leftJoin(people, eq(people.id, employees.personId)),
+    database.select({ id: schoolClasses.id, name: schoolClasses.name }).from(schoolClasses).where(eq(schoolClasses.status, "Aberta")).orderBy(asc(schoolClasses.name)),
+    database.select({ id: students.id, person: { fullName: people.fullName } }).from(students).innerJoin(people, eq(people.id, students.personId)).where(eq(students.status, "Ativo")).orderBy(asc(students.studentCode)),
+    database.select({ id: pedagogicalCatalogItems.id, title: pedagogicalCatalogItems.title }).from(pedagogicalCatalogItems).where(eq(pedagogicalCatalogItems.status, "Ativo")).orderBy(asc(pedagogicalCatalogItems.title)),
+    database.select({ id: pedagogicalReleases.id, studentId: pedagogicalReleases.studentId, classId: pedagogicalReleases.classId, catalogItem: { title: pedagogicalCatalogItems.title, instructions: pedagogicalCatalogItems.instructions, content: pedagogicalCatalogItems.content, durationSeconds: pedagogicalCatalogItems.durationSeconds } }).from(pedagogicalReleases).innerJoin(pedagogicalCatalogItems, eq(pedagogicalCatalogItems.id, pedagogicalReleases.catalogItemId)).orderBy(desc(pedagogicalReleases.publishedAt)),
+    database.select({ id: pedagogicalAttempts.id, score: pedagogicalAttempts.score, correctAnswers: pedagogicalAttempts.correctAnswers, incorrectAnswers: pedagogicalAttempts.incorrectAnswers, startedAt: pedagogicalAttempts.startedAt, completedAt: pedagogicalAttempts.completedAt, fullName: people.fullName, title: pedagogicalCatalogItems.title }).from(pedagogicalAttempts).innerJoin(students, eq(students.id, pedagogicalAttempts.studentId)).innerJoin(people, eq(people.id, students.personId)).innerJoin(pedagogicalReleases, eq(pedagogicalReleases.id, pedagogicalAttempts.releaseId)).innerJoin(pedagogicalCatalogItems, eq(pedagogicalCatalogItems.id, pedagogicalReleases.catalogItemId)).orderBy(desc(pedagogicalAttempts.score)).limit(100),
+  ]);
+  const enrollmentRows = studentRows.length ? await database.select({ studentId: enrollments.studentId, classId: enrollments.classId }).from(enrollments).where(and(inArray(enrollments.studentId, studentRows.map(row => row.id)), eq(enrollments.status, "Matriculado"))) : [];
+  return { subjects, teachers: teacherRows.map(({ id, registration, person }) => ({ id, employee: { registration, person } })), classes, students: studentRows.map(row => ({ ...row, enrollments: enrollmentRows.filter(enrollment => enrollment.studentId === row.id) })), catalog, releases, attempts: attemptRows.map(({ fullName, title, ...row }) => ({ ...row, student: { person: { fullName } }, release: { catalogItem: { title } } })) };
+}
+
+export async function loadEducationGuardianPortal(database: DatabaseExecutor, email: string, administrator: boolean): Promise<EducationGuardianPortalData | null> {
+  const [guardian] = await database.select({ id: people.id, fullName: people.fullName }).from(people).where(and(administrator ? undefined : eq(people.email, email), exists(database.select({ id: educationalGuardians.id }).from(educationalGuardians).where(eq(educationalGuardians.personId, people.id))))).orderBy(asc(people.fullName)).limit(1);
+  if (!guardian) return null;
+  const studentRows = await database.select({ id: students.id, studentCode: students.studentCode, status: students.status, person: { fullName: people.fullName } }).from(educationalGuardians).innerJoin(students, eq(students.id, educationalGuardians.studentId)).innerJoin(people, eq(people.id, students.personId)).where(eq(educationalGuardians.personId, guardian.id));
+  const children = Array.from(new Map(studentRows.map(row => [row.id, row])).values()), studentIds = children.map(row => row.id);
+  if (!studentIds.length) return { guardian, children: [], activities: [] };
+  const [enrollmentRows, grades, attendances] = await Promise.all([
+    database.select({ studentId: enrollments.studentId, classId: enrollments.classId, supportCode: enrollments.supportCode, status: enrollments.status, school: { name: schools.name }, schoolClass: { name: schoolClasses.name } }).from(enrollments).innerJoin(schools, eq(schools.id, enrollments.schoolId)).leftJoin(schoolClasses, eq(schoolClasses.id, enrollments.classId)).where(and(inArray(enrollments.studentId, studentIds), eq(enrollments.status, "Matriculado"))),
+    database.select({ studentId: educationGrades.studentId, period: educationGrades.period, value: educationGrades.value, concept: educationGrades.concept, schoolSubject: { name: schoolSubjects.name } }).from(educationGrades).innerJoin(schoolSubjects, eq(schoolSubjects.id, educationGrades.subjectId)).where(and(inArray(educationGrades.studentId, studentIds), isNotNull(educationGrades.publishedAt))),
+    database.select({ studentId: educationAttendances.studentId, isPresent: educationAttendances.isPresent }).from(educationAttendances).where(inArray(educationAttendances.studentId, studentIds)),
+  ]);
+  const classIds = enrollmentRows.flatMap(row => row.classId ? [row.classId] : []);
+  const activities = classIds.length ? await database.select({ id: learningActivities.id, classId: learningActivities.classId, title: learningActivities.title, instructions: learningActivities.instructions, dueAt: learningActivities.dueAt, schoolClass: { name: schoolClasses.name }, subject: { name: schoolSubjects.name } }).from(learningActivities).innerJoin(schoolClasses, eq(schoolClasses.id, learningActivities.classId)).innerJoin(schoolSubjects, eq(schoolSubjects.id, learningActivities.subjectId)).where(and(inArray(learningActivities.classId, classIds), eq(learningActivities.status, "Publicada"))).orderBy(asc(learningActivities.dueAt)) : [];
+  const submissions = activities.length ? await database.select({ activityId: learningSubmissions.activityId, studentId: learningSubmissions.studentId, status: learningSubmissions.status, answer: learningSubmissions.answer, score: learningSubmissions.score, feedback: learningSubmissions.feedback }).from(learningSubmissions).where(and(inArray(learningSubmissions.activityId, activities.map(row => row.id)), inArray(learningSubmissions.studentId, studentIds))) : [];
+  return { guardian, children: children.map(row => ({ ...row, enrollments: enrollmentRows.filter(enrollment => enrollment.studentId === row.id), grades: grades.filter(grade => grade.studentId === row.id), attendances: attendances.filter(attendance => attendance.studentId === row.id) })), activities: activities.map(row => ({ ...row, submissions: submissions.filter(submission => submission.activityId === row.id) })) };
+}

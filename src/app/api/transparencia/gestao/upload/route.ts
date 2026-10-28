@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { z } from "zod";
 import { getTenantContextForModuleOperation, AccessError } from "@/lib/platform/tenant-context";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { publicationMetadataSchema,isTransparencyCollectionEnabled } from "@/lib/transparencia/publication-policy";
 import {getTransparencySettings} from "@/lib/transparencia/presentation-settings";
 import { publicDocumentTypes, publicationUploadLimit, publicationUploadPrefix, registerPublicationUpload } from "@/lib/transparencia/publication-storage";
@@ -16,13 +16,13 @@ export async function POST(request: Request) {
         const context = await getTenantContextForModuleOperation("TRANSPARENCIA", "create");
         if (!isSameOriginRequest(request)) throw new Error("Origem inválida.");
         const payload = payloadSchema.parse(JSON.parse(clientPayload || "{}"));
-        const settings=await getTransparencySettings(context.prisma);if(!isTransparencyCollectionEnabled(payload.metadata.collectionSlug,settings)||!settings.availableYears.includes(payload.metadata.year))throw new Error("Consulta ou exercício não configurado.");
+        const settings=await getTransparencySettings(db);if(!isTransparencyCollectionEnabled(payload.metadata.collectionSlug,settings)||!settings.availableYears.includes(payload.metadata.year))throw new Error("Consulta ou exercício não configurado.");
         if (!pathname.startsWith(publicationUploadPrefix(context.user.id, payload.uploadId))) throw new Error("Destino de upload inválido.");
         return { allowedContentTypes: publicDocumentTypes, maximumSizeInBytes: publicationUploadLimit, addRandomSuffix: true, tokenPayload: JSON.stringify({ ...payload, userId: context.user.id }) };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         const payload = payloadSchema.extend({ userId: z.string().min(1) }).parse(JSON.parse(tokenPayload || "{}"));
-        await registerPublicationUpload(prisma, { ...payload, url: blob.url, pathname: blob.pathname });
+        await registerPublicationUpload(db, { ...payload, url: blob.url, pathname: blob.pathname });
       },
     });
     return Response.json(result);

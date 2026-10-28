@@ -1,29 +1,17 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import ProntuarioClient from "./ProntuarioClient";
-import { resolveSocialAccess, socialAttendanceWhere } from "@/lib/social/access-policy";
+import { resolveSocialAccess } from "@/lib/social/access-policy";
+import { db } from "@/db/client";
+import { listSocialAttendances, socialProntuarioOptions, socialAttendanceOptions } from "@/db/repositories/social/queries";
 
 export default async function ProntuarioSocialPage() {
   const context = await getTenantContextForModule("SOCIAL");
-  const { prisma } = context;
+  const database = context.database ?? db;
   const access = await resolveSocialAccess(context);
-  const atendimentos = await prisma.socialAttendance.findMany({
-    where: socialAttendanceWhere(access),
-    include: {
-      family: { select: { id: true, familyCode: true, nis: true } },
-      person: { select: { id: true, fullName: true } },
-      professional: { select: { id: true, name: true } },
-      unit: { select: { id: true, name: true } },
-    },
-    orderBy: {
-      date: 'desc'
-    }
-  });
+  const atendimentos = (await listSocialAttendances(database, access)).map(row => ({ ...row, family: { id: row.family.id, familyCode: row.family.familyCode, nis: row.family.nis }, person: row.person ? { id: row.person.id, fullName: row.person.fullName } : null, professional: { id: row.professional.id, name: row.professional.name }, unit: { id: row.unit.id, name: row.unit.name } }));
 
-  const noAccess = !access.administrator && !access.links.length;
-  const familias = await prisma.socialFamily.findMany({ where: noAccess ? { id: { in: [] } } : {}, select: { id: true, familyCode: true, nis: true }, orderBy: { familyCode: 'asc' } });
-  const persons = await prisma.person.findMany({ where: noAccess ? { id: { in: [] } } : {}, select: { id: true, fullName: true }, orderBy: { fullName: 'asc' } });
-  const professionals = await prisma.employee.findMany({ where: { isActive: true, ...(access.administrator ? {} : { id: access.employeeId || "" }) }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
-  const units = await prisma.socialUnit.findMany({ where: { isActive: true, ...(access.administrator ? {} : { id: { in: access.links.map((link) => link.unitId) } }) }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+  const { familias, persons } = await socialProntuarioOptions(database, access);
+  const { professionals, units } = await socialAttendanceOptions(database, access);
 
   return <ProntuarioClient 
     atendimentosInicial={atendimentos} 

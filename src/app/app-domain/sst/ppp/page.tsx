@@ -1,12 +1,13 @@
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { getAuthorizedHistoricalExposure } from "@/lib/sst/functional-service";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { FunctionalSourceForm } from "../../rh/portal-funcional/ManagementForms";
 export const dynamic = "force-dynamic";
 export default async function PppTechnicalSourcePage({ searchParams }: { searchParams: Promise<{ employeeId?: string; budgetUnitId?: string; from?: string; until?: string }> }) {
   const context = await getTenantContextForModuleOperation("SST", "issueReports"), params = await searchParams;
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), select: { id: true, name: true }, orderBy: { name: "asc" } });
+  const units = await listSstUnits(sstDatabase(context), context);
   const today = new Date().toISOString().slice(0, 10), from = params.from || `${today.slice(0, 4)}-01-01`, until = params.until || today;
   let example: unknown = { employeeId: params.employeeId || "", budgetUnitId: params.budgetUnitId || "", from, until, proofVersionId: "", nit: "", cnae: "", establishmentAddress: "", occupations: [], groups: [] };
   if (params.employeeId && units.some(unit => unit.id === params.budgetUnitId)) {

@@ -1,19 +1,22 @@
 import Link from "next/link";
-import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { managedPortalPolicySchemas } from "@/lib/portal-servidor/management";
 import { generatedArtifactSchema } from "@/lib/portal-servidor/generated-documents";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { PortalPolicyForm, FunctionalSourceForm } from "./ManagementForms";
+import { db } from "@/db/client";
+import { readPersonnelBudgetUnits, readActiveRuleSets, readPortalRules } from "@/db/repositories/personnel-pages/catalog";
+import { readGeneratedFunctionalDocuments } from "@/db/repositories/personnel-pages/requests";
 export const dynamic = "force-dynamic";
 export default async function PortalManagement({ searchParams }: { searchParams: Promise<{ edit?: string; new?: string; page?: string; kind?: string }> }) {
-  const context = await getTenantContextForModule("RH"), params = await searchParams, admin = isSystemAdministrator(context.user);
-  const units = await context.prisma.budgetUnit.findMany({ where: admin ? {} : { id: { in: context.user.allowedBudgetUnitIds } }, select: { id: true, name: true }, orderBy: { name: "asc" } });
-  const ruleSets = await context.prisma.hrPayrollRuleSet.findMany({ where: { status: "ATIVA" }, select: { id: true, name: true }, orderBy: { name: "asc" } });
-  const rules = await context.prisma.hrPayrollRule.findMany({ where: { category: "PORTAL", valueType: "JSON" }, orderBy: { name: "asc" } });
+  const context = await getTenantContextForModule("RH"), params = await searchParams;
+  const units = await readPersonnelBudgetUnits(context.database ?? db, context.user);
+  const ruleSets = await readActiveRuleSets(context.database ?? db);
+  const rules = await readPortalRules(context.database ?? db, "management");
   const policies = rules.flatMap(rule => { const value = rule.value as { origin?: keyof typeof managedPortalPolicySchemas; budgetUnitId?: string }; const schema = value.origin && managedPortalPolicySchemas[value.origin]; const unitId = value.budgetUnitId || rule.unit; return schema && schema.safeParse(value).success && unitId && units.some(unit => unit.id === unitId) ? [{ rule, kind: value.origin!, unitId }] : []; });
   const selected = policies.find(policy => policy.rule.id === params.edit);
-  const emissions = await context.prisma.hrIntegrationEvent.findMany({ where: { eventType: "DOCUMENTO_FUNCIONAL_GERADO" }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
+  const emissions = await readGeneratedFunctionalDocuments(context.database ?? db);
   const visible = emissions.flatMap(event => { const artifact = generatedArtifactSchema.parse(event.payload); return units.some(unit => unit.id === artifact.policy.budgetUnitId) ? [{ event, artifact }] : []; });
   const filtered = visible.filter(row => !params.kind || row.artifact.input.kind === params.kind);
   const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(filtered.length / 20)));

@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { ConstructionDepartmentFilter } from "@/lib/contracts/construction-scopes";
 import { z } from "zod";
 import type { ConstructionAccess } from "./construction-policy";
 
@@ -16,7 +16,7 @@ export const enforcementVisitSchema = operation.extend({ visitedAt: instant, fin
 export const enforcementActSchema = operation.extend({ kind: z.enum(["PRELIMINARY_NOTICE", "FISCAL_NOTICE", "INFRACTION", "EMBARGO", "LIFT_EMBARGO"]), visitId: optionalId, relatedActId: optionalId, reason, legalBasis: reason, issuedAt: instant, deadlineAt: z.union([z.literal(""), instant]), evidence }).refine((data) => !data.deadlineAt || new Date(data.deadlineAt) >= new Date(data.issuedAt), "Prazo anterior à emissão.").refine((data) => !["PRELIMINARY_NOTICE", "FISCAL_NOTICE"].includes(data.kind) || Boolean(data.deadlineAt), "Notificações exigem prazo explícito.").refine((data) => data.kind !== "LIFT_EMBARGO" || Boolean(data.relatedActId), "Selecione o embargo a levantar.");
 export const enforcementAcknowledgementSchema = operation.extend({ actId: id, acknowledgedAt: instant, method: z.enum(["PERSONAL", "POSTAL", "ELECTRONIC", "PUBLICATION", "REFUSAL"]), recipient: z.string().trim().min(3).max(300), notes: reason, evidence: evidence.refine((items) => items.length > 0 && items.every((item) => item.kind === "SERVICE_PROOF"), "Ciência exige comprovante GED.") });
 
-export function enforcementCaseWhere(access: ConstructionAccess): Prisma.ConstructionEnforcementCaseWhereInput {
+export function enforcementCaseWhere(access: ConstructionAccess): ConstructionDepartmentFilter {
   if (access.administrator) return {};
   if (!access.departmentId || !access.roles.some((role) => ["INSPECTOR", "MANAGER"].includes(role))) return { id: { in: [] } };
   return { process: { currentDepartmentId: access.departmentId } };

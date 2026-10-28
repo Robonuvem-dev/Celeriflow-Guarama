@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Plus, Gift, Search } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { BeneficioRowActions } from "./BeneficioRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readBenefitsPage } from "@/db/repositories/personnel-pages/records";
 import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
 import { RhPagination } from "../_components/RhPagination";
-import { rhPagination } from "@/lib/rh/list-pagination";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import {
   ErpTableContainer,
@@ -19,24 +19,11 @@ import {
 export default async function BeneficiosPage(
   props: { searchParams?: Promise<{ q?: string; page?: string }> }
 ) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH");
   const searchParams = await props.searchParams;
   const q = searchParams?.q || "";
 
-  const where: Prisma.BenefitConfigWhereInput = {};
-  if (q) where.name = { contains: q, mode: "insensitive" };
-
-  const total = await prisma.benefitConfig.count({ where });
-  const pagination = rhPagination(searchParams?.page, total);
-  const benefits = await prisma.benefitConfig.findMany({
-    where,
-    take: pagination.take,
-    skip: pagination.skip,
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-    include: {
-      supplier: { include: { company: true, person: true } },
-    },
-  });
+  const { total, pagination, benefits } = await readBenefitsPage(context.database ?? db, { q, page: searchParams?.page });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">

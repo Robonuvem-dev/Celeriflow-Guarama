@@ -1,4 +1,6 @@
 import { getOptionalTenantContext } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { findFirstInstitution } from "@/db/repositories/administration/queries";
 import ClientLayout from "./ClientLayout";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +13,7 @@ export default async function AppDomainLayout({
   const context = await getOptionalTenantContext();
 
   const institution = context
-    ? await context.prisma.institution.findFirst()
+    ? await findFirstInstitution(context.database ?? db)
     : null;
 
   return (

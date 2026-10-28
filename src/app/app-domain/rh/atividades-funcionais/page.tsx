@@ -7,6 +7,8 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { CareerPolicyForm, CourseCompletionForm, EvaluationPublicationForm } from "./ActivityForms";
+import { db } from "@/db/client";
+import { readActiveRuleSets, readPortalRules, readCareerRequests } from "@/db/repositories/personnel-pages/catalog";
 
 export const dynamic = "force-dynamic";
 const enrollmentSchema = z.object({ courseName: z.string(), employeeName: z.string(), policy: coursePolicySchema });
@@ -14,14 +16,14 @@ const enrollmentSchema = z.object({ courseName: z.string(), employeeName: z.stri
 export default async function CareerAdministrationPage({ searchParams }: { searchParams: Promise<{ edit?: string; new?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH"), params = await searchParams;
   const inScope = (budgetUnitId: string) => isSystemAdministrator(context.user) || context.user.allowedBudgetUnitIds.includes(budgetUnitId);
-  const rules = await context.prisma.hrPayrollRule.findMany({ where: { category: "PORTAL", valueType: "JSON", OR: [{ code: { startsWith: "PORTAL_CURSO_" } }, { code: { startsWith: "PORTAL_AVALIACAO_" } }] }, orderBy: [{ name: "asc" }, { id: "asc" }] });
+  const rules = await readPortalRules(context.database ?? db, "career");
   const activities = rules.flatMap(rule => { const policy = rule.code.startsWith("PORTAL_CURSO_") ? coursePolicySchema.safeParse(rule.value) : evaluationPolicySchema.safeParse(rule.value); return policy.success && inScope(policy.data.budgetUnitId) ? [{ rule, policy: policy.data }] : []; });
   const selected = activities.find(item => item.rule.id === params.edit);
-  const ruleSets = await context.prisma.hrPayrollRuleSet.findMany({ where: { status: "ATIVA" }, select: { id: true, name: true }, orderBy: { name: "asc" } });
-  const requests = await context.prisma.hrPortalRequest.findMany({ where: { kind: "CAPACITACAO_INSCRICAO", status: "INSCRITA" }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
+  const ruleSets = await readActiveRuleSets(context.database ?? db);
+  const requests = await readCareerRequests(context.database ?? db, "enrollments");
   const enrollments = requests.flatMap(request => { const parsed = enrollmentSchema.safeParse(request.payload); return parsed.success && inScope(parsed.data.policy.budgetUnitId) ? [{ request, payload: parsed.data }] : []; });
   const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(enrollments.length / 20)));
-  const assessed = await context.prisma.hrPortalRequest.findMany({ where: { kind: "AVALIACAO_FUNCIONAL", status: "AVALIADA" }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
+  const assessed = await readCareerRequests(context.database ?? db, "assessments");
   const results = assessed.flatMap(request => { const parsed = assessmentPayloadSchema.safeParse(request.payload); return parsed.success && inScope(parsed.data.policy.budgetUnitId) ? [{ request, payload: parsed.data }] : []; });
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
     <ErpPageTitle title="Capacitação e avaliações funcionais" description="Instrumentos, públicos, janelas e reconhecimento de conclusão no escopo do RH." action={<Link href="?new=1">Nova atividade</Link>} />

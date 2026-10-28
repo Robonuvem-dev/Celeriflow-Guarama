@@ -1,19 +1,19 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 
 export class TributarioS6Error extends Error {}
 
-function decimal(value: Prisma.Decimal | string | number, label: string) {
-  const result = new Prisma.Decimal(String(value));
+function decimal(value: Decimal | string | number, label: string) {
+  const result = new Decimal(String(value));
   if (!result.isFinite() || result.lessThan(0)) throw new TributarioS6Error(`${label} deve ser um número não negativo.`);
   return result.toDecimalPlaces(2);
 }
 
 export function calculateDesifAssessment(input: {
-  revenue: Prisma.Decimal | string | number;
-  deduction?: Prisma.Decimal | string | number;
-  rate: Prisma.Decimal | string | number;
-  credit?: Prisma.Decimal | string | number;
-  debitAdjustment?: Prisma.Decimal | string | number;
+  revenue: Decimal | string | number;
+  deduction?: Decimal | string | number;
+  rate: Decimal | string | number;
+  credit?: Decimal | string | number;
+  debitAdjustment?: Decimal | string | number;
 }) {
   const revenue = decimal(input.revenue, "Receita");
   const deduction = decimal(input.deduction ?? 0, "Dedução");
@@ -29,10 +29,10 @@ export function calculateDesifAssessment(input: {
 }
 
 export function calculateTrialBalance(input: {
-  openingBalance: Prisma.Decimal | string | number;
-  credits: Prisma.Decimal | string | number;
-  debits: Prisma.Decimal | string | number;
-  declaredClose: Prisma.Decimal | string | number;
+  openingBalance: Decimal | string | number;
+  credits: Decimal | string | number;
+  debits: Decimal | string | number;
+  declaredClose: Decimal | string | number;
   nature: "CREDORA" | "DEVEDORA";
 }) {
   const openingBalance = decimal(input.openingBalance, "Saldo inicial");
@@ -46,10 +46,10 @@ export function calculateTrialBalance(input: {
 
 export function calculatePackageMovement(input: {
   accountHolders: number;
-  tariffAmount: Prisma.Decimal | string | number;
+  tariffAmount: Decimal | string | number;
   quantity?: number;
-  collectedRevenue: Prisma.Decimal | string | number;
-  rate: Prisma.Decimal | string | number;
+  collectedRevenue: Decimal | string | number;
+  rate: Decimal | string | number;
 }) {
   if (!Number.isInteger(input.accountHolders) || input.accountHolders < 0) throw new TributarioS6Error("A quantidade de correntistas deve ser inteira e não negativa.");
   const quantity = input.quantity ?? 1;
@@ -58,7 +58,7 @@ export function calculatePackageMovement(input: {
   const collectedRevenue = decimal(input.collectedRevenue, "Receita arrecadada");
   const rate = decimal(input.rate, "Alíquota");
   const potentialRevenue = tariffAmount.mul(quantity).mul(input.accountHolders).toDecimalPlaces(2);
-  const difference = Prisma.Decimal.max(potentialRevenue.minus(collectedRevenue), 0).toDecimalPlaces(2);
+  const difference = Decimal.max(potentialRevenue.minus(collectedRevenue), 0).toDecimalPlaces(2);
   const assessmentImpact = difference.mul(rate).div(100).toDecimalPlaces(2);
   return { potentialRevenue, collectedRevenue, difference, assessmentImpact };
 }

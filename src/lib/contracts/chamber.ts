@@ -1,0 +1,12 @@
+type Timestamps = { createdAt: Date; updatedAt: Date };
+export type Legislature = Timestamps & { id: string; numero: number; inicio: Date; fim: Date; status: string; descricao: string | null; secretariatId: string | null };
+export type Councilor = Timestamps & { id: string; nomeCompleto: string; nomeParlamentar: string; cpf: string | null; partido: string | null; email: string | null; telefone: string | null; foto: string | null; status: string; active: boolean; personId: string | null; employeeId: string | null; legislaturaId: string };
+export type ChamberSession = Timestamps & { id: string; numero: number; tipo: string; data: Date; local: string; status: string; quorum: number | null; legislaturaId: string | null };
+export type Proposition = Timestamps & { id: string; numero: string; tipo: string; ementa: string; texto: string | null; status: string; dataProtocolo: Date; urgente: boolean; autorId: string; sessaoId: string | null };
+export type Cabinet = Timestamps & { id: string; sala: string; andar: string | null; telefone: string | null; ramal: string | null; status: string; vereadorId: string };
+export type BoardPosition = Timestamps & { id: string; cargo: string; status: string; legislaturaId: string; vereadorId: string };
+export type SessionMinutes = Timestamps & { id: string; numero: string; conteudo: string; status: string; dataAprovacao: Date | null; sessaoId: string };
+export type Committee = Timestamps & { id: string; nome: string; sigla: string | null; tipo: string; descricao: string | null; status: string; legislaturaId: string };
+export type CommitteeMember = { id: string; cargo: string; status: string; comissaoId: string; vereadorId: string; createdAt: Date; vereador: Councilor };
+export type Hearing = Timestamps & { id: string; tema: string; descricao: string | null; data: Date; local: string; tipo: string; status: string; ata: string | null; sessaoId: string | null; legislaturaId: string | null };
+export type Law = Timestamps & { id: string; numero: string; tipo: string; ementa: string; texto: string | null; dataPublicacao: Date | null; dataVigor: Date | null; status: string; legalTextId: string | null; proposicaoId: string | null };

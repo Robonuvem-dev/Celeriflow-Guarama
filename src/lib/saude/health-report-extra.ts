@@ -1,7 +1,14 @@
-import type { AppContext } from "@/lib/platform/tenant-context";
+import type { HealthManagementContext as AppContext } from "@/lib/contracts/health-management-operations";
+import { db } from "@/db/client";
+import * as clinical from "@/db/repositories/health-management-operations/report-clinical";
+import * as administration from "@/db/repositories/health-management-operations/report-administration";
+import * as assistential from "@/db/repositories/health-management-operations/report-assistential";
+import * as regulation from "@/db/repositories/health-management-operations/report-regulation";
+import * as territory from "@/db/repositories/health-management-operations/report-territory";
+import * as vigilance from "@/db/repositories/health-management-operations/report-vigilance";
+import * as pharmacy from "@/db/repositories/health-management-operations/report-pharmacy";
 import type { ReportRow } from "@/lib/financeiro/report-delivery";
 import type { HealthReportInput } from "./health-report-service";
-import { activeTfdPassengerWhere, tfdTripAccessWhere } from "./tfd-service";
 
 type Ctx = AppContext;
 type Period = { gte?: Date; lte?: Date } | undefined;
@@ -40,11 +47,11 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
   const period = range(input);
   const query = input.query?.toLocaleLowerCase("pt-BR");
   const match = (text: string) => !query || text.toLocaleLowerCase("pt-BR").includes(query);
-  const prisma = context.prisma;
+  const database = context.database ?? context.connection?.db ?? db;
 
   // ---------- AGENDA ----------
   if (type === "AGENDA_BIRTHDAYS") {
-    const records = await prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}), person: { birthDate: { not: null } } }, select: { cns: true, person: { select: { fullName: true, birthDate: true, phonePrimary: true } }, referenceUnit: { select: { name: true } } }, take: 2000 });
+    const records = await clinical.readManagementPatients(database, { unitIds, birthdays: true });
     const from = period?.gte; const to = period?.lte;
     const rows = records.filter(r => {
       if (!r.person.birthDate) return false;
@@ -55,11 +62,11 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
     return { rows, warnings: [] };
   }
   if (type === "AGENDA_REGISTRATIONS") {
-    const records = await prisma.patient.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, orderBy: { createdAt: "desc" }, select: { createdAt: true, cns: true, person: { select: { fullName: true } }, referenceUnit: { select: { name: true } } }, take: 2000 });
+    const records = await clinical.readManagementPatients(database, { unitIds, period });
     return { rows: records.filter(r => match(r.person.fullName)).map(r => ({ Data: dateText(r.createdAt), Paciente: r.person.fullName, CNS: r.cns || "Não informado", Unidade: r.referenceUnit?.name || "Não informada" })), warnings: [] };
   }
   if (["AGENDA_BY_SPECIALTY", "AGENDA_BY_PROFESSIONAL", "AGENDA_QTY_UNIT", "AGENDA_MISSED", "AGENDA_QTY_VALUE"].includes(type)) {
-    const records = await prisma.healthAppointment.findMany({ where: { ...(period ? { date: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}), ...(input.specialtyId ? { specialtyId: input.specialtyId } : {}), ...(type === "AGENDA_MISSED" ? { status: "Faltou" } : {}) }, include: { patient: { select: { person: { select: { fullName: true } } } }, unit: { select: { name: true } }, professional: { select: { specialty: true, employee: { select: { name: true } } } }, specialtyRef: { select: { name: true } } }, orderBy: { date: "desc" }, take: 2000 });
+    const records = await clinical.readManagementAppointments(database, { unitIds, period, professionalId: input.professionalId, specialtyId: input.specialtyId, status: type === "AGENDA_MISSED" ? "Faltou" : undefined, limit: 2000 });
     if (type === "AGENDA_MISSED") return { rows: records.filter(r => match(r.patient.person.fullName)).map(r => ({ Data: dateText(r.date), Paciente: r.patient.person.fullName, Unidade: r.unit.name, Profissional: r.professional?.employee.name || "Não informado", Situação: r.status })), warnings: [] };
     if (type === "AGENDA_QTY_UNIT") {
       const grouped = new Map<string, { unit: string; count: number; missed: number }>();
@@ -82,7 +89,7 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
     return { rows: [...grouped.values()].map(g => ({ Profissional: g.professional, Agendamentos: g.count, Atendidos: g.done })), warnings: [] };
   }
   if (["AGENDA_WAIT_BY_SCHEDULE", "AGENDA_WAIT_BY_SPECIALTY"].includes(type)) {
-    const records = await prisma.healthWaitlist.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(input.specialtyId ? { specialtyId: input.specialtyId } : {}), ...(unitIds ? { OR: [{ schedule: { unitId: { in: unitIds } } }, { patient: { referenceUnitId: { in: unitIds } } }] } : {}) }, include: { patient: { select: { person: { select: { fullName: true } } } }, specialty: { select: { name: true } }, schedule: { select: { unit: { select: { name: true } } } } }, orderBy: { createdAt: "desc" }, take: 2000 });
+    const records = await clinical.readManagementWaitlists(database, unitIds, period, input.specialtyId);
     if (type === "AGENDA_WAIT_BY_SPECIALTY") {
       const grouped = new Map<string, number>();
       for (const r of records) { const key = r.specialty?.name || "Não informada"; grouped.set(key, (grouped.get(key) || 0) + 1); }
@@ -91,11 +98,7 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
     return { rows: records.filter(r => match(r.patient.person.fullName)).map(r => ({ Entrada: dateText(r.createdAt), Paciente: r.patient.person.fullName, Especialidade: r.specialty?.name || "Não informada", Unidade: r.schedule?.unit.name || "Não informada", Prioridade: r.priority, Situação: r.status })), warnings: [] };
   }
   if (type === "AGENDA_STATS") {
-    const [schedules, appointments, waitlist] = await Promise.all([
-      prisma.healthCareSchedule.groupBy({ by: ["status"], where: { ...(unitIds ? { unitId: { in: unitIds } } : {}) }, _count: true }),
-      prisma.healthAppointment.groupBy({ by: ["status"], where: { ...(period ? { date: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}) }, _count: true }),
-      prisma.healthWaitlist.groupBy({ by: ["status"], where: { ...(unitIds ? { OR: [{ schedule: { unitId: { in: unitIds } } }, { patient: { referenceUnitId: { in: unitIds } } }] } : {}) }, _count: true }),
-    ]);
+    const [schedules, appointments, waitlist] = await clinical.readManagementAgendaStatistics(database, unitIds, period);
     const rows = [
       ...schedules.map(s => ({ Grupo: "Cronogramas", Categoria: s.status, Quantidade: s._count })),
       ...appointments.map(s => ({ Grupo: "Agendamentos", Categoria: s.status, Quantidade: s._count })),
@@ -105,7 +108,7 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
     return { rows, chart: rows.map(r => ({ label: `${r.Grupo} · ${r.Categoria}`, value: r.Quantidade, percentage: total ? r.Quantidade / total * 100 : 0 })), warnings: [] };
   }
   if (type === "AGENDA_MAPS") {
-    const records = await prisma.healthAppointment.findMany({ where: { ...(period ? { date: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}) }, select: { status: true, priority: true, visitType: true, unit: { select: { name: true } }, specialtyRef: { select: { name: true } }, professional: { select: { employee: { select: { name: true } } } } }, take: 5000 });
+    const records = await clinical.readManagementAppointments(database, { unitIds, period, unordered: true, limit: 5000 });
     const byStatus = new Map<string, number>(); const byUnit = new Map<string, number>(); const bySpecialty = new Map<string, number>(); const byPriority = new Map<string, number>();
     for (const r of records) {
       byStatus.set(r.status, (byStatus.get(r.status) || 0) + 1);
@@ -124,22 +127,22 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
   }
   if (["AGENDA_SCHEDULE_FIXED", "AGENDA_SCHEDULE_DAILY"].includes(type)) {
     const kind = type === "AGENDA_SCHEDULE_FIXED" ? "FIXO" : "DIARIO";
-    const records = await prisma.healthCareSchedule.findMany({ where: { kind, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, include: { unit: { select: { name: true } }, specialty: { select: { name: true } }, professional: { select: { employee: { select: { name: true } } } }, appointments: { where: { status: { in: ["Agendado", "Confirmado", "Aguardando", "Em Atendimento"] } }, select: { id: true } } }, orderBy: [{ date: "asc" }, { weekday: "asc" }], take: 2000 });
+    const records = await clinical.readManagementSchedules(database, unitIds, kind);
     const weekdays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     return { rows: records.map(r => ({ Unidade: r.unit.name, Especialidade: r.specialty?.name || "Não informada", Profissional: r.professional?.employee.name || "Não informado", Quando: r.date ? dateText(r.date) : r.weekday !== null && r.weekday !== undefined ? `Toda ${weekdays[r.weekday]}` : "Não informado", Horário: [r.startTime, r.endTime].filter(Boolean).join("–") || "Não informado", Vagas: r.totalSlots, Ocupadas: r.appointments.length, Disponíveis: r.totalSlots - r.appointments.length, Situação: r.status })), warnings: [] };
   }
   if (type === "AGENDA_AUDIT") {
-    const records = await prisma.auditEvent.findMany({ where: { targetType: "HEALTH_APPOINTMENT", ...(period ? { createdAt: period } : {}) }, orderBy: { createdAt: "desc" }, take: 2000, select: { eventType: true, targetId: true, createdAt: true, actorUsuario: { select: { nome: true } } } });
+    const records = await clinical.readManagementAudits(database, period, "HEALTH_APPOINTMENT");
     return { rows: records.map(r => ({ Data: dateText(r.createdAt), Evento: r.eventType, Agendamento: r.targetId, Autor: r.actorUsuario.nome })), warnings: [] };
   }
   if (type === "AGENDA_TRIAGE_PROF") {
-    const records = await prisma.healthTriage.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { appointment: { unitId: { in: unitIds } } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}) }, include: { professional: { select: { employee: { select: { name: true } } } }, appointment: { select: { unit: { select: { name: true } } } } }, orderBy: { createdAt: "desc" }, take: 2000 });
+    const records = await clinical.readManagementTriages(database, unitIds, period, input.professionalId);
     return { rows: records.filter(r => match(r.professional.employee.name)).map(r => ({ Data: dateText(r.createdAt), Profissional: r.professional.employee.name, Unidade: r.appointment.unit.name, Risco: r.riskClassification || "Não informado" })), warnings: [] };
   }
 
   // ---------- PRODUÇÃO (estatísticas sobre fatos) ----------
   if (type.startsWith("PRODSTAT_")) {
-    const facts = await prisma.healthProductionFact.findMany({ where: { ...(input.unitId ? { unitId: input.unitId } : unitIds ? { unitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}), ...(input.procedure ? { procedure: { OR: [{ code: { contains: input.procedure, mode: "insensitive" } }, { description: { contains: input.procedure, mode: "insensitive" } }] } } : {}), ...(input.cid ? { cidReference: { OR: [{ code: { contains: input.cid, mode: "insensitive" } }] } } : {}), ...(input.municipality ? { municipality: { contains: input.municipality, mode: "insensitive" } } : {}) }, include: { procedure: { select: { code: true, description: true, financing: true } }, professional: { select: { cbo: true, employee: { select: { name: true } } } }, unit: { select: { name: true } }, cidReference: { select: { code: true } }, patient: { select: { person: { select: { gender: true, birthDate: true } } } } }, orderBy: { occurredAt: "desc" }, take: 5000 });
+    const facts = await clinical.readManagementProductionFacts(database, { unitIds, professionalId: input.professionalId, procedure: input.procedure, cid: input.cid, municipality: input.municipality, limit: 5000 });
     const withChart = (rows: ReportRow[]) => {
       const total = rows.reduce((a, r) => a + Number(r.Quantidade || 0), 0);
       return { rows, warnings: [] as string[], chart: ["PRODSTAT_CHART_PROC", "PRODSTAT_CHART_VALUES", "PRODSTAT_CHART_UNIT", "PRODSTAT_CHART_CBO"].includes(type) ? rows.slice(0, 20).map(r => ({ label: String(r[Object.keys(r)[0]]), value: Number(r.Quantidade || 0), percentage: total ? Number(r.Quantidade || 0) / total * 100 : 0 })) : undefined };
@@ -211,55 +214,55 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
 
   // ---------- PA ----------
   if (type === "PAREP_ATTENDED") {
-    const records = await prisma.medicalRecord.findMany({ where: { completedAt: { not: null }, ...(period ? { date: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}) }, include: { patient: { select: { person: { select: { fullName: true } } } }, unit: { select: { name: true } }, professional: { select: { employee: { select: { name: true } } } } }, orderBy: { date: "desc" }, take: 2000 });
+    const records = await clinical.readManagementMedicalRecords(database, { unitIds, period, completed: true, professionalId: input.professionalId, limit: 2000 });
     return { rows: records.filter(r => match(r.patient.person.fullName)).map(r => ({ Data: dateText(r.date), Paciente: r.patient.person.fullName, Tipo: r.type, Profissional: r.professional.employee.name, Unidade: r.unit.name, Desfecho: r.outcome || "Não informado" })), warnings: [] };
   }
   if (type === "PAREP_PROC_DAY") {
-    const records = await prisma.healthPerformedProcedure.findMany({ where: { ...(period ? { performedAt: period } : {}), ...(unitIds ? { medicalRecord: { unitId: { in: unitIds } } } : {}) }, include: { procedure: { select: { code: true, description: true } }, medicalRecord: { select: { unit: { select: { name: true } } } } }, orderBy: { performedAt: "desc" }, take: 2000 });
-    const triages = await prisma.healthTriage.count({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { appointment: { unitId: { in: unitIds } } } : {}) } });
+    const records = await clinical.readManagementPerformedProcedures(database, { unitIds, period, limit: 2000 });
+    const triages = await clinical.countManagementTriages(database, unitIds, period);
     return { rows: records.map(r => ({ Data: dateText(r.performedAt), Procedimento: r.procedure.code, Unidade: r.medicalRecord.unit.name, Quantidade: r.quantity })), warnings: [`Triagens no período: ${triages}.`] };
   }
   if (["PAREP_BILLED", "PAREP_UNBILLED"].includes(type)) {
     const valid = type === "PAREP_BILLED";
-    const facts = await prisma.healthProductionFact.findMany({ where: { status: valid ? "VALIDO" : "CRITICADO", ...(unitIds ? { unitId: { in: unitIds } } : {}) }, include: { procedure: { select: { code: true } }, unit: { select: { name: true } } }, orderBy: { occurredAt: "desc" }, take: 2000 });
+    const facts = await clinical.readManagementProductionFacts(database, { unitIds, status: valid ? "VALIDO" : "CRITICADO", limit: 2000 });
     return { rows: facts.map(f => ({ Data: dateText(f.occurredAt), Procedimento: f.procedure?.code || "Sem procedimento", Unidade: f.unit?.name || "Não informada", Quantidade: f.quantity, Situação: f.status })), warnings: [] };
   }
   if (type === "PAREP_PROF_HOUR") {
-    const records = await prisma.medicalRecord.findMany({ where: { completedAt: { not: null }, ...(period ? { date: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}) }, select: { date: true, professional: { select: { employee: { select: { name: true } } } } }, take: 5000 });
+    const records = await clinical.readManagementMedicalRecords(database, { unitIds, period, completed: true, unordered: true, limit: 5000 });
     const grouped = new Map<string, number>();
     for (const r of records) { const key = `${r.professional.employee.name}|${String(r.date.getHours()).padStart(2, "0")}h`; grouped.set(key, (grouped.get(key) || 0) + 1); }
     return { rows: [...grouped.entries()].map(([key, count]) => { const [professional, hour] = key.split("|"); return { Profissional: professional, Hora: hour, Atendimentos: count }; }), warnings: [] };
   }
   if (type === "PAREP_TRIAGE") {
-    const records = await prisma.healthTriage.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { appointment: { unitId: { in: unitIds } } } : {}) }, include: { appointment: { select: { unit: { select: { name: true } }, patient: { select: { person: { select: { fullName: true } } } } } } }, orderBy: { createdAt: "desc" }, take: 2000 });
+    const records = await clinical.readManagementTriages(database, unitIds, period);
     return { rows: records.filter(r => match(r.appointment.patient.person.fullName)).map(r => ({ Data: dateText(r.createdAt), Paciente: r.appointment.patient.person.fullName, Unidade: r.appointment.unit.name, Risco: r.riskClassification || "Não informado", Queixa: (r.chiefComplaint || "").slice(0, 120) })), warnings: [] };
   }
 
   // ---------- PEP ----------
   if (["PEPREP_ATT_PROF", "PEPREP_CONSULT_QTY"].includes(type)) {
-    const records = await prisma.medicalRecord.findMany({ where: { completedAt: { not: null }, ...(period ? { date: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}) }, include: { professional: { select: { employee: { select: { name: true } } } }, unit: { select: { name: true } } }, orderBy: { date: "desc" }, take: 2000 });
+    const records = await clinical.readManagementMedicalRecords(database, { unitIds, period, completed: true, professionalId: input.professionalId, limit: 2000 });
     const grouped = new Map<string, { professional: string; unit: string; count: number }>();
     for (const r of records) { const key = `${r.professional.employee.name}|${r.unit.name}`; const g = grouped.get(key) || { professional: r.professional.employee.name, unit: r.unit.name, count: 0 }; g.count += 1; grouped.set(key, g); }
     return { rows: [...grouped.values()].map(g => ({ Profissional: g.professional, Unidade: g.unit, Atendimentos: g.count })), warnings: [] };
   }
   if (type === "PEPREP_PROC_PAT") {
-    const records = await prisma.healthPerformedProcedure.findMany({ where: { ...(period ? { performedAt: period } : {}), ...(unitIds ? { medicalRecord: { unitId: { in: unitIds } } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}) }, include: { procedure: { select: { code: true } }, professional: { select: { employee: { select: { name: true } } } }, medicalRecord: { select: { patient: { select: { person: { select: { fullName: true } } } } } } }, orderBy: { performedAt: "desc" }, take: 2000 });
+    const records = await clinical.readManagementPerformedProcedures(database, { unitIds, period, professionalId: input.professionalId, limit: 2000 });
     return { rows: records.filter(r => match(r.medicalRecord.patient.person.fullName)).map(r => ({ Data: dateText(r.performedAt), Paciente: r.medicalRecord.patient.person.fullName, Procedimento: r.procedure.code, Profissional: r.professional.employee.name, Quantidade: r.quantity })), warnings: [] };
   }
   if (type === "PEPREP_PROC_QTY") {
-    const records = await prisma.healthPerformedProcedure.findMany({ where: { ...(period ? { performedAt: period } : {}), ...(unitIds ? { medicalRecord: { unitId: { in: unitIds } } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}) }, include: { procedure: { select: { code: true } }, medicalRecord: { select: { unit: { select: { name: true } } } }, professional: { select: { employee: { select: { name: true } } } } }, take: 5000 });
+    const records = await clinical.readManagementPerformedProcedures(database, { unitIds, period, professionalId: input.professionalId, unordered: true, limit: 5000 });
     const grouped = new Map<string, number>();
     for (const r of records) grouped.set(`${r.procedure.code}|${r.medicalRecord.unit.name}|${r.professional.employee.name}`, (grouped.get(`${r.procedure.code}|${r.medicalRecord.unit.name}|${r.professional.employee.name}`) || 0) + r.quantity);
     return { rows: [...grouped.entries()].map(([key, count]) => { const [procedure, unit, professional] = key.split("|"); return { Procedimento: procedure, Unidade: unit, Profissional: professional, Quantidade: count }; }), warnings: [] };
   }
   if (type === "PEPREP_EXAM_MED") {
-    const records = await prisma.healthExamRequest.findMany({ where: { ...(period ? { date: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}) }, include: { professional: { select: { employee: { select: { name: true } } } } }, orderBy: { date: "desc" }, take: 2000 });
+    const records = await clinical.readManagementExamRequests(database, unitIds, period, input.professionalId);
     return { rows: records.filter(r => match(r.examName)).map(r => ({ Data: dateText(r.date), Exame: r.examName, Médico: r.professional.employee.name, Situação: r.status })), warnings: [] };
   }
 
   // ---------- LAB (recortes) ----------
   if (type.startsWith("LABREP_")) {
-    const records = await prisma.healthLabOrder.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { OR: [{ requestUnitId: { in: unitIds } }, { collectionUnitId: { in: unitIds } }] } : {}) }, include: { patient: { include: { person: { select: { fullName: true } } } }, examRequest: { select: { examName: true } }, examModel: { select: { name: true, procedure: { select: { code: true, unitValue: true } } } }, requestUnit: { select: { name: true } }, collectionUnit: { select: { name: true } }, results: { select: { status: true } }, reports: { select: { id: true } } }, orderBy: { createdAt: "desc" }, take: 2000 });
+    const records = await assistential.readManagementLabOrders(database, { unitIds, period, limit: 2000 });
     const examOf = (r: (typeof records)[number]) => r.examRequest?.examName || r.examModel?.name || "Não informado";
     const filtered = records.filter(r => match(`${r.patient.person.fullName} ${examOf(r)}`));
     if (type === "LABREP_DAILY") {
@@ -311,7 +314,7 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
       return { rows: [...grouped.values()].map(g => ({ Paciente: g.patient, Exames: g.exams, Valor: g.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) })), warnings: ["Valores de referência da tabela de procedimentos."] };
     }
     if (type === "LABREP_PRICES") {
-      const records = await prisma.healthSusProcedure.findMany({ where: { isCurrent: true, isActive: true }, orderBy: { code: "asc" }, take: 2000, select: { code: true, description: true, unitValue: true, financing: true } });
+      const records = await administration.readManagementProcedures(database, { active: true, limit: 2000 });
       return { rows: records.map(r => ({ Código: r.code, Procedimento: r.description, Valor: moneyText(r.unitValue), Financiamento: r.financing || "Não informado" })), warnings: [] };
     }
     // LABREP_MAPTECH
@@ -322,7 +325,7 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
 
   // ---------- REGULAÇÃO ----------
   if (type.startsWith("REGREP_")) {
-    const requests = await prisma.healthRegulationRequest.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { requestUnitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}), ...(input.status && ["RECEBIDA", "EM_ANALISE", "AUTORIZADA", "AGENDADA", "EXECUTADA", "CONCLUIDA", "DEVOLVIDA", "CANCELADA", "ARQUIVADA"].includes(input.status) ? { status: input.status } : {}) }, include: { patient: { include: { person: { select: { fullName: true, addresses: { orderBy: { createdAt: "asc" }, take: 1, select: { neighborhood: { select: { city: true } } } } } } } }, specialty: { select: { name: true } }, service: { select: { name: true } }, requestUnit: { select: { name: true } }, quota: { select: { providerSupplierId: true, unitValue: true, provider: { select: { person: { select: { fullName: true } }, company: { select: { corporateName: true } } } } } } }, orderBy: { createdAt: "desc" }, take: 2000 });
+    const requests = await regulation.readManagementRegulationRequests(database, { unitIds, period, professionalId: input.professionalId, status: input.status });
     const filtered = requests.filter(r => match(`${r.patient.person.fullName} ${r.guideNumber || ""}`));
     const providerName = (r: (typeof requests)[number]) => r.quota?.provider.company?.corporateName || r.quota?.provider.person?.fullName || "Municipal";
     if (type === "REGREP_REQUESTS") return { rows: filtered.map(r => ({ Data: dateText(r.createdAt), Paciente: r.patient.person.fullName, Unidade: r.requestUnit?.name || "Não informada", Serviço: r.specialty?.name || r.service?.name || "Não informado", Prioridade: r.priority, Situação: r.status, Guia: r.guideNumber || "-" })), warnings: [] };
@@ -339,11 +342,11 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
       return { rows: [...grouped.values()].map(g => ({ Prestador: g.provider, Guias: g.count, Valor: g.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) })), warnings: [] };
     }
     if (type === "REGREP_TRIPS" || type === "REGREP_TRANSPORT") {
-      const trips = await prisma.healthTfdTrip.findMany({ where: { AND: [tfdTripAccessWhere(context.user)], ...(period ? { date: { gte: period.gte, lte: period.lte } } : {}) }, include: { fleetUnit: { select: { name: true, plate: true } }, driverEmployee: { select: { name: true } }, passengers: { where: activeTfdPassengerWhere, select: { id: true } } }, orderBy: { date: "desc" }, take: 2000 });
+      const trips = await regulation.readManagementTfdTrips(database, context.user, period);
       return { rows: trips.map(t => ({ Data: dateText(t.date), Origem: t.origin, Destino: t.destination, Veículo: `${t.fleetUnit.name}${t.fleetUnit.plate ? ` · ${t.fleetUnit.plate}` : ""}`, Condutor: t.driverEmployee?.name || "Não informado", Passageiros: t.passengers.length, Capacidade: t.capacity, Situação: t.status })), warnings: [] };
     }
     if (type === "REGREP_AUDIT") {
-      const events = await prisma.healthRegulationEvent.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { request: { requestUnitId: { in: unitIds } } } : {}) }, orderBy: { createdAt: "desc" }, take: 2000, select: { eventType: true, fromStatus: true, toStatus: true, notes: true, createdAt: true, request: { select: { patient: { select: { person: { select: { fullName: true } } } } } } } });
+      const events = await regulation.readManagementRegulationEvents(database, unitIds, period);
       return { rows: events.map(e => ({ Data: dateText(e.createdAt), Paciente: e.request.patient.person.fullName, Evento: e.eventType, De: e.fromStatus, Para: e.toStatus, Observação: e.notes || "" })), warnings: [] };
     }
     if (type === "REGREP_QTY") {
@@ -352,7 +355,7 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
       return { rows: [...grouped.entries()].map(([status, count]) => ({ Situação: status, Quantidade: count })), warnings: [] };
     }
     if (type === "REGREP_THIRD") {
-      const quotas = await prisma.healthRegulationQuota.findMany({ where: { ...(unitIds ? { unitId: { in: unitIds } } : {}) }, include: { provider: { select: { person: { select: { fullName: true } }, company: { select: { corporateName: true } } } }, unit: { select: { name: true } }, specialty: { select: { name: true } } }, orderBy: { period: "desc" }, take: 2000 });
+      const quotas = await regulation.readManagementRegulationQuotas(database, unitIds);
       return { rows: quotas.map(q => ({ Prestador: q.provider.company?.corporateName || q.provider.person?.fullName || "Não informado", Unidade: q.unit?.name || "Todas", Especialidade: q.specialty?.name || "Todas", Período: q.period, Total: q.totalQuantity, Reservado: q.reservedQuantity, Realizado: q.realizedQuantity, Disponível: q.totalQuantity - q.reservedQuantity - q.realizedQuantity })), warnings: [] };
     }
     if (type === "REGREP_EXAMS" || type === "REGREP_EXAMS_QUEUE" || type === "REGREP_SCHED_SVC") {
@@ -379,11 +382,11 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
 
   // ---------- SISAB ----------
   if (type.startsWith("SISREP_")) {
-    const forms = await prisma.healthEsusForm.findMany({ where: { ...(period ? { createdAt: period } : {}), ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}), ...(input.teamId ? { teamId: input.teamId } : {}) }, include: { patient: { select: { person: { select: { fullName: true } } } }, person: { select: { fullName: true } }, professional: { select: { id: true } }, team: { select: { name: true } }, unit: { select: { name: true } }, household: { select: { householdCode: true } }, family: { select: { familyCode: true } } }, orderBy: { createdAt: "desc" }, take: 2000 });
+    const forms = await territory.readManagementEsusForms(database, { unitIds, period, professionalId: input.professionalId, teamId: input.teamId });
     const citizenOf = (f: (typeof forms)[number]) => f.patient?.person.fullName || f.person?.fullName || "-";
     const filtered = forms.filter(f => match(`${citizenOf(f)} ${f.kind}`));
     if (type === "SISREP_EXPORT") {
-      const batches = await prisma.healthEsusBatch.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { competence: true, status: true, total: true, accepted: true, rejected: true, createdAt: true } });
+      const batches = await territory.readManagementEsusBatches(database);
       return { rows: batches.map(b => ({ Competência: b.competence, Total: b.total, Aceitos: b.accepted, Rejeitados: b.rejected, Situação: b.status, Data: dateText(b.createdAt) })), warnings: [] };
     }
     if (["SISREP_AGENTS", "SISREP_PROF"].includes(type)) {
@@ -402,13 +405,13 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
       return { rows: rows.map(f => ({ Data: dateText(f.createdAt), Ficha: f.kind, Cidadão: citizenOf(f), Equipe: f.team?.name || "Não informada", Unidade: f.unit?.name || "Não informada", Situação: f.status })), warnings: [] };
     }
     if (["SISREP_FAMILIES", "SISREP_INDIV_UNIT", "SISREP_HOME2"].includes(type)) {
-      const families = await prisma.healthFamily.findMany({ orderBy: { createdAt: "desc" }, take: 2000, select: { familyCode: true, isActive: true, createdAt: true, household: { select: { householdCode: true, microarea: { select: { code: true, area: { select: { code: true } } } } } }, members: { select: { id: true } } } });
+      const families = await territory.readManagementFamilies(database);
       return { rows: families.filter(f => match(f.familyCode || "")).map(f => ({ Família: f.familyCode || "Sem código", Domicílio: f.household?.householdCode || "Sem domicílio", Área: f.household?.microarea?.area.code || "-", Microárea: f.household?.microarea?.code || "-", Membros: f.members.length, Situação: f.isActive ? "Ativa" : "Inativa" })), warnings: [] };
     }
     if (type === "SISREP_HOUSE") {
       const grouped = new Map<string, number>();
       for (const f of filtered) { const key = f.household?.householdCode || "Sem domicílio"; grouped.set(key, (grouped.get(key) || 0) + 1); }
-      const sizes = await prisma.healthFamilyMember.groupBy({ by: ["familyId"], _count: true });
+      const sizes = await territory.readManagementFamilySizes(database);
       const distribution = new Map<number, number>();
       for (const s of sizes) distribution.set(s._count, (distribution.get(s._count) || 0) + 1);
       return {
@@ -441,24 +444,24 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
   // ---------- VIGILÂNCIA ----------
   if (type.startsWith("VIGREP_")) {
     if (type === "VIGREP_RISK") {
-      const grouped = await prisma.healthVigilanceInspection.groupBy({ by: ["status"], _count: true });
-      const establishments = await prisma.healthVigilanceEstablishment.groupBy({ by: ["riskLevel"], _count: true });
+      const grouped = await vigilance.readManagementVigilanceInspectionStatuses(database);
+      const establishments = await vigilance.readManagementVigilanceRisks(database);
       return { rows: [...establishments.map(e => ({ Grupo: "Estabelecimentos por risco", Categoria: e.riskLevel || "Não classificado", Quantidade: e._count })), ...grouped.map(g => ({ Grupo: "Inspeções por situação", Categoria: g.status, Quantidade: g._count }))], warnings: [] };
     }
     if (type === "VIGREP_STATUS") {
-      const records = await prisma.healthVigilanceEstablishment.findMany({ orderBy: { name: "asc" }, take: 2000, select: { name: true, document: true, status: true, riskLevel: true } });
+      const records = await vigilance.readManagementVigilanceEstablishments(database);
       return { rows: records.filter(r => !input.status || r.status === input.status).filter(r => match(r.name)).map(r => ({ Estabelecimento: r.name, Documento: r.document || "Não informado", Risco: r.riskLevel || "Não classificado", Situação: r.status })), warnings: [] };
     }
     if (type === "VIGREP_CNAE") {
-      const grouped = await prisma.healthVigilanceEstablishment.groupBy({ by: ["cnae"], _count: true, orderBy: { _count: { cnae: "desc" } } });
+      const grouped = await vigilance.readManagementVigilanceCnaes(database);
       return { rows: grouped.map(g => ({ CNAE: g.cnae || "Não informado", Quantidade: g._count })), warnings: [] };
     }
     if (type === "VIGREP_QTY") {
       const [est, complaints, inspections, licenses] = await Promise.all([
-        prisma.healthVigilanceEstablishment.groupBy({ by: ["riskLevel"], _count: true }),
-        prisma.healthVigilanceComplaint.groupBy({ by: ["status"], _count: true }),
-        prisma.healthVigilanceInspection.groupBy({ by: ["status"], _count: true }),
-        prisma.healthVigilanceLicense.groupBy({ by: ["status"], _count: true }),
+        vigilance.readManagementVigilanceRisks(database),
+        vigilance.readManagementVigilanceComplaintStatuses(database),
+        vigilance.readManagementVigilanceInspectionStatuses(database),
+        vigilance.readManagementVigilanceLicenseStatuses(database),
       ]);
       return {
         rows: [
@@ -470,15 +473,15 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
       };
     }
     if (type === "VIGREP_COMPLAINTS") {
-      const records = await prisma.healthVigilanceComplaint.findMany({ orderBy: { createdAt: "desc" }, take: 2000, select: { createdAt: true, place: true, description: true, isAnonymous: true, status: true, establishment: { select: { name: true } } } });
+      const records = await vigilance.readManagementVigilanceComplaints(database);
       return { rows: records.filter(r => match(`${r.establishment?.name || r.place || ""} ${r.description}`)).map(r => ({ Data: dateText(r.createdAt), Estabelecimento: r.establishment?.name || r.place || "Não informado", Denúncia: r.description.slice(0, 160), Identificação: r.isAnonymous ? "Anônima" : "Identificada", Situação: r.status })), warnings: ["Identidade do denunciante nunca exposta neste relatório."] };
     }
     if (["VIGREP_INSPECTIONS", "VIGREP_TECH"].includes(type)) {
-      const records = await prisma.healthVigilanceInspection.findMany({ orderBy: { inspectedAt: "desc" }, take: 2000, include: { establishment: { select: { name: true, cnae: true, riskLevel: true } }, items: true } });
+      const records = await vigilance.readManagementVigilanceInspections(database);
       return { rows: records.filter(r => match(r.establishment.name)).map(r => ({ Data: dateText(r.inspectedAt), Estabelecimento: r.establishment.name, CNAE: r.establishment.cnae || "Não informado", Risco: r.establishment.riskLevel || "Não classificado", Itens: r.items.length, Conformidades: r.items.filter(i => i.result === "Conforme").length, NãoConformidades: r.items.filter(i => i.result === "Não conforme").length, Achados: (r.findings || "").slice(0, 160), Situação: r.status })), warnings: [] };
     }
     // VIGREP_LICENSES
-    const records = await prisma.healthVigilanceLicense.findMany({ orderBy: { validUntil: "desc" }, take: 2000, include: { establishment: { select: { name: true } } } });
+    const records = await vigilance.readManagementVigilanceLicenses(database);
     return { rows: records.map(r => ({ Alvará: r.licenseNumber, Estabelecimento: r.establishment.name, Vigência: `${dateText(r.validFrom)} a ${dateText(r.validUntil)}`, Situação: r.status })), warnings: [] };
   }
 
@@ -488,68 +491,68 @@ export async function createExtendedRows(context: Ctx, input: HealthReportInput)
     if (!recordId) throw new Error("Informe o registro (ID ou protocolo) para emitir o documento.");
     const pair = (campo: string, valor: string | number | null | undefined) => ({ Campo: campo, Valor: valor ?? "Não informado" });
     if (type === "DOC_DISPENSATION") {
-      const disp = await prisma.medicineDispensation.findFirst({ where: { OR: [{ id: recordId }, { prescriptionItemId: recordId, status: "ACTIVE" }] }, include: { patient: { include: { person: true } }, medicine: true, unit: true, stock: true, receiverPerson: true, dispensedByProfessional: { select: { employee: { select: { name: true } } } } } });
+      const [disp] = await pharmacy.readManagementDispensations(database, { recordId });
       if (!disp) throw new Error("Dispensação não encontrada.");
       if (unitIds && !unitIds.includes(disp.unitId)) throw new Error("Registro fora do seu escopo de acesso.");
       if (disp.status !== "ACTIVE") throw new Error("Dispensação cancelada não permite emitir declaração de recebimento.");
       return { rows: [pair("Documento", "Declaração de recebimento de medicamentos"), pair("Data", dateText(disp.date)), pair("Paciente", disp.patient.person.fullName), pair("Retirante", disp.receiverPerson?.fullName || disp.patient.person.fullName), pair("Vínculo do retirante", disp.receiverRelationship || "Próprio paciente"), pair("Medicamento", disp.medicine.name), pair("Quantidade", disp.quantity), pair("Lote", disp.stock?.batchNumber), pair("Unidade", disp.unit.name), pair("Responsável", disp.dispensedByProfessional?.employee.name), pair("Posologia", disp.dosageSnapshot), pair("Retorno", disp.nextWithdrawalAt ? dateText(disp.nextWithdrawalAt) : null)], warnings: [] };
     }
     if (type === "DOC_TRANSFER_RECEIPT") {
-      const transfer = await prisma.healthStockTransfer.findFirst({ where: { OR: [{ id: recordId }, { requestNumber: recordId }] }, include: { originWarehouse: true, destinationWarehouse: true, items: { include: { material: true } } } });
+      const transfer = await pharmacy.readManagementTransferDocument(database, recordId);
       if (!transfer) throw new Error("Transferência não encontrada.");
       return { rows: [pair("Documento", "Recibo de transferência"), pair("Origem", transfer.originWarehouse.name), pair("Destino", transfer.destinationWarehouse.name), pair("Situação", transfer.status), pair("Pedido", transfer.requestNumber), ...transfer.items.flatMap(item => [pair("Produto", item.material.name), pair("Lote/quantidade", `${item.batchNumber} · ${item.quantity}`)])], warnings: [] };
     }
     if (type === "DOC_APPOINTMENT") {
-      const appointment = await prisma.healthAppointment.findUnique({ where: { id: recordId }, include: { patient: { include: { person: true } }, unit: true, professional: { include: { employee: { select: { name: true } } } } } });
+      const [appointment] = await clinical.readManagementAppointments(database, { recordId });
       if (!appointment) throw new Error("Agendamento não encontrado.");
       if (unitIds && !unitIds.includes(appointment.unitId)) throw new Error("Registro fora do seu escopo de acesso.");
       return { rows: [pair("Documento", "Comprovante de agendamento"), pair("Data", appointment.date.toLocaleString("pt-BR")), pair("Paciente", appointment.patient.person.fullName), pair("Unidade", appointment.unit.name), pair("Profissional", appointment.professional?.employee.name), pair("Especialidade", appointment.specialty), pair("Situação", appointment.status)], warnings: [] };
     }
     if (type === "DOC_LAB_COLLECTION") {
-      const order = await prisma.healthLabOrder.findFirst({ where: { OR: [{ id: recordId }, { sampleBarcode: recordId }] }, include: { patient: { include: { person: true } }, examRequest: true, examModel: true, collectionUnit: true } });
+      const [order] = await assistential.readManagementLabOrders(database, { recordId });
       if (!order) throw new Error("Solicitação/coleta não encontrada.");
       return { rows: [pair("Documento", "Comprovante de coleta"), pair("Paciente", order.patient.person.fullName), pair("Exame", order.examRequest?.examName || order.examModel?.name), pair("Coleta", order.collectionUnit?.name), pair("Amostra", order.sampleBarcode), pair("Agendada", order.scheduledAt ? dateText(order.scheduledAt) : null), pair("Coletada", order.collectedAt ? dateText(order.collectedAt) : null), pair("Etapa", order.status)], warnings: [] };
     }
     if (["DOC_REGULATION_GUIDE", "DOC_REGULATION_SCHEDULE"].includes(type)) {
-      const request = await prisma.healthRegulationRequest.findFirst({ where: { OR: [{ id: recordId }, { guideNumber: recordId }] }, include: { patient: { include: { person: true } }, specialty: true, service: true, procedure: { select: { code: true, description: true } }, requestUnit: true, quota: { include: { provider: { include: { person: { select: { fullName: true } }, company: { select: { corporateName: true } } } } } } } });
+      const [request] = await regulation.readManagementRegulationRequests(database, { recordId });
       if (!request) throw new Error("Solicitação/guia não encontrada.");
       if (unitIds && request.requestUnitId && !unitIds.includes(request.requestUnitId)) throw new Error("Registro fora do seu escopo de acesso.");
       return { rows: [pair("Documento", type === "DOC_REGULATION_GUIDE" ? "Guia de autorização" : "Comprovante de agendamento regulado"), pair("Guia", request.guideNumber), pair("Paciente", request.patient.person.fullName), pair("Serviço", request.specialty?.name || request.service?.name), pair("Procedimento", request.procedure ? `${request.procedure.code} · ${request.procedure.description}` : null), pair("Prestador", request.quota?.provider.company?.corporateName || request.quota?.provider.person?.fullName), pair("Unidade solicitante", request.requestUnit?.name), pair("Agendada", request.scheduledAt ? dateText(request.scheduledAt) : null), pair("Situação", request.status)], warnings: [] };
     }
     if (["DOC_TFD_LIST", "DOC_TFD_PUBLIC", "DOC_TFD_AUTH"].includes(type)) {
-      const trip = await prisma.healthTfdTrip.findFirst({ where: { id: recordId, ...tfdTripAccessWhere(context.user) }, include: { fleetUnit: true, driverEmployee: { select: { name: true } }, passengers: { where: activeTfdPassengerWhere, include: { patient: { include: { person: { select: { fullName: true } } } } } } } });
+      const [trip] = await regulation.readManagementTfdTrips(database, context.user, undefined, recordId);
       if (trip) {
         return { rows: [pair("Documento", type === "DOC_TFD_AUTH" ? "Autorização de viagem" : "Lista de passageiros"), pair("Data", dateText(trip.date)), pair("Origem", trip.origin), pair("Destino", trip.destination), pair("Veículo", `${trip.fleetUnit.name}${trip.fleetUnit.plate ? ` · ${trip.fleetUnit.plate}` : ""}`), pair("Condutor", trip.driverEmployee?.name), pair("Lotação", `${trip.passengers.length}/${trip.capacity}`), pair("Situação", trip.status), ...trip.passengers.flatMap(p => [pair("Passageiro", `${p.patient.person.fullName}${p.kind === "ACOMPANHANTE" ? " (acompanhante)" : ""}`), pair("Acompanhante", p.companionName)])], warnings: [] };
       }
-      const request = await prisma.healthTfdRequest.findFirst({ where: { OR: [{ id: recordId }] }, include: { patient: { include: { person: { select: { fullName: true } } } }, originUnit: true } });
+      const request = await regulation.readManagementTfdRequest(database, recordId);
       if (!request) throw new Error("Viagem ou solicitação TFD não encontrada.");
       if (unitIds && (!request.originUnitId || !unitIds.includes(request.originUnitId))) throw new Error("Registro fora do seu escopo de acesso.");
       return { rows: [pair("Documento", "Autorização de TFD"), pair("Paciente", request.patient.person.fullName), pair("Origem", request.originUnit?.name), pair("Destino", request.destination), pair("Motivo", request.reason), pair("Situação", request.status)], warnings: [] };
     }
     if (["DOC_PA_BAU", "DOC_PA_DISCHARGE"].includes(type)) {
-      const record = await prisma.medicalRecord.findUnique({ where: { id: recordId }, include: { patient: { include: { person: true } }, professional: { include: { employee: { select: { name: true } } } }, unit: true } });
+      const [record] = await clinical.readManagementMedicalRecords(database, { recordId });
       if (!record) throw new Error("Atendimento não encontrado.");
       if (unitIds && !unitIds.includes(record.unitId)) throw new Error("Registro fora do seu escopo de acesso.");
       return { rows: [pair("Documento", type === "DOC_PA_BAU" ? "Boletim de atendimento" : "Declaração de alta"), pair("Data", dateText(record.date)), pair("Paciente", record.patient.person.fullName), pair("Unidade", record.unit.name), pair("Profissional", record.professional.employee.name), pair("Queixa", record.chiefComplaint), pair("Conduta", record.conduct), pair("Desfecho", record.outcome)], warnings: [] };
     }
     if (type === "DOC_PATIENT_CARD") {
-      const patient = await prisma.patient.findFirst({ where: { OR: [{ id: recordId }, { cns: recordId }] }, include: { person: true, referenceUnit: true } });
+      const [patient] = await clinical.readManagementPatients(database, { recordId });
       if (!patient) throw new Error("Paciente não encontrado.");
       return { rows: [pair("Documento", "Carteirinha do paciente"), pair("Paciente", patient.person.fullName), pair("CNS", patient.cns), pair("Nascimento", patient.person.birthDate ? dateText(patient.person.birthDate) : null), pair("Unidade de referência", patient.referenceUnit?.name)], warnings: [] };
     }
     // DOC_LICENSE
-    const license = await prisma.healthVigilanceLicense.findFirst({ where: { OR: [{ id: recordId }, { licenseNumber: recordId }] }, include: { establishment: true } });
+    const [license] = await vigilance.readManagementVigilanceLicenses(database, recordId);
     if (!license) throw new Error("Alvará não encontrado.");
     return { rows: [pair("Documento", "Alvará sanitário"), pair("Número", license.licenseNumber), pair("Estabelecimento", license.establishment.name), pair("Documento", license.establishment.document), pair("Vigência", `${dateText(license.validFrom)} a ${dateText(license.validUntil)}`), pair("Situação", license.status)], warnings: [] };
   }
 
   // ---------- AUDITORIA ----------
   if (type === "AUDIT_ACCESS_DETAIL") {
-    const records = await prisma.auditEvent.findMany({ where: period ? { createdAt: period } : {}, orderBy: { createdAt: "desc" }, take: 2000, select: { eventType: true, targetType: true, targetId: true, createdAt: true, actorUsuario: { select: { nome: true } } } });
+    const records = await clinical.readManagementAudits(database, period);
     return { rows: records.map(r => ({ Data: dateText(r.createdAt), Usuário: r.actorUsuario.nome, Evento: r.eventType, Alvo: `${r.targetType}:${r.targetId.slice(0, 8)}` })), warnings: [] };
   }
   if (type === "AUDIT_PATIENT_CHANGES") {
-    const records = await prisma.auditEvent.findMany({ where: { targetType: "PATIENT", ...(period ? { createdAt: period } : {}) }, orderBy: { createdAt: "desc" }, take: 2000, select: { eventType: true, targetId: true, createdAt: true, actorUsuario: { select: { nome: true } } } });
+    const records = await clinical.readManagementAudits(database, period, "PATIENT");
     return { rows: records.map(r => ({ Data: dateText(r.createdAt), Evento: r.eventType, Paciente: r.targetId, Autor: r.actorUsuario.nome })), warnings: [] };
   }
   return null;

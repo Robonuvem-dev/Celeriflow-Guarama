@@ -1,7 +1,15 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import { activePortalEmployee, activePortalPolicies, portalCount, portalFirst, portalRequired, requiredPortalPolicy } from "@/db/repositories/portal-servidor/records";
+import { hrPayrollRules } from "@/db/schema/personnel-configuration";
+import { publicServices } from "@/db/schema/portal-services";
+import { employeePortalServiceConfigurations } from "@/db/schema/employee-portal";
 import { z } from "zod";
 import { AccessError, assertBudgetUnitAccess, canPerformModuleOperation, type AppContext } from "@/lib/platform/tenant-context";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 
 export const functionalFieldSchema = z.object({
   code: z.string().regex(/^[a-z][a-zA-Z0-9_]{0,63}$/), label: z.string().trim().min(1).max(160),
@@ -34,49 +42,52 @@ export const functionalServiceInputSchema = z.object({
   isActive: z.boolean(), configuration: functionalServiceBase.omit({ origin: true, version: true, publicServiceId: true }),
 }).strict();
 
-export async function listFunctionalServices(db: PrismaClient | Prisma.TransactionClient, employeeId: string) {
+export async function listFunctionalServices(db: DatabaseExecutor, employeeId: string) {
   const now = new Date();
-  if (!await db.employee.findFirst({ where: { id: employeeId, isActive: true }, select: { id: true } })) return [];
-  const rules = await db.hrPayrollRule.findMany({ where: { category: "PORTAL", valueType: "JSON", isActive: true, ruleSet: { status: "ATIVA", effectiveFrom: { lte: now }, OR: [{ effectiveUntil: null }, { effectiveUntil: { gte: now } }] } }, include: { functionalPortalConfiguration: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] });
+  if (!await activePortalEmployee(db, employeeId)) return [];
+  const rules = await activePortalPolicies(db, now);
+  const links = rules.length ? await db.select().from(employeePortalServiceConfigurations).where(inArray(employeePortalServiceConfigurations.ruleId, rules.map(rule => rule.id))) : [];
   const services = rules.flatMap(rule => {
     const parsed = functionalServiceSchema.safeParse(rule.value);
-    const link = rule.functionalPortalConfiguration;
+    const link = links.find(link => link.ruleId === rule.id);
     return parsed.success && link && link.version === parsed.data.version && link.publicServiceId === parsed.data.publicServiceId && link.budgetUnitId === parsed.data.budgetUnitId && link.processTypeId === parsed.data.processTypeId && link.subjectId === parsed.data.subjectId && link.operation === parsed.data.operation && (!parsed.data.employeeIds.length || parsed.data.employeeIds.includes(employeeId)) ? [{ rule, configuration: parsed.data }] : [];
   });
-  const publicServices = await db.publicService.findMany({ where: { id: { in: services.map(service => service.configuration.publicServiceId) }, target: "Servidor", isActive: true } });
+  const descriptions = services.length ? await db.select().from(publicServices).where(and(inArray(publicServices.id, services.map(service => service.configuration.publicServiceId)), eq(publicServices.target, "Servidor"), eq(publicServices.isActive, true))) : [];
   return services.flatMap(service => {
-    const description = publicServices.find(item => item.id === service.configuration.publicServiceId);
+    const description = descriptions.find(item => item.id === service.configuration.publicServiceId);
     return description ? [{ ...description, id: service.rule.id, code: service.rule.code, configuration: service.configuration, ruleId: service.rule.id }] : [];
   });
 }
 
-export async function saveFunctionalService(context: AppContext, raw: unknown) {
+export async function saveFunctionalService(context: AppContext, raw: unknown, connection: DatabaseConnection = databaseConnection) {
   const input = functionalServiceInputSchema.parse(raw);
   if (!canPerformModuleOperation(context.user, "RH", input.id ? "update" : "create")) throw new AccessError("Sem autorização para configurar serviços funcionais.", 403);
   assertBudgetUnitAccess(context.user, input.configuration.budgetUnitId);
-  return context.prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`PORTAL_CATALOGO:${input.ruleSetId}:${input.code}`}))`;
-    const ruleSet = await tx.hrPayrollRuleSet.findUniqueOrThrow({ where: { id: input.ruleSetId } });
+  return withDatabaseTransaction(connection, async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`PORTAL_CATALOGO:${input.ruleSetId}:${input.code}`}))`);
+    const ruleSet = await portalRequired<{ status: string }>(tx, sql`SELECT status FROM "HrPayrollRuleSet" WHERE id=${input.ruleSetId}`);
     if (ruleSet.status !== "ATIVA") throw new Error("Selecione uma configuração RH ativa.");
-    const subject = await tx.subject.findFirst({ where: { id: input.configuration.subjectId, processTypeId: input.configuration.processTypeId, isActive: true, allowsInternalOpening: true }, include: { processType: true } });
-    if (!subject?.processType.isActive || !subject.processType.allowsInternalOpening) throw new Error("Tipo/assunto não permite abertura interna.");
-    const unit = await tx.budgetUnit.findUniqueOrThrow({ where: { id: input.configuration.budgetUnitId } });
-    if (input.configuration.employeeIds.length && await tx.employee.count({ where: { id: { in: input.configuration.employeeIds }, isActive: true } }) !== new Set(input.configuration.employeeIds).size) throw new Error("Público contém servidores não encontrados ou inativos.");
-    const previous = input.id ? await tx.hrPayrollRule.findUniqueOrThrow({ where: { id: input.id } }) : null;
+    const subject = await portalFirst<{ initialDepartmentId: string | null; typeInitialDepartmentId: string | null; typeActive: boolean; typeInternal: boolean }>(tx, sql`SELECT s."initialDepartmentId",t."initialDepartmentId" AS "typeInitialDepartmentId",t."isActive" AS "typeActive",t."allowsInternalOpening" AS "typeInternal" FROM "Subject" s JOIN "ProcessType" t ON t.id=s."processTypeId" WHERE s.id=${input.configuration.subjectId} AND s."processTypeId"=${input.configuration.processTypeId} AND s."isActive" AND s."allowsInternalOpening" LIMIT 1`);
+    if (!subject?.typeActive || !subject.typeInternal) throw new Error("Tipo/assunto não permite abertura interna.");
+    const unit = await portalRequired<{ secretariatId: string | null }>(tx, sql`SELECT "secretariatId" FROM "BudgetUnit" WHERE id=${input.configuration.budgetUnitId}`);
+    if (input.configuration.employeeIds.length && await portalCount(tx, sql`SELECT count(*) FROM "Employee" WHERE id=ANY(${sql.param(input.configuration.employeeIds)}::text[]) AND "isActive"`) !== new Set(input.configuration.employeeIds).size) throw new Error("Público contém servidores não encontrados ou inativos.");
+    const previous = input.id ? await requiredPortalPolicy(tx, input.id) : null;
     const prior = previous ? functionalServiceSchema.parse(previous.value) : null;
     if (previous && (previous.ruleSetId !== input.ruleSetId || previous.code !== input.code)) throw new Error("Preserve o conjunto e o código do serviço existente.");
     if (prior) assertBudgetUnitAccess(context.user, prior.budgetUnitId);
-    const destination = subject.initialDepartmentId || subject.processType.initialDepartmentId;
+    const destination = subject.initialDepartmentId || subject.typeInitialDepartmentId;
     if (destination) {
-      const department = await tx.department.findUniqueOrThrow({ where: { id: destination } });
+      const department = await portalRequired<{ isActive: boolean; secretariatId: string }>(tx, sql`SELECT "isActive","secretariatId" FROM "Department" WHERE id=${destination}`);
       if (!department.isActive || department.secretariatId !== unit.secretariatId) throw new Error("Destino inicial incompatível com a unidade gestora do serviço.");
     }
-    const common = prior ? await tx.publicService.update({ where: { id: prior.publicServiceId }, data: { name: input.name, description: input.description, requirements: input.requirements, steps: input.steps, deadline: input.deadline, isActive: input.isActive } }) : await tx.publicService.create({ data: { name: input.name, description: input.description, requirements: input.requirements, steps: input.steps, deadline: input.deadline, target: "Servidor", isActive: input.isActive } });
+    const commonData = { name: input.name, description: input.description, requirements: input.requirements, steps: input.steps, deadline: input.deadline, isActive: input.isActive };
+    const [common] = prior ? await tx.update(publicServices).set(commonData).where(eq(publicServices.id, prior.publicServiceId)).returning() : await tx.insert(publicServices).values({ ...commonData, target: "Servidor" }).returning();
+    if (!common) throw new Error("Registro não encontrado.");
     const configuration = functionalServiceSchema.parse({ ...input.configuration, origin: "SERVICO_PORTAL_SERVIDOR", version: (prior?.version || 0) + 1, publicServiceId: common.id });
-    const data = { name: input.name, description: input.description, category: "PORTAL", valueType: "JSON", value: JSON.parse(JSON.stringify(configuration)) as Prisma.InputJsonValue, isActive: input.isActive };
-    const rule = previous ? await tx.hrPayrollRule.update({ where: { id: previous.id }, data }) : await tx.hrPayrollRule.create({ data: { ...data, ruleSetId: input.ruleSetId, code: input.code } });
-    const link = { publicServiceId: common.id, budgetUnitId: configuration.budgetUnitId, processTypeId: configuration.processTypeId, subjectId: configuration.subjectId, version: configuration.version, operation: configuration.operation, snapshot: JSON.parse(JSON.stringify(configuration)) as Prisma.InputJsonValue };
-    await tx.hrPortalServiceConfiguration.upsert({ where: { ruleId: rule.id }, create: { ruleId: rule.id, ...link }, update: link });
+    const data = { name: input.name, description: input.description, category: "PORTAL", valueType: "JSON", value: configuration, isActive: input.isActive };
+    const [rule] = previous ? await tx.update(hrPayrollRules).set(data).where(eq(hrPayrollRules.id, previous.id)).returning() : await tx.insert(hrPayrollRules).values({ ...data, ruleSetId: input.ruleSetId, code: input.code }).returning();
+    const link = { publicServiceId: common.id, budgetUnitId: configuration.budgetUnitId, processTypeId: configuration.processTypeId, subjectId: configuration.subjectId, version: configuration.version, operation: configuration.operation, snapshot: configuration };
+    await tx.insert(employeePortalServiceConfigurations).values({ ruleId: rule.id, ...link }).onConflictDoUpdate({ target: employeePortalServiceConfigurations.ruleId, set: link });
     await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.instanceConfigurationChanged, targetType: "EMPLOYEE_PORTAL_SERVICE", targetId: rule.id });
     return rule.id;
   });

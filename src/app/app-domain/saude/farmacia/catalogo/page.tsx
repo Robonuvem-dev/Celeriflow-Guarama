@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readPharmacyCatalogPage } from "@/db/repositories/health-pharmacy-pages/catalog";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { saveCatmatMappingAction, saveDcbSubstanceAction, savePharmacyCatalogAction } from "./actions";
 const field = "min-w-0 rounded border bg-white p-2 text-sm";
@@ -8,13 +9,7 @@ const Input = ({ name, label, value, type = "text", required = false }: { name: 
 export default async function PharmacyCatalogPage({ searchParams }: { searchParams: Promise<{ q?: string; list?: string; page?: string }> }) {
   const { q = "", list = "", page: rawPage } = await searchParams;
   const context = await getTenantContextForModule("SAUDE");
-  const where: Prisma.MaterialWhereInput = { isActive: true, healthProfile: { isActive: true, ...(list === "RENAME" ? { renameMember: true } : list === "REMUME" ? { remumeMember: true } : {}) }, ...(q.trim() ? { OR: [{ code: { contains: q.trim(), mode: "insensitive" } }, { name: { contains: q.trim(), mode: "insensitive" } }, { healthProfile: { catmatCode: { contains: q.trim(), mode: "insensitive" } } }] } : {}) };
-  const total = await context.prisma.material.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt(rawPage || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const [products, substances] = await Promise.all([
-    context.prisma.material.findMany({ where, include: { medicine: true, healthProfile: { include: { dcbSubstance: true, catmatUnitMappings: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 }),
-    context.prisma.healthDcbSubstance.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-  ]);
+  const { total, page, products, substances } = await readPharmacyCatalogPage(context.database ?? db, { q, list, page: rawPage });
   const query = (next: number) => `/saude/farmacia/catalogo?${new URLSearchParams({ q, list, page: String(next) })}`;
   return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"><header className="flex flex-wrap justify-between gap-3"><h1 className="font-semibold">Catálogo farmacêutico, relações e unidades CATMAT</h1><Link href="/saude/farmacia" className="text-sm underline">Estoque e dispensação</Link></header>
     <form className="flex flex-wrap items-end gap-3"><Input name="q" label="Nome, código local ou CATMAT" value={q} /><label className="grid gap-1 text-sm">Relação<select name="list" defaultValue={list} className={field}><option value="">Todas</option><option value="RENAME">RENAME</option><option value="REMUME">REMUME</option></select></label><button className={field}>Pesquisar</button></form>

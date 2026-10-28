@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { transparencyPublications } from "@/db/schema/transparency";
 import { getTransparencySettings } from "@/lib/transparencia/presentation-settings";
 import { parseTransparencyQuery, publicQueryHref } from "@/lib/transparencia/query-contract";
 import { displayPublicCell as display } from "@/lib/transparencia/display";
@@ -18,13 +20,13 @@ import { MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipality-identity";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {
-  const [raw, presentation] = await Promise.all([searchParams, getDiscoverySettings(prisma)]);
+  const [raw, presentation] = await Promise.all([searchParams, getDiscoverySettings(db)]);
   return { title: `${presentation.title} | ${MUNICIPALITY_INSTITUTION_NAME}`, description: presentation.intro, alternates: { canonical: `${publicPortalOrigin(presentation)}${publicTransparencyPath}` }, ...(isTransparencyConsultation(raw) ? { robots: { index: false, follow: true } } : {}) };
 }
 const sources = transparencySourceLabels;
 export default async function PublicTransparencyPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const raw = await searchParams;
-  const [settings, presentation] = await Promise.all([getTransparencySettings(prisma), getDiscoverySettings(prisma)]);
+  const [settings, presentation] = await Promise.all([getTransparencySettings(db), getDiscoverySettings(db)]);
   const catalog = publishedTransparencyCatalog(settings);
   if (!isTransparencyConsultation(raw)) {
     const now = new Date().toISOString();
@@ -45,13 +47,13 @@ export default async function PublicTransparencyPage({ searchParams }: { searchP
   if (!parsed || !collection) return <main className="mx-auto max-w-7xl p-6"><h1 className="text-2xl font-bold">Portal da Transparência</h1><p className="my-4">Consulta ou filtros não disponíveis.</p><Link href={publicTransparencyPath} className="underline">Voltar ao início da transparência</Link></main>;
   const query = parsed;
   let result: Awaited<ReturnType<typeof runTransparencyConsultation>> | null = null;
-  try { result = await runTransparencyConsultation(prisma, slug, query, settings); } catch { /* Falha de origem não equivale a conjunto vazio. */ }
+  try { result = await runTransparencyConsultation(db, slug, query, settings); } catch { /* Falha de origem não equivale a conjunto vazio. */ }
   collection=result?.collection||collection;
   const href = (extra: Record<string, string | number | undefined> = {}) => `${publicTransparencyPath}?${publicQueryHref(query, { view: slug, ...extra })}`;
   const selected = typeof raw.record === "string" ? result?.rows.find(record => record.key === raw.record) : null;
   const menu=catalog.map(item=>({slug:item.slug,title:item.title,group:item.group,href:`${publicTransparencyPath}?${publicQueryHref({ ...query, filters: {}, search: "", sort: "", from: undefined, until: undefined }, { view: item.slug, page: 1, source: item.slug === "publicacoes" || item.slug.startsWith("doc-") ? "DOCUMENTOS" : query.source })}`}));
   const now=new Date().toISOString(),popupActive=settings.popup.enabled&&settings.popup.entities.includes(query.entity)&&(!settings.popup.startsAt||settings.popup.startsAt<=now)&&(!settings.popup.endsAt||settings.popup.endsAt>=now);
-  const documentGroups=query.source==="DOCUMENTOS"&&result?.status==="AVAILABLE"?await prisma.transparencyPublication.groupBy({by:["group"],where:{status:"PUBLISHED",year:query.year,entity:{in:settings.entities.filter(entity=>entity.enabled&&(query.entity==="consolidado"||entity.key===query.entity)).map(entity=>entity.key)},collectionSlug:slug!=="publicacoes"?slug:{in:catalog.map(collection=>collection.slug)}},orderBy:{group:"asc"}}):[];
+  const documentGroups=query.source==="DOCUMENTOS"&&result?.status==="AVAILABLE"?await db.selectDistinct({group:transparencyPublications.group}).from(transparencyPublications).where(and(eq(transparencyPublications.status,"PUBLISHED"),eq(transparencyPublications.year,query.year),inArray(transparencyPublications.entity,settings.entities.filter(entity=>entity.enabled&&(query.entity==="consolidado"||entity.key===query.entity)).map(entity=>entity.key)),slug!=="publicacoes"?eq(transparencyPublications.collectionSlug,slug):inArray(transparencyPublications.collectionSlug,catalog.map(collection=>collection.slug)))).orderBy(asc(transparencyPublications.group)):[];
   return <main id="consulta-transparencia" className="mx-auto max-w-7xl space-y-5 px-4 py-6 text-slate-900 sm:px-6">
     <AccessCounter enabled={settings.countAccess} slug={slug} query={publicQueryHref(query)}/>
     <nav aria-label="Caminho percorrido" className="flex flex-wrap gap-2 text-sm"><Link className="underline" href="/portal">Portal institucional</Link><span aria-hidden="true">/</span><Link className="underline" href="/portal/portaldatransparencia">Transparência</Link><span aria-hidden="true">/</span><span aria-current="page">{collection.title}</span></nav>

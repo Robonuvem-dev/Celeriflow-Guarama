@@ -6,13 +6,15 @@ import { SstForm } from "../SstForm";
 import { saveEquipmentPolicy } from "./actions";
 import { EquipmentCatalogForm } from "./EquipmentCatalogForm";
 import { EquipmentNav,EquipmentField,equipmentControl as control,equipmentDate } from "./EquipmentUi";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstEquipmentCatalogOptions, findSstEquipmentPolicy } from "@/db/repositories/sst-pages/equipment";
 
 export default async function EquipmentPage({searchParams}:{searchParams:Promise<{budgetUnitId?:string;q?:string;materialQ?:string;supplierQ?:string;page?:string}>}) {
   const context=await getTenantContextForModule("SST"); const params=await searchParams;
   const data=await listEquipment(context,params); const unit=data.units.find(u=>u.id===params.budgetUnitId);
-  const materials=unit && (params.materialQ?.trim().length||0)>=3 ? await context.prisma.material.findMany({where:{isActive:true,OR:[{name:{contains:params.materialQ,mode:"insensitive"}},{code:{contains:params.materialQ,mode:"insensitive"}}]},select:{id:true,name:true,code:true},take:20,orderBy:[{name:"asc"},{id:"asc"}]}):[];
-  const [policy]=unit ? await context.prisma.$queryRaw<{integrateStock:boolean}[]>`SELECT "integrateStock" FROM "SstEquipmentPolicy" WHERE "budgetUnitId"=${unit.id}`:[];
-  const supplierRecords=unit && (params.supplierQ?.trim().length||0)>=3 ? await context.prisma.supplier.findMany({where:{status:"Ativo",OR:[{person:{fullName:{contains:params.supplierQ,mode:"insensitive"}}},{company:{corporateName:{contains:params.supplierQ,mode:"insensitive"}}}]},include:{person:{select:{fullName:true}},company:{select:{corporateName:true}}},take:20,orderBy:{id:"asc"}}):[];
+  const database=sstDatabase(context);
+  const {materials,supplierRecords}=unit ? await readSstEquipmentCatalogOptions(database,params):{materials:[],supplierRecords:[]};
+  const policy=unit ? await findSstEquipmentPolicy(database,unit.id):undefined;
   const suppliers=supplierRecords.map(s=>({id:s.id,name:s.person?.fullName||s.company?.corporateName||s.id}));
   const href=(page:number)=>`/sst/equipamentos?${new URLSearchParams(Object.entries({...params,page:String(page)}).filter((entry):entry is [string,string]=>entry[1]!==undefined))}`;
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Equipamentos de proteção — EPI/EPC</h1><EquipmentNav/>

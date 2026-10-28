@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Prisma } from "@prisma/client";
+import { Decimal } from "../src/db/decimal";
 import {
   assertPurchaseRequestItemBudgetAllocations,
   normalizePurchaseRequestItemBudgetAllocations,
@@ -37,7 +37,7 @@ test("CLC-025 rejects incomplete, duplicate, or invalid budget allocation distri
     () => assertPurchaseRequestItemBudgetAllocations(item, [{
       budgetAppropriationId: "appropriation-1",
       quantity: 3,
-      valueDecimal: new Prisma.Decimal("36.99"),
+      valueDecimal: new Decimal("36.99"),
     }]),
     PurchaseRequestBudgetError,
   );

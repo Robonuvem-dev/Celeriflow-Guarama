@@ -1,5 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthDatabaseConnection } from "@/lib/saude/health-transaction";
+import { healthFamilies, healthHouseholds, healthMicroareas, healthTerritoryAreas, healthFamilyDocuments } from "@/db/schema/health-territory";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { assertHealthUnitAccess } from "@/lib/platform/tenant-context";
 import { uploadProcessFile, deleteUploadedDocument } from "@/lib/platform/blob";
@@ -11,13 +15,15 @@ const number = (data: FormData, key: string) => text(data, key) ? Number(text(da
 const refresh = () => { revalidatePath("/saude/territorio"); revalidatePath("/saude/territorio/atencao-primaria"); revalidatePath("/social/familias"); };
 export async function uploadFamilyDocumentAction(data: FormData): Promise<void> {
   const context = await getTenantContextForModuleOperation("SAUDE", "update");
-  const family = await context.prisma.healthFamily.findUniqueOrThrow({ where: { id: text(data, "familyId") }, include: { household: { include: { microarea: { include: { area: true } } } } } });
-  const unitId = family.unitId || family.household?.microarea?.area.unitId;
+  const [family] = await (context.database ?? db).select({ masterFamilyId: healthFamilies.masterFamilyId, unitId: healthFamilies.unitId, territoryUnitId: healthTerritoryAreas.unitId }).from(healthFamilies).leftJoin(healthHouseholds, eq(healthHouseholds.id, healthFamilies.householdId)).leftJoin(healthMicroareas, eq(healthMicroareas.id, healthHouseholds.microareaId)).leftJoin(healthTerritoryAreas, eq(healthTerritoryAreas.id, healthMicroareas.areaId)).where(eq(healthFamilies.id, text(data, "familyId"))).limit(1);
+  if (!family) throw new Error("Família não encontrada.");
+  const unitId = family.unitId || family.territoryUnitId;
   if (unitId) assertHealthUnitAccess(context.user, unitId); else if (context.user.hasHealthAccessScope) throw new Error("Família sem unidade autorizada.");
   if (!family.masterFamilyId) throw new Error("Vincule a família comum antes de anexar documentos.");
+  const masterFamilyId = family.masterFamilyId;
   const file = data.get("file"); if (!(file instanceof File)) throw new Error("Selecione um documento.");
   const blob = await uploadProcessFile(file);
-  try { await ingestGedDocument(context.prisma, { title: text(data, "title") || file.name, documentType: "Documento familiar", documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content: new Uint8Array(await file.arrayBuffer()), actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => { await tx.healthFamilyDocument.create({ data: { familyId: family.masterFamilyId!, documentId, actorUsuarioId: context.user.id } }); } }); }
+  try { await ingestGedDocument(healthDatabaseConnection(context), { title: text(data, "title") || file.name, documentType: "Documento familiar", documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content: new Uint8Array(await file.arrayBuffer()), actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => { await tx.insert(healthFamilyDocuments).values({ familyId: masterFamilyId, documentId, actorUsuarioId: context.user.id }); } }); }
   catch (error) { await deleteUploadedDocument(blob).catch(() => {}); throw error; }
   refresh();
 }

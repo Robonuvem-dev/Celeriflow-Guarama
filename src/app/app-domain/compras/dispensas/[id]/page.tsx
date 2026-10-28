@@ -7,17 +7,13 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { loadDirectContracting } from "@/db/repositories/procurement/direct-contracting";
 
 export default async function DispensaDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
+  const context = await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const dispensa = await prisma.directContracting.findUnique({
-    where: { id: resolvedParams.id },
-    include: {
-      process: true,
-      supplier: { include: { company: true } }
-    }
-  });
+  const dispensa = await loadDirectContracting(context.database ?? db, resolvedParams.id);
 
   if (!dispensa) {
     notFound();

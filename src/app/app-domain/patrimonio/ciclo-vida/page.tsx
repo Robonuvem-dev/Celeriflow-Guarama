@@ -1,5 +1,7 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, inArray, isNull, notInArray, or, sql, sum } from "drizzle-orm";
+import { db } from "@/db/client";
+import { assets as assetTable, assetCategories, assetValueHistories, assetWriteOffs, assetValueAdjustments } from "@/db/schema/assets";
 import { AssetLifecycleClient } from "./AssetLifecycleClient";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
@@ -51,26 +53,28 @@ export default async function AssetLifecyclePage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const { prisma, user } = await getTenantContextForModule("PATRIMONIO");
+  const { user } = await getTenantContextForModule("PATRIMONIO");
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const canCollect = canPerformModuleOperation(user, "FINANCEIRO", "create");
   const [budgetUnits, bankAccounts, revenueNatures, resourceSources] = await Promise.all([
-    prisma.budgetUnit.findMany({ where: { ...(allowed ? { id: { in: allowed } } : {}), planningEntityUnit: { isNot: null } }, select: { id: true, code: true, name: true, secretariatId: true }, orderBy: { code: "asc" } }),
-    canCollect ? prisma.bankAccount.findMany({ where: { isActive: true, ...(allowed ? { budgetUnitId: { in: allowed } } : {}) }, select: { id: true, bankName: true, accountNumber: true, budgetUnitId: true }, orderBy: { bankName: "asc" } }) : [],
-    canCollect ? prisma.revenueNature.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }) : [],
-    canCollect ? prisma.resourceSource.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }) : [],
+    db.execute<{ id: string; code: string; name: string; secretariatId: string | null }>(sql`SELECT u.id, u.code, u.name, u."secretariatId" FROM "BudgetUnit" u WHERE EXISTS (SELECT 1 FROM "PlanningEntityUnit" p WHERE p."budgetUnitId"=u.id) AND ${allowed ? inArray(sql`u.id`, allowed) : sql`true`} ORDER BY u.code ASC`).then(result => result.rows),
+    canCollect ? db.execute<{ id: string; bankName: string; accountNumber: string; budgetUnitId: string | null }>(sql`SELECT id, "bankName", "accountNumber", "budgetUnitId" FROM "BankAccount" WHERE "isActive"=true AND ${allowed ? inArray(sql`"budgetUnitId"`, allowed) : sql`true`} ORDER BY "bankName" ASC`).then(result => result.rows) : [],
+    canCollect ? db.execute<{ id: string; code: string; name: string }>(sql`SELECT id, code, name FROM "RevenueNature" ORDER BY code ASC`).then(result => result.rows) : [],
+    canCollect ? db.execute<{ id: string; code: string; name: string }>(sql`SELECT id, code, name FROM "ResourceSource" ORDER BY code ASC`).then(result => result.rows) : [],
   ]);
   const params = await searchParams;
   const view = parseLifecycleView(params?.view);
   const requestedPage = parsePatrimonioListPage(params?.page);
-  const assetAccess: Prisma.AssetWhereInput = allowed ? { OR: [{ budgetUnitId: { in: allowed } }, { budgetUnitId: null, purchaseReceiptItem: { purchaseReceipt: { commitment: { appropriation: { budgetUnitId: { in: allowed } } } } } }, { budgetUnitId: null, purchaseReceiptItemId: null, department: { secretariatId: { in: budgetUnits.map(unit => unit.secretariatId) } } }] } : {};
-  const activeAssetWhere = { status: { notIn: ["Baixado", "Inativo"] } };
+  const assetAccess = allowed ? or(inArray(assetTable.budgetUnitId, allowed),
+    and(isNull(assetTable.budgetUnitId), sql`EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c.id=r."commitmentId" JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assetTable.purchaseReceiptItemId} AND ${inArray(sql`b."budgetUnitId"`, allowed)})`),
+    and(isNull(assetTable.budgetUnitId), isNull(assetTable.purchaseReceiptItemId), sql`EXISTS (SELECT 1 FROM "Department" d WHERE d.id=${assetTable.departmentId} AND ${inArray(sql`d."secretariatId"`, budgetUnits.map(unit => unit.secretariatId))})`)) : undefined;
+  const activeAssetWhere = notInArray(assetTable.status, ["Baixado", "Inativo"]);
 
   const [assetTotal, activeAssetValue, writeOffTotal, adjustmentTotal] = await Promise.all([
-    view === "posicao" ? prisma.asset.count({ where: assetAccess }) : Promise.resolve(0),
-    view === "posicao" ? prisma.asset.aggregate({ where: { ...activeAssetWhere, ...assetAccess }, _sum: { currentValue: true } }) : Promise.resolve({ _sum: { currentValue: 0 } }),
-    prisma.assetWriteOff.count({ where: { asset: assetAccess } }),
-    prisma.assetValueAdjustment.count({ where: { asset: assetAccess } }),
+    view === "posicao" ? db.select({ count: count() }).from(assetTable).where(assetAccess).then(rows => rows[0].count) : Promise.resolve(0),
+    view === "posicao" ? db.select({ currentValue: sum(assetTable.currentValue) }).from(assetTable).where(and(activeAssetWhere, assetAccess)).then(rows => ({ _sum: { currentValue: rows[0].currentValue === null ? null : Number(rows[0].currentValue) } })) : Promise.resolve({ _sum: { currentValue: 0 } }),
+    db.select({ count: count() }).from(assetWriteOffs).innerJoin(assetTable, eq(assetTable.id, assetWriteOffs.assetId)).where(assetAccess).then(rows => rows[0].count),
+    db.select({ count: count() }).from(assetValueAdjustments).innerJoin(assetTable, eq(assetTable.id, assetValueAdjustments.assetId)).where(assetAccess).then(rows => rows[0].count),
   ]);
 
   const total = view === "posicao" ? assetTotal : view === "baixas" ? writeOffTotal : adjustmentTotal;
@@ -82,64 +86,21 @@ export default async function AssetLifecyclePage({
 
   const [assets, writeOffs, adjustments] = await Promise.all([
     view === "posicao"
-      ? prisma.asset.findMany({
-          where: assetAccess,
-          ...pageWindow,
-          orderBy: { patrimonyNumber: "asc" },
-          select: {
-            id: true,
-            code: true,
-            patrimonyNumber: true,
-            name: true,
-            currentValue: true,
-            currentValueDecimal: true,
-            status: true,
-            category: { select: { name: true, lifeSpan: true } },
-            valueHistory: {
-              orderBy: { referenceMonth: "desc" },
-              take: 1,
-              select: { id: true, referenceMonth: true, depreciation: true, accountingTransactionId: true, accountingTransaction: { select: { reversedBy: { select: { id: true } } } } },
-            },
-          },
-        })
+      ? db.select({ asset: assetTable, category: { name: assetCategories.name, lifeSpan: assetCategories.lifeSpan } }).from(assetTable).innerJoin(assetCategories, eq(assetCategories.id, assetTable.categoryId))
+          .where(assetAccess).orderBy(asc(assetTable.patrimonyNumber)).offset(pageWindow.skip).limit(pageWindow.take)
+          .then(async rows => {
+            const history = rows.length ? await db.select({ history: assetValueHistories, reversalId: sql<string | null>`(SELECT r.id FROM "AccountingTransaction" r WHERE r."reversalOfId"=${assetValueHistories.accountingTransactionId})` }).from(assetValueHistories)
+              .where(and(inArray(assetValueHistories.assetId, rows.map(row => row.asset.id)), sql`${assetValueHistories.referenceMonth}=(SELECT max(h."referenceMonth") FROM "AssetValueHistory" h WHERE h."assetId"=${assetValueHistories.assetId})`)) : [];
+            return rows.map(row => ({ ...row.asset, category: row.category, valueHistory: history.filter(h => h.history.assetId === row.asset.id).map(h => ({ ...h.history, accountingTransaction: h.history.accountingTransactionId ? { reversedBy: h.reversalId ? { id: h.reversalId } : null } : null })) }));
+          })
       : Promise.resolve([]),
     view === "baixas"
-      ? prisma.assetWriteOff.findMany({
-          where: { asset: assetAccess },
-          ...pageWindow,
-          orderBy: { date: "desc" },
-          select: {
-            id: true,
-            date: true,
-            type: true,
-            disposalValue: true,
-            bookValue: true,
-            gainLoss: true,
-            asset: { select: { code: true, patrimonyNumber: true, name: true } },
-            integrationPending: { select: { id: true, status: true, expectedEventCode: true } },
-            accountingTransaction: { select: { id: true } },
-          },
-        })
+      ? db.select({ writeOff: assetWriteOffs, asset: { code: assetTable.code, patrimonyNumber: assetTable.patrimonyNumber, name: assetTable.name } }).from(assetWriteOffs).innerJoin(assetTable, eq(assetTable.id, assetWriteOffs.assetId))
+          .where(assetAccess).orderBy(desc(assetWriteOffs.date)).offset(pageWindow.skip).limit(pageWindow.take).then(rows => rows.map(row => ({ ...row.writeOff, asset: row.asset })))
       : Promise.resolve([]),
     view === "ajustes"
-      ? prisma.assetValueAdjustment.findMany({
-          where: { asset: assetAccess },
-          ...pageWindow,
-          orderBy: { date: "desc" },
-          select: {
-            id: true,
-            date: true,
-            type: true,
-            adjustmentValue: true,
-            closingValue: true,
-            adjustmentValueDecimal: true,
-            closingValueDecimal: true,
-            accountingTransactionId: true,
-            accountingTransaction: { select: { reversedBy: { select: { id: true } } } },
-            evidence: true,
-            asset: { select: { code: true, patrimonyNumber: true, name: true } },
-          },
-        })
+      ? db.select({ adjustment: assetValueAdjustments, asset: { code: assetTable.code, patrimonyNumber: assetTable.patrimonyNumber, name: assetTable.name }, reversalId: sql<string | null>`(SELECT r.id FROM "AccountingTransaction" r WHERE r."reversalOfId"=${assetValueAdjustments.accountingTransactionId})` }).from(assetValueAdjustments).innerJoin(assetTable, eq(assetTable.id, assetValueAdjustments.assetId))
+          .where(assetAccess).orderBy(desc(assetValueAdjustments.date)).offset(pageWindow.skip).limit(pageWindow.take).then(rows => rows.map(row => ({ ...row.adjustment, asset: row.asset, accountingTransaction: row.adjustment.accountingTransactionId ? { reversedBy: row.reversalId ? { id: row.reversalId } : null } : null })))
       : Promise.resolve([]),
   ]);
 

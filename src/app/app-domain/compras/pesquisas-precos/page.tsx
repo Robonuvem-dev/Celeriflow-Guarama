@@ -1,16 +1,11 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { priceQuoteStatuses } from "@/lib/compras/price-research";
+import { db } from "@/db/client";
+import { listPriceResearches } from "@/db/repositories/procurement/price-research";
 import { PriceResearchListClient } from "./PriceResearchListClient";
 
 export default async function PriceResearchPage() {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
-  const researches = await prisma.priceResearch.findMany({
-    include: {
-      process: { select: { number: true, object: true, purchaseRequest: { select: { number: true } } } },
-      _count: { select: { quotes: { where: { status: { in: [priceQuoteStatuses.submitted, priceQuoteStatuses.legacyActive] } } } } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const context = await getTenantContextForModule("COMPRAS");
+  const researches = await listPriceResearches(context.database ?? db);
 
   return <PriceResearchListClient researches={researches.map((research) => ({
     id: research.id,

@@ -1,38 +1,31 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import ts from "typescript";
 import { config } from "dotenv";
-import type { Prisma } from "@prisma/client";
-import { createDatabaseConnection } from "../src/db/connection";
 import { countUnreadInternalNotifications, listInternalNotifications, listVisibleNotificationProcessTargets } from "../src/db/repositories/platform/notifications";
+import { openReadOnlySqlOracle, sqlOracleUrl } from "./sql-oracle";
 
 config({ path: ".env.local", quiet: true }); config({ quiet: true });
 
 async function main() {
-  assert.ok(process.env.DATABASE_URL);
-  const { createPrismaClient } = await import("../src/lib/prisma");
-  const legacy = createPrismaClient(process.env.DATABASE_URL), connection = createDatabaseConnection(process.env.DATABASE_URL);
-  const source = execFileSync("git", ["show", "3f05dcd:src/lib/protocols/access.ts"], { encoding: "utf8" });
-  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const helpers = {} as { protocolScope: (context: { protocolAccess: { isAdmin: boolean }; user: { departmentId: string | null } }) => Prisma.ProcessWhereInput };
-  new Function("exports", "require", code)(helpers, (id: string) => { assert.equal(id, "@/lib/platform/tenant-context"); return {}; });
+  const connection = openReadOnlySqlOracle(sqlOracleUrl());
   let comparisons = 0;
   try {
-    const users = await legacy.usuario.findMany({ select: { id: true }, take: 25 });
+    const users = await connection.rows<{ id: string }>('SELECT id FROM "Usuario" LIMIT 25');
     for (const user of [...users, { id: "missing-drizzle-notification-recipient" }]) {
       for (const options of [{}, { sourceModule: "PROCESSOS" }, { sourceModule: "SOCIAL", take: 10 }, { sourceModule: "ABSENT", take: 20 }]) {
-        assert.deepEqual(await listInternalNotifications(connection.db, user.id, options), await legacy.protocolNotification.findMany({ where: { userId: user.id, ...(options.sourceModule ? { sourceModule: options.sourceModule } : {}) }, orderBy: { createdAt: "desc" }, take: options.take ?? 50 })); comparisons++;
+        assert.deepEqual(await listInternalNotifications(connection.db, user.id, options), await connection.rows('SELECT * FROM "ProtocolNotification" WHERE "userId"=$1 AND ($2::text IS NULL OR "sourceModule"=$2) ORDER BY "createdAt" DESC LIMIT $3', [user.id, options.sourceModule || null, options.take ?? 50])); comparisons++;
       }
-      assert.equal(await countUnreadInternalNotifications(connection.db, user.id), await legacy.protocolNotification.count({ where: { userId: user.id, readAt: null } })); comparisons++;
+      assert.equal(await countUnreadInternalNotifications(connection.db, user.id), await connection.count('SELECT count(*)::int AS count FROM "ProtocolNotification" WHERE "userId"=$1 AND "readAt" IS NULL', [user.id])); comparisons++;
     }
-    const processIds = (await legacy.process.findMany({ select: { id: true }, take: 50 })).map(row => row.id);
-    const departments = await legacy.department.findMany({ select: { id: true }, take: 5 });
+    const processIds = (await connection.rows<{ id: string }>('SELECT id FROM "Process" LIMIT 50')).map(row => row.id);
+    const departments = await connection.rows<{ id: string }>('SELECT id FROM "Department" LIMIT 5');
     for (const administrator of [true, false]) for (const departmentId of [null, "absent-drizzle-sector", ...departments.map(row => row.id)]) {
-      const expected = await legacy.process.findMany({ where: { id: { in: processIds }, ...helpers.protocolScope({ protocolAccess: { isAdmin: administrator }, user: { departmentId } }) }, select: { id: true, protocolNumber: true } });
+      // Captured authorization rule: current sector OR any formal sent/received
+      // movement. No-sector access uses the original impossible-id sentinel.
+      const expected = await connection.rows<{ id: string; protocolNumber: string }>(`SELECT p.id,p."protocolNumber" FROM "Process" p WHERE p.id=ANY($1::text[]) AND ($2::boolean OR ($3::text IS NULL AND p.id=$4) OR ($3::text IS NOT NULL AND (p."currentDepartmentId"=$3 OR EXISTS(SELECT 1 FROM "ProcessMovement" m WHERE m."processId"=p.id AND (m."fromDepartmentId"=$3 OR m."toDepartmentId"=$3)))))`, [processIds, administrator, departmentId, "__sem-departamento__"]);
       const actual = await listVisibleNotificationProcessTargets(connection.db, processIds, { administrator, departmentId });
       assert.deepEqual(actual.sort((a, b) => a.id.localeCompare(b.id)), expected.sort((a, b) => a.id.localeCompare(b.id))); comparisons++;
     }
-    console.log(JSON.stringify({ result: "PASS", mode: "READ ONLY", comparisons, scope: "Recipient history/filter/unread DTOs and target authorization using current/historical process departments" }, null, 2));
-  } finally { await legacy.$disconnect(); await connection.pool.end(); }
+    console.log(JSON.stringify({ result: "PASS", mode: "READ ONLY SQL ORACLE", comparisons, scope: "Recipient history/filter/unread DTOs and target authorization using current/historical process departments" }, null, 2));
+  } finally { await connection.pool.end(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

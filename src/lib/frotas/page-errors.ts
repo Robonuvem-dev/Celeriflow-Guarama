@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { getPostgresError } from "@/db/errors";
 import { AccessError } from "@/lib/platform/tenant-context";
 
 export type FleetPageIssue = {
@@ -19,7 +19,7 @@ export function fleetPageIssue(error: unknown): FleetPageIssue | null {
     return { kind: "access", title: "Acesso a Frotas indisponível", message: error.message };
   }
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2021", "P2022"].includes(error.code)) {
+  if (["42P01", "42703"].includes(getPostgresError(error)?.code ?? "")) {
     return {
       kind: "database",
       title: "Frotas aguarda atualização do banco",

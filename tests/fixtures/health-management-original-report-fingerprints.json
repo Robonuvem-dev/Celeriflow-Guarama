@@ -1,0 +1,14 @@
+{
+  "description": "Fingerprints congelados dos returns originais, capturados antes da migração Drizzle; não dependem de HEAD, histórico Git ou catálogo privado.",
+  "normalization": "TypeScript printer LF; visita de ReturnStatement em pré-ordem; remove somente AsExpression/TypeAssertionExpression; SHA-256 de JSON.stringify(array de returns impressos).",
+  "reports": {
+    "health-report-service": {
+      "count": 35,
+      "hash": "c40df8dee9615b219b971878ba2199b9d4765ecdb177c3ff490171a3f5f00b5b"
+    },
+    "health-report-extra": {
+      "count": 108,
+      "hash": "4dbdef21bf19551dfd0ba0c69f7632d0b8afea5501a6a48c1e86de584b696f49"
+    }
+  }
+}

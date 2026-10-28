@@ -3,19 +3,18 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ContratosClient, type ContractRow } from "./ContratosClient";
+import { db } from "@/db/client";
+import { desc, eq } from "drizzle-orm";
+import { procurementContracts } from "@/db/schema/procurement-core";
+import { suppliers, companies } from "@/db/schema/registry";
+import { people } from "@/db/schema/people";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContratosPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
-  const contracts = await prisma.contract.findMany({
-    orderBy: { startDate: 'desc' },
-    include: {
-      supplier: {
-        include: { company: true, person: true }
-      }
-    }
-  });
+  await getTenantContextForModule("TRANSPARENCIA");
+  const contractRows=await db.select({contract:procurementContracts,company:{tradeName:companies.tradeName,corporateName:companies.corporateName},person:{fullName:people.fullName}}).from(procurementContracts).innerJoin(suppliers,eq(suppliers.id,procurementContracts.supplierId)).leftJoin(companies,eq(companies.id,suppliers.companyId)).leftJoin(people,eq(people.id,suppliers.personId)).orderBy(desc(procurementContracts.startDate));
+  const contracts=contractRows.map(row=>({...row.contract,supplier:{company:row.company,person:row.person}}));
   const rows: ContractRow[] = contracts.map((contract) => ({
     id: contract.id,
     number: contract.number,

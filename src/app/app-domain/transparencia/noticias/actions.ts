@@ -1,14 +1,13 @@
 "use server"
 
-import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
-
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("TRANSPARENCIA", operation)).prisma;
-}
+import { db } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { portalNews } from "@/db/schema/portal-content";
 
 export async function createNews(data: FormData) {
-  const prisma = await getTenantPrisma("create");
+  await getTenantContextForModuleOperation("TRANSPARENCIA", "create");
   const title = data.get("title") as string;
   const subtitle = data.get("subtitle") as string;
   const content = data.get("content") as string;
@@ -20,24 +19,20 @@ export async function createNews(data: FormData) {
 
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
-  await prisma.portalNews.create({
-    data: {
+  await db.insert(portalNews).values({
       title,
       subtitle,
       content,
       status,
       slug,
       publishedAt: status === 'Publicado' ? new Date() : null,
-    }
   });
 
   revalidatePath("/transparencia/noticias");
 }
 
 export async function deleteNews(id: string) {
-  const prisma = await getTenantPrisma("delete");
-  await prisma.portalNews.delete({
-    where: { id }
-  });
+  await getTenantContextForModuleOperation("TRANSPARENCIA", "delete");
+  if (!(await db.delete(portalNews).where(eq(portalNews.id, id)).returning({ id: portalNews.id })).length) throw new Error("Notícia não encontrada.");
   revalidatePath("/transparencia/noticias");
 }

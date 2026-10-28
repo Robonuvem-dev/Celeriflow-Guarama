@@ -1,12 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { count, eq } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { extractConstructionPlan, extractPdfPages, comparePlanZoning, validateGroundedMeasurements, PLAN_MAX_BYTES } from "../src/lib/obras/construction-extraction";
 import { createExportSnapshot, validateExportRecords, verifyExportHash, selectConstructionExportPermit, type ExportRecord } from "../src/lib/obras/construction-export";
-import { constructionExportRecords } from "../src/lib/obras/construction-export-service";
-import { Prisma } from "@prisma/client";
+import { constructionExportRecords, persistConstructionExport } from "../src/lib/obras/construction-export-service";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { Decimal } from "../src/db/decimal";
+import { constructionIssuedDocuments } from "../src/db/schema/construction-documents";
+import { constructionFederalExports, constructionFederalExportItems, constructionFederalExportReceipts, constructionPlanExtractions } from "../src/db/schema/construction-integrations";
+import { constructionPropertyZones, constructionZoneVersions } from "../src/db/schema/construction-viability";
+import { documentVersions, documentSignatures } from "../src/db/schema/document-workflow";
+import { findConstructionExport, findConstructionExportReceipt, findConstructionPlanExtraction, listConstructionPlanPropertyZones } from "../src/db/repositories/infrastructure/construction-integrations";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
 
 async function pdfFixture(text?: string, count = 1) {
   const doc = new PDFDocument({ autoFirstPage: false }); const chunks: Buffer[] = [];
@@ -105,21 +114,115 @@ test("publication gate requires matching signed GED version and every mandatory 
   ]) assert.equal(selectConstructionExportPermit("c1", [permitFixture], [invalid], now), null);
   assert.equal(selectConstructionExportPermit("c1", [permitFixture], [{ ...versionFixture, signatures: [signatureFixture, { ...signatureFixture, isRequired: false, status: "PENDING" }] }], now)?.id, "published1");
 });
-test("export service uses F5 PUBLISHED/validity query and produces a valid downloadable snapshot from actual publication evidence", async () => {
-  const tx = {
-    constructionCase: { findMany: async () => [{ id: "c1", totalArea: new Prisma.Decimal("100"), process: { protocolNumber: "2026/1", person: { cpf: record.ownerDocument }, company: null }, properties: [{ realEstate: { municipalInsc: "123", streetName: "Rua A", number: "1" } }], lifecycleStart: null }] },
-    constructionIssuedDocument: { findMany: async (query: { where: { status: string; publishedAt: { not: null; lte: Date }; OR: unknown[] }; orderBy: { publishedAt: string } }) => {
-      assert.equal(query.where.status, "PUBLISHED"); assert.equal(query.where.publishedAt.not, null); assert.ok(query.where.publishedAt.lte instanceof Date); assert.deepEqual(query.where.OR, [{ validUntil: null }, { validUntil: { gte: query.where.publishedAt.lte } }]); assert.equal(query.orderBy.publishedAt, "desc");
-      return [permitFixture];
-    } },
-    documentVersion: { findMany: async (query: { where: { status: string; id: { in: string[] } }; include: { signatures: boolean } }) => {
-      assert.equal(query.where.status, "SIGNED"); assert.deepEqual(query.where.id.in, ["version1"]); assert.equal(query.include.signatures, true); return [versionFixture];
-    } },
-  } as unknown as Prisma.TransactionClient;
-  const rows = await constructionExportRecords(tx, { administrator: true, departmentId: null, employeeId: null, roles: [] }, ["c1"]);
-  assert.equal(rows[0].permitStatus, "PUBLISHED"); assert.equal(rows[0].permitDocumentVersionId, "version1"); assert.equal(rows[0].permitHashSha256, "signed-hash"); assert.equal(rows[0].permitValidUntil, permitFixture.validUntil.toISOString());
-  const snapshot = createExportSnapshot(rows, { period: "2026-01", version: 1, createdAt: "2026-10-10T00:00:00Z" });
-  assert.equal(snapshot.validation.valid, true); assert.ok(verifyExportHash(snapshot.payload, snapshot.hashSha256)); assert.equal(JSON.parse(snapshot.payload).records[0].permitId, "published1");
+test("export service preserves publication evidence, exact scalars, scoped downloads, replay, rectification and atomic rollback", async () => {
+  const fixture = await createLocalDrizzleDatabase();
+  const db = fixture.connection.db, pg = fixture.database;
+  const access = { administrator: false, departmentId: "department", employeeId: "employee", roles: ["MANAGER"] };
+  const admin = { administrator: true, departmentId: null, employeeId: null, roles: [] };
+  try {
+    // Explicit projections of cross-domain physical tables. Domain tables below
+    // use their installed SQL, including FK/check/append-only constraints.
+    await pg.exec(`CREATE TABLE "Process" (id TEXT PRIMARY KEY, "protocolNumber" TEXT, "personId" TEXT, "companyId" TEXT, "currentDepartmentId" TEXT);
+      CREATE TABLE "Person" (id TEXT PRIMARY KEY, cpf TEXT);
+      CREATE TABLE "Company" (id TEXT PRIMARY KEY, cnpj TEXT);
+      CREATE TABLE "Document" (id TEXT PRIMARY KEY);
+      CREATE TABLE "ConstructionPortalIdentity" (id TEXT PRIMARY KEY);
+      CREATE TABLE "ConstructionCase" (id TEXT PRIMARY KEY, "processId" TEXT, "totalArea" NUMERIC(14,4));
+      CREATE TABLE "ConstructionCaseProperty" (id TEXT PRIMARY KEY, "caseId" TEXT, "realEstateId" TEXT);
+      CREATE TABLE "RealEstate" (id TEXT PRIMARY KEY, "municipalInsc" TEXT, "streetName" TEXT, number TEXT, "landArea" DOUBLE PRECISION);`);
+    const baseline = await readFile(new URL("../prisma/migrations-ibema/20261009232000_baseline/migration.sql", import.meta.url), "utf8");
+    const lifecycle = await readFile(new URL("../prisma/migrations-ibema/20261010240000_construction_lifecycle/migration.sql", import.meta.url), "utf8");
+    const zoning = await readFile(new URL("../prisma/migrations-ibema/20261010170000_construction_rules_profiles/migration.sql", import.meta.url), "utf8");
+    const tableDDL = (source: string, table: string) => {
+      const start = source.indexOf(`CREATE TABLE "${table}" (`);
+      assert.ok(start >= 0, `DDL histórico ausente: ${table}`);
+      const end = source.indexOf(");", start);
+      assert.ok(end > start);
+      return source.slice(start, end + 2);
+    };
+    await pg.exec(tableDDL(baseline, "DocumentVersion"));
+    await pg.exec(tableDDL(baseline, "DocumentSignature"));
+    await pg.exec(tableDDL(lifecycle, "ConstructionLifecycleStart"));
+    await pg.exec(tableDDL(zoning, "ConstructionZoneVersion"));
+    await pg.exec(tableDDL(zoning, "ConstructionPropertyZone"));
+    await pg.exec(await readFile(new URL("../prisma/migrations-ibema/20261010230000_construction_documents/migration.sql", import.meta.url), "utf8"));
+    await pg.exec(await readFile(new URL("../prisma/migrations-ibema/20261010260000_construction_export_extraction/migration.sql", import.meta.url), "utf8"));
+    await pg.exec(`INSERT INTO "Person" VALUES ('person','52998224725');
+      INSERT INTO "Process" VALUES ('process','2026/1','person',NULL,'department');
+      INSERT INTO "ConstructionCase" VALUES ('c1','process',100.0001);
+      INSERT INTO "RealEstate" VALUES ('property','123','Rua A','1',300), ('unzoned','456','Rua B',NULL,NULL);
+      INSERT INTO "ConstructionCaseProperty" VALUES ('link','c1','property');
+      INSERT INTO "ConstructionLifecycleStart" (id,"caseId","requestKey","startedAt",notes,"evidenceSnapshot","createdBy") VALUES ('start','c1','start-key','2026-01-02','Início','{}','actor');
+      INSERT INTO "ConstructionDocumentTemplateVersion" (id,kind,version,title,body,stamp,"signaturePolicy","createdBy") VALUES ('template','PERMIT',1,'Alvará','Corpo','Carimbo','INTERNAL_ALLOWED','actor');
+      INSERT INTO "Document" VALUES ('doc1');`);
+    await db.insert(documentVersions).values({ id: versionFixture.id, documentId: versionFixture.documentId, status: versionFixture.status, hashSha256: versionFixture.hashSha256, versionNumber: 1, fileUrl: "blob" });
+    await db.insert(documentSignatures).values({ id: "signature", ...signatureFixture, signerUsuarioId: "signer", signerName: "Gestor", signerEmail: "signer@example.invalid", authenticationMethod: "PASSWORD_REAUTHENTICATED", verificationCode: "signature-code" });
+    await db.insert(constructionIssuedDocuments).values({ ...permitFixture, requestKey: randomUUID(), processId: "process", year: 2026, sequence: 1, templateVersionId: "template", templateSnapshot: {}, fileUrl: "blob", backupPath: "backup", validationCode: "permit-code", createdBy: "actor" });
+    const rows = await constructionExportRecords(db, access, ["c1"]);
+    assert.equal(rows[0].permitStatus, "PUBLISHED"); assert.equal(rows[0].permitDocumentVersionId, "version1"); assert.equal(rows[0].permitHashSha256, "signed-hash"); assert.equal(rows[0].permitValidUntil, permitFixture.validUntil.toISOString());
+    assert.equal(rows[0].area, "100.0001"); assert.equal(rows[0].startedAt, "2026-01-02"); assert.deepEqual(rows[0].properties, [{ registration: "123", address: "Rua A, 1" }]);
+    await assert.rejects(constructionExportRecords(db, { ...access, departmentId: "other" }, ["c1"]), /indisponíveis/);
+    await assert.rejects(constructionExportRecords(db, { ...access, roles: [] }, ["c1"]), /indisponíveis/);
+    await db.update(documentSignatures).set({ documentHash: "stale" }).where(eq(documentSignatures.id, "signature"));
+    assert.equal((await constructionExportRecords(db, access, ["c1"]))[0].permitId, null);
+    await db.update(documentSignatures).set({ documentHash: "signed-hash" }).where(eq(documentSignatures.id, "signature"));
+    for (const status of ["ISSUED", "SUPERSEDED"]) {
+      await db.update(constructionIssuedDocuments).set({ status }).where(eq(constructionIssuedDocuments.id, "published1"));
+      assert.equal((await constructionExportRecords(db, access, ["c1"]))[0].permitId, null);
+    }
+    await db.update(constructionIssuedDocuments).set({ status: "PUBLISHED", validUntil: new Date("2020-01-01T00:00:00Z") }).where(eq(constructionIssuedDocuments.id, "published1"));
+    assert.equal((await constructionExportRecords(db, access, ["c1"]))[0].permitId, null);
+    await db.update(constructionIssuedDocuments).set({ validUntil: null, publishedAt: new Date("2099-01-01T00:00:00Z") }).where(eq(constructionIssuedDocuments.id, "published1"));
+    assert.equal((await constructionExportRecords(db, access, ["c1"]))[0].permitId, null);
+    await db.update(constructionIssuedDocuments).set({ validUntil: permitFixture.validUntil, publishedAt: permitFixture.publishedAt }).where(eq(constructionIssuedDocuments.id, "published1"));
+    const input = { requestKey: randomUUID(), caseIds: ["c1"], period: "2026-01" };
+    const save = (raw: unknown, actor = "actor") => withDatabaseTransaction(fixture.connection, tx => persistConstructionExport(tx, access, actor, raw));
+    const saved = await save(input);
+    assert.ok(saved.createdAt instanceof Date); assert.equal(saved.version, 1);
+    assert.equal((await save(input)).id, saved.id);
+    await assert.rejects(save(input, "other-actor"), /indisponível/);
+    assert.equal((await db.select({ total: count() }).from(constructionFederalExportItems))[0].total, 1);
+    assert.equal(saved.validationSnapshot && JSON.parse(saved.payload).records[0].area, "100.0001");
+    assert.ok(verifyExportHash(saved.payload, saved.hashSha256));
+    await assert.rejects(save({ ...input, requestKey: randomUUID() }), /Use retificação/);
+    const corrected = await save({ ...input, requestKey: randomUUID(), rectifiesId: saved.id, reason: "Retificação motivada do lote" });
+    assert.equal(corrected.version, 2); assert.equal(corrected.rectifiesId, saved.id);
+    await assert.rejects(save({ ...input, requestKey: randomUUID(), rectifiesId: saved.id, reason: "Referência ultrapassada" }), /mais recente/);
+    await pg.exec(`CREATE FUNCTION reject_export_item() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'export item rejected'; END $$;
+      CREATE TRIGGER reject_export_item BEFORE INSERT ON "ConstructionFederalExportItem" FOR EACH ROW EXECUTE FUNCTION reject_export_item();`);
+    await assert.rejects(save({ ...input, requestKey: randomUUID(), rectifiesId: corrected.id, reason: "Falha posterior preserva histórico" }));
+    assert.equal((await db.select({ total: count() }).from(constructionFederalExports))[0].total, 2);
+    assert.equal((await db.select({ total: count() }).from(constructionFederalExportItems))[0].total, 2);
+    await pg.exec(`DROP TRIGGER reject_export_item ON "ConstructionFederalExportItem"`);
+    const [receipt] = await db.insert(constructionFederalExportReceipts).values({ exportId: saved.id, protocol: "manual-1", destination: "Destino municipal", submittedAt: new Date("2026-01-03T00:30:00.123Z"), evidenceUrl: "blob", evidenceHash: "hash", notes: "Comprovante manual", createdBy: "actor" }).returning();
+    assert.equal((await findConstructionExportReceipt(db, access, saved.id, receipt.id))?.submittedAt.toISOString(), "2026-01-03T00:30:00.123Z");
+    assert.equal(await findConstructionExportReceipt(db, access, corrected.id, receipt.id), null);
+    assert.equal((await findConstructionExport(db, access, saved.id))?.payload, saved.payload);
+    await assert.rejects(async () => { await db.insert(constructionFederalExportReceipts).values({ ...receipt, id: randomUUID() }); });
+    const [extraction] = await db.insert(constructionPlanExtractions).values({ caseId: "c1", requestKey: randomUUID(), filename: "prancha.pdf", sourceUrl: "blob", sourceHash: "hash", engine: "DEMO_RULES", model: "demo", status: "UNIDENTIFIABLE", pages: [], measurements: [], comparison: {}, limitations: ["OCR ausente"], createdBy: "actor" }).returning();
+    assert.deepEqual((await findConstructionPlanExtraction(db, access, extraction.id))?.limitations, ["OCR ausente"]);
+    assert.equal(await findConstructionPlanExtraction(db, { ...access, roles: [] }, extraction.id), null);
+    for (const department of ["other", null]) {
+      await pg.query(`UPDATE "Process" SET "currentDepartmentId"=$1`, [department]);
+      assert.equal(await findConstructionExport(db, access, saved.id), null);
+      assert.equal(await findConstructionExportReceipt(db, access, saved.id, receipt.id), null);
+      assert.equal(await findConstructionPlanExtraction(db, access, extraction.id), null);
+      assert.ok(await findConstructionExport(db, admin, saved.id));
+      assert.ok(await findConstructionPlanExtraction(db, admin, extraction.id));
+    }
+    await pg.exec(`UPDATE "Process" SET "currentDepartmentId"='department'`);
+    const [empty] = await db.insert(constructionFederalExports).values({ requestKey: randomUUID(), scope: "department", period: "2026-02", version: 1, payload: "empty historical batch", hashSha256: "hash", validationSnapshot: {}, createdBy: "actor" }).returning();
+    assert.ok(await findConstructionExport(db, { ...access, roles: [] }, empty.id), "autorização universal do lote vazio mantém semântica original");
+    assert.equal(await findConstructionExport(db, { ...access, departmentId: "other" }, empty.id), null);
+    await db.insert(constructionZoneVersions).values({ id: "zone", code: "ZONE", version: 1, name: "Zona", legalBasis: "Lei de teste", startsAt: new Date("2026-01-01T00:00:00Z"), endsAt: null, allowedPurposeIds: [], allowedCategories: ["BUILDING"], minimumLandArea: new Decimal("9999999999.9999"), maxFloorAreaRatio: new Decimal("1.2345"), automatic: true, publishedBy: "actor" });
+    await db.insert(constructionPropertyZones).values({ realEstateId: "property", zoneId: "zone" });
+    await pg.exec(`INSERT INTO "ConstructionCaseProperty" VALUES ('unzoned-link','c1','unzoned')`);
+    const zones = await listConstructionPlanPropertyZones(db, "c1");
+    const zone = zones.find(item => item.realEstateId === "property")?.zone;
+    assert.equal(zone?.minimumLandArea.toFixed(4), "9999999999.9999"); assert.equal(zone?.startsAt.toISOString(), "2026-01-01T00:00:00.000Z"); assert.equal(zone?.endsAt, null);
+    assert.equal(zones.find(item => item.realEstateId === "unzoned")?.zone, null);
+    assert.equal((await findConstructionExport(db, access, saved.id))?.payload, saved.payload, "retificação não regrava bytes anteriores");
+  } finally { await fixture.close(); }
 });
 
 test("database enforces append-only export bytes, receipts, items and extraction evidence", async () => {

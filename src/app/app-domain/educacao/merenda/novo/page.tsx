@@ -5,15 +5,14 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { createSchoolMeal } from "../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listActiveEducationSchools } from "@/db/repositories/education/core";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovaMerendaPage() {
-  const { prisma } = await getTenantContextForModule("EDUCACAO");
-  const schools = await prisma.school.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-  });
+  const context = await getTenantContextForModule("EDUCACAO");
+  const schools = await listActiveEducationSchools(context.database ?? db);
 
   return (
     <PageFrame className="space-y-3 px-1 py-1 md:px-2">

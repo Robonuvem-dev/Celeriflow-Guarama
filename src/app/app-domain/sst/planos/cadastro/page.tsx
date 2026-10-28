@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstBenefitRegistrationPage } from "@/db/repositories/sst-pages/benefits";
 import { SstForm } from "../../SstForm";
 import { saveHealthPlan, saveBenefitBeneficiary } from "../actions";
 
@@ -9,11 +11,8 @@ export default async function BenefitRegistrationPage({ searchParams }: { search
   const context = await getTenantContextForModule("SST");
   const params = await searchParams;
   const q = (params.q ?? "").trim().slice(0, 120);
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), orderBy: [{ name: "asc" }, { id: "asc" }], select: { id: true, name: true, secretariatId: true } });
-  const plans = await context.prisma.sstHealthPlan.findMany({ where: { budgetUnitId: { in: units.map((unit) => unit.id) }, ...(params.planId ? { id: params.planId } : q.length >= 3 ? { benefitConfig: { name: { contains: q, mode: "insensitive" } } } : { id: "NO_SEARCH" }) }, include: { benefitConfig: true }, take: 20, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
-  const configs = q.length >= 3 ? await context.prisma.benefitConfig.findMany({ where: { isActive: true, name: { contains: q, mode: "insensitive" }, sstHealthPlan: null }, take: 20, orderBy: [{ name: "asc" }, { id: "asc" }] }) : [];
-  const rubrics = q.length >= 3 ? await context.prisma.hrPayrollRubric.findMany({ where: { isActive: true, type: "DESCONTO", OR: [{ name: { contains: q, mode: "insensitive" } }, { code: { contains: q, mode: "insensitive" } }] }, take: 20, orderBy: [{ code: "asc" }, { id: "asc" }], include: { ruleSet: { select: { name: true } } } }) : [];
-  const assignments = await context.prisma.payrollBenefit.findMany({ where: { status: "Ativo", employee: { isActive: true, secretariatId: { in: units.flatMap((unit) => unit.secretariatId ? [unit.secretariatId] : []) } }, ...(params.payrollBenefitId ? { id: params.payrollBenefitId } : q.length >= 3 ? { employee: { name: { contains: q, mode: "insensitive" }, isActive: true, secretariatId: { in: units.flatMap((unit) => unit.secretariatId ? [unit.secretariatId] : []) } } } : { id: "NO_SEARCH" }) }, include: { employee: { include: { dependents: true } }, benefitConfig: true }, take: 20, orderBy: [{ id: "asc" }] });
+  const database = sstDatabase(context), units = await listSstUnits(database, context);
+  const {plans,configs,rubrics,assignments}=await readSstBenefitRegistrationPage(database,units,q,params);
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Cadastro contratual de planos</h1><Link href="/sst/planos" className="underline">Voltar à consulta</Link>
     <p className="text-sm">Pesquisas limitadas a 20 resultados. Informe IDs canônicos das rubricas se a pesquisa pelo mesmo termo não as localizar. Cadastre benefício, fornecedor/Company, rubricas e vínculo de servidor no RH antes da extensão SST.</p>
     <form className="flex gap-2"><input className={field} name="q" defaultValue={q} placeholder="Buscar plano, servidor ou rubrica (3 letras)"/><button className="rounded border p-2">Pesquisar</button></form>

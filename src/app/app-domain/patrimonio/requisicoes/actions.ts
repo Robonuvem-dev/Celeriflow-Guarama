@@ -15,6 +15,10 @@ import { MunicipalCostError } from "@/lib/financeiro/cost-ledger";
 import { FinanceError } from "@/lib/financeiro";
 import { StockServiceError } from "@/lib/patrimonio/stock-service";
 import { EquipmentCustodyError } from "@/lib/patrimonio/equipment-custody";
+import { db, databaseConnection } from "@/db/client";
+import { and, eq, inArray } from "drizzle-orm";
+import { planningBudgetUnits } from "@/db/schema/planning-budget";
+import { departments } from "@/db/schema/administration";
 
 type ActionResult = { error?: string; message?: string; requestId?: string };
 
@@ -56,10 +60,11 @@ export async function createMaterialRequestAction(data: {
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "create");
     if (!isSystemAdministrator(context.user)) {
       if (parsed.data.requesterId !== context.user.employeeId && !canPerformModuleOperation(context.user, "PATRIMONIO", "update")) return { error: "Seu perfil permite requisitar somente para o seu próprio servidor." };
-      const units = await context.prisma.budgetUnit.findMany({ where: { id: { in: context.user.allowedBudgetUnitIds } }, select: { secretariatId: true } });
-      if (!await context.prisma.department.count({ where: { id: parsed.data.departmentId, secretariatId: { in: units.flatMap(unit => unit.secretariatId ? [unit.secretariatId] : []) } } })) return { error: "Setor de destino fora do seu escopo autorizado." };
+      const database = context.database ?? db;
+      const units = await database.select({ secretariatId: planningBudgetUnits.secretariatId }).from(planningBudgetUnits).where(inArray(planningBudgetUnits.id, context.user.allowedBudgetUnitIds));
+      if (!(await database.select({ id: departments.id }).from(departments).where(and(eq(departments.id, parsed.data.departmentId), inArray(departments.secretariatId, units.flatMap(unit => unit.secretariatId ? [unit.secretariatId] : [])))).limit(1)).length) return { error: "Setor de destino fora do seu escopo autorizado." };
     }
-    const request = await createMaterialRequest(context.prisma, {
+    const request = await createMaterialRequest(databaseConnection, {
       usuarioId: context.user.id,
       employeeId: parsed.data.requesterId,
     }, parsed.data);
@@ -73,7 +78,7 @@ export async function createMaterialRequestAction(data: {
 export async function approveMaterialRequestAction(requestId: string, quantities: Array<{ itemId: string; quantityApproved: number }>): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
-    await approveMaterialRequest(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId }, { requestId, quantities });
+    await approveMaterialRequest(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId }, { requestId, quantities });
     revalidatePath("/patrimonio/requisicoes");
     revalidatePath(`/patrimonio/requisicoes/${requestId}`);
     return {};
@@ -86,7 +91,7 @@ export async function issueMaterialRequestItemAction(data: { requestItemId: stri
   try {
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "create");
     if (data.settlementId) await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await issueMaterialRequestItem(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, data);
+    await issueMaterialRequestItem(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, data);
     revalidatePath("/patrimonio/requisicoes");
     revalidatePath("/patrimonio/materiais");
     revalidatePath("/patrimonio/requisicoes", "layout");
@@ -108,7 +113,7 @@ export async function issueMaterialRequestInFullAction(data: {
   try {
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "create");
     if (parsed.data.stockByItem.some(item => item.settlementId)) await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await issueMaterialRequestInFull(context.prisma, {
+    await issueMaterialRequestInFull(databaseConnection, {
       usuarioId: context.user.id,
       employeeId: context.user.employeeId,
       allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds,

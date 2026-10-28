@@ -2,19 +2,21 @@ import Link from "next/link";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { economicQuerySchema, readEconomicProfiles } from "@/lib/tributacao/economic-query";
 import GeographicPointPicker from "@/components/app-ui/GeographicPointPicker";
+import { db, databaseConnection } from "@/db/client";
+import { listFiscalPlanningUnits } from "@/db/repositories/taxation-pages/lookups";
 
 export const dynamic = "force-dynamic";
 
 export default async function EconomicQueryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO"); const params = await searchParams;
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db; const params = await searchParams;
   const allowedBudgetUnitIds = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const units = await prisma.planningEntityUnit.findMany({ where: allowedBudgetUnitIds ? { budgetUnitId: { in: allowedBudgetUnitIds } } : {}, include: { governmentEntity: true } });
+  const units = await listFiscalPlanningUnits(database, allowedBudgetUnitIds);
   const entities = [...new Map(units.map(unit => [unit.governmentEntityId, unit.governmentEntity.name])).entries()];
   const raw = Object.fromEntries(Object.entries(params).filter(([, value]) => typeof value === "string" && value !== ""));
   const parsed = economicQuerySchema.safeParse({ governmentEntityId: entities[0]?.[0], ...raw });
   if (!parsed.success) return <p className="p-4">{parsed.error.issues[0]?.message}</p>;
   let rows: Awaited<ReturnType<typeof readEconomicProfiles>>;
-  try { rows = await readEconomicProfiles(prisma, { allowedBudgetUnitIds }, parsed.data); } catch (error) { return <p className="p-4">{error instanceof Error ? error.message : "Consulta indisponível."}</p>; }
+  try { rows = await readEconomicProfiles(databaseConnection, { allowedBudgetUnitIds }, parsed.data); } catch (error) { return <p className="p-4">{error instanceof Error ? error.message : "Consulta indisponível."}</p>; }
   const points = rows.filter(row => row.profile.latitude !== null && row.profile.longitude !== null).map(row => ({ label: `${row.inscription} · ${row.name}`, latitude: row.profile.latitude!, longitude: row.profile.longitude! }));
   const latitude = points.length ? points.reduce((sum, point) => sum + point.latitude, 0) / points.length : null;
   const longitude = points.length ? points.reduce((sum, point) => sum + point.longitude, 0) / points.length : null;

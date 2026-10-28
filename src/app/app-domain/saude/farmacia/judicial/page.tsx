@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readPharmacyJudicialPage } from "@/db/repositories/health-pharmacy-pages/judicial";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { JudicialCaseForm } from "./JudicialCaseForm";
 import { JudicialDispensationForm } from "./JudicialDispensationForm";
@@ -7,23 +8,9 @@ import { renewJudicialCaseAction, savePharmacyLawyerAction, transitionJudicialCa
 const field = "min-w-0 rounded border bg-white p-2 text-sm";
 const states: Record<string, string> = { OPEN: "Aberto", ANALYSIS: "Em análise", APPROVED: "Aprovado", DENIED: "Negado", CANCELLED: "Cancelado", ARCHIVED: "Arquivado" };
 export default async function JudicialPharmacyPage({ searchParams }: { searchParams: Promise<{ q?: string; person?: string; status?: string; page?: string }> }) {
-  const params = await searchParams, context = await getTenantContextForModule("SAUDE"), { prisma } = context;
+  const params = await searchParams, context = await getTenantContextForModule("SAUDE");
   const allowed = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const where: Prisma.HealthPharmacyJudicialCaseWhereInput = { ...(allowed ? { unitId: { in: allowed } } : {}), ...(states[params.status || ""] ? { status: params.status } : {}), ...(params.q ? { OR: [{ caseNumber: { contains: params.q, mode: "insensitive" } }, { patient: { person: { fullName: { contains: params.q, mode: "insensitive" } } } }] } : {}) };
-  const total = await prisma.healthPharmacyJudicialCase.count({ where }), page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const [cases, patients, units, lawyers, people, medicines, prescriptions, processes, purchases, stocks, professionals] = await Promise.all([
-    prisma.healthPharmacyJudicialCase.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * 20, take: 20, include: { patient: { include: { person: true } }, lawyer: { include: { person: true } }, process: true, purchaseRequest: true, items: { include: { medicine: true, dispensations: { where: { status: "ACTIVE" }, select: { quantity: true } } } }, events: { orderBy: { createdAt: "desc" } }, documents: { include: { document: true } } } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(allowed ? { referenceUnitId: { in: allowed } } : {}), ...(params.q ? { person: { fullName: { contains: params.q, mode: "insensitive" } } } : {}) }, include: { person: true }, orderBy: { person: { fullName: "asc" } }, take: 200 }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(allowed ? { id: { in: allowed } } : {}) }, select: { id: true, name: true } }),
-    prisma.healthPharmacyLawyer.findMany({ where: { isActive: true }, include: { person: true } }),
-    params.person ? prisma.person.findMany({ where: { status: "Ativo", fullName: { contains: params.person, mode: "insensitive" } }, take: 50, select: { id: true, fullName: true } }) : [],
-    prisma.medicine.findMany({ where: { isActive: true, materialId: { not: null } }, select: { id: true, name: true } }),
-    prisma.healthPrescriptionItem.findMany({ where: { prescription: allowed ? { unitId: { in: allowed } } : {} }, include: { prescription: true }, take: 1000, orderBy: { createdAt: "desc" } }),
-    prisma.process.findMany({ where: { person: { patientInfo: { status: "Ativo", ...(allowed ? { referenceUnitId: { in: allowed } } : {}) } } }, select: { id: true, protocolNumber: true, person: { select: { patientInfo: { select: { id: true } } } } }, take: 500 }),
-    prisma.purchaseRequest.findMany({ select: { id: true, number: true, object: true }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.materialStock.findMany({ where: { quantity: { gt: 0 }, blockedAt: null, OR: [{ expirationDate: null }, { expirationDate: { gte: new Date() } }], warehouse: { isActive: true, healthUnitId: allowed ? { in: allowed } : { not: null } } }, include: { warehouse: true }, take: 1000 }),
-    prisma.healthProfessional.findMany({ where: { isActive: true, employee: { isActive: true } }, select: { id: true, employee: { select: { name: true } } }, orderBy: { employee: { name: "asc" } } }),
-  ]);
+  const { total, page, cases, patients, units, lawyers, people, medicines, prescriptions, processes, purchases, stocks, professionals } = await readPharmacyJudicialPage(context.database ?? db, allowed, { ...params, status: states[params.status || ""] ? params.status : undefined });
   const query = (next: number) => `/saude/farmacia/judicial?${new URLSearchParams({ q: params.q || "", person: params.person || "", status: params.status || "", page: String(next) })}`;
   return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"><header className="flex flex-wrap justify-between gap-3"><h1 className="font-semibold">Judicialização farmacêutica</h1><Link href="/saude/farmacia" className="text-sm underline">Farmácia</Link></header>
     <form className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-sm">Processo ou paciente<input name="q" defaultValue={params.q} className={field} /></label><label className="grid gap-1 text-sm">Pesquisar pessoa para advogado<input name="person" defaultValue={params.person} className={field} /></label><select name="status" defaultValue={params.status || ""} className={field}><option value="">Todas as fases</option>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button className={field}>Pesquisar</button></form>

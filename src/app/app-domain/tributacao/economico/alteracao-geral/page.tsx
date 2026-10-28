@@ -4,23 +4,26 @@ import EconomicBulkChangeClient from "./EconomicBulkChangeClient";
 import EconomicBulkExtendedClient from "./EconomicBulkExtendedClient";
 import { fiscalCatalogSchema } from "@/lib/tributacao/configurable-cadastres";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
+import { db, databaseConnection } from "@/db/client";
+import { listFiscalPlanningUnits, listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
 
 export const dynamic="force-dynamic";
 export default async function EconomicBulkChangePage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
-  const {prisma,user}=await getTenantContextForModule("TRIBUTACAO");
+  const context=await getTenantContextForModule("TRIBUTACAO"); const {user}=context; const database=context.database ?? db;
   const allowedBudgetUnitIds=isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const units=await prisma.planningEntityUnit.findMany({where:allowedBudgetUnitIds ? {budgetUnitId:{in:allowedBudgetUnitIds}} : {},include:{governmentEntity:true,budgetUnit:true}});
+  const units=await listFiscalPlanningUnits(database,allowedBudgetUnitIds);
   const params=await searchParams;
   const raw=Object.fromEntries(Object.entries(params).filter(([,value])=>typeof value==="string" && value!==""));
   const parsed=economicQuerySchema.safeParse({governmentEntityId:units[0]?.governmentEntityId,...raw});
   if(!parsed.success) return <p className="p-4">{parsed.error.issues[0]?.message}</p>;
   let rows:Awaited<ReturnType<typeof readEconomicProfiles>>;
-  try {rows=await readEconomicProfiles(prisma,{allowedBudgetUnitIds},parsed.data);}
+  try {rows=await readEconomicProfiles(databaseConnection,{allowedBudgetUnitIds},parsed.data);}
   catch(error){return <p className="p-4">{error instanceof Error ? error.message : "Consulta indisponível."}</p>;}
-  const processes=await prisma.process.findMany({select:{id:true,protocolNumber:true},orderBy:{createdAt:"desc"},take:200});
+  const processes=await listFiscalProcessOptions(database);
   const [definitions, records] = await Promise.all([
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "FISCAL_CATALOG", category: "TYPED_FISCAL_CATALOG", AND: [{ data: { path: ["governmentEntityId"], equals: parsed.data.governmentEntityId } }, { data: { path: ["kind"], equals: "FORMULARIO_EMPRESA" } }] }, orderBy: { version: "desc" } }),
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "ECONOMIC_REGISTRATION", entityId: { in: rows.map(row => row.id) }, category: "TYPED_FISCAL_RECORD" }, orderBy: { version: "desc" } }),
+    listFiscalEntries(database, { entityType: "FISCAL_CATALOG", categories: ["TYPED_FISCAL_CATALOG"], data: { governmentEntityId: parsed.data.governmentEntityId, kind: "FORMULARIO_EMPRESA" } }),
+    listFiscalEntries(database, { entityType: "ECONOMIC_REGISTRATION", entityIds: rows.map(row => row.id), categories: ["TYPED_FISCAL_RECORD"] }),
   ]);
   const latestDefinitions = new Map<string, typeof definitions[number]>(); for (const row of definitions) if (!latestDefinitions.has(row.entityId)) latestDefinitions.set(row.entityId, row);
   const latestRecords = new Map<string, typeof records[number]>(); for (const row of records) if (!latestRecords.has(`${row.entityId}:${row.title}`)) latestRecords.set(`${row.entityId}:${row.title}`, row);

@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
+import type { JsonObject, JsonValue } from "@/db/json";
+import { db, databaseConnection } from "@/db/client";
+import { listFinancePageUnits, listFinancePageYears } from "@/db/repositories/finance-pages/catalog";
+import { readFinanceAccountingEntries } from "@/db/repositories/finance-pages/accounting";
 import { z } from "zod";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { EntryCheckbox, EntrySelection } from "./EntrySelection";
@@ -18,15 +21,15 @@ const filtersSchema = z.object({
   page: z.coerce.number().int().min(1).max(100000).default(1),
 }).refine(value => !value.from || !value.through || value.from <= value.through, "A data inicial deve preceder a data final.");
 
-function object(value: Prisma.JsonValue | undefined): Prisma.JsonObject {
+function object(value: JsonValue | undefined): JsonObject {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
-function label(value: Prisma.JsonValue | undefined): string {
+function label(value: JsonValue | undefined): string {
   return typeof value === "string" || typeof value === "number" ? String(value) : "Não documentado";
 }
 
-function FrozenDimensions({ snapshot }: { snapshot: Prisma.JsonValue }) {
+function FrozenDimensions({ snapshot }: { snapshot: JsonValue }) {
   const classification = object(snapshot), dimensions = object(classification.dimensions);
   const budget = object(dimensions.budgetDimensions), source = object(dimensions.sourceClassification);
   const revenue = object(budget.revenueClassification), expense = object(budget.expenseClassification);
@@ -46,37 +49,28 @@ function FrozenDimensions({ snapshot }: { snapshot: Prisma.JsonValue }) {
 }
 
 export default async function AccountingEntriesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { prisma, user } = await getTenantContextForModule("FINANCEIRO");
+  const { database, user } = await getTenantContextForModule("FINANCEIRO");
+  const executor = database ?? db;
   const raw = await searchParams;
   const parsed = filtersSchema.safeParse(Object.fromEntries(Object.entries(raw).filter(([, value]) => typeof value === "string" && value !== "")));
   if (!parsed.success) return <p className="p-5">{parsed.error.issues[0]?.message}</p>;
   const filters = parsed.data;
-  const units = await prisma.planningEntityUnit.findMany({
-    where: isSystemAdministrator(user) ? {} : { budgetUnitId: { in: user.allowedBudgetUnitIds } },
-    select: { governmentEntityId: true, budgetUnitId: true, governmentEntity: { select: { name: true } }, budgetUnit: { select: { code: true, name: true } } },
-    orderBy: [{ governmentEntityId: "asc" }, { budgetUnitId: "asc" }],
-  });
+  const units = await listFinancePageUnits(executor, { allowedBudgetUnitIds: isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds });
   const entities = [...new Map(units.map(unit => [unit.governmentEntityId, unit.governmentEntity.name])).entries()];
   const governmentEntityId = filters.governmentEntityId ?? entities[0]?.[0];
   if (!governmentEntityId || !entities.some(([id]) => id === governmentEntityId)) return <p className="p-5">Selecione uma entidade com UG autorizada no Financeiro.</p>;
   const entityUnits = units.filter(unit => unit.governmentEntityId === governmentEntityId);
   if (filters.budgetUnitId && !entityUnits.some(unit => unit.budgetUnitId === filters.budgetUnitId)) return <p className="p-5">UG fora da entidade ou do acesso autorizado.</p>;
-  const years = await prisma.financialYear.findMany({ where: { governmentEntityId }, select: { id: true, year: true, status: true }, orderBy: { year: "desc" } });
+  const years = await listFinancePageYears(executor, {}, [governmentEntityId]);
   const financialYearId = filters.financialYearId ?? years.find(year => year.status === "Aberto")?.id ?? years[0]?.id;
   if (!financialYearId || !years.some(year => year.id === financialYearId)) return <p className="p-5">Exercício fora da entidade selecionada.</p>;
-  const where: Prisma.AccountingTransactionWhereInput = {
+  const { count, transactions } = await readFinanceAccountingEntries(databaseConnection, {
     governmentEntityId, financialYearId,
-    financialYear: { governmentEntityId },
-    budgetUnitId: { in: filters.budgetUnitId ? [filters.budgetUnitId] : entityUnits.map(unit => unit.budgetUnitId) },
-    ...(filters.sourceModule ? { sourceModule: filters.sourceModule } : {}),
-    ...(filters.from || filters.through ? { date: { ...(filters.from ? { gte: new Date(`${filters.from}T00:00:00.000Z`) } : {}), ...(filters.through ? { lte: new Date(`${filters.through}T23:59:59.999Z`) } : {}) } } : {}),
-    ...(filters.account ? { entries: { some: { account: { OR: [{ code: { contains: filters.account, mode: "insensitive" } }, { name: { contains: filters.account, mode: "insensitive" } }] } } } } : {}),
-    ...(filters.q ? { OR: [{ history: { contains: filters.q, mode: "insensitive" } }, { sourceId: { contains: filters.q, mode: "insensitive" } }, { eventType: { contains: filters.q, mode: "insensitive" } }] } : {}),
-  };
-  const [count, transactions] = await prisma.$transaction([
-    prisma.accountingTransaction.count({ where }),
-    prisma.accountingTransaction.findMany({ where, include: { authorUsuario: { select: { nome: true } }, budgetUnit: { select: { code: true, name: true } }, entries: { include: { account: { select: { code: true, name: true } }, author: { select: { name: true } } }, orderBy: { id: "asc" } } }, orderBy: [{ date: "desc" }, { id: "desc" }], take: 50, skip: (filters.page - 1) * 50 }),
-  ], { isolationLevel: "RepeatableRead" });
+    budgetUnitIds: filters.budgetUnitId ? [filters.budgetUnitId] : entityUnits.map(unit => unit.budgetUnitId),
+    sourceModule: filters.sourceModule, account: filters.account, q: filters.q, page: filters.page,
+    from: filters.from ? new Date(`${filters.from}T00:00:00.000Z`) : undefined,
+    through: filters.through ? new Date(`${filters.through}T23:59:59.999Z`) : undefined,
+  });
   const href = (page: number) => {
     const query = new URLSearchParams({ governmentEntityId, financialYearId, page: String(page) });
     for (const key of ["budgetUnitId", "from", "through", "sourceModule", "account", "q"] as const) if (filters[key]) query.set(key, filters[key]);

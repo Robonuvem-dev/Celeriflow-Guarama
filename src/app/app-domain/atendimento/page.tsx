@@ -2,48 +2,47 @@ import { AlertTriangle, CheckCircle2, Clock3, Headphones, Timer } from "lucide-r
 import Link from "next/link";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
-import { getAttendanceContext, ombudsmanScope, ticketScope } from "@/lib/attendance/access";
+import { getAttendanceContext } from "@/lib/attendance/access";
+import { and, count, desc, eq, gte, inArray, lt, lte, ne, notInArray, type SQL } from "drizzle-orm";
+import { db } from "@/db/client";
+import { tickets as ticketTable, ombudsmans, supportChannels } from "@/db/schema/attendance-portals";
+import { departments as departmentTable } from "@/db/schema/administration";
+import { ticketScopeCondition, ombudsmanScopeCondition } from "@/db/repositories/attendance-portals/scope";
+import { listAttendanceTickets } from "@/db/repositories/attendance-portals/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AtendimentoDashboardPage() {
   const context = await getAttendanceContext();
-  const { prisma } = context;
   const now = new Date();
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const deadlineWarning = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-  const activeTicketStatuses = { notIn: ["Concluído", "Cancelado"] };
+  const activeTicketStatuses = notInArray(ticketTable.status, ["Concluído", "Cancelado"]);
+  const ticketScope = ticketScopeCondition(context), ombudsmanScope = ombudsmanScopeCondition(context);
+  const countTickets = (condition: SQL | undefined) => db.select({ total: count() }).from(ticketTable).where(and(ticketScope, condition)).then(rows => rows[0].total);
+  const countOmbudsman = (condition: SQL | undefined) => db.select({ total: count() }).from(ombudsmans).where(and(ombudsmanScope, condition)).then(rows => rows[0].total);
   const [openedToday, inProgressTicketsCount, awaitingInformationCount, resolvedTicketsCount, overdueTicketsCount, upcomingTicketsCount, pendingOmbudsmanCount, investigatingOmbudsmanCount, concludedOmbudsmanCount, ombudsmanTypes, ticketsByDepartment, ticketsByChannel, ticketsByPriority, tickets] = await Promise.all([
-    prisma.ticket.count({ where: { AND: [ticketScope(context), { createdAt: { gte: today } }] } }),
-    prisma.ticket.count({ where: { AND: [ticketScope(context), { status: "Em Atendimento" }] } }),
-    prisma.ticket.count({ where: { AND: [ticketScope(context), { status: "Aguardando Informação" }] } }),
-    prisma.ticket.count({ where: { AND: [ticketScope(context), { status: "Resolvido" }] } }),
-    prisma.ticket.count({ where: { AND: [ticketScope(context), { dueAt: { lt: now }, status: activeTicketStatuses }] } }),
-    prisma.ticket.count({ where: { AND: [ticketScope(context), { dueAt: { gte: now, lte: deadlineWarning }, status: activeTicketStatuses }] } }),
-    prisma.ombudsman.count({ where: { AND: [ombudsmanScope(context), { status: { not: "Concluída" } }] } }),
-    prisma.ombudsman.count({ where: { AND: [ombudsmanScope(context), { status: "Em Apuração" }] } }),
-    prisma.ombudsman.count({ where: { AND: [ombudsmanScope(context), { status: "Concluída" }] } }),
-    prisma.ombudsman.groupBy({ by: ["type"], where: ombudsmanScope(context), _count: { _all: true } }),
-    prisma.ticket.groupBy({ by: ["departmentId"], where: ticketScope(context), _count: { _all: true }, orderBy: { _count: { departmentId: "desc" } }, take: 5 }),
-    prisma.ticket.groupBy({ by: ["channelId"], where: ticketScope(context), _count: { _all: true }, orderBy: { _count: { channelId: "desc" } }, take: 5 }),
-    prisma.ticket.groupBy({ by: ["priority"], where: ticketScope(context), _count: { _all: true }, orderBy: { _count: { priority: "desc" } } }),
-    prisma.ticket.findMany({
-      where: ticketScope(context),
-      take: 8,
-      orderBy: { createdAt: "desc" },
-      include: {
-        person: { select: { fullName: true } },
-        company: { select: { corporateName: true } },
-        channel: { select: { name: true } },
-      },
-    }),
+    countTickets(gte(ticketTable.createdAt, today)),
+    countTickets(eq(ticketTable.status, "Em Atendimento")),
+    countTickets(eq(ticketTable.status, "Aguardando Informação")),
+    countTickets(eq(ticketTable.status, "Resolvido")),
+    countTickets(and(lt(ticketTable.dueAt, now), activeTicketStatuses)),
+    countTickets(and(gte(ticketTable.dueAt, now), lte(ticketTable.dueAt, deadlineWarning), activeTicketStatuses)),
+    countOmbudsman(ne(ombudsmans.status, "Concluída")),
+    countOmbudsman(eq(ombudsmans.status, "Em Apuração")),
+    countOmbudsman(eq(ombudsmans.status, "Concluída")),
+    db.select({ type: ombudsmans.type, _count: { _all: count() } }).from(ombudsmans).where(ombudsmanScope).groupBy(ombudsmans.type),
+    db.select({ departmentId: ticketTable.departmentId, _count: { _all: count() } }).from(ticketTable).where(ticketScope).groupBy(ticketTable.departmentId).orderBy(desc(count(ticketTable.departmentId))).limit(5),
+    db.select({ channelId: ticketTable.channelId, _count: { _all: count() } }).from(ticketTable).where(ticketScope).groupBy(ticketTable.channelId).orderBy(desc(count(ticketTable.channelId))).limit(5),
+    db.select({ priority: ticketTable.priority, _count: { _all: count() } }).from(ticketTable).where(ticketScope).groupBy(ticketTable.priority).orderBy(desc(count(ticketTable.priority))),
+    listAttendanceTickets(db, ticketScope, { limit: 8, order: "recent" }),
   ]);
   const departmentIds = ticketsByDepartment.flatMap((row) => row.departmentId ? [row.departmentId] : []);
   const channelIds = ticketsByChannel.map((row) => row.channelId);
   const [departments, channels] = await Promise.all([
-    prisma.department.findMany({ where: { id: { in: departmentIds } }, select: { id: true, name: true } }),
-    prisma.supportChannel.findMany({ where: { id: { in: channelIds } }, select: { id: true, name: true } }),
+    db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(inArray(departmentTable.id, departmentIds)),
+    db.select({ id: supportChannels.id, name: supportChannels.name }).from(supportChannels).where(inArray(supportChannels.id, channelIds)),
   ]);
   const departmentNames = new Map(departments.map((department) => [department.id, department.name]));
   const channelNames = new Map(channels.map((channel) => [channel.id, channel.name]));

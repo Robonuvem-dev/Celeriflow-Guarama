@@ -1,19 +1,16 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readConsignmentsPage } from "@/db/repositories/personnel-pages/workforce";
 import { randomUUID } from "node:crypto";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { accessiblePayrollWhere } from "@/lib/rh/payroll-access";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { OperationForm } from "../operacoes/OperationForm";
 
 export const dynamic = "force-dynamic";
 export default async function ConsignmentsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
-  const { prisma, user } = await getTenantContextForModule("RH"); const params = await searchParams; const q = (params.q || "").trim();
-  const where: Prisma.HrConsignmentAgreementWhereInput = { sourceRun: { payroll: accessiblePayrollWhere(user) }, ...(q ? { OR: [{ number: { contains: q, mode: "insensitive" } }, { contract: { registration: { contains: q, mode: "insensitive" } } }, { contract: { employee: { name: { contains: q, mode: "insensitive" } } } }] } : {}) };
-  const total = await prisma.hrConsignmentAgreement.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const rows = await prisma.hrConsignmentAgreement.findMany({ where, include: { contract: { include: { employee: { select: { name: true } } } }, installments: { include: { entries: true }, orderBy: { sequence: "asc" } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+  const context = await getTenantContextForModule("RH"); const params = await searchParams; const q = (params.q || "").trim();
+  const { total, page, rows } = await readConsignmentsPage(context.database ?? db, context.user, q, params.page);
   const href = (value: number) => `?${new URLSearchParams({ page: String(value), q })}`;
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title="Contratos e parcelas de consignação" description="Reserva por competência, lançamentos únicos e histórico compensatório." action={<Link href="/rh/operacoes">Operações</Link>} />

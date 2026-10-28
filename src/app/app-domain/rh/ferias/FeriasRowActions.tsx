@@ -4,7 +4,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { deleteFerias } from "./actions";
-import type { Vacation } from "@prisma/client";
+import type { Vacation } from "@/lib/contracts/personnel-pages";
 
 export function FeriasRowActions({ vacation }: { vacation: Vacation }) {
   const handleDelete = async () => {

@@ -1,5 +1,9 @@
 "use server";
 
+import { databaseConnection, db } from "@/db/client";
+import { findFinanceCommitment } from "@/db/repositories/finance/budget-execution";
+import { findFinanceSettlement } from "@/db/repositories/finance/settlements";
+import { hasFinanceProcurementEvent, listFinanceSettlementOrigins } from "@/db/repositories/finance/procurement-origins";
 import { FinanceError, cancelSettlement as cancelOfficialSettlement, createSettlement as createOfficialSettlement } from "@/lib/financeiro";
 import {
   ProcurementFinanceBridgeError,
@@ -17,50 +21,18 @@ type ActionResult = { error?: string };
 const message = (error: unknown) => error instanceof FinanceError || error instanceof ProcurementFinanceBridgeError || error instanceof MunicipalCostError ? error.message : "Não foi possível concluir a liquidação.";
 
 async function assertCommitmentAccess(context: AppContext, commitmentId: string) {
-  const commitment = await context.prisma.commitment.findUnique({
-    where: { id: commitmentId },
-    select: { id: true, contractId: true, covenantId: true, appropriation: { select: { budgetUnitId: true } } },
-  });
+  const commitment = await findFinanceCommitment(db, commitmentId);
   if (!commitment) throw new FinanceError("Empenho não encontrado.");
   assertBudgetUnitAccess(context.user, commitment.appropriation.budgetUnitId);
   return commitment;
 }
 
-async function hasProcurementEvent(context: AppContext, eventType: string, entityType: string, entityId: string) {
-  return Boolean(await context.prisma.procurementLifecycleEvent.findFirst({
-    where: { eventType, entityType, entityId },
-    select: { id: true },
-  }));
-}
-
 async function procurementSourceForSettlement(
-  context: AppContext,
   commitment: { contractId: string | null; covenantId: string | null },
   documentId: string,
   cancellation = false,
 ) {
-  const receiptStatus = cancellation ? "CANCELLED" : "APPROVED";
-  const measurementStatus = cancellation ? "Cancelada" : "Atestada";
-  const [receipts, measurements] = await Promise.all([
-    commitment.contractId
-      ? context.prisma.purchaseReceipt.findMany({
-        where: { contractId: commitment.contractId, documentId, status: receiptStatus },
-        select: { id: true },
-        take: 2,
-      })
-      : [],
-    commitment.contractId || commitment.covenantId
-      ? context.prisma.instrumentMeasurement.findMany({
-        where: {
-          documentId,
-          status: measurementStatus,
-          ...(commitment.contractId ? { contractId: commitment.contractId } : { covenantId: commitment.covenantId! }),
-        },
-        select: { id: true },
-        take: 2,
-      })
-      : [],
-  ]);
+  const { receipts, measurements } = await listFinanceSettlementOrigins(db, commitment, documentId, cancellation);
   if (receipts.length + measurements.length !== 1) {
     throw new ProcurementFinanceBridgeError(
       cancellation
@@ -97,17 +69,17 @@ export async function createSettlement(data: {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const commitment = await assertCommitmentAccess(context, data.commitmentId);
     const actor = { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
-    const fromProcurement = await hasProcurementEvent(
-      context,
+    const fromProcurement = await hasFinanceProcurementEvent(
+      db,
       procurementFinanceEventTypes.commitmentCreated,
       "COMMITMENT",
       commitment.id,
     );
     if (fromProcurement) {
       if (!data.documentId) throw new ProcurementFinanceBridgeError("Selecione o documento GED que comprova a AL de Compras.");
-      const source = await procurementSourceForSettlement(context, commitment, data.documentId);
+      const source = await procurementSourceForSettlement(commitment, data.documentId);
       if (source.kind === "PURCHASE_RECEIPT") {
-        await createSettlementFromPurchaseReceiptAuthorization(context.prisma, actor, {
+        await createSettlementFromPurchaseReceiptAuthorization(databaseConnection, actor, {
           purchaseReceiptId: source.id,
           commitmentId: commitment.id,
           date: data.date,
@@ -123,7 +95,7 @@ export async function createSettlement(data: {
           retentionRuleIds: data.retentionRuleIds,
         });
       } else {
-        await createSettlementFromInstrumentMeasurementAuthorization(context.prisma, actor, {
+        await createSettlementFromInstrumentMeasurementAuthorization(databaseConnection, actor, {
           measurementId: source.id,
           commitmentId: commitment.id,
           documentId: data.documentId,
@@ -141,7 +113,7 @@ export async function createSettlement(data: {
         });
       }
     } else {
-      await createOfficialSettlement(context.prisma, actor, data);
+      await createOfficialSettlement(databaseConnection, actor, data);
     }
     revalidatePath("/financeiro/liquidacoes");
     revalidatePath("/financeiro/empenhos");
@@ -155,11 +127,11 @@ export async function createSettlement(data: {
 export async function cancelSettlement(id: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "delete");
-    const settlement = await context.prisma.settlement.findUnique({ where: { id }, select: { id: true, commitmentId: true, documentId: true } });
+    const settlement = await findFinanceSettlement(db, id);
     if (!settlement) throw new FinanceError("Liquidação não encontrada.");
     const commitment = await assertCommitmentAccess(context, settlement.commitmentId);
-    const fromProcurement = await hasProcurementEvent(
-      context,
+    const fromProcurement = await hasFinanceProcurementEvent(
+      db,
       procurementFinanceEventTypes.settlementCreated,
       "SETTLEMENT",
       settlement.id,
@@ -167,20 +139,20 @@ export async function cancelSettlement(id: string): Promise<ActionResult> {
     const actor = { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
     if (fromProcurement) {
       if (!settlement.documentId) throw new ProcurementFinanceBridgeError("A liquidação vinculada à AL não possui o documento GED de origem.");
-      const source = await procurementSourceForSettlement(context, commitment, settlement.documentId, true);
+      const source = await procurementSourceForSettlement(commitment, settlement.documentId, true);
       if (source.kind === "PURCHASE_RECEIPT") {
-        await cancelSettlementAfterPurchaseReceiptCancellation(context.prisma, actor, {
+        await cancelSettlementAfterPurchaseReceiptCancellation(databaseConnection, actor, {
           purchaseReceiptId: source.id,
           settlementId: settlement.id,
         });
       } else {
-        await cancelSettlementAfterInstrumentMeasurementCancellation(context.prisma, actor, {
+        await cancelSettlementAfterInstrumentMeasurementCancellation(databaseConnection, actor, {
           measurementId: source.id,
           settlementId: settlement.id,
         });
       }
     } else {
-      await cancelOfficialSettlement(context.prisma, actor, id);
+      await cancelOfficialSettlement(databaseConnection, actor, id);
     }
     revalidatePath("/financeiro/liquidacoes");
     revalidatePath("/financeiro/empenhos");

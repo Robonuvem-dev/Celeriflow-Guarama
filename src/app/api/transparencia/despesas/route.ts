@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { exportPublicDataCSV, getPublicExpenses, parsePublicDataFilter } from "@/lib/transparencia/portal-fiscal";
 import { getInstitutionalContact } from "@/lib/portal-institucional/public-content";
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Parâmetro format inválido." }, { status: 400 });
     }
     const [expenses, institution] = await Promise.all([
-      getPublicExpenses(prisma, parsePublicDataFilter(request.nextUrl.searchParams)),
+      getPublicExpenses(db, parsePublicDataFilter(request.nextUrl.searchParams)),
       getInstitutionalContact(),
     ]);
     if (format === "csv") {

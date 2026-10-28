@@ -1,20 +1,24 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
-import { getProtocolContext, getProtocolContextForOperation, protocolScope } from "@/lib/protocols/access";
+import { and, asc, desc, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { processes, processMovements, processEvents, processWorkflowStages, processDispatches, processDocuments } from "@/db/schema/processes";
+import { employees, departments } from "@/db/schema/administration";
+import { users } from "@/db/schema/identity";
+import { getProtocolContext, getProtocolContextForOperation, protocolScopeCondition } from "@/lib/protocols/access";
 import { notifyProtocolDepartment, notifyProtocolUsers } from "@/lib/protocols/notifications";
 import { createValidatedProcess } from "@/lib/protocols/service";
 import { approveGenericWorkflowProcess, concludeGenericWorkflowProcess, isGenericWorkflowProcess, recordGenericWorkflowReceipt, rejectGenericWorkflowProcess, returnGenericWorkflowProcess } from "@/lib/protocols/generic-workflow-runtime";
 import { markInternalNotificationRead } from "@/lib/notifications/internal-notifications";
-import { databaseConnection } from "@/db/client";
-import { withDatabaseTransaction } from "@/db/transaction";
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
 import { getCurrentTenantContext, getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { requestProcessDocumentSignatures } from "@/lib/documents/document-flow-service";
 import { registerInternalDocumentSignature } from "@/lib/signatures/internal-signature";
 import { getIdTokenPrincipal } from "@/lib/platform/session";
 import { headers } from "next/headers";
 import { publishProcessPublicNotice } from "@/lib/transparencia/public-notices";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import { assertMovementCanBeCancelled, assertMovementCanBeRejected, PENDING_MOVEMENT_STATUS } from "@/lib/protocols/movement-policy";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -29,10 +33,8 @@ async function getOperationalContext(operation: "create" | "update") {
     throw new Error("Seu usuario precisa estar vinculado a um servidor para realizar esta operacao.");
   }
 
-  const employee = await context.prisma.employee.findUnique({
-    where: { id: context.user.employeeId },
-    include: { department: true },
-  });
+  const [employeeRow] = await db.select({ employee: employees, department: departments }).from(employees).leftJoin(departments, eq(departments.id, employees.departmentId)).where(eq(employees.id, context.user.employeeId)).limit(1);
+  const employee = employeeRow ? { ...employeeRow.employee, department: employeeRow.department } : null;
 
   if (!employee?.isActive || !employee.departmentId || !employee.department?.isActive) {
     throw new Error("Seu vinculo operacional nao esta ativo ou nao possui departamento.");
@@ -59,7 +61,7 @@ function revalidateProtocolPages() {
 }
 
 export async function createProtocol(formData: FormData): Promise<void> {
-  const { prisma, employee, user } = await getOperationalContext("create");
+  const { employee, user } = await getOperationalContext("create");
   const processTypeId = String(formData.get("processTypeId") || "");
   const subjectId = String(formData.get("subjectId") || "");
   const personId = String(formData.get("personId") || "") || null;
@@ -71,9 +73,9 @@ export async function createProtocol(formData: FormData): Promise<void> {
   if (!processTypeId || !subjectId) throw new Error("Selecione o Tipo e o Assunto do processo.");
   if (personId && companyId) throw new Error("Selecione apenas um interessado: pessoa ou empresa.");
 
-  const process = await prisma.$transaction((tx) => createValidatedProcess(tx, employee, user.id, {
+  const process = await withDatabaseTransaction(databaseConnection, (tx) => createValidatedProcess(tx, employee, user.id, {
     processTypeId, subjectId, personId, companyId, initialDepartmentId: selectedDepartmentId, priority: requestedPriority, description,
-  }));
+  }), { timeoutMs: 5_000 });
 
   revalidateProtocolPages();
   redirect(`/protocolos/processos/${process.id}`);
@@ -81,13 +83,10 @@ export async function createProtocol(formData: FormData): Promise<void> {
 
 export async function receiveProcess(processId: string): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
+    const { employee, departmentId, user } = await getOperationalContext("update");
 
-    await prisma.$transaction(async (tx) => {
-      const process = await tx.process.findUnique({
-        where: { id: processId },
-        select: { id: true, status: true, currentDepartmentId: true },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [process] = await tx.select({ id: processes.id, status: processes.status, currentDepartmentId: processes.currentDepartmentId, protocolNumber: processes.protocolNumber }).from(processes).where(eq(processes.id, processId)).limit(1);
       if (!process) throw new Error("Processo nao encontrado.");
       if (process.currentDepartmentId !== departmentId) {
         throw new Error("Este processo nao pertence ao seu setor.");
@@ -96,31 +95,15 @@ export async function receiveProcess(processId: string): Promise<{ error: string
         throw new Error("Somente processos aguardando recebimento podem ser recebidos.");
       }
 
-      const movement = await tx.processMovement.findFirst({
-        where: {
-          processId,
-          toDepartmentId: departmentId,
-          receivedAt: null,
-          status: "AWAITING_RECEIPT",
-        },
-        orderBy: { movedAt: "desc" },
-        select: { id: true, employeeId: true, process: { select: { protocolNumber: true } } },
-      });
+      const [movement] = await tx.select({ id: processMovements.id, employeeId: processMovements.employeeId }).from(processMovements).where(and(eq(processMovements.processId, processId), eq(processMovements.toDepartmentId, departmentId), isNull(processMovements.receivedAt), eq(processMovements.status, "AWAITING_RECEIPT"))).orderBy(desc(processMovements.movedAt)).limit(1);
       if (!movement) throw new Error("Nao foi encontrada uma tramitacao pendente para este processo.");
 
       const receivedAt = new Date();
-      const updatedMovement = await tx.processMovement.updateMany({
-        where: { id: movement.id, receivedAt: null, status: "AWAITING_RECEIPT" },
-        data: { status: "RECEIVED", receivedAt, receivedByEmployeeId: employee.id },
-      });
-      if (updatedMovement.count !== 1) throw new Error("O processo ja foi recebido por outro servidor.");
+      const updatedMovement = await tx.update(processMovements).set({ status: "RECEIVED", receivedAt, receivedByEmployeeId: employee.id }).where(and(eq(processMovements.id, movement.id), isNull(processMovements.receivedAt), eq(processMovements.status, "AWAITING_RECEIPT"))).returning({ id: processMovements.id });
+      if (updatedMovement.length !== 1) throw new Error("O processo ja foi recebido por outro servidor.");
 
-      await tx.process.update({
-        where: { id: processId },
-        data: { status: "Recebido", receivedAt, currentResponsibleEmployeeId: employee.id },
-      });
-      await tx.processEvent.create({
-        data: {
+      await tx.update(processes).set({ status: "Recebido", receivedAt, currentResponsibleEmployeeId: employee.id }).where(eq(processes.id, processId));
+      await tx.insert(processEvents).values({
           processId,
           eventType: "RECEIVED",
           description: "Processo recebido pelo setor responsavel.",
@@ -128,24 +111,23 @@ export async function receiveProcess(processId: string): Promise<{ error: string
           newStatus: "Recebido",
           departmentId,
           employeeId: employee.id,
-        },
       });
-      await writeAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
+      await insertAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
       await recordGenericWorkflowReceipt(tx, processId, user.id);
       const sender = movement.employeeId
-        ? await tx.usuario.findUnique({ where: { employeeId: movement.employeeId }, select: { id: true } })
+        ? await tx.select({ id: users.id }).from(users).where(eq(users.employeeId, movement.employeeId)).limit(1).then(rows => rows[0])
         : null;
       if (sender) {
         await notifyProtocolUsers(tx, user.id, [sender.id], {
           processId,
           type: "RECEIVED",
-          title: `Processo recebido: ${movement.process.protocolNumber}`,
+          title: `Processo recebido: ${process.protocolNumber}`,
           message: "O setor de destino confirmou o recebimento do processo.",
           priority: "NORMAL",
           dedupeDiscriminator: movement.id,
         });
       }
-    });
+    }, { timeoutMs: 5_000 });
 
     revalidateProtocolPages();
     return { error: null };
@@ -177,7 +159,7 @@ export async function forwardProcess(data: {
   dueAt?: string;
 }): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
+    const { employee, departmentId, user } = await getOperationalContext("update");
     const destinationEmployeeId = data.destinationEmployeeId || null;
     const reason = data.reason?.trim() || null;
     const dueAt = data.dueAt ? new Date(data.dueAt) : null;
@@ -186,20 +168,8 @@ export async function forwardProcess(data: {
     if (data.destinationDepartmentId === departmentId) throw new Error("Selecione um setor diferente do atual.");
     if (dueAt && Number.isNaN(dueAt.valueOf())) throw new Error("Informe um prazo valido.");
 
-    await prisma.$transaction(async (tx) => {
-      const process = await tx.process.findUnique({
-        where: { id: data.processId },
-        select: {
-          id: true,
-          protocolNumber: true,
-          status: true,
-          currentDepartmentId: true,
-          processTypeId: true,
-          subjectId: true,
-          currentWorkflowStageId: true,
-          expectedCompletionAt: true,
-        },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [process] = await tx.select().from(processes).where(eq(processes.id, data.processId)).limit(1);
       if (!process) throw new Error("Processo nao encontrado.");
       if (await isGenericWorkflowProcess(tx, data.processId)) throw new Error("Use a aprovacao ou devolucao do fluxo generico; ele nao aceita destino ou prazo manual.");
       if (process.currentDepartmentId !== departmentId) throw new Error("Este processo nao pertence ao seu setor.");
@@ -207,30 +177,18 @@ export async function forwardProcess(data: {
       if (process.status === AWAITING_RECEIPT) throw new Error("Receba o processo antes de tramita-lo.");
       if (process.status === AWAITING_ACCOUNTING) throw new Error("Aguarde a emissão do empenho para tramitar o processo.");
 
-      const destinationDepartment = await tx.department.findFirst({
-        where: { id: data.destinationDepartmentId, isActive: true },
-        select: { id: true },
-      });
+      const [destinationDepartment] = await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.id, data.destinationDepartmentId), eq(departments.isActive, true))).limit(1);
       if (!destinationDepartment) throw new Error("O setor de destino nao esta ativo.");
 
       if (destinationEmployeeId) {
-        const destinationEmployee = await tx.employee.findFirst({
-          where: { id: destinationEmployeeId, departmentId: destinationDepartment.id, isActive: true },
-          select: { id: true },
-        });
+        const [destinationEmployee] = await tx.select({ id: employees.id }).from(employees).where(and(eq(employees.id, destinationEmployeeId), eq(employees.departmentId, destinationDepartment.id), eq(employees.isActive, true))).limit(1);
         if (!destinationEmployee) throw new Error("O servidor de destino nao pertence ao setor selecionado.");
       }
 
-      const subjectStages = await tx.processWorkflowStage.findMany({
-        where: { processTypeId: process.processTypeId, subjectId: process.subjectId, isActive: true },
-        orderBy: { position: "asc" },
-      });
+      const subjectStages = await tx.select().from(processWorkflowStages).where(and(eq(processWorkflowStages.processTypeId, process.processTypeId), eq(processWorkflowStages.subjectId, process.subjectId), eq(processWorkflowStages.isActive, true))).orderBy(asc(processWorkflowStages.position));
       const workflowStages = subjectStages.length
         ? subjectStages
-        : await tx.processWorkflowStage.findMany({
-            where: { processTypeId: process.processTypeId, subjectId: null, isActive: true },
-            orderBy: { position: "asc" },
-          });
+        : await tx.select().from(processWorkflowStages).where(and(eq(processWorkflowStages.processTypeId, process.processTypeId), isNull(processWorkflowStages.subjectId), eq(processWorkflowStages.isActive, true))).orderBy(asc(processWorkflowStages.position));
       const currentStage = workflowStages.find((stage) => stage.id === process.currentWorkflowStageId)
         || workflowStages.find((stage) => stage.departmentId === departmentId)
         || null;
@@ -243,8 +201,7 @@ export async function forwardProcess(data: {
       }
       const effectiveDueAt = dueAt || (nextStage?.slaDays ? new Date(Date.now() + nextStage.slaDays * 24 * 60 * 60 * 1000) : null);
 
-      const movement = await tx.processMovement.create({
-        data: {
+      const [movement] = await tx.insert(processMovements).values({
           processId: process.id,
           fromDepartmentId: departmentId,
           toDepartmentId: destinationDepartment.id,
@@ -253,21 +210,15 @@ export async function forwardProcess(data: {
           reason,
           status: "AWAITING_RECEIPT",
           dueAt: effectiveDueAt,
-        },
-        select: { id: true },
-      });
-      await tx.process.update({
-        where: { id: process.id },
-        data: {
+      }).returning({ id: processMovements.id });
+      await tx.update(processes).set({
           status: AWAITING_RECEIPT,
           currentDepartmentId: destinationDepartment.id,
           currentResponsibleEmployeeId: destinationEmployeeId,
           currentWorkflowStageId: nextStage?.id || process.currentWorkflowStageId,
           expectedCompletionAt: effectiveDueAt || process.expectedCompletionAt,
-        },
-      });
-      await tx.processEvent.create({
-        data: {
+      }).where(eq(processes.id, process.id));
+      await tx.insert(processEvents).values({
           processId: process.id,
           eventType: "FORWARDED",
           description: reason || "Processo encaminhado para outro setor.",
@@ -275,7 +226,6 @@ export async function forwardProcess(data: {
           newStatus: AWAITING_RECEIPT,
           departmentId,
           employeeId: employee.id,
-        },
       });
       await notifyProtocolDepartment(tx, user.id, destinationDepartment.id, {
         processId: process.id,
@@ -285,7 +235,7 @@ export async function forwardProcess(data: {
         priority: "NORMAL",
         dedupeDiscriminator: movement.id,
       });
-      await writeAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: process.id });
+      await insertAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: process.id });
       if (effectiveDueAt) {
         await notifyProtocolDepartment(tx, user.id, destinationDepartment.id, {
           processId: process.id,
@@ -296,7 +246,7 @@ export async function forwardProcess(data: {
           dedupeDiscriminator: `DEADLINE:${effectiveDueAt.toISOString()}`,
         });
       }
-    });
+    }, { timeoutMs: 5_000 });
 
     revalidateProtocolPages();
     return { error: null };
@@ -307,22 +257,15 @@ export async function forwardProcess(data: {
 }
 
 async function restoreLegacyWorkflowStage(
-  tx: Prisma.TransactionClient,
+  tx: DatabaseTransaction,
   process: { processTypeId: string; subjectId: string; currentWorkflowStageId: string | null },
   sourceDepartmentId: string,
 ) {
-  const subjectStages = await tx.processWorkflowStage.findMany({
-    where: { processTypeId: process.processTypeId, subjectId: process.subjectId, isActive: true },
-    orderBy: { position: "asc" },
-    select: { id: true, position: true, departmentId: true },
-  });
+  const projection = { id: processWorkflowStages.id, position: processWorkflowStages.position, departmentId: processWorkflowStages.departmentId };
+  const subjectStages = await tx.select(projection).from(processWorkflowStages).where(and(eq(processWorkflowStages.processTypeId, process.processTypeId), eq(processWorkflowStages.subjectId, process.subjectId), eq(processWorkflowStages.isActive, true))).orderBy(asc(processWorkflowStages.position));
   const stages = subjectStages.length
     ? subjectStages
-    : await tx.processWorkflowStage.findMany({
-        where: { processTypeId: process.processTypeId, subjectId: null, isActive: true },
-        orderBy: { position: "asc" },
-        select: { id: true, position: true, departmentId: true },
-      });
+    : await tx.select(projection).from(processWorkflowStages).where(and(eq(processWorkflowStages.processTypeId, process.processTypeId), isNull(processWorkflowStages.subjectId), eq(processWorkflowStages.isActive, true))).orderBy(asc(processWorkflowStages.position));
   const currentStage = stages.find((stage) => stage.id === process.currentWorkflowStageId);
   if (!currentStage) return null;
   return [...stages]
@@ -336,37 +279,13 @@ async function reversePendingForwarding(
   operation: "cancel" | "reject",
 ): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
+    const { employee, departmentId, user } = await getOperationalContext("update");
     const cleanReason = reason.trim();
     if (!cleanReason) throw new Error("Informe a justificativa da operação.");
 
-    await prisma.$transaction(async (tx) => {
-      const movement = await tx.processMovement.findUnique({
-        where: { id: movementId },
-        select: {
-          id: true,
-          processId: true,
-          fromDepartmentId: true,
-          toDepartmentId: true,
-          employeeId: true,
-          reason: true,
-          status: true,
-          receivedAt: true,
-          dueAt: true,
-          movedAt: true,
-          process: {
-            select: {
-              protocolNumber: true,
-              status: true,
-              currentDepartmentId: true,
-              processTypeId: true,
-              subjectId: true,
-              currentWorkflowStageId: true,
-              expectedCompletionAt: true,
-            },
-          },
-        },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [row] = await tx.select({ movement: processMovements, process: processes }).from(processMovements).innerJoin(processes, eq(processes.id, processMovements.processId)).where(eq(processMovements.id, movementId)).limit(1);
+      const movement = row ? { ...row.movement, process: row.process } : null;
       if (!movement) throw new Error("Tramitação não encontrada.");
 
       const isGenericWorkflow = await isGenericWorkflowProcess(tx, movement.processId);
@@ -382,38 +301,24 @@ async function reversePendingForwarding(
       if (operation === "cancel") assertMovementCanBeCancelled(policyInput);
       else assertMovementCanBeRejected(policyInput);
 
-      const movementUpdate = await tx.processMovement.updateMany({
-        where: { id: movement.id, status: PENDING_MOVEMENT_STATUS, receivedAt: null },
-        data: {
+      const movementUpdate = await tx.update(processMovements).set({
           status: operation === "cancel" ? "CANCELLED" : "REJECTED",
           receivedByEmployeeId: operation === "reject" ? employee.id : null,
           reason: [
             movement.reason,
             operation === "cancel" ? `Encaminhamento cancelado: ${cleanReason}` : `Recebimento recusado: ${cleanReason}`,
           ].filter(Boolean).join("\n\n"),
-        },
-      });
-      if (movementUpdate.count !== 1) {
+      }).where(and(eq(processMovements.id, movement.id), eq(processMovements.status, PENDING_MOVEMENT_STATUS), isNull(processMovements.receivedAt))).returning({ id: processMovements.id });
+      if (movementUpdate.length !== 1) {
         throw new Error("A tramitação foi atualizada por outro usuário. Atualize a tela antes de tentar novamente.");
       }
 
       const sourceDepartmentId = movement.fromDepartmentId!;
       const previousStageId = await restoreLegacyWorkflowStage(tx, movement.process, sourceDepartmentId);
       const previousReceivedMovement = movement.dueAt
-        ? await tx.processMovement.findFirst({
-            where: {
-              processId: movement.processId,
-              toDepartmentId: sourceDepartmentId,
-              receivedAt: { not: null },
-              movedAt: { lt: movement.movedAt },
-            },
-            orderBy: { movedAt: "desc" },
-            select: { dueAt: true },
-          })
+        ? await tx.select({ dueAt: processMovements.dueAt }).from(processMovements).where(and(eq(processMovements.processId, movement.processId), eq(processMovements.toDepartmentId, sourceDepartmentId), isNotNull(processMovements.receivedAt), lt(processMovements.movedAt, movement.movedAt))).orderBy(desc(processMovements.movedAt)).limit(1).then(rows => rows[0])
         : null;
-      await tx.process.update({
-        where: { id: movement.processId },
-        data: {
+      await tx.update(processes).set({
           status: "Recebido",
           currentDepartmentId: sourceDepartmentId,
           currentResponsibleEmployeeId: movement.employeeId,
@@ -424,10 +329,8 @@ async function reversePendingForwarding(
           expectedCompletionAt: movement.dueAt
             ? previousReceivedMovement?.dueAt || null
             : movement.process.expectedCompletionAt,
-        },
-      });
-      await tx.processEvent.create({
-        data: {
+      }).where(eq(processes.id, movement.processId));
+      await tx.insert(processEvents).values({
           processId: movement.processId,
           eventType: operation === "cancel" ? "FORWARDING_CANCELLED" : "FORWARDING_REJECTED",
           description: operation === "cancel"
@@ -437,7 +340,6 @@ async function reversePendingForwarding(
           newStatus: "Recebido",
           departmentId,
           employeeId: employee.id,
-        },
       });
       await notifyProtocolDepartment(tx, user.id, operation === "cancel" ? movement.toDepartmentId : sourceDepartmentId, {
         processId: movement.processId,
@@ -447,13 +349,13 @@ async function reversePendingForwarding(
         priority: "NORMAL",
         dedupeDiscriminator: movement.id,
       });
-      await writeAuditEvent(tx, {
+      await insertAuditEvent(tx, {
         actorUsuarioId: user.id,
         eventType: auditEventTypes.processUpdated,
         targetType: "PROCESS",
         targetId: movement.processId,
       });
-    });
+    }, { timeoutMs: 5_000 });
 
     revalidateProtocolPages();
     return { error: null };
@@ -477,35 +379,28 @@ export async function addProcessDispatch(data: {
   dispatchType: string;
 }): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("create");
+    const { employee, departmentId, user } = await getOperationalContext("create");
     const content = data.content.trim();
     const dispatchType = ["Despacho", "Parecer", "Decisao"].includes(data.dispatchType) ? data.dispatchType : "Despacho";
     if (!content) throw new Error("Informe o conteudo do despacho.");
 
-    await prisma.$transaction(async (tx) => {
-      const process = await tx.process.findUnique({
-        where: { id: data.processId },
-        select: { id: true, status: true, currentDepartmentId: true },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [process] = await tx.select({ id: processes.id, status: processes.status, currentDepartmentId: processes.currentDepartmentId }).from(processes).where(eq(processes.id, data.processId)).limit(1);
       if (!process) throw new Error("Processo nao encontrado.");
       if (process.currentDepartmentId !== departmentId) throw new Error("Este processo nao pertence ao seu setor.");
       if (["Arquivado", "Cancelado"].includes(process.status)) throw new Error("Este processo nao aceita novas operacoes.");
       if (process.status === AWAITING_RECEIPT) throw new Error("Receba o processo antes de adicionar um despacho.");
 
-      await tx.processDispatch.create({
-        data: { processId: process.id, content, dispatchType, employeeId: employee.id, departmentId },
-      });
-      await tx.processEvent.create({
-        data: {
+      await tx.insert(processDispatches).values({ processId: process.id, content, dispatchType, employeeId: employee.id, departmentId });
+      await tx.insert(processEvents).values({
           processId: process.id,
           eventType: "DISPATCH_ADDED",
           description: `${dispatchType} adicionado ao processo.`,
           departmentId,
           employeeId: employee.id,
-        },
       });
-      await writeAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: process.id });
-    });
+      await insertAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: process.id });
+    }, { timeoutMs: 5_000 });
 
     revalidateProtocolPages();
     return { error: null };
@@ -517,13 +412,13 @@ export async function addProcessDispatch(data: {
 
 export async function concludeProcess(processId: string, reason: string): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
+    const { employee, departmentId, user } = await getOperationalContext("update");
     const description = reason.trim();
     if (!description) throw new Error("Informe a justificativa da conclusao.");
 
-    await prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       if (await isGenericWorkflowProcess(tx, processId)) throw new Error("Use a conclusao da etapa final do fluxo generico.");
-      const process = await tx.process.findUnique({ where: { id: processId }, select: { status: true, currentDepartmentId: true } });
+      const [process] = await tx.select({ status: processes.status, currentDepartmentId: processes.currentDepartmentId }).from(processes).where(eq(processes.id, processId)).limit(1);
       if (!process) throw new Error("Processo nao encontrado.");
       if (process.currentDepartmentId !== departmentId) throw new Error("Este processo nao pertence ao seu setor.");
       if (process.status === AWAITING_RECEIPT) throw new Error("Receba o processo antes de conclui-lo.");
@@ -531,12 +426,10 @@ export async function concludeProcess(processId: string, reason: string): Promis
       if (["Concluido", "Arquivado", "Cancelado"].includes(process.status)) throw new Error("Este processo nao pode ser concluido novamente.");
 
       const completedAt = new Date();
-      await tx.process.update({ where: { id: processId }, data: { status: "Concluido", completedAt } });
-      await tx.processEvent.create({
-        data: { processId, eventType: "CONCLUDED", description, previousStatus: process.status, newStatus: "Concluido", departmentId, employeeId: employee.id },
-      });
-      await writeAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
-    });
+      await tx.update(processes).set({ status: "Concluido", completedAt }).where(eq(processes.id, processId));
+      await tx.insert(processEvents).values({ processId, eventType: "CONCLUDED", description, previousStatus: process.status, newStatus: "Concluido", departmentId, employeeId: employee.id });
+      await insertAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
+    }, { timeoutMs: 5_000 });
     revalidateProtocolPages();
     return { error: null };
   } catch (error) {
@@ -547,8 +440,8 @@ export async function concludeProcess(processId: string, reason: string): Promis
 
 export async function approveGenericProcessWorkflow(processId: string, note: string): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
-    await prisma.$transaction((tx) => approveGenericWorkflowProcess(tx, processId, { usuarioId: user.id, employeeId: employee.id, departmentId }, note.trim() || null));
+    const { employee, departmentId, user } = await getOperationalContext("update");
+    await withDatabaseTransaction(databaseConnection, (tx) => approveGenericWorkflowProcess(tx, processId, { usuarioId: user.id, employeeId: employee.id, departmentId }, note.trim() || null), { timeoutMs: 5_000 });
     revalidateProtocolPages();
     return { error: null };
   } catch (error) {
@@ -559,10 +452,10 @@ export async function approveGenericProcessWorkflow(processId: string, note: str
 
 export async function returnGenericProcessWorkflow(processId: string, reason: string): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
+    const { employee, departmentId, user } = await getOperationalContext("update");
     const note = reason.trim();
     if (!note) throw new Error("Informe o motivo da devolucao.");
-    await prisma.$transaction((tx) => returnGenericWorkflowProcess(tx, processId, { usuarioId: user.id, employeeId: employee.id, departmentId }, note));
+    await withDatabaseTransaction(databaseConnection, (tx) => returnGenericWorkflowProcess(tx, processId, { usuarioId: user.id, employeeId: employee.id, departmentId }, note), { timeoutMs: 5_000 });
     revalidateProtocolPages();
     return { error: null };
   } catch (error) {
@@ -574,13 +467,13 @@ export async function returnGenericProcessWorkflow(processId: string, reason: st
 export async function rejectGenericProcessWorkflow(processId: string, reason: string): Promise<{ error: string | null }> {
   try {
     const context = await getOperationalContext("update");
-    const { prisma, employee, departmentId, user } = context;
+    const { employee, departmentId, user } = context;
     const note = reason.trim();
     if (!note) throw new Error("Informe o motivo da rejeicao.");
-    await prisma.$transaction(async tx => {
+    await withDatabaseTransaction(databaseConnection, async tx => {
       await rejectGenericWorkflowProcess(tx, processId, { usuarioId: user.id, employeeId: employee.id, departmentId }, note);
       await rejectTravelAllowanceProcess(tx, context, processId, note);
-    }, { timeout: 60000 });
+    }, { timeoutMs: 60000 });
     revalidateProtocolPages();
     revalidatePath("/rh/diarias");
     revalidatePath("/rh/adiantamentos");
@@ -594,13 +487,13 @@ export async function rejectGenericProcessWorkflow(processId: string, reason: st
 export async function concludeGenericProcessWorkflow(processId: string, reason: string): Promise<{ error: string | null }> {
   try {
     const context = await getOperationalContext("update");
-    const { prisma, employee, departmentId, user } = context;
+    const { employee, departmentId, user } = context;
     const note = reason.trim();
     if (!note) throw new Error("Informe a justificativa da conclusao.");
-    await prisma.$transaction(async tx => {
+    await withDatabaseTransaction(databaseConnection, async tx => {
       await concludeGenericWorkflowProcess(tx, processId, { usuarioId: user.id, employeeId: employee.id, departmentId }, note);
       await completeTravelAllowanceProcess(tx, context, processId, note);
-    }, { timeout: 120000 });
+    }, { timeoutMs: 120000 });
     revalidateProtocolPages();
     revalidatePath("/rh/diarias"); revalidatePath("/financeiro/empenhos"); revalidatePath("/financeiro/orcamento");
     revalidatePath("/rh/adiantamentos");
@@ -613,27 +506,22 @@ export async function concludeGenericProcessWorkflow(processId: string, reason: 
 
 export async function archiveProcess(processId: string, reason: string): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
+    const { employee, departmentId, user } = await getOperationalContext("update");
     const archiveReason = reason.trim();
     if (!archiveReason) throw new Error("Informe a justificativa do arquivamento.");
 
-    await prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       if (await isGenericWorkflowProcess(tx, processId)) throw new Error("Processos do fluxo generico nao usam arquivamento manual.");
-      const process = await tx.process.findUnique({ where: { id: processId }, select: { status: true, currentDepartmentId: true } });
+      const [process] = await tx.select({ status: processes.status, currentDepartmentId: processes.currentDepartmentId }).from(processes).where(eq(processes.id, processId)).limit(1);
       if (!process) throw new Error("Processo nao encontrado.");
       if (process.currentDepartmentId !== departmentId) throw new Error("Este processo nao pertence ao seu setor.");
       if (process.status !== "Concluido") throw new Error("Somente processos concluidos podem ser arquivados.");
 
       const archivedAt = new Date();
-      await tx.process.update({
-        where: { id: processId },
-        data: { status: "Arquivado", archivedAt, archiveReason, archivedByEmployeeId: employee.id },
-      });
-      await tx.processEvent.create({
-        data: { processId, eventType: "ARCHIVED", description: archiveReason, previousStatus: "Concluido", newStatus: "Arquivado", departmentId, employeeId: employee.id },
-      });
-      await writeAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
-    });
+      await tx.update(processes).set({ status: "Arquivado", archivedAt, archiveReason, archivedByEmployeeId: employee.id }).where(eq(processes.id, processId));
+      await tx.insert(processEvents).values({ processId, eventType: "ARCHIVED", description: archiveReason, previousStatus: "Concluido", newStatus: "Arquivado", departmentId, employeeId: employee.id });
+      await insertAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
+    }, { timeoutMs: 5_000 });
     revalidateProtocolPages();
     return { error: null };
   } catch (error) {
@@ -644,26 +532,21 @@ export async function archiveProcess(processId: string, reason: string): Promise
 
 export async function reopenProcess(processId: string, reason: string): Promise<{ error: string | null }> {
   try {
-    const { prisma, employee, departmentId, user } = await getOperationalContext("update");
+    const { employee, departmentId, user } = await getOperationalContext("update");
     const description = reason.trim();
     if (!description) throw new Error("Informe a justificativa da reabertura.");
 
-    await prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       if (await isGenericWorkflowProcess(tx, processId)) throw new Error("Processos do fluxo generico nao podem ser reabertos.");
-      const process = await tx.process.findUnique({ where: { id: processId }, select: { status: true, currentDepartmentId: true } });
+      const [process] = await tx.select({ status: processes.status, currentDepartmentId: processes.currentDepartmentId }).from(processes).where(eq(processes.id, processId)).limit(1);
       if (!process) throw new Error("Processo nao encontrado.");
       if (process.currentDepartmentId !== departmentId) throw new Error("Este processo nao pertence ao seu setor.");
       if (process.status !== "Arquivado") throw new Error("Somente processos arquivados podem ser reabertos.");
 
-      await tx.process.update({
-        where: { id: processId },
-        data: { status: "Reaberto", archivedAt: null, archiveReason: null, archivedByEmployeeId: null, currentResponsibleEmployeeId: employee.id },
-      });
-      await tx.processEvent.create({
-        data: { processId, eventType: "REOPENED", description, previousStatus: "Arquivado", newStatus: "Reaberto", departmentId, employeeId: employee.id },
-      });
-      await writeAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
-    });
+      await tx.update(processes).set({ status: "Reaberto", archivedAt: null, archiveReason: null, archivedByEmployeeId: null, currentResponsibleEmployeeId: employee.id }).where(eq(processes.id, processId));
+      await tx.insert(processEvents).values({ processId, eventType: "REOPENED", description, previousStatus: "Arquivado", newStatus: "Reaberto", departmentId, employeeId: employee.id });
+      await insertAuditEvent(tx, { actorUsuarioId: user.id, eventType: auditEventTypes.processUpdated, targetType: "PROCESS", targetId: processId });
+    }, { timeoutMs: 5_000 });
     revalidateProtocolPages();
     return { error: null };
   } catch (error) {
@@ -718,14 +601,7 @@ export async function signProcessDocumentInternally(documentId: string, reauthen
     if (Date.now() - reauthenticatedUser.authTime * 1000 > 5 * 60 * 1000) {
       throw new Error("A confirmacao de senha expirou. Informe sua senha novamente.");
     }
-    const scopedPendingSignature = await context.prisma.processDocument.findFirst({
-      where: {
-        documentId,
-        process: { is: protocolScope(context) },
-        document: { signatures: { some: { signerUsuarioId: context.user.id, status: "PENDING", documentVersion: { status: "PENDING_SIGNATURE" } } } },
-      },
-      select: { id: true },
-    });
+    const [scopedPendingSignature] = await db.select({ id: processDocuments.id }).from(processDocuments).innerJoin(processes, eq(processes.id, processDocuments.processId)).where(and(eq(processDocuments.documentId, documentId), protocolScopeCondition(context), sql`EXISTS(SELECT 1 FROM "DocumentSignature" s JOIN "DocumentVersion" v ON v.id=s."documentVersionId" WHERE s."documentId"=${processDocuments.documentId} AND s."signerUsuarioId"=${context.user.id} AND s.status='PENDING' AND v.status='PENDING_SIGNATURE')`)).limit(1);
     if (!scopedPendingSignature) throw new Error("Nenhuma assinatura pendente deste processo foi encontrada para voce.");
     const requestHeaders = await headers();
     await registerInternalDocumentSignature(context, documentId, {
@@ -743,7 +619,7 @@ export async function signProcessDocumentInternally(documentId: string, reauthen
 export async function publishProcessNotice(processId: string): Promise<{ error: string | null }> {
   try {
     const context = await getTenantContextForSystemAdministration();
-    await publishProcessPublicNotice(context.prisma, context.user.id, processId);
+    await publishProcessPublicNotice(databaseConnection, context.user.id, processId);
     revalidatePath("/portal-transparencia");
     revalidatePath("/portal-protocolos");
     return { error: null };

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { AccessError } from "@/lib/platform/tenant-context";
 import { getProtocolContextForOperation } from "@/lib/protocols/access";
 import { ingestProcessDocument } from "@/lib/documents/document-flow-service";
+import { db } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { departments, employees } from "@/db/schema/administration";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +16,9 @@ export async function POST(request: NextRequest) {
       throw new Error("Seu usuario precisa estar vinculado a um servidor para anexar documentos.");
     }
 
-    const employee = await context.prisma.employee.findUnique({
-      where: { id: context.user.employeeId },
-      include: { department: true },
-    });
+    const [row] = await db.select({ employee: employees, department: departments }).from(employees)
+      .leftJoin(departments, eq(departments.id, employees.departmentId)).where(eq(employees.id, context.user.employeeId)).limit(1);
+    const employee = row ? { ...row.employee, department: row.department } : null;
     if (!employee?.isActive || !employee.departmentId || !employee.department?.isActive) {
       throw new Error("Seu vinculo operacional nao esta ativo ou nao possui departamento.");
     }

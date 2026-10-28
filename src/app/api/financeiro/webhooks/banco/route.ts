@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { Decimal } from "@/db/decimal";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { findBankNotificationTechnicalUser, findBankStatementNotification, insertBankException, insertBankStatementNotification, listAutomationBankAccounts } from "@/db/repositories/finance/bank-automation";
+import { insertAnnualAudit } from "@/db/repositories/finance/annual-stages";
 import { isPocVirtualBank } from "@/lib/poc/poc-config";
 
 export const runtime = "nodejs";
@@ -41,20 +44,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "A POC aceita webhooks somente do Banco Virtual Robonuvem." }, { status: 422 });
     }
 
-    const [account, technicalUser] = await Promise.all([
-      prisma.bankAccount.findFirst({ where: { bankName: banco, agency: agencia, accountNumber: contaNumero, isActive: true, budgetUnitId: { not: null } }, select: { id: true, budgetUnitId: true } }),
-      prisma.usuario.findFirst({ where: { ativo: true }, orderBy: { createdAt: "asc" }, select: { id: true } }),
+    const [[account], technicalUser] = await Promise.all([
+      listAutomationBankAccounts(db, { bankName: banco, agency: agencia, accountNumber: contaNumero, requireUnit: true }),
+      findBankNotificationTechnicalUser(db),
     ]);
     if (!account) return NextResponse.json({ error: "Conta bancária do webhook não cadastrada, ativa e vinculada a uma Unidade Gestora." }, { status: 422 });
     if (!technicalUser) return NextResponse.json({ error: "Usuário técnico de auditoria não provisionado." }, { status: 503 });
 
-    const item = await prisma.$transaction(async (tx) => {
-      const existing = await tx.bankStatementItem.findFirst({
-        where: { banco, agencia, contaNumero, codigoTransacao: autenticacaoBancaria },
-      });
+    const item = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const existing = await findBankStatementNotification(tx, { bank: banco, agency: agencia, accountNumber: contaNumero, reference: autenticacaoBancaria });
       if (existing) return existing;
-      const created = await tx.bankStatementItem.create({
-        data: {
+      const created = await insertBankStatementNotification(tx, {
           banco,
           agencia,
           contaNumero,
@@ -65,26 +65,22 @@ export async function POST(req: Request) {
           codigoTransacao: autenticacaoBancaria,
           sinal: "CREDITO",
           direction: "CREDIT",
-          valueDecimal: new Prisma.Decimal(valor),
+          valueDecimal: new Decimal(valor),
           status: "Pendente",
           categoriaClassificada: "RECEITA_CONSTITUCIONAL",
-        },
       });
-      await tx.financialAuditLog.create({
-        data: {
+      await insertAnnualAudit(tx, {
           action: "WEBHOOK_RECEITA_EXTERNA_RECEBIDA",
           entityType: "BankStatementItem",
           entityId: created.id,
           authorUsuarioId: technicalUser.id,
           budgetUnitId: account.budgetUnitId,
           payload: { siglaReceita, valor, autenticacaoBancaria, bankAccountId: account.id },
-        },
       });
-      await tx.exceptionQueueItem.create({
-        data: {
+      await insertBankException(tx, {
           statementItemId: created.id,
           descricao: created.description || siglaReceita,
-          valorDecimal: new Prisma.Decimal(valor),
+          valorDecimal: new Decimal(valor),
           dataMovimento: created.date,
           banco,
           contaNumero,
@@ -92,7 +88,6 @@ export async function POST(req: Request) {
           scoreConfianca: 0.98,
           sugestaoTipo: siglaReceita,
           motivoExcecao: "Receita externa aguardando confirmação do operador financeiro.",
-        },
       });
       return created;
     });

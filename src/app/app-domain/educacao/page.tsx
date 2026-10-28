@@ -2,22 +2,19 @@ import React from "react";
 import { GraduationCap, School, Users, BookOpen, ClipboardCheck, Bus, Utensils, Calendar, BookOpenCheck, FileCheck2, UserRoundCheck, NotebookTabs, FileText, ClipboardList, UsersRound, BookMarked, Landmark, Gamepad2, LifeBuoy } from "lucide-react";
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { getEducationDashboardTotals } from "@/db/repositories/education/core";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 
 export default async function EducacaoDashboardPage() {
-  const { prisma } = await getTenantContextForModule("EDUCACAO");
+  await getTenantContextForModule("EDUCACAO");
   const [
     totalSchools,
     totalStudents,
     totalClasses,
     totalDiaries
-  ] = await Promise.all([
-    prisma.school.count(),
-    prisma.student.count({ where: { status: "Ativo" } }),
-    prisma.schoolClass.count({ where: { status: "Aberta" } }),
-    prisma.classDiary.count({ where: { status: "Aberto" } }),
-  ]);
+  ] = await getEducationDashboardTotals(db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

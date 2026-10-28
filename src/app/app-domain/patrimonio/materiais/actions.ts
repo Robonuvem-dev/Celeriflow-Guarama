@@ -4,6 +4,7 @@ import { recordStockMovement, StockServiceError, type StockMovementKind } from "
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { databaseConnection } from "@/db/client";
 
 type ActionResult = { error?: string; message?: string };
 
@@ -44,7 +45,7 @@ async function registerMovement(kind: StockMovementKind, data: {
   try {
     const operation = kind === "ENTRY" ? "create" : kind === "EXIT" ? "delete" : "update";
     const context = await getTenantContextForModuleOperation("PATRIMONIO", operation);
-    await recordStockMovement(context.prisma, {
+    await recordStockMovement(databaseConnection, {
       kind,
       ...parsed.data,
       expirationDate: expirationDate(parsed.data.expirationDate),

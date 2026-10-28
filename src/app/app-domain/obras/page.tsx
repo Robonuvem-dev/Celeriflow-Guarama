@@ -13,14 +13,12 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { loadWorksDashboard } from "@/db/repositories/works-pages/infrastructure";
 
 export default async function ObrasDashboard() {
-  const { prisma } = await getTenantContextForModule("OBRAS");
-  const [totalObras, totalMedicoes, totalServicos] = await Promise.all([
-    prisma.obrasObra.count({ where: { active: true, status: "Em Execução" } }),
-    prisma.obrasMedicao.count({ where: { active: true } }),
-    prisma.obrasServico.count({ where: { active: true, status: { in: ["Aberto", "Em Andamento"] } } })
-  ]);
+  const context = await getTenantContextForModule("OBRAS");
+  const { totalObras, totalMedicoes, totalServicos } = await loadWorksDashboard(context.database ?? db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

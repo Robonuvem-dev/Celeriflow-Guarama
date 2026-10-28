@@ -4,21 +4,27 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { getPatientRegistrationPolicy, scopedPatient } from "@/lib/saude/patient-registration-service";
 import { registrationValidity } from "@/lib/saude/patient-registration-policy";
 import { PatientRegistrationForms } from "./PatientRegistrationForms";
+import { db } from "@/db/client";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { healthPatientCalls, healthPatientContacts, healthPatientDocuments, healthPatientRegistrationChanges } from "@/db/schema/health-registration";
+import { healthTeams, healthUnits } from "@/db/schema/health-workforce";
+import { documents as gedDocuments } from "@/db/schema/registry";
 
 export default async function PatientRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id), context = await getTenantContextForModule("SAUDE");
-  const patient = await scopedPatient(context.prisma, context, id), policy = await getPatientRegistrationPolicy(context.prisma, patient.referenceUnitId);
+  const database = context.database ?? db;
+  const patient = await scopedPatient(database, context, id), policy = await getPatientRegistrationPolicy(database, patient.referenceUnitId);
   const profile = patient.registrationProfile, validity = registrationValidity(policy, profile?.stage || "COMPLETE", profile?.reviewedAt || patient.createdAt);
-  const scope = context.user.hasHealthAccessScope ? { id: { in: context.user.allowedHealthUnitIds || [] } } : {};
+  const scope = context.user.hasHealthAccessScope ? inArray(healthUnits.id, context.user.allowedHealthUnitIds || []) : undefined;
   const [contacts, documents, changes, units, teams] = await Promise.all([
-    context.prisma.healthPatientContact.findMany({ where: { patientId: id }, orderBy: { createdAt: "desc" } }),
-    context.prisma.healthPatientDocument.findMany({ where: { patientId: id }, include: { document: { select: { title: true, id: true } } }, orderBy: { createdAt: "desc" } }),
-    context.prisma.healthPatientRegistrationChange.findMany({ where: { patientId: id }, orderBy: { createdAt: "desc" } }),
-    context.prisma.healthUnit.findMany({ where: { ...scope, isActive: true }, select: { id: true, name: true } }),
-    context.prisma.healthTeam.findMany({ where: { isActive: true }, select: { id: true, name: true, unitId: true } }),
+    database.select().from(healthPatientContacts).where(eq(healthPatientContacts.patientId, id)).orderBy(desc(healthPatientContacts.createdAt)),
+    database.select({ id: healthPatientDocuments.id, kind: healthPatientDocuments.kind, document: { id: gedDocuments.id, title: gedDocuments.title } }).from(healthPatientDocuments).innerJoin(gedDocuments, eq(gedDocuments.id, healthPatientDocuments.documentId)).where(eq(healthPatientDocuments.patientId, id)).orderBy(desc(healthPatientDocuments.createdAt)),
+    database.select().from(healthPatientRegistrationChanges).where(eq(healthPatientRegistrationChanges.patientId, id)).orderBy(desc(healthPatientRegistrationChanges.createdAt)),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(scope, eq(healthUnits.isActive, true))),
+    database.select({ id: healthTeams.id, name: healthTeams.name, unitId: healthTeams.unitId }).from(healthTeams).where(eq(healthTeams.isActive, true)),
   ]);
   const p = patient.person;
-  const phoneCalls = await context.prisma.healthPatientCall.findMany({ where: { patientId: id }, orderBy: { calledAt: "desc" } });
+  const phoneCalls = await database.select().from(healthPatientCalls).where(eq(healthPatientCalls.patientId, id)).orderBy(desc(healthPatientCalls.calledAt));
   const values = { personId: patient.personId, cns: patient.cns || "", bloodType: patient.bloodType || "", bloodDonor: Boolean(patient.bloodDonor), referenceUnitId: patient.referenceUnitId || "", teamId: patient.teamId || "", stage: profile?.stage || "COMPLETE", fullName: p.fullName, cpf: p.cpf || "", birthDate: p.birthDate?.toISOString().slice(0, 10) || "", gender: p.gender || "", raceColor: p.raceColor || "", motherName: p.motherName || "", fatherName: p.fatherName || "", motherUnknown: p.motherUnknown, fatherUnknown: p.fatherUnknown, phonePrimary: p.phonePrimary || "", whatsapp: p.whatsapp || "", email: p.email || "", profession: p.profession || "", workplace: profile?.workplace || "", socialMotherName: profile?.socialMotherName || "", socialFatherName: profile?.socialFatherName || "", contactStartTime: profile?.contactStartTime || "", contactEndTime: profile?.contactEndTime || "" };
   const documentPath = (documentId: string) => `/api/saude/pacientes/${encodeURIComponent(id)}/anexo/${encodeURIComponent(documentId)}`;
   return <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">

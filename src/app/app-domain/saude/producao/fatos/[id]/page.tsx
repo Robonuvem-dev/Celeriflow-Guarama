@@ -1,4 +1,14 @@
 import Link from "next/link";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthProductionFacts, healthProductionCompetences, healthProductionCriticisms, healthProductionFactRevisions } from "@/db/schema/health-production";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { employees } from "@/db/schema/administration";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthCareAgreements } from "@/db/schema/health-agreements";
+import { healthPerformedProcedures } from "@/db/schema/health-care";
 import { assertHealthUnitAccess, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ProcedureField } from "../../laudos/TreatmentReportEditor";
 import { reviseManualFactAction } from "./actions";
@@ -7,19 +17,24 @@ const field = "w-full rounded border bg-white p-2 text-sm";
 
 export default async function ProductionFactPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
-  const fact = await context.prisma.healthProductionFact.findUniqueOrThrow({ where: { id }, include: { procedure: true, unit: true, professional: { include: { employee: { select: { name: true } } } }, patient: { include: { person: { select: { fullName: true } } } }, competence: true, criticisms: { orderBy: { createdAt: "desc" } }, revisions: { orderBy: { version: "desc" } } } });
-  if (fact.unitId) assertHealthUnitAccess(context.user, fact.unitId);
+  const database = context.database ?? db;
+  const [row] = await database.select({ fact: healthProductionFacts, procedure: healthSusProcedures, unit: { name: healthUnits.name }, employee: { name: employees.name }, person: { fullName: people.fullName }, competence: { status: healthProductionCompetences.status } }).from(healthProductionFacts).leftJoin(healthSusProcedures, eq(healthSusProcedures.id, healthProductionFacts.procedureId)).leftJoin(healthUnits, eq(healthUnits.id, healthProductionFacts.unitId)).leftJoin(healthProfessionals, eq(healthProfessionals.id, healthProductionFacts.professionalId)).leftJoin(employees, eq(employees.id, healthProfessionals.employeeId)).leftJoin(patientTable, eq(patientTable.id, healthProductionFacts.patientId)).leftJoin(people, eq(people.id, patientTable.personId)).leftJoin(healthProductionCompetences, eq(healthProductionCompetences.id, healthProductionFacts.competenceId)).where(eq(healthProductionFacts.id, id)).limit(1);
+  if (!row) throw new Error("Produção não encontrada.");
+  if (row.fact.unitId) assertHealthUnitAccess(context.user, row.fact.unitId);
   else if (context.user.hasHealthAccessScope) throw new Error("Produção sem unidade autorizada no seu escopo.");
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const manualPricing = z.object({ manualInput: z.object({ agreementId: z.string().nullable() }) }).safeParse(fact.pricingSnapshot);
+  const manualPricing = z.object({ manualInput: z.object({ agreementId: z.string().nullable() }) }).safeParse(row.fact.pricingSnapshot);
   const agreementId = manualPricing.success ? manualPricing.data.manualInput.agreementId || "" : "";
-  const [units, patients, professionals, agreements] = await Promise.all([
-    context.prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    context.prisma.patient.findMany({ where: { ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, orderBy: { person: { fullName: "asc" } }, take: 500, select: { id: true, person: { select: { fullName: true } } } }),
-    context.prisma.healthProfessional.findMany({ where: { isActive: true, ...(unitIds ? { OR: [{ unitId: { in: unitIds } }, { assignments: { some: { unitId: { in: unitIds }, isActive: true } } }] } : {}) }, orderBy: { employee: { name: "asc" } }, select: { id: true, employee: { select: { name: true } } } }),
-    context.prisma.healthCareAgreement.findMany({ where: { OR: [{ isActive: true }, { id: agreementId }] }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  const [units, patients, professionals, agreements, criticisms, revisions] = await Promise.all([
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    database.select({ id: patientTable.id, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(unitIds ? inArray(patientTable.referenceUnitId, unitIds) : undefined).orderBy(asc(people.fullName)).limit(500),
+    database.select({ id: healthProfessionals.id, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(and(eq(healthProfessionals.isActive, true), unitIds ? or(inArray(healthProfessionals.unitId, unitIds), sql`EXISTS (SELECT 1 FROM "HealthProfessionalAssignment" a WHERE a."professionalId"=${healthProfessionals.id} AND a."isActive"=true AND ${inArray(sql`a."unitId"`, unitIds)})`) : undefined)).orderBy(asc(employees.name)),
+    database.select({ id: healthCareAgreements.id, name: healthCareAgreements.name }).from(healthCareAgreements).where(or(eq(healthCareAgreements.isActive, true), eq(healthCareAgreements.id, agreementId))).orderBy(asc(healthCareAgreements.name)),
+    database.select().from(healthProductionCriticisms).where(eq(healthProductionCriticisms.factId, id)).orderBy(desc(healthProductionCriticisms.createdAt)),
+    database.select().from(healthProductionFactRevisions).where(eq(healthProductionFactRevisions.factId, id)).orderBy(desc(healthProductionFactRevisions.version)),
   ]);
-  const performed = fact.originType === "PEP_PROCEDURE" ? await context.prisma.healthPerformedProcedure.findUnique({ where: { id: fact.originId }, select: { medicalRecordId: true } }) : null;
+  const fact = { ...row.fact, procedure: row.procedure, unit: row.unit, professional: row.employee ? { employee: row.employee } : null, patient: row.person ? { person: row.person } : null, competence: row.competence, criticisms, revisions };
+  const performed = fact.originType === "PEP_PROCEDURE" ? (await database.select({ medicalRecordId: healthPerformedProcedures.medicalRecordId }).from(healthPerformedProcedures).where(eq(healthPerformedProcedures.id, fact.originId)).limit(1))[0] : null;
   const sourcePath = performed ? `/saude/atendimentos/${encodeURIComponent(performed.medicalRecordId)}/complementos` : fact.originType === "VACCINATION" && fact.patientId ? `/saude/vacinacao/carteira/${encodeURIComponent(fact.patientId)}` : fact.originType === "LAB_RESULT" ? "/saude/laboratorio" : fact.originType === "REGULATION" ? "/saude/regulacao" : fact.originType === "TRIAGE" ? "/saude/agenda" : fact.originType === "COLLECTIVE_ACTIVITY" ? "/saude/territorio/atencao-primaria" : fact.originType === "ESUS_FORM" ? "/saude/esus" : null;
   return <main className="space-y-4 p-4"><header><Link href={`/saude/producao?comp=${fact.period}`} className="text-sm underline">Produção da competência</Link><h1 className="text-xl font-semibold">Origem e revisão da produção</h1><p className="text-sm">{fact.originType} · {fact.originId} · versão {fact.version}</p></header><section className="space-y-1 rounded border bg-white p-3 text-sm"><p>{fact.patient?.person.fullName || "Produção não individualizada"} · {fact.unit?.name || "Sem unidade"}</p><p>{fact.procedure?.code} · {fact.procedure?.description} · quantidade {fact.quantity} · valor {fact.value !== null ? `R$ ${fact.value.toFixed(2)}` : "Não informado"}</p><p>{fact.professional?.employee.name || "Profissional não informado"} · competência {fact.period} · {fact.status} · {fact.competence?.status || "Ainda não processada"}</p>{sourcePath && <Link href={sourcePath} className="inline-block underline">Abrir registro ou gestor de origem para corrigir</Link>}</section>
     {fact.originType === "MANUAL" && fact.competence?.status !== "FECHADA" && <form action={reviseManualFactAction} className="grid gap-3 rounded border bg-white p-3 md:grid-cols-2">

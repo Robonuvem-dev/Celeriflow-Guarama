@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { deleteDependente } from "./actions";
 import { useRouter } from "next/navigation";
-import type { Dependent } from "@prisma/client";
+import type { Dependent } from "@/lib/contracts/personnel-pages";
 
 export function DependenteRowActions({ dependent }: { dependent: Dependent }) {
   const router = useRouter();

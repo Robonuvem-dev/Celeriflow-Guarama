@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, eq } from "drizzle-orm";
+import { portalServiceConfigurations } from "@/db/schema/portal-services";
 import { digitalServiceSchema, validateMunicipalLocation } from "@/lib/portal-cidadao/services-policy";
 import { checkRateLimit } from "@/lib/platform/rate-limit";
 import { portalApiError } from "@/lib/portal-cidadao/api-access";
@@ -8,7 +10,8 @@ export async function GET(request: Request) {
   try {
     if (!checkRateLimit(`portal-geocode:${request.headers.get("x-forwarded-for") || "local"}`).allowed) return Response.json({ error: "Aguarde antes de selecionar outro ponto." }, { status: 429 });
     const input = z.object({ serviceId: z.string().min(1), latitude: z.coerce.number().min(-90).max(90), longitude: z.coerce.number().min(-180).max(180) }).parse(Object.fromEntries(new URL(request.url).searchParams));
-    const service = await prisma.portalServiceConfiguration.findFirst({ where: { id: input.serviceId, published: true, provider: "MANUTENCAO" }, select: { configuration: true } });
+    const [service] = await db.select({ configuration: portalServiceConfigurations.configuration }).from(portalServiceConfigurations)
+      .where(and(eq(portalServiceConfigurations.id, input.serviceId), eq(portalServiceConfigurations.published, true), eq(portalServiceConfigurations.provider, "MANUTENCAO"))).limit(1);
     if (!service) throw new Error("Serviço indisponível.");
     validateMunicipalLocation(digitalServiceSchema.parse(service.configuration), input.latitude, input.longitude);
     const url = `https://nominatim.openstreetmap.org/reverse?${new URLSearchParams({ format: "jsonv2", lat: String(input.latitude), lon: String(input.longitude), "accept-language": "pt-BR" })}`;

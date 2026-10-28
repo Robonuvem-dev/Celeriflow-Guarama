@@ -3,20 +3,12 @@ import { ReceiptForm } from "./ReceiptForm";
 import { PackageCheck } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { loadPurchaseReceiptsPage } from "@/db/repositories/procurement/receipts";
 
 export default async function RecebimentosPage() {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
-  const [contracts, documents, employees, warehouses, receipts] = await Promise.all([
-    prisma.contract.findMany({
-      where: { status: "Vigente" },
-      select: { id: true, number: true, process: { select: { items: { select: { id: true, quantity: true, estimatedUnitValue: true, material: { select: { id: true, code: true, unitOfMeasure: true, name: true, type: true } }, receiptItems: { where: { purchaseReceipt: { status: "APPROVED" } }, select: { quantity: true } } } } } } },
-      orderBy: { number: "asc" },
-    }),
-    prisma.document.findMany({ where: { status: "Válido", documentType: { not: "Modelo" } }, select: { id: true, title: true }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.employee.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.warehouse.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.purchaseReceipt.findMany({ include: { contract: { select: { number: true } }, items: { include: { material: { select: { name: true } } } } }, orderBy: { receivedAt: "desc" }, take: 30 }),
-  ]);
+  const context = await getTenantContextForModule("COMPRAS");
+  const { contracts, documents, employees, warehouses, receipts } = await loadPurchaseReceiptsPage(context.database ?? db);
   const receiptContracts = contracts.map(contract => ({ ...contract, process: { items: contract.process.items.map(({ receiptItems, ...item }) => ({ ...item, receivedQuantity: receiptItems.reduce((sum, receipt) => sum + receipt.quantity, 0) })) } }));
 
   return <PageFrame className="space-y-2">

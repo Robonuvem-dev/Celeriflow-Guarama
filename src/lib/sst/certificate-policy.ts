@@ -32,8 +32,8 @@ export const reasonInput = z.object({
   leaveType: z.string().trim().min(2).max(100),
 });
 
-export function assertCertificateReason(reason: { dependentPolicy: string; restrictedRoleIds: string[] }, roleId: string | null, dependentId: string) {
-  if (roleId && reason.restrictedRoleIds.includes(roleId)) throw new SstValidationError("Este motivo não permite atestados para o cargo selecionado.");
+export function assertCertificateReason(reason: { dependentPolicy: string; restrictedRoleIds: string[] | null }, roleId: string | null, dependentId: string) {
+  if (roleId && reason.restrictedRoleIds?.includes(roleId)) throw new SstValidationError("Este motivo não permite atestados para o cargo selecionado.");
   if (reason.dependentPolicy === "REQUIRED" && !dependentId) throw new SstValidationError("Informe o dependente para este motivo.");
   if (reason.dependentPolicy === "DISABLED" && dependentId) throw new SstValidationError("Este motivo não permite dependente.");
 }

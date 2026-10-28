@@ -2,26 +2,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
+import { db } from "@/db/client";
+import { loadPageExtractions, pageCaseProtocol } from "@/db/repositories/works-pages/cases";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import type { Prisma } from "@prisma/client";
 import ConstructionExtractionClient from "./ConstructionExtractionClient";
 
 export default async function PlanPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string; engine?: string; status?: string; page?: string }> }) {
   const { id } = await params;
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
-  const item = await context.prisma.constructionCase.findFirst({ where: { AND: [{ id }, constructionCaseWhere(access)] }, select: { process: { select: { protocolNumber: true } } } });
+  const database = context.database ?? db;
+  const item = await pageCaseProtocol(database, access, id);
   if (!item) notFound();
   const query = await searchParams;
   const q = (query.q || "").trim().slice(0, 100);
   const engine = query.engine === "DEMO_RULES" || query.engine === "OPENAI_COMPATIBLE" ? query.engine : "all";
   const status = query.status === "EXTRACTED" || query.status === "UNIDENTIFIABLE" ? query.status : "all";
-  const where: Prisma.ConstructionPlanExtractionWhereInput = { caseId: id, ...(engine !== "all" ? { engine } : {}), ...(status !== "all" ? { status } : {}), ...(q ? { OR: [{ filename: { contains: q, mode: "insensitive" } }, { sourceHash: { contains: q, mode: "insensitive" } }, { model: { contains: q, mode: "insensitive" } }] } : {}) };
-  const total = await context.prisma.constructionPlanExtraction.count({ where });
-  const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
-  const rows = await context.prisma.constructionPlanExtraction.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 });
+  const { total, page, rows } = await loadPageExtractions(database, id, { q, engine, status, page: query.page });
   const href = (target: number) => `?${new URLSearchParams({ q, engine, status, page: String(target) })}`;
   return <PageFrame className="space-y-4 p-4">
     <Link href={`/obras/construcao-civil/${id}`} className="text-sm underline">Voltar ao processo</Link>

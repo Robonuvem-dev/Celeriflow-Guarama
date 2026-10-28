@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { readResourceAvailability } from "@/lib/financeiro/resource-availability";
+import { db, databaseConnection } from "@/db/client";
+import { listFinancePageSources, listFinancePageYears } from "@/db/repositories/finance-pages/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -8,14 +10,15 @@ export default async function AvailabilityPage({ searchParams }: { searchParams:
   const context = await getTenantContextForModuleOperation("FINANCEIRO", "issueReports");
   const params = await searchParams;
   const allowedBudgetUnitIds = isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds;
-  const years = await context.prisma.financialYear.findMany({ where: { governmentEntity: { is: { ...(allowedBudgetUnitIds ? { planningUnits: { some: { budgetUnitId: { in: allowedBudgetUnitIds } } } } : {}) } } }, include: { governmentEntity: { select: { name: true } } }, orderBy: { year: "desc" } });
+  const executor = context.database ?? db;
+  const years = (await listFinancePageYears(executor, { allowedBudgetUnitIds })).filter(year => year.governmentEntity !== null);
   const year = years.find(year => year.id === params.financialYearId) ?? (!params.financialYearId ? years.find(year => year.status === "Aberto") ?? years[0] : undefined);
-  const sources = await context.prisma.resourceSource.findMany({ orderBy: { code: "asc" }, select: { id: true, code: true, name: true } });
+  const sources = await listFinancePageSources(executor);
   const selected = params.resourceSourceIds ? Array.isArray(params.resourceSourceIds) ? params.resourceSourceIds : [params.resourceSourceIds] : [];
   let result: Awaited<ReturnType<typeof readResourceAvailability>> | undefined;
   let error: string | undefined;
   if (year?.governmentEntityId) {
-    try { result = await readResourceAvailability(context.prisma, { allowedBudgetUnitIds }, { financialYearId: year.id, governmentEntityId: year.governmentEntityId, resourceSourceIds: selected }); }
+    try { result = await readResourceAvailability(databaseConnection, { allowedBudgetUnitIds }, { financialYearId: year.id, governmentEntityId: year.governmentEntityId, resourceSourceIds: selected }); }
     catch (failure) { error = failure instanceof Error ? failure.message : "Não foi possível gerar a disponibilidade."; }
   } else error = "Selecione um exercício de ente autorizado.";
   const csvParams = new URLSearchParams({ financialYearId: year?.id ?? "", governmentEntityId: year?.governmentEntityId ?? "" });

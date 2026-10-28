@@ -13,13 +13,18 @@ import Link from "next/link"
 import { PageFrame } from "@/components/app-ui/PageFrame"
 import { PageHeader } from "@/components/app-ui/PageHeader"
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { count } from "drizzle-orm";
+import { db } from "@/db/client";
+import { purchaseRequests } from "@/db/schema/procurement-requests";
+import { purchaseProcesses, biddings, procurementContracts } from "@/db/schema/procurement-core";
 
 export default async function ComprasDashboard() {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
-  const totalRequests = await prisma.purchaseRequest.count().catch(() => 0)
-  const totalProcesses = await prisma.purchaseProcess.count().catch(() => 0)
-  const totalBiddings = await prisma.bidding.count().catch(() => 0)
-  const totalContracts = await prisma.contract.count().catch(() => 0)
+  const context = await getTenantContextForModule("COMPRAS");
+  const database = context.database ?? db;
+  const totalRequests = await database.select({ value: count() }).from(purchaseRequests).then(rows => rows[0].value).catch(() => 0)
+  const totalProcesses = await database.select({ value: count() }).from(purchaseProcesses).then(rows => rows[0].value).catch(() => 0)
+  const totalBiddings = await database.select({ value: count() }).from(biddings).then(rows => rows[0].value).catch(() => 0)
+  const totalContracts = await database.select({ value: count() }).from(procurementContracts).then(rows => rows[0].value).catch(() => 0)
 
   return (
     <PageFrame className="space-y-2">

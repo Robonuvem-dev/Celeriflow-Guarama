@@ -5,6 +5,7 @@ import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib
 import { FinanceError } from "@/lib/financeiro";
 import { reverseAssetValuation } from "@/lib/patrimonio/valuation-reversal";
 import { revalidatePath } from "next/cache";
+import { databaseConnection } from "@/db/client";
 
 type ActionResult = { error?: string; message?: string };
 
@@ -25,7 +26,7 @@ export async function runMonthlyDepreciation(competence: string, budgetUnitId: s
   try {
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "create");
     await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const result = await depreciateAssetsForMonth(context.prisma, parseCompetence(competence), { budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } });
+    const result = await depreciateAssetsForMonth(databaseConnection, parseCompetence(competence), { budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } });
     revalidatePath("/patrimonio/ciclo-vida");
     revalidatePath("/patrimonio/bens");
     revalidatePath("/patrimonio");
@@ -52,7 +53,7 @@ export async function registerAssetDisposal(input: {
     const disposalValue = input.disposalValue.trim() === "" ? 0 : Number(input.disposalValue.replace(",", "."));
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "delete");
     if (input.type === "Alienação" && disposalValue > 0) await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const writeOff = await recordAssetDisposal(context.prisma, {
+    const writeOff = await recordAssetDisposal(databaseConnection, {
       ...input,
       date,
       disposalValue,
@@ -89,7 +90,7 @@ export async function registerAssetValueAdjustment(input: {
     const value = Number(input.value.replace(",", "."));
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
     await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    await recordAssetValueAdjustment(context.prisma, { ...input, date, value }, { budgetUnitId: input.budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } });
+    await recordAssetValueAdjustment(databaseConnection, { ...input, date, value }, { budgetUnitId: input.budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } });
     revalidatePath("/patrimonio/ciclo-vida");
     revalidatePath("/patrimonio/bens");
     revalidatePath("/patrimonio");
@@ -105,7 +106,7 @@ export async function reverseAssetValuationAction(input: { kind: "DEPRECIATION" 
     await getTenantContextForModuleOperation("FINANCEIRO", "update");
     const date = new Date(`${input.date}T12:00:00.000Z`);
     if (!input.date || !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== input.date) throw new AssetLifecycleError("Data do estorno inválida.");
-    await reverseAssetValuation(context.prisma, { budgetUnitId: input.budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } }, { ...input, date });
+    await reverseAssetValuation(databaseConnection, { budgetUnitId: input.budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } }, { ...input, date });
     revalidatePath("/patrimonio/ciclo-vida");
     revalidatePath("/patrimonio/bens");
     revalidatePath("/financeiro/contabilidade");

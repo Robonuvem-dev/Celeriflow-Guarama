@@ -17,6 +17,15 @@ import {
   resolveContractAmendmentEffect,
 } from "@/lib/compras/contract-lifecycle";
 import { revalidatePath } from "next/cache";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { procurementContracts, contractAmendments, purchaseProcesses } from "@/db/schema/procurement-core";
+import { procurementLifecycleEvents, purchaseRequests } from "@/db/schema/procurement-requests";
+import { instrumentMeasurements, instrumentInstallments } from "@/db/schema/procurement-instruments";
+import { procurementUnits } from "@/db/schema/procurement-budget";
+import { suppliers } from "@/db/schema/registry";
+import { employees as employeeTable } from "@/db/schema/administration";
 
 type ContractActionResult = { success: true } | { success: false; error: string };
 
@@ -52,10 +61,7 @@ export async function generateContractProcurementAuthorizations(contractId: stri
     if (!id) return { success: false, error: "Contrato inválido." };
 
     const context = await getTenantContext("update");
-    const contract = await context.prisma.contract.findUnique({
-      where: { id },
-      select: { id: true, sourceBudgetUnitId: true },
-    });
+    const [contract] = await databaseConnection.db.select().from(procurementContracts).where(eq(procurementContracts.id, id)).limit(1);
     if (!contract) return { success: false, error: "Contrato não encontrado." };
     authorizeContractBudgetUnits(context.user, { currentSourceBudgetUnitId: contract.sourceBudgetUnitId });
 
@@ -63,12 +69,12 @@ export async function generateContractProcurementAuthorizations(contractId: stri
     if (contract.sourceBudgetUnitId) assertBudgetUnitAccess(financeContext.user, contract.sourceBudgetUnitId);
 
     await deriveExpenseAuthorizationsForContract(
-      financeContext.prisma,
+      databaseConnection,
       { usuarioId: financeContext.user.id, employeeId: financeContext.user.employeeId },
       contract.id,
     );
     await recordSupplyAuthorizationForContract(
-      context.prisma,
+      databaseConnection,
       { usuarioId: context.user.id, employeeId: context.user.employeeId },
       contract.id,
     );
@@ -87,6 +93,10 @@ function authorizeContractBudgetUnits(
   const budgetUnitIds = contractBudgetUnitIdsForMutation(user, input);
   // Keep the centralized tenant authorization as the final guard for every UG involved.
   for (const budgetUnitId of budgetUnitIds) assertBudgetUnitAccess(user, budgetUnitId);
+}
+
+function contractVersionCondition(contract: { id: string; sourceBudgetUnitId: string | null; updatedAt: Date }) {
+  return and(eq(procurementContracts.id, contract.id), eq(procurementContracts.updatedAt, contract.updatedAt), contract.sourceBudgetUnitId === null ? isNull(procurementContracts.sourceBudgetUnitId) : eq(procurementContracts.sourceBudgetUnitId, contract.sourceBudgetUnitId));
 }
 
 function lifecycleIdempotencyKey(formData: FormData, kind: string, contractId: string) {
@@ -109,20 +119,15 @@ export async function deleteContract(id: string) {
     if (!contractId) return { success: false, error: "Contrato inválido." };
 
     const context = await getTenantContext("delete");
-    await context.prisma.$transaction(async (tx) => {
-      const contract = await tx.contract.findUnique({
-        where: { id: contractId },
-        select: { id: true, sourceBudgetUnitId: true, updatedAt: true },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [contract] = await tx.select().from(procurementContracts).where(eq(procurementContracts.id, contractId)).limit(1).for("update");
       if (!contract) throw new ContractLifecycleError("Contrato não encontrado.");
 
       authorizeContractBudgetUnits(context.user, { currentSourceBudgetUnitId: contract.sourceBudgetUnitId });
 
       // The source UG is part of the delete predicate so a concurrent reassignment cannot bypass authorization.
-      const deleted = await tx.contract.deleteMany({
-        where: { id: contract.id, sourceBudgetUnitId: contract.sourceBudgetUnitId, updatedAt: contract.updatedAt },
-      });
-      if (deleted.count !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
+      const deleted = await tx.delete(procurementContracts).where(contractVersionCondition(contract)).returning({ id: procurementContracts.id });
+      if (deleted.length !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
     });
 
     revalidateContractPaths(contractId);
@@ -148,21 +153,7 @@ export async function saveContract(formData: FormData) {
     const requestedStartDate = parseContractDate(formString(formData, "startDate"));
     const requestedEndDate = parseContractDate(formString(formData, "endDate"));
 
-    const current = id ? await context.prisma.contract.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        processId: true,
-        secretariatId: true,
-        sourceBudgetUnitId: true,
-        initialValue: true,
-        updatedValue: true,
-        startDate: true,
-        endDate: true,
-        status: true,
-        updatedAt: true,
-      },
-    }) : null;
+    const current = id ? (await databaseConnection.db.select().from(procurementContracts).where(eq(procurementContracts.id, id)).limit(1))[0] : null;
     if (id && !current) return { success: false, error: "Contrato não encontrado." };
 
     if (!number || !object || !supplierId || !sourceBudgetUnitId || (!current && (!requestedProcessId || !requestedSecretariatId))) {
@@ -191,10 +182,10 @@ export async function saveContract(formData: FormData) {
     if (!startDate || !endDate) return { success: false, error: "Informe uma vigência válida para o contrato." };
     calculateInclusiveContractTermDays(startDate, endDate);
 
-    const [process, supplier, sourceBudgetUnit] = await Promise.all([
-      context.prisma.purchaseProcess.findUnique({ where: { id: processId }, select: { id: true, secretariatId: true, purchaseRequest: { select: { status: true } } } }),
-      context.prisma.supplier.findUnique({ where: { id: supplierId }, select: { id: true, status: true } }),
-      context.prisma.budgetUnit.findUnique({ where: { id: sourceBudgetUnitId }, select: { id: true, secretariatId: true } }),
+    const [[process], [supplier], [sourceBudgetUnit]] = await Promise.all([
+      databaseConnection.db.select({ id: purchaseProcesses.id, secretariatId: purchaseProcesses.secretariatId, purchaseRequest: { status: purchaseRequests.status } }).from(purchaseProcesses).leftJoin(purchaseRequests, eq(purchaseRequests.id, purchaseProcesses.purchaseRequestId)).where(eq(purchaseProcesses.id, processId)).limit(1),
+      databaseConnection.db.select({ id: suppliers.id, status: suppliers.status }).from(suppliers).where(eq(suppliers.id, supplierId)).limit(1),
+      databaseConnection.db.select({ id: procurementUnits.id, secretariatId: procurementUnits.secretariatId }).from(procurementUnits).where(eq(procurementUnits.id, sourceBudgetUnitId)).limit(1),
     ]);
     if (!process || process.secretariatId !== secretariatId || process.purchaseRequest?.status !== "Aprovada") {
       return { success: false, error: "O contrato exige um processo originado de solicitação de compra aprovada e da mesma secretaria." };
@@ -221,11 +212,8 @@ export async function saveContract(formData: FormData) {
 
     if (current) {
       const existing = current;
-      await context.prisma.$transaction(async (tx) => {
-        const fresh = await tx.contract.findUnique({
-          where: { id: existing.id },
-          select: { id: true, sourceBudgetUnitId: true },
-        });
+      await withDatabaseTransaction(databaseConnection, async (tx) => {
+        const [fresh] = await tx.select().from(procurementContracts).where(eq(procurementContracts.id, existing.id)).limit(1).for("update");
         if (!fresh) throw new ContractLifecycleError("Contrato não encontrado.");
         authorizeContractBudgetUnits(context.user, {
           currentSourceBudgetUnitId: fresh.sourceBudgetUnitId,
@@ -233,14 +221,11 @@ export async function saveContract(formData: FormData) {
         });
 
         // Compare the source UG and version read before validation so a concurrent update cannot be overwritten.
-        const updated = await tx.contract.updateMany({
-          where: { id: existing.id, sourceBudgetUnitId: existing.sourceBudgetUnitId, updatedAt: existing.updatedAt },
-          data,
-        });
-        if (updated.count !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
+        const updated = await tx.update(procurementContracts).set(data).where(contractVersionCondition(existing)).returning({ id: procurementContracts.id });
+        if (updated.length !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
       });
     } else {
-      await context.prisma.contract.create({ data });
+      await databaseConnection.db.insert(procurementContracts).values(data);
     }
     revalidatePath("/compras/contratos");
     if (id) revalidateContractPaths(id);
@@ -264,25 +249,16 @@ export async function saveContractAmendment(formData: FormData): Promise<Contrac
     const idempotencyKey = lifecycleIdempotencyKey(formData, "CONTRACT_AMENDMENT", contractId);
     const context = await getTenantContext("update");
 
-    const current = await context.prisma.contract.findUnique({
-      where: { id: contractId },
-      select: { id: true, sourceBudgetUnitId: true },
-    });
+    const [current] = await databaseConnection.db.select().from(procurementContracts).where(eq(procurementContracts.id, contractId)).limit(1);
     if (!current) return { success: false, error: "Contrato não encontrado." };
     authorizeContractBudgetUnits(context.user, { currentSourceBudgetUnitId: current.sourceBudgetUnitId });
 
-    await context.prisma.$transaction(async (tx) => {
-      const contract = await tx.contract.findUnique({
-        where: { id: contractId },
-        select: { id: true, sourceBudgetUnitId: true, updatedValue: true, startDate: true, endDate: true, status: true, updatedAt: true },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [contract] = await tx.select().from(procurementContracts).where(eq(procurementContracts.id, contractId)).limit(1).for("update");
       if (!contract) throw new ContractLifecycleError("Contrato não encontrado.");
       authorizeContractBudgetUnits(context.user, { currentSourceBudgetUnitId: contract.sourceBudgetUnitId });
 
-      const existingEvent = await tx.procurementLifecycleEvent.findUnique({
-        where: { idempotencyKey },
-        select: { entityType: true, sourceId: true },
-      });
+      const [existingEvent] = await tx.select().from(procurementLifecycleEvents).where(eq(procurementLifecycleEvents.idempotencyKey, idempotencyKey)).limit(1);
       if (existingEvent) {
         if (existingEvent.entityType !== "CONTRACT_AMENDMENT" || existingEvent.sourceId !== contract.id) {
           throw new ContractLifecycleError("A chave de repetição já foi usada em outro ato contratual.");
@@ -296,29 +272,22 @@ export async function saveContractAmendment(formData: FormData): Promise<Contrac
 
       const effect = resolveContractAmendmentEffect(contract, { type, newValue, newEndDate });
       if (effect.contractUpdate.updatedValue !== undefined) {
-        const [measurementAggregate, installmentAggregate] = await Promise.all([
-          tx.instrumentMeasurement.aggregate({
-            where: { contractId: contract.id, status: { in: ["Rascunho", "Em análise", "Atestada"] } },
-            _sum: { valueDecimal: true },
-          }),
-          tx.instrumentInstallment.aggregate({
-            where: { contractId: contract.id, status: "Programada" },
-            _sum: { valueDecimal: true },
-          }),
+        const [[measurementAggregate], [installmentAggregate]] = await Promise.all([
+          tx.select({ value: sql<string>`coalesce(sum(${instrumentMeasurements.valueDecimal}), 0)::text` }).from(instrumentMeasurements).where(and(eq(instrumentMeasurements.contractId, contract.id), inArray(instrumentMeasurements.status, ["Rascunho", "Em análise", "Atestada"]))),
+          tx.select({ value: sql<string>`coalesce(sum(${instrumentInstallments.valueDecimal}), 0)::text` }).from(instrumentInstallments).where(and(eq(instrumentInstallments.contractId, contract.id), eq(instrumentInstallments.status, "Programada"))),
         ]);
         assertInstrumentAggregateTotalWithinCurrentValue(
           effect.contractUpdate.updatedValue,
-          measurementAggregate._sum.valueDecimal ?? 0,
+          measurementAggregate.value,
           "medições ativas",
         );
         assertInstrumentAggregateTotalWithinCurrentValue(
           effect.contractUpdate.updatedValue,
-          installmentAggregate._sum.valueDecimal ?? 0,
+          installmentAggregate.value,
           "parcelas programadas",
         );
       }
-      const amendment = await tx.contractAmendment.create({
-        data: {
+      const [amendment] = await tx.insert(contractAmendments).values({
           type,
           justification,
           previousValue: effect.previousValue,
@@ -327,15 +296,10 @@ export async function saveContractAmendment(formData: FormData): Promise<Contrac
           newEndDate: effect.newEndDate,
           status: "Aplicado",
           contractId: contract.id,
-        },
-      });
-      const updated = await tx.contract.updateMany({
-        where: { id: contract.id, sourceBudgetUnitId: contract.sourceBudgetUnitId, updatedAt: contract.updatedAt },
-        data: effect.contractUpdate,
-      });
-      if (updated.count !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
-      await tx.procurementLifecycleEvent.create({
-        data: {
+      }).returning({ id: contractAmendments.id });
+      const updated = await tx.update(procurementContracts).set(effect.contractUpdate).where(contractVersionCondition(contract)).returning({ id: procurementContracts.id });
+      if (updated.length !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
+      await tx.insert(procurementLifecycleEvents).values({
           eventType: effect.lifecycleEventType,
           entityType: "CONTRACT_AMENDMENT",
           entityId: amendment.id,
@@ -343,7 +307,6 @@ export async function saveContractAmendment(formData: FormData): Promise<Contrac
           sourceId: contract.id,
           actorUsuarioId: context.user.id,
           idempotencyKey,
-        },
       });
 
     });
@@ -366,25 +329,16 @@ export async function updateContractResponsibles(formData: FormData): Promise<Co
     const idempotencyKey = lifecycleIdempotencyKey(formData, "CONTRACT_RESPONSIBLES", contractId);
     const context = await getTenantContext("update");
 
-    const current = await context.prisma.contract.findUnique({
-      where: { id: contractId },
-      select: { id: true, sourceBudgetUnitId: true },
-    });
+    const [current] = await databaseConnection.db.select().from(procurementContracts).where(eq(procurementContracts.id, contractId)).limit(1);
     if (!current) return { success: false, error: "Contrato não encontrado." };
     authorizeContractBudgetUnits(context.user, { currentSourceBudgetUnitId: current.sourceBudgetUnitId });
 
-    await context.prisma.$transaction(async (tx) => {
-      const contract = await tx.contract.findUnique({
-        where: { id: contractId },
-        select: { id: true, sourceBudgetUnitId: true, managerId: true, inspectorId: true, updatedAt: true },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [contract] = await tx.select().from(procurementContracts).where(eq(procurementContracts.id, contractId)).limit(1).for("update");
       if (!contract) throw new ContractLifecycleError("Contrato não encontrado.");
       authorizeContractBudgetUnits(context.user, { currentSourceBudgetUnitId: contract.sourceBudgetUnitId });
 
-      const existingEvent = await tx.procurementLifecycleEvent.findUnique({
-        where: { idempotencyKey },
-        select: { entityType: true, sourceId: true },
-      });
+      const [existingEvent] = await tx.select().from(procurementLifecycleEvents).where(eq(procurementLifecycleEvents.idempotencyKey, idempotencyKey)).limit(1);
       if (existingEvent) {
         if (existingEvent.entityType !== "CONTRACT_RESPONSIBLES" || existingEvent.sourceId !== contract.id) {
           throw new ContractLifecycleError("A chave de repetição já foi usada em outro ato contratual.");
@@ -394,19 +348,15 @@ export async function updateContractResponsibles(formData: FormData): Promise<Co
 
       const employeeIds = [...new Set([managerId, inspectorId].filter((employeeId): employeeId is string => Boolean(employeeId)))];
       const employees = employeeIds.length
-        ? await tx.employee.findMany({ where: { id: { in: employeeIds }, isActive: true }, select: { id: true } })
+        ? await tx.select({ id: employeeTable.id }).from(employeeTable).where(and(inArray(employeeTable.id, employeeIds), eq(employeeTable.isActive, true)))
         : [];
       if (employees.length !== employeeIds.length) throw new ContractLifecycleError("Selecione apenas servidores ativos para os responsáveis do contrato.");
 
       if (contract.managerId === managerId && contract.inspectorId === inspectorId) return;
 
-      const updated = await tx.contract.updateMany({
-        where: { id: contract.id, sourceBudgetUnitId: contract.sourceBudgetUnitId, updatedAt: contract.updatedAt },
-        data: { managerId, inspectorId },
-      });
-      if (updated.count !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
-      await tx.procurementLifecycleEvent.create({
-        data: {
+      const updated = await tx.update(procurementContracts).set({ managerId, inspectorId }).where(contractVersionCondition(contract)).returning({ id: procurementContracts.id });
+      if (updated.length !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
+      await tx.insert(procurementLifecycleEvents).values({
           eventType: "CONTRACT_RESPONSIBLES_UPDATED",
           entityType: "CONTRACT_RESPONSIBLES",
           entityId: contract.id,
@@ -414,7 +364,6 @@ export async function updateContractResponsibles(formData: FormData): Promise<Co
           sourceId: contract.id,
           actorUsuarioId: context.user.id,
           idempotencyKey,
-        },
       });
     });
 

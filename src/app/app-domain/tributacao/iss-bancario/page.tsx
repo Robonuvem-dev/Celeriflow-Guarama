@@ -1,18 +1,17 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import IssBancarioClient from "./IssBancarioClient";
+import { db } from "@/db/client";
+import { listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
+import { listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
+import { readDesifPage } from "@/db/repositories/taxation-pages/desif";
 export const dynamic = "force-dynamic";
 
 export default async function IssBancarioPage() {
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const [institutions, imports, assessments, balances, movements, cases, taxpayers, processes] = await Promise.all([
-    prisma.desifFinancialInstitution.findMany({ include: { agencies: true, pgccPlans: { include: { accounts: { include: { subtitles: true, cosifLinks: { include: { cosifAccount: true } } } } } }, tariffs: true, packages: { include: { items: { include: { tariff: true } } } } }, orderBy: { name: "asc" } }),
-    prisma.desifImportBatch.findMany({ include: { institution: true, agency: true }, orderBy: { receivedAt: "desc" }, take: 100 }),
-    prisma.desifAssessment.findMany({ include: { agency: { include: { institution: true } }, subtitle: true }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.desifTrialBalance.findMany({ include: { agency: true, pgccAccount: true }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.desifPackageMovement.findMany({ include: { agency: true, package: true }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.desifFiscalCase.findMany({ include: { institution: true, agency: true, events: { orderBy: { createdAt: "desc" }, take: 8 } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.taxpayer.findMany({ where: { status: "Ativo", companyId: { not: null } }, include: { company: true }, orderBy: { createdAt: "asc" }, take: 100 }),
-    prisma.process.findMany({ where: { status: { not: "Arquivado" } }, select: { id: true, protocolNumber: true, status: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+  const context = await getTenantContextForModule("TRIBUTACAO"); const database = context.database ?? db;
+  const [{ institutions, imports, assessments, balances, movements, cases }, taxpayers, processes] = await Promise.all([
+    readDesifPage(database),
+    listPageTaxpayers(database, { active: true, companyOnly: true, order: "created-asc", limit: 100 }),
+    listFiscalProcessOptions(database, 100, true),
   ]);
   return <IssBancarioClient data={{
     taxpayers: taxpayers.map(row => ({ id: row.id, name: row.company?.corporateName ?? row.id, document: row.company?.cnpj ?? "" })), processes,

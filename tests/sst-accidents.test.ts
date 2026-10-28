@@ -7,8 +7,9 @@ import { restrictionInput } from "../src/lib/sst/restriction-policy";
 import { addAccidentEvidence, registerAccident, readCat, listAccidents } from "../src/lib/sst/accident-service";
 import { dispatchRestrictionEmails, readRestriction } from "../src/lib/sst/restriction-service";
 import type { AppContext } from "../src/lib/platform/tenant-context";
+import { createSstAccidentFixture } from "./helpers/sst-accident-fixture";
 
-const user: AppContext["user"] = { id: "actor", name: "SST", email: "sst@example.invalid", firebaseUid: "actor", profileCode: "SST_OPERATOR", role: "SST", modulePermissions: [], allowedBudgetUnitIds: ["ug"], employeeId: "employee", departmentId: null, secretariatId: null, permissions: JSON.stringify({ modules: { SST: { blocked: false, create: true, issueReports: true } } }) };
+const user: AppContext["user"] = { id: "user", name: "SST", email: "sst@example.invalid", firebaseUid: "user", profileCode: "SST_OPERATOR", role: "SST", modulePermissions: [], allowedBudgetUnitIds: ["ug"], employeeId: "employee", departmentId: null, secretariatId: null, permissions: JSON.stringify({ modules: { SST: { blocked: false, create: true, issueReports: true } } }) };
 const raw = { submissionKey: "779b172f-10c2-4325-bc32-d33cba4fdeaa", budgetUnitId: "ug", employeeId: "employee", occurredAt: "2026-10-01T12:00:00Z", location: "Oficina", description: "Ocorrência informada", kind: "TYPICAL", agent: "Máquina", bodyParts: ["Mão"], statement: "Depoimento colhido", witnesses: [] };
 
 test("money is exact string decimal; stale or incomplete opinions never homologate", () => {
@@ -31,71 +32,64 @@ test("restriction validates dates, CID and unique role-attribute decisions", () 
   assert.equal(accidentInput.safeParse({ ...raw, kind: "INCIDENT", causeAnalysis: "" }).success, false);
 });
 test("clinical medicine writes deny administrative, read-only and cross-UG actors before transaction", async () => {
-  let writes = 0;
-  const cat = { id: "cat", budgetUnitId: "ug", employeeId: "employee", occurredAt: new Date("2026-10-01") };
-  const make = (canAssess: boolean, canWrite: boolean) => ({ user: { ...user }, prisma: { $queryRaw: async () => [cat], sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess }) }, sstDisciplineGrant: { findUnique: async () => ({ isActive: true, canRead: true, canWrite }) }, $transaction: async () => { writes++; } } } as unknown as AppContext);
-  const input = { catId: "cat", submissionKey: raw.submissionKey, kind: "MEDICAL", data: { opinion: "Parecer favorável fundamentado" } };
-  await assert.rejects(addAccidentEvidence(make(false, true), input), /clínica/);
-  await assert.rejects(addAccidentEvidence(make(true, false), input), /atuação/);
-  const context = make(true, true); context.user.allowedBudgetUnitIds = ["other"];
-  await assert.rejects(readCat(context, "cat"), /Unidade Gestora/);
-  await assert.rejects(readRestriction(context, "restriction"), /Unidade Gestora/);
-  assert.equal(writes, 0);
+  const f = await createSstAccidentFixture();
+  try {
+    await f.seedCat(); await f.seedRestriction();
+    const input = { catId: "cat", submissionKey: raw.submissionKey, kind: "MEDICAL", data: { opinion: "Parecer favorável fundamentado" } };
+    await f.db.exec('UPDATE "SstAccessGrant" SET "canAssess"=false');
+    await assert.rejects(addAccidentEvidence(f.context, input), /clínica/);
+    await f.db.exec('UPDATE "SstAccessGrant" SET "canAssess"=true; UPDATE "SstDisciplineGrant" SET "canWrite"=false');
+    await assert.rejects(addAccidentEvidence(f.context, input), /atuação/);
+    f.context.user.allowedBudgetUnitIds = ["other"];
+    await assert.rejects(readCat(f.context, "cat"), /Unidade Gestora/);
+    await assert.rejects(readRestriction(f.context, "restriction"), /Unidade Gestora/);
+    assert.equal((await f.db.query('SELECT id FROM "SstCatEvidence"')).rows.length, 0);
+  } finally { await f.close(); }
 });
 test("signing a stale investigation revision is rejected rather than silently reassigned", async () => {
-  const cat = { id: "cat", budgetUnitId: "ug", occurredAt: new Date("2026-10-01") };
-  let query = 0, writes = 0;
-  const tx = { $queryRaw: async () => { query++; return query <= 2 ? [] : [{ kind: "INVESTIGATION", version: 2, approved: false }]; }, $executeRaw: async () => { writes++; } };
-  const context = { user, prisma: { $queryRaw: async () => [cat], sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess: true }) }, sstDisciplineGrant: { findUnique: async () => ({ isActive: true, canRead: true, canWrite: true }) }, $transaction: async (fn: (db: typeof tx) => Promise<unknown>) => fn(tx) } } as unknown as AppContext;
-  await assert.rejects(addAccidentEvidence(context, { catId: "cat", expectedVersion: 1, kind: "MEDICAL", submissionKey: raw.submissionKey, data: { opinion: "Parecer da revisão anterior" } }), /investigação foi revisada/);
-  assert.equal(writes, 0);
+  const f = await createSstAccidentFixture();
+  try {
+    await f.seedCat();
+    await f.db.exec(`INSERT INTO "SstCatEvidence" (id,"catId",kind,version,clinical,data,"createdById","submissionKey","requestHash") VALUES ('investigation','cat','INVESTIGATION',2,true,'{}','user','investigation','hash')`);
+    await assert.rejects(addAccidentEvidence(f.context, { catId: "cat", expectedVersion: 1, kind: "MEDICAL", submissionKey: raw.submissionKey, data: { opinion: "Parecer da revisão anterior" } }), /investigação foi revisada/);
+    assert.equal((await f.db.query('SELECT id FROM "SstCatEvidence"')).rows.length, 1);
+  } finally { await f.close(); }
 });
 test("portal identity cannot be replaced by employee ID and list scopes precede count", async () => {
-  const context = { user: { ...user }, prisma: {} } as AppContext;
-  await assert.rejects(registerAccident(context, { ...raw, employeeId: "another" }, true), /vínculo autenticado/);
-  await assert.rejects(listAccidents(context, 1, "", "another"), /vínculo autenticado/);
-  const sql: string[] = [];
-  const scoped = { user, prisma: { budgetUnit: { findMany: async () => [] }, $queryRaw: async (strings: TemplateStringsArray) => { sql.push(strings.join("?")); return sql.length === 1 ? [{ total: BigInt(0) }] : []; } } } as unknown as AppContext;
-  const result = await listAccidents(scoped, 500);
-  assert.equal(result.page, 1); assert.equal(result.total, 0);
-  assert.match(sql[0], /WHERE/); assert.match(sql[1], /ORDER BY.*LIMIT 20 OFFSET/);
+  const f = await createSstAccidentFixture();
+  try {
+    f.context.user = { ...user };
+    await assert.rejects(registerAccident(f.context, { ...raw, employeeId: "another" }, true), /vínculo autenticado/);
+    await assert.rejects(listAccidents(f.context, 1, "", "another"), /vínculo autenticado/);
+    await f.seedCat(); f.context.user.allowedBudgetUnitIds = ["other"];
+    const result = await listAccidents(f.context, 500);
+    assert.equal(result.page, 1); assert.equal(result.total, 0); assert.equal(result.rows.length, 0);
+  } finally { await f.close(); }
 });
 test("CAT service retry reuses immutable source and rejects changed content, cross-UG and ambiguous lotation", async () => {
-  let record: { id: string; createdById: string; requestHash: string } | undefined;
-  let insertCount = 0, unitCount = 1;
-  const tx = {
-    budgetUnit: { findUnique: async () => ({ id: "ug", name: "Prefeitura", secretariatId: "s" }), count: async () => unitCount },
-    employee: { findUnique: async () => ({ id: "employee", isActive: true, name: "Servidor", secretariatId: "s", registration: "123", roleId: "role", role: { name: "Operador" } }) },
-    auditEvent: { create: async () => ({}) },
-    $queryRaw: async () => record ? [record] : [],
-    $executeRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
-      if (strings.join("").includes('INSERT INTO "SstCat"')) { insertCount++; record = { id: String(values[0]), requestHash: String(values[4]), createdById: String(values[5]) }; }
-      return 1;
-    },
-  };
-  const context = { user: { ...user }, prisma: { $transaction: async (fn: (db: typeof tx) => Promise<unknown>) => fn(tx) } } as unknown as AppContext;
-  const id = await registerAccident(context, raw);
-  assert.equal(await registerAccident(context, raw), id); assert.equal(insertCount, 1);
-  await assert.rejects(registerAccident(context, { ...raw, agent: "Outro agente" }), /outros dados/);
-  unitCount = 2;
-  await assert.rejects(registerAccident(context, raw), /ambígua/);
-  context.user.allowedBudgetUnitIds = [];
-  await assert.rejects(registerAccident(context, raw), /Unidade Gestora/);
-  assert.equal(insertCount, 1);
+  const f = await createSstAccidentFixture();
+  try {
+    f.context.user = { ...user };
+    const id = await registerAccident(f.context, raw);
+    assert.equal(await registerAccident(f.context, raw), id);
+    await assert.rejects(registerAccident(f.context, { ...raw, agent: "Outro agente" }), /outros dados/);
+    await f.db.exec(`INSERT INTO "BudgetUnit" (id,code,name,"secretariatId","updatedAt") VALUES ('ambiguous','AMB','Ambígua','s',now())`);
+    await assert.rejects(registerAccident(f.context, raw), /ambígua/);
+    f.context.user.allowedBudgetUnitIds = [];
+    await assert.rejects(registerAccident(f.context, raw), /Unidade Gestora/);
+    assert.equal((await f.db.query('SELECT id FROM "SstCat"')).rows.length, 1);
+  } finally { await f.close(); }
 });
 test("email outbox only marks sent after real provider receipt; failed delivery is not fabricated", async () => {
-  const updates: string[] = [];
-  let available = true;
-  const tx = {
-    $queryRaw: async () => { if (!available) return []; available = false; return [{ id: "outbox", recipient: "responsible@example.invalid", restrictionId: "restriction" }]; },
-    $executeRaw: async (strings: TemplateStringsArray) => { updates.push(strings.join("?")); return 1; },
-  };
-  const context = { user, prisma: { budgetUnit: { findMany: async () => [{ id: "ug" }] }, $transaction: async (fn: (db: typeof tx) => Promise<unknown>) => fn(tx), $executeRaw: tx.$executeRaw } } as unknown as AppContext;
-  assert.equal(await dispatchRestrictionEmails(context, async () => ({ receipt: "" })), 0);
-  assert.ok(updates.some(s => s.includes("'FAILED'"))); assert.ok(!updates.some(s => s.includes("'SENT'")));
-  available = true; updates.length = 0;
-  assert.equal(await dispatchRestrictionEmails(context, async message => { assert.equal(message.idempotencyKey, "outbox"); assert.ok(!message.text.includes("CID")); return { receipt: "provider-accepted-123" }; }), 1);
-  assert.ok(updates.some(s => s.includes("'SENT'")));
+  const f = await createSstAccidentFixture();
+  try {
+    await f.seedRestriction();
+    assert.equal(await dispatchRestrictionEmails(f.context, async () => ({ receipt: "" })), 0);
+    assert.deepEqual((await f.db.query('SELECT status,"providerReceipt" FROM "SstRestrictionEmailOutbox"')).rows, [{ status: "FAILED", providerReceipt: null }]);
+    await f.db.exec(`UPDATE "SstRestrictionEmailOutbox" SET status='PENDING'`);
+    assert.equal(await dispatchRestrictionEmails(f.context, async message => { assert.equal(message.idempotencyKey, "outbox"); assert.ok(!message.text.includes("CID")); return { receipt: "provider-accepted-123" }; }), 1);
+    assert.deepEqual((await f.db.query('SELECT status,"providerReceipt" FROM "SstRestrictionEmailOutbox"')).rows, [{ status: "SENT", providerReceipt: "provider-accepted-123" }]);
+  } finally { await f.close(); }
 });
 test("PostgreSQL guards current investigation, immutable evidence and exact reimbursement limits", async () => {
   const db = new PGlite();

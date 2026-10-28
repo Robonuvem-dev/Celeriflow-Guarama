@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import type { Department, Role } from "@prisma/client";
+import type { Department, Role } from "@/lib/contracts/personnel-pages";
 
 export function EmployeeFilters({ roles, departments }: { roles: Role[], departments: Department[] }) {
   const router = useRouter();

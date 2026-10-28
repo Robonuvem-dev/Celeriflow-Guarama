@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import Decimal from "decimal.js";
 import type { PublicCollection, PublicDataset, PublicRecord, PublicCell, TransparencyQuery } from "./query-contract";
 import type { TransparencySettings } from "./presentation-settings";
 const base = "http://transparencia.pibema.pr.gov.br:8087/portaltransparencia-api";
@@ -8,7 +8,7 @@ const cache = new Map<string, { expires: number; value: Promise<PublicDataset> }
 type ExternalRow = Record<string, unknown>;
 const text = (value: unknown) => typeof value === "string" || typeof value === "number" ? String(value) : "";
 const cell = (value: unknown): PublicCell => typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? value : null;
-const money = (value: unknown) => value === null || value === undefined || value === "" ? null : new Prisma.Decimal(String(value)).toFixed(2);
+const money = (value: unknown) => value === null || value === undefined || value === "" ? null : new Decimal(String(value)).toFixed(2);
 function normalizeRow(slug: string, row: ExternalRow, query: TransparencyQuery, entity: "prefeitura" | "camara", index: number): PublicRecord {
   const number = text(row.empenhoExercicio || row.displayLicitacao || row.noOrdem || row.noLiquidacao || row.matricula || row.receita || row.id || index);
   const values: PublicRecord["values"] = { number, date: cell(row.data), name: cell(row.nome || row.descricao), description: cell(row.historico || row.objeto || row.observacao), beneficiary: cell(row.nome || row.fornecedor), unit: cell(row.unidadeOrcamentaria || row.descricaoLotacao), sourceCode: cell(row.fonteRecurso), status: cell(row.situacao || row.tipoCancelamento), type: cell(row.natureza), value: money(row.valor ?? row.valorMaximo), committed: money(row.valorEmpenhado), canceled: money(row.valorAnulado), settled: money(row.valorLiquidado), withheld: money(row.valorRetido ?? row.retido), paid: money(row.valorPago), balance: money(row.valorAPagar ?? row.saldo), commitment: cell(row.empenhoExercicio), originalYear: cell(row.exercicio), modality: cell(row.descricao), process: cell(row.displayProcessoAdm || row.displayProtocolo), invoice: cell(row.notasFiscais) };

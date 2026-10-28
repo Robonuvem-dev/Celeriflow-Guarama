@@ -1,20 +1,20 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 
 export class VafError extends Error {}
 
-const money = (value: Prisma.Decimal | string | number, label = "Valor") => {
-  const result = new Prisma.Decimal(String(value)).toDecimalPlaces(2);
+const money = (value: Decimal | string | number, label = "Valor") => {
+  const result = new Decimal(String(value)).toDecimalPlaces(2);
   if (!result.isFinite() || result.lessThan(0)) throw new VafError(`${label} inválido.`);
   return result;
 };
 
-const num = (value: Prisma.Decimal | string | number | null | undefined) => Number(new Prisma.Decimal(String(value ?? 0)).toFixed(2));
+const num = (value: Decimal | string | number | null | undefined) => Number(new Decimal(String(value ?? 0)).toFixed(2));
 
 // Cenário obrigatório: VAF = saídas elegíveis - entradas elegíveis
 // Empresa A: saídas=15000, entradas=9000 → VAF=6000
 // Empresa B: VAF=4000
 // Total=10000 → A=60%, B=40%
-export function calculateVaf(input: { saidaElegivel: Prisma.Decimal | string | number; entradaElegivel: Prisma.Decimal | string | number }) {
+export function calculateVaf(input: { saidaElegivel: Decimal | string | number; entradaElegivel: Decimal | string | number }) {
   const saida = money(input.saidaElegivel, "Saídas elegíveis");
   const entrada = money(input.entradaElegivel, "Entradas elegíveis");
   const vaf = saida.minus(entrada).toDecimalPlaces(2);
@@ -22,10 +22,10 @@ export function calculateVaf(input: { saidaElegivel: Prisma.Decimal | string | n
   return { saida, entrada, vaf };
 }
 
-export function participation(totalVaf: Prisma.Decimal | string | number, companyVaf: Prisma.Decimal | string | number) {
+export function participation(totalVaf: Decimal | string | number, companyVaf: Decimal | string | number) {
   const total = money(totalVaf, "VAF total");
   const company = money(companyVaf, "VAF da empresa");
-  if (total.lessThanOrEqualTo(0)) return { total, company, participation: new Prisma.Decimal(0) };
+  if (total.lessThanOrEqualTo(0)) return { total, company, participation: new Decimal(0) };
   return { total, company, participation: company.div(total).mul(100).toDecimalPlaces(2) };
 }
 
@@ -33,14 +33,14 @@ export function participation(totalVaf: Prisma.Decimal | string | number, compan
 // Suporta: saida - entrada, saida + entrada, saida * k, etc.
 // Gramática: expr := term (("+" | "-") term)* ; term := factor (("*" | "/") factor)*
 // factor := número | variável (saida|entrada) | "(" expr ")" | ("+"|"-") factor
-export function evaluateFormula(formula: string, variables: Record<string, Prisma.Decimal | string | number>) {
+export function evaluateFormula(formula: string, variables: Record<string, Decimal | string | number>) {
   if (typeof formula !== "string" || formula.trim().length === 0 || formula.length > 200) {
     throw new VafError("Fórmula contém caracteres não permitidos.");
   }
-  const vars = new Map<string, Prisma.Decimal>();
+  const vars = new Map<string, Decimal>();
   for (const [k, v] of Object.entries(variables)) {
     try {
-      vars.set(k.toLowerCase(), new Prisma.Decimal(String(v)));
+      vars.set(k.toLowerCase(), new Decimal(String(v)));
     } catch {
       throw new VafError("Erro ao avaliar fórmula.");
     }
@@ -60,7 +60,7 @@ export function evaluateFormula(formula: string, variables: Record<string, Prism
   }
   let pos = 0;
   const peek = () => tokens[pos];
-  function parseExpr(): Prisma.Decimal {
+  function parseExpr(): Decimal {
     let left = parseTerm();
     while (peek() === "+" || peek() === "-") {
       const op = tokens[pos++];
@@ -69,7 +69,7 @@ export function evaluateFormula(formula: string, variables: Record<string, Prism
     }
     return left;
   }
-  function parseTerm(): Prisma.Decimal {
+  function parseTerm(): Decimal {
     let left = parseFactor();
     while (peek() === "*" || peek() === "/") {
       const op = tokens[pos++];
@@ -83,7 +83,7 @@ export function evaluateFormula(formula: string, variables: Record<string, Prism
     }
     return left;
   }
-  function parseFactor(): Prisma.Decimal {
+  function parseFactor(): Decimal {
     const tok = peek();
     if (tok === "+" || tok === "-") {
       pos++;
@@ -103,7 +103,7 @@ export function evaluateFormula(formula: string, variables: Record<string, Prism
     pos++;
     if (/^\d/.test(tok)) {
       try {
-        return new Prisma.Decimal(tok);
+        return new Decimal(tok);
       } catch {
         throw new VafError("Erro ao avaliar fórmula.");
       }
@@ -123,7 +123,7 @@ export function evaluateFormula(formula: string, variables: Record<string, Prism
   }
 }
 
-export function mergeEfdGia(efd: { saida: Prisma.Decimal | string | number; entrada: Prisma.Decimal | string | number } | null, gia: { saida: Prisma.Decimal | string | number; entrada: Prisma.Decimal | string | number } | null, priority: "EFD" | "GIA" | "MERGED" = "EFD") {
+export function mergeEfdGia(efd: { saida: Decimal | string | number; entrada: Decimal | string | number } | null, gia: { saida: Decimal | string | number; entrada: Decimal | string | number } | null, priority: "EFD" | "GIA" | "MERGED" = "EFD") {
   const e = efd ? { saida: money(efd.saida), entrada: money(efd.entrada) } : { saida: money(0), entrada: money(0) };
   const g = gia ? { saida: money(gia.saida), entrada: money(gia.entrada) } : { saida: money(0), entrada: money(0) };
   if (priority === "EFD") return e;
@@ -132,7 +132,7 @@ export function mergeEfdGia(efd: { saida: Prisma.Decimal | string | number; entr
   return { saida: e.saida.greaterThan(0) ? e.saida : g.saida, entrada: e.entrada.greaterThan(0) ? e.entrada : g.entrada };
 }
 
-export function checkContrapartida(cfop: string, requiredCfop: string | undefined, movements: { cfop: string; value: Prisma.Decimal }[]) {
+export function checkContrapartida(cfop: string, requiredCfop: string | undefined, movements: { cfop: string; value: Decimal }[]) {
   if (!requiredCfop) return { ok: true, missing: [] as string[] };
   const has = movements.some(m => m.cfop === requiredCfop);
   return { ok: has, missing: has ? [] : [requiredCfop] };
@@ -144,7 +144,7 @@ export function detectOmission(expectedCompanies: string[], receivedCompanies: s
   return [...expected].filter(c => !received.has(c));
 }
 
-export function crossCheck(efdValue: Prisma.Decimal | string | number, giaValue: Prisma.Decimal | string | number, rule: "IGUAL" | "EFD_GTE_GIA" | "DIFERENCA_MAX" = "IGUAL", tolerance = 0) {
+export function crossCheck(efdValue: Decimal | string | number, giaValue: Decimal | string | number, rule: "IGUAL" | "EFD_GTE_GIA" | "DIFERENCA_MAX" = "IGUAL", tolerance = 0) {
   const e = money(efdValue);
   const g = money(giaValue);
   const diff = e.minus(g).abs().toDecimalPlaces(2);
@@ -155,7 +155,7 @@ export function crossCheck(efdValue: Prisma.Decimal | string | number, giaValue:
   return { ok, efd: e, gia: g, difference: diff };
 }
 
-export function abcCurve(values: { label: string; value: Prisma.Decimal | string | number }[], thresholds = { a: 80, b: 95 }) {
+export function abcCurve(values: { label: string; value: Decimal | string | number }[], thresholds = { a: 80, b: 95 }) {
   const sorted = [...values].sort((a, b) => Number(b.value) - Number(a.value));
   const total = sorted.reduce((sum, v) => sum + Number(v.value), 0);
   let acc = 0;
@@ -169,7 +169,7 @@ export function abcCurve(values: { label: string; value: Prisma.Decimal | string
   });
 }
 
-export function estimateAnnual(realizedMonths: number, realizedValue: Prisma.Decimal | string | number, method: "LINEAR" | "MEDIA_MOVEL" = "LINEAR", monthsHistory: number[] = []) {
+export function estimateAnnual(realizedMonths: number, realizedValue: Decimal | string | number, method: "LINEAR" | "MEDIA_MOVEL" = "LINEAR", monthsHistory: number[] = []) {
   const r = money(realizedValue);
   if (realizedMonths <= 0) throw new VafError("Meses realizados devem ser > 0.");
   if (method === "LINEAR") {
@@ -177,13 +177,13 @@ export function estimateAnnual(realizedMonths: number, realizedValue: Prisma.Dec
     return { monthly, annual: monthly.mul(12).toDecimalPlaces(2), method: "LINEAR" };
   }
   if (method === "MEDIA_MOVEL" && monthsHistory.length > 0) {
-    const avg = new Prisma.Decimal(monthsHistory.reduce((s, v) => s + v, 0) / monthsHistory.length).toDecimalPlaces(2);
+    const avg = new Decimal(monthsHistory.reduce((s, v) => s + v, 0) / monthsHistory.length).toDecimalPlaces(2);
     return { monthly: avg, annual: avg.mul(12).toDecimalPlaces(2), method: "MEDIA_MOVEL" };
   }
   throw new VafError("Método de estimativa inválido ou histórico insuficiente.");
 }
 
-export function financialReturn(totalRepasse: Prisma.Decimal | string | number, vafAttribution: Prisma.Decimal | string | number, participations: { companyId: string; vaf: Prisma.Decimal | string | number }[]) {
+export function financialReturn(totalRepasse: Decimal | string | number, vafAttribution: Decimal | string | number, participations: { companyId: string; vaf: Decimal | string | number }[]) {
   const repasse = money(totalRepasse);
   const attr = money(vafAttribution);
   if (attr.lessThanOrEqualTo(0)) throw new VafError("VAF de atribuição deve ser > 0.");
@@ -202,6 +202,6 @@ export function academicYearFilter<T extends { exerciseId?: string; competency?:
   return items.filter(i => (!exerciseId || i.exerciseId === exerciseId) && (!competency || i.competency === competency));
 }
 
-export function monthlyTrend(rows: { competency: string; value: Prisma.Decimal | string | number }[]) {
+export function monthlyTrend(rows: { competency: string; value: Decimal | string | number }[]) {
   return [...rows].sort((a, b) => a.competency.localeCompare(b.competency)).map(r => ({ competency: r.competency, value: num(r.value) }));
 }

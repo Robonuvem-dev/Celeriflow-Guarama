@@ -2,7 +2,9 @@
 
 import { getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { runTaxAuditCrossCheck, issueTaxInfractionNotice, type TaxAuditCrossCheckResult } from "@/lib/tributacao/inteligencia-tributaria-engine";
-import type { TaxAuditCrossCheck } from "@prisma/client";
+import { db } from "@/db/client";
+import { readTaxAuditCrossChecks } from "@/db/repositories/taxation/audit-cross-checks";
+import type { TaxAuditCrossCheckRecord } from "@/lib/contracts/taxation-registry";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -26,7 +28,7 @@ export async function runTaxAuditAction(input: z.infer<typeof auditSchema>): Pro
 
   try {
     const context = await getTenantContextForModuleOperation("TRIBUTACAO", "create");
-    const result = await runTaxAuditCrossCheck(context.prisma, parsed.data);
+    const result = await runTaxAuditCrossCheck(context.database ?? db, parsed.data);
 
     revalidatePath("/tributacao/fiscalizacao");
     return { data: result };
@@ -35,10 +37,10 @@ export async function runTaxAuditAction(input: z.infer<typeof auditSchema>): Pro
   }
 }
 
-export async function issueInfractionNoticeAction(crossCheckId: string): Promise<ActionResult<{ record: TaxAuditCrossCheck; numeroAutoInfracao: string }>> {
+export async function issueInfractionNoticeAction(crossCheckId: string): Promise<ActionResult<{ record: TaxAuditCrossCheckRecord; numeroAutoInfracao: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
-    const result = await issueTaxInfractionNotice(context.prisma, crossCheckId);
+    const result = await issueTaxInfractionNotice(context.database ?? db, crossCheckId);
 
     revalidatePath("/tributacao/fiscalizacao");
     return { data: result };
@@ -47,13 +49,10 @@ export async function issueInfractionNoticeAction(crossCheckId: string): Promise
   }
 }
 
-export async function getTaxAuditRecordsAction(): Promise<ActionResult<TaxAuditCrossCheck[]>> {
+export async function getTaxAuditRecordsAction(): Promise<ActionResult<TaxAuditCrossCheckRecord[]>> {
   try {
     const context = await getTenantContextForModule("TRIBUTACAO");
-    const records = await context.prisma.taxAuditCrossCheck.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 15,
-    });
+    const records = await readTaxAuditCrossChecks(context.database ?? db);
     return { data: records };
   } catch (error) {
     return { error: getErrorMessage(error, "Erro ao carregar registros de malha fina.") };

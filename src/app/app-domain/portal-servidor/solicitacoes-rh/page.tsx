@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
+import type { PortalRequest } from "@/lib/contracts/employee-portal";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -11,10 +15,11 @@ export default async function MyHrRequests({ searchParams }: { searchParams: Pro
   if (access.status !== "AVAILABLE") return <p className="p-4">Cadastro funcional indisponível.</p>;
   const params = await searchParams;
   const status = ["EM_ANALISE", "DEFERIDA", "INDEFERIDA"].includes(params.status || "") ? params.status : undefined;
-  const where = { employeeId: access.employee.id, kind: { not: "ACESSO_PORTAL" }, ...(status ? { status } : {}) };
-  const total = await access.context.prisma.hrPortalRequest.count({ where });
+  const executor = access.context.database ?? db;
+  const where = sql`"employeeId"=${access.employee.id} AND kind<>'ACESSO_PORTAL' ${status ? sql`AND status=${status}` : sql``}`;
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "HrPortalRequest" WHERE ${where}`);
   const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const rows = await access.context.prisma.hrPortalRequest.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+  const rows = await portalRows<PortalRequest>(executor, sql`SELECT * FROM "HrPortalRequest" WHERE ${where} ORDER BY "createdAt" DESC,id LIMIT 20 OFFSET ${(page - 1) * 20}`);
   const href = (value: number) => `?${new URLSearchParams({ page: String(value), status: status || "" })}`;
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title="Minhas solicitações ao RH" description="Acompanhe a análise e a decisão dos seus pedidos." action={<Link href="/portal-servidor">Voltar</Link>} />

@@ -1,5 +1,7 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { findPageEnforcement, listPageInspectors, loadPageEnforcementHistory } from "@/db/repositories/works-pages/enforcement";
+import { pageEmployeeNames } from "@/db/repositories/works-pages/shared";
 import { notFound } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
@@ -7,7 +9,7 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { enforcementCaseWhere, enforcementActLabels, enforcementServiceLabels } from "@/lib/obras/construction-enforcement-policy";
+import { enforcementActLabels, enforcementServiceLabels } from "@/lib/obras/construction-enforcement-policy";
 import { ConstructionEnforcementOperations } from "../ConstructionEnforcementClient";
 import { EnforcementHistoryFilters } from "../EnforcementHistoryFilters";
 
@@ -16,36 +18,21 @@ export default async function ConstructionEnforcementDetail({ params, searchPara
   const { id } = await params;
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
-  const record = await context.prisma.constructionEnforcementCase.findFirst({ where: { AND: [{ id }, enforcementCaseWhere(access)] }, include: { realEstate: true, process: { include: { currentDepartment: { select: { name: true } }, documents: { where: { documentId: { not: null } }, select: { document: { select: { id: true, title: true } } } } } } } });
+  const database = context.database ?? db;
+  const record = await findPageEnforcement(database, access, id);
   if (!record) notFound();
   const rawParams = await searchParams;
   const values = Object.fromEntries(["actQ", "actPage", "actKind", "actScience", "visitQ", "visitPage", "visitEvidence", "assignmentQ", "assignmentPage", "assignmentEmployee", "scienceQ", "sciencePage", "scienceMethod"].map((key) => [key, typeof rawParams[key] === "string" ? rawParams[key].trim().slice(0, 160) : ""]));
-  const contains = (value: string) => ({ contains: value, mode: "insensitive" as const });
-  const actWhere: Prisma.ConstructionEnforcementActWhereInput = { caseId: id, ...(values.actQ ? { OR: [{ number: contains(values.actQ) }, { reason: contains(values.actQ) }, { legalBasis: contains(values.actQ) }, { createdBy: contains(values.actQ) }] } : {}), ...(values.actKind in enforcementActLabels ? { kind: values.actKind } : {}), ...(values.actScience === "PENDING" ? { acknowledgements: { none: {} } } : values.actScience === "RECORDED" ? { acknowledgements: { some: {} } } : {}) };
-  const visitWhere: Prisma.ConstructionEnforcementVisitWhereInput = { caseId: id, ...(values.visitQ ? { OR: [{ findings: contains(values.visitQ) }, { createdBy: contains(values.visitQ) }] } : {}), ...(values.visitEvidence === "PHOTO" ? { evidence: { some: { kind: "PHOTO" } } } : values.visitEvidence === "NONE" ? { evidence: { none: {} } } : {}) };
-  const assignmentWhere: Prisma.ConstructionEnforcementAssignmentWhereInput = { caseId: id, ...(values.assignmentQ ? { OR: [{ reason: contains(values.assignmentQ) }, { createdBy: contains(values.assignmentQ) }] } : {}), ...(values.assignmentEmployee ? { employeeId: values.assignmentEmployee } : {}) };
-  const scienceWhere: Prisma.ConstructionEnforcementAcknowledgementWhereInput = { act: { caseId: id }, ...(values.scienceQ ? { OR: [{ recipient: contains(values.scienceQ) }, { notes: contains(values.scienceQ) }, { act: { number: contains(values.scienceQ) } }] } : {}), ...(values.scienceMethod in enforcementServiceLabels ? { method: values.scienceMethod } : {}) };
-  const [actTotal, visitTotal, assignmentTotal, scienceTotal] = await Promise.all([context.prisma.constructionEnforcementAct.count({ where: actWhere }), context.prisma.constructionEnforcementVisit.count({ where: visitWhere }), context.prisma.constructionEnforcementAssignment.count({ where: assignmentWhere }), context.prisma.constructionEnforcementAcknowledgement.count({ where: scienceWhere })]);
-  const pageFor = (prefix: string, total: number) => Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(values[`${prefix}Page`] || "1", 10) || 1));
-  const pages = { act: pageFor("act", actTotal), visit: pageFor("visit", visitTotal), assignment: pageFor("assignment", assignmentTotal), science: pageFor("science", scienceTotal) };
-  const [acts, visits, assignments, science, actOptions, visitOptions, assignmentOptions] = await Promise.all([
-    context.prisma.constructionEnforcementAct.findMany({ where: actWhere, orderBy: [{ issuedAt: "desc" }, { createdAt: "desc" }, { id: "asc" }], skip: (pages.act - 1) * 20, take: 20, include: { relatedAct: { select: { number: true } }, evidence: { include: { document: { select: { title: true } } } }, _count: { select: { acknowledgements: true } } } }),
-    context.prisma.constructionEnforcementVisit.findMany({ where: visitWhere, orderBy: [{ visitedAt: "desc" }, { id: "asc" }], skip: (pages.visit - 1) * 20, take: 20, include: { evidence: { include: { document: { select: { title: true } } } } } }),
-    context.prisma.constructionEnforcementAssignment.findMany({ where: assignmentWhere, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (pages.assignment - 1) * 20, take: 20 }),
-    context.prisma.constructionEnforcementAcknowledgement.findMany({ where: scienceWhere, orderBy: [{ acknowledgedAt: "desc" }, { id: "asc" }], skip: (pages.science - 1) * 20, take: 20, include: { act: { select: { number: true } }, evidence: { include: { document: { select: { title: true } } } } } }),
-    context.prisma.constructionEnforcementAct.findMany({ where: { caseId: id }, select: { id: true, kind: true, number: true }, orderBy: [{ issuedAt: "desc" }, { id: "asc" }] }),
-    context.prisma.constructionEnforcementVisit.findMany({ where: { caseId: id }, select: { id: true, visitedAt: true, findings: true }, orderBy: [{ visitedAt: "desc" }, { id: "asc" }] }),
-    context.prisma.constructionEnforcementAssignment.findMany({ where: { caseId: id }, select: { employeeId: true }, distinct: ["employeeId"] }),
-  ]);
+  const { actTotal, visitTotal, assignmentTotal, scienceTotal, pages, acts, visits, assignments, science, actOptions, visitOptions, assignmentOptions } = await loadPageEnforcementHistory(database, id, values);
   const item = { ...record, acts, visits, assignments };
   const pageHref = (prefix: string, target: number) => { const query = new URLSearchParams(Object.entries(values).filter(([, value]) => Boolean(value))); query.set(`${prefix}Page`, String(target)); return `?${query}#history-${prefix}`; };
   const pagination = (prefix: keyof typeof pages, total: number, label: string) => <ErpPagination page={pages[prefix]} total={total} pageSize={20} previousHref={pageHref(prefix, pages[prefix] - 1)} nextHref={pageHref(prefix, pages[prefix] + 1)} label={label} />;
   const day = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
-  const inspectors = item.process.currentDepartmentId ? await context.prisma.constructionStaffRole.findMany({ where: { departmentId: item.process.currentDepartmentId, role: "INSPECTOR", isActive: true, startsAt: { lte: day }, OR: [{ endsAt: null }, { endsAt: { gte: day } }], employee: { isActive: true, departmentId: item.process.currentDepartmentId }, department: { isActive: true } }, select: { employeeId: true, employee: { select: { name: true } } } }) : [];
+  const inspectors = item.process.currentDepartmentId ? await listPageInspectors(database, item.process.currentDepartmentId, day) : [];
   const active = !item.process.completedAt && Boolean(item.process.currentDepartmentId) && !["Aguardando Recebimento", "Arquivado", "Cancelado", "Rejeitado", "Concluido", "Concluído"].includes(item.process.status);
   const canAssign = active && (access.administrator || access.roles.includes("MANAGER"));
   const canRecord = active && item.assignedEmployeeId === access.employeeId && inspectors.some((inspector) => inspector.employeeId === access.employeeId);
-  const employees = await context.prisma.employee.findMany({ where: { id: { in: [...new Set([item.assignedEmployeeId, ...assignmentOptions.map((row) => row.employeeId), ...item.assignments.map((row) => row.previousEmployeeId), ...item.visits.map((row) => row.employeeId), ...item.acts.map((row) => row.employeeId)].filter((value): value is string => Boolean(value)))] } }, select: { id: true, name: true } });
+  const employees = await pageEmployeeNames(database, [...new Set([item.assignedEmployeeId, ...assignmentOptions.map((row) => row.employeeId), ...item.assignments.map((row) => row.previousEmployeeId), ...item.visits.map((row) => row.employeeId), ...item.acts.map((row) => row.employeeId)].filter((value): value is string => Boolean(value)))]);
   const employeeName = (employeeId: string | null) => employees.find((employee) => employee.id === employeeId)?.name || employeeId || "Não designado";
   const documents = [...new Map(item.process.documents.flatMap((row) => row.document ? [[row.document.id, { id: row.document.id, label: row.document.title }] as const] : [])).values()];
   return <PageFrame className="space-y-3 p-3"><PageHeader title={`Fiscalização — ${item.process.protocolNumber}`} icon={<ShieldCheck className="size-4" />} action={<Link className="text-xs text-blue-700 underline" href="/obras/construcao-civil/fiscalizacao">Voltar</Link>} />

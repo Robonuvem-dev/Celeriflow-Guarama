@@ -1,24 +1,14 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import BeneficiosClient from "./BeneficiosClient";
+import { db } from "@/db/client";
+import { listSocialBenefits, listSocialPrograms, socialBenefitFinanceOptions } from "@/db/repositories/social/queries";
 
 export default async function BeneficiosSociaisPage() {
-  const { prisma } = await getTenantContextForModule("SOCIAL");
-  const beneficios = await prisma.socialBenefit.findMany({
-    orderBy: { name: 'asc' }
-  });
-
-  const programas = await prisma.socialProgram.findMany({
-    orderBy: { name: 'asc' }
-  });
-
-  const secretariats = await prisma.secretariat.findMany({
-    orderBy: { name: 'asc' }
-  });
-
-  const appropriations = await prisma.budgetAppropriation.findMany({
-    include: { expenseNature: true },
-    orderBy: { code: 'asc' }
-  });
+  const context = await getTenantContextForModule("SOCIAL");
+  const database = context.database ?? db;
+  const [beneficios, programas, { secretariats, appropriations }] = await Promise.all([
+    listSocialBenefits(database), listSocialPrograms(database), socialBenefitFinanceOptions(database),
+  ]);
 
   return <BeneficiosClient 
     beneficiosInicial={beneficios} 

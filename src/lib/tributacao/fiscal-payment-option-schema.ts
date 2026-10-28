@@ -1,9 +1,9 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { z } from "zod";
 
 export const fiscalPaymentOptionSchema = z.object({
   code: z.string().trim().min(1).max(60), name: z.string().trim().min(1).max(160), dueDate: z.iso.date(),
-  discountPercent: z.string().regex(/^\d{1,3}(?:\.\d{1,6})?$/).refine(value => new Prisma.Decimal(value).gte(0) && new Prisma.Decimal(value).lt(100), "Desconto deve ser de 0% a menos de 100%."),
+  discountPercent: z.string().regex(/^\d{1,3}(?:\.\d{1,6})?$/).refine(value => new Decimal(value).gte(0) && new Decimal(value).lt(100), "Desconto deve ser de 0% a menos de 100%."),
   debtCheck: z.enum(["NONE", "CURRENT", "ACTIVE", "INSTALLMENT", "ALL"]),
   debtTaxIds: z.array(z.string().min(1)).max(100).default([]),
   legalBasis: z.string().trim().min(1).max(4000),

@@ -1,4 +1,6 @@
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthSusProcedures, healthSusImportBatches } from "@/db/schema/health-catalogs";
 import Link from "next/link";
 import { ListFilter } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
@@ -18,36 +20,25 @@ function href(page: number, values: Record<string, string>) {
 }
 
 export default async function HealthProceduresPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const { prisma } = await getTenantContextForModule("SAUDE");
+  const context = await getTenantContextForModule("SAUDE"), database = context.database ?? db;
   const params = await searchParams;
   const query = (first(params.q) || "").trim().slice(0, 120);
   const source = ["SIA", "SIGTAP"].includes(first(params.source) || "") ? first(params.source)! : "";
   const competence = /^\d{4}-(0[1-9]|1[0-2])$/.test(first(params.competence) || "") ? first(params.competence)! : "";
   const status = ["ativo", "inativo"].includes(first(params.status) || "") ? first(params.status)! : "";
   const group = (first(params.group) || "").trim().slice(0, 40), subgroup = (first(params.subgroup) || "").trim().slice(0, 40);
-  const where: Prisma.HealthSusProcedureWhereInput = {
-    isCurrent: true,
-    ...(query ? { OR: [{ code: { contains: query, mode: "insensitive" } }, { description: { contains: query, mode: "insensitive" } }] } : {}),
-    ...(source ? { source } : {}), ...(competence ? { competence } : {}), ...(status ? { isActive: status === "ativo" } : {}),
-    ...(group ? { groupCode: group } : {}), ...(subgroup ? { subgroupCode: subgroup } : {}),
-  };
-  const total = await prisma.healthSusProcedure.count({ where });
+  const where = and(eq(healthSusProcedures.isCurrent, true), query ? or(sql`strpos(lower(${healthSusProcedures.code}), lower(${query})) > 0`, sql`strpos(lower(${healthSusProcedures.description}), lower(${query})) > 0`) : undefined, source ? eq(healthSusProcedures.source, source) : undefined, competence ? eq(healthSusProcedures.competence, competence) : undefined, status ? eq(healthSusProcedures.isActive, status === "ativo") : undefined, group ? eq(healthSusProcedures.groupCode, group) : undefined, subgroup ? eq(healthSusProcedures.subgroupCode, subgroup) : undefined);
+  const [{ total }] = await database.select({ total: count() }).from(healthSusProcedures).where(where);
   const requestedPage = pageNumber(first(params.page));
   const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [procedures, competences, groups, subgroups] = await Promise.all([
-    prisma.healthSusProcedure.findMany({
-      where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: [{ code: "asc" }, { competence: "desc" }, { id: "asc" }],
-      include: { sourceBatch: { select: { origin: true, fileName: true } } },
-    }),
-    prisma.healthSusProcedure.findMany({ distinct: ["competence"], orderBy: { competence: "desc" }, select: { competence: true } }),
-    prisma.healthSusProcedure.findMany({ where: { isCurrent: true, groupCode: { not: null }, ...(source ? { source } : {}), ...(competence ? { competence } : {}) }, distinct: ["groupCode"], orderBy: { groupCode: "asc" }, select: { groupCode: true, groupName: true } }),
-    prisma.healthSusProcedure.findMany({ where: { isCurrent: true, subgroupCode: { not: null }, ...(group ? { groupCode: group } : {}), ...(source ? { source } : {}), ...(competence ? { competence } : {}) }, distinct: ["subgroupCode"], orderBy: { subgroupCode: "asc" }, select: { subgroupCode: true, subgroupName: true } }),
+  const [procedureRows, competences, groups, subgroups] = await Promise.all([
+    database.select({ procedure: healthSusProcedures, sourceBatch: { origin: healthSusImportBatches.origin, fileName: healthSusImportBatches.fileName } }).from(healthSusProcedures).innerJoin(healthSusImportBatches, eq(healthSusImportBatches.id, healthSusProcedures.sourceBatchId)).where(where).orderBy(asc(healthSusProcedures.code), desc(healthSusProcedures.competence), asc(healthSusProcedures.id)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    database.selectDistinct({ competence: healthSusProcedures.competence }).from(healthSusProcedures).orderBy(desc(healthSusProcedures.competence)),
+    database.selectDistinctOn([healthSusProcedures.groupCode], { groupCode: healthSusProcedures.groupCode, groupName: healthSusProcedures.groupName }).from(healthSusProcedures).where(and(eq(healthSusProcedures.isCurrent, true), isNotNull(healthSusProcedures.groupCode), source ? eq(healthSusProcedures.source, source) : undefined, competence ? eq(healthSusProcedures.competence, competence) : undefined)).orderBy(asc(healthSusProcedures.groupCode)),
+    database.selectDistinctOn([healthSusProcedures.subgroupCode], { subgroupCode: healthSusProcedures.subgroupCode, subgroupName: healthSusProcedures.subgroupName }).from(healthSusProcedures).where(and(eq(healthSusProcedures.isCurrent, true), isNotNull(healthSusProcedures.subgroupCode), group ? eq(healthSusProcedures.groupCode, group) : undefined, source ? eq(healthSusProcedures.source, source) : undefined, competence ? eq(healthSusProcedures.competence, competence) : undefined)).orderBy(asc(healthSusProcedures.subgroupCode)),
   ]);
-  const versionRecords = procedures.length ? await prisma.healthSusProcedure.findMany({
-    where: { OR: procedures.map(item => ({ source: item.source, code: item.code })) },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    select: { id: true, source: true, code: true, competence: true, isCurrent: true, createdAt: true, sourceBatch: { select: { origin: true, fileName: true } } },
-  }) : [];
+  const procedures = procedureRows.map(row => ({ ...row.procedure, sourceBatch: row.sourceBatch }));
+  const versionRecords = procedures.length ? await database.select({ id: healthSusProcedures.id, source: healthSusProcedures.source, code: healthSusProcedures.code, competence: healthSusProcedures.competence, isCurrent: healthSusProcedures.isCurrent, createdAt: healthSusProcedures.createdAt, sourceBatch: { origin: healthSusImportBatches.origin, fileName: healthSusImportBatches.fileName } }).from(healthSusProcedures).innerJoin(healthSusImportBatches, eq(healthSusImportBatches.id, healthSusProcedures.sourceBatchId)).where(or(...procedures.map(item => and(eq(healthSusProcedures.source, item.source), eq(healthSusProcedures.code, item.code))))).orderBy(desc(healthSusProcedures.createdAt), desc(healthSusProcedures.id)) : [];
   const rows: ProcedureRow[] = procedures.map(item => ({
     id: item.id, source: item.source, competence: item.competence, code: item.code, description: item.description,
     group: [item.groupCode, item.groupName].filter(Boolean).join(" · "), subgroup: [item.subgroupCode, item.subgroupName].filter(Boolean).join(" · "),

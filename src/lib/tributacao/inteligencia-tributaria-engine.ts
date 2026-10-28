@@ -1,4 +1,7 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { insertTaxAuditCrossCheck, updateTaxAuditInfractionNotice } from "@/db/repositories/taxation/audit-cross-checks";
+import type { TaxAuditCrossCheckRecord } from "@/lib/contracts/taxation-registry";
 
 export interface TaxAuditCrossCheckInput {
   cnpjCpfContribuinte: string;
@@ -20,23 +23,22 @@ export interface TaxAuditCrossCheckResult {
 }
 
 export async function runTaxAuditCrossCheck(
-  prisma: PrismaClient,
+  db: DatabaseExecutor,
   input: TaxAuditCrossCheckInput
 ): Promise<TaxAuditCrossCheckResult> {
-  const aliquotaIss = 0.05; // 5% ISS
-  const diferencaFaturamento = Math.max(0, input.valorApuradoBancos - input.valorDeclarado);
-  const divergenciaImposto = diferencaFaturamento * aliquotaIss;
+  const aliquotaIss = new Decimal("0.05"); // 5% ISS
+  const valorDeclarado = new Decimal(input.valorDeclarado);
+  const valorApuradoBancos = new Decimal(input.valorApuradoBancos);
+  const diferencaFaturamento = Decimal.max(0, valorApuradoBancos.minus(valorDeclarado));
+  const divergenciaImposto = diferencaFaturamento.times(aliquotaIss);
 
-  const record = await prisma.taxAuditCrossCheck.create({
-    data: {
-      cnpjCpfContribuinte: input.cnpjCpfContribuinte,
-      razaoSocial: input.razaoSocial,
-      origemCruzamento: input.origemCruzamento,
-      valorDeclarado: new Prisma.Decimal(input.valorDeclarado),
-      valorApuradoBancos: new Prisma.Decimal(input.valorApuradoBancos),
-      divergenciaImposto: new Prisma.Decimal(divergenciaImposto),
-      statusMalha: "MALHA_FINA",
-    },
+  const record = await insertTaxAuditCrossCheck(db, {
+    cnpjCpfContribuinte: input.cnpjCpfContribuinte,
+    razaoSocial: input.razaoSocial,
+    origemCruzamento: input.origemCruzamento,
+    valorDeclarado,
+    valorApuradoBancos,
+    divergenciaImposto,
   });
 
   return {
@@ -50,18 +52,12 @@ export async function runTaxAuditCrossCheck(
   };
 }
 
-export async function issueTaxInfractionNotice(prisma: PrismaClient, crossCheckId: string) {
+export async function issueTaxInfractionNotice(db: DatabaseExecutor, crossCheckId: string): Promise<{ record: TaxAuditCrossCheckRecord; numeroAutoInfracao: string }> {
   const year = new Date().getFullYear();
   const random = Math.floor(100000 + Math.random() * 900000);
   const numeroAutoInfracao = `AUTO-ISS-${year}-${random}`;
 
-  const updated = await prisma.taxAuditCrossCheck.update({
-    where: { id: crossCheckId },
-    data: {
-      statusMalha: "AUTO_INFRACAO_EMITIDO",
-      numeroAutoInfracao,
-    },
-  });
+  const updated = await updateTaxAuditInfractionNotice(db, crossCheckId, numeroAutoInfracao);
 
   return { record: updated, numeroAutoInfracao };
 }

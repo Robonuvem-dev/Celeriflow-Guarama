@@ -13,7 +13,7 @@ import Link from "next/link";
 import { Edit, Save, Plus, ArrowLeft } from "lucide-react";
 import { EmployeeBenefitsCard } from "./EmployeeBenefitsCard";
 import { MoneyInput } from "@/components/ui/MoneyInput";
-import type { BenefitConfig, Department, Dependent, Employee, PayrollBenefit, Role, Secretariat } from "@prisma/client";
+import type { BenefitConfig, Department, Dependent, Employee, PayrollBenefit, Role, Secretariat } from "@/lib/contracts/personnel-pages";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle as PageHeader } from "@/components/app-ui/erp/ErpPageTitle";
 import { ReferenceLookup } from "../operacoes/ReferenceLookup";

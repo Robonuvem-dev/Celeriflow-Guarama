@@ -3,17 +3,19 @@
 import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { ingestGedDocument, requestInternalDocumentSignatures } from "@/lib/documents/document-flow-service";
 import { revalidatePath } from "next/cache";
+import { db, databaseConnection } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { documents } from "@/db/schema/registry";
+import { documentFolders } from "@/db/schema/document-workflow";
 
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("DOCUMENTOS", operation)).prisma;
+async function authorize(operation: ModuleOperation) {
+  await getTenantContextForModuleOperation("DOCUMENTOS", operation);
 }
 
 export async function createFolder(name: string, parentId: string | null) {
-  const prisma = await getTenantPrisma("create");
+  await authorize("create");
   if (!name.trim()) throw new Error("Nome obrigatório");
-  await prisma.folder.create({
-    data: { name: name.trim(), parentId: parentId || null },
-  });
+  await db.insert(documentFolders).values({ name: name.trim(), parentId: parentId || null });
   revalidatePath("/documentos/ged");
   revalidatePath("/documentos");
 }
@@ -28,7 +30,7 @@ export async function createDocument(
 ) {
   const context = await getTenantContextForModuleOperation("DOCUMENTOS", "create");
   if (!title.trim()) throw new Error("Título obrigatório");
-  await ingestGedDocument(context.prisma, {
+  await ingestGedDocument(databaseConnection, {
     title,
     documentType: documentType || "Arquivo",
     documentClassCode,
@@ -55,29 +57,26 @@ export async function requestInternalSignatures(documentId: string, signerUsuari
 }
 
 export async function deleteDocument(id: string) {
-  const prisma = await getTenantPrisma("delete");
-  await prisma.document.delete({ where: { id } });
+  await authorize("delete");
+  const [deleted] = await db.delete(documents).where(eq(documents.id, id)).returning({ id: documents.id });
+  if (!deleted) throw new Error("Documento não encontrado.");
   revalidatePath("/documentos/ged");
   revalidatePath("/documentos");
 }
 
 export async function deleteFolder(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  await authorize("delete");
   // First move all documents inside to folderId = null (unlink), then delete
-  await prisma.document.updateMany({
-    where: { folderId: id },
-    data: { folderId: null },
-  });
+  await db.update(documents).set({ folderId: null }).where(eq(documents.folderId, id));
   // Recursively unlink sub-folders' documents
-  const subFolders = await prisma.folder.findMany({ where: { parentId: id } });
+  const subFolders = await db.select({ id: documentFolders.id }).from(documentFolders).where(eq(documentFolders.parentId, id));
   for (const sub of subFolders) {
-    await prisma.document.updateMany({
-      where: { folderId: sub.id },
-      data: { folderId: null },
-    });
-    await prisma.folder.delete({ where: { id: sub.id } });
+    await db.update(documents).set({ folderId: null }).where(eq(documents.folderId, sub.id));
+    const [deleted] = await db.delete(documentFolders).where(eq(documentFolders.id, sub.id)).returning({ id: documentFolders.id });
+    if (!deleted) throw new Error("Pasta não encontrada.");
   }
-  await prisma.folder.delete({ where: { id } });
+  const [deleted] = await db.delete(documentFolders).where(eq(documentFolders.id, id)).returning({ id: documentFolders.id });
+  if (!deleted) throw new Error("Pasta não encontrada.");
   revalidatePath("/documentos/ged");
   revalidatePath("/documentos");
 }

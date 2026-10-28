@@ -6,7 +6,12 @@ import { updateCertificateReason } from "@/lib/sst/certificate-service";
 import { z } from "zod";
 import { AccessError } from "@/lib/platform/tenant-context";
 import { SstValidationError } from "@/lib/sst/errors";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { eq } from "drizzle-orm";
+import { sstCertificateReasons } from "@/db/schema/sst-certificates";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { sstContextConnection } from "@/lib/sst/database";
 import { assertBudgetUnitAccess } from "@/lib/platform/tenant-context";
 
 function fail(error: unknown) {
@@ -54,10 +59,11 @@ export async function setSstReasonActive(form: FormData) {
   try {
     const context = await getTenantContextForModuleOperation("SST", "update");
     const id = z.string().min(1).parse(form.get("id"));
-    await context.prisma.$transaction(async (tx) => {
-      const reason = await tx.sstCertificateReason.findUniqueOrThrow({ where: { id } });
+    await withDatabaseTransaction(sstContextConnection(context), async (tx) => {
+      const [reason] = await tx.select().from(sstCertificateReasons).where(eq(sstCertificateReasons.id, id));
+      if (!reason) throw new SstValidationError("Motivo não encontrado.");
       assertBudgetUnitAccess(context.user, reason.budgetUnitId);
-      await tx.sstCertificateReason.update({ where: { id }, data: { isActive: form.get("active") === "true" } });
+      await tx.update(sstCertificateReasons).set({ isActive: form.get("active") === "true" }).where(eq(sstCertificateReasons.id, id));
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SST_REASON_STATUS", targetId: id });
     });
     refresh(); return { error: null, id };

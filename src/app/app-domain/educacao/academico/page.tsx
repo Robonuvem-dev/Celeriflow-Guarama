@@ -2,6 +2,8 @@ import { BookOpenCheck } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { loadEducationAcademicData } from "@/db/repositories/education/core";
 import { EducationListClient } from "../EducationListClient";
 import { S1ActionForm } from "../S1ActionForm";
 import { assignTeacherSubjectAction, createAcademicPeriodAction, createCurriculumMatrixAction, createScheduleEntryAction, createSchoolClassAction } from "../s1-actions";
@@ -9,15 +11,8 @@ import { assignTeacherSubjectAction, createAcademicPeriodAction, createCurriculu
 export const dynamic = "force-dynamic";
 
 export default async function AcademicCorePage() {
-  const { prisma } = await getTenantContextForModule("EDUCACAO");
-  const [schools, periods, matrices, classes, teachers, subjects] = await Promise.all([
-    prisma.school.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.academicPeriod.findMany({ include: { school: true }, orderBy: [{ year: "desc" }, { name: "asc" }] }),
-    prisma.curriculumMatrix.findMany({ include: { school: true, period: true, _count: { select: { subjects: true } } }, orderBy: { name: "asc" } }),
-    prisma.schoolClass.findMany({ include: { school: true, period: true, matrix: true, _count: { select: { enrollments: { where: { status: "Matriculado" } }, teacherAssignments: true, scheduleBoards: true } } }, orderBy: [{ year: "desc" }, { name: "asc" }] }),
-    prisma.teacher.findMany({ include: { employee: true }, orderBy: { employee: { name: "asc" } } }),
-    prisma.schoolSubject.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-  ]);
+  await getTenantContextForModule("EDUCACAO");
+  const { schools, periods, matrices, classes, teachers, subjects } = await loadEducationAcademicData(db);
   const periodOptions = periods.map((item) => ({ value: item.id, label: `${item.school.name} · ${item.name}` }));
   const classOptions = classes.map((item) => ({ value: item.id, label: `${item.school.name} · ${item.name}` }));
   return <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">

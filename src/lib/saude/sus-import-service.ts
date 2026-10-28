@@ -1,6 +1,16 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import { and, desc, eq, isNull, ne, notInArray, or } from "drizzle-orm";
+import type { DatabaseTransaction } from "@/db/transaction";
+import { Decimal } from "@/db/decimal";
+import { healthUnits, healthTeams, healthProfessionals, healthProfessionalAssignments } from "@/db/schema/health-workforce";
+import { healthHabilitations, healthRegistrationStatusHistory, healthSpecialties, healthServices } from "@/db/schema/health-administration";
+import { healthSusProcedures, healthSusReferences, healthSusProcedureReferences } from "@/db/schema/health-catalogs";
+import { healthCbos } from "@/db/schema/master-data";
+import { employees } from "@/db/schema/administration";
+import { people } from "@/db/schema/people";
+import { patients } from "@/db/schema/health-registration";
+import { healthAppointments } from "@/db/schema/health-agenda";
 import { requireValidCpf } from "@/lib/identifiers/brazilian-identifiers";
 import {
   healthSusRecordHas,
@@ -10,7 +20,7 @@ import {
   type HealthSusSource,
 } from "@/lib/saude/sus-import-contract";
 
-type Transaction = Prisma.TransactionClient;
+type Transaction = DatabaseTransaction;
 type Outcome = "inserted" | "updated" | "ignored";
 type Issue = { rowNumber: number; entityType: string; reason: string };
 
@@ -59,32 +69,32 @@ function issue(record: HealthSusRecord, entityType: string, reason: string): Iss
 }
 
 async function unitByCnes(tx: Transaction, cnes: string) {
-  return cnes ? tx.healthUnit.findUnique({ where: { cnes }, select: { id: true } }) : null;
+  if (!cnes) return null;
+  const [unit] = await tx.select({ id: healthUnits.id }).from(healthUnits).where(eq(healthUnits.cnes, cnes)).limit(1);
+  return unit ?? null;
 }
 
 async function processUnit(tx: Transaction, record: HealthSusRecord): Promise<Outcome | Issue> {
   const cnes = text(record, "cnes", "codigo_cnes", "codigo");
   const name = text(record, "nome", "descricao");
   if (!cnes || !name) return issue(record, "UNIDADE", "Informe CNES e nome da unidade.");
-  const existing = await tx.healthUnit.findUnique({ where: { cnes }, select: { id: true, isActive: true } });
+  const [existing] = await tx.select({ id: healthUnits.id, isActive: healthUnits.isActive }).from(healthUnits).where(eq(healthUnits.cnes, cnes)).limit(1);
   const hasStatus = has(record, "ativo", "situacao");
   const nextActive = hasStatus ? active(text(record, "ativo", "situacao")) : existing?.isActive ?? true;
   const reason = nullable(text(record, "motivo_inativacao", "motivo"));
   if (!nextActive && (!existing || existing.isActive) && !reason) return issue(record, "UNIDADE", "Informe o motivo da inativação da unidade.");
   const type = text(record, "tipo_unidade", "classificacao", "categoria");
-  const created = await tx.healthUnit.upsert({
-    where: { cnes },
-    create: { cnes, name, type: type || "Unidade de Saúde", phone: nullable(text(record, "telefone", "phone")), email: nullable(text(record, "email")), isActive: nextActive, inactivatedAt: nextActive ? null : new Date(), inactivationReason: nextActive ? null : reason },
-    update: {
+  const [created] = await tx.insert(healthUnits).values({ cnes, name, type: type || "Unidade de Saúde", phone: nullable(text(record, "telefone", "phone")), email: nullable(text(record, "email")), isActive: nextActive, inactivatedAt: nextActive ? null : new Date(), inactivationReason: nextActive ? null : reason }).onConflictDoUpdate({
+    target: healthUnits.cnes,
+    set: {
       name,
       ...(type ? { type } : {}),
       ...(has(record, "telefone", "phone") ? { phone: nullable(text(record, "telefone", "phone")) } : {}),
       ...(has(record, "email") ? { email: nullable(text(record, "email")) } : {}),
       ...(hasStatus ? { isActive: nextActive, inactivatedAt: nextActive ? null : new Date(), inactivationReason: nextActive ? null : reason } : {}),
     },
-    select: { id: true },
-  });
-  if (existing && existing.isActive !== nextActive) await tx.healthRegistrationStatusHistory.create({ data: { unitId: created.id, isActive: nextActive, reason } });
+  }).returning({ id: healthUnits.id });
+  if (existing && existing.isActive !== nextActive) await tx.insert(healthRegistrationStatusHistory).values({ unitId: created.id, isActive: nextActive, reason });
   return existing ? "updated" : "inserted";
 }
 
@@ -93,13 +103,9 @@ async function processTeam(tx: Transaction, record: HealthSusRecord): Promise<Ou
   const name = text(record, "nome", "nome_equipe");
   const unit = await unitByCnes(tx, text(record, "unidade_cnes", "cnes_unidade", "cnes"));
   if (!code || !name || !unit) return issue(record, "EQUIPE", "Informe código, nome e um CNES de unidade já cadastrado.");
-  const existing = await tx.healthTeam.findUnique({ where: { code }, select: { id: true, isActive: true } });
+  const [existing] = await tx.select({ id: healthTeams.id, isActive: healthTeams.isActive }).from(healthTeams).where(eq(healthTeams.code, code)).limit(1);
   const isActive = has(record, "ativo", "situacao") ? active(text(record, "ativo", "situacao")) : existing?.isActive ?? true;
-  await tx.healthTeam.upsert({
-    where: { code },
-    create: { code, name, unitId: unit.id, microarea: nullable(text(record, "microarea")), isActive },
-    update: { name, unitId: unit.id, ...(has(record, "microarea") ? { microarea: nullable(text(record, "microarea")) } : {}), ...(has(record, "ativo", "situacao") ? { isActive } : {}) },
-  });
+  await tx.insert(healthTeams).values({ code, name, unitId: unit.id, microarea: nullable(text(record, "microarea")), isActive }).onConflictDoUpdate({ target: healthTeams.code, set: { name, unitId: unit.id, ...(has(record, "microarea") ? { microarea: nullable(text(record, "microarea")) } : {}), ...(has(record, "ativo", "situacao") ? { isActive } : {}) } });
   return existing ? "updated" : "inserted";
 }
 
@@ -116,18 +122,19 @@ async function processHabilitation(tx: Transaction, record: HealthSusRecord): Pr
     } catch {
       return issue(record, "HABILITACAO", "O CPF do profissional deve ser válido.");
     }
-    professional = await tx.healthProfessional.findFirst({ where: { employee: { is: { OR: [{ cpf }, { person: { is: { cpf } } }] } } }, select: { id: true } });
+    const [found] = await tx.select({ id: healthProfessionals.id }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).leftJoin(people, eq(people.id, employees.personId)).where(or(eq(employees.cpf, cpf), eq(people.cpf, cpf))).limit(1);
+    professional = found ?? null;
   }
   if (!code || !description || (!unit && !professional)) return issue(record, "HABILITACAO", "Informe código, descrição e uma unidade ou profissional já cadastrado.");
   if (unit && professional) return issue(record, "HABILITACAO", "Vincule a habilitação a uma unidade ou a um profissional, não aos dois.");
   const target = unit ? { unitId: unit.id } : { professionalId: professional!.id };
-  const existing = await tx.healthHabilitation.findFirst({ where: { code, ...target }, select: { id: true, isActive: true } });
+  const [existing] = await tx.select({ id: healthHabilitations.id, isActive: healthHabilitations.isActive }).from(healthHabilitations).where(and(eq(healthHabilitations.code, code), unit ? eq(healthHabilitations.unitId, unit.id) : eq(healthHabilitations.professionalId, professional!.id))).limit(1);
   const isActive = has(record, "ativo", "situacao") ? active(text(record, "ativo", "situacao")) : existing?.isActive ?? true;
   if (existing) {
-    await tx.healthHabilitation.update({ where: { id: existing.id }, data: { description, ...(has(record, "ativo", "situacao") ? { isActive } : {}) } });
+    await tx.update(healthHabilitations).set({ description, ...(has(record, "ativo", "situacao") ? { isActive } : {}) }).where(eq(healthHabilitations.id, existing.id));
     return "updated";
   }
-  await tx.healthHabilitation.create({ data: { code, description, ...target, isActive } });
+  await tx.insert(healthHabilitations).values({ code, description, ...target, isActive });
   return "inserted";
 }
 
@@ -138,59 +145,55 @@ async function processProfessional(tx: Transaction, record: HealthSusRecord): Pr
   } catch {
     return issue(record, "PROFISSIONAL", "O CPF do profissional é obrigatório e deve ser válido.");
   }
-  const employee = await tx.employee.findFirst({
-    where: { OR: [{ cpf }, { person: { is: { cpf } } }] },
-    select: { id: true, isActive: true },
-  });
+  const [employee] = await tx.select({ id: employees.id, isActive: employees.isActive }).from(employees).leftJoin(people, eq(people.id, employees.personId)).where(or(eq(employees.cpf, cpf), eq(people.cpf, cpf))).limit(1);
   if (!employee) return issue(record, "PROFISSIONAL", "Não existe servidor vinculado ao CPF informado.");
   const unitCnes = text(record, "unidade_cnes", "cnes_unidade", "cnes");
   const unit = await unitByCnes(tx, unitCnes);
   if (unitCnes && !unit) return issue(record, "PROFISSIONAL", "A unidade informada não está cadastrada.");
   const teamCode = text(record, "equipe_codigo", "codigo_equipe");
-  const team = teamCode ? await tx.healthTeam.findUnique({ where: { code: teamCode }, select: { id: true, unitId: true } }) : null;
+  const team = teamCode ? (await tx.select({ id: healthTeams.id, unitId: healthTeams.unitId }).from(healthTeams).where(eq(healthTeams.code, teamCode)).limit(1))[0] : null;
   if (teamCode && !team) return issue(record, "PROFISSIONAL", "A equipe informada não está cadastrada.");
   if (team && unit && team.unitId !== unit.id) return issue(record, "PROFISSIONAL", "A equipe não pertence à unidade informada.");
   const cbo = text(record, "cbo", "codigo_cbo");
-  if (cbo) await tx.healthCbo.upsert({ where: { code: cbo }, create: { code: cbo, description: text(record, "descricao_cbo") || cbo }, update: { isActive: true } });
+  if (cbo) await tx.insert(healthCbos).values({ code: cbo, description: text(record, "descricao_cbo") || cbo }).onConflictDoUpdate({ target: healthCbos.code, set: { isActive: true } });
   const specialtyCode = text(record, "especialidade_codigo", "codigo_especialidade");
   const specialtyName = text(record, "especialidade", "nome_especialidade");
   const conflictingSpecialty = specialtyCode && specialtyName
-    ? await tx.healthSpecialty.findFirst({ where: { name: specialtyName, code: { not: specialtyCode } }, select: { id: true } })
+    ? (await tx.select({ id: healthSpecialties.id }).from(healthSpecialties).where(and(eq(healthSpecialties.name, specialtyName), ne(healthSpecialties.code, specialtyCode))).limit(1))[0]
     : null;
   if (conflictingSpecialty) return issue(record, "PROFISSIONAL", "A especialidade informada já está associada a outro código.");
   const weeklyHoursText = text(record, "carga_horaria", "horas_semanais");
   const weeklyHours = integer(weeklyHoursText);
   if (weeklyHoursText && (weeklyHours === null || weeklyHours > 168)) return issue(record, "PROFISSIONAL", "A carga horária deve ser um número inteiro entre 0 e 168.");
-  const specialty = specialtyCode && specialtyName ? await tx.healthSpecialty.upsert({ where: { code: specialtyCode }, create: { code: specialtyCode, name: specialtyName }, update: { name: specialtyName, isActive: true }, select: { id: true } }) : null;
-  const existing = await tx.healthProfessional.findUnique({ where: { employeeId: employee.id }, select: { id: true, isActive: true } });
+  const specialty = specialtyCode && specialtyName ? (await tx.insert(healthSpecialties).values({ code: specialtyCode, name: specialtyName }).onConflictDoUpdate({ target: healthSpecialties.code, set: { name: specialtyName, isActive: true } }).returning({ id: healthSpecialties.id }))[0] : null;
+  const [existing] = await tx.select({ id: healthProfessionals.id, isActive: healthProfessionals.isActive }).from(healthProfessionals).where(eq(healthProfessionals.employeeId, employee.id)).limit(1);
   const hasStatus = has(record, "ativo", "situacao");
   const nextActive = hasStatus ? active(text(record, "ativo", "situacao")) : existing?.isActive ?? true;
   const reason = nullable(text(record, "motivo_inativacao", "motivo"));
   if (nextActive && !employee.isActive) return issue(record, "PROFISSIONAL", "O servidor vinculado deve estar ativo para ativar o profissional.");
   if (!nextActive && (!existing || existing.isActive) && !reason) return issue(record, "PROFISSIONAL", "Informe o motivo da inativação do profissional.");
   if (existing?.isActive && !nextActive) {
-    const pendingAppointment = await tx.healthAppointment.findFirst({ where: { professionalId: existing.id, status: { notIn: ["Atendido", "Faltou", "Cancelado"] } }, select: { id: true } });
+    const [pendingAppointment] = await tx.select({ id: healthAppointments.id }).from(healthAppointments).where(and(eq(healthAppointments.professionalId, existing.id), notInArray(healthAppointments.status, ["Atendido", "Faltou", "Cancelado"]))).limit(1);
     if (pendingAppointment) return issue(record, "PROFISSIONAL", "O profissional possui agendamentos pendentes e não pode ser inativado.");
   }
-  const professional = await tx.healthProfessional.upsert({
-    where: { employeeId: employee.id },
-    create: { employeeId: employee.id, cns: nullable(text(record, "cns")), cbo: nullable(cbo), specialty: nullable(specialtyName), unitId: unit?.id || null, teamId: team?.id || null, isActive: nextActive, inactivatedAt: nextActive ? null : new Date(), inactivationReason: nextActive ? null : reason },
-    update: {
+  const professionalData = {
       ...(has(record, "cns") ? { cns: nullable(text(record, "cns")) } : {}),
       ...(has(record, "cbo", "codigo_cbo") ? { cbo: nullable(cbo) } : {}),
       ...(has(record, "especialidade", "nome_especialidade") ? { specialty: nullable(specialtyName) } : {}),
       ...(has(record, "unidade_cnes", "cnes_unidade", "cnes") ? { unitId: unit?.id || null } : {}),
       ...(has(record, "equipe_codigo", "codigo_equipe") ? { teamId: team?.id || null } : {}),
       ...(hasStatus ? { isActive: nextActive, inactivatedAt: nextActive ? null : new Date(), inactivationReason: nextActive ? null : reason } : {}),
-    },
-    select: { id: true },
-  });
-  if (existing && existing.isActive !== nextActive) await tx.healthRegistrationStatusHistory.create({ data: { professionalId: professional.id, isActive: nextActive, reason } });
+  };
+  const inserted = tx.insert(healthProfessionals).values({ employeeId: employee.id, cns: nullable(text(record, "cns")), cbo: nullable(cbo), specialty: nullable(specialtyName), unitId: unit?.id || null, teamId: team?.id || null, isActive: nextActive, inactivatedAt: nextActive ? null : new Date(), inactivationReason: nextActive ? null : reason });
+  const [saved] = Object.keys(professionalData).length ? await inserted.onConflictDoUpdate({ target: healthProfessionals.employeeId, set: professionalData }).returning({ id: healthProfessionals.id }) : await inserted.onConflictDoNothing({ target: healthProfessionals.employeeId }).returning({ id: healthProfessionals.id });
+  const professional = saved ?? (await tx.select({ id: healthProfessionals.id }).from(healthProfessionals).where(eq(healthProfessionals.employeeId, employee.id)).limit(1))[0];
+  if (!professional) throw new Error("Profissional não encontrado após importação.");
+  if (existing && existing.isActive !== nextActive) await tx.insert(healthRegistrationStatusHistory).values({ professionalId: professional.id, isActive: nextActive, reason });
   if (unit) {
-    const assignment = await tx.healthProfessionalAssignment.findFirst({ where: { professionalId: professional.id, unitId: unit.id, specialtyId: specialty?.id || null }, select: { id: true } });
+    const [assignment] = await tx.select({ id: healthProfessionalAssignments.id }).from(healthProfessionalAssignments).where(and(eq(healthProfessionalAssignments.professionalId, professional.id), eq(healthProfessionalAssignments.unitId, unit.id), specialty ? eq(healthProfessionalAssignments.specialtyId, specialty.id) : isNull(healthProfessionalAssignments.specialtyId))).limit(1);
     const assignmentData = { weeklyHours: weeklyHours || 0, isActive: nextActive };
-    if (assignment) await tx.healthProfessionalAssignment.update({ where: { id: assignment.id }, data: assignmentData });
-    else await tx.healthProfessionalAssignment.create({ data: { professionalId: professional.id, unitId: unit.id, specialtyId: specialty?.id || null, ...assignmentData } });
+    if (assignment) await tx.update(healthProfessionalAssignments).set(assignmentData).where(eq(healthProfessionalAssignments.id, assignment.id));
+    else await tx.insert(healthProfessionalAssignments).values({ professionalId: professional.id, unitId: unit.id, specialtyId: specialty?.id || null, ...assignmentData });
   }
   return existing ? "updated" : "inserted";
 }
@@ -211,38 +214,35 @@ async function processPatient(tx: Transaction, record: HealthSusRecord): Promise
   const unit = await unitByCnes(tx, unitCnes);
   if (unitCnes && !unit) return issue(record, "PACIENTE", "A unidade de referência informada não está cadastrada.");
   const teamCode = text(record, "equipe_codigo", "codigo_equipe");
-  const team = teamCode ? await tx.healthTeam.findUnique({ where: { code: teamCode }, select: { id: true, unitId: true } }) : null;
+  const team = teamCode ? (await tx.select({ id: healthTeams.id, unitId: healthTeams.unitId }).from(healthTeams).where(eq(healthTeams.code, teamCode)).limit(1))[0] : null;
   if (teamCode && !team) return issue(record, "PACIENTE", "A equipe informada não está cadastrada.");
   if (team && (!unit || team.unitId !== unit.id)) return issue(record, "PACIENTE", "A equipe deve pertencer à unidade de referência informada.");
-  const existingPerson = await tx.person.findUnique({ where: { cpf }, select: { id: true } });
+  const [existingPerson] = await tx.select({ id: people.id }).from(people).where(eq(people.cpf, cpf)).limit(1);
   const cns = nullable(text(record, "cns"));
   if (cns) {
-    const cnsOwner = await tx.patient.findUnique({ where: { cns }, select: { personId: true } });
+    const [cnsOwner] = await tx.select({ personId: patients.personId }).from(patients).where(eq(patients.cns, cns)).limit(1);
     if (cnsOwner && cnsOwner.personId !== existingPerson?.id) return issue(record, "PACIENTE", "O CNS já está associado a outra pessoa.");
   }
-  const person = await tx.person.upsert({
-    where: { cpf },
-    create: { cpf, fullName, birthDate, gender: nullable(text(record, "sexo", "genero")), motherName: nullable(text(record, "mae", "nome_mae")) },
-    update: {
+  const [person] = await tx.insert(people).values({ cpf, fullName, birthDate, gender: nullable(text(record, "sexo", "genero")), motherName: nullable(text(record, "mae", "nome_mae")) }).onConflictDoUpdate({
+    target: people.cpf,
+    set: {
       fullName,
       ...(has(record, "nascimento", "data_nascimento") ? { birthDate } : {}),
       ...(has(record, "sexo", "genero") ? { gender: nullable(text(record, "sexo", "genero")) } : {}),
       ...(has(record, "mae", "nome_mae") ? { motherName: nullable(text(record, "mae", "nome_mae")) } : {}),
     },
-    select: { id: true },
-  });
-  const existing = await tx.patient.findUnique({ where: { personId: person.id }, select: { id: true } });
+  }).returning({ id: people.id });
+  const [existing] = await tx.select({ id: patients.id }).from(patients).where(eq(patients.personId, person.id)).limit(1);
   const status = active(text(record, "ativo", "situacao")) ? "Ativo" : "Inativo";
-  await tx.patient.upsert({
-    where: { personId: person.id },
-    create: { personId: person.id, cns, referenceUnitId: unit?.id || null, teamId: team?.id || null, status },
-    update: {
+  const patientData = {
       ...(has(record, "cns") ? { cns } : {}),
       ...(has(record, "unidade_cnes", "cnes_unidade", "cnes") ? { referenceUnitId: unit?.id || null } : {}),
       ...(has(record, "equipe_codigo", "codigo_equipe") ? { teamId: team?.id || null } : {}),
       ...(has(record, "ativo", "situacao") ? { status } : {}),
-    },
-  });
+  };
+  const patientInsert = tx.insert(patients).values({ personId: person.id, cns, referenceUnitId: unit?.id || null, teamId: team?.id || null, status });
+  if (Object.keys(patientData).length) await patientInsert.onConflictDoUpdate({ target: patients.personId, set: patientData });
+  else await patientInsert.onConflictDoNothing({ target: patients.personId });
   return existing ? "updated" : "inserted";
 }
 
@@ -259,11 +259,8 @@ async function processProcedure(tx: Transaction, source: HealthSusSource, compet
   const maximumAge = integer(maximumAgeText);
   if ((minimumAgeText && minimumAge === null) || (maximumAgeText && maximumAge === null)) return issue(record, "PROCEDIMENTO", "As idades permitidas devem ser números inteiros positivos.");
   if (minimumAge !== null && maximumAge !== null && minimumAge > maximumAge) return issue(record, "PROCEDIMENTO", "A idade mínima não pode ser maior que a idade máxima.");
-  const prior = await tx.healthSusProcedure.findFirst({
-    where: { source, competence, code, isCurrent: true },
-    orderBy: { createdAt: "desc" },
-    include: { referenceLinks: { select: { referenceId: true, relationType: true } } },
-  });
+  const [priorRow] = await tx.select().from(healthSusProcedures).where(and(eq(healthSusProcedures.source, source), eq(healthSusProcedures.competence, competence), eq(healthSusProcedures.code, code), eq(healthSusProcedures.isCurrent, true))).orderBy(desc(healthSusProcedures.createdAt)).limit(1);
+  const prior = priorRow ? { ...priorRow, referenceLinks: await tx.select({ referenceId: healthSusProcedureReferences.referenceId, relationType: healthSusProcedureReferences.relationType }).from(healthSusProcedureReferences).where(eq(healthSusProcedureReferences.procedureId, priorRow.id)) } : null;
   const links: { referenceId: string; relationType: string }[] = [];
   for (const [fieldKeys, kind] of [
     [["cids", "codigos_cid"], "CID"],
@@ -276,10 +273,7 @@ async function processProcedure(tx: Transaction, source: HealthSusSource, compet
       continue;
     }
     for (const referenceCode of codes(text(record, ...fieldKeys))) {
-      const reference = await tx.healthSusReference.findFirst({
-        where: { source, competence, kind, code: referenceCode, isCurrent: true },
-        select: { id: true },
-      });
+      const [reference] = await tx.select({ id: healthSusReferences.id }).from(healthSusReferences).where(and(eq(healthSusReferences.source, source), eq(healthSusReferences.competence, competence), eq(healthSusReferences.kind, kind), eq(healthSusReferences.code, referenceCode), eq(healthSusReferences.isCurrent, true))).limit(1);
       if (!reference) return issue(record, "PROCEDIMENTO", `A referência ${kind} informada não existe na competência da carga.`);
       links.push({ referenceId: reference.id, relationType: kind });
     }
@@ -292,7 +286,7 @@ async function processProcedure(tx: Transaction, source: HealthSusSource, compet
     subgroupName: has(record, "subgrupo", "nome_subgrupo") ? nullable(text(record, "subgrupo", "nome_subgrupo")) : prior?.subgroupName || null,
     complexity: has(record, "complexidade") ? nullable(text(record, "complexidade")) : prior?.complexity || null,
     registrationInstrument: has(record, "instrumento_registro", "instrumento") ? nullable(text(record, "instrumento_registro", "instrumento")) : prior?.registrationInstrument || null,
-    unitValue: has(record, "valor_unitario", "valor") ? unitValue : prior?.unitValue || null,
+    unitValue: has(record, "valor_unitario", "valor") ? unitValue === null ? null : new Decimal(unitValue) : prior?.unitValue || null,
     minimumAge: has(record, "idade_minima") ? minimumAge : prior?.minimumAge || null,
     maximumAge: has(record, "idade_maxima") ? maximumAge : prior?.maximumAge || null,
     allowedSex: has(record, "sexo_permitido", "sexo") ? nullable(text(record, "sexo_permitido", "sexo")) : prior?.allowedSex || null,
@@ -304,15 +298,10 @@ async function processProcedure(tx: Transaction, source: HealthSusSource, compet
     isActive: has(record, "ativo", "situacao") ? active(text(record, "ativo", "situacao")) : prior?.isActive ?? true,
     isCurrent: true,
   };
-  await tx.healthSusProcedure.updateMany({ where: { source, competence, code, isCurrent: true, sourceBatchId: { not: batchId } }, data: { isCurrent: false } });
-  const procedure = await tx.healthSusProcedure.upsert({
-    where: { sourceBatchId_code: { sourceBatchId: batchId, code } },
-    create: { source, competence, code, sourceBatchId: batchId, ...data },
-    update: data,
-    select: { id: true },
-  });
-  await tx.healthSusProcedureReference.deleteMany({ where: { procedureId: procedure.id } });
-  if (links.length) await tx.healthSusProcedureReference.createMany({ data: links.map(link => ({ ...link, procedureId: procedure.id })) });
+  await tx.update(healthSusProcedures).set({ isCurrent: false }).where(and(eq(healthSusProcedures.source, source), eq(healthSusProcedures.competence, competence), eq(healthSusProcedures.code, code), eq(healthSusProcedures.isCurrent, true), ne(healthSusProcedures.sourceBatchId, batchId)));
+  const [procedure] = await tx.insert(healthSusProcedures).values({ source, competence, code, sourceBatchId: batchId, ...data }).onConflictDoUpdate({ target: [healthSusProcedures.sourceBatchId, healthSusProcedures.code], set: data }).returning({ id: healthSusProcedures.id });
+  await tx.delete(healthSusProcedureReferences).where(eq(healthSusProcedureReferences.procedureId, procedure.id));
+  if (links.length) await tx.insert(healthSusProcedureReferences).values(links.map(link => ({ ...link, procedureId: procedure.id })));
   return prior ? "updated" : "inserted";
 }
 
@@ -321,22 +310,18 @@ async function processReference(tx: Transaction, source: HealthSusSource, compet
   const description = text(record, "descricao", "nome", `nome_${kind}`);
   if (!code || !description) return issue(record, kind.toUpperCase(), "Informe código e descrição da referência.");
   const normalizedKind = kind.toUpperCase();
-  const existing = await tx.healthSusReference.findFirst({ where: { source, competence, kind: normalizedKind, code, isCurrent: true }, select: { id: true, classification: true, isActive: true } });
+  const [existing] = await tx.select({ id: healthSusReferences.id, classification: healthSusReferences.classification, isActive: healthSusReferences.isActive }).from(healthSusReferences).where(and(eq(healthSusReferences.source, source), eq(healthSusReferences.competence, competence), eq(healthSusReferences.kind, normalizedKind), eq(healthSusReferences.code, code), eq(healthSusReferences.isCurrent, true))).limit(1);
   const isActive = has(record, "ativo", "situacao") ? active(text(record, "ativo", "situacao")) : existing?.isActive ?? true;
   const classification = has(record, "classificacao") ? nullable(text(record, "classificacao")) : existing?.classification || null;
   if (kind === "especialidade") {
-    const conflict = await tx.healthSpecialty.findFirst({ where: { name: description, code: { not: code } }, select: { id: true } });
+    const [conflict] = await tx.select({ id: healthSpecialties.id }).from(healthSpecialties).where(and(eq(healthSpecialties.name, description), ne(healthSpecialties.code, code))).limit(1);
     if (conflict) return issue(record, "ESPECIALIDADE", "A descrição da especialidade já está associada a outro código.");
   }
-  await tx.healthSusReference.updateMany({ where: { source, competence, kind: normalizedKind, code, isCurrent: true, sourceBatchId: { not: batchId } }, data: { isCurrent: false } });
-  await tx.healthSusReference.upsert({
-    where: { sourceBatchId_kind_code: { sourceBatchId: batchId, kind: normalizedKind, code } },
-    create: { source, competence, kind: normalizedKind, code, description, classification, isActive, isCurrent: true, sourceBatchId: batchId },
-    update: { description, classification, isActive, isCurrent: true },
-  });
-  if (kind === "cbo") await tx.healthCbo.upsert({ where: { code }, create: { code, description, isActive }, update: { description, isActive } });
-  if (kind === "especialidade") await tx.healthSpecialty.upsert({ where: { code }, create: { code, name: description, isActive }, update: { name: description, isActive } });
-  if (kind === "servico") await tx.healthService.upsert({ where: { code }, create: { code, name: description, classification, isActive }, update: { name: description, classification, isActive } });
+  await tx.update(healthSusReferences).set({ isCurrent: false }).where(and(eq(healthSusReferences.source, source), eq(healthSusReferences.competence, competence), eq(healthSusReferences.kind, normalizedKind), eq(healthSusReferences.code, code), eq(healthSusReferences.isCurrent, true), ne(healthSusReferences.sourceBatchId, batchId)));
+  await tx.insert(healthSusReferences).values({ source, competence, kind: normalizedKind, code, description, classification, isActive, isCurrent: true, sourceBatchId: batchId }).onConflictDoUpdate({ target: [healthSusReferences.sourceBatchId, healthSusReferences.kind, healthSusReferences.code], set: { description, classification, isActive, isCurrent: true } });
+  if (kind === "cbo") await tx.insert(healthCbos).values({ code, description, isActive }).onConflictDoUpdate({ target: healthCbos.code, set: { description, isActive } });
+  if (kind === "especialidade") await tx.insert(healthSpecialties).values({ code, name: description, isActive }).onConflictDoUpdate({ target: healthSpecialties.code, set: { name: description, isActive } });
+  if (kind === "servico") await tx.insert(healthServices).values({ code, name: description, classification, isActive }).onConflictDoUpdate({ target: healthServices.code, set: { name: description, classification, isActive } });
   return existing ? "updated" : "inserted";
 }
 

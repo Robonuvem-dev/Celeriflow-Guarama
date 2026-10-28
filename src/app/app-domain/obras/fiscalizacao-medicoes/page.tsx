@@ -1,32 +1,12 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import MedicoesClient from "../components/MedicoesClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
+import { db } from "@/db/client";
+import { loadWorksMeasurements } from "@/db/repositories/works-pages/infrastructure";
 
 export default async function FiscalizacaoMedicoesPage() {
-  const { prisma } = await getTenantContextForModule("OBRAS");
-  const [medicoes, obras] = await Promise.all([
-    prisma.obrasMedicao.findMany({
-      include: {
-        obra: {
-          select: {
-            numero: true,
-            nome: true,
-          },
-        },
-      },
-      orderBy: [{ data: "desc" }, { numero: "desc" }],
-    }),
-    prisma.obrasObra.findMany({
-      where: { active: true },
-      select: {
-        id: true,
-        numero: true,
-        nome: true,
-        status: true,
-      },
-      orderBy: { numero: "asc" },
-    }),
-  ]);
+  const context = await getTenantContextForModule("OBRAS");
+  const { medicoes, obras } = await loadWorksMeasurements(context.database ?? db);
 
   return (
     <PageFrame className="h-full min-h-0 overflow-hidden p-2 sm:p-3">

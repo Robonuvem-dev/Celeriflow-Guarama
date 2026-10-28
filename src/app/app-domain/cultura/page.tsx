@@ -14,14 +14,12 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { getCultureTotals } from "@/db/repositories/culture/queries";
 
 export default async function CulturaDashboard() {
-  const { prisma } = await getTenantContextForModule("CULTURA");
-  const [totalAgentes, totalEspacos, totalEventos] = await Promise.all([
-    prisma.culturaAgente.count({ where: { active: true } }),
-    prisma.culturaEspaco.count({ where: { active: true } }),
-    prisma.culturaEvento.count({ where: { active: true } })
-  ]);
+  await getTenantContextForModule("CULTURA");
+  const [totalAgentes, totalEspacos, totalEventos] = await getCultureTotals(db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

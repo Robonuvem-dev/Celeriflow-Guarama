@@ -6,6 +6,7 @@ import { assertHealthUnitAccess, getTenantContextForModuleOperation } from "@/li
 import { recordVaccination } from "@/lib/saude/vaccination-service";
 import { recordVaccineDoseLoss } from "@/lib/saude/vaccination-stock-service";
 import { executeConfiguredHealthHttp } from "@/lib/integrations/runtime";
+import { db } from "@/db/client";
 
 const text = (data: FormData, name: string) => String(data.get(name) || "").trim();
 
@@ -29,6 +30,6 @@ export async function exportVaccinationAction(data: FormData): Promise<void> {
   const record = await context.prisma.vaccinationRecord.findUnique({ where: { id: text(data, "recordId") }, include: { vaccine: true, patient: true, professional: true, unit: true } });
   if (!record) throw new Error("Ficha de vacinação não encontrada.");
   assertHealthUnitAccess(context.user, record.unitId);
-  await executeConfiguredHealthHttp(context.prisma, { code: "ESUS_VACINACAO", operation: "EXPORT_ESUS_VACCINATION", payload: { version: "LOCAL-1", record } });
+  await executeConfiguredHealthHttp(db, { code: "ESUS_VACINACAO", operation: "EXPORT_ESUS_VACCINATION", payload: { version: "LOCAL-1", record } });
   revalidatePath("/saude/vacinacao");
 }

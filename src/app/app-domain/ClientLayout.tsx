@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { APP_VERSION } from "@/lib/version";
 import UsageAuditTracker from "@/components/platform/UsageAuditTracker";
 import dashboardStyles from "./dashboard/dashboard.module.css";
+import { OperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
+import { sanitationNavigation } from "./saneamento/navigation";
 
 type UserInfo = {
   id: string;
@@ -65,6 +67,11 @@ export default function ClientLayout({
   const userName = user?.name ?? "Usuário";
   const userRole = user?.role ? getRoleLabel(user.role) : "Gestor do Sistema";
   const initials = getInitials(userName);
+  if (pathname === "/saneamento/unidades") return <OperationalWorkspace
+    title="Unidades Consumidoras" moduleTitle="Saneamento" moduleCaption="Gestão de Água e Esgoto" moduleIcon="droplets" institutionName={institution?.name || "Prefeitura Municipal"}
+    userId={user?.id || "anonymous"} userName={userName} userRole={userRole}
+    navigation={sanitationNavigation} onLogout={handleLogout}
+  ><UsageAuditTracker />{children}</OperationalWorkspace>;
   const isFixedRhWorkspace = pathname === "/rh" || pathname.startsWith("/rh/");
   const fixedComprasRoutes = [
     "/compras/catalogo",

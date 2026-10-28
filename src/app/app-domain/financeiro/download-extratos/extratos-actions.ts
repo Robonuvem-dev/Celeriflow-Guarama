@@ -3,10 +3,17 @@
 import { getTenantContextForModule, getTenantContextForModuleOperation, isSystemAdministrator, type AppContext } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { automatedBankDownloads, bankStatementItems } from "@/db/schema/finance-banking";
+import { reconciliationBankAccounts } from "@/db/schema/finance-reconciliation";
+import { bankClassificationRules, bankExceptionQueueItems } from "@/db/schema/finance-automation";
+import { financialAuditLogs } from "@/db/schema/finance-identity";
 import crypto from "crypto";
 
 import { executeConfiguredStatementDownload } from "@/lib/integrations/runtime";
+import { db, databaseConnection } from "@/db/client";
 import { archiveBankStatement } from "@/lib/platform/blob";
 import { saveFinancialFileToGed } from "@/lib/financeiro/ged";
 import { pocVirtualBank } from "@/lib/poc/poc-config";
@@ -88,38 +95,23 @@ export async function runAutomatedBankDownloadAction(input: {
   let context: AppContext | undefined;
   try {
     context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const { prisma, user } = context;
+    const { user } = context;
 
     const timestamp = Date.now();
 
-    const bankAccount = await prisma.bankAccount.findFirst({
-      where: {
-        bankName: parsed.data.banco,
-        agency: parsed.data.agencia,
-        accountNumber: parsed.data.contaNumero,
-        isActive: true,
-      },
-      select: { id: true, budgetUnitId: true },
-    });
+    const [bankAccount] = await db.select({ id: reconciliationBankAccounts.id, budgetUnitId: reconciliationBankAccounts.budgetUnitId }).from(reconciliationBankAccounts).where(and(eq(reconciliationBankAccounts.bankName, parsed.data.banco), eq(reconciliationBankAccounts.agency, parsed.data.agencia), eq(reconciliationBankAccounts.accountNumber, parsed.data.contaNumero), eq(reconciliationBankAccounts.isActive, true))).limit(1);
     if (!bankAccount) throw new Error("A conta bancária informada não está cadastrada ou ativa na tesouraria.");
     if (!isSystemAdministrator(user) && (!bankAccount.budgetUnitId || !user.allowedBudgetUnitIds.includes(bankAccount.budgetUnitId))) {
       throw new Error("Sem permissão para automatizar extratos desta Unidade Gestora.");
     }
     const bankExecution = await executeConfiguredStatementDownload(
-      prisma,
+      db,
       { banco: parsed.data.banco, agencia: parsed.data.agencia, contaNumero: parsed.data.contaNumero },
       { periodoInicio: parsed.data.periodoInicio, periodoFim: parsed.data.periodoFim },
     );
     const bankData = bankExecution.data;
 
-    const existingDownload = await prisma.automatedBankDownload.findFirst({
-      where: {
-        banco: parsed.data.banco,
-        agencia: parsed.data.agencia,
-        contaNumero: parsed.data.contaNumero,
-        hashSHA256: bankData.hashSHA256,
-      },
-    });
+    const [existingDownload] = await db.select().from(automatedBankDownloads).where(and(eq(automatedBankDownloads.banco, parsed.data.banco), eq(automatedBankDownloads.agencia, parsed.data.agencia), eq(automatedBankDownloads.contaNumero, parsed.data.contaNumero), eq(automatedBankDownloads.hashSHA256, bankData.hashSHA256))).limit(1);
     if (existingDownload) return { data: serializeDownloadRecord(existingDownload) };
 
     const extension = bankStatementFormatExtension(bankData.formato);
@@ -130,7 +122,7 @@ export async function runAutomatedBankDownloadAction(input: {
       bankData.rawContent,
       bankStatementContentType(bankData.formato),
     );
-    const gedDocument = await saveFinancialFileToGed(prisma, {
+    const gedDocument = await saveFinancialFileToGed(databaseConnection, {
       title: `Extrato bancário ${parsed.data.banco} ${parsed.data.agencia}/${parsed.data.contaNumero}`,
       documentType: "FINANCEIRO:EXTRATO_BANCARIO",
       filename: fileNameCC,
@@ -157,9 +149,8 @@ export async function runAutomatedBankDownloadAction(input: {
         .update(`${bankData.hashSHA256}:${index}:${item.date.toISOString()}:${item.value}:${item.description}`)
         .digest("hex"),
     }));
-    const result = await prisma.$transaction(async (tx) => {
-      const downloadRecord = await tx.automatedBankDownload.create({
-        data: {
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [downloadRecord] = await tx.insert(automatedBankDownloads).values({
           banco: parsed.data.banco,
           agencia: parsed.data.agencia,
           contaNumero: parsed.data.contaNumero,
@@ -173,20 +164,16 @@ export async function runAutomatedBankDownloadAction(input: {
           tamanhoBytes: bankData.tamanhoBytes,
           status: "CONCLUIDO",
           logsExecucao,
-        },
-      });
-      const audit = await tx.financialAuditLog.create({
-        data: {
+      }).returning();
+      const [audit] = await tx.insert(financialAuditLogs).values({
           action: "DOWNLOAD_AUTOMATICO_EXTRATO",
           entityType: "AutomatedBankDownload",
           entityId: downloadRecord.id,
           authorUsuarioId: user.id,
           payload: { banco: parsed.data.banco, agencia: parsed.data.agencia, contaNumero: parsed.data.contaNumero, hashSHA256: bankData.hashSHA256, gedDocumentId: gedDocument.documentId },
-        },
-      });
-      await tx.automatedBankDownload.update({ where: { id: downloadRecord.id }, data: { auditLogId: audit.id } });
-      const inserted = await tx.bankStatementItem.createMany({
-        data: statementItems.map((item) => ({
+      }).returning({ id: financialAuditLogs.id });
+      await tx.update(automatedBankDownloads).set({ auditLogId: audit.id }).where(eq(automatedBankDownloads.id, downloadRecord.id));
+      const inserted = statementItems.length ? await tx.insert(bankStatementItems).values(statementItems.map((item) => ({
           downloadId: downloadRecord.id,
           bankAccountId: bankAccount.id,
           banco: parsed.data.banco,
@@ -199,7 +186,7 @@ export async function runAutomatedBankDownloadAction(input: {
           codigoTransacao: item.codigoTransacao,
           sinal: item.sinal,
           direction: item.sinal === "CREDITO" ? "CREDIT" : "DEBIT",
-          valueDecimal: new Prisma.Decimal(item.value),
+          valueDecimal: new Decimal(item.value),
           status: "Pendente",
           reciboMunicipal: item.documento || null,
           bankTransactionId: item.bankTransactionId || null,
@@ -208,18 +195,10 @@ export async function runAutomatedBankDownloadAction(input: {
           clientReference: item.clientReference || null,
           collectionReference: item.collectionReference || null,
           reversalOfBankTransactionId: item.reversalOfBankTransactionId || null,
-        })),
-        skipDuplicates: true,
-      });
-      const constitutionalRules = await tx.classificationRule.findMany({
-        where: { ativo: true, tipoMovimento: "RECEITA_CONSTITUCIONAL", bankAccountId: bankAccount.id },
-        select: { textoProcurado: true, tipoReceita: true },
-      });
+        }))).onConflictDoNothing().returning({ id: bankStatementItems.id }) : [];
+      const constitutionalRules = await tx.select({ textoProcurado: bankClassificationRules.textoProcurado, tipoReceita: bankClassificationRules.tipoReceita }).from(bankClassificationRules).where(and(eq(bankClassificationRules.ativo, true), eq(bankClassificationRules.tipoMovimento, "RECEITA_CONSTITUCIONAL"), eq(bankClassificationRules.bankAccountId, bankAccount.id)));
       if (constitutionalRules.length > 0) {
-        const downloadedItems = await tx.bankStatementItem.findMany({
-          where: { downloadId: downloadRecord.id, sinal: "CREDITO" },
-          select: { id: true, description: true, valueDecimal: true, date: true, banco: true, contaNumero: true, sinal: true },
-        });
+        const downloadedItems = await tx.select({ id: bankStatementItems.id, description: bankStatementItems.description, valueDecimal: bankStatementItems.valueDecimal, date: bankStatementItems.date, banco: bankStatementItems.banco, contaNumero: bankStatementItems.contaNumero, sinal: bankStatementItems.sinal }).from(bankStatementItems).where(and(eq(bankStatementItems.downloadId, downloadRecord.id), eq(bankStatementItems.sinal, "CREDITO")));
         const exceptionRows = downloadedItems.flatMap((item) => {
           const rule = constitutionalRules.find((candidate) => item.description?.toUpperCase().includes(candidate.textoProcurado.toUpperCase()));
           return rule ? [{
@@ -235,9 +214,9 @@ export async function runAutomatedBankDownloadAction(input: {
             motivoExcecao: "Receita constitucional identificada e aguardando confirmação do operador financeiro.",
           }] : [];
         });
-        if (exceptionRows.length > 0) await tx.exceptionQueueItem.createMany({ data: exceptionRows });
+        if (exceptionRows.length > 0) await tx.insert(bankExceptionQueueItems).values(exceptionRows);
       }
-      return { downloadRecord, insertedCount: inserted.count };
+      return { downloadRecord, insertedCount: inserted.length };
     });
 
     revalidatePath("/financeiro/download-extratos");
@@ -264,16 +243,9 @@ export async function getDownloadHistoryAction(): Promise<ActionResult> {
     const context = await getTenantContextForModule("FINANCEIRO");
     const accountScope = isSystemAdministrator(context.user)
       ? undefined
-      : await context.prisma.bankAccount.findMany({
-          where: { budgetUnitId: { in: context.user.allowedBudgetUnitIds } },
-          select: { bankName: true, agency: true, accountNumber: true },
-        });
+       : await (context.database ?? db).select({ bankName: reconciliationBankAccounts.bankName, agency: reconciliationBankAccounts.agency, accountNumber: reconciliationBankAccounts.accountNumber }).from(reconciliationBankAccounts).where(inArray(reconciliationBankAccounts.budgetUnitId, context.user.allowedBudgetUnitIds));
     if (accountScope && accountScope.length === 0) return { data: [] };
-    const history = await context.prisma.automatedBankDownload.findMany({
-      where: accountScope ? { OR: accountScope.map((account) => ({ banco: account.bankName, agencia: account.agency, contaNumero: account.accountNumber })) } : undefined,
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    });
+    const history = await (context.database ?? db).select().from(automatedBankDownloads).where(accountScope ? or(...accountScope.map(account => and(eq(automatedBankDownloads.banco, account.bankName), eq(automatedBankDownloads.agencia, account.agency), eq(automatedBankDownloads.contaNumero, account.accountNumber)))) : undefined).orderBy(desc(automatedBankDownloads.createdAt)).limit(10);
     return { data: history };
   } catch (err: unknown) {
     return { error: errorMessage(err, "Erro ao carregar histórico de downloads.") };

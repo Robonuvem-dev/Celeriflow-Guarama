@@ -2,9 +2,13 @@
 
 import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
+import { db } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { councilors, legislatures, propositions, sessions } from "@/db/schema/chamber";
 
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("CAMARA", operation)).prisma;
+async function getTenantDatabase(operation: ModuleOperation) {
+  await getTenantContextForModuleOperation("CAMARA", operation);
+  return db;
 }
 
 // --- Legislaturas ---
@@ -13,14 +17,12 @@ export async function createLegislatura(data: {
   inicio: Date;
   fim: Date;
 }) {
-  const prisma = await getTenantPrisma("create");
-  await prisma.camLegislatura.create({
-    data: {
+  const database = await getTenantDatabase("create");
+  await database.insert(legislatures).values({
       numero: data.numero,
       inicio: data.inicio,
       fim: data.fim,
       status: "Ativa",
-    },
   });
   revalidatePath("/app-domain/camara/vereadores");
 }
@@ -33,27 +35,23 @@ export async function createVereador(data: {
   partido?: string;
   legislaturaId: string;
 }) {
-  const prisma = await getTenantPrisma("create");
-  await prisma.camVereador.create({
-    data: {
+  const database = await getTenantDatabase("create");
+  await database.insert(councilors).values({
       nomeCompleto: data.nomeCompleto,
       nomeParlamentar: data.nomeParlamentar,
       cpf: data.cpf || null,
       partido: data.partido || null,
       legislaturaId: data.legislaturaId,
       status: "Em Exercício",
-    },
   });
   revalidatePath("/app-domain/camara/vereadores");
   revalidatePath("/app-domain/camara");
 }
 
 export async function deleteVereador(id: string) {
-  const prisma = await getTenantPrisma("delete");
-  await prisma.camVereador.update({
-    where: { id },
-    data: { active: false, status: "Inativo" },
-  });
+  const database = await getTenantDatabase("delete");
+  const [row] = await database.update(councilors).set({ active: false, status: "Inativo" }).where(eq(councilors.id, id)).returning({ id: councilors.id });
+  if (!row) throw new Error("Vereador não encontrado.");
   revalidatePath("/app-domain/camara/vereadores");
   revalidatePath("/app-domain/camara");
 }
@@ -65,26 +63,22 @@ export async function createSessao(data: {
   data: Date;
   local: string;
 }) {
-  const prisma = await getTenantPrisma("create");
-  await prisma.camSessao.create({
-    data: {
+  const database = await getTenantDatabase("create");
+  await database.insert(sessions).values({
       numero: data.numero,
       tipo: data.tipo,
       data: data.data,
       local: data.local,
       status: "Agendada",
-    },
   });
   revalidatePath("/app-domain/camara/sessoes");
   revalidatePath("/app-domain/camara");
 }
 
 export async function deleteSessao(id: string) {
-  const prisma = await getTenantPrisma("delete");
-  await prisma.camSessao.update({
-    where: { id },
-    data: { status: "Cancelada" },
-  });
+  const database = await getTenantDatabase("delete");
+  const [row] = await database.update(sessions).set({ status: "Cancelada" }).where(eq(sessions.id, id)).returning({ id: sessions.id });
+  if (!row) throw new Error("Sessão não encontrada.");
   revalidatePath("/app-domain/camara/sessoes");
   revalidatePath("/app-domain/camara");
 }
@@ -98,9 +92,8 @@ export async function createProposicao(data: {
   autorId: string;
   sessaoId?: string;
 }) {
-  const prisma = await getTenantPrisma("create");
-  await prisma.camProposicao.create({
-    data: {
+  const database = await getTenantDatabase("create");
+  await database.insert(propositions).values({
       numero: data.numero,
       tipo: data.tipo,
       ementa: data.ementa,
@@ -108,18 +101,15 @@ export async function createProposicao(data: {
       autorId: data.autorId,
       sessaoId: data.sessaoId || null,
       status: "Protocolada",
-    },
   });
   revalidatePath("/app-domain/camara/proposicoes");
   revalidatePath("/app-domain/camara");
 }
 
 export async function deleteProposicao(id: string) {
-  const prisma = await getTenantPrisma("delete");
-  await prisma.camProposicao.update({
-    where: { id },
-    data: { status: "Arquivada" },
-  });
+  const database = await getTenantDatabase("delete");
+  const [row] = await database.update(propositions).set({ status: "Arquivada" }).where(eq(propositions.id, id)).returning({ id: propositions.id });
+  if (!row) throw new Error("Proposição não encontrada.");
   revalidatePath("/app-domain/camara/proposicoes");
   revalidatePath("/app-domain/camara");
 }

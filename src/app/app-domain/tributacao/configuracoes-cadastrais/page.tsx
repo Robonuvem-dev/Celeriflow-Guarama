@@ -2,24 +2,27 @@ import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform
 import { fiscalCatalogSchema } from "@/lib/tributacao/configurable-cadastres";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import ConfigurableCadastresClient from "./ConfigurableCadastresClient";
+import { db } from "@/db/client";
+import { listFiscalPlanningUnits, listFiscalProperties, listFiscalRegistrations, listFiscalNeighborhoods, listFiscalStreets, listFiscalProcessOptions, listFiscalDocumentOptions } from "@/db/repositories/taxation-pages/lookups";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import { listPageItbiDeclarations } from "@/db/repositories/taxation-pages/itbi";
 
 export const dynamic = "force-dynamic";
 
 export default async function FiscalCatalogPage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const scopeFilter = allowed ? { OR: allowed.map(budgetUnitId => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {};
   const [units, catalogs, records, properties, registrations, declarations, neighborhoods, streets, processes, documents] = await Promise.all([
-    prisma.planningEntityUnit.findMany({ where: allowed ? { budgetUnitId: { in: allowed } } : {}, include: { budgetUnit: true, governmentEntity: true } }),
-    prisma.taxRegistryEntry.findMany({ where: { category: "TYPED_FISCAL_CATALOG", ...scopeFilter }, orderBy: { version: "desc" } }),
-    prisma.taxRegistryEntry.findMany({ where: { category: "TYPED_FISCAL_RECORD", ...scopeFilter }, orderBy: { version: "desc" } }),
-    prisma.realEstate.findMany({ orderBy: { municipalInsc: "asc" }, select: { id: true, municipalInsc: true }, take: 1000 }),
-    prisma.economicRegistration.findMany({ orderBy: { municipalInsc: "asc" }, select: { id: true, municipalInsc: true }, take: 1000 }),
-    prisma.itbiDeclaration.findMany({ where: allowed ? { OR: allowed.map(budgetUnitId => ({ calculationSnapshot: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {}, select: { id: true, declarationNumber: true }, take: 1000 }),
-    prisma.neighborhood.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.street.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.process.findMany({ select: { id: true, protocolNumber: true }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.document.findMany({ where: { status: "Válido" }, select: { id: true, title: true }, orderBy: { createdAt: "desc" }, take: 200 }),
+    listFiscalPlanningUnits(database, allowed),
+    listFiscalEntries(database, { categories: ["TYPED_FISCAL_CATALOG"], allowedBudgetUnitIds: allowed }),
+    listFiscalEntries(database, { categories: ["TYPED_FISCAL_RECORD"], allowedBudgetUnitIds: allowed }),
+    listFiscalProperties(database, { order: true, limit: 1000 }),
+    listFiscalRegistrations(database, { order: true, limit: 1000 }),
+    listPageItbiDeclarations(database, { allowedBudgetUnitIds: allowed, limit: 1000 }),
+    listFiscalNeighborhoods(database),
+    listFiscalStreets(database),
+    listFiscalProcessOptions(database),
+    listFiscalDocumentOptions(database, 200, true),
   ]);
   const latest = new Map<string, typeof catalogs[number]>();
   for (const catalog of catalogs) if (!latest.has(catalog.entityId)) latest.set(catalog.entityId, catalog);

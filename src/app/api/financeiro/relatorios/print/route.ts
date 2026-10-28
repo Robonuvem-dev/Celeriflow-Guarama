@@ -14,6 +14,9 @@ import { generatePCA, generateBalancoFinanceiro } from "@/lib/financeiro/relator
 import { generateBudgetChangesComparison } from "@/lib/financeiro/planejamento";
 import { generateTreasuryBankStatement } from "@/lib/financeiro";
 import { resolveFinancialReportScope } from "@/lib/financeiro/report-scope";
+import { databaseConnection, db } from "@/db/client";
+import { listPrintFinancialYears, readPrintableCommitment, readPrintablePayment, readPrintableRetention, readPrintableSettlement } from "@/db/repositories/finance/report-print";
+import { findFinanceBankAccount } from "@/db/repositories/finance/treasury";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,11 +37,11 @@ export async function GET(request: NextRequest) {
       const governmentEntityId = request.nextUrl.searchParams.get("governmentEntityId");
       const year = Number(request.nextUrl.searchParams.get("year") ?? 2026);
       if (!Number.isInteger(year) || year < 1900 || year > 2200) return NextResponse.json({ error: "Ano inválido." }, { status: 400 });
-      const candidates = await context.prisma.financialYear.findMany({ where: financialYearId ? { id: financialYearId } : { year, ...(governmentEntityId ? { governmentEntityId } : {}) }, select: { id: true, year: true }, take: 2 });
+      const candidates = await listPrintFinancialYears(context.database ?? db, { id: financialYearId, year, governmentEntityId });
       if (!candidates.length) throw new AccessError("Exercício financeiro não encontrado.", 404);
       if (candidates.length !== 1) return NextResponse.json({ error: "Selecione a entidade ou informe financialYearId para imprimir este demonstrativo." }, { status: 400 });
       reportYear = candidates[0];
-      const resolved = await resolveFinancialReportScope(context.prisma, reportYear.id, reportScope);
+      const resolved = await resolveFinancialReportScope(context.database ?? db, reportYear.id, reportScope);
       if (!resolved.fullEntity) throw new AccessError("O demonstrativo exige acesso a todas as unidades gestoras da entidade.", 403);
     }
 
@@ -47,19 +50,7 @@ export async function GET(request: NextRequest) {
     switch (documentType) {
       case "EMPENHO": {
         if (!id) return NextResponse.json({ error: "ID do empenho não informado." }, { status: 400 });
-        const commitment = await context.prisma.commitment.findUnique({
-          where: { id },
-          include: {
-            appropriation: {
-              include: {
-                budgetUnit: true,
-                expenseNature: true,
-                resourceSource: true,
-              },
-            },
-            creditor: true,
-          },
-        });
+        const commitment = await readPrintableCommitment(context.database ?? db, id);
         if (!commitment) return NextResponse.json({ error: "Empenho não encontrado." }, { status: 404 });
         assertBudgetUnitAccess(context.user, commitment.appropriation.budgetUnit.id);
 
@@ -84,17 +75,7 @@ export async function GET(request: NextRequest) {
 
       case "LIQUIDACAO": {
         if (!id) return NextResponse.json({ error: "ID da liquidação não informado." }, { status: 400 });
-        const settlement = await context.prisma.settlement.findUnique({
-          where: { id },
-          include: {
-            commitment: {
-              include: {
-                appropriation: { include: { budgetUnit: true } },
-                creditor: true,
-              },
-            },
-          },
-        });
+        const settlement = await readPrintableSettlement(context.database ?? db, id);
         if (!settlement) return NextResponse.json({ error: "Liquidação não encontrada." }, { status: 404 });
         assertBudgetUnitAccess(context.user, settlement.commitment.appropriation.budgetUnit.id);
 
@@ -121,18 +102,7 @@ export async function GET(request: NextRequest) {
 
       case "PAGAMENTO": {
         if (!id) return NextResponse.json({ error: "ID do pagamento não informado." }, { status: 400 });
-        const payment = await context.prisma.payment.findUnique({
-          where: { id },
-          include: {
-            settlement: true,
-            commitment: {
-              include: {
-                creditor: true,
-              },
-            },
-            bankAccount: true,
-          },
-        });
+        const payment = await readPrintablePayment(context.database ?? db, id);
         if (!payment) return NextResponse.json({ error: "Pagamento não encontrado." }, { status: 404 });
         if (!payment.bankAccount.budgetUnitId) throw new AccessError("Pagamento sem Unidade Gestora vinculada.", 403);
         assertBudgetUnitAccess(context.user, payment.bankAccount.budgetUnitId);
@@ -162,7 +132,7 @@ export async function GET(request: NextRequest) {
         const year = financialYear?.year ?? 2026;
         if (!financialYear) return NextResponse.json({ error: "Exercício financeiro não encontrado." }, { status: 404 });
 
-        const pcaData = await generatePCA(context.prisma, { financialYearId: financialYear.id, ...reportScope });
+        const pcaData = await generatePCA(databaseConnection, { financialYearId: financialYear.id, ...reportScope });
         const demos = pcaData.demonstrativos;
 
         html = generatePcaPrintHtml({
@@ -202,7 +172,7 @@ export async function GET(request: NextRequest) {
         const year = financialYear?.year ?? 2026;
         if (!financialYear) return NextResponse.json({ error: "Exercício financeiro não encontrado." }, { status: 404 });
 
-        const bf = await generateBalancoFinanceiro(context.prisma, { financialYearId: financialYear.id, ...reportScope });
+        const bf = await generateBalancoFinanceiro(db, { financialYearId: financialYear.id, ...reportScope });
 
         html = generateBalancoFinanceiroPrintHtml({
           year,
@@ -216,7 +186,7 @@ export async function GET(request: NextRequest) {
         const financialYear = reportYear;
         if (!financialYear) return NextResponse.json({ error: "Exercício financeiro não encontrado." }, { status: 404 });
 
-        const comp = await generateBudgetChangesComparison(context.prisma, financialYear.id);
+        const comp = await generateBudgetChangesComparison(context.database ?? db, financialYear.id);
 
         html = generateBudgetComparisonPrintHtml(comp);
         break;
@@ -226,20 +196,7 @@ export async function GET(request: NextRequest) {
         const id = request.nextUrl.searchParams.get("id");
         if (!id) return NextResponse.json({ error: "ID da retenção é obrigatório." }, { status: 400 });
 
-        const retention = await context.prisma.paymentRetention.findUnique({
-          where: { id },
-          include: {
-            payment: {
-              include: {
-                settlement: {
-                  include: {
-                    commitment: { include: { appropriation: { select: { budgetUnitId: true } } } },
-                  },
-                },
-              },
-            },
-          },
-        });
+        const retention = await readPrintableRetention(context.database ?? db, id);
 
         if (!retention || !retention.payment) {
           return NextResponse.json({ error: "Retenção não encontrada." }, { status: 404 });
@@ -274,7 +231,7 @@ export async function GET(request: NextRequest) {
       case "EXTRATO_BANCARIO": {
         const bankAccountId = request.nextUrl.searchParams.get("bankAccountId");
         if (!bankAccountId) return NextResponse.json({ error: "bankAccountId é obrigatório." }, { status: 400 });
-        const account = await context.prisma.bankAccount.findUnique({ where: { id: bankAccountId }, select: { budgetUnitId: true } });
+        const account = await findFinanceBankAccount(context.database ?? db, bankAccountId);
         if (!account) return NextResponse.json({ error: "Conta bancária não encontrada." }, { status: 404 });
         if (!account.budgetUnitId) throw new AccessError("Conta bancária sem Unidade Gestora vinculada.", 403);
         assertBudgetUnitAccess(context.user, account.budgetUnitId);
@@ -284,7 +241,7 @@ export async function GET(request: NextRequest) {
         const startDate = startDateParam ? new Date(startDateParam) : new Date(Date.UTC(2026, 0, 1));
         const endDate = endDateParam ? new Date(endDateParam) : new Date(Date.UTC(2026, 11, 31));
 
-        const statement = await generateTreasuryBankStatement(context.prisma, { bankAccountId, startDate, endDate });
+        const statement = await generateTreasuryBankStatement(db, { bankAccountId, startDate, endDate });
 
         html = generateBankStatementPrintHtml(statement);
         break;

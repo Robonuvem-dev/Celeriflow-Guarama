@@ -1,8 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 export class TributarioS5Error extends Error {}
-const decimal = (value: Prisma.Decimal | string | number, label: string) => { const result = new Prisma.Decimal(String(value)).toDecimalPlaces(2); if (!result.isFinite() || result.lessThan(0)) throw new TributarioS5Error(`${label} inválido.`); return result; };
+const decimal = (value: Decimal | string | number, label: string) => { const result = new Decimal(String(value)).toDecimalPlaces(2); if (!result.isFinite() || result.lessThan(0)) throw new TributarioS5Error(`${label} inválido.`); return result; };
 
-export function calculateSimplesCrossCheck(input: { nfseService: Prisma.Decimal | string | number; declaredService: Prisma.Decimal | string | number; municipalIssDeclared: Prisma.Decimal | string | number; daf607Confirmed: Prisma.Decimal | string | number; nationalDasTotal?: Prisma.Decimal | string | number }) {
+export function calculateSimplesCrossCheck(input: { nfseService: Decimal | string | number; declaredService: Decimal | string | number; municipalIssDeclared: Decimal | string | number; daf607Confirmed: Decimal | string | number; nationalDasTotal?: Decimal | string | number }) {
   const nfseService = decimal(input.nfseService, "NFS-e"); const declaredService = decimal(input.declaredService, "Declaração");
   const municipalIssDeclared = decimal(input.municipalIssDeclared, "Componente municipal"); const daf607Confirmed = decimal(input.daf607Confirmed, "DAF607");
   const nationalDasTotal = decimal(input.nationalDasTotal ?? 0, "DAS nacional");

@@ -2,22 +2,17 @@ import { Users, Building2, FileText, Gift } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import { resolveSocialAccess, socialAttendanceWhere } from "@/lib/social/access-policy";
+import { resolveSocialAccess } from "@/lib/social/access-policy";
+import { db } from "@/db/client";
+import { socialDashboardTotals } from "@/db/repositories/social/queries";
 
 export default async function SocialDashboardPage() {
   const context = await getTenantContextForModuleOperation("SOCIAL", "issueReports");
-  const { prisma } = context;
   const access = await resolveSocialAccess(context);
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const [families, units, attendances, concessions, deliveries] = await Promise.all([
-    prisma.socialFamily.count({ where: { status: "Ativo", ...(access.administrator ? {} : { attendances: { some: socialAttendanceWhere(access) } }) } }),
-    prisma.socialUnit.count({ where: { isActive: true, type: { in: ["CRAS", "CREAS"] }, ...(access.administrator ? {} : { id: { in: access.links.map((link) => link.unitId) } }) } }),
-    prisma.socialAttendance.count({ where: { AND: [socialAttendanceWhere(access), { isActive: true, date: { gte: monthStart, lt: nextMonth } }] } }),
-    prisma.socialBenefitConcession.count({ where: { status: { in: ["Concedido", "Entregue"] }, date: { gte: monthStart, lt: nextMonth }, ...(access.administrator ? {} : { professionalId: access.employeeId || "" }) } }),
-    prisma.socialBenefitRequestItem.count({ where: { status: "DELIVERED", deliveredAt: { gte: monthStart, lt: nextMonth }, ...(access.administrator ? {} : { request: { unitId: { in: access.links.map((link) => link.unitId) } } }) } }),
-  ]);
+  const [families, units, attendances, concessions, deliveries] = await socialDashboardTotals(context.database ?? db, access, monthStart, nextMonth);
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">
       <PageHeader

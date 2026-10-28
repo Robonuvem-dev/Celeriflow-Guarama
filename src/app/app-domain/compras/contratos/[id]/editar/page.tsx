@@ -1,18 +1,15 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ContratoForm } from "../../ContratoForm";
 import { notFound } from "next/navigation";
+import { databaseConnection } from "@/db/client";
+import { loadContractHeader, loadContractOptions } from "@/db/repositories/procurement/instruments";
 
 export default async function EditarContratoPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
+  await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const [contrato, processos, secretarias, unidadesGestoras, fornecedores] = await Promise.all([
-    prisma.contract.findUnique({
-      where: { id: resolvedParams.id }
-    }),
-    prisma.purchaseProcess.findMany({ include: { items: { select: { quantity: true } } }, orderBy: { number: 'desc' } }),
-    prisma.secretariat.findMany({ orderBy: { name: 'asc' } }),
-    prisma.budgetUnit.findMany({ orderBy: { code: 'asc' } }),
-    prisma.supplier.findMany({ include: { company: true, person: true }, orderBy: { createdAt: 'desc' } })
+  const [contrato, { processos, secretarias, unidadesGestoras, fornecedores }] = await Promise.all([
+    loadContractHeader(databaseConnection.db, resolvedParams.id),
+    loadContractOptions(databaseConnection.db),
   ]);
 
   if (!contrato) {

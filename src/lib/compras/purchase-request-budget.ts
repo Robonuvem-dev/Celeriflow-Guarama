@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 
 export type PurchaseRequestItemBudgetAllocationInput = {
   budgetAppropriationId: string;
@@ -9,7 +9,7 @@ export type PurchaseRequestItemBudgetAllocationInput = {
 export type NormalizedPurchaseRequestItemBudgetAllocation = {
   budgetAppropriationId: string;
   quantity: number;
-  valueDecimal: Prisma.Decimal;
+  valueDecimal: Decimal;
 };
 
 type PurchaseItemValue = {
@@ -20,7 +20,7 @@ type PurchaseItemValue = {
 type StoredPurchaseRequestItemBudgetAllocation = {
   budgetAppropriationId: string;
   quantity: number;
-  valueDecimal: Prisma.Decimal;
+  valueDecimal: Decimal;
 };
 
 export class PurchaseRequestBudgetError extends Error {}
@@ -29,7 +29,7 @@ function decimal(value: number, label: string, allowZero: boolean) {
   if (!Number.isFinite(value) || (allowZero ? value < 0 : value <= 0)) {
     throw new PurchaseRequestBudgetError(`${label} invalido.`);
   }
-  return new Prisma.Decimal(String(value));
+  return new Decimal(String(value));
 }
 
 function expectedValue(item: PurchaseItemValue) {
@@ -45,13 +45,13 @@ function assertAllocationTotals(item: PurchaseItemValue, allocations: StoredPurc
 
   const totalQuantity = allocations.reduce(
     (total, allocation) => total.plus(decimal(allocation.quantity, "Quantidade alocada", false)),
-    new Prisma.Decimal(0),
+    new Decimal(0),
   );
   if (!totalQuantity.equals(decimal(item.quantity, "Quantidade do item", false))) {
     throw new PurchaseRequestBudgetError("A quantidade alocada deve corresponder exatamente a quantidade do item.");
   }
 
-  const totalValue = allocations.reduce((total, allocation) => total.plus(allocation.valueDecimal), new Prisma.Decimal(0));
+  const totalValue = allocations.reduce((total, allocation) => total.plus(allocation.valueDecimal), new Decimal(0));
   if (!totalValue.equals(expectedValue(item))) {
     throw new PurchaseRequestBudgetError("O valor alocado deve corresponder exatamente ao valor estimado do item.");
   }
@@ -108,6 +108,6 @@ export function assertPurchaseRequestItemBudgetAllocations(item: PurchaseItemVal
 export function totalPurchaseRequestBudgetAllocations(allocationsByItem: NormalizedPurchaseRequestItemBudgetAllocation[][]) {
   return allocationsByItem.reduce(
     (total, allocations) => allocations.reduce((itemTotal, allocation) => itemTotal.plus(allocation.valueDecimal), total),
-    new Prisma.Decimal(0),
+    new Decimal(0),
   );
 }

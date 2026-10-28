@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getPatientPortalAccess } from "@/lib/portal-paciente/access";
 import { portalAppointments, portalOpenSchedules } from "@/lib/saude/patient-portal-service";
 import { cancelAppointmentAction, confirmAppointmentAction, requestAppointmentAction } from "../actions";
+import { db } from "@/db/client";
+import { readPortalUnits } from "@/db/repositories/health/patient-portal";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
 
@@ -12,7 +14,7 @@ export default async function PortalAgendaPage() {
   if (access.status !== "AVAILABLE") redirect("/app-domain/login");
   const [appointments, units, schedules] = await Promise.all([
     portalAppointments(access.context, access.patient.id),
-    access.context.prisma.healthUnit.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    readPortalUnits(access.context.database ?? db),
     portalOpenSchedules(access.context),
   ]);
   return (

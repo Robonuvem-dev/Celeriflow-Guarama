@@ -1,25 +1,29 @@
 "use server";
 
-import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { createPropertyWithHistory } from "@/lib/tributacao/property-history";
 import { attributePropertyHistory } from "@/lib/tributacao/property-history";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { taxActionContext } from "@/db/repositories/tax-actions/context";
+import { lockProperty, mutateProperty as updateProperty, readLatestPropertyProfile, propertyProcessExists } from "@/db/repositories/tax-property/records";
+import type { PropertyMutation } from "@/db/repositories/tax-property/contracts";
 
-async function mutateProperty(id: string, data: Prisma.RealEstateUncheckedUpdateInput, processId?: string) {
+async function mutateProperty(id: string, data: PropertyMutation, processId?: string) {
   try {
-    const { prisma, user } = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
-    const result = await prisma.$transaction(async tx => {
-      await tx.$queryRaw`SELECT id FROM "RealEstate" WHERE id=${id} FOR UPDATE`;
-      const profile = await tx.taxRegistryEntry.findFirst({ where: { entityType: "REAL_ESTATE", entityId: id, category: "PROPERTY_PROFILE" }, orderBy: { version: "desc" } });
+    const { connection, user } = await taxActionContext("update");
+    const result = await withDatabaseTransaction(connection, async tx => {
+      await lockProperty(tx, id);
+      const profile = await readLatestPropertyProfile(tx, id);
       const scope = taxScopeSnapshot(profile?.data);
       if (!isSystemAdministrator(user) && (typeof scope.budgetUnitId !== "string" || !user.allowedBudgetUnitIds.includes(scope.budgetUnitId))) throw new Error("Imóvel fora da UG autorizada ou sem origem conciliada.");
-      if (processId && !await tx.process.findUnique({ where: { id: processId } })) throw new Error("Protocolo não encontrado.");
+      if (processId && !await propertyProcessExists(tx, processId)) throw new Error("Protocolo não encontrado.");
       await attributePropertyHistory(tx, user.id);
-      await tx.$queryRaw`SELECT set_config('celeriflow.cadastral_process',${processId?.trim() ?? ""},true)`;
-      return tx.realEstate.update({ where: { id }, data });
-    });
+      await tx.execute(sql`SELECT set_config('celeriflow.cadastral_process',${processId?.trim() ?? ""},true)`);
+      return updateProperty(tx, id, data);
+    }, { timeoutMs: 5000 });
     revalidatePath("/tributacao/imoveis"); revalidatePath(`/tributacao/imoveis/${id}`); return { id: result.id };
   } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível alterar o imóvel." }; }
 }
@@ -38,8 +42,8 @@ export async function createRealEstate(data: {
   lot?: string;
   block?: string;
 }) {
-  const { prisma, user } = await getTenantContextForModuleOperation("TRIBUTACAO", "create");
-  const result = await createPropertyWithHistory(prisma, user.id, {
+  const { connection, user } = await taxActionContext("create");
+  const result = await createPropertyWithHistory(connection, user.id, {
       municipalInsc: data.municipalInsc || undefined,
       streetName: data.streetName,
       number: data.number,

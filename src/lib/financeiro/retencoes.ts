@@ -1,12 +1,12 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { listActiveRetentionRules } from "@/db/repositories/finance/settlements";
 
 export type RetentionRuleInput = {
   type: string;
   description?: string;
-  calculationBasePercentage: Prisma.Decimal | number;
-  ratePercentage: Prisma.Decimal | number;
+  calculationBasePercentage: Decimal | number;
+  ratePercentage: Decimal | number;
 };
 
 type RetentionRuleCriteria = {
@@ -16,8 +16,8 @@ type RetentionRuleCriteria = {
   ruleIds?: string[];
 };
 
-function percentage(value: Prisma.Decimal | number, field: string) {
-  const decimal = new Prisma.Decimal(value);
+function percentage(value: Decimal | number, field: string) {
+  const decimal = new Decimal(value);
   if (!decimal.isFinite() || decimal.lessThan(0) || decimal.greaterThan(100)) {
     throw new Error(`${field} deve estar entre 0% e 100%.`);
   }
@@ -25,10 +25,10 @@ function percentage(value: Prisma.Decimal | number, field: string) {
 }
 
 export function calculateRetentions(
-  grossValue: Prisma.Decimal | number,
+  grossValue: Decimal | number,
   rules: RetentionRuleInput[],
 ) {
-  const gross = new Prisma.Decimal(grossValue);
+  const gross = new Decimal(grossValue);
   if (!gross.isFinite() || gross.lessThanOrEqualTo(0)) {
     throw new Error("O valor bruto deve ser maior que zero para calcular retenções.");
   }
@@ -48,33 +48,11 @@ export function calculateRetentions(
   });
 }
 
-export async function getActiveRetentionRules(tx: Db, criteria: RetentionRuleCriteria) {
+export async function getActiveRetentionRules(tx: DatabaseExecutor, criteria: RetentionRuleCriteria) {
   if (Number.isNaN(criteria.date.getTime())) throw new Error("Data de referência inválida para cálculo de retenções.");
 
   const ruleIds = [...new Set(criteria.ruleIds ?? [])];
-  const rules = await tx.retentionRule.findMany({
-    where: {
-      isActive: true,
-      effectiveFrom: { lte: criteria.date },
-      OR: [
-        { effectiveTo: null },
-        { effectiveTo: { gte: criteria.date } },
-      ],
-      AND: [
-        {
-          OR: [
-            { financialYearId: null },
-            { financialYearId: criteria.financialYearId },
-          ],
-        },
-        criteria.serviceCode
-          ? { OR: [{ serviceCode: null }, { serviceCode: criteria.serviceCode }] }
-          : { serviceCode: null },
-        ruleIds.length ? { id: { in: ruleIds } } : {},
-      ],
-    },
-    orderBy: [{ serviceCode: "asc" }, { code: "asc" }],
-  });
+  const rules = await listActiveRetentionRules(tx, { ...criteria, ruleIds });
 
   if (ruleIds.length !== rules.length) {
     throw new Error("Uma ou mais regras de retenção estão inativas, vencidas ou não se aplicam ao serviço e exercício informados.");

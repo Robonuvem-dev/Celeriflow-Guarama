@@ -8,12 +8,13 @@ import { evaluateCertificateInTransaction } from "./certificate-subjects";
 import { assertPropertyOutsideAssessedSimulation } from "./property-assessment-coverage";
 import { applyConditionalGuideDiscount } from "./conditional-discounts";
 import { fiscalPaymentOptionsSchema } from "./fiscal-payment-option-schema";
+import { calculateTaxAssessment, TaxError } from "./assessment-engine";
+export { calculateTaxAssessment, TaxError } from "./assessment-engine";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
 export type TaxActor = FinanceActor;
 
-export class TaxError extends Error {}
 
 function amount(value: Prisma.Decimal | string | number, allowZero = false) {
   const decimal = new Prisma.Decimal(String(value)).toDecimalPlaces(2);
@@ -64,26 +65,6 @@ async function nextNumber(tx: Prisma.TransactionClient, year: number, documentTy
   return `${documentType === "GUIDE" ? "DAM" : "LAN"}-${year}-${String(sequence.currentValue).padStart(7, "0")}`;
 }
 
-export function calculateTaxAssessment(input: {
-  taxableBase: Prisma.Decimal | string | number;
-  rate: Prisma.Decimal | string | number;
-  discount?: Prisma.Decimal | string | number;
-  interest?: Prisma.Decimal | string | number;
-  penalty?: Prisma.Decimal | string | number;
-  correction?: Prisma.Decimal | string | number;
-}) {
-  const taxableBase = amount(input.taxableBase, true);
-  const rate = new Prisma.Decimal(String(input.rate));
-  if (!rate.isFinite() || rate.lessThan(0)) throw new TaxError("Informe uma alíquota válida.");
-  const discount = amount(input.discount ?? 0, true);
-  const interest = amount(input.interest ?? 0, true);
-  const penalty = amount(input.penalty ?? 0, true);
-  const correction = amount(input.correction ?? 0, true);
-  const principal = taxableBase.mul(rate).div(100).toDecimalPlaces(2);
-  const finalValue = principal.plus(interest).plus(penalty).plus(correction).minus(discount).toDecimalPlaces(2);
-  if (finalValue.lessThanOrEqualTo(0)) throw new TaxError("O cálculo tributário deve resultar em valor positivo.");
-  return { taxableBase, rate, principal, discount, interest, penalty, correction, finalValue };
-}
 
 export async function configureTaxFinancialMapping(
   db: PrismaClient,

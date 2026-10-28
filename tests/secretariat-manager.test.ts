@@ -1,35 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { eq } from "drizzle-orm";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { employees, roles, secretariats } from "../src/db/schema/administration";
 import { assertManagerEmployeeChange, resolveSecretariatManager } from "../src/lib/administration/secretariat-manager";
 
 test("responsável é servidor cadastrado com cargo e lotação válida; alterações preservam o vínculo", { timeout: 300000 }, async () => {
-  const memory = new PGlite();
-  const socket = new PGLiteSocketServer({ db: memory, host: "127.0.0.1", port: 0 });
-  let db: PrismaClient | undefined;
+  const fixture = await createLocalDrizzleDatabase();
+  const db = fixture.connection.db;
   try {
-    for (const directory of readdirSync("prisma/migrations-ibema", { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).sort()) await memory.exec(readFileSync(`prisma/migrations-ibema/${directory}/migration.sql`, "utf8"));
-    await socket.start();
-    db = new PrismaClient({ adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${socket.getServerConn()}/postgres`, max: 1 }) });
-    const role = await db.role.create({ data: { name: "Secretário Municipal de Educação" } });
-    const education = await db.secretariat.create({ data: { name: "Educação" } });
-    const health = await db.secretariat.create({ data: { name: "Saúde" } });
-    const employee = await db.employee.create({ data: { name: "Antônio Nunes", roleId: role.id, secretariatId: education.id } });
-    const manager = await db.$transaction(tx => resolveSecretariatManager(tx, education.id, employee.id));
-    await db.secretariat.update({ where: { id: education.id }, data: manager });
-    assert.equal((await db.secretariat.findUniqueOrThrow({ where: { id: education.id }, include: { manager: true } })).manager?.id, employee.id);
-    await assert.rejects(db.$transaction(tx => resolveSecretariatManager(tx, health.id, employee.id)), /lotado nesta secretaria/);
-    await assert.rejects(db.$transaction(tx => assertManagerEmployeeChange(tx, employee.id, { isActive: false })), /Substitua/);
-    await assert.rejects(db.$transaction(tx => assertManagerEmployeeChange(tx, employee.id, { secretariatId: health.id })), /lotação/);
-    await assert.rejects(db.$transaction(tx => assertManagerEmployeeChange(tx, employee.id, { roleId: null })), /cargo ativo/);
-    const unassigned = await db.employee.create({ data: { name: "Bruna Almeida", roleId: role.id } });
-    await db.$transaction(tx => resolveSecretariatManager(tx, health.id, unassigned.id));
-    assert.equal((await db.employee.findUniqueOrThrow({ where: { id: unassigned.id } })).secretariatId, health.id);
-    const inactive = await db.employee.create({ data: { name: "Servidor inativo", isActive: false } });
-    await assert.rejects(db.$transaction(tx => resolveSecretariatManager(tx, education.id, inactive.id)), /servidor ativo/);
-  } finally { await db?.$disconnect(); await socket.stop(); await memory.close(); }
+    for (const directory of readdirSync("prisma/migrations-ibema", { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).sort()) await fixture.database.exec(readFileSync(`prisma/migrations-ibema/${directory}/migration.sql`, "utf8"));
+    const [role] = await db.insert(roles).values({ name: "Secretário Municipal de Educação" }).returning();
+    const [education] = await db.insert(secretariats).values({ name: "Educação" }).returning();
+    const [health] = await db.insert(secretariats).values({ name: "Saúde" }).returning();
+    const [employee] = await db.insert(employees).values({ name: "Antônio Nunes", roleId: role.id, secretariatId: education.id }).returning();
+    const manager = await db.transaction(tx => resolveSecretariatManager(tx, education.id, employee.id));
+    await db.update(secretariats).set(manager).where(eq(secretariats.id, education.id));
+    const [appointed] = await db.select({ managerId: secretariats.managerId, employeeId: employees.id }).from(secretariats).leftJoin(employees, eq(secretariats.managerId, employees.id)).where(eq(secretariats.id, education.id));
+    assert.equal(appointed.employeeId, employee.id);
+    await assert.rejects(db.transaction(tx => resolveSecretariatManager(tx, health.id, employee.id)), /lotado nesta secretaria/);
+    await assert.rejects(db.transaction(tx => assertManagerEmployeeChange(tx, employee.id, { isActive: false })), /Substitua/);
+    await assert.rejects(db.transaction(tx => assertManagerEmployeeChange(tx, employee.id, { secretariatId: health.id })), /lotação/);
+    await assert.rejects(db.transaction(tx => assertManagerEmployeeChange(tx, employee.id, { roleId: null })), /cargo ativo/);
+    const [unassigned] = await db.insert(employees).values({ name: "Bruna Almeida", roleId: role.id }).returning();
+    await db.transaction(tx => resolveSecretariatManager(tx, health.id, unassigned.id));
+    const [assigned] = await db.select().from(employees).where(eq(employees.id, unassigned.id));
+    assert.equal(assigned.secretariatId, health.id);
+    const [inactive] = await db.insert(employees).values({ name: "Servidor inativo", isActive: false }).returning();
+    await assert.rejects(db.transaction(tx => resolveSecretariatManager(tx, education.id, inactive.id)), /servidor ativo/);
+  } finally { await fixture.close(); }
 });

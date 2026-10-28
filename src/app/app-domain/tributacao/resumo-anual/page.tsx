@@ -3,15 +3,19 @@ import { readAnnualTaxSummary } from "@/lib/tributacao/annual-tax-summary";
 import AnnualSummaryClient from "./AnnualSummaryClient";
 import BenefitClassificationClient from "./BenefitClassificationClient";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
+import { db } from "@/db/client";
+import { listFiscalPlanningUnits, listFiscalTaxLabels } from "@/db/repositories/taxation-pages/lookups";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import { listPageBenefitRules } from "@/db/repositories/taxation-pages/assessments";
 
 export const dynamic = "force-dynamic";
 export default async function AnnualTaxSummaryPage({ searchParams }: { searchParams: Promise<{ unit?: string; year?: string; tax?: string; kind?: string }> }) {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO"); const params = await searchParams; const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const [units, taxes] = await Promise.all([prisma.planningEntityUnit.findMany({ where: allowed ? { budgetUnitId: { in: allowed } } : {}, include: { governmentEntity: true, budgetUnit: true } }), prisma.tax.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })]);
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db; const params = await searchParams; const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
+  const [units, taxes] = await Promise.all([listFiscalPlanningUnits(database, allowed), listFiscalTaxLabels(database, "name")]);
   const selected = units.find(row => row.budgetUnitId === params.unit); let result: Awaited<ReturnType<typeof readAnnualTaxSummary>> | null = null; let error = "";
-  if (selected) { try { result = await readAnnualTaxSummary(prisma, { usuarioId: user.id, employeeId: user.employeeId, allowedBudgetUnitIds: allowed }, { governmentEntityId: selected.governmentEntityId, budgetUnitId: selected.budgetUnitId, year: Number(params.year ?? new Date().getUTCFullYear()), taxId: params.tax || null, kind: params.kind === "ECONOMIC" ? "ECONOMIC" : params.kind === "ALL" ? "ALL" : "PROPERTY" }); } catch (failure) { error = failure instanceof Error ? failure.message : "Não foi possível consultar o resumo."; } }
-  const rules = await prisma.taxBenefitRule.findMany({ where: { active: true }, orderBy: { code: "asc" } });
-  const classifications = await prisma.taxRegistryEntry.findMany({ where: { entityType: "TAX_BENEFIT_RULE", category: "BENEFIT_REPORT_CLASSIFICATION" }, orderBy: { version: "desc" } });
+  if (selected) { try { result = await readAnnualTaxSummary(database, { usuarioId: user.id, employeeId: user.employeeId, allowedBudgetUnitIds: allowed }, { governmentEntityId: selected.governmentEntityId, budgetUnitId: selected.budgetUnitId, year: Number(params.year ?? new Date().getUTCFullYear()), taxId: params.tax || null, kind: params.kind === "ECONOMIC" ? "ECONOMIC" : params.kind === "ALL" ? "ALL" : "PROPERTY" }); } catch (failure) { error = failure instanceof Error ? failure.message : "Não foi possível consultar o resumo."; } }
+  const rules = await listPageBenefitRules(database);
+  const classifications = await listFiscalEntries(database, { entityType: "TAX_BENEFIT_RULE", categories: ["BENEFIT_REPORT_CLASSIFICATION"] });
   const visibleRules = rules.filter(row => !allowed || allowed.includes(String(taxScopeSnapshot(row.eligibility).budgetUnitId))).map(row => { const current = classifications.find(entry => entry.entityId === row.id); return { id: row.id, label: `${row.code} · ${row.name} · ${row.legalReference}`, version: current?.version ?? 0, classification: String(taxScopeSnapshot(current?.data).classification ?? "OTHER") }; });
   return <div className="h-full space-y-4 overflow-auto p-4">
     <h1 className="text-lg font-bold">Resumo anual dos tributos</h1>

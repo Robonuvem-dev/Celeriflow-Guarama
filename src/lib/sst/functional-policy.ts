@@ -27,9 +27,9 @@ export type HistoricalTechnicalResponsibility = {
 };
 
 // Legacy GHE roleIds mean cargo only. A separately declared function never substitutes cargo.
-export function matchesHistoricalExposure(period: FunctionalScope, group: { departmentIds: string[]; roleIds: string[] }) {
-  return (!group.departmentIds.length || group.departmentIds.includes(period.departmentId)) &&
-    (!group.roleIds.length || group.roleIds.includes(period.roleId));
+export function matchesHistoricalExposure(period: FunctionalScope, group: { departmentIds: string[] | null; roleIds: string[] | null }) {
+  return (!group.departmentIds?.length || group.departmentIds.includes(period.departmentId)) &&
+    (!group.roleIds?.length || group.roleIds.includes(period.roleId));
 }
 
 export function historicalIntersection(a: { startsAt: Date; endsAt: Date }, b: { startsAt: Date; endsAt: Date }) {

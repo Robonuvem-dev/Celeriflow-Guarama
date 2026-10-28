@@ -1,14 +1,14 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import SimplesNacionalClient from "./SimplesNacionalClient";
+import { db } from "@/db/client";
+import { listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
+import { readSimplesPage } from "@/db/repositories/taxation-pages/simples";
 export const dynamic = "force-dynamic";
 export default async function SimplesNacionalPage() {
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const [rawTaxpayers, imports, divergences, exclusions, allocations] = await Promise.all([
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, include: { person: true, company: true }, orderBy: { createdAt: "asc" } }),
-    prisma.simplesImportBatch.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.simplesDivergence.findMany({ include: { events: { orderBy: { createdAt: "desc" }, take: 8 } }, orderBy: { updatedAt: "desc" }, take: 300 }),
-    prisma.simplesExclusionCase.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.simplesPaymentAllocation.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
+  const context = await getTenantContextForModule("TRIBUTACAO"); const database = context.database ?? db;
+  const [rawTaxpayers, { imports, divergences, exclusions, allocations }] = await Promise.all([
+    listPageTaxpayers(database, { active: true, order: "created-asc" }),
+    readSimplesPage(database),
   ]);
   const taxpayers=rawTaxpayers.map(row=>({id:row.id,name:row.company?.corporateName??row.person?.fullName??row.id,document:row.company?.cnpj??row.person?.cpf??""})); const names=new Map(taxpayers.map(row=>[row.id,row.name]));
   return <SimplesNacionalClient data={{taxpayers,

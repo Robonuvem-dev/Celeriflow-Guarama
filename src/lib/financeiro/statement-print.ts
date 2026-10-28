@@ -1,15 +1,15 @@
-import type { BankStatementImport, BankStatementItem, BankAccount } from "@prisma/client";
-import { Prisma } from "@prisma/client";
+import type { ImportedBankStatement, ImportedBankStatementItem, StatementAccountLabel } from "@/lib/contracts/finance-banking";
+import { Decimal } from "@/db/decimal";
 import PDFDocument from "pdfkit";
 import { parseOfxStatement } from "./ofx-parser";
 import { parseOfcStatement } from "./ofc-parser";
 
-export async function renderBankStatementPdf(record: BankStatementImport, account: Pick<BankAccount, "bankName" | "agency" | "accountNumber">, items: BankStatementItem[]) {
+export async function renderBankStatementPdf(record: ImportedBankStatement, account: StatementAccountLabel, items: ImportedBankStatementItem[]) {
   const rows = ["OFX", "OFC"].includes(record.format) && record.originalBytes
     ? (record.format === "OFC" ? parseOfcStatement(record.originalBytes) : parseOfxStatement(record.originalBytes)).transactions.map(item => ({ date: item.date, description: item.description, reference: item.reference ?? item.id, amount: item.amount }))
     : items.map(item => ({ date: item.date, description: item.description ?? "", reference: item.reference ?? "", amount: item.valueDecimal.abs().mul(["Saída", "DEBIT"].includes(item.direction) ? -1 : 1) }));
-  const credits = rows.filter(row => row.amount.isPositive()).reduce((sum, row) => sum.plus(row.amount), new Prisma.Decimal(0));
-  const debits = rows.filter(row => row.amount.isNegative()).reduce((sum, row) => sum.plus(row.amount.abs()), new Prisma.Decimal(0));
+  const credits = rows.filter(row => row.amount.isPositive()).reduce((sum, row) => sum.plus(row.amount), new Decimal(0));
+  const debits = rows.filter(row => row.amount.isNegative()).reduce((sum, row) => sum.plus(row.amount.abs()), new Decimal(0));
   const pdf = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
   const chunks: Buffer[] = [];
   const bytes = new Promise<Buffer>((resolve, reject) => { pdf.on("data", chunk => chunks.push(Buffer.from(chunk))); pdf.on("end", () => resolve(Buffer.concat(chunks))); pdf.on("error", reject); });

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
+import { and, count, eq, sql } from "drizzle-orm";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { accountingTransactions, annualAccountingCloses, monthlyAccountingCloses } from "../src/db/schema/finance-accounting";
+import { financialYears } from "../src/db/schema/finance-years";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
+import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { postAccountingTransaction, postAccountingTransactionInTransaction, requestAccountingMonthClose, authorizeAccountingMonthClose, prepareAnnualAccountingClose, finalizeAnnualAccountingClose } from "../src/lib/financeiro";
 
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P1/P3 PostgreSQL ${jurisdiction}: fechamento aguarda postagem em andamento e bloqueia nova postagem`, { skip: !process.env.CELERIFLOW_PLANNING_TEST_POSTGRES_URL }, async () => {
@@ -14,18 +19,22 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P1/P3 Po
   const ready = new Promise<void>((resolve) => { started = resolve; });
   let writer: Promise<unknown> | undefined;
   let closing: Promise<unknown> | undefined;
+  let transport: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
   try {
-    await f.db.financialYear.update({ where: { id: "ano" }, data: { status: "Aberto" } });
+    transport = await connectFinanceDrizzleFixture(f.pg);
+    const { connection } = transport;
+    const db = connection.db;
+    await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
     const actor = { ...f.actor, allowedBudgetUnitIds: undefined };
-    const baselineTransactions = await f.db.accountingTransaction.count();
+    const baselineTransactions = (await db.select({ total: count() }).from(accountingTransactions))[0].total;
     const input = { financialYearId: "ano", governmentEntityId: "ente", budgetUnitId: "ug", date: new Date("2026-03-01"), history: "Fato em concorrência com fechamento", sourceModule: "TEST", sourceType: "PERIOD_RACE", idempotencyKey: "period-race", lines: [{ accountId: "debito", type: "Débito" as const, value: "2.00" }, { accountId: "credito", type: "Crédito" as const, value: "2.00" }] };
-    writer = f.db.$transaction(async (tx) => {
+    writer = withDatabaseTransaction(connection, async (tx) => {
       await postAccountingTransactionInTransaction(tx, actor, input);
       started();
       await hold;
-    }, { timeout: 30000 });
+    }, { timeoutMs: 30_000, lockTimeoutMs: 30_000 });
     await Promise.race([ready, writer.then(() => { throw new Error("A postagem não chegou ao ponto de disputa."); })]);
-    closing = requestAccountingMonthClose(f.db, actor, "ano", input.date);
+    closing = requestAccountingMonthClose(connection, actor, "ano", input.date);
     let lockObserved = false;
     const deadline = Date.now() + 3000;
     while (Date.now() < deadline) {
@@ -34,21 +43,24 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P1/P3 Po
       await delay(10);
     }
     assert.equal(lockObserved, true, "Fechamento deve aguardar o lock da postagem em outra sessão.");
-    assert.equal(await f.db.monthlyAccountingClose.count(), 0);
+    assert.equal((await db.select({ total: count() }).from(monthlyAccountingCloses))[0].total, 0);
     release();
     await Promise.all([writer, closing]);
-    assert.equal(await f.db.accountingTransaction.count({ where: { idempotencyKey: input.idempotencyKey } }), 1);
-    await assert.rejects(postAccountingTransaction(f.db, actor, { ...input, idempotencyKey: "late-period-race" }), /competencia contabil nao esta aberta/i);
-    await authorizeAccountingMonthClose(f.db, { ...actor, usuarioId: "beatriz" }, "ano", input.date);
-    assert.equal((await f.db.monthlyAccountingClose.findFirstOrThrow()).status, "FECHADO");
-    assert.equal((await postAccountingTransaction(f.db, actor, input)).idempotencyKey, input.idempotencyKey);
-    assert.equal(await f.db.accountingTransaction.count(), baselineTransactions + 1);
+    assert.equal((await db.select({ total: count() }).from(accountingTransactions).where(eq(accountingTransactions.idempotencyKey, input.idempotencyKey)))[0].total, 1);
+    await assert.rejects(postAccountingTransaction(connection, actor, { ...input, idempotencyKey: "late-period-race" }), /competencia contabil nao esta aberta/i);
+    await authorizeAccountingMonthClose(connection, { ...actor, usuarioId: "beatriz" }, "ano", input.date);
+    assert.equal((await db.select({ status: monthlyAccountingCloses.status }).from(monthlyAccountingCloses).limit(1))[0].status, "FECHADO");
+    assert.equal((await postAccountingTransaction(connection, actor, input)).idempotencyKey, input.idempotencyKey);
+    assert.equal((await db.select({ total: count() }).from(accountingTransactions))[0].total, baselineTransactions + 1);
   } finally {
     release();
     await Promise.allSettled([writer, closing].filter((promise): promise is Promise<unknown> => !!promise));
-    await f.close();
-    if (mode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE;
-    else process.env.CELERIFLOW_ACCOUNTING_MODE = mode;
+    try { await transport?.close(); } finally {
+      try { await f.close(); } finally {
+        if (mode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE;
+        else process.env.CELERIFLOW_ACCOUNTING_MODE = mode;
+      }
+    }
   }
 });
 
@@ -62,23 +74,27 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P3 Postg
   const started = new Promise<void>((resolve) => { ready = resolve; });
   let reopening: Promise<unknown> | undefined;
   let closing: Promise<unknown> | undefined;
+  let transport: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
   try {
+    transport = await connectFinanceDrizzleFixture(f.pg);
+    const { connection } = transport;
+    const db = connection.db;
     const actor = { ...f.actor, allowedBudgetUnitIds: undefined };
-    await f.db.financialYear.update({ where: { id: "ano" }, data: { status: "Aberto" } });
+    await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
     for (let month = 0; month < 12; month++) {
       const date = new Date(Date.UTC(2026, month, 1));
-      await requestAccountingMonthClose(f.db, actor, "ano", date);
-      await authorizeAccountingMonthClose(f.db, { ...actor, usuarioId: "beatriz" }, "ano", date);
+      await requestAccountingMonthClose(connection, actor, "ano", date);
+      await authorizeAccountingMonthClose(connection, { ...actor, usuarioId: "beatriz" }, "ano", date);
     }
-    await prepareAnnualAccountingClose(f.db, actor, "ano");
-    reopening = f.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"ACCOUNTING_PERIOD:ano:2026-12-01T00:00:00.000Z"}, 0))::text`;
-      await tx.monthlyAccountingClose.update({ where: { financialYearId_competence: { financialYearId: "ano", competence: new Date("2026-12-01") } }, data: { status: "ABERTO" } });
+    await prepareAnnualAccountingClose(connection, actor, "ano");
+    reopening = withDatabaseTransaction(connection, async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${"ACCOUNTING_PERIOD:ano:2026-12-01T00:00:00.000Z"}, 0))::text`);
+      await tx.update(monthlyAccountingCloses).set({ status: "ABERTO" }).where(and(eq(monthlyAccountingCloses.financialYearId, "ano"), eq(monthlyAccountingCloses.competence, new Date("2026-12-01"))));
       ready();
       await hold;
-    }, { timeout: 30000 });
+    }, { timeoutMs: 30_000, lockTimeoutMs: 30_000 });
     await Promise.race([started, reopening.then(() => { throw new Error("Reabertura não chegou à disputa."); })]);
-    closing = finalizeAnnualAccountingClose(f.db, { ...actor, usuarioId: "beatriz" }, "ano");
+    closing = finalizeAnnualAccountingClose(connection, { ...actor, usuarioId: "beatriz" }, "ano");
     // Attach the rejection handler immediately while the other connection is held.
     const rejected = assert.rejects(closing, /doze competencias/i);
     let observed = false;
@@ -92,12 +108,15 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P3 Postg
     release();
     await reopening;
     await rejected;
-    assert.equal((await f.db.financialYear.findUniqueOrThrow({ where: { id: "ano" } })).status, "Em Encerramento");
-    assert.equal((await f.db.annualAccountingClose.findUniqueOrThrow({ where: { financialYearId: "ano" } })).status, "PRONTO_PARA_VALIDACAO");
+    assert.equal((await db.select({ status: financialYears.status }).from(financialYears).where(eq(financialYears.id, "ano")))[0].status, "Em Encerramento");
+    assert.equal((await db.select({ status: annualAccountingCloses.status }).from(annualAccountingCloses).where(eq(annualAccountingCloses.financialYearId, "ano")))[0].status, "PRONTO_PARA_VALIDACAO");
   } finally {
     release();
     await Promise.allSettled([reopening, closing].filter((value): value is Promise<unknown> => !!value));
-    await f.close();
-    if (prior === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE; else process.env.CELERIFLOW_ACCOUNTING_MODE = prior;
+    try { await transport?.close(); } finally {
+      try { await f.close(); } finally {
+        if (prior === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE; else process.env.CELERIFLOW_ACCOUNTING_MODE = prior;
+      }
+    }
   }
 });

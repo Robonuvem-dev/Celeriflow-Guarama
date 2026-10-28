@@ -2,14 +2,15 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { listPrevention } from "@/lib/sst/prevention-service";
 import { preventionKinds } from "@/lib/sst/prevention-policy";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 export const dynamic = "force-dynamic";
 export default async function PreventionPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const context = await getTenantContextForModule("SST"), search = await searchParams;
   const val = (key: string) => typeof search[key] === "string" ? search[key] as string : "";
   const result = await listPrevention(context, { page: val("page") || 1, kind: val("kind"), q: val("q"), budgetUnitId: val("budgetUnitId") });
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), orderBy: { name: "asc" } });
+  const units = await listSstUnits(sstDatabase(context), context);
   const href = (page: number) => `/sst/prevencao?${new URLSearchParams({ ...result.filter, page: String(page) })}`;
   return <main className="space-y-5 p-4"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold">CIPA e prevenção</h1><p className="text-sm">Mandatos, inspeções, programas e controle técnico por unidade gestora.</p></div><div className="flex gap-3"><Link className="rounded bg-teal-700 px-4 py-2 text-white" href="/sst/prevencao/novo">Novo registro</Link><Link className="rounded border px-3 py-2" href="/sst/prevencao/calendario">Calendário anual</Link></div></header>
     <form className="flex flex-wrap gap-3" method="get"><label>Busca<input className="ml-2 rounded border p-2" name="q" defaultValue={result.filter.q} /></label><label>Rotina<select name="kind" className="ml-2 rounded border p-2" defaultValue={result.filter.kind}><option value="">Todas</option>{Object.entries(preventionKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>UG<select name="budgetUnitId" className="ml-2 rounded border p-2" defaultValue={result.filter.budgetUnitId}><option value="">Todas autorizadas</option>{units.map(u => <option key={u.id} value={u.id}>{u.code} — {u.name}</option>)}</select></label><button className="rounded border px-3">Filtrar</button></form>

@@ -2,74 +2,22 @@ import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform
 import PagamentosClient from "./PagamentosClient"
 import { getBankAccountBalances } from "@/lib/financeiro";
 import { getBankResourceSourceBalance } from "@/lib/financeiro/bank-resource-sources";
+import { db } from "@/db/client";
+import { Decimal } from "@/db/decimal";
+import { listFinancePageCommitments, listFinancePageDocuments, listFinancePageSettlements, listFinancePageSuppliers, listFinancePageWithholdings } from "@/db/repositories/finance-pages/operations";
+import { hasFinancePageUndocumentedMovement, listFinancePageBankAccounts, listFinancePagePayments } from "@/db/repositories/finance-pages/banking";
 
 export default async function PagamentosPage() {
   const context = await getTenantContextForModule("FINANCEIRO");
-  const { prisma } = context;
-  const appropriationFilter = isSystemAdministrator(context.user)
-    ? {}
-    : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } };
-  const payments = await prisma.payment.findMany({
-    where: { commitment: { appropriation: appropriationFilter } },
-    include: {
-      commitment: { include: { purchaseReceipt: { select: { number: true } } } },
-      settlement: { select: { id: true, documentRef: true, valueDecimal: true, value: true } },
-      financialDocument: { select: { id: true, number: true, title: true } },
-      bankAccount: true,
-      retentions: { select: { valueDecimal: true } },
-      supplier: {
-        include: {
-          person: true,
-          company: true
-        }
-      }
-    },
-    orderBy: {
-      date: 'desc'
-    },
-    take: 50
-  })
-
-  const commitments = await prisma.commitment.findMany({
-    where: {
-      status: { in: ["Emitido", "Liquidado", "Pago"] }
-      , appropriation: appropriationFilter
-    },
-    include: { movements: { select: { type: true, valueDecimal: true } }, purchaseReceipt: { select: { number: true } } },
-  })
-
-  const settlements = await prisma.settlement.findMany({
-    where: { status: "Liquidado", commitment: { appropriation: appropriationFilter } },
-    select: {
-      id: true,
-      commitmentId: true,
-      documentRef: true,
-      value: true,
-      valueDecimal: true,
-      payments: { where: { status: { in: ["Emitida", "Paga"] } }, select: { value: true, valueDecimal: true } },
-    },
-    orderBy: { date: "desc" },
-  });
-
-  const bankAccounts = await prisma.bankAccount.findMany({
-    where: {
-      isActive: true,
-      ...(isSystemAdministrator(context.user)
-        ? {}
-        : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } }),
-    },
-    include: { resourceSource: { select: { id: true, code: true } }, permittedSources: { where: { isActive: true }, include: { resourceSource: { select: { id: true, code: true } } } } },
-  });
-
-  const suppliers = await prisma.supplier.findMany({
-    include: {
-      person: true,
-      company: true
-    },
-    where: {
-      status: "Ativo"
-    }
-  })
+  const executor = context.database ?? db;
+  const access = { allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
+  const [payments, commitments, settlements, bankAccounts, suppliers] = await Promise.all([
+    listFinancePagePayments(executor, access),
+    listFinancePageCommitments(executor, access),
+    listFinancePageSettlements(executor, access),
+    listFinancePageBankAccounts(executor, access, true),
+    listFinancePageSuppliers(executor),
+  ]);
 
   const displayPayments = payments.map(({ valueDecimal, netValueDecimal, retentions, commitment, bankAccount, ...payment }) => {
     const { valueDecimal: commitmentValueDecimal, ...displayCommitment } = commitment
@@ -79,7 +27,7 @@ export default async function PagamentosPage() {
       ...payment,
       value: Number(valueDecimal ?? payment.value),
       netValue: Number(netValueDecimal ?? valueDecimal ?? payment.value),
-      retentionValue: retentions.reduce((total, retention) => total + Number(retention.valueDecimal), 0),
+      retentionValue: retentions.reduce((total, retention) => total.plus(retention.valueDecimal), new Decimal(0)).toNumber(),
       commitment: {
         ...displayCommitment,
         value: Number(commitmentValueDecimal ?? displayCommitment.value),
@@ -91,45 +39,26 @@ export default async function PagamentosPage() {
     }
   })
 
-  const displayCommitments = commitments.map(({ valueDecimal, movements, ...commitment }) => ({
-    ...commitment,
-    value: movements.reduce((total, movement) => total + (movement.type === "Reforço" ? Number(movement.valueDecimal) : -Number(movement.valueDecimal)), Number(valueDecimal ?? commitment.value)),
+  const displayCommitments = commitments.map(commitment => ({
+    id: commitment.id, number: commitment.number, supplierId: commitment.supplierId, purchaseReceipt: commitment.purchaseReceipt,
+    value: commitment.movements.reduce((total, movement) => movement.type === "Reforço" ? total.plus(movement.valueDecimal) : total.minus(movement.valueDecimal), new Decimal(commitment.valueDecimal ?? commitment.value)).toNumber(),
   }))
 
-  const displaySettlements = settlements.map(({ valueDecimal, payments, ...settlement }) => {
-    const value = Number(valueDecimal ?? settlement.value);
-    const paidValue = payments.reduce((total, payment) => total + Number(payment.valueDecimal ?? payment.value), 0);
-    return { ...settlement, value, paidValue, availableToPay: value - paidValue };
+  const displaySettlements = settlements.map(settlement => {
+    const value = new Decimal(settlement.valueDecimal ?? settlement.value);
+    const paidValue = settlement.payments.reduce((total, payment) => total.plus(payment.valueDecimal ?? payment.value), new Decimal(0));
+    return { id: settlement.id, commitmentId: settlement.commitmentId, documentRef: settlement.documentRef, value: value.toNumber(), paidValue: paidValue.toNumber(), availableToPay: value.minus(paidValue).toNumber() };
   });
 
-  const bankBalances = await getBankAccountBalances(prisma, bankAccounts.map(account => account.id));
+  const bankBalances = await getBankAccountBalances(executor, bankAccounts.map(account => account.id));
   const displayBankAccounts = await Promise.all(bankAccounts.map(async account => {
     const sources = [...new Map([...(account.resourceSource ? [account.resourceSource] : []), ...account.permittedSources.map(permission => permission.resourceSource)].map(source => [source.id, source])).values()];
-    const undocumented = Boolean(await prisma.treasuryMovement.count({ where: { bankAccountId: account.id, status: "Confirmado", resourceSourceId: null } }));
-    return { id: account.id, bankName: account.bankName, agency: account.agency, accountNumber: account.accountNumber, cashBalance: (bankBalances[account.id] ?? 0).toString(), sourceBalances: await Promise.all(sources.map(async source => ({ sourceCode: source.code, balance: undocumented ? null : (await getBankResourceSourceBalance(prisma, account.id, source.id)).toFixed(2) }))) };
+    const undocumented = await hasFinancePageUndocumentedMovement(executor, account.id);
+    return { id: account.id, bankName: account.bankName, agency: account.agency, accountNumber: account.accountNumber, cashBalance: (bankBalances[account.id] ?? 0).toString(), sourceBalances: await Promise.all(sources.map(async source => ({ sourceCode: source.code, balance: undocumented ? null : (await getBankResourceSourceBalance(executor, account.id, source.id)).toFixed(2) }))) };
   }));
 
-  const pendingWithholdings = await prisma.withholdingPayable.findMany({
-    where: {
-      status: "Pendente",
-      retention: { payment: { status: "Paga", commitment: { appropriation: appropriationFilter } } },
-    },
-    include: {
-      retention: {
-        include: {
-          payment: { select: { orderNumber: true } },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const receiptDocuments = await prisma.document.findMany({
-    where: { status: "Válido", documentType: { not: "Modelo" } },
-    select: { id: true, title: true, documentType: true },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const pendingWithholdings = await listFinancePageWithholdings(executor, access);
+  const receiptDocuments = await listFinancePageDocuments(executor);
 
   const displayPendingWithholdings = pendingWithholdings.map((pw) => ({
     id: pw.id,

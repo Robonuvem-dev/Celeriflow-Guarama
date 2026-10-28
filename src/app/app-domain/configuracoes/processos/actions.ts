@@ -3,9 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { addGenericWorkflowStage, createGenericWorkflowDefinition, publishGenericWorkflowDefinition } from "@/lib/protocols/generic-workflow-definition-service";
+import { and, count, eq } from "drizzle-orm";
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { processTypes, processSubjects, processes, processWorkflowStages, genericWorkflowDefinitions, genericWorkflowStages } from "@/db/schema/processes";
 
-async function getConfigurationPrisma() {
-  return (await getTenantContextForSystemAdministration()).prisma;
+async function requireConfigurationAccess() {
+  return getTenantContextForSystemAdministration();
 }
 
 function optionalId(formData: FormData, name: string) {
@@ -14,7 +18,7 @@ function optionalId(formData: FormData, name: string) {
 
 export async function saveProcessType(formData: FormData): Promise<void> {
   const id = optionalId(formData, "id");
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const name = String(formData.get("name") || "").trim();
   if (!name) throw new Error("Informe o nome do Tipo de Processo.");
 
@@ -32,25 +36,26 @@ export async function saveProcessType(formData: FormData): Promise<void> {
   };
 
   if (id) {
-    const existing = await prisma.processType.findUnique({ where: { id }, select: { genericWorkflowEnabled: true, _count: { select: { processes: true } } } });
+    const [existing] = await db.select({ genericWorkflowEnabled: processTypes.genericWorkflowEnabled }).from(processTypes).where(eq(processTypes.id, id)).limit(1);
     if (!existing) throw new Error("Tipo de Processo nao encontrado.");
-    if (genericWorkflowEnabled && !existing.genericWorkflowEnabled && existing._count.processes > 0) {
+    const [{ total }] = await db.select({ total: count() }).from(processes).where(eq(processes.processTypeId, id));
+    if (genericWorkflowEnabled && !existing.genericWorkflowEnabled && total > 0) {
       throw new Error("O fluxo generico so pode ser ativado em novos tipos, sem processos existentes.");
     }
-    await prisma.processType.update({ where: { id }, data });
+    await db.update(processTypes).set(data).where(eq(processTypes.id, id));
   }
-  else await prisma.processType.create({ data });
+  else await db.insert(processTypes).values(data);
   revalidatePath("/configuracoes/processos");
 }
 
 export async function saveSubject(formData: FormData): Promise<void> {
   const id = optionalId(formData, "id");
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const name = String(formData.get("name") || "").trim();
   const processTypeId = String(formData.get("processTypeId") || "");
   if (!name || !processTypeId) throw new Error("Informe o Assunto e o Tipo de Processo.");
 
-  const existing = id ? await prisma.subject.findUnique({ where: { id }, select: { initialDepartmentId: true, slaDays: true, defaultPriority: true, requiresInterested: true, allowsInternalOpening: true, isActive: true } }) : null;
+  const existing = id ? (await db.select().from(processSubjects).where(eq(processSubjects.id, id)).limit(1))[0] : null;
   if (id && !existing) throw new Error("Assunto nao encontrado.");
   const data = {
     name,
@@ -64,14 +69,14 @@ export async function saveSubject(formData: FormData): Promise<void> {
     isActive: formData.has("isActive") ? formData.get("isActive") === "on" : existing?.isActive ?? true,
   };
 
-  if (id) await prisma.subject.update({ where: { id }, data });
-  else await prisma.subject.create({ data });
+  if (id) await db.update(processSubjects).set(data).where(eq(processSubjects.id, id));
+  else await db.insert(processSubjects).values(data);
   revalidatePath("/configuracoes/processos");
 }
 
 export async function saveProcessWorkflowStage(formData: FormData): Promise<void> {
   const id = optionalId(formData, "id");
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const processTypeId = String(formData.get("processTypeId") || "");
   const subjectId = optionalId(formData, "subjectId");
   const departmentId = String(formData.get("departmentId") || "");
@@ -81,7 +86,7 @@ export async function saveProcessWorkflowStage(formData: FormData): Promise<void
     throw new Error("Informe tipo, setor e uma ordem de etapa valida.");
   }
   if (subjectId) {
-    const subject = await prisma.subject.findFirst({ where: { id: subjectId, processTypeId }, select: { id: true } });
+    const [subject] = await db.select({ id: processSubjects.id }).from(processSubjects).where(and(eq(processSubjects.id, subjectId), eq(processSubjects.processTypeId, processTypeId))).limit(1);
     if (!subject) throw new Error("O Assunto selecionado nao pertence ao Tipo de Processo.");
   }
   const data = {
@@ -93,33 +98,36 @@ export async function saveProcessWorkflowStage(formData: FormData): Promise<void
     label: String(formData.get("label") || "").trim() || null,
     isActive: formData.get("isActive") === "on",
   };
-  if (id) await prisma.processWorkflowStage.update({ where: { id }, data });
-  else await prisma.processWorkflowStage.create({ data });
+  if (id) {
+    const [stage] = await db.update(processWorkflowStages).set(data).where(eq(processWorkflowStages.id, id)).returning({ id: processWorkflowStages.id });
+    if (!stage) throw new Error("Etapa nao encontrada.");
+  } else await db.insert(processWorkflowStages).values(data);
   revalidatePath("/configuracoes/processos");
 }
 
 export async function deleteProcessWorkflowStage(formData: FormData): Promise<void> {
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const id = String(formData.get("id") || "");
   if (!id) throw new Error("Etapa nao informada.");
-  await prisma.processWorkflowStage.delete({ where: { id } });
+  const [stage] = await db.delete(processWorkflowStages).where(eq(processWorkflowStages.id, id)).returning({ id: processWorkflowStages.id });
+  if (!stage) throw new Error("Etapa nao encontrada.");
   revalidatePath("/configuracoes/processos");
 }
 
 export async function createGenericWorkflowDefinitionAction(formData: FormData): Promise<void> {
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const processTypeId = String(formData.get("processTypeId") || "");
   if (!processTypeId) throw new Error("Selecione um Tipo de Processo opt-in.");
-  await prisma.$transaction((tx) => createGenericWorkflowDefinition(tx, processTypeId));
+  await withDatabaseTransaction(databaseConnection, (tx) => createGenericWorkflowDefinition(tx, processTypeId), { timeoutMs: 5_000 });
   revalidatePath("/configuracoes/processos");
 }
 
 export async function addGenericWorkflowStageAction(formData: FormData): Promise<void> {
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const definitionId = String(formData.get("definitionId") || "");
   const position = Number(formData.get("position") || "");
   const slaCalendarDays = Number(formData.get("slaCalendarDays") || "");
-  await prisma.$transaction((tx) => addGenericWorkflowStage(tx, {
+  await withDatabaseTransaction(databaseConnection, (tx) => addGenericWorkflowStage(tx, {
     definitionId,
     position,
     label: String(formData.get("label") || "").trim(),
@@ -127,23 +135,23 @@ export async function addGenericWorkflowStageAction(formData: FormData): Promise
     slaCalendarDays,
     requiresSignedDocument: formData.get("requiresSignedDocument") === "on",
     requiredDocumentClassId: optionalId(formData, "requiredDocumentClassId"),
-  }));
+  }), { timeoutMs: 5_000 });
   revalidatePath("/configuracoes/processos");
 }
 
 export async function deleteGenericWorkflowStageAction(formData: FormData): Promise<void> {
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const id = String(formData.get("id") || "");
-  const stage = await prisma.genericProcessWorkflowStage.findUnique({ where: { id }, select: { definition: { select: { status: true } } } });
-  if (!stage || stage.definition.status !== "DRAFT") throw new Error("Somente etapas de rascunho podem ser excluidas.");
-  await prisma.genericProcessWorkflowStage.delete({ where: { id } });
+  const [stage] = await db.select({ status: genericWorkflowDefinitions.status }).from(genericWorkflowStages).innerJoin(genericWorkflowDefinitions, eq(genericWorkflowDefinitions.id, genericWorkflowStages.definitionId)).where(eq(genericWorkflowStages.id, id)).limit(1);
+  if (!stage || stage.status !== "DRAFT") throw new Error("Somente etapas de rascunho podem ser excluidas.");
+  await db.delete(genericWorkflowStages).where(eq(genericWorkflowStages.id, id));
   revalidatePath("/configuracoes/processos");
 }
 
 export async function publishGenericWorkflowDefinitionAction(formData: FormData): Promise<void> {
-  const prisma = await getConfigurationPrisma();
+  await requireConfigurationAccess();
   const definitionId = String(formData.get("definitionId") || "");
   const context = await getTenantContextForSystemAdministration();
-  await prisma.$transaction((tx) => publishGenericWorkflowDefinition(tx, definitionId, context.user.id));
+  await withDatabaseTransaction(databaseConnection, (tx) => publishGenericWorkflowDefinition(tx, definitionId, context.user.id), { timeoutMs: 5_000 });
   revalidatePath("/configuracoes/processos");
 }

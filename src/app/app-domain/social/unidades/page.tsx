@@ -1,24 +1,14 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import UnidadesClient from "./UnidadesClient";
+import { db } from "@/db/client";
+import { listSocialUnits, listSocialRealEstates, listSocialEmployees } from "@/db/repositories/social/queries";
 
 export default async function UnidadesSociaisPage() {
-  const { prisma } = await getTenantContextForModule("SOCIAL");
-  const unidades = await prisma.socialUnit.findMany({
-    include: {
-      realEstate: true,
-      manager: true
-    },
-    orderBy: { name: 'asc' }
-  });
-
-  const realEstates = await prisma.realEstate.findMany({
-    orderBy: { streetName: 'asc' }
-  });
-
-  const employees = await prisma.employee.findMany({
-    where: { isActive: true },
-    orderBy: { name: 'asc' }
-  });
+  const context = await getTenantContextForModule("SOCIAL");
+  const database = context.database ?? db;
+  const unidades = await listSocialUnits(database);
+  const realEstates = await listSocialRealEstates(database);
+  const employees = await listSocialEmployees(database);
 
   return (
     <UnidadesClient 

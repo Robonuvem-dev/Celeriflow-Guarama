@@ -11,6 +11,10 @@ import {
   Warehouse,
 } from "lucide-react";
 import Link from "next/link";
+import { count, eq, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { assets } from "@/db/schema/assets";
+import { warehouses, materials } from "@/db/schema/assets-stock";
 
 const shortcutItems = [
   {
@@ -58,13 +62,13 @@ const shortcutItems = [
 ];
 
 export default async function PatrimonioDashboard() {
-  const { prisma } = await getTenantContextForModule("PATRIMONIO");
+  await getTenantContextForModule("PATRIMONIO");
   const [totalAssets, activeAssets, totalWarehouses, totalMaterials, pendingRequests] = await Promise.all([
-    prisma.asset.count(),
-    prisma.asset.count({ where: { status: "Ativo" } }),
-    prisma.warehouse.count(),
-    prisma.material.count(),
-    prisma.materialRequest.count({ where: { status: "Pendente" } }),
+    db.select({ count: count() }).from(assets).then(rows => rows[0].count),
+    db.select({ count: count() }).from(assets).where(eq(assets.status, "Ativo")).then(rows => rows[0].count),
+    db.select({ count: count() }).from(warehouses).then(rows => rows[0].count),
+    db.select({ count: count() }).from(materials).then(rows => rows[0].count),
+    db.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM "MaterialRequest" WHERE status='Pendente'`).then(result => result.rows[0].count),
   ]);
 
   const kpis = [

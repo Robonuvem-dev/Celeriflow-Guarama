@@ -2,6 +2,8 @@ import { config } from "dotenv";
 import { createHash } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { sql as parameterizedSql } from "drizzle-orm";
+import { createDatabaseConnection } from "../src/db/connection";
 
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
@@ -10,11 +12,14 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.some((arg) => arg !== "--all")) throw new Error("Argumento inválido: use --all para conferir todos os módulos.");
   const allModules = args.includes("--all");
-  const { prisma } = await import("../src/lib/prisma");
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL não configurada.");
+  const connection = createDatabaseConnection(connectionString);
   try {
-    const migrations = await prisma.$queryRaw<{ migration_name: string; checksum: string }[]>`
+    const result = await connection.db.execute<{ migration_name: string; checksum: string }>(parameterizedSql`
       SELECT migration_name, checksum FROM "_prisma_migrations"
-      WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name`;
+       WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name`);
+    const migrations = result.rows;
     let checked = 0;
     const mismatches: string[] = [];
     const missing: string[] = [];
@@ -30,6 +35,6 @@ async function main() {
     }
     console.log(JSON.stringify({ checked, mismatches, missing }));
     if (mismatches.length || missing.length) process.exitCode = 1;
-  } finally { await prisma.$disconnect(); }
+  } finally { await connection.pool.end(); }
 }
 void main().catch(() => { console.error("Não foi possível conferir o histórico de migrações. Use somente --all ou nenhum argumento e verifique a conexão."); process.exitCode = 1; });

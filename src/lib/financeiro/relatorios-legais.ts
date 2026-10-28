@@ -1,9 +1,10 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor, type DatabaseTransaction } from "@/db/transaction";
 import { MUNICIPALITY_NAME } from "@/lib/municipality-identity";
-import { financialUnitFilter, resolveFinancialReportScope } from "./report-scope";
-import { readPersonnelFiscalPosition } from "./personnel-fiscal";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { resolveFinancialReportScope } from "./report-scope";
+import { readPersonnelFiscalPositionInTransaction } from "./personnel-fiscal";
+import { listLegalFinancialTreasury, listLegalFinancialWithholdings, listLegalReportAccounts, listLegalReportEntries, listLegalReportTransactions, listRreoRevenues, readPublishedRreoEstimates, readRreoBudgetFacts } from "@/db/repositories/finance/legal-reports";
+import { findFinancialScopeYear } from "@/db/repositories/finance/report-scopes";
 
 export type ReportFilter = {
   financialYearId: string;
@@ -14,37 +15,9 @@ export type ReportFilter = {
   budgetUnitId?: string;
 };
 
-function dateFilter(filter: ReportFilter) {
-  return {
-    ...(filter.startDate ? { gte: filter.startDate } : {}),
-    ...(filter.endDate ? { lte: filter.endDate } : {}),
-  };
-}
-
-function accountingScopeFilter(filter: ReportFilter) {
-  return {
-    ...(filter.governmentEntityId ? { governmentEntityId: filter.governmentEntityId } : {}),
-    ...(filter.budgetUnitId ? { budgetUnitId: filter.budgetUnitId } : {}),
-    ...(filter.budgetUnitIds ? { AND: [{ budgetUnitId: { in: filter.budgetUnitIds } }] } : {}),
-  };
-}
-
 // --- Diário Contábil ---
-export async function generateDiarioContabil(db: Db, filter: ReportFilter) {
-  const transactions = await db.accountingTransaction.findMany({
-    where: {
-      ...accountingScopeFilter(filter),
-      financialYearId: filter.financialYearId,
-      status: "POSTADO",
-      ...(filter.startDate || filter.endDate ? { date: dateFilter(filter) } : {}),
-    },
-    include: {
-      entries: {
-        include: { account: true },
-      },
-    },
-    orderBy: { date: "asc" },
-  });
+export async function generateDiarioContabil(db: DatabaseExecutor, filter: ReportFilter) {
+  const transactions = await listLegalReportTransactions(db, filter);
 
   return transactions.map((t) => ({
     id: t.id,
@@ -61,23 +34,8 @@ export async function generateDiarioContabil(db: Db, filter: ReportFilter) {
 }
 
 // --- Razão Contábil ---
-export async function generateRazaoContabil(db: Db, filter: ReportFilter & { accountId?: string }) {
-  const entries = await db.accountingEntry.findMany({
-    where: {
-      transaction: {
-        ...accountingScopeFilter(filter),
-        financialYearId: filter.financialYearId,
-        status: "POSTADO",
-        ...(filter.startDate || filter.endDate ? { date: dateFilter(filter) } : {}),
-      },
-      ...(filter.accountId ? { accountId: filter.accountId } : {}),
-    },
-    include: {
-      account: true,
-      transaction: { select: { date: true, history: true } },
-    },
-    orderBy: { transaction: { date: "asc" } },
-  });
+export async function generateRazaoContabil(db: DatabaseExecutor, filter: ReportFilter & { accountId?: string }) {
+  const entries = await listLegalReportEntries(db, filter);
 
   return entries.map((e) => ({
     id: e.id,
@@ -91,22 +49,8 @@ export async function generateRazaoContabil(db: Db, filter: ReportFilter & { acc
 }
 
 // --- Balancete Contábil ---
-export async function generateBalanceteContabil(db: Db, filter: ReportFilter) {
-  const accounts = await db.accountingPlan.findMany({
-    include: {
-      entries: {
-        where: {
-          transaction: {
-            ...accountingScopeFilter(filter),
-            financialYearId: filter.financialYearId,
-            status: "POSTADO",
-            ...(filter.startDate || filter.endDate ? { date: dateFilter(filter) } : {}),
-          },
-        },
-      },
-    },
-    orderBy: { code: "asc" },
-  });
+export async function generateBalanceteContabil(db: DatabaseExecutor, filter: ReportFilter) {
+  const accounts = await listLegalReportAccounts(db, filter);
 
   return accounts.map((acc) => {
     const debitTotal = acc.entries
@@ -129,90 +73,16 @@ export async function generateBalanceteContabil(db: Db, filter: ReportFilter) {
 }
 
 // --- Relatório Resumido da Execução Orçamentária (RREO) ---
-export async function generateRREO(db: Db, filter: ReportFilter) {
+export async function generateRREO(db: DatabaseExecutor, filter: ReportFilter) {
   const scope = await resolveFinancialReportScope(db, filter.financialYearId, filter);
   if (!scope.fullEntity) throw new Error("O RREO contém previsões globais e exige acesso a todas as unidades gestoras da entidade.");
   filter = { ...filter, ...scope };
-  const dateCond = filter.startDate || filter.endDate ? dateFilter(filter) : undefined;
+  const dateCond = Boolean(filter.startDate || filter.endDate);
 
-  const [appropriations, revenues, forecasts, fixations] = await Promise.all([
-    db.budgetAppropriation.findMany({
-      where: {
-        financialYearId: filter.financialYearId,
-        ...(filter.budgetUnitIds ? { budgetUnitId: { in: filter.budgetUnitIds } } : {}),
-      },
-      include: {
-        expenseNature: true,
-        commitments: {
-          where: {
-            status: { in: ["Emitido", "Liquidado", "Pago"] },
-            ...(dateCond
-              ? {
-                  OR: [
-                    { date: dateCond },
-                    { movements: { some: { date: dateCond } } },
-                    { settlements: { some: { status: "Liquidado", date: dateCond } } },
-                    { payments: { some: { status: { in: ["Pago", "Paga"] }, date: dateCond } } },
-                  ],
-                }
-              : {}),
-          },
-          include: {
-            movements: {
-              where: {
-                ...(dateCond ? { date: dateCond } : {}),
-              },
-              select: { type: true, valueDecimal: true, date: true },
-            },
-            settlements: {
-              where: {
-                status: "Liquidado",
-                ...(dateCond ? { date: dateCond } : {}),
-              },
-              include: {
-                payments: {
-                  where: {
-                    status: { in: ["Pago", "Paga"] },
-                    ...(dateCond ? { date: dateCond } : {}),
-                  },
-                },
-              },
-            },
-            payments: {
-              where: {
-                status: { in: ["Pago", "Paga"] },
-                ...(dateCond ? { date: dateCond } : {}),
-              },
-            },
-          },
-        },
-      },
-    }),
-    db.revenue.findMany({
-      where: {
-        financialYearId: filter.financialYearId,
-        stage: "ARRECADADA",
-        ...(filter.budgetUnitIds ? { budgetUnitId: { in: filter.budgetUnitIds } } : {}),
-        ...(dateCond ? { date: dateCond } : {}),
-      },
-      include: { revenueNature: true },
-    }),
-    db.annualBudgetRevenueForecast.findMany({
-      where: {
-        annualBudgetLaw: {
-          financialYearId: filter.financialYearId,
-          status: "PUBLISHED",
-        },
-      },
-    }),
-    db.annualBudgetExpenseFixation.findMany({
-      where: {
-        annualBudgetLaw: {
-          financialYearId: filter.financialYearId,
-          status: "PUBLISHED",
-        },
-      },
-    }),
+  const [appropriations, revenues, { forecasts, fixations }] = await Promise.all([
+    readRreoBudgetFacts(db, filter),
+    listRreoRevenues(db, filter),
+    readPublishedRreoEstimates(db, filter.financialYearId),
   ]);
 
   const expenses = appropriations.map((app) => {
@@ -312,12 +182,16 @@ export async function generateRREO(db: Db, filter: ReportFilter) {
 }
 
 // --- Relatório de Gestão Fiscal (RGF - Despesa com Pessoal / LRF) ---
-export async function generateRGF(db: Db, filter: ReportFilter) {
+export async function generateRGF(db: DatabaseConnection, filter: ReportFilter) {
+  return withDatabaseTransaction(db, tx => generateRGFInTransaction(tx, filter), { isolationLevel: "repeatable read", timeoutMs: 60000 });
+}
+
+export async function generateRGFInTransaction(db: DatabaseTransaction, filter: ReportFilter) {
   const scope = await resolveFinancialReportScope(db, filter.financialYearId, filter);
   if (filter.startDate) throw new Error("Pessoal/RCL usa janela de 12 competências; informe somente o corte mensal final.");
   const now = new Date();
   const through = filter.endDate ?? (scope.year === now.getUTCFullYear() ? now.getUTCMonth() ? new Date(Date.UTC(scope.year, now.getUTCMonth(), 1) - 1) : new Date(Date.UTC(scope.year, 0, 1)) : new Date(Date.UTC(scope.year + 1, 0, 1) - 1));
-  const position = await readPersonnelFiscalPosition(db, { financialYearId: filter.financialYearId, through, governmentEntityId: scope.governmentEntityId ?? undefined, budgetUnitIds: scope.budgetUnitIds });
+  const position = await readPersonnelFiscalPositionInTransaction(db, { financialYearId: filter.financialYearId, through, governmentEntityId: scope.governmentEntityId ?? undefined, budgetUnitIds: scope.budgetUnitIds });
   const numeric = (value: string | null) => value === null ? null : Number(value);
   return {
     receitaCorrenteLiquida: numeric(position.adjustedRcl),
@@ -332,7 +206,7 @@ export async function generateRGF(db: Db, filter: ReportFilter) {
 }
 
 // --- Balanço Orçamentário ---
-export async function generateBalancoOrcamentario(db: Db, filter: ReportFilter) {
+export async function generateBalancoOrcamentario(db: DatabaseExecutor, filter: ReportFilter) {
   const rreo = await generateRREO(db, filter);
   const totalReceitaPrevista = rreo.revenueSummary.reduce((sum, r) => sum + r.predictedValue, 0);
   const totalReceitaRealizada = rreo.revenueSummary.reduce((sum, r) => sum + r.realizedValue, 0);
@@ -358,23 +232,9 @@ export async function generateBalancoOrcamentario(db: Db, filter: ReportFilter) 
 }
 
 // --- Balanço Patrimonial ---
-export async function generateBalancoPatrimonial(db: Db, filter: ReportFilter) {
+export async function generateBalancoPatrimonial(db: DatabaseExecutor, filter: ReportFilter) {
   filter = { ...filter, ...await resolveFinancialReportScope(db, filter.financialYearId, filter) };
-  const accounts = await db.accountingPlan.findMany({
-    include: {
-      entries: {
-        where: {
-          transaction: {
-            ...accountingScopeFilter(filter),
-            financialYearId: filter.financialYearId,
-            status: "POSTADO",
-            ...(filter.startDate || filter.endDate ? { date: dateFilter(filter) } : {}),
-          },
-        },
-      },
-    },
-    orderBy: { code: "asc" },
-  });
+  const accounts = await listLegalReportAccounts(db, filter);
 
   // Ativo: Contas da classe 1 (Ativo Circulante e Não Circulante)
   const ativo = accounts.filter((acc) => acc.code.startsWith("1")).map((acc) => {
@@ -415,24 +275,13 @@ export async function generateBalancoPatrimonial(db: Db, filter: ReportFilter) {
 }
 
 // --- Balanço Financeiro (MCASP / Anexo 13 da Lei 4.320/64) ---
-export async function generateBalancoFinanceiro(db: Db, filter: ReportFilter) {
+export async function generateBalancoFinanceiro(db: DatabaseExecutor, filter: ReportFilter) {
   filter = { ...filter, ...await resolveFinancialReportScope(db, filter.financialYearId, filter) };
   const [rreo, financialYear, treasuryMovements, withholdings] = await Promise.all([
     generateRREO(db, filter),
-    db.financialYear.findUnique({ where: { id: filter.financialYearId }, select: { startDate: true, endDate: true } }),
-    db.treasuryMovement.findMany({
-      where: {
-        status: "Confirmado",
-        bankAccount: {
-          isActive: true,
-          ...financialUnitFilter(filter),
-        },
-      },
-      select: { date: true, direction: true, valueDecimal: true },
-    }),
-    db.withholdingPayable.findMany({
-      where: { retention: { payment: { commitment: { appropriation: { financialYearId: filter.financialYearId, ...(filter.budgetUnitIds ? { budgetUnitId: { in: filter.budgetUnitIds } } : {}) } } } } },
-    }),
+    findFinancialScopeYear(db, filter.financialYearId),
+    listLegalFinancialTreasury(db, filter),
+    listLegalFinancialWithholdings(db, filter),
   ]);
   if (!financialYear) throw new Error("Exercício financeiro não encontrado para o Balanço Financeiro.");
 
@@ -480,23 +329,9 @@ export async function generateBalancoFinanceiro(db: Db, filter: ReportFilter) {
 }
 
 // --- Demonstração das Variações Patrimoniais (DVP / MCASP) ---
-export async function generateDVP(db: Db, filter: ReportFilter) {
+export async function generateDVP(db: DatabaseExecutor, filter: ReportFilter) {
   filter = { ...filter, ...await resolveFinancialReportScope(db, filter.financialYearId, filter) };
-  const accounts = await db.accountingPlan.findMany({
-    include: {
-      entries: {
-        where: {
-          transaction: {
-            ...accountingScopeFilter(filter),
-            financialYearId: filter.financialYearId,
-            status: "POSTADO",
-            ...(filter.startDate || filter.endDate ? { date: dateFilter(filter) } : {}),
-          },
-        },
-      },
-    },
-    orderBy: { code: "asc" },
-  });
+  const accounts = await listLegalReportAccounts(db, filter);
 
   // VPA: Variações Patrimoniais Aumentativas (Classe 4 do PCASP)
   const vpaAccounts = accounts.filter((acc) => acc.code.startsWith("4"));
@@ -531,7 +366,7 @@ export async function generateDVP(db: Db, filter: ReportFilter) {
 }
 
 // --- Demonstração dos Fluxos de Caixa (DFC / MCASP) ---
-export async function generateDemonstracaoFluxosCaixa(db: Db, filter: ReportFilter) {
+export async function generateDemonstracaoFluxosCaixa(db: DatabaseExecutor, filter: ReportFilter) {
   const [bf] = await Promise.all([generateBalancoFinanceiro(db, filter)]);
 
   const fluxoOperacional = bf.ingressos.receitaOrcamentaria - bf.dispendios.despesaOrcamentaria;
@@ -551,7 +386,11 @@ export async function generateDemonstracaoFluxosCaixa(db: Db, filter: ReportFilt
 }
 
 // --- Prestação de Contas Anual Completa (PCA) ---
-export async function generatePCA(db: Db, filter: ReportFilter) {
+export async function generatePCA(db: DatabaseConnection, filter: ReportFilter) {
+  return withDatabaseTransaction(db, tx => generatePCAInTransaction(tx, filter), { isolationLevel: "repeatable read", timeoutMs: 60000 });
+}
+
+export async function generatePCAInTransaction(db: DatabaseTransaction, filter: ReportFilter) {
   const [
     balancoOrcamentario,
     balancoPatrimonial,
@@ -567,7 +406,7 @@ export async function generatePCA(db: Db, filter: ReportFilter) {
     generateDVP(db, filter),
     generateDemonstracaoFluxosCaixa(db, filter),
     generateRREO(db, filter),
-    generateRGF(db, filter),
+    generateRGFInTransaction(db, filter),
   ]);
 
   const notasExplicativas = [

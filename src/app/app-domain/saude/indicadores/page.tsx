@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthUnits, healthTeams } from "@/db/schema/health-workforce";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { healthAnnualSeries, healthCareIndicators } from "@/lib/saude/health-indicator-service";
 import { classifyIndicatorTeamAction } from "./actions";
@@ -12,10 +15,11 @@ export default async function HealthIndicatorsPage({ searchParams }: { searchPar
   const input = { period: text(query.period) || today.slice(0, 7), unitId: text(query.unitId), elderlyAge: Number(query.elderlyAge || 60), childMonths: Number(query.childMonths || 24) };
   const fromYear = Number(query.fromYear || year - 4), toYear = Number(query.toYear || year);
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
+  const database = context.database ?? db;
   const [dataset, series, units, teams] = await Promise.all([
     healthCareIndicators(context, input), healthAnnualSeries(context, { fromYear, toYear, unitId: input.unitId }),
-    context.prisma.healthUnit.findMany({ where: unitIds ? { id: { in: unitIds } } : {}, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    context.prisma.healthTeam.findMany({ where: { isActive: true, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, orderBy: { name: "asc" }, select: { id: true, name: true, classification: true, unit: { select: { name: true } } } }),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(unitIds ? inArray(healthUnits.id, unitIds) : undefined).orderBy(asc(healthUnits.name)),
+    database.select({ id: healthTeams.id, name: healthTeams.name, classification: healthTeams.classification, unit: { name: healthUnits.name } }).from(healthTeams).innerJoin(healthUnits, eq(healthUnits.id, healthTeams.unitId)).where(and(eq(healthTeams.isActive, true), unitIds ? inArray(healthTeams.unitId, unitIds) : undefined)).orderBy(asc(healthTeams.name)),
   ]);
   const selected = dataset.indicators.find(indicator => indicator.key === query.indicator) || dataset.indicators[0];
   const status = query.status === "RECORDED" || query.status === "ALL" ? query.status : "NO_RECORD";

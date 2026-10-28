@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { z } from "zod";
 import { getTenantContextForModule, canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { integrationUnits } from "@/lib/sst/esocial-service";
+import { findSstClinicalGrant } from "@/db/repositories/sst/access";
+import { searchSstPeople } from "@/db/repositories/sst/references";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstAsosPage, searchSstAsoLaboratories, readSstAsoPrograms, readSstAsoQuestionnaires, readSstAsoFunctionalPeriods, findSstAsoSettings } from "@/db/repositories/sst-pages/aso";
 import { asoKinds, asoResults, asoGroupSnapshot, sstCivilDate, formatSstCivilDate } from "@/lib/sst/aso-policy";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { AsoForm } from "./AsoForm";
-import type { Prisma } from "@prisma/client";
 import { questionnaireQuestions } from "@/lib/sst/questionnaire-policy";
 import { SstForm } from "../SstForm";
 import { saveSstAsoSettings, saveSstAsoVacationSource } from "./actions";
@@ -16,37 +20,26 @@ type Search = { budgetUnitId?: string; q?: string; personQ?: string; laboratoryQ
 export default async function SstAsoPage({ searchParams }: { searchParams: Promise<Search> }) {
   const context = await getTenantContextForModule("SST");
   const params = await searchParams;
-  const units = await context.prisma.budgetUnit.findMany({ where: {
-    ...sstUnitWhere(context),
-    ...(isSystemAdministrator(context.user) ? {} : { sstAccessGrants: { some: { usuarioId: context.user.id, isActive: true, canReadClinical: true } } }),
-  }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
+  const database = sstDatabase(context), units = await integrationUnits(context);
   const unit = units.find((item) => item.id === params.budgetUnitId);
   const from = params.expiresFrom ? sstCivilDate.safeParse(params.expiresFrom) : null;
   const to = params.expiresTo ? sstCivilDate.safeParse(params.expiresTo) : null;
   const invalidDates = (from && !from.success) || (to && !to.success) || (from?.success && to?.success && from.data > to.data);
-  const where: Prisma.SstAsoWhereInput = {
-    budgetUnitId: { in: invalidDates ? [] : params.budgetUnitId ? unit ? [unit.id] : [] : units.map((item) => item.id) },
-    ...(params.q?.trim() ? { person: { fullName: { contains: params.q.trim().slice(0, 200), mode: "insensitive" } } } : {}),
-    validUntil: { ...(from?.success ? { gte: from.data } : {}), ...(to?.success ? { lte: to.data } : {}) },
-  };
-  const total = await context.prisma.sstAso.count({ where });
-  const requestedPage = Number(params.page);
-  const page = Math.min(Number.isFinite(requestedPage) ? Math.max(1, Math.trunc(requestedPage)) : 1, Math.max(1, Math.ceil(total / 20)));
-  const records = await context.prisma.sstAso.findMany({ where, take: 20, skip: (page - 1) * 20, orderBy: [{ performedAt: "desc" }, { id: "asc" }], select: { id: true, kind: true, result: true, performedAt: true, validUntil: true, snapshot: true } });
-  if (units.length) await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.pageView, targetType: "SST_ASO_LIST", targetId: unit?.id || "AUTHORIZED_UNITS" });
-  const grant = unit && !isSystemAdministrator(context.user) ? await context.prisma.sstAccessGrant.findUnique({ where: { usuarioId_budgetUnitId: { usuarioId: context.user.id, budgetUnitId: unit.id } }, select: { canAssess: true } }) : null;
+  const { total, page, records } = await readSstAsosPage(database, invalidDates ? [] : params.budgetUnitId ? unit ? [unit.id] : [] : units.map(item => item.id), params, from?.success ? from.data : undefined, to?.success ? to.data : undefined);
+  if (units.length) await writeAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.pageView, targetType: "SST_ASO_LIST", targetId: unit?.id || "AUTHORIZED_UNITS" });
+  const grant = unit && !isSystemAdministrator(context.user) ? await findSstClinicalGrant(database, context.user.id, unit.id) : null;
   const canCreate = !!unit && canPerformModuleOperation(context.user, "SST", "create") && (isSystemAdministrator(context.user) || !!grant?.canAssess);
   const personTerms = canCreate ? (params.personQ || "").split(";").map((term) => term.trim().slice(0, 200)).filter((term) => term.length >= 3).slice(0, 5) : [];
-  const personMatches = await Promise.all(personTerms.map((term) => context.prisma.person.findMany({ where: { fullName: { contains: term, mode: "insensitive" } }, take: 20, orderBy: [{ fullName: "asc" }, { id: "asc" }], select: { id: true, fullName: true } })));
+  const personMatches = await Promise.all(personTerms.map(term => searchSstPeople(database, term)));
   const people = [...new Map(personMatches.flat().map((person) => [person.id, person])).values()].sort((a, b) => a.fullName.localeCompare(b.fullName, "pt-BR"));
-  const laboratories = canCreate && params.laboratoryQ && params.laboratoryQ.trim().length >= 3 ? await context.prisma.company.findMany({ where: { corporateName: { contains: params.laboratoryQ.trim().slice(0, 200), mode: "insensitive" } }, take: 20, orderBy: [{ corporateName: "asc" }, { id: "asc" }], select: { id: true, corporateName: true } }) : [];
-  const groups = canCreate && unit ? await context.prisma.sstProgramExposureGroup.findMany({ where: { program: { budgetUnitId: unit.id, kind: "PCMSO" } }, take: 200, orderBy: [{ program: { createdAt: "desc" } }, { id: "asc" }], include: { program: { select: { code: true, version: true } } } }) : [];
+  const laboratories = canCreate && params.laboratoryQ && params.laboratoryQ.trim().length >= 3 ? await searchSstAsoLaboratories(database, params.laboratoryQ) : [];
+  const groups = canCreate && unit ? await readSstAsoPrograms(database, unit.id) : [];
   const programs = groups.map((entry) => { const group = asoGroupSnapshot.parse(entry.groupSnapshot); return { id: entry.id, label: `${entry.program.code} v${entry.program.version} · ${group.code} · ${group.name}`, exams: z.array(z.object({ name: z.string(), occasion: z.string() })).parse(entry.exams) }; });
-  const questionnaireRecords = canCreate && unit ? await context.prisma.sstQuestionnaireVersion.findMany({ where: { budgetUnitId: unit.id, discipline: "MEDICINE" }, take: 200, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }) : [];
+  const questionnaireRecords = canCreate && unit ? await readSstAsoQuestionnaires(database, unit.id) : [];
   const questionnaires = questionnaireRecords.map((q) => ({ id: q.id, title: q.title, version: q.version, questions: questionnaireQuestions.parse(q.questions) }));
-  const periods = canCreate && unit && people.length ? await context.prisma.$queryRaw<{ id: string; employeeName: string; contractReference: string; governmentEntityId: string; startsAt: Date; endsAt: Date }[]>`SELECT p.id,e.name AS "employeeName",p."contractReference",p."governmentEntityId",p."startsAt",p."endsAt" FROM "HrEmployeeFunctionalPeriod" p JOIN "Employee" e ON e.id=p."employeeId" WHERE p."budgetUnitId"=${unit.id} AND e."personId"=ANY(${people.map((p) => p.id)}::text[]) AND NOT p.voided AND NOT EXISTS (SELECT 1 FROM "HrEmployeeFunctionalPeriod" n WHERE n."supersedesId"=p.id) ORDER BY p."startsAt" DESC,p.id LIMIT 200` : [];
-  const functionalPeriods = periods.map((p) => ({ ...p, startsAt: p.startsAt.toISOString().slice(0, 10), endsAt: p.endsAt.toISOString().slice(0, 10) }));
-  const [settings] = unit ? await context.prisma.$queryRaw<{ suggestedResults: string[]; vacationWarningDays: number }[]>`SELECT "suggestedResults","vacationWarningDays" FROM "SstAsoFlowSettings" WHERE "budgetUnitId"=${unit.id}` : [];
+  const periods = canCreate && unit && people.length ? await readSstAsoFunctionalPeriods(database, unit.id, people.map(p => p.id)) : [];
+  const functionalPeriods = periods.map(p => ({ ...p, startsAt: p.startsAt.toISOString().slice(0, 10), endsAt: p.endsAt.toISOString().slice(0, 10) }));
+  const settings = unit ? await findSstAsoSettings(database, unit.id) : undefined;
   const href = (value: number) => `/sst/aso?${new URLSearchParams({ budgetUnitId: params.budgetUnitId || "", q: params.q || "", personQ: params.personQ || "", laboratoryQ: params.laboratoryQ || "", expiresFrom: params.expiresFrom || "", expiresTo: params.expiresTo || "", page: String(value) })}`;
   const field = "min-w-0 rounded border p-2";
   return <div className="space-y-4 p-4">

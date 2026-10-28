@@ -1,5 +1,8 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import type { JsonValue } from "@/db/json";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
 import { z } from "zod";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { arePortalPayrollStatementsEnabled } from "@/lib/rh/payroll-configuration";
@@ -12,14 +15,16 @@ export default async function MyConsignmentMargin({ searchParams }: { searchPara
   const access = await getEmployeePortalAccess();
   if (access.status !== "AVAILABLE") return <p className="p-4">Cadastro funcional indisponível.</p>;
   const { context, employee } = access;
-  if (!await arePortalPayrollStatementsEnabled(context.prisma)) return <p className="p-4">Demonstrativos desabilitados pelo RH.</p>;
+  const executor = context.database ?? db;
+  if (!await arePortalPayrollStatementsEnabled(executor)) return <p className="p-4">Demonstrativos desabilitados pelo RH.</p>;
   const params = await searchParams;
   const competence = /^(0[1-9]|1[0-2])\/\d{4}$/.test(params.competence || "") ? params.competence : undefined;
-  const ownStatement: Prisma.HrPayrollStatementWhereInput = { contract: { employeeId: employee.id }, releaseAt: { lte: new Date() }, revokedAt: null };
-  const where: Prisma.HrPayrollRunWhereInput = { mode: "OFICIAL", status: "FECHADA", payroll: { type: "Mensal", ...(competence ? { competence } : {}) }, statements: { some: ownStatement } };
-  const total = await context.prisma.hrPayrollRun.count({ where });
+  const ownStatement = sql`c."employeeId"=${employee.id} AND s."releaseAt"<=${new Date()} AND s."revokedAt" IS NULL`;
+  const where = sql`r.mode='OFICIAL' AND r.status='FECHADA' AND p.type='Mensal' ${competence ? sql`AND p.competence=${competence}` : sql``} AND EXISTS(SELECT 1 FROM "HrPayrollStatement" s JOIN "HrEmploymentContract" c ON c.id=s."contractId" WHERE s."runId"=r.id AND ${ownStatement})`;
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "HrPayrollRun" r JOIN "Payroll" p ON p.id=r."payrollId" WHERE ${where}`);
   const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const rows = await context.prisma.hrPayrollRun.findMany({ where, select: { id: true, scope: true, createdAt: true, payroll: { select: { competence: true } }, statements: { where: ownStatement, take: 1, orderBy: { id: "asc" }, select: { snapshot: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+  const runRows = await portalRows<{ id: string; scope: string; createdAt: Date; competence: string; statementSnapshot: JsonValue }>(executor, sql`SELECT r.id,r.scope,r."createdAt",p.competence,(SELECT s.snapshot FROM "HrPayrollStatement" s JOIN "HrEmploymentContract" c ON c.id=s."contractId" WHERE s."runId"=r.id AND ${ownStatement} ORDER BY s.id LIMIT 1) AS "statementSnapshot" FROM "HrPayrollRun" r JOIN "Payroll" p ON p.id=r."payrollId" WHERE ${where} ORDER BY r."createdAt" DESC,r.id LIMIT 20 OFFSET ${(page - 1) * 20}`);
+  const rows = runRows.map(({ competence, statementSnapshot, ...row }) => ({ ...row, payroll: { competence }, statements: [{ snapshot: statementSnapshot }] }));
   const href = (value: number) => `?${new URLSearchParams({ page: String(value), competence: competence || "" })}`;
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title="Minha margem consignável" description="Memória histórica das folhas oficiais liberadas, com limite compartilhado entre os vínculos." action={<Link href="/portal-servidor/demonstrativos">Demonstrativos</Link>} />

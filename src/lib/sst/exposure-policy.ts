@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { and, eq, inArray } from "drizzle-orm";
+import { employees } from "@/db/schema/administration";
 
 export const exposureGroupInput = z.object({
   budgetUnitId: z.string().min(1), code: z.string().trim().toUpperCase().min(1).max(40).regex(/^[A-Z0-9_.-]+$/),
@@ -8,6 +9,6 @@ export const exposureGroupInput = z.object({
   endsAt: z.preprocess((value) => value === "" || value == null ? null : value, z.coerce.date().nullable()),
 }).refine((value) => !value.endsAt || value.endsAt >= value.startsAt, "Vigência inválida.");
 
-export function exposureMemberWhere(group: { departmentIds: string[]; roleIds: string[] }, secretariatId: string): Prisma.EmployeeWhereInput {
-  return { secretariatId, isActive: true, ...(group.departmentIds.length ? { departmentId: { in: group.departmentIds } } : {}), ...(group.roleIds.length ? { roleId: { in: group.roleIds } } : {}) };
+export function exposureMemberWhere(group: { departmentIds: string[] | null; roleIds: string[] | null }, secretariatId: string) {
+  return and(eq(employees.secretariatId, secretariatId), eq(employees.isActive, true), group.departmentIds?.length ? inArray(employees.departmentId, group.departmentIds) : undefined, group.roleIds?.length ? inArray(employees.roleId, group.roleIds) : undefined)!;
 }

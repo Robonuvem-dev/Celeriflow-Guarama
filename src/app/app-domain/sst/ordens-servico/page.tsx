@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { searchSstPeople } from "@/db/repositories/sst/references";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstServiceOrderOptions } from "@/db/repositories/sst-pages/functional-options";
 import { listServiceOrders } from "@/lib/sst/service-order-service";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { SstForm } from "../SstForm";
@@ -9,18 +12,11 @@ import { saveServiceOrder, saveTechnicalResponsibility, revokeTechnicalRecord } 
 export default async function ServiceOrdersPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams;
   const context = await getTenantContextForModule("SST");
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), orderBy: [{ name: "asc" }, { id: "asc" }] });
+  const database = sstDatabase(context), units = await listSstUnits(database, context);
   const unit = units.find((u) => u.id === params.budgetUnitId);
   const { records, total, page } = await listServiceOrders(context, params.budgetUnitId, Number(params.page));
-  const [responsibilityCount] = unit ? await context.prisma.$queryRaw<{ total: number }[]>`SELECT count(*)::int AS total FROM "SstTechnicalResponsibility" WHERE "budgetUnitId"=${unit.id}` : [{ total: 0 }];
-  const responsibilityPage = Math.min(Math.max(1, Math.trunc(Number(params.responsibilityPage)) || 1), Math.max(1, Math.ceil(responsibilityCount.total / 20)));
-  const [groups, programGroups, people, materials, responsibilities] = await Promise.all([
-    unit ? context.prisma.sstExposureGroup.findMany({ where: { budgetUnitId: unit.id }, select: { id: true, name: true } }) : [],
-    unit ? context.prisma.sstProgramExposureGroup.findMany({ where: { program: { budgetUnitId: unit.id, kind: { in: ["PGR", "LTCAT"] } } }, include: { program: true, group: { select: { name: true } } }, orderBy: { id: "asc" } }) : [],
-    params.personQ && params.personQ.trim().length >= 3 ? context.prisma.person.findMany({ where: { fullName: { contains: params.personQ.trim(), mode: "insensitive" } }, take: 20, orderBy: [{ fullName: "asc" }, { id: "asc" }], select: { id: true, fullName: true } }) : [],
-    params.materialQ && params.materialQ.trim().length >= 3 ? context.prisma.material.findMany({ where: { name: { contains: params.materialQ.trim(), mode: "insensitive" }, isActive: true }, take: 20, orderBy: [{ name: "asc" }, { id: "asc" }], select: { id: true, name: true } }) : [],
-    unit ? context.prisma.$queryRaw<{ id: string; kind: string; snapshot: { personName: string }; startsAt: Date; endsAt: Date; revoked: boolean }[]>`SELECT r.*,EXISTS(SELECT 1 FROM "SstFoundationalRevocation" v WHERE v."responsibilityId"=r.id) AS revoked FROM "SstTechnicalResponsibility" r WHERE r."budgetUnitId"=${unit.id} ORDER BY r."startsAt" DESC,r.id LIMIT 20 OFFSET ${(responsibilityPage - 1) * 20}` : [],
-  ]);
+  const {responsibilityCount,responsibilityPage,groups,programGroups,materials,responsibilities}=await readSstServiceOrderOptions(database,unit?.id,params);
+  const people=params.personQ && params.personQ.trim().length >= 3 ? await searchSstPeople(database,params.personQ.trim()):[];
   const field = "block w-full rounded border p-2";
   const dates = <div className="grid gap-2 sm:grid-cols-2"><label>Início<input type="datetime-local" name="startsAt" required className={field}/></label><label>Fim exclusivo<input type="datetime-local" name="endsAt" required className={field}/></label></div>;
   const href = (p: number) => `/sst/ordens-servico?${new URLSearchParams({ ...Object.fromEntries(Object.entries(params).filter((e): e is [string, string] => !!e[1])), page: String(p) })}`;

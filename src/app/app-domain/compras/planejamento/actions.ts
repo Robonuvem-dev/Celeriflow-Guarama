@@ -1,6 +1,11 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
+import { and, eq } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { getPostgresError } from "@/db/errors";
+import { catalogItems } from "@/db/schema/master-data";
+import { purchasePlannings, purchaseRequests } from "@/db/schema/procurement-requests";
 import { revalidatePath } from "next/cache";
 import { AccessError, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import {
@@ -25,7 +30,7 @@ function actionFailure(error: unknown): PurchasePlanningActionResult {
   if (error instanceof PurchasePlanningError || error instanceof AccessError) {
     return { success: false, error: error.message };
   }
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+  if (["23503", "23001"].includes(getPostgresError(error)?.code ?? "")) {
     return { success: false, error: "O item de catálogo ou a solicitação de origem não está mais disponível." };
   }
   console.error("Unable to save purchase planning:", error);
@@ -36,7 +41,7 @@ export async function savePurchasePlanning(formData: FormData): Promise<Purchase
   const id = formString(formData, "id");
 
   try {
-    const context = await getTenantContextForModuleOperation("COMPRAS", id ? "update" : "create");
+    await getTenantContextForModuleOperation("COMPRAS", id ? "update" : "create");
     const input = normalizePurchasePlanningInput({
       description: formString(formData, "description"),
       catalogItemId: formString(formData, "catalogItemId"),
@@ -49,26 +54,21 @@ export async function savePurchasePlanning(formData: FormData): Promise<Purchase
       status: formString(formData, "status"),
     });
 
-    const [catalogItem, originPurchaseRequest] = await Promise.all([
+    const result = await withDatabaseTransaction(databaseConnection, async tx => {
+    const [[catalogItem], [originPurchaseRequest]] = await Promise.all([
       input.catalogItemId
-        ? context.prisma.catalogItem.findFirst({
-          where: { id: input.catalogItemId, isActive: true },
-          select: { id: true },
-        })
-        : null,
+        ? tx.select({ id: catalogItems.id }).from(catalogItems).where(and(eq(catalogItems.id, input.catalogItemId), eq(catalogItems.isActive, true))).limit(1)
+        : [],
       input.originPurchaseRequestId
-        ? context.prisma.purchaseRequest.findUnique({
-          where: { id: input.originPurchaseRequestId },
-          select: { id: true },
-        })
-        : null,
+        ? tx.select({ id: purchaseRequests.id }).from(purchaseRequests).where(eq(purchaseRequests.id, input.originPurchaseRequestId)).limit(1)
+        : [],
     ]);
 
     if (input.catalogItemId && !catalogItem) {
-      return { success: false, error: "Selecione um item ativo do catálogo." };
+      throw new PurchasePlanningError("Selecione um item ativo do catálogo.");
     }
     if (input.originPurchaseRequestId && !originPurchaseRequest) {
-      return { success: false, error: "Selecione uma solicitação de origem existente." };
+      throw new PurchasePlanningError("Selecione uma solicitação de origem existente.");
     }
 
     const data = {
@@ -84,20 +84,16 @@ export async function savePurchasePlanning(formData: FormData): Promise<Purchase
     };
 
     if (id) {
-      const existing = await context.prisma.purchasePlanning.findUnique({
-        where: { id },
-        select: { id: true },
-      });
-      if (!existing) return { success: false, error: "Planejamento de compra não encontrado." };
-
-      await context.prisma.purchasePlanning.update({ where: { id: existing.id }, data });
-      revalidatePlanningPaths(existing.id);
-      return { success: true, id: existing.id };
+      const [existing] = await tx.update(purchasePlannings).set(data).where(eq(purchasePlannings.id, id)).returning({ id: purchasePlannings.id });
+      if (!existing) throw new PurchasePlanningError("Planejamento de compra não encontrado.");
+      return existing;
     }
 
-    const planning = await context.prisma.purchasePlanning.create({ data });
-    revalidatePlanningPaths(planning.id);
-    return { success: true, id: planning.id };
+    const [planning] = await tx.insert(purchasePlannings).values(data).returning({ id: purchasePlannings.id });
+    return planning;
+    });
+    revalidatePlanningPaths(result.id);
+    return { success: true, id: result.id };
   } catch (error) {
     return actionFailure(error);
   }

@@ -1,14 +1,23 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-import { canPerformModuleOperation, canViewModule, type AppContext } from "@/lib/platform/tenant-context";
+import { eq } from "drizzle-orm";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { accessProfiles, modules, userBudgetUnits, userModulePermissions, users } from "@/db/schema/identity";
+import { employees } from "@/db/schema/administration";
+import type { PermissionUser } from "@/lib/contracts/identity";
+import { canPerformModuleOperation, canViewModule } from "@/lib/platform/tenant-context";
 
-export async function resolveTaxWorkerActor(db: PrismaClient | Prisma.TransactionClient, id: string | undefined) {
+export async function resolveTaxWorkerActor(db: DatabaseExecutor, id: string | undefined) {
   if (!id?.trim()) throw new Error("Configure o usuário do agendamento tributário.");
   const [actor, module] = await Promise.all([
-    db.usuario.findUnique({ where: { id: id.trim() }, include: { perfil: true, employee: true, permissoesModulo: { include: { modulo: { select: { codigo: true } } } }, unidadesGestoras: { select: { budgetUnitId: true } } } }),
-    db.configuracaoModulo.findUnique({ where: { codigo: "TRIBUTACAO" }, select: { ativo: true } }),
+    db.select({ id: users.id, ativo: users.ativo, firebaseUid: users.firebaseUid, email: users.email, nome: users.nome, perfil: { ativo: accessProfiles.ativo, nome: accessProfiles.nome, codigo: accessProfiles.codigo, permissoes: accessProfiles.permissoes }, employee: { id: employees.id, departmentId: employees.departmentId, secretariatId: employees.secretariatId } }).from(users).innerJoin(accessProfiles, eq(accessProfiles.id, users.perfilId)).leftJoin(employees, eq(employees.id, users.employeeId)).where(eq(users.id, id.trim())).limit(1),
+    db.select({ ativo: modules.ativo }).from(modules).where(eq(modules.codigo, "TRIBUTACAO")).limit(1),
   ]);
-  if (!actor?.ativo || !actor.perfil.ativo || !actor.firebaseUid || !module?.ativo) throw new Error("Ator, perfil ou módulo tributário indisponível.");
-  const user: AppContext["user"] = { id: actor.id, firebaseUid: actor.firebaseUid, email: actor.email, name: actor.nome, role: actor.perfil.nome, profileCode: actor.perfil.codigo, permissions: actor.perfil.permissoes, modulePermissions: actor.permissoesModulo.map(permission => ({ code: permission.modulo.codigo.toUpperCase(), canView: permission.canView, canEdit: permission.canEdit })), allowedBudgetUnitIds: actor.unidadesGestoras.map(unit => unit.budgetUnitId), employeeId: actor.employee?.id ?? null, departmentId: actor.employee?.departmentId ?? null, secretariatId: actor.employee?.secretariatId ?? null };
+  const record = actor[0];
+  if (!record?.ativo || !record.perfil.ativo || !record.firebaseUid || !module[0]?.ativo) throw new Error("Ator, perfil ou módulo tributário indisponível.");
+  const [permissions, units] = await Promise.all([
+    db.select({ code: modules.codigo, canView: userModulePermissions.canView, canEdit: userModulePermissions.canEdit }).from(userModulePermissions).innerJoin(modules, eq(modules.id, userModulePermissions.moduloId)).where(eq(userModulePermissions.usuarioId, record.id)),
+    db.select({ budgetUnitId: userBudgetUnits.budgetUnitId }).from(userBudgetUnits).where(eq(userBudgetUnits.usuarioId, record.id)),
+  ]);
+  const user: PermissionUser = { id: record.id, firebaseUid: record.firebaseUid, email: record.email, name: record.nome, role: record.perfil.nome, profileCode: record.perfil.codigo, permissions: record.perfil.permissoes, modulePermissions: permissions.map(permission => ({ ...permission, code: permission.code.toUpperCase() })), allowedBudgetUnitIds: units.map(unit => unit.budgetUnitId), employeeId: record.employee?.id ?? null, departmentId: record.employee?.departmentId ?? null, secretariatId: record.employee?.secretariatId ?? null };
   if (!canViewModule(user, "TRIBUTACAO") || !canPerformModuleOperation(user, "TRIBUTACAO", "update") || !user.allowedBudgetUnitIds.length) throw new Error("Ator do agendamento exige alteração tributária e UGs explícitas.");
   return { usuarioId: user.id, employeeId: user.employeeId, allowedBudgetUnitIds: user.allowedBudgetUnitIds };
 }

@@ -1,62 +1,57 @@
 import 'dotenv/config'
-import { prisma } from '../src/lib/prisma'
+import { eq, like } from 'drizzle-orm'
+import { createDatabaseConnection } from '../src/db/connection'
+import { secretariats, departments, roles, employees } from '../src/db/schema/administration'
+import { costCenters } from '../src/db/schema/master-data'
+import { companies, suppliers } from '../src/db/schema/registry'
+import { warehouses as warehouseTable, materialCategories, materials, materialStocks, inventorySessions, inventorySessionItems } from '../src/db/schema/assets-stock'
+import { assets, assetCategories, assetWriteOffs, assetValueAdjustments } from '../src/db/schema/assets'
+import { materialRequests, materialRequestItems } from '../src/db/schema/assets-requests'
+import { users, accessProfiles } from '../src/db/schema/identity'
+
+const connection = createDatabaseConnection(process.env.DATABASE_URL!)
+const db = connection.db
 
 async function main() {
   console.log('Iniciando seed completo de Almoxarifado, Patrimônio, Centros de Custo e Requisições...')
 
   // 1. Secretarias e Departamentos
-  const secAdmin = await prisma.secretariat.findFirst({ where: { name: { contains: 'Administração' } } }) || 
-    await prisma.secretariat.create({ data: { name: 'Secretaria Municipal de Administração', acronym: 'SMA' } })
+  const secAdmin = (await db.select().from(secretariats).where(like(secretariats.name, '%Administração%')).limit(1))[0] ||
+    (await db.insert(secretariats).values({ name: 'Secretaria Municipal de Administração', acronym: 'SMA' }).returning())[0]
 
-  const secSaude = await prisma.secretariat.findFirst({ where: { name: { contains: 'Saúde' } } }) ||
-    await prisma.secretariat.create({ data: { name: 'Secretaria Municipal de Saúde', acronym: 'SMS' } })
+  const secSaude = (await db.select().from(secretariats).where(like(secretariats.name, '%Saúde%')).limit(1))[0] ||
+    (await db.insert(secretariats).values({ name: 'Secretaria Municipal de Saúde', acronym: 'SMS' }).returning())[0]
 
-  const secEducacao = await prisma.secretariat.findFirst({ where: { name: { contains: 'Educação' } } }) ||
-    await prisma.secretariat.create({ data: { name: 'Secretaria Municipal de Educação', acronym: 'SME' } })
+  const secEducacao = (await db.select().from(secretariats).where(like(secretariats.name, '%Educação%')).limit(1))[0] ||
+    (await db.insert(secretariats).values({ name: 'Secretaria Municipal de Educação', acronym: 'SME' }).returning())[0]
 
-  const secObras = await prisma.secretariat.findFirst({ where: { name: { contains: 'Obras' } } }) ||
-    await prisma.secretariat.create({ data: { name: 'Secretaria Municipal de Obras e Infraestrutura', acronym: 'SMOI' } })
+  const secObras = (await db.select().from(secretariats).where(like(secretariats.name, '%Obras%')).limit(1))[0] ||
+    (await db.insert(secretariats).values({ name: 'Secretaria Municipal de Obras e Infraestrutura', acronym: 'SMOI' }).returning())[0]
 
-  const deptAdmin = await prisma.department.findFirst({ where: { secretariatId: secAdmin.id } }) ||
-    await prisma.department.create({ data: { name: 'Departamento de Gestão de Materiais e Patrimônio', secretariatId: secAdmin.id } })
+  const deptAdmin = (await db.select().from(departments).where(eq(departments.secretariatId, secAdmin.id)).limit(1))[0] ||
+    (await db.insert(departments).values({ name: 'Departamento de Gestão de Materiais e Patrimônio', secretariatId: secAdmin.id }).returning())[0]
 
-  const deptSaude = await prisma.department.findFirst({ where: { secretariatId: secSaude.id } }) ||
-    await prisma.department.create({ data: { name: 'Departamento de Gestão Hospitalar e Insumos', secretariatId: secSaude.id } })
+  const deptSaude = (await db.select().from(departments).where(eq(departments.secretariatId, secSaude.id)).limit(1))[0] ||
+    (await db.insert(departments).values({ name: 'Departamento de Gestão Hospitalar e Insumos', secretariatId: secSaude.id }).returning())[0]
 
-  const deptEducacao = await prisma.department.findFirst({ where: { secretariatId: secEducacao.id } }) ||
-    await prisma.department.create({ data: { name: 'Departamento de Alimentação Escolar e Ensino', secretariatId: secEducacao.id } })
+  const deptEducacao = (await db.select().from(departments).where(eq(departments.secretariatId, secEducacao.id)).limit(1))[0] ||
+    (await db.insert(departments).values({ name: 'Departamento de Alimentação Escolar e Ensino', secretariatId: secEducacao.id }).returning())[0]
 
-  const deptObras = await prisma.department.findFirst({ where: { secretariatId: secObras.id } }) ||
-    await prisma.department.create({ data: { name: 'Departamento de Manutenção da Infraestrutura Urbana', secretariatId: secObras.id } })
+  const deptObras = (await db.select().from(departments).where(eq(departments.secretariatId, secObras.id)).limit(1))[0] ||
+    (await db.insert(departments).values({ name: 'Departamento de Manutenção da Infraestrutura Urbana', secretariatId: secObras.id }).returning())[0]
 
   // Cargo Almoxarife
-  const roleAlmoxarife = await prisma.role.findFirst({ where: { name: 'Almoxarife' } }) ||
-    await prisma.role.create({ data: { name: 'Almoxarife' } })
+  const roleAlmoxarife = (await db.select().from(roles).where(eq(roles.name, 'Almoxarife')).limit(1))[0] ||
+    (await db.insert(roles).values({ name: 'Almoxarife' }).returning())[0]
 
   // 2. Servidores Responsáveis (Almoxarifes)
-  const almoxarife1 = await prisma.employee.upsert({
-    where: { cpf: '11122233344' },
-    update: { roleId: roleAlmoxarife.id },
-    create: { name: 'Carlos Alberto Silva', cpf: '11122233344', roleId: roleAlmoxarife.id }
-  })
+  const [almoxarife1] = await db.insert(employees).values({ name: 'Carlos Alberto Silva', cpf: '11122233344', roleId: roleAlmoxarife.id }).onConflictDoUpdate({ target: employees.cpf, set: { roleId: roleAlmoxarife.id } }).returning()
 
-  const almoxarife2 = await prisma.employee.upsert({
-    where: { cpf: '22233344455' },
-    update: { roleId: roleAlmoxarife.id },
-    create: { name: 'Mariana Oliveira Souza', cpf: '22233344455', roleId: roleAlmoxarife.id }
-  })
+  const [almoxarife2] = await db.insert(employees).values({ name: 'Mariana Oliveira Souza', cpf: '22233344455', roleId: roleAlmoxarife.id }).onConflictDoUpdate({ target: employees.cpf, set: { roleId: roleAlmoxarife.id } }).returning()
 
-  const almoxarife3 = await prisma.employee.upsert({
-    where: { cpf: '33344455566' },
-    update: { roleId: roleAlmoxarife.id },
-    create: { name: 'Roberto Santos Ferreira', cpf: '33344455566', roleId: roleAlmoxarife.id }
-  })
+  const [almoxarife3] = await db.insert(employees).values({ name: 'Roberto Santos Ferreira', cpf: '33344455566', roleId: roleAlmoxarife.id }).onConflictDoUpdate({ target: employees.cpf, set: { roleId: roleAlmoxarife.id } }).returning()
 
-  const almoxarife4 = await prisma.employee.upsert({
-    where: { cpf: '44455566677' },
-    update: { roleId: roleAlmoxarife.id },
-    create: { name: 'Fernanda Souza Lima', cpf: '44455566677', roleId: roleAlmoxarife.id }
-  })
+  const [almoxarife4] = await db.insert(employees).values({ name: 'Fernanda Souza Lima', cpf: '44455566677', roleId: roleAlmoxarife.id }).onConflictDoUpdate({ target: employees.cpf, set: { roleId: roleAlmoxarife.id } }).returning()
 
   // 3. Centros de Custo (10 Mínimo com lógica municipal)
   const costCentersData = [
@@ -72,13 +67,9 @@ async function main() {
     { code: 'CC-010', name: 'Secretaria Municipal de Cultura, Esporte e Lazer', description: 'Equipamentos culturais, centro de memória, quadras e incentivos' }
   ]
 
-  const createdCostCenters: Record<string, any> = {}
+  const createdCostCenters: Record<string, typeof costCenters.$inferSelect> = {}
   for (const cc of costCentersData) {
-    const item = await prisma.costCenter.upsert({
-      where: { code: cc.code },
-      update: { name: cc.name, description: cc.description, isActive: true },
-      create: { code: cc.code, name: cc.name, description: cc.description, isActive: true }
-    })
+    const [item] = await db.insert(costCenters).values({ code: cc.code, name: cc.name, description: cc.description, isActive: true }).onConflictDoUpdate({ target: costCenters.code, set: { name: cc.name, description: cc.description, isActive: true } }).returning()
     createdCostCenters[cc.code] = item
   }
 
@@ -138,17 +129,14 @@ async function main() {
     }
   ]
 
-  const warehouses: any[] = []
+  const warehouses: Array<typeof warehouseTable.$inferSelect> = []
   for (const wh of warehousesData) {
-    const existing = await prisma.warehouse.findFirst({ where: { name: wh.name } })
+    const [existing] = await db.select().from(warehouseTable).where(eq(warehouseTable.name, wh.name)).limit(1)
     if (existing) {
-      const updated = await prisma.warehouse.update({
-        where: { id: existing.id },
-        data: wh
-      })
+      const [updated] = await db.update(warehouseTable).set(wh).where(eq(warehouseTable.id, existing.id)).returning()
       warehouses.push(updated)
     } else {
-      const created = await prisma.warehouse.create({ data: wh })
+      const [created] = await db.insert(warehouseTable).values(wh).returning()
       warehouses.push(created)
     }
   }
@@ -165,33 +153,23 @@ async function main() {
     { code: 'CAT-DID', name: 'Material Escolar, Didático e Pedagógico' }
   ]
 
-  const matCats: Record<string, any> = {}
+  const matCats: Record<string, typeof materialCategories.$inferSelect> = {}
   for (const mc of materialCategoriesData) {
-    const item = await prisma.materialCategory.upsert({
-      where: { code: mc.code },
-      update: { name: mc.name },
-      create: { code: mc.code, name: mc.name }
-    })
+    const [item] = await db.insert(materialCategories).values({ code: mc.code, name: mc.name }).onConflictDoUpdate({ target: materialCategories.code, set: { name: mc.name } }).returning()
     matCats[mc.code] = item
   }
 
   // 6. Fornecedor Padrão
-  const supplier = await prisma.supplier.findFirst() || 
-    await prisma.supplier.create({
-      data: {
-        category: 'Comércio Geral',
-        businessBranch: 'Fornecimento para Gestão Pública',
-        status: 'Ativo',
-        company: {
-          create: {
+  const supplier = (await db.select().from(suppliers).limit(1))[0] ||
+    await db.transaction(async (tx) => {
+      const [company] = await tx.insert(companies).values({
             corporateName: 'Distribuidora Global de Insumos LTDA',
             tradeName: 'Distribuidora Global',
             cnpj: '98765432000188',
             companyType: 'ME',
             primaryCnae: '46.49-4-99'
-          }
-        }
-      }
+      }).returning()
+      return (await tx.insert(suppliers).values({ category: 'Comércio Geral', businessBranch: 'Fornecimento para Gestão Pública', status: 'Ativo', companyId: company.id }).returning())[0]
     })
 
   // 7. População Massiva de MATERIAIS (>1.000 materiais diversos)
@@ -242,7 +220,7 @@ async function main() {
 
   // Generate 1020 total unique materials
   const totalMaterialsToCreate = 1020
-  const generatedMaterials: any[] = []
+  const generatedMaterials: Array<{ code: string; name: string; description: string; type: string; unitOfMeasure: string; minStock: number; maxStock: number; isPerishable: boolean; categoryId: string; unitCost: number }> = []
 
   let index = 1
   while (generatedMaterials.length < totalMaterialsToCreate) {
@@ -274,19 +252,7 @@ async function main() {
   for (let i = 0; i < generatedMaterials.length; i += 100) {
     const batch = generatedMaterials.slice(i, i + 100)
     for (const item of batch) {
-      const createdMat = await prisma.material.upsert({
-        where: { code: item.code },
-        update: {
-          name: item.name,
-          description: item.description,
-          type: item.type,
-          unitOfMeasure: item.unitOfMeasure,
-          minStock: item.minStock,
-          maxStock: item.maxStock,
-          isPerishable: item.isPerishable,
-          categoryId: item.categoryId
-        },
-        create: {
+      const [createdMat] = await db.insert(materials).values({
           code: item.code,
           name: item.name,
           description: item.description,
@@ -296,8 +262,17 @@ async function main() {
           maxStock: item.maxStock,
           isPerishable: item.isPerishable,
           categoryId: item.categoryId
+      }).onConflictDoUpdate({ target: materials.code, set: {
+          name: item.name,
+          description: item.description,
+          type: item.type,
+          unitOfMeasure: item.unitOfMeasure,
+          minStock: item.minStock,
+          maxStock: item.maxStock,
+          isPerishable: item.isPerishable,
+          categoryId: item.categoryId
         }
-      })
+      }).returning()
 
       // Target warehouse assignment based on category
       let assignedWh = warehouses[0]
@@ -323,28 +298,18 @@ async function main() {
 
       const expDate = item.isPerishable ? new Date('2026-12-15') : null
 
-      await prisma.materialStock.upsert({
-        where: {
-          warehouseId_materialId_batchNumber: {
-            warehouseId: assignedWh.id,
-            materialId: createdMat.id,
-            batchNumber: 'LOTE-2026-01'
-          }
-        },
-        update: {
-          quantity,
-          unitCost: item.unitCost,
-          expirationDate: expDate
-        },
-        create: {
+      await db.insert(materialStocks).values({
           warehouseId: assignedWh.id,
           materialId: createdMat.id,
           batchNumber: 'LOTE-2026-01',
           quantity,
           unitCost: item.unitCost,
           expirationDate: expDate
-        }
-      })
+      }).onConflictDoUpdate({ target: [materialStocks.warehouseId, materialStocks.materialId, materialStocks.batchNumber], set: {
+          quantity,
+          unitCost: item.unitCost,
+          expirationDate: expDate
+      } })
     }
   }
 
@@ -360,10 +325,10 @@ async function main() {
     { code: 'CAT-CLIM', name: 'Climatização, Eletrodomésticos e Som', lifeSpan: 7 }
   ]
 
-  const assetCats: Record<string, any> = {}
+  const assetCats: Record<string, typeof assetCategories.$inferSelect> = {}
   for (const ac of assetCategoriesData) {
-    const item = await prisma.assetCategory.findFirst({ where: { code: ac.code } }) ||
-      await prisma.assetCategory.create({ data: { code: ac.code, name: ac.name, lifeSpan: ac.lifeSpan } })
+    const item = (await db.select().from(assetCategories).where(eq(assetCategories.code, ac.code)).limit(1))[0] ||
+      (await db.insert(assetCategories).values({ code: ac.code, name: ac.name, lifeSpan: ac.lifeSpan }).returning())[0]
     assetCats[ac.code] = item
   }
 
@@ -398,7 +363,7 @@ async function main() {
   ]
 
   const totalAssetsToCreate = 310
-  const createdAssetsList: any[] = []
+  const createdAssetsList: Array<typeof assets.$inferSelect> = []
 
   for (let i = 1; i <= totalAssetsToCreate; i++) {
     const patNum = `PAT${String(i).padStart(5, '0')}`
@@ -413,23 +378,7 @@ async function main() {
 
     const acqDate = new Date(2025, (i % 12), (i % 28) + 1)
 
-    const asset = await prisma.asset.upsert({
-      where: { patrimonyNumber: patNum },
-      update: {
-        name: `${tpl.name} - Nº ${i}`,
-        brand: tpl.brand,
-        model: tpl.model,
-        serialNumber: `SN-${tpl.brand.substring(0,3).toUpperCase()}-${20250000 + i}`,
-        status,
-        acquisitionDate: acqDate,
-        acquisitionValue: tpl.val,
-        currentValue: tpl.val * 0.9,
-        categoryId: category.id,
-        departmentId: deptId,
-        supplierId: supplier.id,
-        createdAt: acqDate
-      },
-      create: {
+    const [asset] = await db.insert(assets).values({
         patrimonyNumber: patNum,
         name: `${tpl.name} - Nº ${i}`,
         brand: tpl.brand,
@@ -443,36 +392,44 @@ async function main() {
         departmentId: deptId,
         supplierId: supplier.id,
         createdAt: acqDate
+    }).onConflictDoUpdate({ target: assets.patrimonyNumber, set: {
+        name: `${tpl.name} - Nº ${i}`,
+        brand: tpl.brand,
+        model: tpl.model,
+        serialNumber: `SN-${tpl.brand.substring(0,3).toUpperCase()}-${20250000 + i}`,
+        status,
+        acquisitionDate: acqDate,
+        acquisitionValue: tpl.val,
+        currentValue: tpl.val * 0.9,
+        categoryId: category.id,
+        departmentId: deptId,
+        supplierId: supplier.id,
+        createdAt: acqDate
       }
-    })
+    }).returning()
     createdAssetsList.push(asset)
   }
 
   // 9. Histórico de Requisições Internas (20 Recomendações)
   console.log('Gerando histórico de requisições internas...')
-  const sampleMaterial = await prisma.material.findFirst({ where: { code: 'MAT00001' } })
+  const [sampleMaterial] = await db.select().from(materials).where(eq(materials.code, 'MAT00001')).limit(1)
   if (sampleMaterial) {
     for (let r = 1; r <= 20; r++) {
       const reqNum = `REQ-2026-${String(r).padStart(3, '0')}`
       const reqStatus = r % 3 === 0 ? 'Atendida' : r % 3 === 1 ? 'Pendente' : 'Em Análise'
       
-      const reqExists = await prisma.materialRequest.findFirst({ where: { number: reqNum } })
+      const [reqExists] = await db.select().from(materialRequests).where(eq(materialRequests.number, reqNum)).limit(1)
       if (!reqExists) {
-        await prisma.materialRequest.create({
-          data: {
+        await db.transaction(async (tx) => {
+          const [request] = await tx.insert(materialRequests).values({
             number: reqNum,
             departmentId: deptAdmin.id,
             requesterId: almoxarife1.id,
             status: reqStatus,
             date: new Date(2026, 8, (r % 20) + 1),
             justification: `Requisição periódica de reposição de almoxarifado #${r}`,
-            items: {
-              create: {
-                materialId: sampleMaterial.id,
-                quantityRequested: 15 + r
-              }
-            }
-          }
+          }).returning()
+          await tx.insert(materialRequestItems).values({ requestId: request.id, materialId: sampleMaterial.id, quantityRequested: 15 + r })
         })
       }
     }
@@ -480,22 +437,21 @@ async function main() {
 
   // 10. Histórico Mensal de Inventários (2026)
   console.log('Gerando histórico mensal de inventários para 2026...')
-  const adminUser = await prisma.usuario.findFirst() || await prisma.usuario.create({
-    data: {
-      name: 'Administrador do Sistema',
-      email: 'admin@prefeitura.gov.br',
-      role: 'ADMIN'
-    }
-  })
+  const adminUser = (await db.select().from(users).limit(1))[0] || await (async () => {
+    // Usuario physically stores nome/perfilId, not the legacy name/role shape.
+    const [profile] = await db.select().from(accessProfiles).where(eq(accessProfiles.codigo, 'SYSTEM_ADMINISTRATOR')).limit(1)
+    if (!profile) throw new Error('Execute seed-perfis.ts antes do seed de patrimônio: falta o perfil SYSTEM_ADMINISTRATOR.')
+    return (await db.insert(users).values({ nome: 'Administrador do Sistema', email: 'admin@prefeitura.gov.br', perfilId: profile.id }).returning())[0]
+  })()
 
-  const sampleStock = await prisma.materialStock.findFirst({ include: { material: true } })
+  const [sampleStock] = await db.select().from(materialStocks).limit(1)
   if (sampleStock) {
     for (let m = 1; m <= 8; m++) {
       const monthWh = warehouses[(m - 1) % 4]
       const invDate = new Date(2026, m - 1, 15)
 
-      await prisma.inventorySession.create({
-        data: {
+      await db.transaction(async (tx) => {
+        const [session] = await tx.insert(inventorySessions).values({
           warehouseId: monthWh.id,
           status: 'CLOSED',
           lockMovements: false,
@@ -505,17 +461,16 @@ async function main() {
           createdByUsuarioId: adminUser.id,
           approvedByUsuarioId: adminUser.id,
           approvalEvidence: `Inventário mensal referente ao mês ${m}/2026 concluído com aprovação técnica.`,
-          items: {
-            create: {
+        }).returning()
+        await tx.insert(inventorySessionItems).values({
+              sessionId: session.id,
               stockId: sampleStock.id,
               expectedQuantity: sampleStock.quantity,
               countedQuantity: sampleStock.quantity,
               divergenceType: 'SEM_DIVERGENCIA',
               countEvidence: 'Contagem conferida por leitor óptico e conferência física.',
               adjustmentReason: 'Estoque conferido de acordo com saldo contábil.'
-            }
-          }
-        }
+        })
       })
     }
   }
@@ -527,8 +482,7 @@ async function main() {
       const assetToDispose = createdAssetsList[b]
       const disposalVal = b % 2 === 0 ? 0 : 500 + (b * 200)
       const bkVal = assetToDispose.acquisitionValue * 0.5
-      await prisma.assetWriteOff.create({
-        data: {
+      await db.insert(assetWriteOffs).values({
           assetId: assetToDispose.id,
           date: new Date(2026, b, 10),
           type: b % 2 === 0 ? 'Baixa' : 'Alienação',
@@ -537,7 +491,6 @@ async function main() {
           disposalValue: disposalVal,
           bookValue: bkVal,
           gainLoss: disposalVal - bkVal
-        }
       })
     }
 
@@ -546,8 +499,7 @@ async function main() {
       const openVal = assetToAdjust.acquisitionValue
       const adjVal = openVal * 0.15
       const closeVal = openVal + adjVal
-      await prisma.assetValueAdjustment.create({
-        data: {
+      await db.insert(assetValueAdjustments).values({
           assetId: assetToAdjust.id,
           date: new Date(2026, a, 12),
           type: 'REVALUATION',
@@ -556,7 +508,6 @@ async function main() {
           closingValue: closeVal,
           justification: 'Reavaliação patrimonial periódica conforme laudo de avaliação pericial.',
           evidence: 'Laudo Pericial Nº 2026/044'
-        }
       })
     }
   }
@@ -570,5 +521,5 @@ main()
     process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect()
+    await connection.pool.end()
   })

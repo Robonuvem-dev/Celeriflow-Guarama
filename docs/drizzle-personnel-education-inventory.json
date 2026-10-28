@@ -1,0 +1,5841 @@
+{
+  "generatedAt": "2026-10-28T15:33:09.964Z",
+  "scope": "RH + Educação; SST e Portal do Servidor transferidos a frentes exclusivas",
+  "summary": [
+    {
+      "root": "src/lib/rh",
+      "files": 69,
+      "legacyFiles": 39,
+      "metadataFiles": 0
+    },
+    {
+      "root": "src/lib/educacao",
+      "files": 6,
+      "legacyFiles": 0,
+      "metadataFiles": 0
+    },
+    {
+      "root": "src/app/app-domain/rh",
+      "files": 119,
+      "legacyFiles": 82,
+      "metadataFiles": 0
+    },
+    {
+      "root": "src/app/app-domain/educacao",
+      "files": 34,
+      "legacyFiles": 0,
+      "metadataFiles": 0
+    },
+    {
+      "root": "src/app/api/rh",
+      "files": 9,
+      "legacyFiles": 7,
+      "metadataFiles": 0
+    },
+    {
+      "root": "src/app/api/educacao",
+      "files": 0,
+      "legacyFiles": 0,
+      "metadataFiles": 0
+    }
+  ],
+  "production": [
+    {
+      "path": "src/app/api/rh/adiantamentos/[id]/route.ts",
+      "lines": 20,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/demonstrativos/[id]/route.ts",
+      "lines": 14,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        9,
+        11
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/diarias/[id]/route.ts",
+      "lines": 18,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/integracoes/[id]/route.ts",
+      "lines": 17,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        7,
+        8,
+        11,
+        14
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/obrigacoes/arquivos/[id]/route.ts",
+      "lines": 12,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        9
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/obrigacoes/exportar/route.ts",
+      "lines": 16,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        10
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/obrigacoes/historico/route.ts",
+      "lines": 13,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        10
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/referencias/route.ts",
+      "lines": 44,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        3,
+        8,
+        14,
+        15,
+        16,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        27,
+        28,
+        31,
+        32,
+        34,
+        35,
+        36,
+        38,
+        39,
+        40
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/api/rh/relatorios/route.ts",
+      "lines": 16,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        12
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/academico/page.tsx",
+      "lines": 30,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/alunos/page.tsx",
+      "lines": 26,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/biblioteca/page.tsx",
+      "lines": 16,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/calendario/page.tsx",
+      "lines": 18,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/documentos/DocumentCenterClient.tsx",
+      "lines": 4,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/documentos/page.tsx",
+      "lines": 6,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/educacenso/EducacensoClient.tsx",
+      "lines": 38,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/educacenso/page.tsx",
+      "lines": 16,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/EducationListClient.tsx",
+      "lines": 52,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/escolas/actions.ts",
+      "lines": 40,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/escolas/novo/page.tsx",
+      "lines": 108,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/escolas/page.tsx",
+      "lines": 18,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/layout.tsx",
+      "lines": 19,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/matriculas/page.tsx",
+      "lines": 29,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/merenda/actions.ts",
+      "lines": 33,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/merenda/novo/page.tsx",
+      "lines": 78,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/merenda/page.tsx",
+      "lines": 10,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/page.tsx",
+      "lines": 139,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/portal-interativo/InteractiveActivity.tsx",
+      "lines": 5,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/portal-interativo/page.tsx",
+      "lines": 10,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/portal-responsavel/page.tsx",
+      "lines": 11,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/pre-matricula/page.tsx",
+      "lines": 6,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/professor/actions.ts",
+      "lines": 134,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/professor/page.tsx",
+      "lines": 31,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/professor/ProfessorEntryGrids.tsx",
+      "lines": 25,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/professores/page.tsx",
+      "lines": 17,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/recursos-escolares/page.tsx",
+      "lines": 12,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/s1-actions.ts",
+      "lines": 218,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/S1ActionForm.tsx",
+      "lines": 49,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/s3-actions.ts",
+      "lines": 93,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/s4-actions.ts",
+      "lines": 131,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/s5-actions.ts",
+      "lines": 64,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/suporte/page.tsx",
+      "lines": 7,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/educacao/transporte/page.tsx",
+      "lines": 10,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/_components/RhListFrame.tsx",
+      "lines": 18,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/_components/RhPagination.tsx",
+      "lines": 24,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/_components/RhSearchToolbar.tsx",
+      "lines": 17,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/adiantamentos/page.tsx",
+      "lines": 42,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        3,
+        11,
+        12,
+        13,
+        15,
+        16,
+        17
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atividades-funcionais/actions.ts",
+      "lines": 44,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atividades-funcionais/ActivityForms.tsx",
+      "lines": 81,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atividades-funcionais/page.tsx",
+      "lines": 39,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        17,
+        20,
+        21,
+        24
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/[id]/editar/page.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/actions.ts",
+      "lines": 66,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        8,
+        13,
+        34,
+        39,
+        53,
+        55
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/AtoForm.tsx",
+      "lines": 134,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 14,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/AtoRowActions.tsx",
+      "lines": 37,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 7,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/AtosFilters.tsx",
+      "lines": 59,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/novo/page.tsx",
+      "lines": 12,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        5,
+        6
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/page.tsx",
+      "lines": 150,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 6,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        6,
+        30,
+        33,
+        37,
+        39
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/beneficios/[id]/editar/page.tsx",
+      "lines": 25,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/beneficios/actions.ts",
+      "lines": 85,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        7,
+        12,
+        33,
+        38,
+        52,
+        54,
+        67,
+        70,
+        75
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/beneficios/BeneficioForm.tsx",
+      "lines": 149,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 15,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/beneficios/BeneficioRowActions.tsx",
+      "lines": 66,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 8,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/beneficios/novo/page.tsx",
+      "lines": 15,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        5,
+        6
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/beneficios/page.tsx",
+      "lines": 126,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 5,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        5,
+        22,
+        26,
+        29,
+        31
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/concursos/actions.ts",
+      "lines": 24,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/concursos/page.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        12,
+        15
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/concursos/RecruitmentForms.tsx",
+      "lines": 23,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/consignacoes/page.tsx",
+      "lines": 42,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        2,
+        12,
+        13,
+        14,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/[id]/editar/page.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/actions.ts",
+      "lines": 38,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        8,
+        15,
+        26,
+        28
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/DependenteFilters.tsx",
+      "lines": 40,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/DependenteForm.tsx",
+      "lines": 127,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 14,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/DependenteRowActions.tsx",
+      "lines": 43,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 8,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/novo/page.tsx",
+      "lines": 13,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        5,
+        7
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/page.tsx",
+      "lines": 113,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 6,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        6,
+        22,
+        26,
+        34,
+        36
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/diarias/page.tsx",
+      "lines": 66,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 4,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        4,
+        11,
+        12,
+        13,
+        15,
+        16,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/emissoes-funcionais/actions.ts",
+      "lines": 24,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/emissoes-funcionais/page.tsx",
+      "lines": 16,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        11,
+        13
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/emissoes-funcionais/PublicationForm.tsx",
+      "lines": 32,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/esocial/actions.ts",
+      "lines": 15,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        8,
+        10
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/esocial/ConfigurationForm.tsx",
+      "lines": 29,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/esocial/page.tsx",
+      "lines": 43,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        10,
+        11,
+        13,
+        15
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ferias/[id]/editar/page.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ferias/actions.ts",
+      "lines": 74,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        8,
+        13,
+        37,
+        38,
+        59,
+        61,
+        63
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ferias/FeriasFilters.tsx",
+      "lines": 60,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ferias/FeriasForm.tsx",
+      "lines": 148,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 13,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ferias/FeriasRowActions.tsx",
+      "lines": 37,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 7,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ferias/novo/page.tsx",
+      "lines": 12,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        5,
+        6
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ferias/page.tsx",
+      "lines": 145,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 6,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        6,
+        29,
+        32,
+        36,
+        38
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/[id]/editar/page.tsx",
+      "lines": 20,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/actions.ts",
+      "lines": 69,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        11,
+        17,
+        19,
+        20,
+        37,
+        39,
+        40,
+        41
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Payroll"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/eventos/[id]/editar/page.tsx",
+      "lines": 20,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/eventos/actions.ts",
+      "lines": 59,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        7,
+        12,
+        25,
+        42,
+        47
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/eventos/EventForm.tsx",
+      "lines": 118,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 14,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/eventos/novo/page.tsx",
+      "lines": 8,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/eventos/page.tsx",
+      "lines": 121,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 4,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        4,
+        27,
+        29,
+        34,
+        36
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/FolhaForm.tsx",
+      "lines": 111,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 14,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/FolhaRowActions.tsx",
+      "lines": 37,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 7,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/novo/page.tsx",
+      "lines": 8,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/page.tsx",
+      "lines": 112,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 5,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        5,
+        28,
+        30,
+        35,
+        37
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/PayrollSimulationCard.tsx",
+      "lines": 31,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/layout.tsx",
+      "lines": 144,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/licencas/[id]/editar/page.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/licencas/actions.ts",
+      "lines": 83,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        8,
+        13,
+        35,
+        36,
+        38,
+        61,
+        63,
+        65,
+        67,
+        68
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Leave"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/rh/licencas/LicencaForm.tsx",
+      "lines": 150,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 14,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/licencas/LicencaRowActions.tsx",
+      "lines": 37,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 7,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/licencas/LicencasFilters.tsx",
+      "lines": 58,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/licencas/novo/page.tsx",
+      "lines": 12,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        5,
+        6
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/licencas/page.tsx",
+      "lines": 139,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 6,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        6,
+        29,
+        32,
+        36,
+        38
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ocorrencias/page.tsx",
+      "lines": 31,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        11,
+        12,
+        13,
+        15,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/actions.ts",
+      "lines": 371,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        49,
+        51,
+        100,
+        102,
+        110,
+        150,
+        152,
+        159,
+        163,
+        168,
+        171,
+        183,
+        188,
+        189,
+        197,
+        203,
+        206,
+        207,
+        210,
+        215,
+        219,
+        221,
+        227,
+        233,
+        238,
+        240,
+        242,
+        248,
+        252,
+        256,
+        257,
+        269,
+        270,
+        281,
+        282,
+        283,
+        284,
+        286,
+        290,
+        294,
+        297,
+        300,
+        333,
+        339,
+        347,
+        348
+      ],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro/allowance-expense-refunds",
+        "@/lib/financeiro"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/calculos/[id]/page.tsx",
+      "lines": 38,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        11,
+        13,
+        15,
+        17
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/contratos/[id]/page.tsx",
+      "lines": 21,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        8,
+        9,
+        10,
+        12
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/demonstrativos/[id]/page.tsx",
+      "lines": 31,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        10,
+        12
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/medias/page.tsx",
+      "lines": 23,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        10,
+        13
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/OperationForm.tsx",
+      "lines": 44,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/page.tsx",
+      "lines": 137,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        19,
+        22,
+        30,
+        35,
+        36,
+        37,
+        38,
+        39,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        60
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/ReferenceLookup.tsx",
+      "lines": 43,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/page.tsx",
+      "lines": 174,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        23,
+        24,
+        25
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/parametrizacoes/actions.ts",
+      "lines": 888,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 20,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        20,
+        152,
+        268,
+        415,
+        512,
+        588,
+        654,
+        684,
+        748,
+        811
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/parametrizacoes/HrPayrollSettingsClient.tsx",
+      "lines": 2454,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/parametrizacoes/page.tsx",
+      "lines": 132,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        37,
+        39,
+        40,
+        66
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/pasta-funcional/[id]/page.tsx",
+      "lines": 41,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        9,
+        10,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        20,
+        21,
+        22,
+        23,
+        24,
+        26
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/pensoes/page.tsx",
+      "lines": 28,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/poc/page.tsx",
+      "lines": 48,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/[id]/editar/page.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/actions.ts",
+      "lines": 104,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        7,
+        12,
+        68,
+        69,
+        71,
+        88,
+        90,
+        92,
+        93
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "AttendanceRecord"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/novo/page.tsx",
+      "lines": 12,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        5,
+        6
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/page.tsx",
+      "lines": 150,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 7,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        7,
+        30,
+        33,
+        42,
+        44
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/PontoFilters.tsx",
+      "lines": 50,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/PontoForm.tsx",
+      "lines": 157,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 13,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/PontoRowActions.tsx",
+      "lines": 37,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 7,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/UploadCSVButton.tsx",
+      "lines": 44,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/portal-funcional/actions.ts",
+      "lines": 24,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/portal-funcional/ManagementForms.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/portal-funcional/page.tsx",
+      "lines": 31,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        11,
+        12,
+        13,
+        16
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/publicacao-funcional/actions.ts",
+      "lines": 41,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/publicacao-funcional/page.tsx",
+      "lines": 31,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        15,
+        18,
+        19,
+        21,
+        23
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/publicacao-funcional/PublicationForms.tsx",
+      "lines": 70,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/quadro-cargos/historico-legal/actions.ts",
+      "lines": 18,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [
+        "@/lib/financeiro/cost-ledger"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/quadro-cargos/historico-legal/page.tsx",
+      "lines": 24,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        9,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/quadro-cargos/historico-legal/RoleLegalHistoryClient.tsx",
+      "lines": 28,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/quadro-cargos/page.tsx",
+      "lines": 36,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/recadastramento/actions.ts",
+      "lines": 24,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/recadastramento/configurar/CampaignForm.tsx",
+      "lines": 25,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/recadastramento/configurar/page.tsx",
+      "lines": 17,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/recadastramento/CorrectionForm.tsx",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/recadastramento/page.tsx",
+      "lines": 25,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/requerimentos-funcionais/page.tsx",
+      "lines": 26,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        14,
+        16,
+        18,
+        19
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/requerimentos-funcionais/ReviewForm.tsx",
+      "lines": 33,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servicos-funcionais/actions.ts",
+      "lines": 46,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servicos-funcionais/page.tsx",
+      "lines": 21,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        10,
+        12,
+        13
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servicos-funcionais/ServiceConfigurationForm.tsx",
+      "lines": 32,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/[id]/editar/page.tsx",
+      "lines": 37,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        6,
+        8,
+        22,
+        23,
+        24,
+        25
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/actions.ts",
+      "lines": 94,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/benefitActions.ts",
+      "lines": 52,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        7,
+        11,
+        23,
+        40,
+        42
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/EmployeeBenefitsCard.tsx",
+      "lines": 129,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 12,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/EmployeeFilters.tsx",
+      "lines": 96,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 9,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/novo/page.tsx",
+      "lines": 20,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/page.tsx",
+      "lines": 179,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 5,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        5,
+        29,
+        35,
+        50,
+        53,
+        60
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/ServidorForm.tsx",
+      "lines": 292,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 16,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/ServidorRowActions.tsx",
+      "lines": 41,
+      "legacyImport": true,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 7,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/app/app-domain/rh/solicitacoes/page.tsx",
+      "lines": 38,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        10,
+        12,
+        13,
+        15,
+        17,
+        18
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/educacao/enrollment-service.ts",
+      "lines": 41,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/educacao/interactive-service.ts",
+      "lines": 21,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/educacao/library-service.ts",
+      "lines": 28,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/educacao/pre-enrollment-service.ts",
+      "lines": 33,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/educacao/s1.ts",
+      "lines": 47,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/educacao/school-meal-service.ts",
+      "lines": 18,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro/legacy-expense"
+      ],
+      "rawTables": [
+        "BudgetAppropriation"
+      ]
+    },
+    {
+      "path": "src/lib/rh/absence-conflicts.ts",
+      "lines": 9,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        1,
+        3
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/advance-document.ts",
+      "lines": 32,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "BudgetUnit",
+        "GovernmentEntity",
+        "PlanningEntityUnit"
+      ]
+    },
+    {
+      "path": "src/lib/rh/attendance-payroll.ts",
+      "lines": 47,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        10,
+        13,
+        15,
+        16,
+        22,
+        30,
+        33,
+        36
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "AttendanceRecord"
+      ]
+    },
+    {
+      "path": "src/lib/rh/attendance-reconciliation.ts",
+      "lines": 58,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        6,
+        14,
+        26,
+        27,
+        40,
+        47,
+        48,
+        50
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/benefit-calculation.ts",
+      "lines": 66,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        17,
+        20,
+        28,
+        34,
+        38,
+        41,
+        43,
+        44,
+        58
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/calculation-engine.ts",
+      "lines": 166,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/civil-service-calendar.ts",
+      "lines": 13,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/consignment-margin.ts",
+      "lines": 56,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/consignment-service.ts",
+      "lines": 171,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/contract-custom-fields.ts",
+      "lines": 73,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/contract-timeline.ts",
+      "lines": 29,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/credit-requests.ts",
+      "lines": 76,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        8,
+        10,
+        13,
+        15,
+        17,
+        18,
+        24,
+        41,
+        48,
+        50,
+        51
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrPortalRequest"
+      ]
+    },
+    {
+      "path": "src/lib/rh/dependent-eligibility.ts",
+      "lines": 68,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/dependent-service.ts",
+      "lines": 28,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        1,
+        7,
+        9,
+        10,
+        14
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Person"
+      ]
+    },
+    {
+      "path": "src/lib/rh/employee-person.ts",
+      "lines": 11,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        1,
+        4
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/employment-lifecycle.ts",
+      "lines": 48,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        7,
+        9,
+        11,
+        30,
+        40
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/external-configuration.ts",
+      "lines": 34,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        17,
+        21,
+        25
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/finance-bridge.ts",
+      "lines": 355,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        16,
+        21,
+        24,
+        28,
+        34,
+        61,
+        90,
+        117,
+        120,
+        121,
+        175,
+        178,
+        179,
+        221,
+        224,
+        225,
+        239,
+        244,
+        245,
+        246,
+        253,
+        266,
+        267,
+        284,
+        286,
+        287,
+        291,
+        319,
+        322,
+        323,
+        344
+      ],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro"
+      ],
+      "rawTables": [
+        "BankAccount",
+        "Commitment",
+        "HrPayrollRun",
+        "Payment"
+      ]
+    },
+    {
+      "path": "src/lib/rh/functional-occurrences.ts",
+      "lines": 61,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        8,
+        9,
+        16,
+        21,
+        22,
+        23,
+        31,
+        32,
+        36,
+        46,
+        48,
+        49
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "PersonnelAct"
+      ]
+    },
+    {
+      "path": "src/lib/rh/income-tax.ts",
+      "lines": 55,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/list-pagination.ts",
+      "lines": 20,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/monthly-proration.ts",
+      "lines": 66,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/movement-import.ts",
+      "lines": 82,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        50,
+        54,
+        55,
+        56,
+        60,
+        74
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/municipal-advances.ts",
+      "lines": 442,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro"
+      ],
+      "rawTables": [
+        "HrPortalRequest",
+        "Payment",
+        "Revenue"
+      ]
+    },
+    {
+      "path": "src/lib/rh/obligation-export.ts",
+      "lines": 85,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        37,
+        55,
+        65,
+        66,
+        74
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/obligation-history.ts",
+      "lines": 51,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        26,
+        29,
+        30,
+        34,
+        49
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/partner-discounts.ts",
+      "lines": 54,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        11,
+        13,
+        14,
+        20,
+        39,
+        40,
+        48,
+        50,
+        52
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/payroll-access.ts",
+      "lines": 15,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        2,
+        6
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "SstBenefitPayrollScope"
+      ]
+    },
+    {
+      "path": "src/lib/rh/payroll-configuration.ts",
+      "lines": 581,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        4,
+        211,
+        214,
+        215,
+        218,
+        250,
+        279,
+        280,
+        286,
+        315,
+        333,
+        357,
+        373,
+        392,
+        393,
+        403,
+        404,
+        405,
+        442,
+        533
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/payroll-labels.ts",
+      "lines": 8,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/payroll-payment-allocation.ts",
+      "lines": 54,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        13,
+        15,
+        16,
+        28,
+        29,
+        38,
+        43,
+        45
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Payment"
+      ]
+    },
+    {
+      "path": "src/lib/rh/payroll-pensions.ts",
+      "lines": 37,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/payroll-provisions.ts",
+      "lines": 100,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/pension-configuration.ts",
+      "lines": 38,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        6,
+        9,
+        10,
+        33
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/poc-bootstrap.ts",
+      "lines": 128,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        9,
+        12,
+        13,
+        14,
+        85,
+        89,
+        90,
+        113,
+        114
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/poc-payment.ts",
+      "lines": 47,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        7,
+        9,
+        12,
+        23,
+        30,
+        35,
+        37
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/poc-special-payroll.ts",
+      "lines": 76,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/portal-requests.ts",
+      "lines": 43,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        7,
+        9,
+        10,
+        22,
+        24,
+        25
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrPortalRequest"
+      ]
+    },
+    {
+      "path": "src/lib/rh/position-plan.ts",
+      "lines": 139,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/prorated-statement-locations.ts",
+      "lines": 33,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/provision-accounting.ts",
+      "lines": 218,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/provision-commitment.ts",
+      "lines": 134,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Commitment",
+        "Settlement"
+      ]
+    },
+    {
+      "path": "src/lib/rh/receipt-messages.ts",
+      "lines": 18,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/recertification-canonicalization.ts",
+      "lines": 35,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        12,
+        13,
+        21
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrPortalRequest"
+      ]
+    },
+    {
+      "path": "src/lib/rh/recertification-details.ts",
+      "lines": 68,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        26,
+        34,
+        39,
+        42,
+        43
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "Address",
+        "Dependent"
+      ]
+    },
+    {
+      "path": "src/lib/rh/recertification.ts",
+      "lines": 143,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        1,
+        19,
+        33,
+        36,
+        37,
+        44,
+        45,
+        55,
+        73,
+        75,
+        76,
+        109,
+        111,
+        112,
+        120,
+        123
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrPortalRequest",
+        "Person"
+      ]
+    },
+    {
+      "path": "src/lib/rh/recruitment-service.ts",
+      "lines": 105,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        15,
+        18,
+        30,
+        31,
+        37,
+        41,
+        44,
+        55,
+        56,
+        59,
+        66,
+        68,
+        75,
+        80,
+        81,
+        83,
+        90,
+        91,
+        100
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrRecruitmentApplication"
+      ]
+    },
+    {
+      "path": "src/lib/rh/remuneration-average.ts",
+      "lines": 56,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        5,
+        7,
+        11,
+        12,
+        23,
+        31,
+        36,
+        43,
+        49,
+        50,
+        51,
+        53
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/report-service.ts",
+      "lines": 179,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        26,
+        31,
+        113,
+        122,
+        132,
+        141,
+        146
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/role-legal-history.ts",
+      "lines": 52,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro/cost-ledger",
+        "@/lib/financeiro/cost-types"
+      ],
+      "rawTables": [
+        "Document",
+        "DocumentVersion",
+        "LegalTextVersion"
+      ]
+    },
+    {
+      "path": "src/lib/rh/service-right-query.ts",
+      "lines": 18,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        1,
+        5,
+        9
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/service-rights.ts",
+      "lines": 155,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        14,
+        51,
+        65,
+        69,
+        71,
+        72,
+        93,
+        98,
+        100,
+        101,
+        110,
+        113,
+        128,
+        130,
+        135,
+        136,
+        145
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Leave"
+      ]
+    },
+    {
+      "path": "src/lib/rh/service-time-allowance.ts",
+      "lines": 176,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Employee"
+      ]
+    },
+    {
+      "path": "src/lib/rh/special-payroll-finality.ts",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        9,
+        13
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/special-payroll-history.ts",
+      "lines": 35,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/special-simulation.ts",
+      "lines": 50,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        9,
+        11,
+        15,
+        16,
+        32,
+        35,
+        45
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/statement-service.ts",
+      "lines": 79,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        1,
+        24
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/time-bank-expiration.ts",
+      "lines": 110,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        8,
+        9,
+        20,
+        31,
+        34,
+        44,
+        53,
+        54,
+        55,
+        56,
+        61,
+        66,
+        70,
+        71,
+        84,
+        95,
+        102
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/time-bank-payment.ts",
+      "lines": 94,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        8,
+        11,
+        13,
+        14,
+        15,
+        17,
+        18,
+        25,
+        26,
+        28,
+        29,
+        52,
+        54,
+        57,
+        67,
+        69,
+        70
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Payroll"
+      ]
+    },
+    {
+      "path": "src/lib/rh/time-bank-transfer.ts",
+      "lines": 110,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        7,
+        14,
+        16,
+        20,
+        21,
+        25,
+        32,
+        34,
+        37,
+        38,
+        54,
+        81,
+        83,
+        84
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/time-bank.ts",
+      "lines": 106,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        13,
+        14,
+        16,
+        18,
+        20,
+        22,
+        31,
+        34,
+        36,
+        37,
+        45,
+        49,
+        51,
+        53,
+        68,
+        69,
+        81,
+        83,
+        86,
+        87
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "AttendanceRecord"
+      ]
+    },
+    {
+      "path": "src/lib/rh/travel-allowance.ts",
+      "lines": 224,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrPortalRequest",
+        "Payment"
+      ]
+    },
+    {
+      "path": "src/lib/rh/travel-finance.ts",
+      "lines": 49,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro"
+      ],
+      "rawTables": [
+        "HrPortalRequest"
+      ]
+    },
+    {
+      "path": "src/lib/rh/travel-process.ts",
+      "lines": 125,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [
+        "@/lib/financeiro"
+      ],
+      "rawTables": [
+        "Expense",
+        "HrPortalRequest"
+      ]
+    },
+    {
+      "path": "src/lib/rh/vacation-entitlement.ts",
+      "lines": 21,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/vacation-multiple-periods.ts",
+      "lines": 112,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        19,
+        23,
+        27,
+        28,
+        36,
+        37,
+        55,
+        76,
+        78,
+        79,
+        92,
+        93,
+        95
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Vacation"
+      ]
+    },
+    {
+      "path": "src/lib/rh/vacation-payroll-link.ts",
+      "lines": 35,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/rh/vacation-rights.ts",
+      "lines": 138,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        20,
+        22,
+        23,
+        60,
+        61,
+        64,
+        70,
+        71,
+        87,
+        91,
+        106,
+        108,
+        114,
+        115,
+        123
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Vacation"
+      ]
+    },
+    {
+      "path": "src/lib/rh/workforce-service.ts",
+      "lines": 646,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "Employee",
+        "Payroll"
+      ]
+    }
+  ],
+  "repositories": [
+    {
+      "path": "src/db/repositories/education/admissions.ts",
+      "lines": 34,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/repositories/education/core.ts",
+      "lines": 87,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/repositories/education/operations.ts",
+      "lines": 56,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "BankAccount",
+        "FleetRoute",
+        "FleetUnit"
+      ]
+    },
+    {
+      "path": "src/db/repositories/education/portals.ts",
+      "lines": 40,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/repositories/education/teaching.ts",
+      "lines": 54,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/repositories/personnel/finance.ts",
+      "lines": 100,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "AccountingEntry",
+        "AccountingPlan",
+        "AccountingTransaction",
+        "BankAccount",
+        "BudgetAppropriation",
+        "BudgetReservation",
+        "BudgetUnit",
+        "Commitment",
+        "CommitmentMovement",
+        "Expense",
+        "FinancialYear",
+        "Payment",
+        "PlanningEntityUnit",
+        "Revenue",
+        "Settlement",
+        "TreasuryMovement"
+      ]
+    },
+    {
+      "path": "src/db/repositories/personnel/integration.ts",
+      "lines": 36,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/repositories/personnel/payroll.ts",
+      "lines": 26,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/repositories/personnel/workforce.ts",
+      "lines": 94,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    }
+  ],
+  "schemas": [
+    {
+      "path": "src/db/schema/education-admissions.ts",
+      "lines": 19,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/education-core.ts",
+      "lines": 114,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/education-interactive.ts",
+      "lines": 22,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/education-meals.ts",
+      "lines": 11,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/education-operations.ts",
+      "lines": 54,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/education-teaching.ts",
+      "lines": 37,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-configuration.ts",
+      "lines": 40,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-consignment.ts",
+      "lines": 15,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-legal.ts",
+      "lines": 12,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-payroll-inputs.ts",
+      "lines": 11,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-records.ts",
+      "lines": 14,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-workforce.ts",
+      "lines": 55,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    }
+  ],
+  "contracts": [
+    {
+      "path": "src/lib/contracts/education-admissions.ts",
+      "lines": 10,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/education-core.ts",
+      "lines": 39,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/education-operations.ts",
+      "lines": 19,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/education-portals.ts",
+      "lines": 19,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/education-teaching.ts",
+      "lines": 19,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/personnel.ts",
+      "lines": 33,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    }
+  ],
+  "tools": [
+    {
+      "path": "scripts/adopt-aurora-advance-accounting.ts",
+      "lines": 58,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 21,
+          "specifier": "../src/lib/prisma",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        21,
+        23,
+        24,
+        31,
+        47,
+        55
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/adopt-aurora-payroll-accounts.ts",
+      "lines": 61,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 23,
+          "specifier": "../src/lib/prisma",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        23,
+        25,
+        26,
+        33,
+        42,
+        46,
+        57
+      ],
+      "transactional": true,
+      "financialDependencies": [
+        "../src/lib/financeiro/account-catalog"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/adopt-aurora-travel-policy.ts",
+      "lines": 45,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 12,
+          "specifier": "../src/lib/prisma",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        12,
+        14,
+        15,
+        34,
+        42
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/adopt-aurora-travel-workflows.ts",
+      "lines": 40,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 11,
+          "specifier": "../src/lib/prisma",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        11,
+        13,
+        14,
+        37
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/drizzle-inventory-personnel-education.mjs",
+      "lines": 57,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/drizzle-verify-personnel-education.mjs",
+      "lines": 31,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/municipal-name-targets.ts",
+      "lines": 104,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "AnnualBudgetLaw",
+        "BudgetGuideline",
+        "ConfiguracaoInstancia",
+        "Employee",
+        "HrEmploymentRegime",
+        "HrPayrollRubric",
+        "HrPayrollRule",
+        "HrPayrollRuleSet",
+        "HrSocialSecurityScheme",
+        "HrVacationPolicy",
+        "MultiYearPlan",
+        "PayrollEvent",
+        "PlanningInstrument",
+        "Usuario"
+      ]
+    },
+    {
+      "path": "scripts/restore-hr-foundation-bytes.mjs",
+      "lines": 68,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-education-s1.ts",
+      "lines": 40,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-education-s2.ts",
+      "lines": 37,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-education-s3.ts",
+      "lines": 21,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-education-s4.ts",
+      "lines": 50,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "BankAccount",
+        "FleetRoute",
+        "FleetUnit"
+      ]
+    },
+    {
+      "path": "scripts/seed-education-s5.ts",
+      "lines": 23,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-hr-documentary-poc.ts",
+      "lines": 35,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 3,
+          "specifier": "@prisma/adapter-neon",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        14,
+        22
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-hr-engine-demo.ts",
+      "lines": 52,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 3,
+          "specifier": "@prisma/adapter-neon",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        10,
+        19,
+        20,
+        40
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-hr-poc-linked-workflows.ts",
+      "lines": 57,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 2,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 3,
+          "specifier": "@prisma/adapter-neon",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        2,
+        12,
+        20
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/seed-rh.ts",
+      "lines": 229,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 1,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 2,
+          "specifier": "@prisma/adapter-neon",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        1,
+        13,
+        19,
+        21,
+        26,
+        28,
+        33,
+        35,
+        42,
+        44,
+        59,
+        61,
+        76,
+        78,
+        95,
+        104,
+        115,
+        127,
+        140,
+        153,
+        166,
+        177,
+        179,
+        188,
+        199,
+        208,
+        227
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/advance-prior-year-refund.test.ts",
+      "lines": 119,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        29
+      ],
+      "transactional": true,
+      "financialDependencies": [
+        "../src/lib/financeiro",
+        "../src/lib/financeiro/allowance-expense-refunds"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "tests/drizzle-education-services.test.ts",
+      "lines": 211,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "BankAccount",
+        "FleetRoute",
+        "FleetUnit",
+        "Material",
+        "MaterialCategory",
+        "Warehouse"
+      ]
+    },
+    {
+      "path": "tests/drizzle-personnel-calculations.test.ts",
+      "lines": 66,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/drizzle-personnel-education-database.test.ts",
+      "lines": 98,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/education-s1.test.ts",
+      "lines": 27,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/employee-portal-final-services.test.ts",
+      "lines": 112,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "AttendanceRecord",
+        "AuditEvent",
+        "HrMovement",
+        "HrRightEntry",
+        "Payment"
+      ]
+    },
+    {
+      "path": "tests/functional-portal-closure.test.ts",
+      "lines": 64,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "BudgetUnit",
+        "Employee",
+        "HrPayrollRule",
+        "HrPortalReferenceDiagnostics",
+        "HrPortalRequest",
+        "HrPortalRequestBinding",
+        "HrRecruitmentApplication",
+        "Process",
+        "ProcessType",
+        "PublicService",
+        "Subject",
+        "Usuario"
+      ]
+    },
+    {
+      "path": "tests/helpers/personnel-education-fixture.ts",
+      "lines": 35,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/hr-calculation.test.ts",
+      "lines": 138,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        15,
+        27,
+        29,
+        30,
+        31,
+        33,
+        34,
+        52,
+        57,
+        61,
+        62,
+        66,
+        130,
+        134
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/hr-documentary-reports.test.ts",
+      "lines": 48,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        15,
+        28
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/hr-foundation-bytes.test.mjs",
+      "lines": 24,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/hr-poc-calculation.test.ts",
+      "lines": 115,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 13,
+          "specifier": "@prisma/client",
+          "typeOnly": true
+        }
+      ],
+      "legacyLines": [
+        3,
+        17,
+        18,
+        97,
+        99,
+        105
+      ],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/hr-role-legal-history.test.ts",
+      "lines": 59,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrRoleLegalHistory"
+      ]
+    },
+    {
+      "path": "tests/hr-service-rights.test.ts",
+      "lines": 52,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/hr-workforce-service.test.ts",
+      "lines": 976,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": true,
+      "clientImports": [
+        {
+          "line": 4,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        },
+        {
+          "line": 7,
+          "specifier": "@prisma/adapter-pg",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        4,
+        51,
+        54,
+        91,
+        93,
+        94,
+        168,
+        220,
+        229,
+        329,
+        331,
+        367,
+        534,
+        651,
+        740,
+        855,
+        858,
+        914,
+        937,
+        964
+      ],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "BenefitConfig",
+        "BudgetAppropriation",
+        "BudgetUnit",
+        "Dependent",
+        "Employee",
+        "ExpenseNature",
+        "FinancialYear",
+        "HrCalculationPolicy",
+        "HrConsignmentAgreement",
+        "HrConsignmentEntry",
+        "HrEmploymentRegime",
+        "HrEmploymentRevision",
+        "HrPayrollRubric",
+        "HrPayrollRubricIncidence",
+        "HrPayrollRule",
+        "HrPayrollRuleSet",
+        "HrPayrollRun",
+        "HrRightEntry",
+        "HrSocialSecurityBand",
+        "HrSocialSecurityScheme",
+        "HrVacationPolicy",
+        "Payroll",
+        "PayrollBenefit",
+        "PayrollEvent",
+        "Person",
+        "Role",
+        "Supplier"
+      ]
+    },
+    {
+      "path": "tests/municipal-travel-allowance.test.ts",
+      "lines": 250,
+      "legacyImport": false,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [
+        77,
+        79,
+        80,
+        90,
+        105,
+        110,
+        126,
+        129,
+        190,
+        192
+      ],
+      "transactional": true,
+      "financialDependencies": [
+        "../src/lib/financeiro"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "tests/payroll-financial-cycle.test.ts",
+      "lines": 95,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [
+        "../src/lib/financeiro"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "tests/payroll-municipal-costs.test.ts",
+      "lines": 149,
+      "legacyImport": true,
+      "legacyReference": true,
+      "metadata": false,
+      "clientImports": [
+        {
+          "line": 3,
+          "specifier": "@prisma/client",
+          "typeOnly": false
+        }
+      ],
+      "legacyLines": [
+        3,
+        58,
+        59,
+        88,
+        89,
+        106,
+        117,
+        118,
+        119,
+        138
+      ],
+      "transactional": false,
+      "financialDependencies": [
+        "../src/lib/financeiro",
+        "../src/lib/financeiro/cost-ledger",
+        "../src/lib/financeiro/cost-catalog",
+        "../src/lib/financeiro/cost-payroll-slices"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "tests/payroll-provision-accounting.test.ts",
+      "lines": 136,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [
+        "../src/lib/financeiro"
+      ],
+      "rawTables": []
+    },
+    {
+      "path": "tests/travel-refunds.test.ts",
+      "lines": 88,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "transactional": false,
+      "financialDependencies": [
+        "../src/lib/financeiro",
+        "../src/lib/financeiro/allowance-expense-refunds"
+      ],
+      "rawTables": []
+    }
+  ],
+  "externalConsumers": [
+    {
+      "path": "src/app/api/controle-interno/estatisticas-rh/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal/concursos/inscricoes/[id]/route.ts",
+      "imports": [
+        "@/lib/rh/recruitment-service",
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal/concursos/[id]/edital/route.ts",
+      "imports": [
+        "@/lib/rh/recruitment-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal/departamentos/atestados/[id]/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/anexos/route.ts",
+      "imports": [
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/aniversariantes/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/avaliacoes/[id]/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/capacitacao/[id]/certificado/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/capacitacao/[id]/comprovante/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/demonstrativos/[id]/route.ts",
+      "imports": [
+        "@/lib/rh/payroll-configuration"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/protocolos/[id]/comprovante/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/recadastramento/anexos/route.ts",
+      "imports": [
+        "@/lib/rh/recertification"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/relatorios/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/sst/agenda/[id]/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/api/portal-servidor/sst/cat/[id]/route.ts",
+      "imports": [
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/administracao/servidores/novo/NovoServidorForm.tsx",
+      "imports": [
+        "@/app/app-domain/rh/operacoes/ReferenceLookup"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/consignacoes/page.tsx",
+      "imports": [
+        "@/lib/rh/payroll-configuration"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/credito/page.tsx",
+      "imports": [
+        "@/lib/rh/payroll-configuration",
+        "@/lib/rh/calculation-engine"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/demonstrativos/page.tsx",
+      "imports": [
+        "@/lib/rh/payroll-configuration"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/folha/page.tsx",
+      "imports": [
+        "@/lib/rh/payroll-configuration"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/licenca-premio/page.tsx",
+      "imports": [
+        "@/lib/rh/service-right-query"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/margem/page.tsx",
+      "imports": [
+        "@/lib/rh/payroll-configuration",
+        "@/lib/rh/consignment-margin"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/recadastramento/actions.ts",
+      "imports": [
+        "@/lib/rh/recertification"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/recadastramento/page.tsx",
+      "imports": [
+        "@/lib/rh/recertification",
+        "@/lib/rh/recertification-details"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/recadastramento/ProposalForm.tsx",
+      "imports": [
+        "@/lib/rh/recertification-details"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/solicitacoes-rh/actions.ts",
+      "imports": [
+        "@/lib/rh/portal-requests",
+        "@/lib/rh/credit-requests",
+        "@/lib/rh/payroll-configuration"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/protocolos/actions.ts",
+      "imports": [
+        "@/lib/rh/travel-process"
+      ]
+    },
+    {
+      "path": "src/app/app-domain/sst/actions.ts",
+      "imports": []
+    },
+    {
+      "path": "src/app/app-domain/sst/atestados/functional-actions.ts",
+      "imports": []
+    },
+    {
+      "path": "src/app/portal/concursos/actions.ts",
+      "imports": [
+        "@/lib/rh/recruitment-service"
+      ]
+    },
+    {
+      "path": "src/app/portal/concursos/page.tsx",
+      "imports": [
+        "@/lib/rh/recruitment-service"
+      ]
+    },
+    {
+      "path": "src/app/portal/convenentes/actions.ts",
+      "imports": [
+        "@/lib/rh/partner-discounts"
+      ]
+    },
+    {
+      "path": "src/app/portal/convenentes/page.tsx",
+      "imports": [
+        "@/lib/rh/partner-discounts"
+      ]
+    },
+    {
+      "path": "src/lib/c7/workforce-statistics.ts",
+      "imports": [
+        "@/lib/rh/contract-timeline"
+      ]
+    },
+    {
+      "path": "src/lib/financeiro/allowance-expense-refunds.ts",
+      "imports": [
+        "@/lib/rh/travel-allowance",
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/financeiro/cost-payroll-slices.ts",
+      "imports": [
+        "@/lib/rh/prorated-statement-locations",
+        "@/lib/rh/calculation-engine"
+      ]
+    },
+    {
+      "path": "src/lib/financeiro/index.ts",
+      "imports": [
+        "@/lib/rh/provision-accounting",
+        "@/lib/rh/municipal-advances"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/career-service.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration",
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/clock-service.ts",
+      "imports": [
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/document-publication.ts",
+      "imports": [
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/document-sources.ts",
+      "imports": [
+        "@/lib/rh/contract-timeline",
+        "@/lib/rh/calculation-engine",
+        "@/lib/rh/payroll-payment-allocation",
+        "@/lib/rh/statement-service",
+        "@/lib/rh/consignment-margin"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/evaluation-results.ts",
+      "imports": [
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/functional-requests.ts",
+      "imports": [
+        "@/lib/rh/vacation-rights",
+        "@/lib/rh/contract-timeline",
+        "@/lib/rh/attendance-reconciliation"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/generated-documents.ts",
+      "imports": [
+        "@/lib/rh/workforce-service",
+        "@/lib/rh/report-service"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/management.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration",
+        "@/lib/rh/recertification",
+        "@/lib/rh/partner-discounts"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/payroll-publication.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration",
+        "@/lib/rh/payroll-configuration",
+        "@/lib/rh/payroll-access",
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/receipt-verification.ts",
+      "imports": [
+        "@/lib/rh/statement-service",
+        "@/lib/rh/payroll-configuration",
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/portal-servidor/service-catalog.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration"
+      ]
+    },
+    {
+      "path": "src/lib/saude/tfd-transport-service.ts",
+      "imports": [
+        "@/lib/rh/travel-allowance"
+      ]
+    },
+    {
+      "path": "src/lib/sst/functional-service.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration"
+      ]
+    },
+    {
+      "path": "src/lib/sst/ppp-final-service.ts",
+      "imports": [
+        "@/lib/rh/workforce-service"
+      ]
+    },
+    {
+      "path": "src/lib/transparencia/native-bindings.ts",
+      "imports": [
+        "@/db/schema/personnel-workforce",
+        "@/db/schema/personnel-configuration",
+        "@/db/schema/education-admissions"
+      ]
+    },
+    {
+      "path": "src/lib/transparencia/native-domain-provider.ts",
+      "imports": [
+        "@/db/schema/personnel-workforce",
+        "@/db/schema/personnel-configuration",
+        "@/db/repositories/personnel/workforce",
+        "@/db/schema/education-admissions",
+        "@/db/schema/education-core",
+        "@/lib/rh/position-plan",
+        "@/lib/rh/contract-timeline"
+      ]
+    },
+    {
+      "path": "src/lib/transparencia/native-personnel-counts.ts",
+      "imports": [
+        "@/db/schema/personnel-workforce",
+        "@/db/schema/personnel-configuration",
+        "@/lib/rh/contract-timeline"
+      ]
+    }
+  ],
+  "globalMetadataConsumers": [
+    "tests/cemetery-fees-service.test.ts",
+    "tests/cemetery-workflow-service.test.ts",
+    "tests/construction-automatic-viability-service.test.ts",
+    "tests/construction-external-full-opening.test.ts",
+    "tests/construction-migration-upgrade.test.ts",
+    "tests/health-checklist-internal-flows.test.ts",
+    "tests/helpers/planning-accounting-fixture.ts",
+    "tests/helpers/planning-execution-fixture.ts",
+    "tests/hr-workforce-service.test.ts",
+    "tests/planning-postgres.test.ts"
+  ]
+}

@@ -6,6 +6,7 @@ import { absenceMinutes, assertCertificateReason, certificateInput } from "../sr
 import { assertSstClinicalAccess } from "../src/lib/sst/access";
 import { assessCertificate, registerCertificate } from "../src/lib/sst/certificate-service";
 import type { AppContext } from "../src/lib/platform/tenant-context";
+import { createSstClinicalFixture } from "./helpers/sst-clinical-fixture";
 
 test("absence uses real shifts, splits at competence boundaries and does not double count overlap", () => {
   const day = (time: string) => new Date(`2026-10-01T${time}:00Z`);
@@ -27,57 +28,41 @@ const operator: AppContext["user"] = {
 };
 
 test("SST module access alone cannot read diagnoses or assess and cross-UG access is denied", async () => {
-  const context = { user: operator, prisma: { sstAccessGrant: { findUnique: async () => null } } } as unknown as AppContext;
-  await assert.rejects(assertSstClinicalAccess(context, "ug"), /clínica/);
-  await assert.rejects(assertSstClinicalAccess(context, "other"), /Unidade Gestora/);
-  const reader = { user: operator, prisma: { sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess: false }) } } } as unknown as AppContext;
-  await assertSstClinicalAccess(reader, "ug");
-  await assert.rejects(assertSstClinicalAccess(reader, "ug", true), /clínica/);
+  const f = await createSstClinicalFixture();
+  try {
+    f.context.user = { ...operator };
+    await f.database.exec('UPDATE "SstAccessGrant" SET "isActive"=false');
+    await assert.rejects(assertSstClinicalAccess(f.context, "ug"), /clínica/);
+    await assert.rejects(assertSstClinicalAccess(f.context, "other"), /Unidade Gestora/);
+    await f.database.exec('UPDATE "SstAccessGrant" SET "isActive"=true,"canAssess"=false');
+    await assertSstClinicalAccess(f.context, "ug");
+    await assert.rejects(assertSstClinicalAccess(f.context, "ug", true), /clínica/);
+  } finally { await f.close(); }
 });
 
 test("assessment atomically claims state and cannot generate a second leave", async () => {
-  let claims = 0; let leaves = 0; let assessments = 0;
-  const tx = {
-    $executeRaw: async () => 1,
-    $queryRaw: async (sql: TemplateStringsArray) => String(sql).includes("SstCertificateFunctionalSource") ? [{ snapshot: { id: "period", employeeId: "employee", budgetUnitId: "ug", governmentEntityId: "entity", employmentRegimeId: "regime", roleId: "historical-role", departmentId: "historical-department", localId: "local", costCenterId: "center", startsAt: "2026-01-01T00:00:00Z", endsAt: "2027-01-01T00:00:00Z" } }] : [],
-    sstMedicalCertificate: {
-      updateMany: async () => ({ count: claims++ === 0 ? 1 : 0 }),
-      findUniqueOrThrow: async () => ({ id: "certificate", employeeId: "employee", budgetUnitId: "ug", startsAt: new Date("2026-10-01"), endsAt: new Date("2026-10-02"), protocolNumber: "SST-1", reason: { createLeaveOnApproval: true, leaveType: "Licença médica" } }),
-      update: async () => ({}),
-    },
-    person: { findUnique: async () => ({ id: "doctor" }) },
-    configuracaoModulo: { findUnique: async () => ({ ativo: true }) },
-    leave: { findFirst: async () => null, create: async () => { leaves++; return { id: "leave" }; } },
-    sstMedicalAssessment: { create: async () => { assessments++; return {}; } },
-    auditEvent: { create: async () => ({}) },
-  };
-  const context = {
-    user: { ...operator, profileCode: "ADMIN_TECNICO" },
-    prisma: { sstMedicalCertificate: { findUnique: async () => ({ budgetUnitId: "ug" }) }, sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess: true }) }, $transaction: async (callback: (db: typeof tx) => Promise<unknown>) => callback(tx) },
-  } as unknown as AppContext;
-  // Grant RH create via profile rather than relying on a technical-admin code.
-  context.user.permissions = JSON.stringify({ modules: { RH: { blocked: false, create: true } } });
-  const input = { certificateId: "certificate", examinerPersonId: "doctor", examinerCouncil: "CRM PR 123", decision: "APPROVED", opinion: "Afastamento deferido após avaliação.", assessedAt: "2026-10-03" };
-  await assessCertificate(context, input);
-  await assert.rejects(assessCertificate(context, input), /já possui uma decisão/);
-  assert.equal(leaves, 1); assert.equal(assessments, 1);
+  const f = await createSstClinicalFixture();
+  try {
+    const certificate = await registerCertificate(f.context, { budgetUnitId: "ug", employeeId: "employee", reasonId: "reason", issuerPersonId: "doctor", issuerCouncil: "CRM PR 123", startsAt: "2026-10-01", endsAt: "2026-10-02", submissionKey: "2d161f17-63ca-4d57-9c87-82c4f74e4d5a" });
+    f.context.user = { ...operator, profileCode: "ADMIN_TECNICO", permissions: JSON.stringify({ modules: { RH: { blocked: false, create: true } } }) };
+    const input = { certificateId: certificate.id, examinerPersonId: "doctor", examinerCouncil: "CRM PR 123", decision: "APPROVED", opinion: "Afastamento deferido após avaliação.", assessedAt: "2026-10-03" };
+    await assessCertificate(f.context, input);
+    await assert.rejects(assessCertificate(f.context, input), /já possui uma decisão/);
+    assert.equal((await f.database.query('SELECT id FROM "Leave"')).rows.length, 1);
+    assert.equal((await f.database.query('SELECT id FROM "SstMedicalAssessment"')).rows.length, 1);
+  } finally { await f.close(); }
 });
 
 test("retry of certificate submission reuses the original protocol without duplicating the record", async () => {
   const input = { budgetUnitId: "ug", employeeId: "employee", reasonId: "reason", issuerPersonId: "doctor", issuerCouncil: "CRM PR 123", startsAt: new Date("2026-10-01T08:00Z"), endsAt: new Date("2026-10-01T12:00Z"), submissionKey: "2d161f17-63ca-4d57-9c87-82c4f74e4d5a" };
-  let creates = 0;
-  const tx = {
-    $executeRaw: async () => 1,
-    budgetUnit: { findUnique: async () => ({ id: "ug", secretariatId: "s" }) },
-    employee: { findUnique: async () => ({ id: "employee", secretariatId: "s", isActive: true, roleId: null }) },
-    sstCertificateReason: { findUnique: async () => ({ id: "reason", budgetUnitId: "ug", isActive: true, autoProtocol: true, autoPresentedAt: true, dependentPolicy: "DISABLED", restrictedRoleIds: [], printReceipt: false, suggestLeave: false }) },
-    person: { findUnique: async () => ({ id: "doctor" }) },
-    sstMedicalCertificate: { findUnique: async () => ({ ...input, id: "original", createdById: "user", cidCodes: [], dependentId: null, processId: null }), create: async () => { creates++; return {}; } },
-  };
-  const context = { user: operator, prisma: { sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true }) }, $transaction: async (callback: (db: typeof tx) => Promise<unknown>) => callback(tx) } } as unknown as AppContext;
-  assert.equal((await registerCertificate(context, input)).id, "original");
-  assert.equal(creates, 0);
-  await assert.rejects(registerCertificate(context, { ...input, endsAt: new Date("2026-10-01T14:00Z") }), /protocolo já foi utilizado/);
+  const f = await createSstClinicalFixture();
+  try {
+    f.context.user = { ...operator };
+    const original = await registerCertificate(f.context, input);
+    assert.equal((await registerCertificate(f.context, input)).id, original.id);
+    assert.equal((await f.database.query('SELECT id FROM "SstMedicalCertificate"')).rows.length, 1);
+    await assert.rejects(registerCertificate(f.context, { ...input, endsAt: new Date("2026-10-01T14:00Z") }), /protocolo já foi utilizado/);
+  } finally { await f.close(); }
 });
 
 test("additive migration protects canonical references and preserves legacy records", async () => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateTaxAssessment, TaxError } from "../index";
+import { calculateTaxAssessment, TaxError } from "../assessment-engine";
 
 test("C8 calculates a tax assessment with statutory additions and discount", () => {
   const assessment = calculateTaxAssessment({ taxableBase: 1_000, rate: 2, interest: 5, penalty: 3, correction: 2, discount: 1 });

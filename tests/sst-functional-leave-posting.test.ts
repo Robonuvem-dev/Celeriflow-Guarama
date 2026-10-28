@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@prisma/client";
-import { PGlite } from "@electric-sql/pglite";
-import type { AppContext } from "../src/lib/platform/tenant-context";
+import type { PGlite } from "@electric-sql/pglite";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { sstTestContext } from "./helpers/sst-drizzle-context";
+import { sstDatabaseError } from "./helpers/sst-database-error";
+import { withDatabaseTransaction } from "../src/db/transaction";
 import { reconcileCertificateLeavePayroll } from "../src/lib/sst/functional-leave-posting";
 import { assertCertificatePayrollReconciliation } from "../src/lib/sst/functional-certificate-service";
 
@@ -15,8 +17,9 @@ const monetaryRule = {
   reversal: { rubricId: "refund-rubric", eventId: "refund-event", legalReference: "Lei aprovada 123/2026" },
 };
 async function fixture() {
-  const db = new PGlite();
-  await db.exec(`
+  const local = await createLocalDrizzleDatabase(), db = local.database;
+  try {
+    await db.exec(`
     CREATE TABLE "BudgetUnit"(id TEXT PRIMARY KEY); CREATE TABLE "GovernmentEntity"(id TEXT PRIMARY KEY);
     CREATE TABLE "Employee"(id TEXT PRIMARY KEY); CREATE TABLE "HrBudgetUnitEntityMapping"("budgetUnitId" TEXT,"governmentEntityId" TEXT);
     CREATE TABLE "Company"(id TEXT PRIMARY KEY); CREATE TABLE "Supplier"(id TEXT PRIMARY KEY,"companyId" TEXT);
@@ -54,26 +57,23 @@ async function fixture() {
     INSERT INTO "Leave" VALUES('leave','employee','Licença médica','Ativa','2026-10-10 08:00','2026-10-10 14:00');
     INSERT INTO "SstMedicalAssessment" VALUES('assessment','cert','APPROVED','2026-10-10'); INSERT INTO "SstCertificateFunctionalSource" VALUES('cert','history');
     INSERT INTO "SstPlannedShift" VALUES('s1','employee','ug','2026-10-10 08:00','2026-10-10 12:00'),('s2','employee','ug','2026-10-10 10:00','2026-10-10 13:00'),('foreign','employee','foreign','2026-10-10 08:00','2026-10-10 22:00');
-  `);
-  await db.exec(readFileSync("prisma/migrations-ibema/20261011050000_add_sst_health_benefits/migration.sql", "utf8"));
-  await db.exec(readFileSync("prisma/migrations-ibema/20261011090000_add_sst_payroll_origins/migration.sql", "utf8"));
-  await db.exec(readFileSync("prisma/migrations-ibema/20261011110000_add_sst_leave_payroll_origins/migration.sql", "utf8"));
-  await db.query(`INSERT INTO "HrPayrollRule" VALUES('rule','rules','CALCULO','JSON',$1,true,'Lei aprovada 123/2026')`, [JSON.stringify(monetaryRule)]);
-  await db.exec(`INSERT INTO "SstBenefitPayrollScope"("payrollId","budgetUnitId","governmentEntityId",competence,"createdById") VALUES('pay','ug','entity','10/2026','user'),('next','ug','entity','11/2026','user');`);
-  const raw = async (sql: Prisma.Sql | TemplateStringsArray, ...values: unknown[]) => { const q = Array.isArray(sql) ? Prisma.sql(sql as TemplateStringsArray, ...values) : sql as Prisma.Sql; return (await db.query(q.text,q.values)).rows; };
-  const tx = { $queryRaw: raw, $executeRaw: raw };
-  const context = { user: { id: "user", profileCode: "TEST", allowedBudgetUnitIds: ["ug"], modulePermissions: [], permissions: JSON.stringify({ modules: { SST: { update: true }, RH: { update: true } } }) }, prisma: { ...tx,
-    sstMedicalCertificate: { findUnique: async ({ where }: { where: { id: string } }) => (await db.query(`SELECT "budgetUnitId" FROM "SstMedicalCertificate" WHERE id=$1`, [where.id])).rows[0] || null },
-    sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess: true }) },
-    $transaction: async (callback: (client: typeof tx) => Promise<unknown>) => { await db.exec("BEGIN"); try { const result = await callback(tx); await db.exec("COMMIT"); return result; } catch (error) { await db.exec("ROLLBACK"); throw error; } },
-  } } as unknown as AppContext;
-  return { db, context };
+    `);
+    await db.exec(readFileSync("prisma/migrations-ibema/20261011050000_add_sst_health_benefits/migration.sql", "utf8"));
+    await db.exec(readFileSync("prisma/migrations-ibema/20261011090000_add_sst_payroll_origins/migration.sql", "utf8"));
+    await db.exec(readFileSync("prisma/migrations-ibema/20261011110000_add_sst_leave_payroll_origins/migration.sql", "utf8"));
+    await db.query(`INSERT INTO "HrPayrollRule" VALUES('rule','rules','CALCULO','JSON',$1,true,'Lei aprovada 123/2026')`, [JSON.stringify(monetaryRule)]);
+    await db.exec(`INSERT INTO "SstBenefitPayrollScope"("payrollId","budgetUnitId","governmentEntityId",competence,"createdById") VALUES('pay','ug','entity','10/2026','user'),('next','ug','entity','11/2026','user');`);
+    await db.exec(`CREATE TABLE "SstAccessGrant" (id TEXT PRIMARY KEY,"usuarioId" TEXT,"budgetUnitId" TEXT,"isActive" BOOLEAN,"canReadClinical" BOOLEAN,"canAssess" BOOLEAN,"createdAt" TIMESTAMP DEFAULT now(),"updatedAt" TIMESTAMP DEFAULT now());
+    INSERT INTO "SstAccessGrant" (id,"usuarioId","budgetUnitId","isActive","canReadClinical","canAssess") VALUES ('grant','user','ug',true,true,true),('reader-grant','reader','ug',true,false,false);`);
+    const context = sstTestContext(local.connection.db, { permissions: JSON.stringify({ modules: { SST: { update: true }, RH: { update: true } } }) });
+    return { db, context, connection: local.connection, close: local.close };
+  } catch (error) { await local.close(); throw error; }
 }
 const posting = { operation: "POST", certificateId: "cert", payrollId: "pay", ruleId: "rule" };
 const countOrigins = async (db: PGlite) => (await db.query<{ n: number }>(`SELECT count(*)::int n FROM "SstLeavePayrollOrigin"`)).rows[0].n;
 
 test("approved configured monetary rule posts native exact amount, union minutes, authoritative totals and immutable decision FK once", async () => {
-  const { db, context } = await fixture();
+  const { db, context, close } = await fixture();
   try {
     const result = await reconcileCertificateLeavePayroll(context, posting);
     assert.equal(result.status, "POSTED"); assert.equal(result.amount, "0.30");
@@ -88,10 +88,10 @@ test("approved configured monetary rule posts native exact amount, union minutes
     await assert.rejects(db.exec(`UPDATE "SstMedicalCertificate" SET status='REVOKED' WHERE id='cert'`), /compensation before decision/);
     const audit = (await db.query(`SELECT "targetType","targetId" FROM "AuditEvent"`)).rows;
     assert.doesNotMatch(JSON.stringify(audit), /Licença|rateBRL|attestedMinutes/);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 test("missing calculation, legal approval, production regime and closed payroll block without mutation", async () => {
-  const { db, context } = await fixture();
+  const { db, context, close } = await fixture();
   try {
     await db.exec(`UPDATE "HrPayrollRule" SET value=value-'calculation'`);
     assert.deepEqual((await reconcileCertificateLeavePayroll(context, posting)).blockers, ["APPROVED_MONETARY_CALCULATION_REQUIRED"]);
@@ -102,10 +102,10 @@ test("missing calculation, legal approval, production regime and closed payroll 
     await db.exec(`UPDATE "HrPayrollRuleSet" SET "isDemo"=false; UPDATE "Payroll" SET status='Fechada' WHERE id='pay'`);
     assert.deepEqual((await reconcileCertificateLeavePayroll(context, posting)).blockers, ["PAYROLL_CLOSED"]);
     assert.equal(await countOrigins(db), 0);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 test("overlapping clinical cases and already calculated legacy event cannot duplicate monetary effects", async () => {
-  const { db, context } = await fixture();
+  const { db, context, close } = await fixture();
   try {
     await db.exec(`INSERT INTO "PayrollItem"(id,"payrollId","employeeId","eventId",value) VALUES('legacy','pay','employee','leave-event',0.30)`);
     assert.deepEqual((await reconcileCertificateLeavePayroll(context, posting)).blockers, ["EXISTING_CALCULATED_EVENT_REQUIRES_RECONCILIATION"]);
@@ -114,15 +114,14 @@ test("overlapping clinical cases and already calculated legacy event cannot dupl
     await db.exec(`INSERT INTO "SstMedicalCertificate" VALUES('overlap','employee','ug','overlap-leave','APPROVED','2026-10-10 11:00','2026-10-10 15:00'); INSERT INTO "Leave" VALUES('overlap-leave','employee','Licença médica','Ativa','2026-10-10 11:00','2026-10-10 15:00'); INSERT INTO "SstMedicalAssessment" VALUES('overlap-decision','overlap','APPROVED','2026-10-10'); INSERT INTO "SstCertificateFunctionalSource" VALUES('overlap','history');`);
     assert.deepEqual((await reconcileCertificateLeavePayroll(context, { ...posting, certificateId: "overlap" })).blockers, ["OVERLAPPING_ATTESTED_ORIGIN_REQUIRES_RECONCILIATION"]);
     assert.equal(await countOrigins(db), 1);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 test("approved compensatory credit preserves paid/closed original and posts exact amount to open competence idempotently", async () => {
-  const { db, context } = await fixture();
+  const { db, context, connection, close } = await fixture();
   try {
     const post = await reconcileCertificateLeavePayroll(context, posting);
-    const sql = async (query: TemplateStringsArray, ...values: unknown[]) => { const q = Prisma.sql(query,...values); return (await db.query(q.text,q.values)).rows; };
-    const recon = { $queryRaw: sql, $executeRaw: sql } as unknown as Prisma.TransactionClient;
-    await assert.rejects(assertCertificatePayrollReconciliation(recon,"employee",new Date("2026-10-10T08:00Z"),new Date("2026-10-10T14:00Z"),"cert"), /Compense todas/);
+    const reconcile = () => withDatabaseTransaction(connection, tx => assertCertificatePayrollReconciliation(tx,"employee",new Date("2026-10-10T08:00Z"),new Date("2026-10-10T14:00Z"),"cert"));
+    await assert.rejects(reconcile(), /Compense todas/);
     await db.exec(`UPDATE "Payroll" SET status='Fechada' WHERE id='pay'; UPDATE "Payroll" SET status='Paga' WHERE id='pay'; UPDATE "HrPayrollRule" SET value=value-'reversal'`);
     const reverse = { operation: "REVERSE", certificateId: "cert", payrollId: "next", ruleId: "rule", originId: post.originId, reason: "Compensação formal aprovada do reflexo anterior" };
     assert.deepEqual((await reconcileCertificateLeavePayroll(context, reverse)).blockers, ["APPROVED_REVERSAL_MAPPING_REQUIRED"]);
@@ -134,15 +133,25 @@ test("approved compensatory credit preserves paid/closed original and posts exac
     assert.deepEqual(rows, [{ id: "next", status: "Aberta", total: "1000.30" }, { id: "pay", status: "Paga", total: "999.70" }]);
     await assert.rejects(db.exec(`UPDATE "Payroll" SET status='Aberta' WHERE id='pay'`), /compensatory open competence/);
     assert.equal(await countOrigins(db), 2);
-    assert.equal((await assertCertificatePayrollReconciliation(recon,"employee",new Date("2026-10-10T08:00Z"),new Date("2026-10-10T14:00Z"),"cert")).status, "RECONCILED_CANONICAL_LEAVE_COMPENSATION");
+    assert.equal((await reconcile()).status, "RECONCILED_CANONICAL_LEAVE_COMPENSATION");
     await db.exec(`UPDATE "SstMedicalCertificate" SET status='REVOKED',"leaveId"=NULL WHERE id='cert'`);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 test("precision failure rolls back scope, rule version, origin and monetary item; native HALF_UP is explicit", async () => {
-  const { db, context } = await fixture();
+  const { db, context, close } = await fixture();
   try {
     await db.exec(`UPDATE "PayrollItem" SET value=1000.001 WHERE id='salary'`);
-    await assert.rejects(reconcileCertificateLeavePayroll(context, posting), /LEGACY_FLOAT_PRECISION_UNSUPPORTED/);
+    const payrollState = async () => (await db.query(`SELECT
+      (SELECT jsonb_agg(to_jsonb(p) ORDER BY id) FROM "Payroll" p) AS payrolls,
+      (SELECT jsonb_agg(to_jsonb(i) ORDER BY id) FROM "PayrollItem" i) AS items,
+      (SELECT jsonb_agg(to_jsonb(s) ORDER BY "payrollId") FROM "SstBenefitPayrollScope" s) AS scopes,
+      (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM "SstLeavePayrollScopeEvidence" e) AS evidence,
+      (SELECT jsonb_agg(to_jsonb(v) ORDER BY id) FROM "SstLeavePayrollRuleVersion" v) AS versions,
+      (SELECT jsonb_agg(to_jsonb(o) ORDER BY id) FROM "SstLeavePayrollOrigin" o) AS origins,
+      (SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM "AuditEvent" a) AS audits`)).rows;
+    const before = await payrollState();
+    await assert.rejects(reconcileCertificateLeavePayroll(context, posting), sstDatabaseError("P0001", /LEGACY_FLOAT_PRECISION_UNSUPPORTED/));
+    assert.deepEqual(await payrollState(), before);
     assert.equal(await countOrigins(db), 0);
     assert.equal((await db.query<{ n: number }>(`SELECT count(*)::int n FROM "SstLeavePayrollRuleVersion"`)).rows[0].n, 0);
     await db.exec(`UPDATE "PayrollItem" SET value=1000 WHERE id='salary'; UPDATE "SstMedicalCertificate" SET "endsAt"='2026-10-10 08:01'; UPDATE "Leave" SET "endDate"='2026-10-10 08:01';`);
@@ -150,17 +159,19 @@ test("precision failure rolls back scope, rule version, origin and monetary item
     await db.query(`UPDATE "HrPayrollRule" SET value=$1`, [JSON.stringify(rounding)]);
     assert.equal((await reconcileCertificateLeavePayroll(context, posting)).amount, "0.02");
     const invalid = { ...posting, payrollId: "unscoped", confirmPayrollScope: true, scopeSourceReference: "Ato oficial da UG e folha dezembro" };
+    const beforeBlocked = await payrollState();
     assert.equal((await reconcileCertificateLeavePayroll(context, invalid)).status, "BLOCKED");
+    assert.deepEqual(await payrollState(), beforeBlocked);
     assert.equal((await db.query<{ n: number }>(`SELECT count(*)::int n FROM "SstBenefitPayrollScope" WHERE "payrollId"='unscoped'`)).rows[0].n, 0);
     assert.equal((await db.query<{ n: number }>(`SELECT count(*)::int n FROM "SstLeavePayrollScopeEvidence"`)).rows[0].n, 0);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 test("SST/RH/clinical/UG authorization guards actual posting; different entity scope cannot be inferred", async () => {
-  const { db, context } = await fixture();
+  const { db, context, close } = await fixture();
   try {
     await assert.rejects(reconcileCertificateLeavePayroll({ ...context, user: { ...context.user, allowedBudgetUnitIds: ["foreign"] } }, posting), /Acesso negado/);
     await assert.rejects(reconcileCertificateLeavePayroll({ ...context, user: { ...context.user, permissions: JSON.stringify({ modules: { SST: { update: true }, RH: { update: false } } }) } }, posting), /alteração SST e RH/);
-    const reader = { ...context, prisma: { ...context.prisma, sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: false }) } } } as unknown as AppContext;
+    const reader = { ...context, user: { ...context.user, id: "reader" } };
     await assert.rejects(reconcileCertificateLeavePayroll(reader, posting), /clínica/);
     assert.equal(await countOrigins(db), 0);
     await db.exec(`INSERT INTO "Payroll"(id,competence,type,status) VALUES('foreign-pay','10/2026','Mensal','Aberta'); INSERT INTO "SstBenefitPayrollScope"("payrollId","budgetUnitId","governmentEntityId",competence,"createdById") VALUES('foreign-pay','foreign','otherEntity','10/2026','user')`);
@@ -168,5 +179,5 @@ test("SST/RH/clinical/UG authorization guards actual posting; different entity s
     assert.deepEqual((await reconcileCertificateLeavePayroll(multipleUnits,{ ...posting,payrollId: "foreign-pay" })).blockers,["PAYROLL_CERTIFICATE_UG_MISMATCH"]);
     const direct = await db.query<{ result: { status: string } }>(`SELECT sst_post_certificate_leave('cert','pay','rule',$1,'user') AS result`, [randomUUID()]);
     assert.equal(direct.rows[0].result.status, "POSTED");
-  } finally { await db.close(); }
+  } finally { await close(); }
 });

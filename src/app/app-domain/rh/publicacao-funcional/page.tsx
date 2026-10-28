@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import { accessiblePayrollWhere } from "@/lib/rh/payroll-access";
+import { db } from "@/db/client";
+import { readPortalRules, readActiveRuleSets } from "@/db/repositories/personnel-pages/catalog";
+import { readPublishedPayrollPage } from "@/db/repositories/personnel-pages/workforce";
 import { portalPayrollPublicationPolicySchema } from "@/lib/portal-servidor/payroll-publication";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
@@ -11,16 +13,11 @@ export const dynamic = "force-dynamic";
 
 export default async function FunctionalPayrollPublicationPage({ searchParams }: { searchParams: Promise<{ edit?: string; new?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH"), params = await searchParams;
-  const payrollScope = accessiblePayrollWhere(context.user);
-  const rules = await context.prisma.hrPayrollRule.findMany({ where: { category: "PORTAL", valueType: "JSON", code: { startsWith: "PORTAL_FOLHA_" } }, orderBy: { name: "asc" } });
+  const rules = await readPortalRules(context.database ?? db, "payroll");
   const policies = rules.filter(rule => { const policy = portalPayrollPublicationPolicySchema.safeParse(rule.value); return policy.success && (isSystemAdministrator(context.user) || context.user.allowedBudgetUnitIds.includes(policy.data.budgetUnitId)); });
   const selected = policies.find(policy => policy.id === params.edit);
-  const ruleSets = await context.prisma.hrPayrollRuleSet.findMany({ where: { status: "ATIVA" }, select: { id: true, name: true }, orderBy: { name: "asc" } });
-  const runs = await context.prisma.hrPayrollRun.findMany({ where: { mode: "OFICIAL", status: { in: ["CALCULADA", "FECHADA"] }, payroll: payrollScope }, include: { payroll: { select: { competence: true, type: true } } }, orderBy: { createdAt: "desc" } });
-  const where = { releaseAt: { not: null }, revokedAt: null, run: { payroll: payrollScope } };
-  const total = await context.prisma.hrPayrollStatement.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const statements = await context.prisma.hrPayrollStatement.findMany({ where, include: { contract: { select: { registration: true, employee: { select: { name: true } } } }, run: { include: { payroll: { select: { competence: true, type: true } } } } }, orderBy: [{ releaseAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+  const ruleSets = await readActiveRuleSets(context.database ?? db);
+  const { runs, total, page, statements } = await readPublishedPayrollPage(context.database ?? db, context.user, params.page);
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
     <ErpPageTitle title="Disponibilização funcional da folha" description="Políticas por tipo, regime e escopo; data de liberação e revogação dos demonstrativos pessoais." action={<Link href="?new=1">Nova política</Link>} />
     {params.new || selected ? <PayrollPolicyForm key={selected?.id || "new"} ruleSets={ruleSets} values={selected ? { id: selected.id, ruleSetId: selected.ruleSetId, code: selected.code, name: selected.name, isActive: selected.isActive, value: selected.value } : undefined} /> : <section className="rounded border border-slate-300 bg-white p-3 text-xs"><h2 className="mb-2 font-semibold">Políticas configuradas</h2>{policies.map(policy => <p key={policy.id}><Link href={`?edit=${policy.id}`} className="text-emerald-800 underline">{policy.name}</Link> · {policy.isActive ? "Ativa" : "Inativa"}</p>)}{!policies.length && <p>Nenhuma política no seu escopo.</p>}</section>}

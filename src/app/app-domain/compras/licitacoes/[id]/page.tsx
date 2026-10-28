@@ -17,6 +17,8 @@ import {
 } from "@/lib/compras/bidding-workflow";
 import { BiddingStatusControls } from "../BiddingStatusControls";
 import { BiddingWorkflowPanel } from "../BiddingWorkflowPanel";
+import { databaseConnection } from "@/db/client";
+import { loadBiddingDetail, loadBiddingSelectors } from "@/db/repositories/procurement/bidding";
 
 function formatDate(value: Date | null, pattern: string) {
   return value ? format(value, pattern, { locale: ptBR }) : "Não informada";
@@ -32,162 +34,12 @@ function supplierName(supplier: {
 export default async function LicitacaoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const licitacao = await context.prisma.bidding.findUnique({
-    where: { id },
-    include: {
-      process: {
-        include: {
-          secretariat: { select: { name: true } },
-          purchaseRequest: { select: { number: true, status: true } },
-          items: {
-            include: {
-              catalogItem: { select: { name: true, unit: true } },
-              material: { select: { name: true, unitOfMeasure: true } },
-            },
-            orderBy: { createdAt: "asc" },
-          },
-        },
-      },
-      biddingAppointmentAssignments: {
-        where: { status: "Ativa" },
-        orderBy: { assignedAt: "desc" },
-        include: {
-          appointment: {
-            include: {
-              members: {
-                where: { status: "Ativo" },
-                orderBy: { createdAt: "asc" },
-                include: { employee: { select: { name: true } } },
-              },
-            },
-          },
-        },
-      },
-      biddingPhases: {
-        where: { version: 1 },
-        orderBy: { sequence: "asc" },
-      },
-      biddingActs: {
-        orderBy: { occurredAt: "desc" },
-        take: 60,
-        include: {
-          phase: { select: { name: true } },
-          biddingLot: { select: { number: true } },
-          actorUsuario: { select: { nome: true } },
-        },
-      },
-      biddingParticipants: {
-        orderBy: { registeredAt: "asc" },
-        include: {
-          supplier: {
-            select: {
-              id: true,
-              company: { select: { corporateName: true, tradeName: true } },
-              person: { select: { fullName: true } },
-            },
-          },
-        },
-      },
-      biddingLots: {
-        orderBy: { number: "asc" },
-        include: {
-          items: {
-            include: {
-              purchaseProcessItem: {
-                include: {
-                  catalogItem: { select: { name: true, unit: true } },
-                  material: { select: { name: true, unitOfMeasure: true } },
-                },
-              },
-            },
-          },
-          eligibilityDecisions: {
-            orderBy: [{ decidedAt: "desc" }, { createdAt: "desc" }],
-          },
-          bids: {
-            orderBy: { sequence: "desc" },
-            include: {
-              participant: {
-                include: {
-                  supplier: {
-                    select: {
-                      company: { select: { corporateName: true, tradeName: true } },
-                      person: { select: { fullName: true } },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          results: {
-            where: { isCurrent: true },
-            include: {
-              participant: {
-                include: {
-                  supplier: {
-                    select: {
-                      company: { select: { corporateName: true, tradeName: true } },
-                      person: { select: { fullName: true } },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+  const licitacao = await loadBiddingDetail(databaseConnection.db, id);
   if (!licitacao) notFound();
 
   const participantSupplierIds = licitacao.biddingParticipants.map((participant) => participant.supplierId);
   const assignedAppointmentIds = new Set(licitacao.biddingAppointmentAssignments.map((assignment) => assignment.appointmentId));
-  const [availableAppointments, employees, suppliers, users, portalIdentities, lifecycleEvents] = await Promise.all([
-    context.prisma.biddingAppointment.findMany({
-      where: { status: "Ativa" },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: {
-        members: {
-          where: { status: "Ativo" },
-          orderBy: { createdAt: "asc" },
-          include: { employee: { select: { name: true } } },
-        },
-      },
-    }),
-    context.prisma.employee.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, role: { select: { name: true } } },
-    }),
-    context.prisma.supplier.findMany({
-      where: { status: "Ativo" },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      select: {
-        id: true,
-        company: { select: { corporateName: true, tradeName: true } },
-        person: { select: { fullName: true } },
-      },
-    }),
-    context.prisma.usuario.findMany({
-      where: { ativo: true },
-      orderBy: { nome: "asc" },
-      take: 150,
-      select: { id: true, nome: true, email: true },
-    }),
-    context.prisma.supplierPortalIdentity.findMany({
-      where: { supplierId: { in: participantSupplierIds } },
-      orderBy: { createdAt: "asc" },
-      include: { usuario: { select: { nome: true, email: true } } },
-    }),
-    context.prisma.procurementLifecycleEvent.findMany({
-      where: { entityType: "BIDDING", entityId: licitacao.id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      include: { actorUsuario: { select: { nome: true } } },
-    }),
-  ]);
+  const { availableAppointments, employees, suppliers, users, portalIdentities, lifecycleEvents } = await loadBiddingSelectors(databaseConnection.db, licitacao.id, participantSupplierIds);
 
   const canUpdate = canPerformModuleOperation(context.user, "COMPRAS", "update");
   const canEditDetails = canUpdate && canEditBiddingDetails(licitacao.status);

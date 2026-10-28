@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalRows } from "@/db/repositories/portal-servidor/records";
+import { portalEmployeeProfile } from "@/db/repositories/portal-servidor/profile";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { listMyRecertificationCampaigns } from "@/lib/rh/recertification";
 import { recertificationDetailsSchema, type RecertificationDetails } from "@/lib/rh/recertification-details";
@@ -10,10 +14,13 @@ export const dynamic = "force-dynamic";
 export default async function RecertificationPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const access = await getEmployeePortalAccess();
   if (access.status !== "AVAILABLE") return <p className="p-4">Cadastro funcional indisponível.</p>;
-  const employee = await access.context.prisma.employee.findUniqueOrThrow({ where: { id: access.employee.id }, include: { person: { include: { addresses: { orderBy: { id: "asc" } } } }, dependents: { orderBy: { id: "asc" } } } });
+  const executor = access.context.database ?? db;
+  const employee = await portalEmployeeProfile(executor, access.employee.id);
+  if (!employee) throw new Error("Registro não encontrado.");
   if (!employee.person) return <p className="p-4">Vinculação ao Cadastro Único pendente.</p>;
-  const campaigns = await listMyRecertificationCampaigns(access.context.prisma, employee.id);
-  const documents = await access.context.prisma.documentVersion.findMany({ where: { status: { in: ["FINAL", "SIGNED"] }, document: { personId: employee.person.id, status: "Válido" } }, select: { id: true, versionNumber: true, document: { select: { title: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] });
+  const campaigns = await listMyRecertificationCampaigns(executor, employee.id);
+  const documentRows = await portalRows<{ id: string; versionNumber: number; title: string }>(executor, sql`SELECT v.id,v."versionNumber",d.title FROM "DocumentVersion" v JOIN "Document" d ON d.id=v."documentId" WHERE v.status IN ('FINAL','SIGNED') AND d."personId"=${employee.person.id} AND d.status='Válido' ORDER BY v."createdAt" DESC,v.id`);
+  const documents = documentRows.map(({ title, ...row }) => ({ ...row, document: { title } }));
   const page = Math.min(Math.max(1, Number.parseInt((await searchParams).page || "1") || 1), Math.max(1, Math.ceil(campaigns.length / 20))), now = new Date();
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"><ErpPageTitle title="Recadastramento" description="Propostas e comprovação aplicadas ao Cadastro Único somente após conferência e deferimento do RH." action={<Link href="/portal-servidor/solicitacoes-rh">Meus pedidos</Link>} />
     {campaigns.slice((page - 1) * 20, page * 20).map(campaign => {

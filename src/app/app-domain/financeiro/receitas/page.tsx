@@ -1,25 +1,19 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import ReceitasClient from "./ReceitasClient";
+import { db } from "@/db/client";
+import { Decimal } from "@/db/decimal";
+import { listFinancePageSources } from "@/db/repositories/finance-pages/catalog";
+import { listFinancePageBankAccounts, listFinancePageBudgetUnits } from "@/db/repositories/finance-pages/banking";
+import { listFinancePageRevenueNatures, listFinancePageRevenues } from "@/db/repositories/finance-pages/reports";
 
 export default async function ReceitasPage() {
   const context = await getTenantContextForModule("FINANCEIRO");
-  const accountAccess = isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } };
+  const executor = context.database ?? db;
+  const access = { allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
   const [revenues, revenueNatures, resourceSources, bankAccounts, budgetUnits] = await Promise.all([
-    context.prisma.revenue.findMany({
-      where: accountAccess,
-      include: {
-        revenueNature: { select: { code: true, name: true } },
-        resourceSource: { select: { code: true, name: true } },
-        reversal: { select: { id: true } },
-        resourceRedistributions: { select: { valueDecimal: true } },
-      },
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-      take: 100,
-    }),
-    context.prisma.revenueNature.findMany({ orderBy: { code: "asc" } }),
-    context.prisma.resourceSource.findMany({ orderBy: { code: "asc" } }),
-    context.prisma.bankAccount.findMany({ where: accountAccess, select: { id: true, bankName: true, agency: true, accountNumber: true, resourceSourceId: true, budgetUnitId: true, isActive: true }, orderBy: { bankName: "asc" } }),
-    context.prisma.budgetUnit.findMany({ where: isSystemAdministrator(context.user) ? {} : { id: { in: context.user.allowedBudgetUnitIds } }, select: { id: true, name: true, planningEntityUnit: { select: { governmentEntity: { select: { name: true } } } } }, orderBy: { code: "asc" } }),
+    listFinancePageRevenues(executor, access), listFinancePageRevenueNatures(executor), listFinancePageSources(executor),
+    listFinancePageBankAccounts(executor, access).then(rows => rows.map(row => ({ id: row.id, bankName: row.bankName, agency: row.agency, accountNumber: row.accountNumber, resourceSourceId: row.resourceSourceId, budgetUnitId: row.budgetUnitId, isActive: row.isActive }))),
+    listFinancePageBudgetUnits(executor, access),
   ]);
 
   return <ReceitasClient
@@ -33,7 +27,7 @@ export default async function ReceitasPage() {
       revenueNature: revenue.revenueNature,
       resourceSource: revenue.resourceSource,
       resourceSourceId: revenue.resourceSourceId,
-      redistributedValue: revenue.resourceRedistributions.reduce((total, item) => total + Number(item.valueDecimal), 0),
+      redistributedValue: revenue.resourceRedistributions.reduce((total, item) => total.plus(item.valueDecimal), new Decimal(0)).toNumber(),
       hasReversal: Boolean(revenue.reversal),
     }))}
     revenueNatures={revenueNatures}

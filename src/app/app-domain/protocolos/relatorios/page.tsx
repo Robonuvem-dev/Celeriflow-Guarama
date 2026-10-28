@@ -1,5 +1,7 @@
 import { BarChart3 } from "lucide-react";
-import { getProtocolContext, protocolScope } from "@/lib/protocols/access";
+import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
+import { db } from "@/db/client";
+import { listOperationalProcesses } from "@/db/repositories/processes/listing";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 
@@ -7,11 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ProtocolReportsPage() {
   const context = await getProtocolContext();
-  const processes = await context.prisma.process.findMany({
-    where: protocolScope(context),
-    select: { status: true, expectedCompletionAt: true, completedAt: true, processType: { select: { name: true } }, subject: { select: { name: true } }, currentDepartment: { select: { name: true } } },
-    take: 1000,
-  });
+  const processes = await listOperationalProcesses(db, protocolScopeCondition(context), { limit: 1000, order: "unspecified" });
   const group = (values: string[]) => Object.entries(values.reduce<Record<string, number>>((result, value) => ({ ...result, [value]: (result[value] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]);
   const status = group(processes.map(process => process.status));
   const types = group(processes.map(process => process.processType.name));

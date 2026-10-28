@@ -3,6 +3,8 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { GestaoCulturalClient, type CulturalRecord } from "../components/GestaoCulturalClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { getCulturalManagement } from "@/db/repositories/culture/queries";
 
 function assetReference(asset: { patrimonyNumber: string; name: string } | null) {
   return asset ? `${asset.patrimonyNumber} - ${asset.name}` : "Sem vínculo no Patrimônio";
@@ -22,21 +24,8 @@ function realEstateReference(realEstate: { municipalInsc: string | null; registr
 }
 
 export default async function GestaoCulturalPage() {
-  const { prisma } = await getTenantContextForModule("CULTURA");
-  const [agents, spaces, heritages] = await Promise.all([
-    prisma.culturaAgente.findMany({
-      include: { person: true, company: true },
-      orderBy: { nome: "asc" },
-    }),
-    prisma.culturaEspaco.findMany({
-      include: { asset: true, realEstate: true, responsibleEmployee: true },
-      orderBy: { nome: "asc" },
-    }),
-    prisma.culturaPatrimonio.findMany({
-      include: { asset: true, realEstate: true },
-      orderBy: { nome: "asc" },
-    }),
-  ]);
+  await getTenantContextForModule("CULTURA");
+  const [agents, spaces, heritages] = await getCulturalManagement(db);
 
   const records: CulturalRecord[] = [
     ...agents.map((agent) => ({

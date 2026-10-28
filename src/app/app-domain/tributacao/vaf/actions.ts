@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { taxActionContext } from "@/db/repositories/tax-actions/context";
 import {
   createEstimate,
   importIndices,
@@ -25,7 +25,7 @@ const done = (error?: unknown) => ({
         : undefined,
 });
 async function ctx(op: "create" | "update") {
-  return getTenantContextForModuleOperation("TRIBUTACAO", op);
+  return taxActionContext(op);
 }
 const actor = (c: Awaited<ReturnType<typeof ctx>>) => ({
   usuarioId: c.user.id,
@@ -35,7 +35,7 @@ export async function upsertAccountantAction(
 ) {
   try {
     const c = await ctx("create");
-    await upsertAccountant(c.prisma, input);
+    await upsertAccountant(c.connection, input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -47,7 +47,7 @@ export async function upsertCompanyAction(
 ) {
   try {
     const c = await ctx("create");
-    await upsertCompany(c.prisma, input);
+    await upsertCompany(c.connection, input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -60,7 +60,7 @@ export async function linkAccountantAction(
 ) {
   try {
     const c = await ctx("update");
-    await linkCompanyAccountant(c.prisma, companyId, accountantId);
+    await linkCompanyAccountant(c.connection, companyId, accountantId);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -78,7 +78,7 @@ export async function upsertRuleAction(input: {
 }) {
   try {
     const c = await ctx("create");
-    await upsertRule(c.prisma, {
+    await upsertRule(c.connection, {
       ...input,
       effectiveFrom: new Date(input.effectiveFrom),
     });
@@ -104,7 +104,7 @@ export async function importMovementsAction(
 ) {
   try {
     const c = await ctx("create");
-    await importMovements(c.prisma, actor(c), kind, input);
+    await importMovements(c.connection, actor(c), kind, input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -114,17 +114,17 @@ export async function importMovementsAction(
 export async function processCompetencyAction(input: {
   exerciseId: string;
   competency: string;
-}) {
+}): Promise<{ error?: string; summary?: string }> {
   try {
     const c = await ctx("update");
-    const r = await processCompetency(c.prisma, actor(c), input);
+    const r = await processCompetency(c.connection, actor(c), input);
     revalidatePath(path);
     return {
       ...done(),
       summary: `Apurado VAF ${r.total} (${r.companies} empresas).`,
     };
   } catch (e) {
-    return { ...done(e), summary: undefined as unknown as string };
+    return { ...done(e), summary: undefined };
   }
 }
 export async function importRepasseAction(input: {
@@ -136,7 +136,7 @@ export async function importRepasseAction(input: {
 }) {
   try {
     const c = await ctx("create");
-    await importRepasse(c.prisma, actor(c), input);
+    await importRepasse(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -148,7 +148,7 @@ export async function importIndicesAction(
 ) {
   try {
     const c = await ctx("create");
-    await importIndices(c.prisma, input);
+    await importIndices(c.connection, input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -160,7 +160,7 @@ export async function notifyCorrectionAction(
 ) {
   try {
     const c = await ctx("create");
-    await notifyCorrection(c.prisma, input);
+    await notifyCorrection(c.connection, input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -170,7 +170,7 @@ export async function notifyCorrectionAction(
 export async function markNotificationReadAction(id: string) {
   try {
     const c = await ctx("update");
-    await markNotificationRead(c.prisma, id);
+    await markNotificationRead(c.connection, id);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -183,7 +183,7 @@ export async function resolveCrossCheckAction(
 ) {
   try {
     const c = await ctx("update");
-    await resolveCrossCheck(c.prisma, actor(c), id, status);
+    await resolveCrossCheck(c.connection, actor(c), id, status);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -199,7 +199,7 @@ export async function createEstimateAction(input: {
 }) {
   try {
     const c = await ctx("create");
-    await createEstimate(c.prisma, actor(c), input);
+    await createEstimate(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (e) {

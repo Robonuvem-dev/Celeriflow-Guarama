@@ -1,4 +1,6 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { taxActionConnection } from "@/db/repositories/tax-actions/context";
+import { actionGuideDocument, actionPixCharge } from "@/db/repositories/tax-actions/documents";
 
 export const dynamic = "force-dynamic";
 
@@ -8,10 +10,10 @@ function escape(value: unknown) {
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const guide = await prisma.taxGuide.findUnique({ where: { id }, include: { assessment: { include: { tax: true, taxpayer: { include: { person: true, company: true } } } }, payments: { where: { status: "Confirmado" }, orderBy: { paymentDate: "asc" } } } });
+  const database = taxActionConnection(await getTenantContextForModule("TRIBUTACAO")).db;
+  const guide = await actionGuideDocument(database, id);
   if (!guide) return new Response("DAM não encontrado.", { status: 404 });
-  const charge = await prisma.taxIntegrationEvent.findFirst({ where: { integrationCode: "PIX_ADAPTER", payload: { path: ["guideId"], equals: guide.id } }, orderBy: { createdAt: "desc" } });
+  const charge = await actionPixCharge(database, guide.id);
   const total = Number(guide.totalValueDecimal ?? guide.totalValue);
   const paid = guide.payments.reduce((sum, payment) => sum + Number(payment.amountPaidDecimal ?? payment.amountPaid), 0);
   const taxpayer = guide.assessment.taxpayer.company?.corporateName ?? guide.assessment.taxpayer.person?.fullName ?? "Contribuinte";

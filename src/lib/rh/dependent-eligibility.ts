@@ -1,4 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { dependents } from "@/db/schema/personnel-records";
+import { people } from "@/db/schema/people";
+import { documents as documentTable } from "@/db/schema/registry";
 import { z } from "zod";
 
 export const dependentEligibilityPolicySchema = z.object({
@@ -52,12 +56,12 @@ export function evaluateDependentEligibility(candidate: Candidate, documents: Ev
   return { dependentId: candidate.id, personId: candidate.personId, relationship: candidate.relationship, birthDate: person?.birthDate?.toISOString() || null, age, eligible: reasons.length === 0, reasons, documentIds };
 }
 
-export async function assessPayrollDependents(tx: Prisma.TransactionClient, employeeIds: string[], flag: "familyWage" | "irrfDependent", rawPolicy: unknown, period: { start: Date; end: Date }) {
+export async function assessPayrollDependents(tx: DatabaseExecutor, employeeIds: string[], flag: "familyWage" | "irrfDependent", rawPolicy: unknown, period: { start: Date; end: Date }) {
   const policy = dependentEligibilityPolicySchema.parse(rawPolicy);
-  const candidates = await tx.dependent.findMany({ where: { employeeId: { in: employeeIds }, [flag]: true }, include: { person: { select: { id: true, birthDate: true, status: true } } }, orderBy: { id: "asc" } });
+  const candidates = await tx.select({ id: dependents.id, personId: dependents.personId, relationship: dependents.relationship, person: { id: people.id, birthDate: people.birthDate, status: people.status } }).from(dependents).leftJoin(people, eq(people.id, dependents.personId)).where(and(inArray(dependents.employeeId, employeeIds), eq(dependents[flag], true))).orderBy(asc(dependents.id));
   const linked = candidates.map(candidate => candidate.personId).filter((id): id is string => Boolean(id));
   if (new Set(linked).size !== linked.length) throw new Error("Dependente repetido no Cadastro Único; saneie a duplicidade antes de calcular.");
-  const documents = await tx.document.findMany({ where: { personId: { in: linked }, documentType: { in: policy.requiredDocumentTypes } }, select: { id: true, personId: true, documentType: true, status: true, validUntil: true } });
+  const documents = await tx.select({ id: documentTable.id, personId: documentTable.personId, documentType: documentTable.documentType, status: documentTable.status, validUntil: documentTable.validUntil }).from(documentTable).where(and(inArray(documentTable.personId, linked), inArray(documentTable.documentType, policy.requiredDocumentTypes)));
   const memory = candidates.map(candidate => evaluateDependentEligibility(candidate, documents, policy, period));
   return { policy, memory, eligibleCount: memory.filter(item => item.eligible).length };
 }

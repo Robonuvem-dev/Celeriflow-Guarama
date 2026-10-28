@@ -12,7 +12,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { MoneyInput } from "@/components/ui/MoneyInput";
-import type { BenefitConfig, Company, Person, Supplier } from "@prisma/client";
+import type { BenefitConfig, Company, Person, Supplier } from "@/lib/contracts/personnel-pages";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle as PageHeader } from "@/components/app-ui/erp/ErpPageTitle";
 

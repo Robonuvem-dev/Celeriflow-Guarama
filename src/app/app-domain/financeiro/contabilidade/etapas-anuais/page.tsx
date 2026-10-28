@@ -1,4 +1,7 @@
-import { Prisma } from "@prisma/client";
+import type { JsonObject, JsonValue } from "@/db/json";
+import { db } from "@/db/client";
+import { listFinancePageAccounts, listFinancePageUnits, listFinancePageYears } from "@/db/repositories/finance-pages/catalog";
+import { readFinanceAnnualStages } from "@/db/repositories/finance-pages/accounting";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import AnnualStagesClient from "./AnnualStagesClient";
 import AnnualEstimativeClient from "./AnnualEstimativeClient";
@@ -6,27 +9,20 @@ import ExtraNoteTransportClient from "./ExtraNoteTransportClient";
 import PaymentProgramTransportClient from "./PaymentProgramTransportClient";
 
 export const dynamic = "force-dynamic";
-const object = (value: Prisma.JsonValue | undefined): Prisma.JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const object = (value: JsonValue | undefined): JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 
 export default async function AnnualStagesPage() {
-  const { prisma, user } = await getTenantContextForModule("FINANCEIRO");
-  const units = await prisma.planningEntityUnit.findMany({ where: isSystemAdministrator(user) ? {} : { budgetUnitId: { in: user.allowedBudgetUnitIds } }, select: { governmentEntityId: true } });
+  const { database, user } = await getTenantContextForModule("FINANCEIRO");
+  const executor = database ?? db;
+  const units = await listFinancePageUnits(executor, { allowedBudgetUnitIds: isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds });
   const entityIds = [...new Set(units.map(unit => unit.governmentEntityId))];
-  const years = await prisma.financialYear.findMany({ where: { governmentEntityId: { in: entityIds } }, include: { governmentEntity: { select: { name: true } } }, orderBy: { year: "desc" } });
-  const [accounts, editions, registrationStages, estimativeStages, extraStages, extraUndone, extraNotes, programStages, programUndone, programs] = await Promise.all([
-    prisma.accountingPlan.findMany({ where: { type: "Passivo" }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_BALANCE_EDITION", entityType: "AnnualBalanceEdition", financialYearId: { in: years.map(year => year.id) } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_PAYABLE_STAGE_COMPLETE", entityType: "AnnualPayableRegistrationStage", financialYearId: { in: years.map(year => year.id) } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_ESTIMATIVE_COMPLETE", entityType: "AnnualEstimativeStage", financialYearId: { in: years.map(year => year.id) } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_EXTRA_TRANSPORT_COMPLETE", financialYearId: { in: years.map(year => year.id) } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_EXTRA_TRANSPORT_UNDONE", financialYearId: { in: years.map(year => year.id) } }, select: { entityId: true } }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_EXTRA_NOTE_COPY", financialYearId: { in: years.map(year => year.id) } }, orderBy: { createdAt: "desc" } }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_PAYMENT_PROGRAM_COMPLETE", financialYearId: { in: years.map(year => year.id) } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.financialAuditLog.findMany({ where: { action: "ANNUAL_PAYMENT_PROGRAM_UNDONE", financialYearId: { in: years.map(year => year.id) } }, select: { entityId: true } }),
-    prisma.payment.findMany({ where: { commitment: { appropriation: { budgetUnit: { planningEntityUnit: { is: { governmentEntityId: { in: entityIds } } } } } } }, select: { id: true, orderNumber: true, status: true, bankStatus: true, valueDecimal: true, executionFinancialYearId: true, commitment: { select: { appropriation: { select: { financialYearId: true, budgetUnitId: true } } } } }, orderBy: { date: "desc" } }),
+  const years = await listFinancePageYears(executor, {}, entityIds);
+  const [accounts, { editions, registrationStages, estimativeStages, extraStages, extraUndone, extraNotes, programStages, programUndone, programs }] = await Promise.all([
+    listFinancePageAccounts(executor, "Passivo"),
+    readFinanceAnnualStages(executor, entityIds, years.map(year => year.id)),
   ]);
   // Editions contain all units of an entity; restrict their memory to operators with full entity access.
-  const allUnits = await prisma.planningEntityUnit.findMany({ where: { governmentEntityId: { in: entityIds } }, select: { governmentEntityId: true, budgetUnitId: true } });
+  const allUnits = await listFinancePageUnits(executor, {}, entityIds);
   const fullEntities = new Set(entityIds.filter(id => isSystemAdministrator(user) || allUnits.filter(unit => unit.governmentEntityId === id).every(unit => user.allowedBudgetUnitIds.includes(unit.budgetUnitId))));
   const authorizedYears = years.filter(year => fullEntities.has(year.governmentEntityId!)).map(year => ({ id: year.id, year: year.year, status: year.status, governmentEntityId: year.governmentEntityId!, entityName: year.governmentEntity?.name ?? "" }));
   return <><PaymentProgramTransportClient years={authorizedYears} programs={programs.filter(program => program.status === "Emitida" && authorizedYears.some(year => year.id === (program.executionFinancialYearId ?? program.commitment.appropriation.financialYearId))).map(program => ({ id: program.id, orderNumber: program.orderNumber, financialYearId: program.executionFinancialYearId ?? program.commitment.appropriation.financialYearId, value: program.valueDecimal?.toFixed(2) ?? "Não conciliado", bankStatus: program.bankStatus }))} stages={programStages.flatMap(stage => {

@@ -1,4 +1,13 @@
-import { prisma } from '../src/lib/prisma';
+import { and, eq } from 'drizzle-orm';
+import { createDatabaseConnection } from '../src/db/connection';
+import { secretariats, departments, roles, employees } from '../src/db/schema/administration';
+import { people } from '../src/db/schema/people';
+import { warehouses } from '../src/db/schema/assets-stock';
+import { schools, teachers, schoolClasses, students, enrollments, schoolSubjects, classDiaries } from '../src/db/schema/education-core';
+import { schoolMeals } from '../src/db/schema/education-meals';
+
+const connection = createDatabaseConnection(process.env.DATABASE_URL!);
+const db = connection.db;
 
 async function main() {
   console.log('\n🚀 Iniciando seed do Módulo 12 (Educação)...\n');
@@ -7,28 +16,22 @@ async function main() {
   console.log('Verificando pré-requisitos e integrações...');
 
   // 1. Secretaria de Educação
-  let sec = await prisma.secretariat.findFirst({ where: { name: 'Secretaria de Educação' } });
+  let [sec] = await db.select().from(secretariats).where(eq(secretariats.name, 'Secretaria de Educação')).limit(1);
   if (!sec) {
-    sec = await prisma.secretariat.create({
-      data: { name: 'Secretaria de Educação', acronym: 'SME', managerName: 'Maria Silva' }
-    });
+    [sec] = await db.insert(secretariats).values({ name: 'Secretaria de Educação', acronym: 'SME', managerName: 'Maria Silva' }).returning();
   }
 
   // 2. Departamento
-  let dep = await prisma.department.findFirst({ where: { secretariatId: sec.id } });
+  let [dep] = await db.select().from(departments).where(eq(departments.secretariatId, sec.id)).limit(1);
   if (!dep) {
-    dep = await prisma.department.create({
-      data: { name: 'Departamento de Ensino Fundamental', secretariatId: sec.id }
-    });
+    [dep] = await db.insert(departments).values({ name: 'Departamento de Ensino Fundamental', secretariatId: sec.id }).returning();
   }
 
   // 3. Pessoa Genérica para Estudantes e Servidores se não houver
   async function ensurePerson(cpf: string, fullName: string) {
-    let p = await prisma.person.findFirst({ where: { cpf } });
+    let [p] = await db.select().from(people).where(eq(people.cpf, cpf)).limit(1);
     if (!p) {
-      p = await prisma.person.create({
-        data: { fullName, cpf, status: 'Ativo' }
-      });
+      [p] = await db.insert(people).values({ fullName, cpf, status: 'Ativo' }).returning();
     }
     return p;
   }
@@ -41,18 +44,16 @@ async function main() {
   const pStudent3 = await ensurePerson('66666666666', 'Pedro Henrique Souza');
 
   // 4. Cargos
-  const roleDirector = await prisma.role.findFirst({ where: { name: 'Diretor Escolar' } }) || 
-    await prisma.role.create({ data: { name: 'Diretor Escolar', level: 'Diretor' } });
-  const roleTeacher = await prisma.role.findFirst({ where: { name: 'Professor Titular' } }) || 
-    await prisma.role.create({ data: { name: 'Professor Titular', level: 'Servidor' } });
+  const roleDirector = (await db.select().from(roles).where(eq(roles.name, 'Diretor Escolar')).limit(1))[0] ||
+    (await db.insert(roles).values({ name: 'Diretor Escolar', level: 'Diretor' }).returning())[0];
+  const roleTeacher = (await db.select().from(roles).where(eq(roles.name, 'Professor Titular')).limit(1))[0] ||
+    (await db.insert(roles).values({ name: 'Professor Titular', level: 'Servidor' }).returning())[0];
 
   // 5. Servidores (Integração RH)
   async function ensureEmployee(cpf: string, name: string, roleId: string, personId: string) {
-    let e = await prisma.employee.findFirst({ where: { cpf } });
+    let [e] = await db.select().from(employees).where(eq(employees.cpf, cpf)).limit(1);
     if (!e) {
-      e = await prisma.employee.create({
-        data: { name, cpf, roleId, personId, secretariatId: sec!.id, departmentId: dep!.id }
-      });
+      [e] = await db.insert(employees).values({ name, cpf, roleId, personId, secretariatId: sec!.id, departmentId: dep!.id }).returning();
     }
     return e;
   }
@@ -62,11 +63,9 @@ async function main() {
   const empTeacher = await ensureEmployee('33333333333', 'Juliana Santos', roleTeacher.id, pTeacher1.id);
 
   // 6. Almoxarifado para Merenda (Integração Módulo 11)
-  let warehouse = await prisma.warehouse.findFirst({ where: { name: 'Almoxarifado Central de Merenda' } });
+  let [warehouse] = await db.select().from(warehouses).where(eq(warehouses.name, 'Almoxarifado Central de Merenda')).limit(1);
   if (!warehouse) {
-    warehouse = await prisma.warehouse.create({
-      data: { name: 'Almoxarifado Central de Merenda', type: 'Central' }
-    });
+    [warehouse] = await db.insert(warehouses).values({ name: 'Almoxarifado Central de Merenda', type: 'Central' }).returning();
   }
 
   console.log('✅ Pré-requisitos garantidos.');
@@ -75,77 +74,63 @@ async function main() {
   console.log('Criando dados do Módulo 12...');
 
   // 1. Escolas
-  const school1 = await prisma.school.upsert({
-    where: { inepCode: '12345601' },
-    update: {},
-    create: {
+  const school1 = (await db.select().from(schools).where(eq(schools.inepCode, '12345601')).limit(1))[0] ??
+    (await db.insert(schools).values({
       name: 'Escola Municipal Machado de Assis',
       inepCode: '12345601',
       capacity: 500,
       directorId: empDir1.id,
       phone: '(11) 3333-4444',
       email: 'em.machadodeassis@municipio.gov.br'
-    }
-  });
+    }).onConflictDoNothing({ target: schools.inepCode }).returning())[0] ??
+    (await db.select().from(schools).where(eq(schools.inepCode, '12345601')).limit(1))[0];
 
-  const school2 = await prisma.school.upsert({
-    where: { inepCode: '12345602' },
-    update: {},
-    create: {
+  const school2 = (await db.select().from(schools).where(eq(schools.inepCode, '12345602')).limit(1))[0] ??
+    (await db.insert(schools).values({
       name: 'Centro de Educação Infantil Monteiro Lobato',
       inepCode: '12345602',
       capacity: 200,
       directorId: empDir2.id,
       phone: '(11) 3333-5555',
       email: 'cei.monteirolobato@municipio.gov.br'
-    }
-  });
+    }).onConflictDoNothing({ target: schools.inepCode }).returning())[0] ??
+    (await db.select().from(schools).where(eq(schools.inepCode, '12345602')).limit(1))[0];
 
   console.log('✅ 2 Escolas criadas.');
 
   // 2. Professor (Módulo 12 table)
-  let teacher = await prisma.teacher.findFirst({ where: { employeeId: empTeacher.id } });
+  let [teacher] = await db.select().from(teachers).where(eq(teachers.employeeId, empTeacher.id)).limit(1);
   if (!teacher) {
-    teacher = await prisma.teacher.create({
-      data: { employeeId: empTeacher.id }
-    });
+    [teacher] = await db.insert(teachers).values({ employeeId: empTeacher.id }).returning();
   }
 
   // 3. Turmas
-  const class1 = await prisma.schoolClass.findFirst({ where: { name: '1º Ano A', schoolId: school1.id } }) ||
-    await prisma.schoolClass.create({
-      data: {
+  const class1 = (await db.select().from(schoolClasses).where(and(eq(schoolClasses.name, '1º Ano A'), eq(schoolClasses.schoolId, school1.id))).limit(1))[0] ||
+    (await db.insert(schoolClasses).values({
         name: '1º Ano A', year: 2026, stage: 'Ensino Fundamental', grade: '1º Ano',
         shift: 'Manhã', capacity: 30, schoolId: school1.id, teacherId: teacher.id
-      }
-    });
+    }).returning())[0];
 
-  const class2 = await prisma.schoolClass.findFirst({ where: { name: 'Creche II B', schoolId: school2.id } }) ||
-    await prisma.schoolClass.create({
-      data: {
+  const class2 = (await db.select().from(schoolClasses).where(and(eq(schoolClasses.name, 'Creche II B'), eq(schoolClasses.schoolId, school2.id))).limit(1))[0] ||
+    (await db.insert(schoolClasses).values({
         name: 'Creche II B', year: 2026, stage: 'Educação Infantil', grade: 'Creche II',
         shift: 'Integral', capacity: 20, schoolId: school2.id, teacherId: teacher.id
-      }
-    });
+    }).returning())[0];
 
   console.log('✅ 2 Turmas criadas.');
 
   // 4. Alunos e Matrículas
   async function ensureStudent(studentCode: string, personId: string, needsTransport: boolean, needsMeal: boolean, schoolId: string, classId: string) {
-    let student = await prisma.student.findFirst({ where: { studentCode } });
+    let [student] = await db.select().from(students).where(eq(students.studentCode, studentCode)).limit(1);
     if (!student) {
-      student = await prisma.student.create({
-        data: {
+      [student] = await db.insert(students).values({
           studentCode,
           personId,
           usesSchoolTransport: needsTransport,
           needsSpecialMeal: needsMeal
-        }
-      });
+      }).returning();
       // Matricular
-      await prisma.enrollment.create({
-        data: { year: 2026, studentId: student.id, schoolId, classId }
-      });
+      await db.insert(enrollments).values({ year: 2026, studentId: student.id, schoolId, classId });
     }
     return student;
   }
@@ -157,45 +142,39 @@ async function main() {
   console.log('✅ 3 Alunos criados e matriculados.');
 
   // 5. Diário de Classe
-  let subject = await prisma.schoolSubject.findFirst({ where: { name: 'Português' } });
+  let [subject] = await db.select().from(schoolSubjects).where(eq(schoolSubjects.name, 'Português')).limit(1);
   if (!subject) {
-    subject = await prisma.schoolSubject.create({ data: { name: 'Português', code: 'PORT' } });
+    [subject] = await db.insert(schoolSubjects).values({ name: 'Português', code: 'PORT' }).returning();
   }
 
-  const classDiary = await prisma.classDiary.findFirst({ where: { classId: class1.id } });
+  const [classDiary] = await db.select().from(classDiaries).where(eq(classDiaries.classId, class1.id)).limit(1);
   if (!classDiary) {
-    await prisma.classDiary.create({
-      data: {
+    await db.insert(classDiaries).values({
         date: new Date(),
         contentTaught: 'Alfabetização Inicial - Vogais',
         status: 'Aberto',
         classId: class1.id,
         teacherId: teacher.id,
         subjectId: subject.id
-      }
     });
   }
 
   // 6. Merenda Escolar
-  await prisma.schoolMeal.create({
-    data: {
+  await db.insert(schoolMeals).values({
       date: new Date(),
       menu: 'Arroz, feijão, frango desfiado e salada de repolho',
       servedQuantity: 450,
       schoolId: school1.id,
       warehouseId: warehouse.id,
       notes: 'Refeição principal servida no turno da manhã'
-    }
   });
 
-  await prisma.schoolMeal.create({
-    data: {
+  await db.insert(schoolMeals).values({
       date: new Date(),
       menu: 'Sopa de legumes com carne',
       servedQuantity: 180,
       schoolId: school2.id,
       warehouseId: warehouse.id
-    }
   });
 
   console.log('✅ Diário e Merendas registradas.');
@@ -208,5 +187,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await connection.pool.end();
   });

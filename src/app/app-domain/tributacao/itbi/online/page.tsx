@@ -2,18 +2,21 @@ import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import { onlineItbiPolicySchema } from "@/lib/tributacao/itbi-online";
 import OnlineItbiConfigurationClient from "./OnlineItbiConfigurationClient";
+import { db } from "@/db/client";
+import { listFiscalPlanningUnits, listFiscalSubjectOptions, listFiscalActiveUsers } from "@/db/repositories/taxation-pages/lookups";
+import { listPageTaxpayers, listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import { listPageItbiTypes } from "@/db/repositories/taxation-pages/itbi";
 
 export const dynamic = "force-dynamic";
 export default async function OnlineItbiConfigurationPage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO"); const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const scoped = allowed ? { OR: allowed.map(budgetUnitId => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {};
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db; const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const [units, entries, subjects, users, taxpayers, types] = await Promise.all([
-    prisma.planningEntityUnit.findMany({ where: allowed ? { budgetUnitId: { in: allowed } } : {}, include: { governmentEntity: true, budgetUnit: true } }),
-    prisma.taxRegistryEntry.findMany({ where: { category: { in: ["ONLINE_ITBI_POLICY", "ITBI_NOTARY", "PROPERTY_VALUATION_RULE", "PARAMETER_SCOPE"] }, ...scoped }, orderBy: { version: "desc" } }),
-    prisma.subject.findMany({ where: { isActive: true, processType: { isActive: true } }, include: { processType: { select: { name: true } } }, orderBy: { name: "asc" } }),
-    prisma.usuario.findMany({ where: { ativo: true, perfil: { ativo: true } }, select: { id: true, nome: true, email: true }, orderBy: { nome: "asc" } }),
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, select: { id: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } } } }),
-    prisma.itbiTransactionType.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
+    listFiscalPlanningUnits(database, allowed),
+    listFiscalEntries(database, { categories: ["ONLINE_ITBI_POLICY", "ITBI_NOTARY", "PROPERTY_VALUATION_RULE", "PARAMETER_SCOPE"], allowedBudgetUnitIds: allowed }),
+    listFiscalSubjectOptions(database),
+    listFiscalActiveUsers(database),
+    listPageTaxpayers(database, { active: true }),
+    listPageItbiTypes(database),
   ]);
   const latest = new Map<string, typeof entries[number]>(); for (const row of entries) if (!latest.has(`${row.category}:${row.entityId}:${row.title}`)) latest.set(`${row.category}:${row.entityId}:${row.title}`, row);
   // Policy and notary titles can change; their logical identity is entityId.

@@ -1,15 +1,16 @@
 import Link from "next/link";
-import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { listRecertificationProgress } from "@/lib/rh/recertification";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { db } from "@/db/client";
+import { readRecertificationAudience } from "@/db/repositories/personnel-pages/catalog";
 
 export const dynamic = "force-dynamic";
 export default async function CampaignProgress({ searchParams }: { searchParams: Promise<{ campaignId?: string; page?: string; status?: string }> }) {
-  const context = await getTenantContextForModule("RH"), { prisma } = context; const params = await searchParams;
-  const units = isSystemAdministrator(context.user) ? [] : await prisma.budgetUnit.findMany({ where: { id: { in: context.user.allowedBudgetUnitIds } }, select: { secretariatId: true } });
-  const employees = isSystemAdministrator(context.user) ? [] : await prisma.employee.findMany({ where: { secretariatId: { in: units.map(unit => unit.secretariatId) } }, select: { id: true } });
-  const campaigns = await listRecertificationProgress(prisma, isSystemAdministrator(context.user) ? undefined : { employeeIds: employees.map(employee => employee.id), budgetUnitIds: context.user.allowedBudgetUnitIds }); const selected = campaigns.find(campaign => campaign.id === params.campaignId) || campaigns[0];
+  const context = await getTenantContextForModule("RH"), executor = context.database ?? db; const params = await searchParams;
+  const audience = await readRecertificationAudience(executor, context.user);
+  const campaigns = await listRecertificationProgress(executor, audience); const selected = campaigns.find(campaign => campaign.id === params.campaignId) || campaigns[0];
   const status = ["PENDENTE", "EM_ANALISE", "PENDENTE_CORRECAO", "DEFERIDA", "INDEFERIDA"].includes(params.status || "") ? params.status : undefined;
   const rows = selected?.recipients.filter(recipient => !status || recipient.status === status) || [];
   const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(rows.length / 20)));

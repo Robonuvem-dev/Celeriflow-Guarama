@@ -15,31 +15,29 @@ import {
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { count, desc } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalNews, portalPages, portalBanners, officialDiaries } from "@/db/schema/portal-content";
+import { publicServices } from "@/db/schema/portal-services";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalCidadaoPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
+  await getTenantContextForModule("TRANSPARENCIA");
 
   const [newsCount, pagesCount, bannersCount, servicesCount, diariesCount] = await Promise.all([
-    prisma.portalNews.count().catch(() => 0),
-    prisma.portalPage.count().catch(() => 0),
-    prisma.portalBanner.count().catch(() => 0),
-    prisma.publicService.count().catch(() => 0),
-    prisma.officialDiary.count().catch(() => 0),
+    db.select({ total: count() }).from(portalNews).then(rows => rows[0].total).catch(() => 0),
+    db.select({ total: count() }).from(portalPages).then(rows => rows[0].total).catch(() => 0),
+    db.select({ total: count() }).from(portalBanners).then(rows => rows[0].total).catch(() => 0),
+    db.select({ total: count() }).from(publicServices).then(rows => rows[0].total).catch(() => 0),
+    db.select({ total: count() }).from(officialDiaries).then(rows => rows[0].total).catch(() => 0),
   ]);
 
-  const latestNews = await prisma.portalNews.findMany({
-    take: 4,
-    orderBy: { createdAt: "desc" },
-    select: { id: true, title: true, status: true, publishedAt: true, createdAt: true },
-  }).catch(() => []);
+  const latestNews = await db.select({ id: portalNews.id, title: portalNews.title, status: portalNews.status, publishedAt: portalNews.publishedAt, createdAt: portalNews.createdAt })
+    .from(portalNews).orderBy(desc(portalNews.createdAt)).limit(4).catch(() => []);
 
-  const latestPages = await prisma.portalPage.findMany({
-    take: 4,
-    orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, slug: true, status: true, updatedAt: true },
-  }).catch(() => []);
+  const latestPages = await db.select({ id: portalPages.id, title: portalPages.title, slug: portalPages.slug, status: portalPages.status, updatedAt: portalPages.updatedAt })
+    .from(portalPages).orderBy(desc(portalPages.updatedAt)).limit(4).catch(() => []);
 
   return (
     <PageFrame className="space-y-4">

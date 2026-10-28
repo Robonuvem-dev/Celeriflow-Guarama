@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { createSstAccidentFixture } from "./helpers/sst-accident-fixture";
+import { sstTestContext } from "./helpers/sst-drizzle-context";
 import type { AppContext } from "../src/lib/platform/tenant-context";
 import { configureEsocial, prepareEsocial, readEsocialEvent, listEsocialEvents, transmitEsocial } from "../src/lib/sst/esocial-service";
 import { exchangeVerified, verifyExchangeResponse, hashArtifact, hashSource, configurationInput, type EsocialTransport, type SourceEnvelope, type SubmissionBinding, type VerifiedResponse } from "../src/lib/sst/esocial-contract";
@@ -52,20 +51,28 @@ test("PPP coverage preserves missing intervals instead of inventing current hist
 
 const user: AppContext["user"] = { id: "actor", name: "Test", email: "test@example.invalid", firebaseUid: "actor", role: "ADMIN", profileCode: "SYSTEM_ADMINISTRATOR", permissions: "{}", modulePermissions: [], allowedBudgetUnitIds: [], employeeId: "employee", departmentId: null, secretariatId: null };
 test("isolated PostgreSQL workflow: preparation retry, source provenance, environment separation, ACL and blocked transmission", { timeout: 60000 }, async () => {
-  const db = new PGlite(); const server = new PGLiteSocketServer({ db, port: 0, host: "127.0.0.1" }); let prisma: PrismaClient | undefined;
+  const local = await createSstAccidentFixture(), db = local.database;
   try {
-    await db.exec(`CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY,name TEXT); INSERT INTO "BudgetUnit" VALUES ('ug','UG'),('other','Other');
-      CREATE TABLE "Employee" (id TEXT PRIMARY KEY); INSERT INTO "Employee" VALUES ('employee');
-      CREATE TABLE "AuditEvent" (id TEXT PRIMARY KEY,"actorUsuarioId" TEXT,"eventType" TEXT,"targetType" TEXT,"targetId" TEXT,"metadata" JSONB,"createdAt" TIMESTAMP DEFAULT now());
-      CREATE TABLE "SstCat" (id TEXT PRIMARY KEY,"budgetUnitId" TEXT,"employeeId" TEXT,"occurredAt" TIMESTAMP,kind TEXT,source TEXT,data JSONB,snapshot JSONB,"requestHash" TEXT,"createdById" TEXT,"createdAt" TIMESTAMP DEFAULT now());
-      INSERT INTO "SstCat" VALUES ('cat','ug','employee','2026-10-01','CAT','SST','{}','{}','source-hash','actor',now());
-      CREATE TABLE "SstCatEvidence" (id TEXT PRIMARY KEY,"catId" TEXT,kind TEXT,version INT,clinical BOOLEAN,approved BOOLEAN,"personId" TEXT,"professionalRoleId" TEXT,data JSONB,"createdAt" TIMESTAMP DEFAULT now(),"createdById" TEXT,"requestHash" TEXT);
-      INSERT INTO "SstCatEvidence" VALUES ('homologation','cat','HOMOLOGATION',1,false,true,NULL,NULL,'{}',now(),'actor','evidence-hash');
-      CREATE TABLE "SstCatLayoutVersion" (id TEXT PRIMARY KEY,"catId" TEXT,version INT,mode TEXT,"layoutVersion" TEXT,"templateSha256" TEXT,fields JSONB,"canonicalSnapshot" JSONB,"originalReceipt" TEXT,"requestHash" TEXT,"createdById" TEXT,"createdAt" TIMESTAMP DEFAULT now());
-      CREATE TABLE "SstCatLayoutMedical" ("layoutVersionId" TEXT PRIMARY KEY,"medicalEvidenceId" TEXT,fields JSONB);`);
+    // Replay the complete CAT/evidence/layout history, including the homologation
+    // and deferred COMPLETE-layout guards, rather than a partial read DTO table.
+    await db.exec(`INSERT INTO "Usuario" (id,nome,email,"perfilId","updatedAt") VALUES ('actor','Test','test@example.invalid','profile',now());
+      INSERT INTO "Person" (id,"fullName","updatedAt") VALUES ('integration-doctor','Médico da integração',now());
+      INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId","usuarioId",discipline,council,"startsAt","endsAt","createdById")
+        VALUES ('integration-role','ug','integration-doctor','actor','MEDICINE','CRM PR 123','2026-01-01','2027-12-31','actor');
+      INSERT INTO "SstCat" (id,"budgetUnitId","employeeId","submissionKey","requestHash","createdById","occurredAt",kind,source,data,snapshot,"createdAt")
+        VALUES ('cat','ug','employee','seed-cat','source-hash','actor','2026-10-01 12:00','TYPICAL','SST','{"generatingStatus":"INITIAL","location":"Oficina","agent":"Máquina","bodyParts":["Mão"]}','{"employeeName":"Servidor","registration":"001"}','2026-10-01 12:00');
+      INSERT INTO "SstCatEvidence" (id,"catId",kind,version,clinical,approved,"personId","professionalRoleId",data,"createdById","submissionKey","requestHash","createdAt")
+        VALUES ('investigation','cat','INVESTIGATION',1,true,false,NULL,NULL,'{"description":"Investigação ocupacional documentada"}','actor','seed-investigation','investigation-hash','2026-10-01 13:00');
+      INSERT INTO "SstCatEvidence" (id,"catId",kind,version,clinical,approved,"personId","professionalRoleId",data,"createdById","submissionKey","requestHash","createdAt")
+        VALUES ('technical','cat','TECHNICAL',1,false,true,'integration-doctor',NULL,'{"opinion":"Parecer técnico favorável"}','actor','seed-technical','technical-hash','2026-10-01 13:10');
+      INSERT INTO "SstCatEvidence" (id,"catId",kind,version,clinical,approved,"personId","professionalRoleId",data,"createdById","submissionKey","requestHash","createdAt")
+        VALUES ('medical','cat','MEDICAL',1,true,true,'integration-doctor','integration-role','{"opinion":"Parecer médico favorável"}','actor','seed-medical','medical-hash','2026-10-01 13:20');
+      INSERT INTO "SstCatEvidence" (id,"catId",kind,version,clinical,approved,"personId","professionalRoleId",data,"createdById","submissionKey","requestHash","createdAt")
+        VALUES ('attendance-source','cat','ATTENDANCE',1,true,true,'integration-doctor','integration-role','{"attendedAt":"2026-10-01T13:30:00Z","injury":"Lesão ocupacional","cidCodes":["Z00.0"],"authorSnapshot":{"council":"CRM PR 123"}}','actor','seed-attendance','attendance-hash','2026-10-01 13:30');
+      INSERT INTO "SstCatEvidence" (id,"catId",kind,version,clinical,approved,"personId","professionalRoleId",data,"createdById","submissionKey","requestHash","createdAt")
+        VALUES ('homologation','cat','HOMOLOGATION',1,false,true,NULL,NULL,'{"opinion":"Homologação após pareceres favoráveis"}','actor','seed-homologation','evidence-hash','2026-10-01 14:00');`);
     await db.exec(readFileSync("prisma/migrations-ibema/20261011060000_add_sst_integrations/migration.sql", "utf8"));
-    await server.start(); prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`, max: 1 }) });
-    const context = { user: { ...user }, prisma };
+    const context = sstTestContext(local.connection.db, { ...user });
     const config = { budgetUnitId: "ug", environment: "RESTRICTED", employerRegistration: "12345678", credentialReference: "IBEMA_A1", providerReference: "IBEMA_PROVIDER", submissionKey: crypto.randomUUID() };
     const configId = await configureEsocial(context, config);
     assert.equal(await configureEsocial(context, config), configId);
@@ -85,8 +92,11 @@ test("isolated PostgreSQL workflow: preparation retry, source provenance, enviro
     assert.equal(row.configurationId, configId); assert.equal(row.evidence.length, 0); assert.ok(row.missingFields.length);
     assert.equal(hashSource(row.sourceSnapshot), row.sourceHash);
     assert.equal(row.sourceSnapshot.catLayout,null);
-    await db.query(`INSERT INTO "SstCatLayoutVersion" (id,"catId",version,mode,"layoutVersion","templateSha256",fields,"canonicalSnapshot","originalReceipt","requestHash","createdById") VALUES ('layout-v1','cat',1,'COMPLETE',$1,$2,'{"agent":"Domain-recorded agent"}','{}','manual-reference-only','layout-hash-v1','actor')`,[catLayoutProvenance.version,catLayoutProvenance.sha256]);
-    await db.exec(`INSERT INTO "SstCatLayoutMedical" VALUES ('layout-v1','attendance-source','{"cidCodes":"Z00.0","crm":"CRM PR 123"}');`);
+    await db.transaction(async tx => {
+      await tx.query(`INSERT INTO "SstCatLayoutVersion" (id,"catId",version,mode,"layoutVersion","templateSha256",provenance,fields,"canonicalSnapshot","originalReceipt","requestHash","createdById","submissionKey","createdAt")
+        VALUES ('layout-v1','cat',1,'COMPLETE',$1,$2,$3::jsonb,'{"agent":"Domain-recorded agent"}','{"employeeId":"employee","budgetUnitId":"ug"}','manual-reference-only','layout-hash-v1','actor','seed-layout-v1','2026-10-01 14:10')`, [catLayoutProvenance.version, catLayoutProvenance.sha256, JSON.stringify(catLayoutProvenance)]);
+      await tx.query(`INSERT INTO "SstCatLayoutMedical" ("layoutVersionId","medicalEvidenceId",fields,"createdById") VALUES ('layout-v1','attendance-source','{"cidCodes":"Z00.0","crm":"CRM PR 123"}','actor')`);
+    });
     const layoutEventId = await prepareEsocial(context,{...input,submissionKey:crypto.randomUUID()});
     const layoutEvent = await readEsocialEvent(context,layoutEventId);
     assert.notEqual(layoutEventId,id);
@@ -98,7 +108,8 @@ test("isolated PostgreSQL workflow: preparation retry, source provenance, enviro
     assert.notEqual(layoutEvent.sourceVersion,row.sourceVersion);
     assert.equal(hashSource(layoutEvent.sourceSnapshot),layoutEvent.sourceHash);
     assert.equal(layoutEvent.evidence.length,0); // The manual original reference is not a receipt.
-    await db.query(`INSERT INTO "SstCatLayoutVersion" (id,"catId",version,mode,"layoutVersion","templateSha256",fields,"canonicalSnapshot","requestHash","createdById") VALUES ('layout-v2','cat',2,'DRAFT',$1,$2,'{}','{}','layout-hash-v2','actor')`,[catLayoutProvenance.version,catLayoutProvenance.sha256]);
+    await db.query(`INSERT INTO "SstCatLayoutVersion" (id,"catId",version,mode,"layoutVersion","templateSha256",provenance,fields,"canonicalSnapshot","originalReceipt","requestHash","createdById","submissionKey","createdAt")
+      VALUES ('layout-v2','cat',2,'DRAFT',$1,$2,$3::jsonb,'{}','{"employeeId":"employee","budgetUnitId":"ug"}',NULL,'layout-hash-v2','actor','seed-layout-v2','2026-10-01 14:20')`, [catLayoutProvenance.version, catLayoutProvenance.sha256, JSON.stringify(catLayoutProvenance)]);
     const revisedId = await prepareEsocial(context,{...input,submissionKey:crypto.randomUUID()});
     assert.notEqual(revisedId,layoutEventId);
     assert.equal((await readEsocialEvent(context,layoutEventId)).sourceHash,layoutEvent.sourceHash);
@@ -112,13 +123,20 @@ test("isolated PostgreSQL workflow: preparation retry, source provenance, enviro
     await assert.rejects(db.exec(`UPDATE "SstEsocialEvent" SET "sourceHash"='changed' WHERE id='${id}'`), /immutable/);
     const audit = JSON.stringify((await db.query('SELECT * FROM "AuditEvent"')).rows);
     assert.equal(audit.includes("IBEMA_A1"), false); assert.equal(audit.includes("source-hash"), false);
-  } finally { await prisma?.$disconnect(); await server.stop(); await db.close(); }
+   } finally { await local.close(); }
 });
 test("integral clinical report denies nonclinical users before reading/counting sources; portal ignores arbitrary employee IDs", async () => {
-  let reads = 0;
-  const context = { user: { ...user, profileCode: "SST_OPERATOR", allowedBudgetUnitIds: ["ug"], permissions: JSON.stringify({ modules: { SST: { blocked: false, view: true, issueReports: true } } }) }, prisma: { sstAccessGrant: { findUnique: async () => null }, $queryRaw: async () => { reads++; return []; } } } as unknown as AppContext;
-  await assert.rejects(functionalSstReport(context, { employeeId: "employee", budgetUnitId: "ug", from: "2026-01-01", until: "2027-01-01" }), /clínica/);
-  assert.equal(reads, 0);
-  const portal = { ...context, user: { ...user, profileCode: "PORTAL", permissions: JSON.stringify({ modules: { PORTAL_SERVIDOR: { blocked: false, view: true } } }) } };
-  await assert.rejects(portalPppReport(portal, { budgetUnitId: "ug", from: "2026-01-01", until: "2027-01-01", employeeId: "other" } as unknown as Parameters<typeof portalPppReport>[1]), /próprio/);
+  const local = await createLocalDrizzleDatabase();
+  try {
+    await local.database.exec(`CREATE TABLE "SstAccessGrant" (id TEXT,"usuarioId" TEXT,"budgetUnitId" TEXT,"isActive" BOOLEAN,"canReadClinical" BOOLEAN,"canAssess" BOOLEAN,"createdAt" TIMESTAMP,"updatedAt" TIMESTAMP);
+      CREATE TABLE "Employee" (id TEXT,"isActive" BOOLEAN);
+      CREATE TABLE "HrBudgetUnitEntityMapping" ("budgetUnitId" TEXT,"governmentEntityId" TEXT);
+      CREATE TABLE "HrEmployeeFunctionalPeriod" (id TEXT,"employeeId" TEXT,"budgetUnitId" TEXT,"governmentEntityId" TEXT,voided BOOLEAN,"supersedesId" TEXT,"startsAt" TIMESTAMP,"endsAt" TIMESTAMP);`);
+    // Clinical source tables are intentionally absent: reading/counting them would fail.
+    const context = sstTestContext(local.connection.db, { ...user, profileCode: "SST_OPERATOR", allowedBudgetUnitIds: ["ug"], permissions: JSON.stringify({ modules: { SST: { blocked: false, view: true, issueReports: true } } }) });
+    await assert.rejects(functionalSstReport(context, { employeeId: "employee", budgetUnitId: "ug", from: "2026-01-01", until: "2027-01-01" }), /clínica/);
+    const portal = { ...context, user: { ...user, profileCode: "PORTAL", permissions: JSON.stringify({ modules: { PORTAL_SERVIDOR: { blocked: false, view: true } } }) } };
+    const untrustedInput = { budgetUnitId: "ug", from: "2026-01-01", until: "2027-01-01", employeeId: "other" };
+    await assert.rejects(portalPppReport(portal, untrustedInput), /próprio/);
+  } finally { await local.close(); }
 });

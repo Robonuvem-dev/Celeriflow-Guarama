@@ -1,17 +1,14 @@
 import { integrationCatalog } from "@/lib/integrations/registry";
+import { db } from "@/db/client";
+import { listIntegrationConnections } from "@/db/repositories/platform/integrations";
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import IntegrationConnectionsClient from "./IntegrationConnectionsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function IntegrationConnectionsPage() {
-  const { prisma } = await getTenantContextForSystemAdministration();
-  const connections = await prisma.integrationConnection.findMany({
-    include: {
-      runs: { orderBy: { createdAt: "desc" }, take: 3 },
-    },
-    orderBy: { category: "asc" },
-  });
+  await getTenantContextForSystemAdministration();
+  const connections = await listIntegrationConnections(db);
 
   return <IntegrationConnectionsClient catalog={[...integrationCatalog]} connections={connections.map((connection) => ({
     ...connection,

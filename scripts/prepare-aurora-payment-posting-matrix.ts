@@ -1,7 +1,10 @@
 import { config } from "dotenv";
 import { createHash } from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
-import { configureAccountingPostingRule } from "../src/lib/financeiro";
+import { count, eq, sql } from "drizzle-orm";
+import type { DatabaseConnection } from "../src/db/connection";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { setupAudits, setupPlans, setupTransactions } from "../src/db/schema/finance-setup-tools";
+import { adoptSetupPostingRule, createSetupEdition, openFinanceSetupConnection, publishSetupEdition, readSetupActor, readSetupAudit, readSetupBinding, readSetupEntry, readSetupEvent, readSetupPredecessor, readSetupVersion, setupObject, setupRequired } from "./lib/finance-setup-tools";
 
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
@@ -17,50 +20,48 @@ const scope = [{ governmentEntityId: "p0-current-exe", budgetUnitId: "p0-current
 const decision = "Procedimento municipal inicial ajustável: pagamento bruto transfere crédito empenhado liquidado a pagar para crédito empenhado pago na execução orçamentária TCE-PR 2026. O estorno inverte a postagem original. Escopo explícito das duas UGs. A partida patrimonial do passivo, banco e retenções e o controle de disponibilidade por fonte exigem matriz complementar própria.";
 const hash = createHash("sha256").update(JSON.stringify({ key, sourceHash, paidCode, paidId, settledId, eventCode, scope, decision })).digest("hex");
 
-async function main() {
-  const { prisma } = await import("../src/lib/prisma");
-  try {
-    console.log(JSON.stringify(await prisma.$transaction(async tx => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
-      const actor = await tx.usuario.findUniqueOrThrow({ where: { email: "admin@email.com" }, include: { perfil: true } });
+export async function preparePaymentPostingMatrix(connection: DatabaseConnection, apply = false) {
+    return withDatabaseTransaction(connection, async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`);
+      const actor = await readSetupActor(tx);
       if (!actor.ativo || !actor.employeeId || actor.perfil.codigo !== "SYSTEM_ADMINISTRATOR") throw new Error("Administrador com autoria funcional indisponível.");
-      const source = await tx.planningCatalogVersion.findUniqueOrThrow({ where: { id: sourceVersionId } });
+      const source = await readSetupVersion(tx, sourceVersionId);
       if (source.sourceHash !== sourceHash || source.year !== 2026) throw new Error("Referência contábil divergente.");
-      const entry = await tx.planningCatalogEntry.findUniqueOrThrow({ where: { id: `${sourceVersionId}:${paidCode}` } });
-      const attributes = entry.attributes as Prisma.JsonObject;
+      const entry = await readSetupEntry(tx, `${sourceVersionId}:${paidCode}`);
+      const attributes = setupObject(entry.attributes);
       if (entry.kind !== "ACCOUNT" || attributes.postingAllowed !== true || attributes.informationNature !== "O" || attributes.balanceNature !== "C" || attributes.sourceHash !== sourceHash) throw new Error("Conta de crédito empenhado pago não conciliada.");
-      const settled = await tx.accountingPlan.findUniqueOrThrow({ where: { id: settledId } });
+      const settled = setupRequired((await tx.select({ id: setupPlans.id }).from(setupPlans).where(eq(setupPlans.id, settledId)).limit(1))[0], "Conta liquidada");
       for (const item of scope) {
-        const binding = await tx.planningEntityUnit.findUniqueOrThrow({ where: { budgetUnitId: item.budgetUnitId } });
+        const binding = await readSetupBinding(tx, item.budgetUnitId);
         if (binding.governmentEntityId !== item.governmentEntityId) throw new Error("UG fora do ente explícito.");
-        const predecessor = await tx.planningCatalogEntry.findFirstOrThrow({ where: { canonicalId: settled.id, version: { status: "PUBLISHED" }, attributes: { path: ["budgetUnitId"], equals: item.budgetUnitId } } });
-        if ((predecessor.attributes as Prisma.JsonObject).governmentEntityId !== item.governmentEntityId) throw new Error("Classificação de liquidado a pagar fora do ente.");
+        const predecessor = await readSetupPredecessor(tx, settled.id, item.budgetUnitId);
+        if (setupObject(predecessor.attributes).governmentEntityId !== item.governmentEntityId) throw new Error("Classificação de liquidado a pagar fora do ente.");
       }
-      const prior = await tx.financialAuditLog.findFirst({ where: { action: "PREPARE_PAYMENT_POSTING_MATRIX", entityId: key } });
-      if (prior && (prior.payload as Prisma.JsonObject).configurationHash !== hash) throw new Error("Preparação anterior divergente.");
-      const event = await tx.accountingEventCatalog.findUnique({ where: { code: eventCode }, include: { rules: true } });
+      const prior = await readSetupAudit(tx, "PREPARE_PAYMENT_POSTING_MATRIX", key);
+      if (prior && setupObject(prior.payload).configurationHash !== hash) throw new Error("Preparação anterior divergente.");
+      const event = await readSetupEvent(tx, eventCode);
       if (!prior && event) throw new Error("Evento de pagamento preexistente; preservar sua configuração.");
       if (prior && (!event?.isActive || event.rules.filter(rule => rule.isActive).length !== 1 || !event.rules.some(rule => rule.isActive && !rule.isReference && rule.debitAccountId === settledId && rule.creditAccountId === paidId))) throw new Error("Matriz de pagamento alterada após adoção.");
-      const before = await tx.accountingTransaction.count();
+      const [{ total: before }] = await tx.select({ total: count() }).from(setupTransactions);
       if (apply && !prior) {
-        await tx.accountingPlan.create({ data: { id: paidId, code: "AURORA.BUDGET.PAID", name: entry.name, type: "Orçamentária" } });
+        await tx.insert(setupPlans).values({ id: paidId, code: "AURORA.BUDGET.PAID", name: entry.name, type: "Orçamentária" });
         for (const item of scope) {
           const versionId = `${key}:catalog:${item.governmentEntityId}`;
           const editionHash = createHash("sha256").update(JSON.stringify({ configurationHash: hash, scope: item })).digest("hex");
-          await tx.planningCatalogVersion.create({ data: { id: versionId, year: 2026, label: "Aurora das Veredas — pagamento orçamentário", status: "DRAFT", sourceHash: editionHash, normativeReference: decision, createdById: actor.id, entries: { create: { kind: "ACCOUNT", code: entry.code, name: entry.name, degree: entry.degree, canonicalId: paidId, attributes: { ...attributes, ...item, operational: true, mapped: true, pocOnly: false, sourceVersionId, sourceEntryId: entry.id, adoptionScope: "BUDGET_EXECUTION_ONLY", decision } } } } });
-          await tx.planningCatalogVersion.update({ where: { id: versionId }, data: { status: "PUBLISHED" } });
+          await createSetupEdition(tx, { id: versionId, year: 2026, label: "Aurora das Veredas — pagamento orçamentário", status: "DRAFT", sourceHash: editionHash, normativeReference: decision, createdById: actor.id }, [{ kind: "ACCOUNT", code: entry.code, name: entry.name, degree: entry.degree, canonicalId: paidId, attributes: { ...attributes, ...item, operational: true, mapped: true, pocOnly: false, sourceVersionId, sourceEntryId: entry.id, adoptionScope: "BUDGET_EXECUTION_ONLY", decision } }]);
+          await publishSetupEdition(tx, versionId);
         }
-        const db = new Proxy(tx, { get(target, property) {
-          if (property === "$transaction") return (callback: (client: Prisma.TransactionClient) => Promise<unknown>) => callback(tx);
-          return Reflect.get(target, property);
-        } }) as unknown as PrismaClient;
-        await configureAccountingPostingRule(db, { usuarioId: actor.id, employeeId: actor.employeeId }, { eventCode, eventName: "Pagamento — execução orçamentária", debitAccountId: settledId, creditAccountId: paidId, description: decision, isReference: false });
-        await tx.financialAuditLog.create({ data: { action: "PREPARE_PAYMENT_POSTING_MATRIX", entityType: "MUNICIPAL_CONFIGURATION", entityId: key, authorUsuarioId: actor.id, payload: { configurationHash: hash, scope, decision, sourceVersionId, sourceHash, accountingMovementsCreated: false } } });
+        await adoptSetupPostingRule(tx, { usuarioId: actor.id, employeeId: actor.employeeId }, { eventCode, eventName: "Pagamento — execução orçamentária", debitAccountId: settledId, creditAccountId: paidId, description: decision, isReference: false });
+        await tx.insert(setupAudits).values({ action: "PREPARE_PAYMENT_POSTING_MATRIX", entityType: "MUNICIPAL_CONFIGURATION", entityId: key, authorUsuarioId: actor.id, payload: { configurationHash: hash, scope, decision, sourceVersionId, sourceHash, accountingMovementsCreated: false } });
       }
-      if (await tx.accountingTransaction.count() !== before) throw new Error("A preparação não pode gerar fatos financeiros.");
+      if ((await tx.select({ total: count() }).from(setupTransactions))[0].total !== before) throw new Error("A preparação não pode gerar fatos financeiros.");
       return { mode: apply ? "ADDITIVE_IDEMPOTENT" : "READ_ONLY", replay: Boolean(prior), configurationHash: hash, scope, eventCode, paidCode, decision };
-    }, { timeout: 120000 }), null, 2));
-  } finally { await prisma.$disconnect(); }
+    }, { timeoutMs: 120000 });
+}
+async function main() {
+  const connection = openFinanceSetupConnection();
+  try { console.log(JSON.stringify(await preparePaymentPostingMatrix(connection, apply), null, 2)); }
+  finally { await connection.pool.end(); }
 }
 
-main().catch(error => { console.error(error instanceof Error ? error.message : "Falha na preparação do pagamento."); process.exitCode = 1; });
+if (require.main === module) main().catch(error => { console.error(error instanceof Error ? error.message : "Falha na preparação do pagamento."); process.exitCode = 1; });

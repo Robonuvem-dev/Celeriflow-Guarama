@@ -6,17 +6,20 @@ import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
+import { eq, sql } from "drizzle-orm";
+import { createTaxChainDatabase, firstTaxRow, countTaxRows } from "./helpers/tax-chain-database";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { documents } from "../src/db/schema/registry";
+import { documentVersions, documentIcpEvidence } from "../src/db/schema/document-workflow";
 import { ingestGedDocument } from "../src/lib/documents/document-flow-service";
 import { registerA1Certificate, signDocumentVersionWithA1, signDocumentVersionWithA1InTransaction, setA1CertificateStatus } from "../src/lib/signatures/a1-signature-service";
 import { verifyDocumentHashICPBrasil } from "../src/lib/security/icp-brasil";
 
 test("A1: assinatura destacada usa hash dos bytes GED, impede duplicidade/revogação e mantém evidência verificável", async () => {
-  const f = await createPlanningExecutionFixture();
+  const f = await createTaxChainDatabase();
   const folder = await mkdtemp(join(process.env.CELERIFLOW_POSTGRES_TEST_TEMP ?? tmpdir(), "tax-a1-"));
   const secretKey = "CELERIFLOW_TAX_FIXTURE_PRIVATE_KEY_PEM"; const prior = process.env[secretKey];
   try {
-    await f.pg.exec(await readFile("prisma/migrations-ibema/20261015220000_tax_channel_document_integrity/migration.sql", "utf8"));
     const windowsOpenSsl = "C:\\Program Files\\Git\\usr\\bin\\openssl.exe";
     const openssl = process.env.CELERIFLOW_TEST_OPENSSL ?? (existsSync(windowsOpenSsl) ? windowsOpenSsl : "openssl");
     // Ephemeral self-signed fixture exercises configured trust; it is not a municipal ICP-Brasil credential.
@@ -27,23 +30,23 @@ test("A1: assinatura destacada usa hash dos bytes GED, impede duplicidade/revoga
     const bytes = new TextEncoder().encode("%PDF-1.7\nOriginal tributário preservado\n%%EOF");
     const expectedHash = createHash("sha256").update(bytes).digest("hex");
     const actor = { id: "ana", name: "Ana", email: "ana@example.org", employeeId: null };
-    const ingest = () => ingestGedDocument(f.db, { title: "Original do alvará", documentType: "Alvará", documentClassCode: "TAX_LICENSE_SIGNED", fileUrl: "/private-original-fixture", content: bytes, actorUsuarioId: "ana" });
+    const ingest = () => ingestGedDocument(f.connection, { title: "Original do alvará", documentType: "Alvará", documentClassCode: "TAX_LICENSE_SIGNED", fileUrl: "/private-original-fixture", content: bytes, actorUsuarioId: "ana" });
     const first = await ingest();
-    const version = await f.db.documentVersion.findFirstOrThrow({ where: { documentId: first.documentId } });
+    const version = firstTaxRow(await f.db.select().from(documentVersions).where(eq(documentVersions.documentId, first.documentId)));
     assert.equal(version.hashSha256, expectedHash);
-    const signature = await signDocumentVersionWithA1(f.db, actor, { documentVersionId: version.id, certificateId: certificate.id, purpose: "GED" });
-    await assert.rejects(signDocumentVersionWithA1(f.db, actor, { documentVersionId: version.id, certificateId: certificate.id, purpose: "GED" }), /já assinada/);
-    const evidence = await f.db.documentIcpEvidence.findUniqueOrThrow({ where: { documentVersionId: version.id } });
+    const signature = await signDocumentVersionWithA1(f.connection, actor, { documentVersionId: version.id, certificateId: certificate.id, purpose: "GED" });
+    await assert.rejects(signDocumentVersionWithA1(f.connection, actor, { documentVersionId: version.id, certificateId: certificate.id, purpose: "GED" }), /já assinada/);
+    const evidence = firstTaxRow(await f.db.select().from(documentIcpEvidence).where(eq(documentIcpEvidence.documentVersionId, version.id)));
     assert.equal(evidence.documentHash, expectedHash); assert.equal(evidence.documentSignatureId, signature.signatureId);
     const signed = { documentVersionId: version.id, documentHash: expectedHash, canonicalPayload: evidence.canonicalPayload, signedAt: evidence.signedAt, signatureBase64: evidence.signatureBase64, algorithm: "SHA256" as const, certificatePem: evidence.certificatePemSnapshot, certificateSubject: evidence.certificateSubject, certificateIssuer: evidence.certificateIssuer, certificateSerialNumber: evidence.certificateSerial, certificateFingerprint256: evidence.certificateFingerprint };
     assert.equal(verifyDocumentHashICPBrasil(signed, { trustedRootCertificatePem: certificatePem }), true);
     assert.equal(verifyDocumentHashICPBrasil({ ...signed, documentHash: "0".repeat(64) }, { trustedRootCertificatePem: certificatePem }), false);
-    assert.equal((await f.db.documentVersion.findUniqueOrThrow({ where: { id: version.id } })).fileUrl, version.fileUrl);
-    assert.equal((await f.db.document.findUniqueOrThrow({ where: { id: first.documentId } })).status, "Assinado");
+    assert.equal(firstTaxRow(await f.db.select().from(documentVersions).where(eq(documentVersions.id, version.id))).fileUrl, version.fileUrl);
+    assert.equal(firstTaxRow(await f.db.select().from(documents).where(eq(documents.id, first.documentId))).status, "Assinado");
     await setA1CertificateStatus(f.db, certificate.id, "REVOKED");
-    const second = await ingest(); const next = await f.db.documentVersion.findFirstOrThrow({ where: { documentId: second.documentId } });
-    await assert.rejects(f.db.$transaction(tx => signDocumentVersionWithA1InTransaction(tx, actor, { documentVersionId: next.id, certificateId: certificate.id, purpose: "GED" })), /inativo/);
-    assert.equal(await f.db.documentSignature.count({ where: { documentVersionId: next.id } }), 0);
+    const second = await ingest(); const next = firstTaxRow(await f.db.select().from(documentVersions).where(eq(documentVersions.documentId, second.documentId)));
+    await assert.rejects(withDatabaseTransaction(f.connection, tx => signDocumentVersionWithA1InTransaction(tx, actor, { documentVersionId: next.id, certificateId: certificate.id, purpose: "GED" })), /inativo/);
+    assert.equal(await countTaxRows(f.db, "DocumentSignature", sql`"documentVersionId"=${next.id}`), 0);
     assert.equal(verifyDocumentHashICPBrasil(signed, { trustedRootCertificatePem: certificatePem }), true);
   } finally {
     if (prior === undefined) delete process.env[secretKey]; else process.env[secretKey] = prior;

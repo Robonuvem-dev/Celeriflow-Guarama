@@ -2,7 +2,12 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import PDFDocument from "pdfkit";
 import type { AppContext } from "@/lib/platform/tenant-context";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { sql } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { sstContextConnection } from "./database";
 import { closureInput } from "./closure-policy";
 import { functionalSstReport, pppReport, portalPppReport } from "./closure-service";
 import { hashSource } from "./esocial-contract";
@@ -12,7 +17,7 @@ const maximumRows = 5000;
 function assertBound(total: number) {
   if (total > maximumRows) throw new Error("Relatório excede 5.000 registros; divida o período para emitir sem truncamento.");
 }
-export async function emitClosureDocument(context: AppContext, kind: "PPP" | "FUNCTIONAL", input: DocumentInput, portal = false) {
+export async function emitClosureDocument(context: AppContext, kind: "PPP" | "FUNCTIONAL", input: DocumentInput, portal = false, connection: DatabaseConnection = sstContextConnection(context)) {
   if (portal && kind !== "PPP") throw new Error("Portal não disponibiliza relatório clínico integral.");
   const employeeId = portal ? context.user.employeeId : input.employeeId;
   const parsed = closureInput.parse({ ...input, employeeId });
@@ -49,8 +54,8 @@ export async function emitClosureDocument(context: AppContext, kind: "PPP" | "FU
   const pdf = await renderClosurePdf({ id, kind, issuedAt, actor: context.user.name, contentHash, snapshot });
   // Stored separately from public GED validation: protected clinical snapshots
   // must not acquire a generic public download URL or signature claim.
-  await context.prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`INSERT INTO "SstClosureEmission" (id,"budgetUnitId","employeeId",kind,"startsAt","endsAt",snapshot,"contentHash","createdById","createdAt") VALUES (${id},${parsed.budgetUnitId},${parsed.employeeId},${kind},${parsed.from},${parsed.until},${JSON.stringify(snapshot)}::jsonb,${contentHash},${context.user.id},${issuedAt})`;
+  await withDatabaseTransaction(connection, async (tx) => {
+    await tx.execute(sql`INSERT INTO "SstClosureEmission" (id,"budgetUnitId","employeeId",kind,"startsAt","endsAt",snapshot,"contentHash","createdById","createdAt") VALUES (${id},${parsed.budgetUnitId},${parsed.employeeId},${kind},${parsed.from},${parsed.until},${JSON.stringify(snapshot)}::jsonb,${contentHash},${context.user.id},${issuedAt})`);
     await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SST_CLOSURE_REPORT", targetId: id });
   });
   return { id, pdf };

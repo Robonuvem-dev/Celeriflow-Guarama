@@ -1,40 +1,45 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { PrismaClient } from "@prisma/client";
-import { AccessError, type AppContext } from "../src/lib/platform/tenant-context";
+import { eq, sql } from "drizzle-orm";
+import { employees } from "../src/db/schema/administration";
+import { modules } from "../src/db/schema/identity";
+import { AccessError } from "../src/lib/platform/tenant-context";
 import { assertEmployeePortalLogin } from "../src/lib/portal-servidor/login-policy";
+import { createEmployeePortalFixture, employeePortalUser } from "./helpers/employee-portal-fixture";
 
-function fixture(active = true, moduleActive = true) {
-  const calls: unknown[] = [];
-  const db = {
-    configuracaoModulo: { findUnique: async () => ({ ativo: moduleActive }) },
-    employee: { findFirst: async (query: unknown) => { calls.push(query); return active ? { id: "own-employee" } : null; } },
-  } as unknown as PrismaClient;
-  const user: AppContext["user"] = { id: "own-user", firebaseUid: "verified-uid", email: "own@example.test", name: "Servidor", role: "Servidor", profileCode: "SERVIDOR", permissions: JSON.stringify({ modules: { PORTAL_SERVIDOR: { blocked: false } } }), modulePermissions: [], allowedBudgetUnitIds: [], employeeId: "own-employee", departmentId: null, secretariatId: null };
-  return { db, user, calls };
+async function fixture(active = true, moduleActive = true) {
+  const fixture = await createEmployeePortalFixture("login"), db = fixture.connection.db;
+  try {
+    await db.insert(modules).values({ codigo: "PORTAL_SERVIDOR", nome: "Portal do Servidor", ativo: moduleActive });
+    await db.insert(employees).values([{ id: "own-employee", name: "Titular", isActive: active }, { id: "other-employee", name: "Outro servidor", isActive: true }]);
+    return { ...fixture, db, user: employeePortalUser() };
+  } catch (error) { await fixture.close(); throw error; }
 }
 
 test("login funcional consulta somente o cadastro ativo vinculado à identidade verificada", async () => {
-  const { db, user, calls } = fixture();
-  assert.deepEqual(await assertEmployeePortalLogin(db, user), { id: "own-employee" });
-  assert.deepEqual(calls, [{ where: { id: "own-employee", isActive: true }, select: { id: true } }]);
+  const { db, user, close } = await fixture();
+  try {
+    assert.deepEqual(await assertEmployeePortalLogin(db, user), { id: "own-employee" });
+    await db.delete(employees).where(eq(employees.id, "own-employee"));
+    await assert.rejects(assertEmployeePortalLogin(db, user), error => error instanceof AccessError && error.status === 403);
+  } finally { await close(); }
 });
 
 test("cadastro inativo é recusado antes da criação de sessão funcional", async () => {
-  const { db, user } = fixture(false);
-  await assert.rejects(assertEmployeePortalLogin(db, user), error => error instanceof AccessError && error.status === 403);
+  const { db, user, close } = await fixture(false);
+  try { await assert.rejects(assertEmployeePortalLogin(db, user), error => error instanceof AccessError && error.status === 403); }
+  finally { await close(); }
 });
 
 test("módulo inativo, perfil bloqueado e conta sem vínculo não consultam registros funcionais", async () => {
-  const disabled = fixture(true, false);
-  await assert.rejects(assertEmployeePortalLogin(disabled.db, disabled.user), error => error instanceof AccessError && error.status === 423);
-  assert.equal(disabled.calls.length, 0);
-  const blocked = fixture();
-  blocked.user.permissions = JSON.stringify({ modules: { PORTAL_SERVIDOR: { blocked: true } } });
-  await assert.rejects(assertEmployeePortalLogin(blocked.db, blocked.user), /autorização funcional/);
-  assert.equal(blocked.calls.length, 0);
-  const unlinked = fixture();
-  unlinked.user.employeeId = null;
-  await assert.rejects(assertEmployeePortalLogin(unlinked.db, unlinked.user), /autorização funcional/);
-  assert.equal(unlinked.calls.length, 0);
+  const { db, user, close } = await fixture(true, false);
+  try {
+    // A functional query would now fail with a database error. Each refusal must
+    // therefore happen at the authorization boundary before touching Employee.
+    await db.execute(sql`DROP TABLE "Employee"`);
+    await assert.rejects(assertEmployeePortalLogin(db, user), error => error instanceof AccessError && error.status === 423);
+    await db.update(modules).set({ ativo: true }).where(eq(modules.codigo, "PORTAL_SERVIDOR"));
+    await assert.rejects(assertEmployeePortalLogin(db, { ...user, permissions: JSON.stringify({ modules: { PORTAL_SERVIDOR: { blocked: true } } }) }), /autorização funcional/);
+    await assert.rejects(assertEmployeePortalLogin(db, { ...user, employeeId: null }), /autorização funcional/);
+  } finally { await close(); }
 });

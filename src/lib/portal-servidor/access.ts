@@ -1,13 +1,8 @@
 import { AccessError, getTenantContextForModule, type AppContext } from "@/lib/platform/tenant-context";
-
-export type PortalEmployee = {
-  id: string;
-  name: string;
-  registration: string | null;
-  role: { name: string } | null;
-  department: { name: string } | null;
-  secretariat: { name: string } | null;
-};
+import { db } from "@/db/client";
+import { findActivePortalEmployee } from "@/db/repositories/portal-servidor/identity";
+import type { PortalEmployee } from "@/lib/contracts/personnel";
+export type { PortalEmployee } from "@/lib/contracts/personnel";
 
 export type EmployeePortalAccess =
   | {
@@ -38,20 +33,7 @@ export async function getEmployeePortalAccess(): Promise<EmployeePortalAccess> {
 
   if (!employeeId) return { status: "UNAVAILABLE" };
 
-  const employee = await context.prisma.employee.findFirst({
-    where: {
-      id: employeeId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-      name: true,
-      registration: true,
-      role: { select: { name: true } },
-      department: { select: { name: true } },
-      secretariat: { select: { name: true } },
-    },
-  });
+  const employee = await findActivePortalEmployee(context.database ?? db, employeeId);
 
   if (!employee) return { status: "UNAVAILABLE" };
 

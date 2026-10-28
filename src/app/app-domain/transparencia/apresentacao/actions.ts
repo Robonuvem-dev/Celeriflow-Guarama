@@ -7,14 +7,19 @@ import { getTransparencySettings } from "@/lib/transparencia/presentation-settin
 import { publishedTransparencyCatalog } from "@/lib/transparencia/consultation-service";
 import { buildTransparencyDiscovery } from "@/lib/transparencia/discovery";
 import { publicTransparencyPath } from "@/lib/transparencia/publication-policy";
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { and, asc, eq } from "drizzle-orm";
+import { systemInstances as instances, instanceParameters } from "@/db/schema/instance-configuration";
+import { financialAuditLogs } from "@/db/schema/finance-identity";
 
 export async function saveDiscoveryPresentation(form: FormData): Promise<{ error?: string; success?: boolean }> {
   try {
     const context = await getTenantContextForModuleOperation("TRANSPARENCIA", "update");
-    const current = await getDiscoverySettings(context.prisma);
+    const current = await getDiscoverySettings(db);
     const version = createHash("sha256").update(JSON.stringify(current)).digest("hex");
     if (form.get("version") !== version) return { error: "A apresentação foi alterada por outra pessoa. Atualize a página antes de salvar." };
-    const settings = await getTransparencySettings(context.prisma);
+    const settings = await getTransparencySettings(db);
     const sections = buildTransparencyDiscovery(publishedTransparencyCatalog(settings), settings);
     const text = (key: string) => String(form.get(key) || "");
     const parsed = discoverySettingsSchema.safeParse({
@@ -26,17 +31,18 @@ export async function saveDiscoveryPresentation(form: FormData): Promise<{ error
     if (!parsed.success) return { error: parsed.error.issues.slice(0, 3).map(issue => `${issue.path.join(".")}: ${issue.message}`).join(" · ") };
     const knownSections = new Set(sections.map(section => section.id));
     if (parsed.data.links.some(link => !knownSections.has(link.sectionId))) return { error: "Um destino foi associado a uma seção que não está disponível." };
-    const instance = await context.prisma.configuracaoInstancia.findFirstOrThrow({ orderBy: { createdAt: "asc" }, select: { id: true } });
-    await context.prisma.$transaction(async tx => {
-      const row = await tx.configuracaoParametroInstancia.findUnique({ where: { configuracaoInstanciaId_chave: { configuracaoInstanciaId: instance.id, chave: discoverySettingsKey } } });
+    const [instance] = await db.select({ id: instances.id }).from(instances).orderBy(asc(instances.createdAt)).limit(1);
+    if (!instance) throw new Error("Instância não configurada.");
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const [row] = await tx.select().from(instanceParameters).where(and(eq(instanceParameters.configuracaoInstanciaId, instance.id), eq(instanceParameters.chave, discoverySettingsKey))).limit(1);
       const latest = discoverySettingsSchema.parse(row?.valor || {});
       if (createHash("sha256").update(JSON.stringify(latest)).digest("hex") !== version) throw new Error("Apresentação alterada simultaneamente. Atualize a página.");
       if (row) {
-        const changed = await tx.configuracaoParametroInstancia.updateMany({ where: { id: row.id, updatedAt: row.updatedAt }, data: { valor: parsed.data } });
-        if (changed.count !== 1) throw new Error("Apresentação alterada simultaneamente. Atualize a página.");
-      } else await tx.configuracaoParametroInstancia.create({ data: { configuracaoInstanciaId: instance.id, chave: discoverySettingsKey, valor: parsed.data } });
-      await tx.financialAuditLog.create({ data: { action: "CONFIGURE_TRANSPARENCY_DISCOVERY", entityType: "ConfiguracaoParametroInstancia", entityId: discoverySettingsKey, authorUsuarioId: context.user.id, payload: { before: current, after: parsed.data } } });
-    });
+        const changed = await tx.update(instanceParameters).set({ valor: parsed.data }).where(and(eq(instanceParameters.id, row.id), eq(instanceParameters.updatedAt, row.updatedAt))).returning({ id: instanceParameters.id });
+        if (changed.length !== 1) throw new Error("Apresentação alterada simultaneamente. Atualize a página.");
+      } else await tx.insert(instanceParameters).values({ configuracaoInstanciaId: instance.id, chave: discoverySettingsKey, valor: parsed.data });
+      await tx.insert(financialAuditLogs).values({ action: "CONFIGURE_TRANSPARENCY_DISCOVERY", entityType: "ConfiguracaoParametroInstancia", entityId: discoverySettingsKey, authorUsuarioId: context.user.id, payload: { before: current, after: parsed.data } });
+    }, { timeoutMs: 5_000 });
     revalidatePath(publicTransparencyPath, "layout");
     revalidatePath("/transparencia/apresentacao");
     revalidatePath("/sitemap.xml");

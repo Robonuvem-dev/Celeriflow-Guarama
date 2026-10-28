@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import type { Decimal } from "@/db/decimal";
+import { db } from "@/db/client";
+import { readWorkforceOperations } from "@/db/repositories/personnel-pages/workforce";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { OperationForm, type OperationField } from "./OperationForm";
-import { accessiblePayrollWhere } from "@/lib/rh/payroll-access";
 import { contractCustomFieldsPolicySchema, contractCustomFieldsPolicyHash, type ContractCustomFieldValues } from "@/lib/rh/contract-custom-fields";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,10 @@ const field = (name: string, label: string, value = "", type = "text", required 
   const references: Record<string, string> = { employeeId: "employee", personId: "person", contractId: "contract", sourceContractId: "contract", targetContractId: "contract", sourceBankRuleId: "rule", targetBankRuleId: "rule", bankRuleId: "rule", departmentId: "department", costCenterId: "center", payrollId: "payroll", ruleId: "rule" };
   return { name, label: name === "contractIds" ? "Contratos selecionados" : label.replace("ID do ", "").replace("ID ", ""), value, type: name === "contractIds" ? "contracts" : type === "text" && references[name] ? `lookup:${references[name]}` : type, required };
 };
-const money = (value: Prisma.Decimal) => `R$ ${value.toFixed(2)}`;
+const money = (value: Decimal) => `R$ ${value.toFixed(2)}`;
 
 export default async function WorkforcePage({ searchParams }: { searchParams: Promise<Params> }) {
-  const { prisma, user } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH");
   const params = await searchParams;
   const tab = ["contratos", "movimentos", "direitos", "calculos", "integracoes"].includes(first(params.tab)) ? first(params.tab) : "contratos";
   const q = first(params.q).trim();
@@ -27,26 +28,8 @@ export default async function WorkforcePage({ searchParams }: { searchParams: Pr
   const customValue = first(params.customValue).trim();
   const customType = first(params.customType) === "BOOLEANO" ? "BOOLEANO" : "TEXTO";
   const customFilterError = customCode && (!/^[A-Z][A-Z0-9_]{0,63}$/.test(customCode) || (customType === "BOOLEANO" && !["true", "false"].includes(customValue))) ? "Informe código válido e valor booleano true/false quando aplicável." : "";
-  const contractWhere: Prisma.HrEmploymentContractWhereInput = q ? { OR: [{ registration: { contains: q, mode: "insensitive" } }, { employee: { name: { contains: q, mode: "insensitive" } } }] } : {};
-  if (customCode && tab === "contratos") {
-    if (customFilterError) contractWhere.id = { in: [] };
-    else contractWhere.details = { path: ["customFields", customCode], equals: customType === "BOOLEANO" ? customValue === "true" : customValue };
-  }
-  const movementWhere: Prisma.HrMovementWhereInput = { contract: contractWhere };
-  const rightWhere: Prisma.HrRightEntryWhereInput = { contract: contractWhere };
-  const runWhere: Prisma.HrPayrollRunWhereInput = { ...(first(params.payrollId) ? { payrollId: first(params.payrollId) } : {}), payroll: { AND: [accessiblePayrollWhere(user), ...(q ? [{ competence: { contains: q } }] : [])] } };
-  const eventWhere: Prisma.HrIntegrationEventWhereInput = q ? { OR: [{ domain: { contains: q, mode: "insensitive" } }, { status: { contains: q, mode: "insensitive" } }] } : {};
-  const total = tab === "contratos" ? await prisma.hrEmploymentContract.count({ where: contractWhere }) : tab === "movimentos" ? await prisma.hrMovement.count({ where: movementWhere }) : tab === "direitos" ? await prisma.hrRightEntry.count({ where: rightWhere }) : tab === "calculos" ? await prisma.hrPayrollRun.count({ where: runWhere }) : await prisma.hrIntegrationEvent.count({ where: eventWhere });
-  const page = Math.min(Math.max(1, Number.parseInt(first(params.page)) || 1), Math.max(1, Math.ceil(total / 20)));
-  const paging = { skip: (page - 1) * 20, take: 20 };
+  const { total, page, selected, contracts, movements, rights, runs, events, regimes, roles } = await readWorkforceOperations(context.database ?? db, context.user, { tab, q, customCode, customValue, customType, customFilterError, payrollId: first(params.payrollId), id: first(params.id), page: first(params.page) });
   const href = (value: number) => `/rh/operacoes?${new URLSearchParams({ tab, q, page: String(value), ...(customCode ? { customCode, customValue, customType } : {}), ...(first(params.payrollId) ? { payrollId: first(params.payrollId) } : {}) })}`;
-  const selected = first(params.id) ? await prisma.hrEmploymentContract.findUnique({ where: { id: first(params.id) } }) : null;
-  const contracts = tab === "contratos" ? await prisma.hrEmploymentContract.findMany({ where: contractWhere, ...paging, include: { employee: true }, orderBy: [{ registration: "asc" }, { id: "asc" }] }) : [];
-  const movements = tab === "movimentos" ? await prisma.hrMovement.findMany({ where: movementWhere, ...paging, include: { contract: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }) : [];
-  const rights = tab === "direitos" ? await prisma.hrRightEntry.findMany({ where: rightWhere, ...paging, include: { contract: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }) : [];
-  const runs = tab === "calculos" ? await prisma.hrPayrollRun.findMany({ where: runWhere, ...paging, include: { payroll: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }) : [];
-  const events = tab === "integracoes" ? await prisma.hrIntegrationEvent.findMany({ where: eventWhere, ...paging, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }) : [];
-  const regimes = tab === "contratos" ? await prisma.hrEmploymentRegime.findMany({ where: { isActive: true }, include: { ruleSet: { include: { rules: { where: { code: "CAMPOS_CONTRATO", isActive: true } } } } }, orderBy: { code: "asc" } }) : [];
   const customPolicyErrors: string[] = [];
   const customPolicies = Object.fromEntries(regimes.flatMap(regime => {
     const rule = regime.ruleSet.rules[0];
@@ -57,7 +40,6 @@ export default async function WorkforcePage({ searchParams }: { searchParams: Pr
     return [[regime.id, { policy, hash: contractCustomFieldsPolicyHash(policy) }]];
   }));
   const customValues = (selected?.details as { customFields?: ContractCustomFieldValues } | undefined)?.customFields || {};
-  const roles = tab === "contratos" ? await prisma.role.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : [];
   const dt = (value: Date | null | undefined) => value?.toISOString().slice(0, 10) || "";
   const contractFields: OperationField[] = [field("id", "ID", selected?.id, "hidden", false), field("version", "Versão", selected?.version.toString(), "hidden", false), field("employeeId", "ID do servidor (Cadastro funcional)", selected?.employeeId), field("registration", "Matrícula do contrato", selected?.registration), { ...field("regimeId", "Regime", selected?.regimeId), options: [{ value: "", label: "Selecione" }, ...regimes.map(r => ({ value: r.id, label: `${r.name} · ${r.ruleSet.scope}` }))] }, { ...field("roleId", "Cargo", selected?.roleId), options: [{ value: "", label: "Selecione" }, ...roles.map(r => ({ value: r.id, label: r.name }))] }, field("departmentId", "ID do departamento", selected?.departmentId || "", "text", false), field("costCenterId", "ID do centro de custo", selected?.costCenterId || "", "text", false), field("workLocation", "Local de trabalho", selected?.workLocation), field("salaryLevel", "Nível salarial", selected?.salaryLevel || "", "text", false), field("admittedAt", "Admissão", dt(selected?.admittedAt), "date"), field("appointedAt", "Nomeação", dt(selected?.appointedAt), "date", false), field("swornAt", "Posse", dt(selected?.swornAt), "date", false), field("endsAt", "Término", dt(selected?.endsAt), "date", false), field("monthlyHours", "Jornada mensal", selected?.monthlyHours.toString() || "220", "number"), field("salary", "Salário (decimal)", selected?.salary.toFixed(2) || "0.00", "number"), field("details", "Informações adicionais (JSON)", JSON.stringify(selected?.details || {}), "textarea"), field("reason", "Motivo / ato", "", "textarea")];
   if (selected) contractFields.push(field("effectiveFrom", "Vigência da alteração (AAAA-MM-DD)", "", "date"));

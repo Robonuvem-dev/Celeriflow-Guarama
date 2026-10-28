@@ -1,8 +1,12 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
+import { Pool, defaults, neonConfig } from "@neondatabase/serverless";
 import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
 import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
+// Raw sql`${date}` parameters have no column encoder. Keep their wall time UTC
+// when PostgreSQL infers timestamp/date (which discard the supplied offset).
+// Typed Drizzle columns already encode UTC; timestamptz retains the same instant.
+defaults.parseInputDatesAsUTC = true;
 
 // No global schema/relations registration: repositories import their own tables.
 export type Database = NeonDatabase;

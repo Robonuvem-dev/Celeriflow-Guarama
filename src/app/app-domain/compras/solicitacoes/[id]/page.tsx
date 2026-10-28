@@ -9,42 +9,14 @@ import { ApprovePurchaseRequestButton } from "../ApprovePurchaseRequestButton";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { canManagePurchaseRequest } from "@/lib/compras/purchase-request-policy";
+import { db } from "@/db/client";
+import { loadPurchaseRequestDetail } from "@/db/repositories/procurement/purchase-requests";
 
 export default async function SolicitacaoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma, user } = await getTenantContextForModule("COMPRAS");
+  const context = await getTenantContextForModule("COMPRAS");
+  const { user } = context;
   const resolvedParams = await params;
-  const solicitacao = await prisma.purchaseRequest.findUnique({
-    where: { id: resolvedParams.id },
-    include: {
-      secretariat: true,
-      department: true,
-      requester: true,
-      items: {
-        include: {
-          catalogItem: true,
-          budgetAllocations: {
-            include: {
-              budgetAppropriation: {
-                include: {
-                  budgetUnit: true,
-                  expenseNature: true,
-                  resourceSource: true,
-                  financialYear: true,
-                },
-              },
-            },
-          },
-          processItemOrigins: {
-            include: {
-              purchaseProcessItem: {
-                include: { purchaseProcess: { select: { id: true, number: true, status: true } } },
-              },
-            },
-          },
-        },
-      },
-    }
-  });
+  const solicitacao = await loadPurchaseRequestDetail(context.database ?? db, resolvedParams.id);
 
   if (!solicitacao) {
     notFound();

@@ -4,15 +4,15 @@ import { FileText } from "lucide-react";
 import DiarioTable from "./DiarioTable";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { desc } from "drizzle-orm";
+import { officialDiaries } from "@/db/schema/portal-content";
 
 export const dynamic = "force-dynamic";
 
 export default async function DiarioOficialPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
-  const diaries = await prisma.officialDiary.findMany({
-    orderBy: { editionNumber: 'desc' },
-    include: { author: true }
-  });
+  await getTenantContextForModule("TRANSPARENCIA");
+  const diaries = await db.select().from(officialDiaries).orderBy(desc(officialDiaries.editionNumber));
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-1 overflow-hidden">

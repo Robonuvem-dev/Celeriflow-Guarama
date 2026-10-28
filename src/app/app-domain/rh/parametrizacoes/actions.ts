@@ -17,11 +17,19 @@ import { payrollPensionPolicySchema } from "@/lib/rh/payroll-pensions";
 import { monthlyProrationPolicySchema } from "@/lib/rh/monthly-proration";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
+import { and, asc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import { JsonNull } from "@/db/json";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { roles } from "@/db/schema/administration";
+import { documents } from "@/db/schema/registry";
+import { hrEmploymentContracts } from "@/db/schema/personnel-workforce";
+import { hrCalculationPolicies, hrEmploymentRegimes, hrPayrollConfigurationChanges, hrPayrollRubricIncidences, hrPayrollRubrics, hrPayrollRules, hrPayrollRuleSets, hrSocialSecurityBands, hrSocialSecuritySchemes, hrVacationPolicies } from "@/db/schema/personnel-configuration";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import {
   auditEventTypes,
-  writeAuditEvent,
 } from "@/lib/platform/audit-evidence";
 import {
   getOrCreateHrConfigurationInstance,
@@ -76,9 +84,7 @@ async function getManagedRuleSet(
   ruleSetId: string,
 ) {
   const instance = await getOrCreateHrConfigurationInstance(db);
-  const ruleSet = await db.hrPayrollRuleSet.findFirst({
-    where: { id: ruleSetId, configuracaoInstanciaId: instance.id },
-  });
+  const [ruleSet] = await db.select().from(hrPayrollRuleSets).where(and(eq(hrPayrollRuleSets.id, ruleSetId), eq(hrPayrollRuleSets.configuracaoInstanciaId, instance.id))).limit(1);
   if (!ruleSet)
     throw new Error(
       "O conjunto de regras informado não pertence à instância municipal atual.",
@@ -111,8 +117,7 @@ async function recordConfigurationChange(
     actorUsuarioId: string;
   },
 ) {
-  await db.hrPayrollConfigurationChange.create({
-    data: {
+  await db.insert(hrPayrollConfigurationChanges).values({
       ruleSetId: input.ruleSetId,
       entityType: input.entityType,
       entityId: input.entityId,
@@ -120,13 +125,12 @@ async function recordConfigurationChange(
       beforeValue:
         input.beforeValue === undefined
           ? undefined
-          : serializeHrConfigurationSnapshot(input.beforeValue),
+          : input.beforeValue === null ? JsonNull : serializeHrConfigurationSnapshot(input.beforeValue),
       afterValue:
         input.afterValue === undefined
           ? undefined
-          : serializeHrConfigurationSnapshot(input.afterValue),
+          : input.afterValue === null ? JsonNull : serializeHrConfigurationSnapshot(input.afterValue),
       actorUsuarioId: input.actorUsuarioId,
-    },
   });
   await writeAuditEvent(db, {
     actorUsuarioId: input.actorUsuarioId,
@@ -149,26 +153,12 @@ export async function saveHrPayrollRuleSet(
       "RH",
       input.id ? "update" : "create",
     );
-    const saved = await context.prisma.$transaction(async (tx) => {
+    const saved = await withDatabaseTransaction(databaseConnection, async (tx) => {
       const instance = await getOrCreateHrConfigurationInstance(tx);
       if (input.status === "ATIVA" && input.scope === "PRODUCAO") {
         const activeEnd =
           input.effectiveUntil ?? new Date("9999-12-31T23:59:59.999Z");
-        const overlappingProductionRuleSet =
-          await tx.hrPayrollRuleSet.findFirst({
-            where: {
-              configuracaoInstanciaId: instance.id,
-              scope: "PRODUCAO",
-              status: "ATIVA",
-              ...(input.id ? { id: { not: input.id } } : {}),
-              effectiveFrom: { lte: activeEnd },
-              OR: [
-                { effectiveUntil: null },
-                { effectiveUntil: { gte: input.effectiveFrom } },
-              ],
-            },
-            select: { id: true, name: true },
-          });
+        const [overlappingProductionRuleSet] = await tx.select({ id: hrPayrollRuleSets.id, name: hrPayrollRuleSets.name }).from(hrPayrollRuleSets).where(and(eq(hrPayrollRuleSets.configuracaoInstanciaId, instance.id), eq(hrPayrollRuleSets.scope, "PRODUCAO"), eq(hrPayrollRuleSets.status, "ATIVA"), input.id ? ne(hrPayrollRuleSets.id, input.id) : undefined, lte(hrPayrollRuleSets.effectiveFrom, activeEnd), or(isNull(hrPayrollRuleSets.effectiveUntil), gte(hrPayrollRuleSets.effectiveUntil, input.effectiveFrom)))).limit(1);
         if (overlappingProductionRuleSet) {
           throw new Error(
             `A vigência conflita com o conjunto de produção ativo “${overlappingProductionRuleSet.name}”. Arquive-o ou ajuste a vigência antes de ativar esta versão.`,
@@ -176,17 +166,13 @@ export async function saveHrPayrollRuleSet(
         }
       }
       if (input.id) {
-        const previous = await tx.hrPayrollRuleSet.findFirst({
-          where: { id: input.id, configuracaoInstanciaId: instance.id },
-        });
+        const [previous] = await tx.select().from(hrPayrollRuleSets).where(and(eq(hrPayrollRuleSets.id, input.id), eq(hrPayrollRuleSets.configuracaoInstanciaId, instance.id))).limit(1);
         if (!previous)
           throw new Error(
             "O conjunto de regras não foi encontrado nesta instância.",
           );
         assertRuleSetCanChange(previous);
-        const next = await tx.hrPayrollRuleSet.update({
-          where: { id: previous.id },
-          data: {
+        const [next] = await tx.update(hrPayrollRuleSets).set({
             code: input.code,
             name: input.name,
             status: input.status,
@@ -204,8 +190,7 @@ export async function saveHrPayrollRuleSet(
               input.status === "ARQUIVADA"
                 ? (previous.archivedAt ?? new Date())
                 : null,
-          },
-        });
+        }).where(eq(hrPayrollRuleSets.id, previous.id)).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: next.id,
           entityType: "HR_PAYROLL_RULE_SET",
@@ -223,8 +208,7 @@ export async function saveHrPayrollRuleSet(
         return next;
       }
 
-      const next = await tx.hrPayrollRuleSet.create({
-        data: {
+      const [next] = await tx.insert(hrPayrollRuleSets).values({
           configuracaoInstanciaId: instance.id,
           code: input.code,
           name: input.name,
@@ -237,8 +221,7 @@ export async function saveHrPayrollRuleSet(
           isDemo: input.isDemo,
           approvedAt: input.status === "ATIVA" ? new Date() : null,
           archivedAt: input.status === "ARQUIVADA" ? new Date() : null,
-        },
-      });
+      }).returning();
       await recordConfigurationChange(tx, {
         ruleSetId: next.id,
         entityType: "HR_PAYROLL_RULE_SET",
@@ -265,7 +248,7 @@ export async function saveHrPayrollRule(
       "RH",
       input.id ? "update" : "create",
     );
-    await context.prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
       assertRuleSetCanChange(ruleSet);
       const value = parseRuleValue(input.valueType, input.value);
@@ -306,8 +289,8 @@ export async function saveHrPayrollRule(
         const policy = receiptMessagesPolicySchema.parse(value);
         const contractIds = [...new Set(policy.messages.flatMap(message => message.contractIds))];
         const regimeIds = [...new Set(policy.messages.flatMap(message => message.regimeIds))];
-        if (contractIds.length && await tx.hrEmploymentContract.count({ where: { id: { in: contractIds } } }) !== contractIds.length) throw new Error("Mensagem referencia contrato inexistente.");
-        if (regimeIds.length && await tx.hrEmploymentRegime.count({ where: { id: { in: regimeIds } } }) !== regimeIds.length) throw new Error("Mensagem referencia regime inexistente.");
+        if (contractIds.length && (await tx.select({ id: hrEmploymentContracts.id }).from(hrEmploymentContracts).where(inArray(hrEmploymentContracts.id, contractIds))).length !== contractIds.length) throw new Error("Mensagem referencia contrato inexistente.");
+        if (regimeIds.length && (await tx.select({ id: hrEmploymentRegimes.id }).from(hrEmploymentRegimes).where(inArray(hrEmploymentRegimes.id, regimeIds))).length !== regimeIds.length) throw new Error("Mensagem referencia regime inexistente.");
       }
       if (input.code === "LICENCA_PREMIO") {
         if (input.valueType !== "JSON") throw new Error("Licença-prêmio exige política JSON.");
@@ -332,21 +315,21 @@ export async function saveHrPayrollRule(
       if (input.code === "BANCO_HORAS_PAGAMENTO") {
         if (input.valueType !== "JSON") throw new Error("Conversão de horas exige regra JSON.");
         const policy = timeBankPaymentPolicySchema.parse(value);
-        if (!await tx.hrPayrollRubric.findFirst({ where: { ruleSetId: input.ruleSetId, code: policy.rubricCode, isActive: true, type: "PROVENTO", calculationMethod: "MANUAL" }, select: { id: true } })) throw new Error("Conversão exige rubrica MANUAL de provento ativa no conjunto.");
+        if (!(await tx.select({ id: hrPayrollRubrics.id }).from(hrPayrollRubrics).where(and(eq(hrPayrollRubrics.ruleSetId, input.ruleSetId), eq(hrPayrollRubrics.code, policy.rubricCode), eq(hrPayrollRubrics.isActive, true), eq(hrPayrollRubrics.type, "PROVENTO"), eq(hrPayrollRubrics.calculationMethod, "MANUAL"))).limit(1)).length) throw new Error("Conversão exige rubrica MANUAL de provento ativa no conjunto.");
       }
       if (input.code === "BANCO_HORAS_TRANSFERENCIA") {
         if (input.valueType !== "JSON") throw new Error("Transferência de horas exige regra JSON.");
         const policy = timeBankTransferPolicySchema.parse(value);
         const regimeIds = [...new Set(policy.allowedRegimePairs.flatMap(pair => [pair.sourceRegimeId, pair.targetRegimeId]))];
-        if (await tx.hrEmploymentRegime.count({ where: { id: { in: regimeIds }, isActive: true } }) !== regimeIds.length) throw new Error("Transferência referencia regime inexistente/inativo.");
+        if ((await tx.select({ id: hrEmploymentRegimes.id }).from(hrEmploymentRegimes).where(and(inArray(hrEmploymentRegimes.id, regimeIds), eq(hrEmploymentRegimes.isActive, true)))).length !== regimeIds.length) throw new Error("Transferência referencia regime inexistente/inativo.");
       }
       if (input.code === "QUADRO_CARGOS") {
         if (input.valueType !== "JSON") throw new Error("Quadro de cargos exige regra JSON.");
         const plan = positionPlanSchema.parse(value);
         const roleIds = [...new Set(plan.periods.flatMap(period => period.roles.map(role => role.roleId)))];
-        if (await tx.role.count({ where: { id: { in: roleIds }, isActive: true } }) !== roleIds.length) throw new Error("Quadro exige cargos ativos do cadastro central.");
+        if ((await tx.select({ id: roles.id }).from(roles).where(and(inArray(roles.id, roleIds), eq(roles.isActive, true)))).length !== roleIds.length) throw new Error("Quadro exige cargos ativos do cadastro central.");
         const documentIds = [...new Set(plan.periods.flatMap(period => period.roles.flatMap(role => role.documentIds)))];
-        if (documentIds.length && await tx.document.count({ where: { id: { in: documentIds } } }) !== documentIds.length) throw new Error("Documento GED do quadro não encontrado.");
+        if (documentIds.length && (await tx.select({ id: documents.id }).from(documents).where(inArray(documents.id, documentIds))).length !== documentIds.length) throw new Error("Documento GED do quadro não encontrado.");
       }
       const data = {
         category: input.category,
@@ -362,17 +345,12 @@ export async function saveHrPayrollRule(
         isActive: input.isActive,
       };
       if (input.id) {
-        const previous = await tx.hrPayrollRule.findFirst({
-          where: { id: input.id, ruleSetId: ruleSet.id },
-        });
+        const [previous] = await tx.select().from(hrPayrollRules).where(and(eq(hrPayrollRules.id, input.id), eq(hrPayrollRules.ruleSetId, ruleSet.id))).limit(1);
         if (!previous)
           throw new Error(
             "A regra não foi encontrada neste conjunto de regras.",
           );
-        const next = await tx.hrPayrollRule.update({
-          where: { id: previous.id },
-          data,
-        });
+        const [next] = await tx.update(hrPayrollRules).set(data).where(eq(hrPayrollRules.id, previous.id)).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_PAYROLL_RULE",
@@ -383,9 +361,7 @@ export async function saveHrPayrollRule(
           actorUsuarioId: context.user.id,
         });
       } else {
-        const next = await tx.hrPayrollRule.create({
-          data: { ruleSetId: ruleSet.id, ...data },
-        });
+        const [next] = await tx.insert(hrPayrollRules).values({ ruleSetId: ruleSet.id, ...data }).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_PAYROLL_RULE",
@@ -412,7 +388,7 @@ export async function saveHrPayrollRubric(
       "RH",
       input.id ? "update" : "create",
     );
-    await context.prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
       assertRuleSetCanChange(ruleSet);
       const data = {
@@ -431,30 +407,21 @@ export async function saveHrPayrollRubric(
         isActive: input.isActive,
       };
       if (input.id) {
-        const previous = await tx.hrPayrollRubric.findFirst({
-          where: { id: input.id, ruleSetId: ruleSet.id },
-          include: { incidences: { orderBy: { incidenceType: "asc" } } },
-        });
+        const [previousRow] = await tx.select().from(hrPayrollRubrics).where(and(eq(hrPayrollRubrics.id, input.id), eq(hrPayrollRubrics.ruleSetId, ruleSet.id))).limit(1);
+        const previous = previousRow ? { ...previousRow, incidences: await tx.select().from(hrPayrollRubricIncidences).where(eq(hrPayrollRubricIncidences.rubricId, previousRow.id)).orderBy(asc(hrPayrollRubricIncidences.incidenceType)) } : null;
         if (!previous)
           throw new Error(
             "A rubrica não foi encontrada neste conjunto de regras.",
           );
-        await tx.hrPayrollRubric.update({ where: { id: previous.id }, data });
-        await tx.hrPayrollRubricIncidence.deleteMany({
-          where: { rubricId: previous.id },
-        });
+        const [updated] = await tx.update(hrPayrollRubrics).set(data).where(eq(hrPayrollRubrics.id, previous.id)).returning();
+        await tx.delete(hrPayrollRubricIncidences).where(eq(hrPayrollRubricIncidences.rubricId, previous.id));
         if (input.incidences.length) {
-          await tx.hrPayrollRubricIncidence.createMany({
-            data: input.incidences.map((incidenceType) => ({
+          await tx.insert(hrPayrollRubricIncidences).values(input.incidences.map((incidenceType) => ({
               rubricId: previous.id,
               incidenceType,
-            })),
-          });
+          })));
         }
-        const next = await tx.hrPayrollRubric.findUniqueOrThrow({
-          where: { id: previous.id },
-          include: { incidences: { orderBy: { incidenceType: "asc" } } },
-        });
+        const next = { ...updated, incidences: await tx.select().from(hrPayrollRubricIncidences).where(eq(hrPayrollRubricIncidences.rubricId, previous.id)).orderBy(asc(hrPayrollRubricIncidences.incidenceType)) };
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_PAYROLL_RUBRIC",
@@ -465,21 +432,14 @@ export async function saveHrPayrollRubric(
           actorUsuarioId: context.user.id,
         });
       } else {
-        const next = await tx.hrPayrollRubric.create({
-          data: { ruleSetId: ruleSet.id, ...data },
-        });
+        const [next] = await tx.insert(hrPayrollRubrics).values({ ruleSetId: ruleSet.id, ...data }).returning();
         if (input.incidences.length) {
-          await tx.hrPayrollRubricIncidence.createMany({
-            data: input.incidences.map((incidenceType) => ({
+          await tx.insert(hrPayrollRubricIncidences).values(input.incidences.map((incidenceType) => ({
               rubricId: next.id,
               incidenceType,
-            })),
-          });
+          })));
         }
-        const complete = await tx.hrPayrollRubric.findUniqueOrThrow({
-          where: { id: next.id },
-          include: { incidences: { orderBy: { incidenceType: "asc" } } },
-        });
+        const complete = { ...next, incidences: await tx.select().from(hrPayrollRubricIncidences).where(eq(hrPayrollRubricIncidences.rubricId, next.id)).orderBy(asc(hrPayrollRubricIncidences.incidenceType)) };
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_PAYROLL_RUBRIC",
@@ -509,7 +469,7 @@ export async function saveHrVacationPolicy(
       "RH",
       input.id ? "update" : "create",
     );
-    await context.prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
       assertRuleSetCanChange(ruleSet);
       const additionalPayRate = toDecimal(input.additionalPayRate);
@@ -535,17 +495,12 @@ export async function saveHrVacationPolicy(
         isActive: input.isActive,
       };
       if (input.id) {
-        const previous = await tx.hrVacationPolicy.findFirst({
-          where: { id: input.id, ruleSetId: ruleSet.id },
-        });
+        const [previous] = await tx.select().from(hrVacationPolicies).where(and(eq(hrVacationPolicies.id, input.id), eq(hrVacationPolicies.ruleSetId, ruleSet.id))).limit(1);
         if (!previous)
           throw new Error(
             "A política de férias não foi encontrada neste conjunto de regras.",
           );
-        const next = await tx.hrVacationPolicy.update({
-          where: { id: previous.id },
-          data,
-        });
+        const [next] = await tx.update(hrVacationPolicies).set(data).where(eq(hrVacationPolicies.id, previous.id)).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_VACATION_POLICY",
@@ -556,9 +511,7 @@ export async function saveHrVacationPolicy(
           actorUsuarioId: context.user.id,
         });
       } else {
-        const next = await tx.hrVacationPolicy.create({
-          data: { ruleSetId: ruleSet.id, ...data },
-        });
+        const [next] = await tx.insert(hrVacationPolicies).values({ ruleSetId: ruleSet.id, ...data }).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_VACATION_POLICY",
@@ -585,7 +538,7 @@ export async function saveHrSocialSecurityScheme(
       "RH",
       input.id ? "update" : "create",
     );
-    await context.prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
       assertRuleSetCanChange(ruleSet);
       const data = {
@@ -601,17 +554,12 @@ export async function saveHrSocialSecurityScheme(
         isActive: input.isActive,
       };
       if (input.id) {
-        const previous = await tx.hrSocialSecurityScheme.findFirst({
-          where: { id: input.id, ruleSetId: ruleSet.id },
-        });
+        const [previous] = await tx.select().from(hrSocialSecuritySchemes).where(and(eq(hrSocialSecuritySchemes.id, input.id), eq(hrSocialSecuritySchemes.ruleSetId, ruleSet.id))).limit(1);
         if (!previous)
           throw new Error(
             "O regime previdenciário não foi encontrado neste conjunto de regras.",
           );
-        const next = await tx.hrSocialSecurityScheme.update({
-          where: { id: previous.id },
-          data,
-        });
+        const [next] = await tx.update(hrSocialSecuritySchemes).set(data).where(eq(hrSocialSecuritySchemes.id, previous.id)).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_SOCIAL_SECURITY_SCHEME",
@@ -622,9 +570,7 @@ export async function saveHrSocialSecurityScheme(
           actorUsuarioId: context.user.id,
         });
       } else {
-        const next = await tx.hrSocialSecurityScheme.create({
-          data: { ruleSetId: ruleSet.id, ...data },
-        });
+        const [next] = await tx.insert(hrSocialSecuritySchemes).values({ ruleSetId: ruleSet.id, ...data }).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_SOCIAL_SECURITY_SCHEME",
@@ -651,11 +597,9 @@ export async function saveHrSocialSecurityBand(
       "RH",
       input.id ? "update" : "create",
     );
-    await context.prisma.$transaction(async (tx) => {
-      const scheme = await tx.hrSocialSecurityScheme.findFirst({
-        where: { id: input.socialSecuritySchemeId },
-        include: { ruleSet: true },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [schemeRow] = await tx.select({ scheme: hrSocialSecuritySchemes, ruleSet: hrPayrollRuleSets }).from(hrSocialSecuritySchemes).innerJoin(hrPayrollRuleSets, eq(hrPayrollRuleSets.id, hrSocialSecuritySchemes.ruleSetId)).where(eq(hrSocialSecuritySchemes.id, input.socialSecuritySchemeId)).limit(1);
+      const scheme = schemeRow ? { ...schemeRow.scheme, ruleSet: schemeRow.ruleSet } : null;
       if (!scheme)
         throw new Error(
           "O regime previdenciário informado não foi encontrado.",
@@ -681,34 +625,21 @@ export async function saveHrSocialSecurityBand(
       };
       const comparisonUpperLimit =
         upperLimit === null
-          ? new Prisma.Decimal("9999999999999999.99")
+          ? new Decimal("9999999999999999.99")
           : upperLimit;
-      const overlappingBand = await tx.hrSocialSecurityBand.findFirst({
-        where: {
-          socialSecuritySchemeId: scheme.id,
-          ...(input.id ? { id: { not: input.id } } : {}),
-          lowerLimit: { lte: comparisonUpperLimit },
-          OR: [{ upperLimit: null }, { upperLimit: { gte: lowerLimit } }],
-        },
-        select: { id: true, sequence: true },
-      });
+      const [overlappingBand] = await tx.select({ id: hrSocialSecurityBands.id, sequence: hrSocialSecurityBands.sequence }).from(hrSocialSecurityBands).where(and(eq(hrSocialSecurityBands.socialSecuritySchemeId, scheme.id), input.id ? ne(hrSocialSecurityBands.id, input.id) : undefined, lte(hrSocialSecurityBands.lowerLimit, comparisonUpperLimit), or(isNull(hrSocialSecurityBands.upperLimit), gte(hrSocialSecurityBands.upperLimit, lowerLimit)))).limit(1);
       if (overlappingBand) {
         throw new Error(
           `A faixa informada se sobrepõe à faixa ${overlappingBand.sequence} deste regime previdenciário.`,
         );
       }
       if (input.id) {
-        const previous = await tx.hrSocialSecurityBand.findFirst({
-          where: { id: input.id, socialSecuritySchemeId: scheme.id },
-        });
+        const [previous] = await tx.select().from(hrSocialSecurityBands).where(and(eq(hrSocialSecurityBands.id, input.id), eq(hrSocialSecurityBands.socialSecuritySchemeId, scheme.id))).limit(1);
         if (!previous)
           throw new Error(
             "A faixa previdenciária não foi encontrada neste regime.",
           );
-        const next = await tx.hrSocialSecurityBand.update({
-          where: { id: previous.id },
-          data,
-        });
+        const [next] = await tx.update(hrSocialSecurityBands).set(data).where(eq(hrSocialSecurityBands.id, previous.id)).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: managedRuleSet.id,
           entityType: "HR_SOCIAL_SECURITY_BAND",
@@ -719,9 +650,7 @@ export async function saveHrSocialSecurityBand(
           actorUsuarioId: context.user.id,
         });
       } else {
-        const next = await tx.hrSocialSecurityBand.create({
-          data: { socialSecuritySchemeId: scheme.id, ...data },
-        });
+        const [next] = await tx.insert(hrSocialSecurityBands).values({ socialSecuritySchemeId: scheme.id, ...data }).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: managedRuleSet.id,
           entityType: "HR_SOCIAL_SECURITY_BAND",
@@ -745,7 +674,7 @@ export async function saveHrCalculationPolicy(
   try {
     const input = hrCalculationPolicyInputSchema.parse(rawInput);
     const context = await getTenantContextForModuleOperation("RH", "update");
-    await context.prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
       assertRuleSetCanChange(ruleSet);
       const data = {
@@ -761,14 +690,9 @@ export async function saveHrCalculationPolicy(
         legalReference: input.legalReference,
         notes: input.notes,
       };
-      const previous = await tx.hrCalculationPolicy.findUnique({
-        where: { ruleSetId: ruleSet.id },
-      });
+      const [previous] = await tx.select().from(hrCalculationPolicies).where(eq(hrCalculationPolicies.ruleSetId, ruleSet.id)).limit(1);
       if (previous) {
-        const next = await tx.hrCalculationPolicy.update({
-          where: { id: previous.id },
-          data,
-        });
+        const [next] = await tx.update(hrCalculationPolicies).set(data).where(eq(hrCalculationPolicies.id, previous.id)).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_CALCULATION_POLICY",
@@ -779,9 +703,7 @@ export async function saveHrCalculationPolicy(
           actorUsuarioId: context.user.id,
         });
       } else {
-        const next = await tx.hrCalculationPolicy.create({
-          data: { ruleSetId: ruleSet.id, ...data },
-        });
+        const [next] = await tx.insert(hrCalculationPolicies).values({ ruleSetId: ruleSet.id, ...data }).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_CALCULATION_POLICY",
@@ -808,25 +730,19 @@ export async function saveHrEmploymentRegime(
       "RH",
       input.id ? "update" : "create",
     );
-    await context.prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
       assertRuleSetCanChange(ruleSet);
 
       if (input.socialSecuritySchemeId) {
-        const scheme = await tx.hrSocialSecurityScheme.findFirst({
-          where: { id: input.socialSecuritySchemeId, ruleSetId: ruleSet.id },
-          select: { id: true },
-        });
+        const [scheme] = await tx.select({ id: hrSocialSecuritySchemes.id }).from(hrSocialSecuritySchemes).where(and(eq(hrSocialSecuritySchemes.id, input.socialSecuritySchemeId), eq(hrSocialSecuritySchemes.ruleSetId, ruleSet.id))).limit(1);
         if (!scheme)
           throw new Error(
             "O regime previdenciário informado não pertence a este conjunto de regras.",
           );
       }
       if (input.vacationPolicyId) {
-        const vacationPolicy = await tx.hrVacationPolicy.findFirst({
-          where: { id: input.vacationPolicyId, ruleSetId: ruleSet.id },
-          select: { id: true },
-        });
+        const [vacationPolicy] = await tx.select({ id: hrVacationPolicies.id }).from(hrVacationPolicies).where(and(eq(hrVacationPolicies.id, input.vacationPolicyId), eq(hrVacationPolicies.ruleSetId, ruleSet.id))).limit(1);
         if (!vacationPolicy)
           throw new Error(
             "A política de férias informada não pertence a este conjunto de regras.",
@@ -845,17 +761,12 @@ export async function saveHrEmploymentRegime(
         isActive: input.isActive,
       };
       if (input.id) {
-        const previous = await tx.hrEmploymentRegime.findFirst({
-          where: { id: input.id, ruleSetId: ruleSet.id },
-        });
+        const [previous] = await tx.select().from(hrEmploymentRegimes).where(and(eq(hrEmploymentRegimes.id, input.id), eq(hrEmploymentRegimes.ruleSetId, ruleSet.id))).limit(1);
         if (!previous)
           throw new Error(
             "O vínculo não foi encontrado neste conjunto de regras.",
           );
-        const next = await tx.hrEmploymentRegime.update({
-          where: { id: previous.id },
-          data,
-        });
+        const [next] = await tx.update(hrEmploymentRegimes).set(data).where(eq(hrEmploymentRegimes.id, previous.id)).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_EMPLOYMENT_REGIME",
@@ -866,9 +777,7 @@ export async function saveHrEmploymentRegime(
           actorUsuarioId: context.user.id,
         });
       } else {
-        const next = await tx.hrEmploymentRegime.create({
-          data: { ruleSetId: ruleSet.id, ...data },
-        });
+        const [next] = await tx.insert(hrEmploymentRegimes).values({ ruleSetId: ruleSet.id, ...data }).returning();
         await recordConfigurationChange(tx, {
           ruleSetId: ruleSet.id,
           entityType: "HR_EMPLOYMENT_REGIME",

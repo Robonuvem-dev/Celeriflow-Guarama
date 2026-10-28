@@ -1,5 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { lt } from "drizzle-orm";
+import { transparencyAccesses, transparencyPageFeedback } from "@/db/schema/transparency";
 import { pageFeedbackRetentionDays } from "@/lib/transparencia/page-feedback";
 
 export const runtime = "nodejs";
@@ -9,7 +11,7 @@ export async function GET(request: Request) {
   if (!secret) return Response.json({ error: "Chave técnica não configurada." }, { status: 503 });
   const supplied = Buffer.from(request.headers.get("authorization") || ""), expected = Buffer.from(`Bearer ${secret}`);
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return Response.json({ error: "Não autorizado." }, { status: 401 });
-  const feedback = await prisma.transparencyPageFeedback.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - pageFeedbackRetentionDays * 86400000) } } });
-  const accesses = await prisma.transparencyAccess.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86400000) } } });
-  return Response.json({ removedFeedback: feedback.count, removedAccesses: accesses.count }, { headers: { "Cache-Control": "no-store" } });
+  const feedback = await db.delete(transparencyPageFeedback).where(lt(transparencyPageFeedback.createdAt, new Date(Date.now() - pageFeedbackRetentionDays * 86400000))).returning({ id: transparencyPageFeedback.id });
+  const accesses = await db.delete(transparencyAccesses).where(lt(transparencyAccesses.createdAt, new Date(Date.now() - 90 * 86400000))).returning({ id: transparencyAccesses.id });
+  return Response.json({ removedFeedback: feedback.length, removedAccesses: accesses.length }, { headers: { "Cache-Control": "no-store" } });
 }

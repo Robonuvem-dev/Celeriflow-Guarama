@@ -2,16 +2,21 @@ import { config } from "dotenv";
 import ExcelJS from "exceljs";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
-import { Prisma } from "@prisma/client";
+import { join } from "node:path";
+import { sql } from "drizzle-orm";
+import type { JsonObject } from "../src/db/json";
+import type { DatabaseConnection } from "../src/db/connection";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { openCrossDomainDatabase, queryRows } from "./lib/cross-domain-database";
+import { firstActiveP1Actor, insertP1DraftCatalog, type P1CatalogEntryInput } from "./lib/cross-domain-p1-catalogs";
 
-config({ path: ".env.local", quiet: true });
-config({ quiet: true });
-const apply = process.argv.includes("--apply");
-const sources = [
+type OfficialCatalogSource = { kind: "ACCOUNT" | "REVENUE" | "EXPENSE"; file: string; sheet: string; header: number; codeColumn: number; yearColumn: number; nameColumn: number; version: string; publishedAt: string; hash: string };
+type OfficialCatalogEntry = Omit<P1CatalogEntryInput, "attributes"> & { attributes: JsonObject & { postingAllowed: boolean } };
+export const p1OfficialSources = [
   { kind: "ACCOUNT", file: "PCASPM_PR_2026_v1.0d.xlsx", sheet: "PCASP-TCE-PR-2026", header: 5, codeColumn: 14, yearColumn: 15, nameColumn: 16, version: "1.0d", publishedAt: "2026-03-24", hash: "824d3dc03ad3f2d40abdbb10b2e2c5a30b590854af974be0a403fb12349d851a" },
   { kind: "REVENUE", file: "PC_RECEITA_PR_2026_v1.0e.xlsx", sheet: "Plano Receita 2026", header: 7, codeColumn: 14, yearColumn: 15, nameColumn: 16, version: "1.0e", publishedAt: "2026-10-09", hash: "2ee071dfb6ecf33462ff4ea047445dd1122786c735bb46ac0b8008952b501e97" },
   { kind: "EXPENSE", file: "PC_DESPESA_PR_2026_v1.0h.xlsx", sheet: "PC Desp-2026", header: 7, codeColumn: 8, yearColumn: 9, nameColumn: 10, version: "1.0h", publishedAt: "2026-08-05", hash: "e98bff8e02c48e92c762ab425d64d219849754e4dab34f4be491dfa7f3ef4ecb" },
-] as const;
+] as const satisfies readonly OfficialCatalogSource[];
 
 function cellText(value: ExcelJS.CellValue): string {
   if (value === undefined || value === null) return "";
@@ -22,12 +27,12 @@ function cellText(value: ExcelJS.CellValue): string {
   throw new Error("Célula sem resultado textual preservado; não executar fórmulas do arquivo.");
 }
 
-async function parseSource(source: typeof sources[number]) {
-  const file = `docs/poc-p0/fontes/${source.file}`;
+export async function parseP1OfficialSource(source: OfficialCatalogSource, directory = "docs/poc-p0/fontes") {
+  const file = join(directory, source.file);
   const hash = createHash("sha256").update(readFileSync(file)).digest("hex");
   if (hash !== source.hash) throw new Error(`Hash divergente: ${file}`);
   const reader = new ExcelJS.stream.xlsx.WorkbookReader(file, { worksheets: "emit", sharedStrings: "cache", styles: "ignore", hyperlinks: "ignore", entries: "ignore" });
-  const entries: Prisma.PlanningCatalogEntryCreateManyInput[] = [];
+  const entries: OfficialCatalogEntry[] = [];
   const codes = new Set<string>();
   const id = `p1-tce-pr-${source.kind.toLowerCase()}-2026-${source.version}`;
   let found = false;
@@ -72,31 +77,46 @@ async function parseSource(source: typeof sources[number]) {
   return { id, source, entries };
 }
 
+type OfficialCatalog = Awaited<ReturnType<typeof parseP1OfficialSource>>;
+export function summarizeP1OfficialCatalogs(catalogs: OfficialCatalog[]) {
+  return catalogs.map(({ id, source, entries }) => ({ id, ...source, entries: entries.length, postingAllowed: entries.filter(entry => entry.attributes.postingAllowed).length, status: "DRAFT", mapped: false }));
+}
+
+export async function importP1OfficialCatalogs(connection: DatabaseConnection, catalogs: OfficialCatalog[]): Promise<void> {
+  const actor = await firstActiveP1Actor(connection.db);
+  await withDatabaseTransaction(connection, async tx => {
+    for (const { id, source, entries } of catalogs) {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${id}, 0))::text`);
+      const [prior] = await queryRows<{ sourceHash: string; count: number }>(tx, sql`SELECT v."sourceHash",(SELECT count(*)::integer FROM "PlanningCatalogEntry" e WHERE e."versionId"=v.id) AS count FROM "PlanningCatalogVersion" v WHERE v.id=${id}`);
+      if (prior) {
+        if (prior.sourceHash !== source.hash || prior.count !== entries.length) throw new Error(`Versão existente divergente: ${id}`);
+        continue;
+      }
+      await insertP1DraftCatalog(tx, {
+        id, year: 2026, label: `TCE-PR SIM-AM ${source.kind} 2026 ${source.version}`, normativeReference: `Fonte oficial preservada em docs/poc-p0/fontes/README.md; versão ${source.version}. De-para local ainda em revisão.`, sourceHash: source.hash, entries,
+      }, actor.id, "IMPORT_OFFICIAL_CATALOG", { sourceHash: source.hash, sourceFile: source.file, sourceSheet: source.sheet, entries: entries.length, mapped: false, homologated: false });
+    }
+  }, { timeoutMs: 180_000, lockTimeoutMs: 180_000 });
+}
+
 async function main() {
+  config({ path: ".env.local", quiet: true });
+  config({ quiet: true });
+  const apply = process.argv.includes("--apply");
   // Parse and verify every source before starting any database mutation.
-  const catalogs = [];
-  for (const source of sources) catalogs.push(await parseSource(source));
-  const summary = catalogs.map(({ id, source, entries }) => ({ id, ...source, entries: entries.length, postingAllowed: entries.filter((entry) => (entry.attributes as Prisma.JsonObject).postingAllowed).length, status: "DRAFT", mapped: false }));
+  const catalogs: OfficialCatalog[] = [];
+  for (const source of p1OfficialSources) catalogs.push(await parseP1OfficialSource(source));
+  const summary = summarizeP1OfficialCatalogs(catalogs);
   if (apply) {
-    const { prisma } = await import("../src/lib/prisma");
+    const connection = openCrossDomainDatabase(2_000);
     try {
-      const actor = await prisma.usuario.findFirstOrThrow({ where: { ativo: true }, orderBy: { createdAt: "asc" }, select: { id: true } });
-      await prisma.$transaction(async (tx) => {
-        for (const { id, source, entries } of catalogs) {
-          const prior = await tx.planningCatalogVersion.findUnique({ where: { id }, include: { _count: { select: { entries: true } } } });
-          if (prior) {
-            if (prior.sourceHash !== source.hash || prior._count.entries !== entries.length) throw new Error(`Versão existente divergente: ${id}`);
-            continue;
-          }
-          await tx.planningCatalogVersion.create({ data: { id, year: 2026, label: `TCE-PR SIM-AM ${source.kind} 2026 ${source.version}`, normativeReference: `Fonte oficial preservada em docs/poc-p0/fontes/README.md; versão ${source.version}. De-para local ainda em revisão.`, sourceHash: source.hash, status: "DRAFT", createdById: actor.id } });
-          for (let offset = 0; offset < entries.length; offset += 300) await tx.planningCatalogEntry.createMany({ data: entries.slice(offset, offset + 300) });
-          await tx.financialAuditLog.create({ data: { action: "IMPORT_OFFICIAL_CATALOG", entityType: "PlanningCatalogVersion", entityId: id, authorUsuarioId: actor.id, payload: { sourceHash: source.hash, sourceFile: source.file, sourceSheet: source.sheet, entries: entries.length, mapped: false, homologated: false } } });
-        }
-      }, { timeout: 180000 });
+      await importP1OfficialCatalogs(connection, catalogs);
       writeFileSync("docs/poc-p0/CATALOGOS_OFICIAIS_P1.json", `${JSON.stringify({ generatedAt: new Date().toISOString(), mode: "ADDITIVE_IDEMPOTENT", catalogs: summary }, null, 2)}\n`);
-    } finally { await prisma.$disconnect(); }
+    } finally { await connection.pool.end(); }
   }
   console.log(JSON.stringify({ mode: apply ? "ADDITIVE_IDEMPOTENT" : "READ_ONLY", catalogs: summary }, null, 2));
 }
 
-main().catch((error: unknown) => { console.error(error); process.exitCode = 1; });
+if (process.argv[1]?.replaceAll("\\", "/").endsWith("/import-poc-p1-official-catalogs.ts")) {
+  void main().catch((error: unknown) => { console.error(error); process.exitCode = 1; });
+}

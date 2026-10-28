@@ -1,5 +1,16 @@
 import { z } from "zod";
 import PDFDocument from "pdfkit";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthDatabaseConnection } from "./health-transaction";
+import { createId } from "@/db/ids";
+import { healthTimestamp } from "@/db/repositories/health/timestamp";
+import { institutions, employees } from "@/db/schema/administration";
+import { healthProfessionals, healthUnits } from "@/db/schema/health-workforce";
+import { healthClinicalDocumentTemplates, healthClinicalDocumentOrders, healthClinicalDocuments, healthDiagnoses, healthExamRequests, healthReferrals, healthPerformedProcedures, healthClinicalEvolutions } from "@/db/schema/health-care";
+import { healthPrescriptions, healthPrescriptionItems } from "@/db/schema/health-prescriptions";
+import { healthSusProcedures, healthSusReferences } from "@/db/schema/health-catalogs";
+import { healthTriages } from "@/db/schema/health-agenda";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import { clinicalRecordForActor } from "./clinical-extension-service";
 import { uploadProcessFile, deleteUploadedDocument } from "@/lib/platform/blob";
@@ -9,7 +20,8 @@ const kinds = ["ATTESTATION", "ATTENDANCE", "PRESCRIPTION", "COMPLETE_RECORD", "
 const kindNames = { ATTESTATION: "Atestado", ATTENDANCE: "Declaração de comparecimento", PRESCRIPTION: "Receituário", COMPLETE_RECORD: "Espelho do atendimento", REFERRAL: "Guia de encaminhamento", EXAM_REQUEST: "Requisição de exames" };
 export async function saveClinicalDocumentTemplate(context: AppContext, raw: unknown) {
   const input = z.object({ code: z.string().trim().min(1), name: z.string().trim().min(1), kind: z.enum(kinds), bodyHtml: z.string().trim().min(1).max(30000) }).strict().parse(raw);
-  return context.prisma.healthClinicalDocumentTemplate.upsert({ where: { code: input.code }, create: input, update: input });
+  const [template] = await (context.database ?? db).insert(healthClinicalDocumentTemplates).values(input).onConflictDoUpdate({ target: healthClinicalDocumentTemplates.code, set: input }).returning();
+  return template;
 }
 
 const barcodePatterns: Record<string, string> = {
@@ -36,17 +48,35 @@ function formattedText(document: PDFKit.PDFDocument, html: string) {
 
 export async function issueClinicalDocument(context: AppContext, raw: unknown) {
   const input = z.object({ medicalRecordId: z.string().min(1), kind: z.enum(kinds), templateId: z.string().nullable(), absenceDays: z.number().int().min(1).max(365).nullable(), justification: z.string().trim().max(4000), prescriptionId: z.string().nullable(), referralId: z.string().nullable(), requestSignature: z.boolean().default(false) }).strict().parse(raw);
-  const { record } = await clinicalRecordForActor(context.prisma, context, input.medicalRecordId, false);
+  const database = context.database ?? db, connection = healthDatabaseConnection(context);
+  const { record } = await clinicalRecordForActor(database, context, input.medicalRecordId, false);
   if (input.kind === "ATTESTATION" && (!input.absenceDays || !input.justification)) throw new Error("Atestado exige dias e justificativa clínica.");
-  const [institution, professional, full, template] = await Promise.all([
-    context.prisma.institution.findFirst(), context.prisma.healthProfessional.findUniqueOrThrow({ where: { id: record.professionalId }, include: { employee: true } }),
-    context.prisma.medicalRecord.findUniqueOrThrow({ where: { id: record.id }, include: { diagnoses: { include: { cidReference: true } }, prescriptions: { include: { items: true } }, examRequests: true, referrals: true, procedures: { include: { procedure: true } }, evolutions: true, unit: true, vaccinations: { include: { vaccine: true, professional: { include: { employee: true } } } }, appointment: { include: { triage: true, vaccinations: { include: { vaccine: true, professional: { include: { employee: true } } } } } } } }),
-    input.templateId ? context.prisma.healthClinicalDocumentTemplate.findFirstOrThrow({ where: { id: input.templateId, kind: input.kind, isActive: true } }) : null,
+  const [institutionRows, professionalRows, unitRows, diagnoses, prescriptionRows, itemRows, examRequests, referrals, procedureRows, evolutions, triageRows, vaccinationResult, templateRows] = await Promise.all([
+    database.select().from(institutions).limit(1),
+    database.select({ professional: healthProfessionals, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(eq(healthProfessionals.id, record.professionalId)).limit(1),
+    database.select({ name: healthUnits.name }).from(healthUnits).where(eq(healthUnits.id, record.unitId)).limit(1),
+    database.select({ cidReference: { code: healthSusReferences.code, description: healthSusReferences.description } }).from(healthDiagnoses).innerJoin(healthSusReferences, eq(healthSusReferences.id, healthDiagnoses.cidReferenceId)).where(eq(healthDiagnoses.medicalRecordId, record.id)),
+    database.select().from(healthPrescriptions).where(eq(healthPrescriptions.medicalRecordId, record.id)),
+    database.select({ item: healthPrescriptionItems }).from(healthPrescriptionItems).innerJoin(healthPrescriptions, eq(healthPrescriptions.id, healthPrescriptionItems.prescriptionId)).where(eq(healthPrescriptions.medicalRecordId, record.id)),
+    database.select().from(healthExamRequests).where(eq(healthExamRequests.medicalRecordId, record.id)),
+    database.select().from(healthReferrals).where(eq(healthReferrals.medicalRecordId, record.id)),
+    database.select({ quantity: healthPerformedProcedures.quantity, procedure: { code: healthSusProcedures.code, description: healthSusProcedures.description } }).from(healthPerformedProcedures).innerJoin(healthSusProcedures, eq(healthSusProcedures.id, healthPerformedProcedures.procedureId)).where(eq(healthPerformedProcedures.medicalRecordId, record.id)),
+    database.select({ createdAt: healthClinicalEvolutions.createdAt, content: healthClinicalEvolutions.content }).from(healthClinicalEvolutions).where(eq(healthClinicalEvolutions.medicalRecordId, record.id)),
+    record.appointmentId ? database.select().from(healthTriages).where(eq(healthTriages.appointmentId, record.appointmentId)).limit(1) : [],
+    database.execute<{ id: string; date: string; doseNumber: number; lotNumber: string | null; professionalId: string; vaccineName: string; professionalName: string }>(sql`SELECT v.id, v.date, v."doseNumber", v."lotNumber", v."professionalId", x.name AS "vaccineName", e.name AS "professionalName" FROM "VaccinationRecord" v JOIN "Vaccine" x ON x.id=v."vaccineId" JOIN "HealthProfessional" p ON p.id=v."professionalId" JOIN "Employee" e ON e.id=p."employeeId" WHERE v."medicalRecordId"=${record.id} OR v."appointmentId"=${record.appointmentId}`),
+    input.templateId ? database.select().from(healthClinicalDocumentTemplates).where(and(eq(healthClinicalDocumentTemplates.id, input.templateId), eq(healthClinicalDocumentTemplates.kind, input.kind), eq(healthClinicalDocumentTemplates.isActive, true))).limit(1) : [],
   ]);
+  const institution = institutionRows[0], professionalRow = professionalRows[0], unit = unitRows[0], template = templateRows[0];
+  if (!professionalRow || !unit) throw new Error("Profissional ou unidade do atendimento não encontrado.");
+  if (input.templateId && !template) throw new Error("Modelo documental ativo não encontrado para este tipo.");
+  const professional = { ...professionalRow.professional, employee: professionalRow.employee };
+  const vaccinations = vaccinationResult.rows.map(row => ({ ...row, date: healthTimestamp(row.date), vaccine: { name: row.vaccineName }, professional: { employee: { name: row.professionalName } } }));
+  const prescriptions = prescriptionRows.map(prescription => ({ ...prescription, items: itemRows.filter(row => row.item.prescriptionId === prescription.id).map(row => row.item) }));
+  const full = { ...record, unit, diagnoses, prescriptions, examRequests, referrals, procedures: procedureRows, evolutions, vaccinations, appointment: record.appointment ? { ...record.appointment, triage: triageRows[0], vaccinations } : null };
   if (input.kind === "REFERRAL" && (!input.referralId || !full.referrals.some(row => row.id === input.referralId))) throw new Error("Selecione um encaminhamento especializado deste atendimento.");
   if (input.kind === "EXAM_REQUEST" && !full.examRequests.length) throw new Error("Este atendimento não possui requisições de exames.");
   if (input.kind === "PRESCRIPTION" && !full.prescriptions.some(row => (!input.prescriptionId || row.id === input.prescriptionId) && row.items.length > 0)) throw new Error("Selecione um receituário com itens deste atendimento.");
-  const order = await context.prisma.healthClinicalDocumentOrder.create({ data: { medicalRecordId: record.id, kind: input.kind, templateId: input.templateId, data: input, actorUsuarioId: context.user.id } });
+  const order = { id: createId() };
   const document = new PDFDocument({ size: "A4", margin: 40 }), chunks: Buffer[] = [];
   const ready = new Promise<Buffer>((resolve, reject) => { document.on("data", chunk => chunks.push(Buffer.from(chunk))); document.on("end", () => resolve(Buffer.concat(chunks))); document.on("error", reject); });
   document.fontSize(15).text(institution?.name || "Saúde municipal").fontSize(9).text(institution?.cnpj || "").text(full.unit.name).moveDown().fontSize(16).text(template?.name || kindNames[input.kind]).moveDown().fontSize(11);
@@ -81,9 +111,9 @@ export async function issueClinicalDocument(context: AppContext, raw: unknown) {
   const blob = await uploadProcessFile(file);
   let committed = false;
   try {
-    const issued = await ingestGedDocument(context.prisma, { title: `${kindNames[input.kind]} · ${record.patient.person.fullName}`, documentType: kindNames[input.kind], documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content: bytes, actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => { await tx.healthClinicalDocument.create({ data: { medicalRecordId: record.id, documentId, kind: input.kind, addedByUsuarioId: context.user.id } }); await tx.healthClinicalDocumentOrder.update({ where: { id: order.id }, data: { documentId } }); } });
+    const issued = await ingestGedDocument(connection, { title: `${kindNames[input.kind]} · ${record.patient.person.fullName}`, documentType: kindNames[input.kind], documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content: bytes, actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => { await clinicalRecordForActor(tx, context, record.id, false); await tx.insert(healthClinicalDocuments).values({ medicalRecordId: record.id, documentId, kind: input.kind, addedByUsuarioId: context.user.id }); await tx.insert(healthClinicalDocumentOrders).values({ id: order.id, medicalRecordId: record.id, kind: input.kind, templateId: input.templateId, data: input, actorUsuarioId: context.user.id, documentId }); } });
     committed = true;
-    if (input.requestSignature) await requestDocumentSignaturesForActor(context.prisma, context.user.id, issued.documentId, [context.user.id]);
+    if (input.requestSignature) await requestDocumentSignaturesForActor(connection, context.user.id, issued.documentId, [context.user.id]);
     return { documentId: issued.documentId, orderId: order.id };
   } catch (error) { if (!committed) await deleteUploadedDocument(blob).catch(() => {}); throw error; }
 }

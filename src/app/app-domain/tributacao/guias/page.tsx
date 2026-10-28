@@ -1,25 +1,14 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import { taxAssessmentAccessFilter } from "@/lib/tributacao/scope";
+import { db } from "@/db/client";
+import { listPageGuides } from "@/db/repositories/taxation-pages/assessments";
 import GuiasClient from "./GuiasClient";
 import { PaymentReversalForm } from "./PaymentReversalForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function GuiasPage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
-  const guias = await prisma.taxGuide.findMany({
-    where: { assessment: taxAssessmentAccessFilter(isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds) },
-    include: {
-      assessment: {
-        include: {
-          taxpayer: { include: { person: true, company: true } },
-          tax: true
-        }
-      },
-      payments: { where: { status: "Confirmado" }, select: { id: true, amountPaidDecimal: true, paymentDate: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context;
+  const guias = await listPageGuides(context.database ?? db, isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds);
 
   const displayGuides = guias.map(({ totalValueDecimal, payments, ...guide }) => {
     const totalValue = Number(totalValueDecimal ?? guide.totalValue);

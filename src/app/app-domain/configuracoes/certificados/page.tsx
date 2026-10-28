@@ -3,18 +3,22 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { registerCertificateAction, setCertificateStatusAction, signVersionWithA1Action } from "./actions";
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { digitalCertificates, documentVersions, documentClasses, certificateUseAudits } from "@/db/schema/document-workflow";
+import { documents } from "@/db/schema/registry";
 
 export const dynamic = "force-dynamic";
 const field = "h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm";
 const button = "rounded bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50";
 
 export default async function CertificatesPage() {
-  const { prisma, user } = await getTenantContextForModule("CONFIGURACOES");
+  const { user } = await getTenantContextForModule("CONFIGURACOES");
   if (!isSystemAdministrator(user)) return <PageFrame><PageHeader title="Certificados A1" icon={<KeyRound className="size-4" />} /><p className="rounded border bg-white p-4 text-sm">Acesso exclusivo do administrador do sistema.</p></PageFrame>;
   const [certificates, versions, audits] = await Promise.all([
-    prisma.digitalCertificate.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.documentVersion.findMany({ where: { status: "FINAL", document: { documentClass: { signaturePolicy: "ICP_REQUIRED" } } }, include: { document: true }, orderBy: { finalizedAt: "desc" }, take: 100 }),
-    prisma.certificateUseAudit.findMany({ include: { certificate: { select: { alias: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.select().from(digitalCertificates).orderBy(desc(digitalCertificates.createdAt)),
+    db.select({ version: documentVersions, document: documents }).from(documentVersions).innerJoin(documents, eq(documents.id, documentVersions.documentId)).innerJoin(documentClasses, eq(documentClasses.id, documents.documentClassId)).where(and(eq(documentVersions.status, "FINAL"), eq(documentClasses.signaturePolicy, "ICP_REQUIRED"))).orderBy(desc(documentVersions.finalizedAt)).limit(100).then(rows => rows.map(row => ({ ...row.version, document: row.document }))),
+    db.select({ audit: certificateUseAudits, certificate: { alias: digitalCertificates.alias } }).from(certificateUseAudits).leftJoin(digitalCertificates, eq(digitalCertificates.id, certificateUseAudits.certificateId)).orderBy(desc(certificateUseAudits.createdAt)).limit(100).then(rows => rows.map(row => ({ ...row.audit, certificate: row.certificate }))),
   ]);
   const now = new Date();
   return <PageFrame className="space-y-3 px-1 py-1 md:px-2"><PageHeader title="Certificados A1" icon={<KeyRound className="size-4 text-slate-700" />} />

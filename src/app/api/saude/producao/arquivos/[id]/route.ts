@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthSusFiles, healthProductionCompetences } from "@/db/schema/health-production";
 import { AccessError, assertHealthUnitAccess, getTenantContextForModule } from "@/lib/platform/tenant-context";
 
 export const runtime = "nodejs";
@@ -8,7 +11,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const context = await getTenantContextForModule("SAUDE");
     const { id } = await params;
-    const file = await context.prisma.healthSusFile.findUnique({ where: { id }, include: { competence: { select: { period: true } } } });
+    const [row] = await (context.database ?? db).select({ file: healthSusFiles, competence: { period: healthProductionCompetences.period } }).from(healthSusFiles).innerJoin(healthProductionCompetences, eq(healthProductionCompetences.id, healthSusFiles.competenceId)).where(eq(healthSusFiles.id, id)).limit(1);
+    const file = row ? { ...row.file, competence: row.competence } : null;
     if (!file) return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
     if (file.unitId) assertHealthUnitAccess(context.user, file.unitId);
     else if (context.user.hasHealthAccessScope) throw new AccessError("Arquivo consolidado fora do seu escopo de unidade.", 403);

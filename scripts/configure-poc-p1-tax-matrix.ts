@@ -1,7 +1,13 @@
 import { config } from "dotenv";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
-import { Prisma } from "@prisma/client";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import type { JsonObject, JsonValue } from "../src/db/json";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { accountingEvents, accountingPlans, accountingRules } from "../src/db/schema/finance-accounting";
+import { financialAuditLogs } from "../src/db/schema/finance-identity";
+import { users } from "../src/db/schema/identity";
+import { planningCatalogEntries, planningCatalogVersions } from "../src/db/schema/planning-catalog";
 
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
@@ -20,54 +26,61 @@ const events = [
   { code: "TAX_CREDIT_COMPENSATED", name: "POC — compensação de crédito tributário", debit: codes.refundable, credit: codes.receivable },
 ];
 const hash = createHash("sha256").update(JSON.stringify({ sourceHash, codes, events, year: 2026, pocOnly: true })).digest("hex");
+const object = (value: JsonValue): JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 
 async function main() {
-  const { prisma } = await import("../src/lib/prisma");
+  const { databaseConnection } = await import("../src/db/client");
   try {
-    const report = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${versionId}, 0))::text`;
-      const source = await tx.planningCatalogVersion.findUniqueOrThrow({ where: { id: sourceVersionId } });
+    const report = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${versionId}, 0))::text`);
+      const [source] = await tx.select().from(planningCatalogVersions).where(eq(planningCatalogVersions.id, sourceVersionId));
+      if (!source) throw new Error("Versão oficial não encontrada.");
       if (source.sourceHash !== sourceHash || source.year !== 2026) throw new Error("Origem oficial divergente.");
-      const entries = await tx.planningCatalogEntry.findMany({ where: { versionId: sourceVersionId, kind: "ACCOUNT", code: { in: Object.values(codes) } } });
+      const entries = await tx.select().from(planningCatalogEntries).where(and(eq(planningCatalogEntries.versionId, sourceVersionId), eq(planningCatalogEntries.kind, "ACCOUNT"), inArray(planningCatalogEntries.code, Object.values(codes))));
       if (entries.length !== Object.keys(codes).length) throw new Error("Contas oficiais da matriz não encontradas.");
       const accounts = new Map<string, string>();
       for (const entry of entries) {
-        const attr = entry.attributes as Prisma.JsonObject;
+        const attr = object(entry.attributes);
         if (attr.postingAllowed !== true || attr.informationNature !== "P" || attr.balanceNature !== (entry.code.startsWith("1.") ? "D" : "C")) throw new Error(`Classificação incompatível: ${entry.code}`);
-        const existing = await tx.accountingPlan.findUnique({ where: { code: entry.code } });
+        const [existing] = await tx.select().from(accountingPlans).where(eq(accountingPlans.code, entry.code));
         const type = entry.code.startsWith("1.") ? "Ativo" : "Passivo";
         if (existing && (existing.name !== entry.name || existing.type !== type)) throw new Error(`De-para conflitante; preservar conta ${existing.id}.`);
         accounts.set(entry.code, existing?.id ?? `p1-poc-account:${entry.code}`);
       }
-      const prior = await tx.planningCatalogVersion.findUnique({ where: { id: versionId } });
+      const [prior] = await tx.select().from(planningCatalogVersions).where(eq(planningCatalogVersions.id, versionId));
       if (prior && (prior.sourceHash !== hash || prior.status !== "PUBLISHED" || prior.year !== 2026)) throw new Error("Versão POC existente divergente.");
       // Never replace a local event or deactivate a local posting rule.
       for (const event of events) {
-        const existing = await tx.accountingEventCatalog.findUnique({ where: { code: event.code }, include: { rules: true } });
-        if (existing && (!existing.isActive || existing.name !== event.name || existing.rules.length !== 1 || !existing.rules[0].isActive || !existing.rules[0].isReference || existing.rules[0].debitAccountId !== accounts.get(event.debit) || existing.rules[0].creditAccountId !== accounts.get(event.credit))) throw new Error(`Evento local conflitante: ${event.code}. Não sobrescrever.`);
+        const [existing] = await tx.select().from(accountingEvents).where(eq(accountingEvents.code, event.code));
+        const rules = existing ? await tx.select().from(accountingRules).where(eq(accountingRules.eventId, existing.id)) : [];
+        if (existing && (!existing.isActive || existing.name !== event.name || rules.length !== 1 || !rules[0].isActive || !rules[0].isReference || rules[0].debitAccountId !== accounts.get(event.debit) || rules[0].creditAccountId !== accounts.get(event.credit))) throw new Error(`Evento local conflitante: ${event.code}. Não sobrescrever.`);
       }
       if (apply) {
-        const actor = await tx.usuario.findFirstOrThrow({ where: { ativo: true }, orderBy: { createdAt: "asc" }, select: { id: true } });
+        const [actor] = await tx.select({ id: users.id }).from(users).where(eq(users.ativo, true)).orderBy(asc(users.createdAt)).limit(1);
+        if (!actor) throw new Error("Ator ativo não encontrado.");
         if (!prior) {
-          for (const entry of entries) await tx.accountingPlan.upsert({ where: { code: entry.code }, create: { id: accounts.get(entry.code), code: entry.code, name: entry.name, type: entry.code.startsWith("1.") ? "Ativo" : "Passivo" }, update: {} });
-          await tx.planningCatalogVersion.create({ data: {
+          for (const entry of entries) await tx.insert(accountingPlans).values({ id: accounts.get(entry.code)!, code: entry.code, name: entry.name, type: entry.code.startsWith("1.") ? "Ativo" : "Passivo" }).onConflictDoNothing({ target: accountingPlans.code });
+          await tx.insert(planningCatalogVersions).values({
             id: versionId, year: 2026, sourceHash: hash, status: "DRAFT", label: "POC — matriz tributária de ensaio 2026 v1",
             normativeReference: "Autorização do usuário para matriz de ensaio. Subconjunto PCASP TCE-PR; homologação municipal pendente. Publicação restrita ao modo POC.", createdById: actor.id,
-            entries: { create: entries.map((entry) => ({ kind: "ACCOUNT", code: entry.code, name: entry.name, degree: entry.degree, canonicalId: accounts.get(entry.code)!, attributes: { ...(entry.attributes as Prisma.JsonObject), pocOnly: true, mapped: true, homologated: false, sourceVersionId, sourceEntryId: entry.id, matrixHash: hash } })) },
-          } });
-          await tx.planningCatalogVersion.update({ where: { id: versionId }, data: { status: "PUBLISHED" } });
-          await tx.financialAuditLog.create({ data: { action: "CONFIGURE_POC_TAX_MATRIX", entityType: "PlanningCatalogVersion", entityId: versionId, authorUsuarioId: actor.id, payload: { matrixHash: hash, sourceHash, pocOnly: true, homologated: false, events } } });
+          });
+          await tx.insert(planningCatalogEntries).values(entries.map((entry) => ({ versionId, kind: "ACCOUNT", code: entry.code, name: entry.name, degree: entry.degree, canonicalId: accounts.get(entry.code)!, attributes: { ...object(entry.attributes), pocOnly: true, mapped: true, homologated: false, sourceVersionId, sourceEntryId: entry.id, matrixHash: hash } })));
+          await tx.update(planningCatalogVersions).set({ status: "PUBLISHED" }).where(eq(planningCatalogVersions.id, versionId));
+          await tx.insert(financialAuditLogs).values({ action: "CONFIGURE_POC_TAX_MATRIX", entityType: "PlanningCatalogVersion", entityId: versionId, authorUsuarioId: actor.id, payload: { matrixHash: hash, sourceHash, pocOnly: true, homologated: false, events } });
         } else {
-          const bindings = await tx.planningCatalogEntry.findMany({ where: { versionId } });
-          if (bindings.length !== entries.length || bindings.some((entry) => entry.canonicalId !== accounts.get(entry.code) || (entry.attributes as Prisma.JsonObject).pocOnly !== true || (entry.attributes as Prisma.JsonObject).matrixHash !== hash)) throw new Error("Vínculos POC existentes divergentes.");
+          const bindings = await tx.select().from(planningCatalogEntries).where(eq(planningCatalogEntries.versionId, versionId));
+          if (bindings.length !== entries.length || bindings.some((entry) => entry.canonicalId !== accounts.get(entry.code) || object(entry.attributes).pocOnly !== true || object(entry.attributes).matrixHash !== hash)) throw new Error("Vínculos POC existentes divergentes.");
         }
-        for (const event of events) await tx.accountingEventCatalog.upsert({ where: { code: event.code }, create: { code: event.code, name: event.name, description: `POC; matriz ${hash}; homologação municipal pendente.`, rules: { create: { debitAccountId: accounts.get(event.debit)!, creditAccountId: accounts.get(event.credit)!, isReference: true, description: "Ensaio tributário patrimonial; não substitui controles orçamentários/MSC." } } }, update: {} });
+        for (const event of events) {
+          const [created] = await tx.insert(accountingEvents).values({ code: event.code, name: event.name, description: `POC; matriz ${hash}; homologação municipal pendente.` }).onConflictDoNothing({ target: accountingEvents.code }).returning({ id: accountingEvents.id });
+          if (created) await tx.insert(accountingRules).values({ eventId: created.id, debitAccountId: accounts.get(event.debit)!, creditAccountId: accounts.get(event.credit)!, isReference: true, description: "Ensaio tributário patrimonial; não substitui controles orçamentários/MSC." });
+        }
       }
       return { mode: apply ? "ADDITIVE_IDEMPOTENT" : "READ_ONLY", versionId, matrixHash: hash, sourceVersionId, sourceHash, pocOnly: true, homologated: false, accounts: entries.map((entry) => ({ code: entry.code, name: entry.name, canonicalId: accounts.get(entry.code) })), events };
-    }, { timeout: 60000 });
+    }, { timeoutMs: 60_000, lockTimeoutMs: 60_000 });
     if (apply) writeFileSync("docs/poc-p0/MATRIZ_TRIBUTARIA_POC_P1.json", `${JSON.stringify(report, null, 2)}\n`);
     console.log(JSON.stringify(report, null, 2));
-  } finally { await prisma.$disconnect(); }
+  } finally { await databaseConnection.pool.end(); }
 }
 
 main().catch((error: unknown) => { console.error(error); process.exitCode = 1; });

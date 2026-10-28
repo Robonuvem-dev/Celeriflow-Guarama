@@ -1,0 +1,12 @@
+import { boolean, date, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { exactNumeric } from "../decimal";
+import { createId } from "../ids";
+import type { JsonValue } from "../json";
+
+// Projections of installed tables; historical SQL is the DDL authority.
+const id = () => text("id").primaryKey().$defaultFn(createId);
+const createdAt = () => timestamp("createdAt", { precision: 3 }).notNull().defaultNow();
+export const pageDemands = pgTable("PlanningCommunityDemand", { id: id(), hearingId: text("hearingId").notNull(), requesterName: text("requesterName").notNull(), email: text("email"), phone: text("phone"), neighborhood: text("neighborhood").notNull(), request: text("request").notNull(), responsibleUnitId: text("responsibleUnitId").notNull(), status: text("status").notNull().default("PENDING"), opinion: text("opinion"), createdAt: createdAt() });
+export const pageAmendments = pgTable("PlanningLegislativeAmendment", { id: id(), instrumentId: text("instrumentId").notNull(), number: text("number").notNull(), date: date("date", { mode: "date" }).notNull(), objective: text("objective").notNull(), justification: text("justification").notNull(), councilorId: text("councilorId").notNull(), legalText: text("legalText").notNull(), status: text("status").notNull().default("DRAFT"), decidedById: text("decidedById"), decidedAt: timestamp("decidedAt", { precision: 3 }), createdById: text("createdById").notNull(), createdAt: createdAt(), versionNumber: integer("versionNumber").notNull().default(1), decisionReason: text("decisionReason"), effectiveAt: date("effectiveAt", { mode: "date" }), appliedAt: timestamp("appliedAt", { precision: 3 }), legalActNumber: text("legalActNumber") });
+export const pageAmendmentItems = pgTable("PlanningAmendmentItem", { id: id(), amendmentId: text("amendmentId").notNull(), lineId: text("lineId").notNull(), value: exactNumeric("value", { precision: 18, scale: 2 }).notNull(), sanctioned: boolean("sanctioned") });
+export const pageReportSnapshots = pgTable("PlanningReportSnapshot", { id: id(), instrumentId: text("instrumentId").notNull(), reportType: text("reportType").notNull(), filters: jsonb("filters").$type<JsonValue>().notNull(), dataset: jsonb("dataset").$type<JsonValue>().notNull(), hash: text("hash").notNull(), status: text("status").notNull().default("GENERATED"), createdById: text("createdById").notNull(), createdAt: createdAt() });

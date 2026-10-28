@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T11:58:01.599Z",
+  "generatedAt": "2026-10-28T14:36:56.817Z",
   "mode": "OFFLINE LEDGER PROVENANCE CHECK",
   "snapshotCapturedAt": "2026-10-28T01:28:43.995Z",
   "result": "HISTORICAL_DIFFERENCES_REQUIRE_RECONCILIATION",
@@ -7,7 +7,8 @@
   "counts": {
     "LINE_ENDINGS_ONLY": 29,
     "EXACT": 125,
-    "UNRESOLVED_HISTORICAL_DIFFERENCE": 2
+    "UNRESOLVED_HISTORICAL_DIFFERENCE": 1,
+    "PROVEN_MIXED_LINE_ENDINGS": 1
   },
   "records": [
     {
@@ -1030,7 +1031,8 @@
       "installedChecksum": "5fdfa81973db5e6bab704e102550a52eac2dbd9773151eae576923e509194cbd",
       "localChecksum": "29ed10d25d4e9adb9fde6ece5a9cfadf1c3b9f79ba70f002dcd02b55d60aea18",
       "lfChecksum": "d5d9b045afaff9d3c0b38eefb14a347d375b2742c9e131f8e61c9133472f2a55",
-      "classification": "UNRESOLVED_HISTORICAL_DIFFERENCE"
+      "classification": "PROVEN_MIXED_LINE_ENDINGS",
+      "artifact": "db/historical-provenance/20261015220000_health_aih_apac_workflows.json"
     },
     {
       "name": "20261015220000_tax_channel_document_integrity",

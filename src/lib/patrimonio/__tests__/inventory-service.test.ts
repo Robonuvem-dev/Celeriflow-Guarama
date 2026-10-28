@@ -1,77 +1,53 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { closeApprovedInventory } from "../inventory-service";
+import { createInventorySession, recordInventoryCount, submitInventoryForApproval, closeApprovedInventory } from "../inventory-service";
+import { recordStockMovement } from "../stock-service";
+import { inventorySessions, inventorySessionItems, materialMovements, materialStocks } from "@/db/schema/assets-stock";
+import { createAssetsFixture } from "./drizzle-fixture";
 
-test("approved inventory closure records the adjustment and releases the movement lock", async () => {
-  const movements: Array<Record<string, unknown>> = [];
-  const itemUpdates: Array<Record<string, unknown>> = [];
-  let closedData: Record<string, unknown> | undefined;
-  const transaction = {
-    $executeRaw: async () => 1,
-    inventorySession: {
-      findUnique: async () => ({
-        id: "inventory-1",
-        createdByUsuarioId: "creator-1",
-        status: "PENDING_APPROVAL",
-        items: [{
-          id: "item-1",
-          expectedQuantity: 5,
-          countedQuantity: 3,
-          adjustmentReason: "Perda identificada na conferência física",
-          stock: { warehouseId: "warehouse-1", materialId: "material-1", batchNumber: "", unitCost: 12 },
-        }],
-      }),
-      findFirst: async () => ({ id: "inventory-1" }),
-      update: async ({ data }: { data: Record<string, unknown> }) => { closedData = data; return { id: "inventory-1", ...data }; },
-    },
-    warehouse: { findFirst: async () => ({ id: "warehouse-1" }) },
-    material: { findUnique: async () => ({ id: "material-1" }) },
-    materialStock: {
-      findUnique: async () => ({ id: "stock-1", unitCost: 12 }),
-      updateMany: async () => ({ count: 1 }),
-    },
-    materialMovement: { create: async ({ data }: { data: Record<string, unknown> }) => { movements.push(data); return { id: "adjustment-1" }; } },
-    inventorySessionItem: { update: async ({ data }: { data: Record<string, unknown> }) => { itemUpdates.push(data); return { id: "item-1" }; } },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
+const actor = { usuarioId: "creator-1", employeeId: "employee-1" };
 
-  await closeApprovedInventory(database as never, {
-    sessionId: "inventory-1",
-    approvalEvidence: "Despacho 42/2026 aprovado pelo gestor",
-    actor: { usuarioId: "approver-1", employeeId: "employee-1" },
-  });
-
-  assert.equal(movements.length, 1);
-  assert.equal(movements[0]?.type, "Ajuste");
-  assert.equal(movements[0]?.quantity, -2);
-  assert.equal(movements[0]?.inventorySessionId, "inventory-1");
-  assert.equal(itemUpdates[0]?.adjustmentMovementId, "adjustment-1");
-  assert.equal(closedData?.status, "CLOSED");
-  assert.equal(closedData?.lockMovements, false);
-  assert.equal(closedData?.approvalEvidence, "Despacho 42/2026 aprovado pelo gestor");
+test("Drizzle approved closure records physical adjustment, evidence and releases movement lock atomically", async () => {
+  const f = await createAssetsFixture();
+  try {
+    await recordStockMovement(f.connection, { kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", warehouseId: "warehouse-1", materialId: "material-1", quantity: 5, unitCost: 12, actor });
+    const session = await createInventorySession(f.connection, { warehouseId: "warehouse-1", actor });
+    assert.equal(session.items[0].expectedQuantity, 5);
+    await assert.rejects(createInventorySession(f.connection, { warehouseId: "warehouse-1", actor }), /em andamento/);
+    await assert.rejects(submitInventoryForApproval(f.connection, session.id), /Todos os itens/);
+    await assert.rejects(recordInventoryCount(f.connection, { sessionId: session.id, itemId: session.items[0].id, countedQuantity: 3 }), /evidência/);
+    await recordInventoryCount(f.connection, { sessionId: session.id, itemId: session.items[0].id, countedQuantity: 3, countEvidence: "Conferência física assinada", adjustmentReason: "Perda identificada na conferência física" });
+    await submitInventoryForApproval(f.connection, session.id);
+    await assert.rejects(closeApprovedInventory(f.connection, { sessionId: session.id, approvalEvidence: "Tentativa do inventoriante", actor }), /Segregação de Funções/);
+    const closed = await closeApprovedInventory(f.connection, { sessionId: session.id, approvalEvidence: "Despacho 42/2026 aprovado pelo gestor", actor: { usuarioId: "approver-1", employeeId: "employee-1" } });
+    assert.equal(closed.status, "CLOSED");
+    assert.equal(closed.lockMovements, false);
+    assert.equal(closed.approvalEvidence, "Despacho 42/2026 aprovado pelo gestor");
+    const [item] = await f.connection.db.select().from(inventorySessionItems);
+    const movements = await f.connection.db.select().from(materialMovements);
+    const adjustment = movements.find(row => row.type === "Ajuste")!;
+    assert.equal(adjustment.quantity, -2);
+    assert.equal(adjustment.inventorySessionId, session.id);
+    assert.equal(item.adjustmentMovementId, adjustment.id);
+    assert.equal((await f.connection.db.select().from(materialStocks))[0].quantity, 3);
+  } finally { await f.close(); }
 });
 
-test("rejeita encerramento de inventário quando aprovador é o mesmo inventoriante (segregação de funções)", async () => {
-  const transaction = {
-    $executeRaw: async () => 1,
-    inventorySession: {
-      findUnique: async () => ({
-        id: "inventory-1",
-        createdByUsuarioId: "user-same",
-        status: "PENDING_APPROVAL",
-        items: [],
-      }),
-    },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
-
-  await assert.rejects(
-    () =>
-      closeApprovedInventory(database as never, {
-        sessionId: "inventory-1",
-        approvalEvidence: "Tentativa do próprio inventoriante",
-        actor: { usuarioId: "user-same", employeeId: "emp-same" },
-      }),
-    /Segregação de Funções/,
-  );
+test("Drizzle partial close failure restores all balances and keeps the approval/movement lock", async () => {
+  const f = await createAssetsFixture();
+  try {
+    await recordStockMovement(f.connection, { kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", warehouseId: "warehouse-1", materialId: "material-1", quantity: 5, unitCost: 12, actor });
+    const session = await createInventorySession(f.connection, { warehouseId: "warehouse-1", actor });
+    await recordInventoryCount(f.connection, { sessionId: session.id, itemId: session.items[0].id, countedQuantity: 3, countEvidence: "Conferência", adjustmentReason: "Perda identificada" });
+    await submitInventoryForApproval(f.connection, session.id);
+    await f.pg.exec(`CREATE FUNCTION fail_inventory_close() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='CLOSED' THEN RAISE EXCEPTION 'close unavailable'; END IF; RETURN NEW; END $$;
+      CREATE TRIGGER fail_inventory_close BEFORE UPDATE ON "InventorySession" FOR EACH ROW EXECUTE FUNCTION fail_inventory_close();`);
+    await assert.rejects(closeApprovedInventory(f.connection, { sessionId: session.id, approvalEvidence: "Despacho aprovado", actor: { usuarioId: "approver-1" } }));
+    assert.equal((await f.connection.db.select().from(materialStocks))[0].quantity, 5);
+    assert.equal((await f.connection.db.select().from(materialMovements)).length, 1);
+    assert.equal((await f.connection.db.select().from(inventorySessionItems))[0].adjustmentMovementId, null);
+    const [pending] = await f.connection.db.select().from(inventorySessions);
+    assert.equal(pending.status, "PENDING_APPROVAL");
+    assert.equal(pending.lockMovements, true);
+  } finally { await f.close(); }
 });

@@ -4,7 +4,12 @@ import { getTenantContextForModule, canPerformModuleOperation, canViewModule } f
 import { assertSstClinicalAccess } from "@/lib/sst/access";
 import { assessSstCertificate, attachSstCertificateDocument } from "../../actions";
 import { SstForm } from "../../SstForm";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { findSstCertificateScope, readSstCertificateDetailsOptions, readSstCertificateFinancialPage } from "@/db/repositories/sst-pages/certificates";
+import { readSstCertificate } from "@/db/repositories/sst/certificates";
+import { searchSstPeople } from "@/db/repositories/sst/references";
+import { sstDatabase } from "@/lib/sst/database";
 import { z } from "zod";
 import { confirmSstLeave, reviseSstDecision, reconcileSstLeavePayroll } from "../functional-actions";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -13,22 +18,19 @@ export default async function SstCertificatePage({ params, searchParams }: { par
   const { id } = await params;
   const { personQ, confirmLeave, receipt, page: requestedPage } = await searchParams;
   const context = await getTenantContextForModule("SST");
-  const scope = await context.prisma.sstMedicalCertificate.findUnique({ where: { id }, select: { budgetUnitId: true } });
+  const database = sstDatabase(context);
+  const scope = await findSstCertificateScope(database, id);
   if (!scope) notFound();
   await assertSstClinicalAccess(context, scope.budgetUnitId);
-  const record = await context.prisma.sstMedicalCertificate.findUniqueOrThrow({ where: { id }, include: { employee: { select: { name: true, registration: true } }, issuer: { select: { fullName: true } }, reason: true, budgetUnit: { select: { name: true } }, assessments: { include: { examiner: { select: { fullName: true } } }, orderBy: { assessedAt: "desc" } }, documents: { include: { document: { select: { id: true, fileUrl: true } } } } } });
-  const examiners = personQ && personQ.trim().length >= 3 ? await context.prisma.person.findMany({ where: { fullName: { contains: personQ.trim(), mode: "insensitive" } }, take: 20, orderBy: [{ fullName: "asc" }, { id: "asc" }], select: { id: true, fullName: true } }) : [];
-  const boards = await context.prisma.sstMedicalBoard.findMany({ where: { budgetUnitId: record.budgetUnitId, isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 100 });
+  const record = await readSstCertificate(database, id);
+  const examiners = personQ && personQ.trim().length >= 3 ? await searchSstPeople(database, personQ.trim()) : [];
+  const { boards, revisions, confirmation } = await readSstCertificateDetailsOptions(database, id, record.budgetUnitId);
   const policy = z.object({ name: z.string(), createLeaveOnApproval: z.boolean(), suggestLeave: z.boolean() }).parse(record.reasonSnapshot ?? record.reason);
-  const revisions = await context.prisma.$queryRaw<{ id: string; decision: string; reason: string; examinerCouncil: string; createdAt: Date; reconciliation: { status: string } }[]>`SELECT id,decision,reason,"examinerCouncil","createdAt",reconciliation FROM "SstCertificateDecisionRevision" WHERE "certificateId"=${id} ORDER BY revision DESC`;
-  const confirmation = await context.prisma.$queryRaw<{ confirmed: boolean }[]>`SELECT confirmed FROM "SstCertificateLeaveConfirmation" WHERE "certificateId"=${id}`;
   const financialRead = canViewModule(context.user, "RH");
-  const [financialCount] = financialRead ? await context.prisma.$queryRaw<{ total: number }[]>`SELECT count(*)::int AS total FROM "SstLeavePayrollOrigin" WHERE "certificateId"=${id}` : [{ total: 0 }];
-  const financialPage = Math.min(Math.max(1, Math.trunc(Number(requestedPage)) || 1), Math.max(1, Math.ceil(financialCount.total / 20)));
+  const { financialCount, financialPage, financial } = financialRead ? await readSstCertificateFinancialPage(database, id, requestedPage) : { financialCount: { total: 0 }, financialPage: 1, financial: [] };
   const financialValues = { personQ, confirmLeave, receipt };
   const financialHref = (page: number) => `/sst/atestados/${id}?${new URLSearchParams({ personQ: personQ || "", confirmLeave: confirmLeave || "", receipt: receipt || "", page: String(page) })}`;
-  const financial = financialRead ? await context.prisma.$queryRaw<{ id: string; kind: string; competence: string; amount: string; payrollId: string; payrollItemId: string; compensated: boolean }[]>`SELECT o.id,o.kind,o.competence,o."amountDecimal"::text AS amount,o."payrollId",o."payrollItemId",EXISTS(SELECT 1 FROM "SstLeavePayrollOrigin" r WHERE r."reversesId"=o.id) AS compensated FROM "SstLeavePayrollOrigin" o WHERE o."certificateId"=${id} ORDER BY o."createdAt" DESC,o.id LIMIT 20 OFFSET ${(financialPage - 1) * 20}` : [];
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.pageView, targetType: "SST_CLINICAL_CERTIFICATE", targetId: id });
+  await writeAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.pageView, targetType: "SST_CLINICAL_CERTIFICATE", targetId: id });
   return <div className="space-y-4 p-4"><header><h1 className="text-xl font-semibold">Atestado · {record.protocolNumber}</h1><Link href="/sst/atestados">Voltar à consulta</Link></header>
     <section className="space-y-2 rounded border p-4"><p>{record.employee.name} · Matrícula {record.employee.registration} · {record.budgetUnit.name}</p><p>{record.reason.name} · {record.status}</p><p>Período: {record.startsAt.toLocaleString("pt-BR")} a {record.endsAt.toLocaleString("pt-BR")}</p><p>Entrega: {record.presentedAt.toLocaleString("pt-BR")}</p><p>Emitente: {record.issuer.fullName} · {record.issuerCouncil}</p><p>CIDs: {record.cidCodes.join(", ") || "Não informados"}</p><p>Parentesco: {record.relationship || "Não se aplica"}</p><Link className="text-teal-700 underline" href={`/sst/atestados/${id}/comprovante`}>Comprovante de entrega</Link>{record.leaveId && <p>Afastamento vinculado no RH: {record.leaveId}</p>}</section>
     {record.processId && <p>Processo digital vinculado: {record.processId}</p>}

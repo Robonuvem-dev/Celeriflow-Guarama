@@ -1,16 +1,15 @@
-import "dotenv/config";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import test, { after, before } from "node:test";
 import { eq, sql } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
-import { auditEventTypes, writeAuditEvent, type AuditEventInput, type AuditEventType } from "../src/lib/platform/audit-evidence.ts";
+import { auditEventTypes, type AuditEventInput, type AuditEventType } from "../src/lib/platform/audit-evidence.ts";
+import { insertAuditEvent as writeAuditEvent } from "../src/db/repositories/platform/audit";
 import { auditEventPageSize, buildAuditEventPageQuery, buildAuditEventWhere, createAuditEventPage, encodeAuditEventCursor, normalizeAuditEventFilters, parseAuditEventQuery } from "../src/lib/platform/audit-query.ts";
-import { createDatabaseConnection } from "../src/db/connection";
 import { withDatabaseTransaction } from "../src/db/transaction";
 import { getPostgresError } from "../src/db/errors";
 import { auditEvents } from "../src/db/schema/audit";
-import { users } from "../src/db/schema/identity";
+import { createPlatformAuditFixture } from "./helpers/platform-audit-fixture";
 import { canEditModule, canPerformModuleOperation, canShowDashboardCard, canViewModule, isModuleActive, isModuleBlockedForUser, isSystemAdministrator } from "../src/lib/platform/tenant-context.ts";
 
 const permissionUser: Parameters<typeof canViewModule>[0] = {
@@ -18,25 +17,25 @@ const permissionUser: Parameters<typeof canViewModule>[0] = {
   permissions: "{}", modulePermissions: [], allowedBudgetUnitIds: [], employeeId: null, departmentId: null, secretariatId: null,
 };
 
-test("persists payload-free audit evidence with only actor, event, and target identifiers", async () => {
-  let data: unknown;
-  const prisma = {
-    auditEvent: {
-      create: async ({ data: receivedData }: { data: unknown }) => {
-        data = receivedData;
-      },
-    },
-  } as never;
+let fixture: Awaited<ReturnType<typeof createPlatformAuditFixture>>;
+before(async () => { fixture = await createPlatformAuditFixture(); });
+after(async () => { await fixture?.close(); });
 
-  await writeAuditEvent(prisma, {
-    actorUsuarioId: "user-1",
+test("persists payload-free audit evidence with only actor, event, and target identifiers", async () => {
+  await writeAuditEvent(fixture.connection.db, {
+    actorUsuarioId: fixture.actorId,
     eventType: auditEventTypes.documentDownload,
     targetType: "DOCUMENT",
     targetId: "document-1",
   });
 
+  const [event] = await fixture.connection.db.select().from(auditEvents)
+    .where(eq(auditEvents.actorUsuarioId, fixture.actorId));
+  assert.ok(event.id);
+  assert.ok(event.createdAt instanceof Date);
+  const data = Object.fromEntries(Object.entries(event).filter(([key]) => key !== "id" && key !== "createdAt"));
   assert.deepEqual(data, {
-    actorUsuarioId: "user-1",
+    actorUsuarioId: fixture.actorId,
     eventType: "DOCUMENT_DOWNLOAD",
     targetType: "DOCUMENT",
     targetId: "document-1",
@@ -292,14 +291,10 @@ test("migration protects audit evidence from mutation and indexes retention quer
 });
 
 test("database rejects mutation of audit evidence", async () => {
-  assert.ok(process.env.DATABASE_URL);
-  const connection = createDatabaseConnection(process.env.DATABASE_URL);
-  try {
-    const [actor] = await connection.db.select({ id: users.id }).from(users).limit(1);
-    assert.ok(actor, "A test actor is required to verify the audit foreign key.");
-    await assert.rejects(withDatabaseTransaction(connection, async tx => {
-      const [event] = await tx.insert(auditEvents).values({ actorUsuarioId: actor.id, eventType: auditEventTypes.sessionLogin, targetType: "SESSION", targetId: actor.id }).returning({ id: auditEvents.id });
+  await assert.rejects(withDatabaseTransaction(fixture.connection, async tx => {
+      const [event] = await tx.insert(auditEvents).values({ actorUsuarioId: fixture.actorId, eventType: auditEventTypes.sessionLogin, targetType: "SESSION", targetId: fixture.actorId }).returning({ id: auditEvents.id });
       await tx.update(auditEvents).set({ eventType: auditEventTypes.sessionLogout }).where(eq(auditEvents.id, event.id));
-    }), error => getPostgresError(error)?.code === "P0001" && error instanceof Error && error.cause instanceof Error && /append-only/.test(error.cause.message));
-  } finally { await connection.pool.end(); }
+  }), error => getPostgresError(error)?.code === "P0001" && error instanceof Error && error.cause instanceof Error && /append-only/.test(error.cause.message));
+  assert.equal((await fixture.connection.db.select().from(auditEvents)
+    .where(eq(auditEvents.eventType, auditEventTypes.sessionLogin))).length, 0, "A falha do guard reverte a inserção na transação de origem.");
 });

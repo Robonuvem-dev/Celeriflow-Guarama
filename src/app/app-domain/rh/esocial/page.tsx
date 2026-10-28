@@ -1,18 +1,17 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { describeHrExternalReadiness } from "@/lib/rh/external-configuration";
+import { readPersonnelExternalReadiness } from "@/db/repositories/personnel-pages/catalog";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { EsocialConfigurationForm } from "./ConfigurationForm";
+import { db } from "@/db/client";
+import { readEsocialEventsPage } from "@/db/repositories/personnel-pages/requests";
 
 export const dynamic = "force-dynamic";
 export default async function RhEsocialPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH");
-  const readiness = await describeHrExternalReadiness(prisma);
-  const where = { OR: [{ domain: "ESOCIAL" }, { domain: "AUDITORIA", eventType: "OBRIGACAO_ARQUIVO_GERADO" }] };
-  const total = await prisma.hrIntegrationEvent.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt((await searchParams).page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const events = await prisma.hrIntegrationEvent.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+  const context = await getTenantContextForModule("RH"), database = context.database ?? db;
+  const readiness = await readPersonnelExternalReadiness(database);
+  const { total, page, events } = await readEsocialEventsPage(database, (await searchParams).page);
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title="eSocial · preparação de RH/Folha" description="Parâmetros e origens segregados por ambiente. Não há transmissão ativa neste incremento." action={<Link href="/rh/operacoes">Operações</Link>} />
     <div className="grid gap-2 sm:grid-cols-2">{readiness.map(row => <section key={row.environment} className="rounded border bg-white p-3 text-xs"><strong>{row.environment}</strong><p>{row.status}</p><p>{row.configured ? "Parâmetros preenchidos; cliente de transmissão pendente." : "Aguardando parâmetros oficiais."}</p></section>)}</div>

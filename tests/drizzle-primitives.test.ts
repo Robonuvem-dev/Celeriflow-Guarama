@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { z } from "zod";
-import { Decimal as LegacyDecimal } from "@prisma/client/runtime/client";
 import { Decimal } from "../src/db/decimal";
 import { createId } from "../src/db/ids";
 import { getPostgresError, PersistenceError, translateDatabaseError } from "../src/db/errors";
@@ -16,13 +15,23 @@ test("IDs novos mantêm o formato cuid aceito pelos contratos atuais", () => {
 });
 
 test("decimais independentes preservam precisão, arredondamento e JSON existentes", () => {
-  for (const value of ["0.1", "1.005", "-1.005", "999999999999999999.99", "1e-8", "1e+21", "123456789.123456789"]) {
+  // Golden values captured from the pre-removal decimal runtime. Keeping the
+  // independent expectations avoids requiring a generated ORM in this test.
+  const cases = [
+    { value: "0.1", fixed2: "0.10", calculated: "0.046071428571428571428" },
+    { value: "1.005", fixed2: "1.01", calculated: "0.19151785714285714286" },
+    { value: "-1.005", fixed2: "-1.01", calculated: "-0.13151785714285714286" },
+    { value: "999999999999999999.99", fixed2: "999999999999999999.99", calculated: "160714285714285714.31" },
+    { value: "1e-8", fixed2: "0.00", calculated: "0.030000001607142857143" },
+    { value: "1e+21", fixed2: "1000000000000000000000.00", calculated: "160714285714285714280" },
+    { value: "123456789.123456789", fixed2: "123456789.12", calculated: "19841269.710555555375" },
+  ];
+  for (const { value, fixed2, calculated } of cases) {
     const migrated = new Decimal(value);
-    const legacy = new LegacyDecimal(value);
-    assert.equal(migrated.toString(), legacy.toString());
-    assert.equal(migrated.toFixed(2), legacy.toFixed(2));
-    assert.equal(JSON.stringify(migrated), JSON.stringify(legacy));
-    assert.equal(migrated.div(7).mul("1.125").plus("0.03").toString(), legacy.div(7).mul("1.125").plus("0.03").toString());
+    assert.equal(migrated.toString(), value);
+    assert.equal(migrated.toFixed(2), fixed2);
+    assert.equal(JSON.stringify(migrated), JSON.stringify(value));
+    assert.equal(migrated.div(7).mul("1.125").plus("0.03").toString(), calculated);
   }
 });
 

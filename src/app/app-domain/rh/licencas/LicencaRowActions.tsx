@@ -4,7 +4,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { deleteLicenca } from "./actions";
-import type { Leave } from "@prisma/client";
+import type { Leave } from "@/lib/contracts/personnel-pages";
 
 export function LicencaRowActions({ leave }: { leave: Leave }) {
   const handleDelete = async () => {

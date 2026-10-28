@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { databaseConnection } from "@/db/client";
 import { getConstructionPortalIdentity } from "@/lib/obras/construction-portal-access";
 import { listConstructionAutomaticViability } from "@/lib/obras/construction-automatic-viability";
 import { automaticViabilityDisclaimer } from "@/lib/obras/construction-automatic-viability-policy";
@@ -9,7 +9,7 @@ const outcomes: Record<string, string> = { APPROVED: "Favorável nos indicadores
 export default async function AutomaticViabilityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const identity = await getConstructionPortalIdentity();
-  const runs = await listConstructionAutomaticViability(prisma, identity.id, id);
+  const runs = await listConstructionAutomaticViability(databaseConnection, identity.id, id);
   return <main className="mx-auto max-w-5xl space-y-5 p-6">
     <h1 className="text-xl font-semibold">Viabilidade online automática — demonstrativo</h1>
     <Link href={`/portal/construcao-civil/${id}`} className="text-sm underline">Voltar à solicitação</Link>

@@ -1,5 +1,8 @@
-import { Prisma, type HealthChronicAssessment } from "@prisma/client";
-import { assertHealthUnitAccess, type AppContext } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { listFollowupChronicCandidates, listFollowupPregnancies, listFollowupRegulationSources, readFollowupActors, readFollowupChronicEvidence, readFollowupPregnancyEvidence } from "@/db/repositories/health-followup/sources";
+import type { HealthFollowupContext } from "@/lib/contracts/health-followup";
+import { assertHealthUnitAccess } from "@/lib/platform/tenant-context";
 import { followupRecordKey, followupRecordVersion, type FollowupContractName } from "./followup-contract";
 
 export type FollowupSourceRecord = Record<string, unknown> & { originType: string; originId: string; unitId: string; patientId: string; professionalId: string | null; sourceVersion: string; idempotencyKey: string };
@@ -12,12 +15,8 @@ function latestStamp(dates: (Date | null | undefined)[]) {
 }
 function checkCount(count: number) { if (count > 5000) throw new Error("O recorte ultrapassa 5.000 origens. Restrinja as datas para gerar todas as remessas desse recorte."); }
 
-async function actors(context: AppContext, unitId: string, seeds: Seed[]) {
-  const [unit, patients, professionals] = await Promise.all([
-    context.prisma.healthUnit.findUniqueOrThrow({ where: { id: unitId }, select: { id: true, name: true, cnes: true, isActive: true, updatedAt: true } }),
-    context.prisma.patient.findMany({ where: { id: { in: [...new Set(seeds.map(seed => seed.patientId))] } }, include: { person: { include: { addresses: { where: { addressType: "Residencial" }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, include: { neighborhood: { select: { name: true, city: true, state: true } } } } } }, contactRecords: { where: { isActive: true }, orderBy: { createdAt: "desc" }, take: 1 } } }),
-    context.prisma.healthProfessional.findMany({ where: { id: { in: [...new Set(seeds.map(seed => seed.professionalId).filter((id): id is string => Boolean(id)))] } }, include: { employee: { select: { name: true, isActive: true, updatedAt: true } } } }),
-  ]);
+async function actors(executor: DatabaseExecutor, unitId: string, seeds: Seed[]) {
+  const { unit, patients, professionals } = await readFollowupActors(executor, unitId, [...new Set(seeds.map(seed => seed.patientId))], [...new Set(seeds.map(seed => seed.professionalId).filter((id): id is string => Boolean(id)))]);
   return {
     unit: { id: unit.id, name: unit.name, cnes: unit.cnes, isActive: unit.isActive }, unitUpdatedAt: unit.updatedAt,
     patients: new Map(patients.map(patient => {
@@ -29,15 +28,11 @@ async function actors(context: AppContext, unitId: string, seeds: Seed[]) {
   };
 }
 
-async function pregnancySeeds(context: AppContext, unitId: string, range: { gte: Date; lt: Date }, ids?: string[]): Promise<Seed[]> {
-  const pregnancies = await context.prisma.healthPregnancy.findMany({ where: { unitId, ...(ids ? { id: { in: ids } } : { OR: [{ status: "ACTIVE", createdAt: { lt: range.lt } }, { createdAt: range }, { updatedAt: range }, { visits: { some: { OR: [{ occurredAt: range }, { createdAt: range }] } } }, { postpartumVisits: { some: { OR: [{ occurredAt: range }, { createdAt: range }] } } }] }) }, include: { visits: { orderBy: [{ occurredAt: "asc" }, { id: "asc" }] }, postpartumVisits: { orderBy: [{ occurredAt: "asc" }, { id: "asc" }] } }, orderBy: { id: "asc" }, take: 5001 });
+async function pregnancySeeds(executor: DatabaseExecutor, unitId: string, range: { gte: Date; lt: Date }, ids?: string[]): Promise<Seed[]> {
+  const pregnancies = await listFollowupPregnancies(executor, unitId, range, ids);
   checkCount(pregnancies.length);
   const recordIds = [...new Set(pregnancies.flatMap(pregnancy => [pregnancy.openedMedicalRecordId, ...pregnancy.visits.map(visit => visit.medicalRecordId), ...pregnancy.postpartumVisits.map(visit => visit.medicalRecordId)]))];
-  const [records, exams, reviews] = await Promise.all([
-    context.prisma.medicalRecord.findMany({ where: { id: { in: recordIds } }, select: { id: true, patientId: true, unitId: true, professionalId: true, date: true, createdAt: true, updatedAt: true } }),
-    context.prisma.healthExamRequest.findMany({ where: { medicalRecordId: { in: recordIds } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, medicalRecordId: true, examName: true, status: true, createdAt: true } }),
-    context.prisma.healthClinicalExamReview.findMany({ where: { medicalRecordId: { in: recordIds } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
-  ]);
+  const { records, exams, reviews } = await readFollowupPregnancyEvidence(executor, recordIds);
   const byRecord = new Map(records.map(record => [record.id, record]));
   return pregnancies.map(pregnancy => {
     const opening = byRecord.get(pregnancy.openedMedicalRecordId), linkedIds = new Set([pregnancy.openedMedicalRecordId, ...pregnancy.visits.map(visit => visit.medicalRecordId), ...pregnancy.postpartumVisits.map(visit => visit.medicalRecordId)]);
@@ -54,28 +49,13 @@ async function pregnancySeeds(context: AppContext, unitId: string, range: { gte:
   });
 }
 
-type AssessmentOrigin = HealthChronicAssessment & { recordProfessionalId: string; recordUpdatedAt: Date };
-async function chronicSeeds(context: AppContext, unitId: string, range: { gte: Date; lt: Date }, ids?: string[]): Promise<Seed[]> {
+async function chronicSeeds(executor: DatabaseExecutor, unitId: string, range: { gte: Date; lt: Date }, ids?: string[]): Promise<Seed[]> {
   if (ids && !ids.length) return [];
-  const requestedPatients = ids?.length ? Prisma.sql`AND source."patientId" IN (${Prisma.join(ids)})` : Prisma.empty;
-  const assessmentDate = ids ? Prisma.empty : Prisma.sql`AND a."assessedAt" < ${range.lt}`;
-  const conditionDate = ids ? Prisma.empty : Prisma.sql`AND c."startedAt" < ${range.lt}`;
-  const candidates = await context.prisma.$queryRaw<{ patientId: string }[]>(Prisma.sql`
-    SELECT DISTINCT source."patientId" FROM (
-      SELECT a."patientId" FROM "HealthChronicAssessment" a JOIN "MedicalRecord" m ON m.id=a."medicalRecordId"
-      WHERE m."unitId"=${unitId} AND a."conditionKind" IN ('HYPERTENSION','DIABETES') ${assessmentDate}
-      UNION
-      SELECT c."patientId" FROM "HealthPatientCondition" c JOIN "MedicalRecord" m ON m.id=c."medicalRecordId"
-      WHERE m."unitId"=${unitId} AND c.kind='CHRONIC' AND c."chronicKind" IN ('HYPERTENSION','DIABETES') ${conditionDate}
-    ) source WHERE true ${requestedPatients} ORDER BY source."patientId" LIMIT 5001`);
+  const candidates = await listFollowupChronicCandidates(executor, unitId, range, ids);
   checkCount(candidates.length);
   const patientIds = candidates.map(candidate => candidate.patientId);
   if (!patientIds.length) return [];
-  const [assessments, conditions] = await Promise.all([
-    context.prisma.$queryRaw<AssessmentOrigin[]>(Prisma.sql`SELECT a.*, m."professionalId" AS "recordProfessionalId", m."updatedAt" AS "recordUpdatedAt" FROM "HealthChronicAssessment" a JOIN "MedicalRecord" m ON m.id=a."medicalRecordId" WHERE m."unitId"=${unitId} AND a."conditionKind" IN ('HYPERTENSION','DIABETES') AND a."patientId" IN (${Prisma.join(patientIds)}) ORDER BY a."assessedAt", a.id`),
-    context.prisma.healthPatientCondition.findMany({ where: { patientId: { in: patientIds }, kind: "CHRONIC" }, orderBy: [{ startedAt: "asc" }, { id: "asc" }] }),
-  ]);
-  const conditionRecords = await context.prisma.medicalRecord.findMany({ where: { id: { in: [...new Set(conditions.map(condition => condition.medicalRecordId).filter((id): id is string => Boolean(id)))] }, unitId }, select: { id: true, patientId: true, date: true, professionalId: true, updatedAt: true } });
+  const { assessments, conditions, conditionRecords } = await readFollowupChronicEvidence(executor, unitId, patientIds);
   const byRecord = new Map(conditionRecords.map(record => [record.id, record]));
   return patientIds.map<Seed | null>(patientId => {
     const patientAssessments = assessments.filter(assessment => assessment.patientId === patientId), patientConditions = conditions.filter(condition => condition.patientId === patientId);
@@ -90,14 +70,9 @@ async function chronicSeeds(context: AppContext, unitId: string, range: { gte: D
   }).filter((seed): seed is Seed => seed !== null);
 }
 
-async function regulationSeeds(context: AppContext, unitId: string, range: { gte: Date; lt: Date }, keys?: OriginKey[]): Promise<Seed[]> {
-  const [requests, waiting] = await Promise.all([
-    context.prisma.healthRegulationRequest.findMany({ where: { requestUnitId: unitId, ...(keys ? { id: { in: keys.filter(key => key.originType === "REGULATION_REQUEST").map(key => key.originId) } } : { OR: [{ createdAt: range }, { updatedAt: range }, { events: { some: { createdAt: range } } }, { waitlistEntry: { updatedAt: range } }] }) }, include: { events: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] }, procedure: { select: { code: true } }, waitlistEntry: { include: { events: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } } }, appointment: { select: { id: true, date: true, status: true, unitId: true, professionalId: true, updatedAt: true } } }, orderBy: { id: "asc" }, take: 5001 }),
-    context.prisma.healthWaitlist.findMany({ where: { unitId, regulationRequestId: null, ...(keys ? { id: { in: keys.filter(key => key.originType === "WAITLIST_ENTRY").map(key => key.originId) } } : { OR: [{ createdAt: range }, { updatedAt: range }, { events: { some: { createdAt: range } } }] }) }, include: { events: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] }, schedule: { select: { professionalId: true } }, appointment: { select: { id: true, date: true, status: true, unitId: true, professionalId: true, updatedAt: true, medicalRecord: { select: { date: true, completedAt: true } } } } }, orderBy: { id: "asc" }, take: 5001 }),
-  ]);
+async function regulationSeeds(executor: DatabaseExecutor, unitId: string, range: { gte: Date; lt: Date }, keys?: OriginKey[]): Promise<Seed[]> {
+  const { requests, waiting, procedures } = await listFollowupRegulationSources(executor, unitId, range, keys);
   checkCount(requests.length + waiting.length);
-  const procedureIds = waiting.map(item => item.procedureId).filter((id): id is string => Boolean(id));
-  const procedures = await context.prisma.healthSusProcedure.findMany({ where: { id: { in: procedureIds } }, select: { id: true, code: true } });
   const codes = new Map(procedures.map(procedure => [procedure.id, procedure.code]));
   const seeds: Seed[] = requests.map(request => {
     const waiting = request.waitlistEntry;
@@ -119,12 +94,12 @@ async function regulationSeeds(context: AppContext, unitId: string, range: { gte
   return seeds;
 }
 
-export async function collectFollowupSources(context: AppContext, input: { contract: FollowupContractName; unitId: string; fromDate: string; toDate: string; originKeys?: OriginKey[] }): Promise<FollowupSourceRecord[]> {
+export async function collectFollowupSources(context: HealthFollowupContext, input: { contract: FollowupContractName; unitId: string; fromDate: string; toDate: string; originKeys?: OriginKey[] }, executor: DatabaseExecutor = context.database ?? db): Promise<FollowupSourceRecord[]> {
   assertHealthUnitAccess(context.user, input.unitId);
   const range = { gte: new Date(`${input.fromDate}T00:00:00-03:00`), lt: new Date(new Date(`${input.toDate}T23:59:59.999-03:00`).valueOf() + 1) };
-  const seeds = input.contract === "CELERIFLOW_SISPRENATAL" ? await pregnancySeeds(context, input.unitId, range, input.originKeys?.filter(key => key.originType === "HEALTH_PREGNANCY").map(key => key.originId)) : input.contract === "CELERIFLOW_HIPERDIA" ? await chronicSeeds(context, input.unitId, range, input.originKeys?.filter(key => key.originType === "CHRONIC_PATIENT").map(key => key.originId)) : await regulationSeeds(context, input.unitId, range, input.originKeys);
+  const seeds = input.contract === "CELERIFLOW_SISPRENATAL" ? await pregnancySeeds(executor, input.unitId, range, input.originKeys?.filter(key => key.originType === "HEALTH_PREGNANCY").map(key => key.originId)) : input.contract === "CELERIFLOW_HIPERDIA" ? await chronicSeeds(executor, input.unitId, range, input.originKeys?.filter(key => key.originType === "CHRONIC_PATIENT").map(key => key.originId)) : await regulationSeeds(executor, input.unitId, range, input.originKeys);
   checkCount(seeds.length);
-  const metadata = await actors(context, input.unitId, seeds), snapshotAt = new Date().toISOString();
+  const metadata = await actors(executor, input.unitId, seeds), snapshotAt = new Date().toISOString();
   return seeds.map(seed => {
     const patient = metadata.patients.get(seed.patientId), professional = seed.professionalId ? metadata.professionals.get(seed.professionalId) : null;
     const value = { originType: seed.originType, originId: seed.originId, unitId: input.unitId, patientId: seed.patientId, professionalId: seed.professionalId, operation: "UPSERT", occurredAt: iso(seed.occurredAt), sourceUpdatedAt: latestStamp([...seed.stamps, metadata.unitUpdatedAt, ...(patient?.stamps || []), ...(professional?.stamps || [])]), snapshotAt, patient: patient?.data || null, unit: metadata.unit, professional: professional?.data || null, data: seed.data };

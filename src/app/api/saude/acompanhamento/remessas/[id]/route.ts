@@ -4,12 +4,15 @@ import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-contex
 import { followupBatchForActor } from "@/lib/saude/followup-exchange-service";
 import { canonicalFollowupJson } from "@/lib/saude/followup-contract";
 import { followupCsvCell, followupPresentation } from "@/lib/saude/followup-presentation";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { db } from "@/db/client";
 export const runtime = "nodejs";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModuleOperation("SAUDE", "issueReports"), id = decodeURIComponent((await params).id);
-  const batch = await followupBatchForActor(context.prisma, context, id);
+  const database = context.database ?? db;
+  const batch = await followupBatchForActor(database, context, id);
   const format = z.enum(["json", "csv"]).parse(new URL(request.url).searchParams.get("formato") || "json");
   let body: string;
   if (format === "json") body = canonicalFollowupJson(batch.payload);
@@ -22,6 +25,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     body = `\uFEFF${[header, ...rows].map(row => row.map(followupCsvCell).join(";")).join("\r\n")}\r\n`;
   }
   const hash = createHash("sha256").update(body, "utf8").digest("hex");
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "HEALTH_FOLLOWUP_BATCH", targetId: batch.id });
+  await insertAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "HEALTH_FOLLOWUP_BATCH", targetId: batch.id });
   return new Response(body, { headers: { "Content-Type": format === "json" ? "application/json; charset=utf-8" : "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="remessa-${batch.id}.${format}"`, "X-Content-SHA256": hash, "Cache-Control": "private, no-store" } });
 }

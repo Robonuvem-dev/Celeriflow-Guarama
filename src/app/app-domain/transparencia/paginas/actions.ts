@@ -1,11 +1,10 @@
 "use server"
 
-import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
-
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("TRANSPARENCIA", operation)).prisma;
-}
+import { db } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { portalPages } from "@/db/schema/portal-content";
 
 const reservedPortalSlugs = new Set(["noticias"]);
 
@@ -19,7 +18,7 @@ function createPortalSlug(title: string) {
 }
 
 export async function createPage(data: FormData) {
-  const prisma = await getTenantPrisma("create");
+  await getTenantContextForModuleOperation("TRANSPARENCIA", "create");
   const title = data.get("title") as string;
   const content = data.get("content") as string;
   const status = data.get("status") as string;
@@ -36,13 +35,11 @@ export async function createPage(data: FormData) {
     throw new Error("Este título usa uma URL reservada pelo portal. Escolha outro título para a página.");
   }
 
-  await prisma.portalPage.create({
-    data: {
+  await db.insert(portalPages).values({
       title,
       content,
       status,
       slug,
-    }
   });
 
   revalidatePath("/transparencia/paginas");
@@ -51,14 +48,12 @@ export async function createPage(data: FormData) {
 }
 
 export async function deletePage(id: string) {
-  const prisma = await getTenantPrisma("delete");
-  const page = await prisma.portalPage.findUnique({ where: { id }, select: { slug: true } });
+  await getTenantContextForModuleOperation("TRANSPARENCIA", "delete");
+  const [page] = await db.select({ slug: portalPages.slug }).from(portalPages).where(eq(portalPages.id, id)).limit(1);
   if (!page) {
     throw new Error("Página institucional não encontrada.");
   }
-  await prisma.portalPage.delete({
-    where: { id }
-  });
+  if (!(await db.delete(portalPages).where(eq(portalPages.id, id)).returning({ id: portalPages.id })).length) throw new Error("Página institucional não encontrada.");
   revalidatePath("/transparencia/paginas");
   revalidatePath("/portal");
   revalidatePath(`/portal/${page.slug}`);

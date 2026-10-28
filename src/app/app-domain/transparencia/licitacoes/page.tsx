@@ -5,23 +5,16 @@ import UploadLicitacoesForm from "./UploadLicitacoesForm";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { LicitacoesClient, type BiddingRow } from "./LicitacoesClient";
+import { db } from "@/db/client";
+import { desc, eq } from "drizzle-orm";
+import { biddings as biddingTable, purchaseProcesses } from "@/db/schema/procurement-core";
 
 export const dynamic = "force-dynamic";
 
 export default async function LicitacoesPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
-  const biddings = await prisma.bidding.findMany({
-    orderBy: { publicationDate: 'desc' },
-    include: {
-      process: {
-        select: {
-          number: true,
-          object: true,
-          estimatedValue: true,
-        }
-      }
-    }
-  });
+  await getTenantContextForModule("TRANSPARENCIA");
+  const biddingRows=await db.select({bidding:biddingTable,process:{number:purchaseProcesses.number,object:purchaseProcesses.object,estimatedValue:purchaseProcesses.estimatedValue}}).from(biddingTable).innerJoin(purchaseProcesses,eq(purchaseProcesses.id,biddingTable.processId)).orderBy(desc(biddingTable.publicationDate));
+  const biddings=biddingRows.map(row=>({...row.bidding,process:row.process}));
 
   const now = new Date();
   const rows: BiddingRow[] = biddings.map((bidding) => {

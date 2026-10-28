@@ -3,8 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { AccessError, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
-import { HealthOperationError, runHealthTransaction } from "@/lib/saude/appointment-service";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { HealthOperationError, runHealthTransaction } from "@/lib/saude/health-transaction";
+import { eq, sql } from "drizzle-orm";
+import { healthUnits } from "@/db/schema/health-workforce";
+import { getPostgresError } from "@/db/errors";
 import { healthEntityIdSchema, healthUnitInputSchema, type HealthUnitInput } from "@/lib/saude/contract";
 
 function revalidateHealthUnits() {
@@ -14,13 +18,13 @@ function revalidateHealthUnits() {
 }
 
 function hasErrorCode(error: unknown, code: string) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === code;
+  return getPostgresError(error)?.code === code;
 }
 
 function actionError(error: unknown, fallback: string) {
   if (error instanceof z.ZodError) return error.issues[0]?.message || "Revise os campos informados.";
   if (error instanceof AccessError || error instanceof HealthOperationError) return error.message;
-  if (hasErrorCode(error, "P2002")) return "Ja existe uma unidade cadastrada com este CNES.";
+  if (hasErrorCode(error, "23505")) return "Ja existe uma unidade cadastrada com este CNES.";
   return fallback;
 }
 
@@ -28,10 +32,8 @@ export async function createHealthUnit(data: HealthUnitInput) {
   try {
     const input = healthUnitInputSchema.parse(data);
     const context = await getTenantContextForModuleOperation("SAUDE", "create");
-    await context.prisma.$transaction(async tx => {
-      const unit = await tx.healthUnit.create({
-        data: { ...input, isActive: true },
-      });
+    await runHealthTransaction(context, async tx => {
+      const [unit] = await tx.insert(healthUnits).values({ ...input, isActive: true }).returning({ id: healthUnits.id });
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "HEALTH_UNIT", targetId: unit.id });
     });
     revalidateHealthUnits();
@@ -46,8 +48,9 @@ export async function updateHealthUnit(id: string, data: HealthUnitInput) {
     const unitId = healthEntityIdSchema.parse(id);
     const input = healthUnitInputSchema.parse(data);
     const context = await getTenantContextForModuleOperation("SAUDE", "update");
-    await context.prisma.$transaction(async tx => {
-      const updated = await tx.healthUnit.update({ where: { id: unitId }, data: input });
+    await runHealthTransaction(context, async tx => {
+      const [updated] = await tx.update(healthUnits).set(input).where(eq(healthUnits.id, unitId)).returning({ id: healthUnits.id });
+      if (!updated) throw new HealthOperationError("Unidade de saúde não encontrada.");
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "HEALTH_UNIT", targetId: updated.id });
     });
     revalidateHealthUnits();
@@ -61,8 +64,9 @@ export async function toggleHealthUnitStatus(id: string, isActive: boolean) {
   try {
     const input = z.object({ id: healthEntityIdSchema, isActive: z.boolean() }).parse({ id, isActive });
     const context = await getTenantContextForModuleOperation("SAUDE", "update");
-    await context.prisma.$transaction(async tx => {
-      const updated = await tx.healthUnit.update({ where: { id: input.id }, data: { isActive: input.isActive } });
+    await runHealthTransaction(context, async tx => {
+      const [updated] = await tx.update(healthUnits).set({ isActive: input.isActive }).where(eq(healthUnits.id, input.id)).returning({ id: healthUnits.id });
+      if (!updated) throw new HealthOperationError("Unidade de saúde não encontrada.");
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "HEALTH_UNIT", targetId: updated.id });
     });
     revalidateHealthUnits();
@@ -77,25 +81,24 @@ export async function deleteHealthUnit(id: string) {
     const unitId = healthEntityIdSchema.parse(id);
     const context = await getTenantContextForModuleOperation("SAUDE", "delete");
     await runHealthTransaction(context, async tx => {
-      const dependencies = await Promise.all([
-        tx.healthTeam.count({ where: { unitId } }),
-        tx.healthProfessional.count({ where: { unitId } }),
-        tx.patient.count({ where: { referenceUnitId: unitId } }),
-        tx.healthAppointment.count({ where: { unitId } }),
-        tx.medicalRecord.count({ where: { unitId } }),
-        tx.medicineDispensation.count({ where: { unitId } }),
-        tx.vaccinationRecord.count({ where: { unitId } }),
-      ]);
-      if (dependencies.some(Boolean)) {
+      const dependencies = await tx.execute(sql`SELECT id FROM "HealthTeam" WHERE "unitId"=${unitId}
+        UNION ALL SELECT id FROM "HealthProfessional" WHERE "unitId"=${unitId}
+        UNION ALL SELECT id FROM "Patient" WHERE "referenceUnitId"=${unitId}
+        UNION ALL SELECT id FROM "HealthAppointment" WHERE "unitId"=${unitId}
+        UNION ALL SELECT id FROM "MedicalRecord" WHERE "unitId"=${unitId}
+        UNION ALL SELECT id FROM "MedicineDispensation" WHERE "unitId"=${unitId}
+        UNION ALL SELECT id FROM "VaccinationRecord" WHERE "unitId"=${unitId} LIMIT 1`);
+      if (dependencies.rows.length) {
         throw new HealthOperationError("Nao e possivel excluir esta unidade pois ela possui vinculos no sistema.");
       }
-      await tx.healthUnit.delete({ where: { id: unitId } });
+      const deleted = await tx.delete(healthUnits).where(eq(healthUnits.id, unitId)).returning({ id: healthUnits.id });
+      if (!deleted.length) throw new HealthOperationError("Unidade de saúde não encontrada.");
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "HEALTH_UNIT", targetId: unitId });
     });
     revalidateHealthUnits();
     return { success: true };
   } catch (error) {
-    if (hasErrorCode(error, "P2003")) return { error: "Nao e possivel excluir esta unidade pois ela possui vinculos no sistema." };
+    if (hasErrorCode(error, "23503")) return { error: "Nao e possivel excluir esta unidade pois ela possui vinculos no sistema." };
     return { error: actionError(error, "Nao foi possivel excluir esta unidade.") };
   }
 }

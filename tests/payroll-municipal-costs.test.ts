@@ -9,6 +9,8 @@ import { splitPayrollCostStatements, deductPayrollCostReleases, splitPayrollProv
 import { accountPayrollProvision } from "../src/lib/rh/provision-accounting";
 import { reversePayrollProvision } from "../src/lib/rh/payroll-provisions";
 import type { AppContext } from "../src/lib/platform/tenant-context";
+import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
+import { Decimal } from "../src/db/decimal";
 
 const date = new Date("2026-09-01T12:00:00Z");
 const snapshot = (id: string, rows: Array<{ code: string; value: string }>) => ({ contract: { id, employeeId: "servidora-ana", registration: id, workLocation: "LOCAL_FECHADO", costCenterId: "centro-folha" }, items: rows.map(row => ({ ...row, type: "PROVENTO" })) });
@@ -18,7 +20,10 @@ async function setup() {
   process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
   const restoreMode = () => { if (previousMode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE; else process.env.CELERIFLOW_ACCOUNTING_MODE = previousMode; };
   const f = await createPlanningExecutionFixture(2026, 2, "EXECUTIVE", { expenseLineAmount: "300.00" }).catch(error => { restoreMode(); throw error; });
+  let transport: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
   try {
+    transport = await connectFinanceDrizzleFixture(f.pg);
+    const financeTransport = transport;
     await f.db.financialYear.update({ where: { id: "ano" }, data: { status: "Aberto" } });
     const actor = { ...f.actor, allowedBudgetUnitIds: ["ug", "ug-restrita"] };
     await f.db.costCenter.create({ data: { id: "centro-folha", code: "FOLHA", name: "Centro da folha", governmentEntityId: "ente", secretariatId: "secretaria" } });
@@ -33,15 +38,15 @@ async function setup() {
     const reservation = await createBudgetReservation(f.db, f.financeReviewer, { date, number: "PAYROLL-COST-RES", value: "30.00", appropriationId: f.appropriationId, expenseId: expense.id });
     const commitment = await createCommitment(f.db, f.financeReviewer, { date, number: "PAYROLL-COST-EMP", value: "30.00", type: "Ordinário", history: "Folha", appropriationId: f.appropriationId, supplierId: "fornecedor", reservationId: reservation.id });
     await f.db.hrIntegrationEvent.create({ data: { sourceKey: "FINANCEIRO:DESPESAS:run", domain: "FINANCEIRO", environment: "PRODUCAO", eventType: "SOLICITACOES_DESPESA_FOLHA", status: "CONCLUIDA", payloadHash: "payroll-cost-fixture", payload: { runId: "run", lines: [{ key: "linha", costCenterId: "centro-folha", component: "GROSS", appropriationId: f.appropriationId, supplierId: "fornecedor", secretariatId: "secretaria", value: "30.00" }] }, result: { expenseIds: [expense.id] } } });
-    await configureMunicipalCosts(f.db, actor, { financialYearId: "ano", enabled: true, sourceTypes: ["PAYROLL"], effectiveFrom: new Date("2026-01-01"), reason: "Rateio da folha por memória fechada" });
-    const object = await createMunicipalCostObject(f.db, actor, { financialYearId: "ano", budgetUnitId: "ug", description: "Serviços", detailedDescription: "Serviços municipais" });
-    const item = await saveMunicipalCostItem(f.db, actor, { financialYearId: "ano", identifier: "PESSOAL", description: "Pessoal", detailedDescription: "Pessoal municipal", identificationClass: "TEXTO", behavior: "FIXED", isActive: true });
-    await linkMunicipalCostItems(f.db, actor, { objectIds: [object.id], itemIds: [item.id] });
+    await configureMunicipalCosts(financeTransport.connection, actor, { financialYearId: "ano", enabled: true, sourceTypes: ["PAYROLL"], effectiveFrom: new Date("2026-01-01"), reason: "Rateio da folha por memória fechada" });
+    const object = await createMunicipalCostObject(financeTransport.connection, actor, { financialYearId: "ano", budgetUnitId: "ug", description: "Serviços", detailedDescription: "Serviços municipais" });
+    const item = await saveMunicipalCostItem(financeTransport.connection, actor, { financialYearId: "ano", identifier: "PESSOAL", description: "Pessoal", detailedDescription: "Pessoal municipal", identificationClass: "TEXTO", behavior: "FIXED", isActive: true });
+    await linkMunicipalCostItems(financeTransport.connection, actor, { objectIds: [object.id], itemIds: [item.id] });
     const rule = { financialYearId: "ano", budgetUnitId: "ug", title: "Rateio da folha", sourceType: "PAYROLL" as const, selector: { costCenterId: "centro-folha" }, shares: [{ objectId: object.id, itemId: item.id, percentage: "100" }], priority: 1, effectiveFrom: new Date("2026-01-01") };
-    await createMunicipalCostRule(f.db, actor, rule);
+    await createMunicipalCostRule(financeTransport.connection, actor, rule);
     const input = { date, value: "30.00", commitmentId: commitment.id, documentId: "documento-fiscal", documentRef: "Folha fechada", authorId: "servidora-ana" };
-    return { ...f, actor, rule, input, close: async () => { try { await f.close(); } finally { restoreMode(); } } };
-  } catch (error) { try { await f.close(); } finally { restoreMode(); } throw error; }
+    return { ...f, actor, rule, input, financeConnection: financeTransport.connection, close: async () => { try { await financeTransport.close(); } finally { try { await f.close(); } finally { restoreMode(); } } } };
+  } catch (error) { try { await transport?.close(); } finally { try { await f.close(); } finally { restoreMode(); } } throw error; }
 }
 
 test("folha: liquidação conserva duas matrículas da mesma pessoa, verbas e localização fechada", async () => {
@@ -57,7 +62,7 @@ test("folha: liquidação conserva duas matrículas da mesma pessoa, verbas e lo
     await f.db.hrEmploymentContract.update({ where: { id: "vinculo-1" }, data: { workLocation: "LOCAL_ATUAL" } });
     assert.ok(dimensions.every(row => row.workLocation === "LOCAL_FECHADO"));
     await assert.rejects(cancelSettlement(f.db, f.financeReviewer, settlement.id), /apropriações/);
-    for (const source of sources) for (const movement of source.movements) await correctMunicipalCost(f.db, f.actor, { movementId: movement.id, date: new Date(), reason: "Anulação integral da liquidação da folha", kind: "REVERSAL", idempotencyKey: `reverse:${movement.id}` });
+    for (const source of sources) for (const movement of source.movements) await correctMunicipalCost(f.financeConnection, f.actor, { movementId: movement.id, date: new Date(), reason: "Anulação integral da liquidação da folha", kind: "REVERSAL", idempotencyKey: `reverse:${movement.id}` });
     await cancelSettlement(f.db, f.financeReviewer, settlement.id);
     assert.equal(await f.db.municipalCostSource.count({ where: { sourceType: "PAYROLL", status: "ACTIVE" } }), 0);
   } finally { await f.close(); }
@@ -67,8 +72,8 @@ test("folha: regra ambígua do segundo vínculo reverte liquidação e custos j�
   const f = await setup();
   try {
     const input = { ...f.rule, selector: { contractId: "vinculo-2" }, priority: 5 };
-    await createMunicipalCostRule(f.db, f.actor, input);
-    await createMunicipalCostRule(f.db, f.actor, { ...input, title: "Concorrência de critérios" });
+    await createMunicipalCostRule(f.financeConnection, f.actor, input);
+    await createMunicipalCostRule(f.financeConnection, f.actor, { ...input, title: "Concorrência de critérios" });
     await assert.rejects(createSettlement(f.db, f.financeReviewer, f.input), /regras automáticas concorrentes/);
     assert.equal(await f.db.settlement.count({ where: { commitmentId: f.input.commitmentId } }), 0);
     assert.equal(await f.db.municipalCostSource.count({ where: { sourceType: "PAYROLL" } }), 0);
@@ -77,19 +82,19 @@ test("folha: regra ambígua do segundo vínculo reverte liquidação e custos j�
 });
 
 test("folha: baixa provisionada reduz só o vínculo/componente correspondente e conserva centavos", () => {
-  const statements = ["vinculo-1", "vinculo-2"].map(id => ({ id: `stmt:${id}`, contractId: id, gross: new Prisma.Decimal("0.03"), employer: new Prisma.Decimal("0.01"), snapshot: snapshot(id, [{ code: "A", value: "0.01" }, { code: "B", value: "0.02" }]) }));
+  const statements = ["vinculo-1", "vinculo-2"].map(id => ({ id: `stmt:${id}`, contractId: id, gross: new Decimal("0.03"), employer: new Decimal("0.01"), snapshot: snapshot(id, [{ code: "A", value: "0.01" }, { code: "B", value: "0.02" }]) }));
   const slices = splitPayrollCostStatements(statements, { component: "GROSS", costCenterId: "centro-folha" });
-  const net = deductPayrollCostReleases(slices, [{ contractId: "vinculo-1", component: "GROSS", amount: new Prisma.Decimal("0.02") }]);
+  const net = deductPayrollCostReleases(slices, [{ contractId: "vinculo-1", component: "GROSS", amount: new Decimal("0.02") }]);
   assert.equal(net.filter(slice => slice.dimensions.contractId === "vinculo-1").reduce((sum, slice) => sum.plus(slice.amount), new Prisma.Decimal(0)).toFixed(2), "0.01");
   assert.equal(net.filter(slice => slice.dimensions.contractId === "vinculo-2").reduce((sum, slice) => sum.plus(slice.amount), new Prisma.Decimal(0)).toFixed(2), "0.03");
-  assert.throws(() => deductPayrollCostReleases(slices, [{ contractId: "vinculo-1", component: "EMPLOYER", amount: new Prisma.Decimal("0.01") }]), /componente/);
-  const targeted = deductPayrollCostReleases(slices, [{ contractId: "vinculo-1", component: "GROSS", amount: new Prisma.Decimal("0.01"), payrollCodes: ["B"] }]);
+  assert.throws(() => deductPayrollCostReleases(slices, [{ contractId: "vinculo-1", component: "EMPLOYER", amount: new Decimal("0.01") }]), /componente/);
+  const targeted = deductPayrollCostReleases(slices, [{ contractId: "vinculo-1", component: "GROSS", amount: new Decimal("0.01"), payrollCodes: ["B"] }]);
   assert.equal(targeted.find(slice => slice.dimensions.contractId === "vinculo-1" && slice.dimensions.payrollCode === "A")?.amount.toFixed(2), "0.01");
   assert.equal(targeted.find(slice => slice.dimensions.contractId === "vinculo-1" && slice.dimensions.payrollCode === "B")?.amount.toFixed(2), "0.01");
 });
 
 test("folha: mudança de localização no mês usa segmentos fechados, sem transferir todo o custo ao centro final", () => {
-  const statement = { id: "stmt-rateado", contractId: "vinculo-1", gross: new Prisma.Decimal("0.03"), employer: new Prisma.Decimal("0.01"), snapshot: { ...snapshot("vinculo-1", [{ code: "SALARIO_BASE", value: "0.03" }]), proration: { segments: [
+  const statement = { id: "stmt-rateado", contractId: "vinculo-1", gross: new Decimal("0.03"), employer: new Decimal("0.01"), snapshot: { ...snapshot("vinculo-1", [{ code: "SALARIO_BASE", value: "0.03" }]), proration: { segments: [
     { calendarDays: 15, costCenterId: "centro-inicial", workLocation: "LOCAL_INICIAL", items: [{ code: "SALARIO_BASE", type: "PROVENTO", value: "0.01" }] },
     { calendarDays: 15, costCenterId: "centro-final", workLocation: "LOCAL_FINAL", items: [{ code: "SALARIO_BASE", type: "PROVENTO", value: "0.02" }] },
   ] } } };
@@ -135,7 +140,7 @@ test("provisão: reconhecimento nativo gera verbas individuais e estorno exige d
     const actor = { ...f.financeReviewer };
     await assert.rejects(reversePayrollProvision(f.db, actor.usuarioId, reversalInput, actor), /apropriações/);
     assert.equal(await f.db.accountingTransaction.count({ where: { reversalOfId: posted.transactionId } }), 0);
-    for (const source of sources) for (const movement of source.movements) await correctMunicipalCost(f.db, f.actor, { movementId: movement.id, date: new Date(), reason: "Desfazimento do rateio antes do estorno contábil", kind: "REVERSAL", idempotencyKey: `provision-reverse:${movement.id}` });
+    for (const source of sources) for (const movement of source.movements) await correctMunicipalCost(f.financeConnection, f.actor, { movementId: movement.id, date: new Date(), reason: "Desfazimento do rateio antes do estorno contábil", kind: "REVERSAL", idempotencyKey: `provision-reverse:${movement.id}` });
     await reversePayrollProvision(f.db, actor.usuarioId, reversalInput, actor);
     assert.equal(await f.db.accountingTransaction.count({ where: { reversalOfId: posted.transactionId } }), 1);
     assert.equal(await f.db.municipalCostSource.count({ where: { id: { in: sources.map(source => source.id) }, status: "ACTIVE" } }), 0);

@@ -34,16 +34,19 @@ async function main() {
   const { config } = await import("dotenv");
   config({ path: ".env.local", quiet: true });
   config({ quiet: true });
-  const { PrismaClient } = await import("@prisma/client");
-  const { PrismaNeon } = await import("@prisma/adapter-neon");
-  const { neonConfig } = await import("@neondatabase/serverless");
+  const { Pool, neonConfig } = await import("@neondatabase/serverless");
+  const { drizzle } = await import("drizzle-orm/neon-serverless");
+  const { sql } = await import("drizzle-orm");
   const { default: ws } = await import("ws");
   neonConfig.webSocketConstructor = ws;
-  const db = new PrismaClient({ adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL }) });
+  const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("Conexão não configurada.");
+  const pool = new Pool({ connectionString, max: 1 });
+  const db = drizzle({ client: pool });
   try {
-    const rows = await db.$queryRaw`
+    const { rows } = await db.execute(sql`
       SELECT checksum, finished_at, rolled_back_at, applied_steps_count
-      FROM "_prisma_migrations" WHERE migration_name = ${selectedName} ORDER BY started_at`;
+      FROM "_prisma_migrations" WHERE migration_name = ${selectedName} ORDER BY started_at`);
     const active = rows.filter((row) => row.rolled_back_at === null);
     if (active.length !== 1 || active[0].finished_at === null || active[0].applied_steps_count !== 1 || active[0].checksum !== expectedChecksum) {
       throw new Error("Registro do banco não corresponde ao diagnóstico; nenhuma gravação permitida.");
@@ -52,7 +55,7 @@ async function main() {
     if (apply && hash(current) !== expectedChecksum) writeFileSync(migrationPath, original);
     if (apply && hash(readFileSync(migrationPath)) !== expectedChecksum) throw new Error("Falha na conferência dos bytes restaurados.");
     console.log(JSON.stringify({ mode: apply ? "RESTORE_FILE_BYTES" : "PREVIEW", migration: selectedName, currentChecksum: hash(current), originalChecksum: hash(original), sqlContentIdentical: true, databaseHistoryChanged: false }));
-  } finally { await db.$disconnect(); }
+  } finally { await pool.end(); }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { readTransparencyParameter } from "@/db/repositories/transparency/settings";
 import { MUNICIPALITY_NAME, MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipality-identity";
 import { transparencySources } from "./query-contract";
 export const transparencySettingsSchema = z.object({
@@ -19,8 +20,8 @@ export function defaultTransparencySettings(): TransparencySettings {
    // link oficial "Informações a partir de 2023" aponta para ?entidade=2.
    return transparencySettingsSchema.parse({ initialYear: 2025, availableYears: [2026, 2025], defaultSource: "API_IBEMA", countAccess: false, nativePersonnelPublication: false, openingHours: "", radarUrl: "https://pntp.atricon.org.br/consultar/", entities: [{ key: "prefeitura", name: MUNICIPALITY_INSTITUTION_NAME, enabled: true, nativeIds: [], externalCode: 1 }, { key: "camara", name: `Câmara Municipal de ${MUNICIPALITY_NAME}`, enabled: true, nativeIds: [], externalCode: 2 }], queries: {},customQueries:[], popup: { title: "", text: "", imageUrl: null, startsAt: null, endsAt: null, enabled: false } });
 }
-export async function getTransparencySettings(db: Pick<PrismaClient, "configuracaoParametroInstancia">) {
-  const parameter = await db.configuracaoParametroInstancia.findFirst({ where: { chave: transparencySettingsKey }, orderBy: { createdAt: "asc" }, select: { valor: true } });
+export async function getTransparencySettings(db: DatabaseExecutor) {
+  const parameter = await readTransparencyParameter(db, transparencySettingsKey);
   if (!parameter) return defaultTransparencySettings();
   return transparencySettingsSchema.parse(parameter.valor);
 }

@@ -1,73 +1,68 @@
 import assert from "node:assert/strict";
 import { config } from "dotenv";
-import { createDatabaseConnection } from "../src/db/connection";
 import { getSanitationTotals, listConsumerUnits, listInvoices, listMeterReadings, listPortalRequests, listSavedReports, listServiceOrders, listWaterQualityAnalyses } from "../src/db/repositories/sanitation/queries";
-import { clampSanitationPage, parseSanitationQuery } from "../src/lib/saneamento/list-query";
-import type { Prisma } from "@prisma/client";
+import { parseSanitationQuery, type SanitationListQuery } from "../src/lib/saneamento/list-query";
+import { openReadOnlySqlOracle, sqlOracleUrl } from "./sql-oracle";
 
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL não configurada.");
-  const { createPrismaClient } = await import("../src/lib/prisma");
-  const legacy = createPrismaClient(url);
-  const connection = createDatabaseConnection(url);
+  const connection = openReadOnlySqlOracle(sqlOracleUrl());
+  const clamp = (query: SanitationListQuery, total: number) => ({ ...query, page: Math.min(query.page, Math.max(1, Math.ceil(total / query.pageSize))) });
   let comparisons = 0;
   try {
     const totals = await getSanitationTotals(connection.db);
-    assert.deepEqual(totals, { totalUnits: await legacy.sanConsumerUnit.count(), totalReadings: await legacy.sanMeterReading.count(), totalOS: await legacy.sanServiceOrder.count() });
+    assert.deepEqual(totals, { totalUnits: await connection.count('SELECT count(*)::int AS count FROM "SanConsumerUnit"'), totalReadings: await connection.count('SELECT count(*)::int AS count FROM "SanMeterReading"'), totalOS: await connection.count('SELECT count(*)::int AS count FROM "SanServiceOrder"') });
     comparisons++;
     for (const params of [{}, { page: "2" }, { page: "999999", q: "Rua", category: "Residencial" }, { q: "%_" }]) {
       const requested = parseSanitationQuery(params);
-      const where: Prisma.SanConsumerUnitWhereInput = {
-        ...(requested.status ? { status: requested.status } : {}), ...(requested.category ? { category: requested.category } : {}),
-        ...(requested.q ? { OR: ["code", "address", "ownerName", "neighborhood", "postalCode"].map(field => ({ [field]: { contains: requested.q, mode: "insensitive" } })) } : {}),
-      };
-      const total = await legacy.sanConsumerUnit.count({ where });
-      const query = clampSanitationPage(requested, total);
-      const records = await legacy.sanConsumerUnit.findMany({ where, select: { id: true, code: true, address: true, streetAddress: true, neighborhood: true, postalCode: true, category: true, status: true, ownerName: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (query.page - 1) * query.pageSize, take: query.pageSize });
+      const where = `($1::text IS NULL OR status=$1) AND ($2::text IS NULL OR category=$2) AND ($3::text IS NULL OR code ILIKE $3 OR address ILIKE $3 OR "ownerName" ILIKE $3 OR neighborhood ILIKE $3 OR "postalCode" ILIKE $3)`;
+      const values = [requested.status || null, requested.category || null, requested.q ? `%${requested.q}%` : null];
+      const total = await connection.count(`SELECT count(*)::int AS count FROM "SanConsumerUnit" WHERE ${where}`, values);
+      const query = clamp(requested, total);
+      const records = await connection.rows(`SELECT id,code,address,"streetAddress",neighborhood,"postalCode",category,status,"ownerName" FROM "SanConsumerUnit" WHERE ${where} ORDER BY "createdAt" DESC,id ASC LIMIT $4 OFFSET $5`, [...values, query.pageSize, (query.page - 1) * query.pageSize]);
       assert.deepEqual(await listConsumerUnits(connection.db, requested), { records, query, total });
       comparisons++;
     }
     const months: { year: string; month: string; total: number }[] = [];
     for (const params of [{ year: "2026", month: "08" }, { year: "2026", month: "09", page: "2" }, { year: "2026", month: "10", q: "2026" }, { year: "2024", month: "10" }, { year: "2025", month: "10" }]) {
       const requested = parseSanitationQuery(params);
-      const where: Prisma.SanMeterReadingWhereInput = { competence: `${requested.month}/${requested.year}`,
-        ...(requested.status ? { status: requested.status } : {}), ...(requested.q ? { OR: [{ unit: { code: { contains: requested.q, mode: "insensitive" } } }, { competence: { contains: requested.q, mode: "insensitive" } }, { readerName: { contains: requested.q, mode: "insensitive" } }] } : {}),
-      };
-      const total = await legacy.sanMeterReading.count({ where });
-      const query = clampSanitationPage(requested, total);
-      const records = await legacy.sanMeterReading.findMany({ where, include: { unit: { select: { code: true } } }, orderBy: [{ readingDate: "desc" }, { id: "asc" }], skip: (query.page - 1) * query.pageSize, take: query.pageSize });
+      const from = `FROM "SanMeterReading" r JOIN "SanConsumerUnit" u ON u.id=r."unitId" WHERE r.competence=$1 AND ($2::text IS NULL OR r.status=$2) AND ($3::text IS NULL OR u.code ILIKE $3 OR r.competence ILIKE $3 OR r."readerName" ILIKE $3)`;
+      const values = [`${requested.month}/${requested.year}`, requested.status || null, requested.q ? `%${requested.q}%` : null];
+      const total = await connection.count(`SELECT count(*)::int AS count ${from}`, values);
+      const query = clamp(requested, total);
+      const records = await connection.rows(`SELECT r.*,json_build_object('code',u.code) AS unit ${from} ORDER BY r."readingDate" DESC,r.id ASC LIMIT $4 OFFSET $5`, [...values, query.pageSize, (query.page - 1) * query.pageSize]);
       assert.deepEqual(await listMeterReadings(connection.db, requested), { records, query, total });
       months.push({ year: query.year, month: query.month, total });
       comparisons++;
     }
     for (const params of [{}, { q: "2026", page: "2", status: "Emitida" }]) {
       const requested = parseSanitationQuery(params);
-      const where: Prisma.SanInvoiceWhereInput = { ...(requested.status ? { status: requested.status } : {}), ...(requested.q ? { OR: [{ unit: { code: { contains: requested.q, mode: "insensitive" } } }, { invoiceNumber: { contains: requested.q, mode: "insensitive" } }, { competence: { contains: requested.q, mode: "insensitive" } }] } : {}) };
-      const total = await legacy.sanInvoice.count({ where });
-      const query = clampSanitationPage(requested, total);
-      const records = await legacy.sanInvoice.findMany({ where, select: { id: true, invoiceNumber: true, competence: true, totalAmount: true, dueDate: true, status: true, unit: { select: { code: true } } }, orderBy: [{ dueDate: "desc" }, { id: "asc" }], skip: (query.page - 1) * query.pageSize, take: query.pageSize });
+      const from = `FROM "SanInvoice" i JOIN "SanConsumerUnit" u ON u.id=i."unitId" WHERE ($1::text IS NULL OR i.status=$1) AND ($2::text IS NULL OR u.code ILIKE $2 OR i."invoiceNumber" ILIKE $2 OR i.competence ILIKE $2)`;
+      const values = [requested.status || null, requested.q ? `%${requested.q}%` : null];
+      const total = await connection.count(`SELECT count(*)::int AS count ${from}`, values);
+      const query = clamp(requested, total);
+      const records = await connection.rows(`SELECT i.id,i."invoiceNumber",i.competence,i."totalAmount",i."dueDate",i.status,json_build_object('code',u.code) AS unit ${from} ORDER BY i."dueDate" DESC,i.id ASC LIMIT $3 OFFSET $4`, [...values, query.pageSize, (query.page - 1) * query.pageSize]);
       assert.deepEqual(await listInvoices(connection.db, requested), { records, query, total });
       comparisons++;
     }
     for (const params of [{}, { q: "Manutenção", type: "Manutenção" }]) {
       const requested = parseSanitationQuery(params);
-      const where: Prisma.SanServiceOrderWhereInput = { ...(requested.status ? { status: requested.status } : {}), ...(requested.type ? { orderType: requested.type } : {}), ...(requested.q ? { OR: [{ unit: { code: { contains: requested.q, mode: "insensitive" } } }, ...["orderNumber", "orderType", "technician"].map(field => ({ [field]: { contains: requested.q, mode: "insensitive" } }))] } : {}) };
-      const total = await legacy.sanServiceOrder.count({ where });
-      const query = clampSanitationPage(requested, total);
-      const records = await legacy.sanServiceOrder.findMany({ where, include: { unit: { select: { code: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (query.page - 1) * query.pageSize, take: query.pageSize });
+      const from = `FROM "SanServiceOrder" o LEFT JOIN "SanConsumerUnit" u ON u.id=o."unitId" WHERE ($1::text IS NULL OR o.status=$1) AND ($2::text IS NULL OR o."orderType"=$2) AND ($3::text IS NULL OR u.code ILIKE $3 OR o."orderNumber" ILIKE $3 OR o."orderType" ILIKE $3 OR o.technician ILIKE $3)`;
+      const values = [requested.status || null, requested.type || null, requested.q ? `%${requested.q}%` : null];
+      const total = await connection.count(`SELECT count(*)::int AS count ${from}`, values);
+      const query = clamp(requested, total);
+      const records = await connection.rows(`SELECT o.*,CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object('code',u.code) END AS unit ${from} ORDER BY o."createdAt" DESC,o.id ASC LIMIT $4 OFFSET $5`, [...values, query.pageSize, (query.page - 1) * query.pageSize]);
       assert.deepEqual(await listServiceOrders(connection.db, requested), { records, query, total });
       comparisons++;
     }
-    assert.deepEqual(await listWaterQualityAnalyses(connection.db), await legacy.sanWaterQualityAnalysis.findMany({ select: { id: true, collectionPoint: true, collectedAt: true, parameter: true, result: true, limit: true, compliance: true, active: true }, orderBy: { collectedAt: "desc" } }));
-    assert.deepEqual(await listPortalRequests(connection.db), await legacy.sanPortalRequest.findMany({ select: { id: true, requestType: true, requesterName: true, requestedAt: true, source: true, status: true, active: true }, orderBy: { requestedAt: "desc" } }));
-    assert.deepEqual(await listSavedReports(connection.db), await legacy.sanSavedReport.findMany({ select: { id: true, name: true, type: true, period: true, format: true, active: true }, orderBy: { createdAt: "desc" } }));
+    assert.deepEqual(await listWaterQualityAnalyses(connection.db), await connection.rows('SELECT id,"collectionPoint","collectedAt",parameter,result,"limit",compliance,active FROM "SanWaterQualityAnalysis" ORDER BY "collectedAt" DESC'));
+    assert.deepEqual(await listPortalRequests(connection.db), await connection.rows('SELECT id,"requestType","requesterName","requestedAt",source,status,active FROM "SanPortalRequest" ORDER BY "requestedAt" DESC'));
+    assert.deepEqual(await listSavedReports(connection.db), await connection.rows('SELECT id,name,type,period,format,active FROM "SanSavedReport" ORDER BY "createdAt" DESC'));
     comparisons += 3;
-    console.log(JSON.stringify({ result: "PASS", mode: "READ ONLY", comparisons, totals, months }, null, 2));
-  } finally { await legacy.$disconnect(); await connection.pool.end(); }
+    console.log(JSON.stringify({ result: "PASS", mode: "READ ONLY SQL ORACLE", comparisons, totals, months }, null, 2));
+  } finally { await connection.pool.end(); }
 }
 
 main().catch(error => { console.error(error); process.exitCode = 1; });

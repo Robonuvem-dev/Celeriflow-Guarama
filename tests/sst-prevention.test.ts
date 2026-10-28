@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFile } from "node:fs/promises";
-import { PGlite } from "@electric-sql/pglite";
-import { Prisma } from "@prisma/client";
-import type { AppContext } from "../src/lib/platform/tenant-context";
+import { Decimal } from "../src/db/decimal";
+import { createSstDrizzleFixture } from "./helpers/sst-drizzle-fixture";
+import { sstTestContext } from "./helpers/sst-drizzle-context";
+import { sstDatabaseError } from "./helpers/sst-database-error";
 import { preventionInput, preventionPayload, exactCost, participationPercent } from "../src/lib/sst/prevention-policy";
 import { createPrevention, voteCipa, registerCipaCandidate, getPrevention, updateMeeting, listPrevention, electionResults, extinguisherValidity, cipaCalendar } from "../src/lib/sst/prevention-service";
 import { validateQuestionnaireAnswers } from "../src/lib/sst/questionnaire-policy";
@@ -12,7 +13,7 @@ test("routine schemas enforce operational scope, exact costs and chronological w
   assert.equal(exactCost.parse("900719925474.09"), "900719925474.09");
   assert.equal(exactCost.safeParse(0.1 + 0.2).success, false);
   assert.equal(exactCost.safeParse("1.999").success, false);
-  assert.equal(new Prisma.Decimal("0.10").plus("0.20").toFixed(2), "0.30");
+  assert.equal(new Decimal("0.10").plus("0.20").toFixed(2), "0.30");
   const election = { kind: "ELECTION", cipaId: "cipa", registrationStartsAt: "2026-01-01T00:00:00Z", registrationEndsAt: "2026-01-02T00:00:00Z", startsAt: "2026-01-03T00:00:00Z", endsAt: "2026-01-04T00:00:00Z", commissionEmployeeIds: ["a"], minimumParticipation: 50 };
   assert.equal(preventionPayload.safeParse(election).success, true);
   assert.equal(preventionPayload.safeParse({ ...election, startsAt: election.registrationStartsAt }).success, false);
@@ -29,41 +30,38 @@ test("routine schemas enforce operational scope, exact costs and chronological w
   assert.equal(preventionInput.safeParse({ budgetUnitId: "ug", title: "Eleição", submissionKey: "unvalidated", payload: election }).success, false);
 });
 
-function sql(query: TemplateStringsArray | Prisma.Sql, values: unknown[]) {
-  if ("text" in query) return { text: query.text, values: query.values };
-  return { text: query.reduce((s, part, i) => s + (i ? `$${i}` : "") + part, ""), values };
-}
-async function fixture() {
-  const db = new PGlite();
-  await db.exec(`CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY,"secretariatId" TEXT); CREATE TABLE "Usuario" (id TEXT PRIMARY KEY); CREATE TABLE "Person" (id TEXT PRIMARY KEY,"fullName" TEXT,status TEXT); CREATE TABLE "Employee" (id TEXT PRIMARY KEY,"personId" TEXT,"secretariatId" TEXT,"isActive" BOOLEAN); INSERT INTO "BudgetUnit" VALUES ('ug','sec'),('other','outside'); INSERT INTO "Usuario" VALUES ('actor'),('otheractor'); INSERT INTO "Person" VALUES ('p1','Servidor um','Ativo'),('p2','Servidor dois','Ativo'),('p3','Servidor três','Ativo'); INSERT INTO "Employee" VALUES ('e1','p1','sec',true),('e2','p2','sec',true),('e3','p3','sec',true); CREATE TABLE "SstProfessionalRole" (id TEXT PRIMARY KEY,"personId" TEXT,"budgetUnitId" TEXT,discipline TEXT,council TEXT,"usuarioId" TEXT,"isActive" BOOLEAN,"startsAt" DATE,"endsAt" DATE); INSERT INTO "SstProfessionalRole" VALUES ('doctor','p1','ug','MEDICINE','CRM 123','actor',true,'2020-01-01','2100-01-01');`);
-  await db.exec(await readFile(new URL("../prisma/migrations-ibema/20261011040000_add_sst_prevention/migration.sql", import.meta.url), "utf8"));
-  const now = Date.now(), iso = (delta: number) => new Date(now + delta).toISOString();
-  const election = { kind: "ELECTION", cipaId: "cipa", registrationStartsAt: iso(-600000), registrationEndsAt: iso(-300000), startsAt: iso(-100000), endsAt: iso(300000), commissionEmployeeIds: ["e3"], minimumParticipation: 50 };
-  await db.query(`INSERT INTO "SstPreventionRecord" (id,"budgetUnitId",kind,title,payload,"createdById","submissionKey") VALUES ('election','ug','ELECTION','Eleição',$1,'actor','key'), ('another','other','ELECTION','Outra',$1,'actor','key2')`, [election]);
-  await db.exec(`INSERT INTO "SstElectionElector" VALUES ('election','e1','p1'),('election','e2','p2'),('election','e3','p3'),('another','e1','p1'); INSERT INTO "SstElectionCandidate" VALUES ('c1','election','e2','Candidato'),('cx','another','e1','Outra pessoa');`);
-  const adapter = (connection: Pick<PGlite, "query">) => ({
-    $queryRaw: async (query: TemplateStringsArray | Prisma.Sql, ...values: unknown[]) => { const q = sql(query, values); return (await connection.query(q.text, q.values)).rows; },
-    $executeRaw: async (query: TemplateStringsArray | Prisma.Sql, ...values: unknown[]) => { const q = sql(query, values); return (await connection.query(q.text, q.values)).affectedRows; },
-    employee: {
-      findFirst: async ({ where }: { where: { id: string } }) => ({ id: where.id, isActive: true, personId: where.id.replace("e", "p") }),
-      findUnique: async ({ where }: { where: { id: string } }) => { const row = (await connection.query<{ id: string; personId: string; secretariatId: string; isActive: boolean }>(`SELECT * FROM "Employee" WHERE id=$1`, [where.id])).rows[0]; if (!row) return null; return { ...row, person: (await connection.query(`SELECT * FROM "Person" WHERE id=$1`, [row.personId])).rows[0] }; },
-    },
-    person: { findUniqueOrThrow: async () => ({ fullName: "Servidor canônico" }), findUnique: async ({ where }: { where: { id: string } }) => (await connection.query(`SELECT * FROM "Person" WHERE id=$1`, [where.id])).rows[0] },
-    configuracaoModulo: { findUnique: async () => ({ ativo: true }) },
-    budgetUnit: { findMany: async () => [], count: async () => 0, findUniqueOrThrow: async ({ where }: { where: { id: string } }) => (await connection.query(`SELECT * FROM "BudgetUnit" WHERE id=$1`, [where.id])).rows[0] },
-    sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess: true }) },
-    sstDisciplineGrant: { findUnique: async () => ({ isActive: true, canRead: true, canWrite: true }) },
-    supplier: { findUnique: async ({ where }: { where: { id: string } }) => where.id === "supplier" ? { id: "supplier", status: "Ativo", company: { corporateName: "Empresa de manutenção" }, person: null } : null },
-    auditEvent: { create: async () => ({}) },
-  });
-  const prisma = { ...adapter(db), $transaction: async (fn: (tx: ReturnType<typeof adapter>) => Promise<unknown>) => db.transaction(tx => fn(adapter(tx as unknown as PGlite))) };
-  const context = { prisma, user: { id: "actor", employeeId: "e1", profileCode: "STAFF", allowedBudgetUnitIds: ["ug"], modulePermissions: [{ code: "SST", canView: true, canEdit: true }, { code: "PORTAL_SERVIDOR", canView: true, canEdit: true }], permissions: JSON.stringify({ modulosPermitidos: ["SST", "PORTAL_SERVIDOR"] }) } } as unknown as AppContext;
-  return { db, context, election, adapter, iso };
+async function fixture(options: { seedElections?: boolean } = {}) {
+  const local = await createSstDrizzleFixture(["BudgetUnit", "Person", "Employee", "Role", "Department", "ConfiguracaoModulo", "AuditEvent", "Supplier", "Company"]), db = local.database;
+  try {
+    await db.exec(`CREATE TABLE "Usuario" (id TEXT PRIMARY KEY); INSERT INTO "Usuario" VALUES ('actor'),('otheractor');
+    INSERT INTO "BudgetUnit" (id,code,name,"secretariatId","updatedAt") VALUES ('ug','UG','Unidade','sec',now()),('other','OTHER','Outra','outside',now());
+    INSERT INTO "Person" (id,"fullName","updatedAt") VALUES ('p1','Servidor um',now()),('p2','Servidor dois',now()),('p3','Servidor três',now());
+    INSERT INTO "Employee" (id,name,"personId","secretariatId","updatedAt") VALUES ('e1','Servidor um','p1','sec',now()),('e2','Servidor dois','p2','sec',now()),('e3','Servidor três','p3','sec',now());
+    CREATE TABLE "SstAccessGrant" ("usuarioId" TEXT,"budgetUnitId" TEXT,"isActive" BOOLEAN,"canReadClinical" BOOLEAN,"canAssess" BOOLEAN);
+    CREATE TABLE "SstDisciplineGrant" ("usuarioId" TEXT,"budgetUnitId" TEXT,discipline TEXT,"isActive" BOOLEAN,"canRead" BOOLEAN,"canWrite" BOOLEAN);
+    INSERT INTO "SstAccessGrant" VALUES ('actor','ug',true,true,true); INSERT INTO "SstDisciplineGrant" VALUES ('actor','ug','MEDICINE',true,true,true);
+    CREATE TABLE "SstProfessionalRole" (id TEXT PRIMARY KEY,"personId" TEXT,"budgetUnitId" TEXT,discipline TEXT,council TEXT,"usuarioId" TEXT,"isActive" BOOLEAN,"startsAt" DATE,"endsAt" DATE); INSERT INTO "SstProfessionalRole" VALUES ('doctor','p1','ug','MEDICINE','CRM 123','actor',true,'2020-01-01','2100-01-01');
+    INSERT INTO "Company" (id,"corporateName",cnpj,"updatedAt") VALUES ('company','Empresa de manutenção','00000000000000',now());
+    INSERT INTO "Supplier" (id,"companyId","updatedAt") VALUES ('supplier','company',now());`);
+    await db.exec(await readFile(new URL("../prisma/migrations-ibema/20261011040000_add_sst_prevention/migration.sql", import.meta.url), "utf8"));
+    const now = Date.now(), iso = (delta: number) => new Date(now + delta).toISOString();
+    const election = { kind: "ELECTION", cipaId: "cipa", registrationStartsAt: iso(-600000), registrationEndsAt: iso(-300000), startsAt: iso(-100000), endsAt: iso(300000), commissionEmployeeIds: ["e3"], minimumParticipation: 50 };
+    if (options.seedElections !== false) {
+      await db.query(`INSERT INTO "SstPreventionRecord" (id,"budgetUnitId",kind,title,payload,"createdById","submissionKey") VALUES ('election','ug','ELECTION','Eleição',$1,'actor','key'), ('another','other','ELECTION','Outra',$1,'actor','key2')`, [election]);
+      await db.exec(`INSERT INTO "SstElectionElector" VALUES ('election','e1','p1'),('election','e2','p2'),('election','e3','p3'),('another','e1','p1'); INSERT INTO "SstElectionCandidate" VALUES ('c1','election','e2','Candidato'),('cx','another','e1','Outra pessoa');`);
+    }
+    const context = sstTestContext(local.connection.db, { id: "actor", employeeId: "e1", profileCode: "STAFF", modulePermissions: [{ code: "SST", canView: true, canEdit: true }, { code: "PORTAL_SERVIDOR", canView: true, canEdit: true }], permissions: JSON.stringify({ modulosPermitidos: ["SST", "PORTAL_SERVIDOR"] }) });
+    return { db, context, election, iso, close: local.close };
+  } catch (error) { await local.close(); throw error; }
 }
 
 test("authenticated identity, wrong election candidate, duplicate turnout and anonymous ballots", async () => {
-  const { db, context } = await fixture();
+  const { db, context, close } = await fixture();
   try {
+    assert.deepEqual((await db.query(`SELECT id,"budgetUnitId",kind,clinical FROM "SstPreventionRecord" ORDER BY id`)).rows, [
+      { id: "another", budgetUnitId: "other", kind: "ELECTION", clinical: false },
+      { id: "election", budgetUnitId: "ug", kind: "ELECTION", clinical: false },
+    ]);
     await assert.rejects(voteCipa(context, { electionId: "election", candidateId: "cx" }), /Candidato não pertence/);
     assert.equal((await db.query<{ total: number }>(`SELECT count(*)::int total FROM "SstElectionTurnout"`)).rows[0].total, 0);
     const competing = await Promise.allSettled([voteCipa(context, { electionId: "election", candidateId: "c1", employeeId: "e2" }), voteCipa(context, { electionId: "election", candidateId: null })]);
@@ -80,11 +78,11 @@ test("authenticated identity, wrong election candidate, duplicate turnout and an
     const outsider = { ...context, user: { ...context.user, employeeId: "e999" } };
     await assert.rejects(voteCipa(outsider, { electionId: "election", candidateId: "c1" }), /não integra o eleitorado/);
     await assert.rejects(getPrevention(context, "another"), /Acesso negado/);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 
 test("election windows, turnout percentage and tally are derived from actual secret ballots", async () => {
-  const { db, context, election, iso } = await fixture();
+  const { db, context, election, iso, close } = await fixture();
   try {
     await voteCipa(context, { electionId: "election", candidateId: "c1" });
     const open = await electionResults(context, "election");
@@ -94,15 +92,18 @@ test("election windows, turnout percentage and tally are derived from actual sec
     assert.equal(closed.closed, true); assert.equal(closed.valid, false);
     assert.deepEqual(closed.tally, [{ candidateId: "c1", name: "Candidato", votes: 1 }, { candidateId: null, name: "Em branco", votes: 0 }]);
     await assert.rejects(voteCipa({ ...context, user: { ...context.user, employeeId: "e2" } }, { electionId: "election", candidateId: null }), /fora do período/);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 
 test("ballot failure rolls back turnout and registration never accepts another employee", async () => {
-  const { db, context, election, iso } = await fixture();
+  const { db, context, election, iso, close } = await fixture();
   try {
     await db.exec(`CREATE FUNCTION reject_ballot() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'ballot unavailable'; END $$; CREATE TRIGGER reject_ballot BEFORE INSERT ON "SstElectionBallot" FOR EACH ROW EXECUTE FUNCTION reject_ballot();`);
-    await assert.rejects(voteCipa(context, { electionId: "election", candidateId: "c1" }), /ballot unavailable/);
+    const auditBefore = (await db.query(`SELECT * FROM "AuditEvent" ORDER BY id`)).rows;
+    await assert.rejects(voteCipa(context, { electionId: "election", candidateId: "c1" }), sstDatabaseError("P0001", /ballot unavailable/));
     assert.equal((await db.query<{ total: number }>(`SELECT count(*)::int total FROM "SstElectionTurnout"`)).rows[0].total, 0);
+    assert.equal((await db.query<{ total: number }>(`SELECT count(*)::int total FROM "SstElectionBallot"`)).rows[0].total, 0);
+    assert.deepEqual((await db.query(`SELECT * FROM "AuditEvent" ORDER BY id`)).rows, auditBefore);
     const registration = { ...election, registrationEndsAt: iso(100000), startsAt: iso(200000) };
     await db.query(`UPDATE "SstPreventionRecord" SET payload=$1 WHERE id='election'`, [registration]);
     await registerCipaCandidate(context, "election");
@@ -111,11 +112,11 @@ test("ballot failure rolls back turnout and registration never accepts another e
     assert.deepEqual(own, [{ employeeId: "e1" }, { employeeId: "e2" }]);
     const commission = { ...context, user: { ...context.user, employeeId: "e3" } };
     await assert.rejects(registerCipaCandidate(commission, "election"), /comissão eleitoral/);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 
 test("meeting snapshots preserve original dates, require justifications and complete presence", async () => {
-  const { db, context, iso } = await fixture();
+  const { db, context, iso, close } = await fixture();
   try {
     const cipa = { kind: "CIPA", startsAt: iso(-900000), endsAt: iso(900000), members: [{ employeeId: "e1", function: "Presidente", representation: "EMPLOYEE", alternate: false }] };
     const meeting = { kind: "MEETING", cipaId: "cipa", at: iso(-600000), type: "ORDINARY", location: "Sala", agenda: "Segurança" };
@@ -136,29 +137,63 @@ test("meeting snapshots preserve original dates, require justifications and comp
     const calendar = await cipaCalendar(context, "ug", year);
     assert.equal(calendar.length, 1); assert.equal(calendar[0].originalAt, meeting.at); assert.equal(calendar[0].at, versions[2].artifact.at);
     await assert.rejects(updateMeeting(context, { id: "meeting", at: iso(100000), reason: "Depois da ata" }, "postpone"), /encerrada/);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });
 
 test("server pagination counts only authorized UG and hides clinical records before counting", async () => {
-  const { db, context } = await fixture();
+  const { db, context, close } = await fixture({ seedElections: false });
   try {
+    // The default election seed contains `election` in ug. It would add one to
+    // both totals below (47/46); this scenario starts with no prevention rows.
+    assert.deepEqual((await db.query(`SELECT id FROM "SstPreventionRecord"`)).rows, []);
     const visit = { kind: "VISIT", type: "Rotina", at: "2026-01-01T00:00:00Z", location: "Sala", responsiblePersonId: "p1", details: "Inspeção real" };
     for (let i = 0; i < 45; i++) await db.query(`INSERT INTO "SstPreventionRecord" (id,"budgetUnitId",kind,title,payload,"createdById","submissionKey") VALUES ($1,'ug','VISIT',$1,$2,'actor',$1)`, [`visit-${i.toString().padStart(2, "0")}`, visit]);
     const audiometry = { kind: "AUDIOMETRY", pcaId: "pca", employeeId: "e1", professionalRoleId: "role", at: "2026-01-01T00:00:00Z", nextAt: "2027-01-01T00:00:00Z", technique: "Tonal", conclusion: "Restrita", right: [{ hz: 1000, db: 20 }], left: [{ hz: 1000, db: 20 }], attachments: [] };
     await db.query(`INSERT INTO "SstPreventionRecord" (id,"budgetUnitId",kind,title,payload,clinical,"createdById","submissionKey") VALUES ('clinical','ug','AUDIOMETRY','Restrito',$1,true,'actor','clinical')`, [audiometry]);
+    await db.query(`INSERT INTO "SstPreventionRecord" (id,"budgetUnitId",kind,title,payload,clinical,"createdById","submissionKey")
+      VALUES ('foreign-visit','other','VISIT','visit-foreign',$1,false,'actor','foreign-visit'),
+        ('foreign-clinical','other','AUDIOMETRY','Restrito de outra UG',$2,true,'actor','foreign-clinical')`, [visit, audiometry]);
+    // A clinical grant on an unauthorized UG must not widen the user's scope.
+    await db.exec(`INSERT INTO "SstAccessGrant" VALUES ('actor','other',true,true,true);
+      INSERT INTO "SstDisciplineGrant" VALUES ('actor','other','MEDICINE',true,true,true);`);
+    assert.deepEqual((await db.query(`SELECT "budgetUnitId",clinical,count(*)::int AS total FROM "SstPreventionRecord" GROUP BY "budgetUnitId",clinical ORDER BY "budgetUnitId",clinical`)).rows, [
+      { budgetUnitId: "other", clinical: false, total: 1 }, { budgetUnitId: "other", clinical: true, total: 1 },
+      { budgetUnitId: "ug", clinical: false, total: 45 }, { budgetUnitId: "ug", clinical: true, total: 1 },
+    ]);
+    const auditBefore = (await db.query(`SELECT * FROM "AuditEvent" ORDER BY id`)).rows;
     const first = await listPrevention(context, { kind: "VISIT", page: 1 });
     const second = await listPrevention(context, { kind: "VISIT", page: 2 });
     const last = await listPrevention(context, { kind: "VISIT", page: 999 });
     assert.equal(first.total, 45); assert.equal(first.rows.length, 20); assert.equal(second.rows.length, 20); assert.equal(last.rows.length, 5); assert.equal(last.page, 3);
     assert.equal(new Set([...first.rows, ...second.rows, ...last.rows].map(r => r.id)).size, 45);
     const all = await listPrevention(context, { page: 1 }); assert.equal(all.total, 46);
+    assert.equal((await listPrevention(context, { kind: "AUDIOMETRY", page: 1 })).total, 1);
+    assert.ok([...first.rows, ...second.rows, ...last.rows, ...all.rows].every(row => row.budgetUnitId === "ug" && !Object.hasOwn(row, "payload")));
+    const bothUnits = { ...context, user: { ...context.user, allowedBudgetUnitIds: ["ug", "other"] } };
+    assert.equal((await listPrevention(bothUnits, { page: 1 })).total, 48);
+    const selectedIds: string[] = [];
+    for (let page = 1; page <= 3; page++) {
+      const selected = await listPrevention(bothUnits, { budgetUnitId: "ug", page });
+      assert.equal(selected.total, 46);
+      assert.ok(selected.rows.every(row => row.budgetUnitId === "ug"));
+      selectedIds.push(...selected.rows.map(row => row.id));
+    }
+    assert.deepEqual(selectedIds.sort(), ["clinical", ...[...first.rows, ...second.rows, ...last.rows].map(row => row.id)].sort());
+    const emptyScope = { ...context, user: { ...context.user, allowedBudgetUnitIds: [] } };
+    const empty = await listPrevention(emptyScope, { page: 999 });
+    assert.equal(empty.total, 0); assert.equal(empty.page, 1); assert.deepEqual(empty.rows, []);
+    await db.exec('UPDATE "SstAccessGrant" SET "canReadClinical"=false');
     assert.equal((await listPrevention(context, { kind: "AUDIOMETRY", page: 1 })).total, 0);
+    assert.equal((await listPrevention(context, { page: 1 })).total, 45);
+    const hidden = await listPrevention(context, { q: "Restrito", page: 1 });
+    assert.equal(hidden.total, 0); assert.deepEqual(hidden.rows, []);
     await assert.rejects(listPrevention(context, { budgetUnitId: "other", page: 1 }), /Acesso negado/);
-  } finally { await db.close(); }
+    assert.deepEqual((await db.query(`SELECT * FROM "AuditEvent" ORDER BY id`)).rows, auditBefore);
+  } finally { await close(); }
 });
 
 test("persisted CIPA plans, inspection version, SIPAT, brigade, ergonomics and PCA workflows", async () => {
-  const { db, context, iso } = await fixture();
+  const { db, context, iso, close } = await fixture();
   try {
     let sequence = 0;
     const save = (payload: unknown, submissionKey = `00000000-0000-4000-8000-${(++sequence).toString().padStart(12, "0")}`) => createPrevention(context, { budgetUnitId: "ug", title: "Registro demonstrável", submissionKey, payload });
@@ -177,7 +212,7 @@ test("persisted CIPA plans, inspection version, SIPAT, brigade, ergonomics and P
     if (inspection.payload.kind === "INSPECTION") assert.deepEqual(inspection.payload.answers, { protecao: false });
     const sipatId = await save({ kind: "SIPAT", startsAt, endsAt, organizerPersonIds: ["p2"], activities: ["0.10", "0.20"].map(cost => ({ title: "Palestra", location: "Sala", at, cost, responsiblePersonIds: ["p1"] })) });
     const sipat = await getPrevention(context, sipatId);
-    if (sipat.payload.kind === "SIPAT") assert.equal(sipat.payload.activities.reduce((sum, v) => sum.plus(v.cost), new Prisma.Decimal(0)).toFixed(2), "0.30");
+    if (sipat.payload.kind === "SIPAT") assert.equal(sipat.payload.activities.reduce((sum, v) => sum.plus(v.cost), new Decimal(0)).toFixed(2), "0.30");
     await save({ kind: "BRIGADE", building: "Prefeitura", floors: ["Térreo", "Primeiro"], memberEmployeeIds: ["e1"], trainings: [{ title: "Combate a incêndio", at, instructorPersonId: "p2", participantEmployeeIds: ["e1"] }], requiredExams: ["Aptidão ocupacional"], actionPlan: [activity], meetings: [{ at, agenda: "Rotas de fuga", minutes: "Treino aprovado", participantEmployeeIds: ["e1"] }] });
     const pcaId = await save({ kind: "PCA", startsAt, endsAt, responsiblePersonId: "p1", goals: "Conservar audição", noiseAssessment: "Dosimetria ocupacional", controls: "Proteção coletiva", monitoring: "Audiometria periódica", activities: [activity] });
     const audiometryId = await save({ kind: "AUDIOMETRY", pcaId, employeeId: "e2", professionalRoleId: "doctor", at, nextAt: iso(300000), technique: "Tonal", conclusion: "Resultado ocupacional", right: [{ hz: 1000, db: 20 }], left: [{ hz: 1000, db: 15 }], attachments: [] });
@@ -185,8 +220,9 @@ test("persisted CIPA plans, inspection version, SIPAT, brigade, ergonomics and P
     const ergonomic = { kind: "ERGONOMICS", scope: "INDIVIDUAL", clinical: false, employeeId: "e1", responsiblePersonId: "p2", at, location: "Sala", machines: "Computador", furniture: "Mesa regulável", equipment: "Apoio de pés", lighting: "Medição 500 lux", temperature: "Medição 23 graus", noise: "Medição 45 dB", recommendations: "Ajustar cadeira", attachments: [] };
     const ergonomicId = await save(ergonomic); assert.equal((await getPrevention(context, ergonomicId)).clinical, false);
     await assert.rejects(save({ ...ergonomic, clinical: true }), /autoria médica/);
-    const denied = { ...context, prisma: { ...context.prisma, sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: false }) } } } as unknown as AppContext;
-    await assert.rejects(getPrevention(denied, audiometryId), /autorização clínica/);
+    await db.exec('UPDATE "SstAccessGrant" SET "canReadClinical"=false');
+    await assert.rejects(getPrevention(context, audiometryId), /autorização clínica/);
+    await db.exec('UPDATE "SstAccessGrant" SET "canReadClinical"=true');
     const extinguisherId = await save({ kind: "EXTINGUISHER", serial: "EXT-01", type: "Pó químico", location: "Térreo", installedAt: startsAt, validUntil: endsAt, responsiblePersonId: "p1", supplierId: "supplier" });
     for (const type of ["RECHARGE", "HYDROSTATIC_TEST"]) await save({ kind: "MAINTENANCE", extinguisherId, type, at, validUntil: endsAt, supplierId: "supplier", technicalResponsiblePersonId: "p2", certificateNumber: "CERT-123" });
     assert.deepEqual(await extinguisherValidity(context, extinguisherId), { recharge: endsAt, hydrostatic: endsAt });
@@ -199,5 +235,5 @@ test("persisted CIPA plans, inspection version, SIPAT, brigade, ergonomics and P
     const meeting = await getPrevention(context, meetingId);
     assert.equal("participants" in meeting.history[0].artifact && meeting.history[0].artifact.participants[0].name, "Servidor um");
     assert.ok((await db.query<{ total: number }>(`SELECT count(*)::int total FROM "SstPreventionRevision"`)).rows[0].total >= 9);
-  } finally { await db.close(); }
+  } finally { await close(); }
 });

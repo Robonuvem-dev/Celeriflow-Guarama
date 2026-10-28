@@ -1,5 +1,10 @@
 import PDFDocument from "pdfkit";
 import { z } from "zod";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { institutions } from "@/db/schema/administration";
+import { healthTreatmentReportRevisions } from "@/db/schema/health-treatment";
+import { runHealthTransaction } from "./health-transaction";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import { treatmentReportForActor } from "./treatment-authorization-service";
 
@@ -14,15 +19,16 @@ const snapshotSchema = z.object({
 const dateText = (date: Date | string) => new Date(date).toLocaleDateString("pt-BR", { timeZone: "UTC" });
 
 export async function treatmentPatientDocument(context: AppContext, reportId: string, kind: "LAUDO" | "AUTORIZACAO", version?: number) {
-  const { report, revision } = await context.prisma.$transaction(async tx => {
+  const { report, revision } = await runHealthTransaction(context, async tx => {
     const report = await treatmentReportForActor(tx, context, reportId);
     if (kind === "AUTORIZACAO" && (!report.authorization || report.authorization.status !== "ATIVA")) throw new Error("Documento de autorização exige numeração ativa, sem cancelamento.");
     const selectedVersion = version || (kind === "AUTORIZACAO" ? report.authorization!.reportVersion : report.version);
     if (kind === "AUTORIZACAO" && selectedVersion !== report.authorization!.reportVersion) throw new Error("A versão selecionada não corresponde à autorização.");
-    const revision = await tx.healthTreatmentReportRevision.findUniqueOrThrow({ where: { reportId_version: { reportId, version: selectedVersion } } });
+    const [revision] = await tx.select().from(healthTreatmentReportRevisions).where(and(eq(healthTreatmentReportRevisions.reportId, reportId), eq(healthTreatmentReportRevisions.version, selectedVersion))).limit(1);
+    if (!revision) throw new Error("Versão do laudo não encontrada.");
     return { report, revision };
   });
-  const snapshot = snapshotSchema.parse(revision.snapshot), institution = await context.prisma.institution.findFirst();
+  const snapshot = snapshotSchema.parse(revision.snapshot), [institution] = await (context.database ?? db).select().from(institutions).limit(1);
   const title = kind === "LAUDO" ? `Laudo para solicitação de ${snapshot.kind}` : `Autorização de ${snapshot.kind}`;
   const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: title, Subject: `${report.id} · versão ${snapshot.version}` } }), chunks: Buffer[] = [];
   const finished = new Promise<Buffer>((resolve, reject) => { doc.on("data", chunk => chunks.push(Buffer.from(chunk))); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject); });

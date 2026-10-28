@@ -2,6 +2,10 @@ import React from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, Building, MapPin, Users } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { asc, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { employees as employeeTable } from "@/db/schema/administration";
+import { realEstates as realEstateTable } from "@/db/schema/registry";
 import { createSchool } from "../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -9,15 +13,10 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 export const dynamic = "force-dynamic";
 
 export default async function NovaEscolaPage() {
-  const { prisma } = await getTenantContextForModule("EDUCACAO");
+  await getTenantContextForModule("EDUCACAO");
   const [employees, realEstates] = await Promise.all([
-    prisma.employee.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.realEstate.findMany({
-      orderBy: { streetName: "asc" },
-    }),
+    db.select({ id: employeeTable.id, name: employeeTable.name }).from(employeeTable).where(eq(employeeTable.isActive, true)).orderBy(asc(employeeTable.name)),
+    db.select({ id: realEstateTable.id, registration: realEstateTable.registration, streetName: realEstateTable.streetName, number: realEstateTable.number }).from(realEstateTable).orderBy(asc(realEstateTable.streetName)),
   ]);
 
   return (

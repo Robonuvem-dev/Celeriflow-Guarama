@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { PGlite } from "@electric-sql/pglite";
+import { count, eq } from "drizzle-orm";
+import { constructionCases, constructionCatalogEntries, constructionReviews } from "../src/db/schema/construction-core";
+import { constructionInspectionPlans } from "../src/db/schema/construction-lifecycle";
+import { constructionDefinitionVersions } from "../src/db/schema/construction-viability";
+import { processEvents } from "../src/db/schema/processes";
+import { reviewConstructionProject } from "../src/lib/obras/construction-review";
+import { setConstructionInspectionPlan } from "../src/lib/obras/construction-lifecycle";
+import { createConstructionRequestsFixture } from "./helpers/construction-requests-fixture";
 import { saveConstructionReviewWithInspectionPlan } from "../src/lib/obras/construction-lifecycle-review";
 
 const approval = { caseId: "case", requestKey: randomUUID(), reviewType: "PROJECT", decision: "APPROVED" };
@@ -25,56 +31,31 @@ test("preanalysis approval, correction and denial never create a lifecycle plan"
 });
 
 test("PostgreSQL: atomic review/plan persistence rolls back approval and events on plan failure, retries reuse both records", async () => {
-  const db = new PGlite();
+  const f = await createConstructionRequestsFixture();
+  const db = f.db;
+  const access = { administrator: false, employeeId: "analyst", departmentId: "sector", roles: ["ANALYST"] };
+  const data = { ...approval, revision: 0, definitionVersion: 1, notes: "Deferimento técnico", checks: {}, documentIds: {}, fieldValues: {} };
   try {
-    await db.exec(`
-      CREATE TABLE "ConstructionCase" ("id" TEXT PRIMARY KEY, "reviewStatus" TEXT NOT NULL DEFAULT 'SUBMITTED');
-      CREATE TABLE "ConstructionReview" ("id" TEXT PRIMARY KEY, "caseId" TEXT NOT NULL REFERENCES "ConstructionCase"("id"), "requestKey" TEXT NOT NULL UNIQUE);
-      CREATE TABLE "ConstructionCatalogEntry" ("id" TEXT PRIMARY KEY);
-      CREATE TABLE "Document" ("id" TEXT PRIMARY KEY);
-      CREATE TABLE "Process" ("id" TEXT PRIMARY KEY);
-      CREATE TABLE "ProcessEvent" ("id" TEXT PRIMARY KEY, "reviewId" TEXT NOT NULL REFERENCES "ConstructionReview"("id"));
-    `);
-    await db.exec(await readFile(new URL("../prisma/migrations-ibema/20261010240000_construction_lifecycle/migration.sql", import.meta.url), "utf8"));
-    await db.exec(`INSERT INTO "ConstructionCase" ("id") VALUES ('case')`);
-
-    // Exercise the same orchestration used inside registerConstructionReview's transaction.
-    // These writers persist real records/constraints through the caller's PostgreSQL transaction.
-    const save = (failPlan: boolean) => db.transaction(async (tx) => saveConstructionReviewWithInspectionPlan(approval, ["final"], {
-      review: async () => {
-        const old = await tx.query<{ id: string }>('SELECT "id" FROM "ConstructionReview" WHERE "requestKey"=$1', [approval.requestKey]);
-        if (old.rows.length) return old.rows[0].id;
-        const id = randomUUID();
-        await tx.query('INSERT INTO "ConstructionReview" ("id","caseId","requestKey") VALUES ($1,$2,$3)', [id, approval.caseId, approval.requestKey]);
-        await tx.query('UPDATE "ConstructionCase" SET "reviewStatus"=\'APPROVED\' WHERE "id"=$1', [approval.caseId]);
-        await tx.query('INSERT INTO "ProcessEvent" ("id","reviewId") VALUES ($1,$2)', [randomUUID(), id]);
-        return id;
-      },
-      plan: async (input) => {
-        assert.equal(input.requestKey, approval.requestKey);
-        assert.equal(input.caseId, approval.caseId);
-        assert.deepEqual(input.inspectionTypeIds, ["final"]);
-        const old = await tx.query<{ id: string }>('SELECT "id" FROM "ConstructionInspectionPlan" WHERE "requestKey"=$1', [input.requestKey]);
-        if (old.rows.length) return old.rows[0].id;
-        const id = randomUUID();
-        await tx.query('INSERT INTO "ConstructionInspectionPlan" ("id","caseId","requestKey","reviewId","inspectionTypes","definitionSnapshot","createdBy") VALUES ($1,$2,$3,$4,$5,$6,$7)', [id, input.caseId, input.requestKey, failPlan ? "missing-review" : input.reviewId, JSON.stringify(input.inspectionTypeIds), JSON.stringify({ version: 1 }), "actor"]);
-        return id;
-      },
+    await db.update(constructionCases).set({ reviewStatus: "SUBMITTED", assignedEmployeeId: "analyst" }).where(eq(constructionCases.id, "case"));
+    await db.insert(constructionCatalogEntries).values({ id: "final", kind: "INSPECTION_TYPE", name: "Vistoria final" });
+    await db.insert(constructionDefinitionVersions).values({ kind: "PERMIT", version: 1, definition: { fields: [], checks: [], documents: [] }, publishedBy: "manager-user" });
+    const save = () => f.transaction(tx => saveConstructionReviewWithInspectionPlan(data, ["final"], {
+      review: () => reviewConstructionProject(tx, access, "manager-user", data),
+      plan: input => setConstructionInspectionPlan(tx, access, "manager-user", input),
     }));
-
-    await assert.rejects(save(true), /foreign key/);
-    assert.equal((await db.query<{ reviewStatus: string }>('SELECT "reviewStatus" FROM "ConstructionCase"')).rows[0].reviewStatus, "SUBMITTED");
-    for (const table of ["ConstructionReview", "ConstructionInspectionPlan", "ProcessEvent"]) {
-      assert.equal((await db.query(`SELECT * FROM "${table}"`)).rows.length, 0, `${table} must roll back`);
-    }
-    const reviewId = await save(false);
-    assert.equal(await save(false), reviewId);
-    assert.equal((await db.query<{ reviewStatus: string }>('SELECT "reviewStatus" FROM "ConstructionCase"')).rows[0].reviewStatus, "APPROVED");
-    for (const table of ["ConstructionReview", "ConstructionInspectionPlan", "ProcessEvent"]) {
-      assert.equal((await db.query(`SELECT * FROM "${table}"`)).rows.length, 1, `${table} must not duplicate on retry`);
-    }
-    const plan = await db.query<{ reviewId: string; inspectionTypes: string[] }>('SELECT "reviewId", "inspectionTypes" FROM "ConstructionInspectionPlan"');
-    assert.equal(plan.rows[0].reviewId, reviewId);
-    assert.deepEqual(plan.rows[0].inspectionTypes, ["final"]);
-  } finally { await db.close(); }
+    await assert.rejects(save(), /checklist de vistoria/);
+    assert.equal((await db.select().from(constructionCases).where(eq(constructionCases.id, "case")))[0].reviewStatus, "SUBMITTED");
+    assert.equal((await db.select({ total: count() }).from(constructionReviews))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(constructionInspectionPlans))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(processEvents))[0].total, 0);
+    await db.insert(constructionDefinitionVersions).values({ kind: "INSPECTION", version: 1, definition: { fields: [], checks: [], documents: [] }, publishedBy: "manager-user" });
+    const reviewId = await save();
+    assert.equal(await save(), reviewId);
+    assert.equal((await db.select().from(constructionCases).where(eq(constructionCases.id, "case")))[0].reviewStatus, "APPROVED");
+    assert.equal((await db.select({ total: count() }).from(constructionReviews))[0].total, 1);
+    assert.equal((await db.select({ total: count() }).from(processEvents))[0].total, 2);
+    const plans = await db.select().from(constructionInspectionPlans);
+    assert.equal(plans.length, 1); assert.equal(plans[0].reviewId, reviewId);
+    assert.deepEqual(plans[0].inspectionTypes, [{ id: "final", name: "Vistoria final", description: null }]);
+  } finally { await f.close(); }
 });

@@ -1,101 +1,78 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import type { JsonObject } from "@/db/json";
+import type { HealthAdministrativeMergeInput as MergeInput } from "@/lib/contracts/health-management-operations";
+import { addresses } from "@/db/schema/registry";
+import { patients, healthPatientRegistrationChanges, healthPatientContacts, healthPatientCalls } from "@/db/schema/health-registration";
+import { healthProfessionals } from "@/db/schema/health-workforce";
+import { healthAppointments, healthWaitlists } from "@/db/schema/health-agenda";
+import { medicalRecords, healthExamRequests, healthReferrals, healthPatientConditions, healthOngoingMedications, healthObservations } from "@/db/schema/health-care";
+import { healthPrescriptions } from "@/db/schema/health-prescriptions";
+import { medicineDispensations, pharmacyRequests, healthPharmacyJudicialCases, healthPharmacyKitDeliveries } from "@/db/schema/health-pharmacy";
+import { vaccinationRecords, healthVaccinationCardEvents, healthVaccineAdverseEvents } from "@/db/schema/health-vaccination";
+import { healthHomeCareRequests, healthFoodMarkers, healthHomeVisitParticipants, healthEsusForms } from "@/db/schema/health-territory";
+import { healthPregnancies, healthChronicAssessments, healthClinicalScreenings, healthDentalMarks, specializedTherapeuticPlans } from "@/db/schema/health-care-lines";
+import { healthCareProgramEnrollments } from "@/db/schema/health-programs";
+import { healthPanelCalls, healthRegulationRequests } from "@/db/schema/health-regulation";
+import { healthLabOrders } from "@/db/schema/health-laboratory";
+import { diagnosticSpecializedQuotas, diagnosticSpecializedDistributions } from "@/db/schema/health-diagnostics";
+import { healthTfdRequests, healthTfdPassengers } from "@/db/schema/health-tfd";
+import { healthProductionFacts } from "@/db/schema/health-production";
+import { healthReceptions, healthBedOccupancies } from "@/db/schema/health-reception";
+import { healthRegistrationStatusHistory } from "@/db/schema/health-administration";
+import { managementAdministrativeMerges } from "@/db/schema/health-management-operations";
+import { lockManagementMergeRecords, readManagementMergePatients, readManagementMergeProfessionals, countManagementActivePregnancies, moveManagementMergeLinks, transferManagementPatientProfile, transferManagementProfessionalAssignments } from "@/db/repositories/health-management-operations/merge";
 import { assertAddressMergeCriteria, assertPatientMergeCriteria, assertProfessionalMergeCriteria } from "./health-merge-policy";
 
-type MergeInput = { kind: "ADDRESS" | "PATIENT" | "PROFESSIONAL"; targetId: string; sourceId: string; actorUsuarioId: string };
-
-async function transferProfessionalLinks(tx: Prisma.TransactionClient, targetId: string, sourceId: string) {
-  const moved: Record<string, number> = {};
-  const direct = [
-    ["healthAppointment", tx.healthAppointment], ["medicalRecord", tx.medicalRecord], ["healthPrescription", tx.healthPrescription],
-    ["vaccinationRecord", tx.vaccinationRecord], ["healthExamRequest", tx.healthExamRequest], ["healthReferral", tx.healthReferral],
-  ] as const;
-  for (const [name, model] of direct) moved[name] = (await (model.updateMany as typeof tx.healthAppointment.updateMany)({ where: { professionalId: sourceId }, data: { professionalId: targetId } })).count;
-
-  const sourceAssignments = await tx.healthProfessionalAssignment.findMany({ where: { professionalId: sourceId }, select: { id: true, unitId: true, specialtyId: true } });
-  for (const link of sourceAssignments) {
-    const duplicate = await tx.healthProfessionalAssignment.findFirst({ where: { professionalId: targetId, unitId: link.unitId, specialtyId: link.specialtyId }, select: { id: true } });
-    await tx.healthProfessionalAssignment.update({ where: { id: link.id }, data: duplicate ? { isActive: false } : { professionalId: targetId } });
+async function mergeInTransaction(tx: DatabaseTransaction, input: MergeInput) {
+  let criteria: JsonObject;
+  let result: JsonObject;
+  if (input.kind === "ADDRESS") {
+    await lockManagementMergeRecords(tx, addresses, [input.targetId, input.sourceId]);
+    const [target] = await tx.select().from(addresses).where(eq(addresses.id, input.targetId));
+    const [source] = await tx.select().from(addresses).where(eq(addresses.id, input.sourceId));
+    if (!target || !source) throw new Error("Endereço não encontrado.");
+    if (source.canonicalAddressId) throw new Error("O endereço de origem já foi unificado.");
+    criteria = assertAddressMergeCriteria(target, source);
+    await tx.update(addresses).set({ canonicalAddressId: target.id }).where(eq(addresses.id, source.id));
+    result = { canonicalAddressId: target.id, preservedAddressId: source.id };
+  } else if (input.kind === "PATIENT") {
+    await lockManagementMergeRecords(tx, patients, [input.targetId, input.sourceId]);
+    const records = await readManagementMergePatients(tx, [input.targetId, input.sourceId]);
+    const target = records.find(r => r.id === input.targetId), source = records.find(r => r.id === input.sourceId);
+    if (!target || !source || target.status === "Unificado" || source.status === "Unificado") throw new Error("Prontuário ativo não encontrado.");
+    criteria = assertPatientMergeCriteria(target.person, source.person);
+    if (await countManagementActivePregnancies(tx, [source.id, target.id]) > 1) throw new Error("Confira e encerre a gestação duplicada antes de unificar os pacientes.");
+    const moved: Record<string, number> = {};
+    const links = [
+      ["appointments", healthAppointments], ["records", medicalRecords], ["prescriptions", healthPrescriptions], ["dispensations", medicineDispensations], ["vaccinations", vaccinationRecords], ["examRequests", healthExamRequests], ["referrals", healthReferrals],
+      ["clinicalConditions", healthPatientConditions], ["ongoingMedications", healthOngoingMedications], ["homeCareRequests", healthHomeCareRequests], ["foodMarkers", healthFoodMarkers], ["pregnancies", healthPregnancies], ["chronicAssessments", healthChronicAssessments], ["screenings", healthClinicalScreenings], ["dentalMarks", healthDentalMarks], ["judicialPharmacyCases", healthPharmacyJudicialCases], ["pharmacyKitDeliveries", healthPharmacyKitDeliveries], ["careProgramEnrollments", healthCareProgramEnrollments], ["vaccinationCardEvents", healthVaccinationCardEvents], ["vaccineAdverseEvents", healthVaccineAdverseEvents], ["panelCalls", healthPanelCalls],
+      ["laboratory", healthLabOrders], ["therapeuticPlans", specializedTherapeuticPlans], ["specializedQuotas", diagnosticSpecializedQuotas], ["specializedDistributions", diagnosticSpecializedDistributions], ["pharmacyRequests", pharmacyRequests], ["regulation", healthRegulationRequests], ["tfdRequests", healthTfdRequests], ["tfdPassengers", healthTfdPassengers], ["production", healthProductionFacts], ["visits", healthHomeVisitParticipants], ["esusForms", healthEsusForms], ["waitlists", healthWaitlists], ["receptions", healthReceptions], ["bedOccupancies", healthBedOccupancies], ["observations", healthObservations], ["registrationHistory", healthPatientRegistrationChanges], ["contacts", healthPatientContacts], ["phoneCalls", healthPatientCalls],
+    ] as const;
+    for (const [name, table] of links) moved[name] = await moveManagementMergeLinks(tx, table, "patientId", target.id, source.id);
+    const { sourceProfile, sourceDocuments } = await transferManagementPatientProfile(tx, target.id, source.id);
+    await tx.update(patients).set({ status: "Unificado" }).where(eq(patients.id, source.id));
+    result = JSON.parse(JSON.stringify({ moved, sourceStatus: "Unificado", preservedSourceProfile: sourceProfile, preservedSourceDocumentLinks: sourceDocuments }));
+  } else {
+    await lockManagementMergeRecords(tx, healthProfessionals, [input.targetId, input.sourceId]);
+    const records = await readManagementMergeProfessionals(tx, [input.targetId, input.sourceId]);
+    const target = records.find(r => r.id === input.targetId), source = records.find(r => r.id === input.sourceId);
+    if (!target || !source || !target.isActive || !source.isActive) throw new Error("Profissional ativo não encontrado.");
+    criteria = assertProfessionalMergeCriteria(target.employee.name, source.employee.name);
+    const moved: Record<string, number> = {};
+    for (const [name, table] of [["healthAppointment", healthAppointments], ["medicalRecord", medicalRecords], ["healthPrescription", healthPrescriptions], ["vaccinationRecord", vaccinationRecords], ["healthExamRequest", healthExamRequests], ["healthReferral", healthReferrals]] as const) moved[name] = await moveManagementMergeLinks(tx, table, "professionalId", target.id, source.id);
+    Object.assign(moved, await transferManagementProfessionalAssignments(tx, target.id, source.id));
+    moved.statusHistory = await moveManagementMergeLinks(tx, healthRegistrationStatusHistory, "professionalId", target.id, source.id);
+    await tx.update(healthProfessionals).set({ isActive: false, inactivatedAt: new Date(), inactivationReason: `Unificado ao profissional ${target.id}` }).where(eq(healthProfessionals.id, source.id));
+    result = { moved, sourceStatus: "Inativo por unificação" };
   }
-  const services = await tx.healthServiceAssignment.findMany({ where: { professionalId: sourceId }, select: { id: true, serviceId: true } });
-  for (const link of services) {
-    const duplicate = await tx.healthServiceAssignment.findFirst({ where: { professionalId: targetId, serviceId: link.serviceId }, select: { id: true } });
-    await tx.healthServiceAssignment.update({ where: { id: link.id }, data: duplicate ? { isActive: false } : { professionalId: targetId } });
-  }
-  const habilitations = await tx.healthHabilitation.findMany({ where: { professionalId: sourceId }, select: { id: true, code: true } });
-  for (const link of habilitations) {
-    const duplicate = await tx.healthHabilitation.findFirst({ where: { professionalId: targetId, code: link.code }, select: { id: true } });
-    await tx.healthHabilitation.update({ where: { id: link.id }, data: duplicate ? { isActive: false } : { professionalId: targetId } });
-  }
-  moved.assignments = sourceAssignments.length;
-  moved.services = services.length;
-  moved.habilitations = habilitations.length;
-  moved.statusHistory = (await tx.healthRegistrationStatusHistory.updateMany({ where: { professionalId: sourceId }, data: { professionalId: targetId } })).count;
-  return moved;
+  const [merge] = await tx.insert(managementAdministrativeMerges).values({ kind: input.kind, targetId: input.targetId, sourceIds: [input.sourceId], criteria, result, actorUsuarioId: input.actorUsuarioId }).returning({ id: managementAdministrativeMerges.id });
+  return merge.id;
 }
 
-export async function executeHealthAdministrativeMerge(prisma: PrismaClient, input: MergeInput) {
+export async function executeHealthAdministrativeMerge(connection: DatabaseConnection, input: MergeInput, transaction?: DatabaseTransaction): Promise<string> {
   if (!input.targetId || !input.sourceId || input.targetId === input.sourceId) throw new Error("Selecione registros de origem e principal diferentes.");
-  return prisma.$transaction(async tx => {
-    let criteria: Prisma.InputJsonObject;
-    let result: Prisma.InputJsonObject;
-    if (input.kind === "ADDRESS") {
-      const [target, source] = await Promise.all([tx.address.findUnique({ where: { id: input.targetId } }), tx.address.findUnique({ where: { id: input.sourceId } })]);
-      if (!target || !source) throw new Error("Endereço não encontrado.");
-      if (source.canonicalAddressId) throw new Error("O endereço de origem já foi unificado.");
-      criteria = assertAddressMergeCriteria(target, source);
-      await tx.address.update({ where: { id: source.id }, data: { canonicalAddressId: target.id } });
-      result = { canonicalAddressId: target.id, preservedAddressId: source.id };
-    } else if (input.kind === "PATIENT") {
-      for (const id of [input.targetId, input.sourceId].sort()) await tx.$queryRaw`SELECT id FROM "Patient" WHERE id=${id} FOR UPDATE`;
-      const select = { id: true, status: true, person: { select: { fullName: true, birthDate: true, motherName: true } } } as const;
-      const [target, source] = await Promise.all([tx.patient.findUnique({ where: { id: input.targetId }, select }), tx.patient.findUnique({ where: { id: input.sourceId }, select })]);
-      if (!target || !source || target.status === "Unificado" || source.status === "Unificado") throw new Error("Prontuário ativo não encontrado.");
-      criteria = assertPatientMergeCriteria(target.person, source.person);
-      if (await tx.healthPregnancy.count({ where: { patientId: { in: [source.id, target.id] }, status: "ACTIVE" } }) > 1) throw new Error("Confira e encerre a gestação duplicada antes de unificar os pacientes.");
-      const moved = {
-        appointments: (await tx.healthAppointment.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count,
-        records: (await tx.medicalRecord.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count,
-        prescriptions: (await tx.healthPrescription.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count,
-        dispensations: (await tx.medicineDispensation.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count,
-        vaccinations: (await tx.vaccinationRecord.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count,
-        examRequests: (await tx.healthExamRequest.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count,
-        referrals: (await tx.healthReferral.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count,
-      };
-      const additional: Record<string, number> = {};
-      additional.clinicalConditions = (await tx.healthPatientCondition.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.ongoingMedications = (await tx.healthOngoingMedication.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.homeCareRequests = (await tx.healthHomeCareRequest.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.foodMarkers = (await tx.healthFoodMarker.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.pregnancies = (await tx.healthPregnancy.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.chronicAssessments = (await tx.healthChronicAssessment.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.screenings = (await tx.healthClinicalScreening.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.dentalMarks = (await tx.healthDentalMark.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.judicialPharmacyCases = (await tx.healthPharmacyJudicialCase.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.pharmacyKitDeliveries = (await tx.healthPharmacyKitDelivery.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.careProgramEnrollments = (await tx.healthCareProgramEnrollment.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.vaccinationCardEvents = (await tx.healthVaccinationCardEvent.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.vaccineAdverseEvents = (await tx.healthVaccineAdverseEvent.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      additional.panelCalls = (await tx.healthPanelCall.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      const links = [["laboratory", tx.healthLabOrder], ["therapeuticPlans", tx.specializedTherapeuticPlan], ["specializedQuotas", tx.specializedQuota], ["specializedDistributions", tx.specializedDistribution], ["pharmacyRequests", tx.pharmacyRequest], ["regulation", tx.healthRegulationRequest], ["tfdRequests", tx.healthTfdRequest], ["tfdPassengers", tx.healthTfdPassenger], ["production", tx.healthProductionFact], ["visits", tx.healthHomeVisitParticipant], ["esusForms", tx.healthEsusForm], ["waitlists", tx.healthWaitlist], ["receptions", tx.healthReception], ["bedOccupancies", tx.healthBedOccupancy], ["observations", tx.healthObservation], ["registrationHistory", tx.healthPatientRegistrationChange], ["contacts", tx.healthPatientContact]] as const;
-      for (const [name, model] of links) additional[name] = (await (model.updateMany as typeof tx.healthAppointment.updateMany)({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      const sourceProfile = await tx.healthPatientRegistration.findUnique({ where: { patientId: source.id } });
-      additional.phoneCalls = (await tx.healthPatientCall.updateMany({ where: { patientId: source.id }, data: { patientId: target.id } })).count;
-      const targetProfile = await tx.healthPatientRegistration.findUnique({ where: { patientId: target.id } });
-      if (sourceProfile && !targetProfile) await tx.healthPatientRegistration.update({ where: { patientId: source.id }, data: { patientId: target.id } });
-      const sourceDocuments = await tx.healthPatientDocument.findMany({ where: { patientId: source.id } });
-      for (const link of sourceDocuments) if (!await tx.healthPatientDocument.findUnique({ where: { patientId_documentId: { patientId: target.id, documentId: link.documentId } } })) await tx.healthPatientDocument.update({ where: { id: link.id }, data: { patientId: target.id } });
-      await tx.patient.update({ where: { id: source.id }, data: { status: "Unificado" } });
-      result = JSON.parse(JSON.stringify({ moved: { ...moved, ...additional }, sourceStatus: "Unificado", preservedSourceProfile: sourceProfile, preservedSourceDocumentLinks: sourceDocuments }));
-    } else {
-      const select = { id: true, isActive: true, employee: { select: { name: true } } } as const;
-      const [target, source] = await Promise.all([tx.healthProfessional.findUnique({ where: { id: input.targetId }, select }), tx.healthProfessional.findUnique({ where: { id: input.sourceId }, select })]);
-      if (!target || !source || !target.isActive || !source.isActive) throw new Error("Profissional ativo não encontrado.");
-      criteria = assertProfessionalMergeCriteria(target.employee.name, source.employee.name);
-      const moved = await transferProfessionalLinks(tx, target.id, source.id);
-      await tx.healthProfessional.update({ where: { id: source.id }, data: { isActive: false, inactivatedAt: new Date(), inactivationReason: `Unificado ao profissional ${target.id}` } });
-      result = { moved, sourceStatus: "Inativo por unificação" };
-    }
-    const merge = await tx.healthAdministrativeMerge.create({ data: { kind: input.kind, targetId: input.targetId, sourceIds: [input.sourceId], criteria, result, actorUsuarioId: input.actorUsuarioId } });
-    return merge.id;
-  });
+  if (transaction) return mergeInTransaction(transaction, input);
+  return withDatabaseTransaction(connection, tx => mergeInTransaction(tx, input), { timeoutMs: 5000 });
 }

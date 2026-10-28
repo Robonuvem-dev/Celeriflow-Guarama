@@ -1,12 +1,15 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, asc, eq, ilike, sql } from "drizzle-orm";
+import { publicServices, portalServiceFavorites } from "@/db/schema/portal-services";
 import { listDigitalServices } from "@/lib/portal-cidadao/catalog";
 import { ServiceFavoriteButton } from "./ServiceFavoriteButton";
 
 export async function DigitalServiceCatalog({ accountId, query = {} }: { accountId?: string; query?: { q?: string; group?: string; audience?: string; favorites?: string } }) {
-  const services = await listDigitalServices(prisma, query);
-  const functional = await prisma.publicService.findMany({ where: { isActive: true, functionalPortalConfiguration: { isNot: null }, ...(query.q ? { name: { contains: query.q, mode: "insensitive" } } : {}) }, select: { id: true, name: true, description: true, requirements: true }, orderBy: { name: "asc" } });
-  const favorites = accountId ? await prisma.portalServiceFavorite.findMany({ where: { actorId: accountId }, select: { publicServiceId: true } }) : [];
+  const services = await listDigitalServices(db, query);
+  const pattern = `%${(query.q || "").replace(/[\\%_]/g, "\\$&")}%`;
+  const functional = await db.select({ id: publicServices.id, name: publicServices.name, description: publicServices.description, requirements: publicServices.requirements }).from(publicServices).where(and(eq(publicServices.isActive, true), sql`EXISTS(SELECT 1 FROM "HrPortalServiceConfiguration" functional WHERE functional."publicServiceId"=${publicServices.id})`, query.q ? ilike(publicServices.name, pattern) : undefined)).orderBy(asc(publicServices.name));
+  const favorites = accountId ? await db.select({ publicServiceId: portalServiceFavorites.publicServiceId }).from(portalServiceFavorites).where(eq(portalServiceFavorites.actorId, accountId)) : [];
   const favoriteIds = new Set(favorites.map((item) => item.publicServiceId));
   const visible = query.favorites === "1" ? services.filter((item) => favoriteIds.has(item.publicServiceId)) : services;
   const serverItems = query.audience && query.audience !== "SERVIDOR" || query.group && query.group !== "Servidor municipal" ? [] : functional.filter((item) => query.favorites !== "1" || favoriteIds.has(item.id));

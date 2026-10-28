@@ -1,26 +1,17 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { readTravelAllowancesPage } from "@/db/repositories/personnel-pages/requests";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { OperationForm } from "../operacoes/OperationForm";
 
 export const dynamic = "force-dynamic";
 export default async function TravelAllowancePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const { prisma, user } = await getTenantContextForModule("RH");
-  const where: Prisma.HrPortalRequestWhereInput = { kind: "DIARIA", ...(isSystemAdministrator(user) ? {} : { OR: user.allowedBudgetUnitIds.map(id => ({ payload: { path: ["input", "budgetUnitId"], equals: id } })) }) };
-  const total = await prisma.hrPortalRequest.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt((await searchParams).page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const rows = await prisma.hrPortalRequest.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 });
-  const employees = await prisma.employee.findMany({ where: { id: { in: [...new Set(rows.map(row => row.employeeId))] } }, select: { id: true, name: true } });
+  const context = await getTenantContextForModule("RH");
+  const { total, page, rows, employees, rules, units, expenses, processEvents, processTypes, reports } = await readTravelAllowancesPage(context.database ?? db, context.user, (await searchParams).page);
   const employeeNames = new Map(employees.map(employee => [employee.id, employee.name]));
-  const rules = await prisma.hrPayrollRule.findMany({ where: { code: "DIARIAS_MUNICIPAIS", isActive: true, ruleSet: { isDemo: false, scope: "PRODUCAO", status: "ATIVA" } }, orderBy: { id: "asc" } });
-  const units = await prisma.budgetUnit.findMany({ where: isSystemAdministrator(user) ? {} : { id: { in: user.allowedBudgetUnitIds } }, orderBy: { code: "asc" } });
-  const expenses = await prisma.expense.findMany({ where: { sourceModule: "RH", sourceType: "TRAVEL_ALLOWANCE", sourceId: { in: rows.map(row => row.id) } }, select: { id: true, sourceId: true, status: true } });
-  const processEvents = await prisma.hrIntegrationEvent.findMany({ where: { eventType: "DIARIA_PROCESSO_ABERTO", sourceKey: { in: rows.map(row => `DIARIA:PROCESSO:${row.id}`) } }, select: { sourceKey: true, payload: true } });
-  const processTypes = await prisma.processType.findMany({ where: { isActive: true, genericWorkflowEnabled: true, genericWorkflowDefinitions: { some: { status: "PUBLISHED", stages: { every: { department: { secretariatId: { in: units.map(unit => unit.secretariatId) } } } } } } }, include: { subjects: { where: { isActive: true }, orderBy: { name: "asc" } } }, orderBy: { name: "asc" } });
-  const reports = new Set((await prisma.hrIntegrationEvent.findMany({ where: { sourceKey: { in: rows.map(row => `DIARIA:PRESTACAO:${row.id}`) } }, select: { sourceKey: true } })).map(event => event.sourceKey));
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
     <Link href="/rh/adiantamentos" className="text-sm underline">Adiantamentos — concessão e prestação</Link>
     <ErpPageTitle title="Diárias — solicitação, autorização e prestação" description="Política municipal vigente, autorização numerada, execução financeira e relatório da viagem." action={<Link href="/rh/parametrizacoes">Políticas e valores</Link>} />

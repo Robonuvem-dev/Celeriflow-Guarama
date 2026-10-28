@@ -1,8 +1,8 @@
-import { Prisma } from "@prisma/client";
-import { calculateTaxAssessment } from "@/lib/tributacao";
+import { Decimal } from "@/db/decimal";
+import { calculateTaxAssessment } from "./assessment-engine";
 
 function nonNegative(value: number | string, label: string) {
-  const decimal = new Prisma.Decimal(String(value));
+  const decimal = new Decimal(String(value));
   if (!decimal.isFinite() || decimal.lessThan(0)) throw new Error(`${label} deve ser um valor não negativo.`);
   return decimal;
 }

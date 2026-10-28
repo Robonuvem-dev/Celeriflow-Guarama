@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { validateHistoricalProvenance } from "./database-migrate-provenance.mjs";
 
 // Offline provenance check. Never update the installed migration ledger to
 // conceal a historical checksum mismatch, and never modify committed SQL here.
@@ -20,10 +21,18 @@ const records = names.map(name => {
   assert.equal(entries.length, 1, `${name} installed ledger entry count`);
   const entry = entries[0];
   assert.ok(entry.finished_at && !entry.rolled_back_at, `${name} was not completed`);
-  const sql = readFileSync(join(directory, name, "migration.sql"), "utf8");
-  const localChecksum = sha256(sql), lfChecksum = sha256(sql.replaceAll("\r\n", "\n"));
+  const source = `${directory}/${name}/migration.sql`;
+  const sourceBytes = readFileSync(source);
+  const sql = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(sourceBytes);
+  const localChecksum = sha256(sourceBytes), lfChecksum = sha256(sql.replaceAll("\r\n", "\n"));
   const crlfChecksum = sha256(sql.replaceAll("\r\n", "\n").replaceAll("\n", "\r\n"));
-  return { name, installedChecksum: entry.checksum, localChecksum, lfChecksum, classification: localChecksum === entry.checksum ? "EXACT" : [lfChecksum, crlfChecksum].includes(entry.checksum) ? "LINE_ENDINGS_ONLY" : "UNRESOLVED_HISTORICAL_DIFFERENCE" };
+  let classification = localChecksum === entry.checksum ? "EXACT" : [lfChecksum, crlfChecksum].includes(entry.checksum) ? "LINE_ENDINGS_ONLY" : "UNRESOLVED_HISTORICAL_DIFFERENCE";
+  const artifact = `db/historical-provenance/${name}.json`;
+  if (existsSync(artifact)) {
+    validateHistoricalProvenance(sourceBytes, JSON.parse(readFileSync(artifact, "utf8")), { name, source, installedChecksum: entry.checksum, lfChecksum });
+    classification = "PROVEN_MIXED_LINE_ENDINGS";
+  }
+  return { name, installedChecksum: entry.checksum, localChecksum, lfChecksum, classification, ...(classification === "PROVEN_MIXED_LINE_ENDINGS" ? { artifact } : {}) };
 });
 assert.equal(applied.length, names.length, "Unexpected installed migrations");
 const counts = Object.fromEntries(Object.entries(Object.groupBy(records, record => record.classification)).map(([name, values]) => [name, values.length]));

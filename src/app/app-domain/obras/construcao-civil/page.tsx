@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
+import { db } from "@/db/client";
+import { loadPageCaseList } from "@/db/repositories/works-pages/cases";
 
 export default async function ConstructionCasesPage({ searchParams }: { searchParams: Promise<{ q?: string; category?: string; page?: string }> }) {
   const params = await searchParams;
@@ -13,10 +14,7 @@ export default async function ConstructionCasesPage({ searchParams }: { searchPa
   const category = params.category === "BUILDING" || params.category === "SUBDIVISION" ? params.category : "";
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
-  const where = { AND: [constructionCaseWhere(access), { ...(category ? { category } : {}), ...(q ? { process: { OR: [{ protocolNumber: { contains: q, mode: "insensitive" as const } }, { person: { fullName: { contains: q, mode: "insensitive" as const } } }, { company: { corporateName: { contains: q, mode: "insensitive" as const } } }] } } : {}) }] };
-  const total = await context.prisma.constructionCase.count({ where });
-  const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(params.page || "1", 10) || 1));
-  const cases = await context.prisma.constructionCase.findMany({ where, select: { id: true, category: true, locationType: true, regularization: true, totalArea: true, process: { select: { protocolNumber: true, status: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } }, currentDepartment: { select: { name: true } } } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 });
+  const { total, page, cases } = await loadPageCaseList(context.database ?? db, access, { category, q, page: params.page });
   const href = (target: number) => `?${new URLSearchParams({ q, category, page: String(target) })}`;
   return <PageFrame className="space-y-3 p-3"><PageHeader title="Construção Civil — Solicitações" icon={<HardHat className="size-4" />} action={<Link href="/obras/construcao-civil/novo" className="rounded bg-blue-600 px-3 py-2 text-xs text-white">Nova solicitação interna</Link>} />
     <div className="flex flex-wrap gap-3 text-xs"><Link href="/obras/construcao-civil/configuracoes" className="text-blue-700 underline">Configurações urbanísticas</Link><Link href="/obras/construcao-civil/taxas" className="text-blue-700 underline">Taxas, guias e débitos</Link>{access.administrator && <Link href="/obras/construcao-civil/equipe" className="text-blue-700 underline">Equipe e papéis</Link>}</div>

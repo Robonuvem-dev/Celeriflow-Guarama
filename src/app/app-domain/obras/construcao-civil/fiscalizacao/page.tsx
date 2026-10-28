@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
-import { enforcementCaseWhere } from "@/lib/obras/construction-enforcement-policy";
+import { db } from "@/db/client";
+import { listPageEnforcementProperties, loadPageEnforcementList } from "@/db/repositories/works-pages/enforcement";
+import { listPageCaseOptions } from "@/db/repositories/works-pages/cases";
+import { listPageCompanies, listPagePeople, listPageSubjects } from "@/db/repositories/works-pages/shared";
 import { ConstructionEnforcementOpening } from "./ConstructionEnforcementClient";
 
 export default async function ConstructionEnforcementPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string; locationType?: string; permitStatus?: string }> }) {
@@ -18,16 +20,14 @@ export default async function ConstructionEnforcementPage({ searchParams }: { se
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
   const canOpen = access.administrator || access.roles.some((role) => ["INSPECTOR", "MANAGER"].includes(role));
-  const where = { AND: [enforcementCaseWhere(access), { ...(status ? { status } : {}), ...(locationType ? { locationType } : {}), ...(permitStatus ? { permitStatus } : {}) }, ...(q ? [{ OR: [{ process: { protocolNumber: { contains: q, mode: "insensitive" as const } } }, { realEstate: { municipalInsc: { contains: q, mode: "insensitive" as const } } }, { realEstate: { streetName: { contains: q, mode: "insensitive" as const } } }] }] : [])] };
-  const total = await context.prisma.constructionEnforcementCase.count({ where });
-  const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(params.page || "1", 10) || 1));
-  const [cases, properties, subjects, permits, persons, companies] = await Promise.all([
-    context.prisma.constructionEnforcementCase.findMany({ where, include: { process: { select: { protocolNumber: true, status: true, currentDepartment: { select: { name: true } } } }, realEstate: { select: { municipalInsc: true, streetName: true, number: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 }),
-    canOpen ? context.prisma.realEstate.findMany({ where: q ? { OR: [{ municipalInsc: { contains: q, mode: "insensitive" } }, { streetName: { contains: q, mode: "insensitive" } }, { registration: { contains: q, mode: "insensitive" } }] } : {}, select: { id: true, municipalInsc: true, streetName: true, number: true }, orderBy: { municipalInsc: "asc" }, take: 100 }) : [],
-    canOpen ? context.prisma.subject.findMany({ where: { isActive: true, allowsInternalOpening: true, processType: { isActive: true, allowsInternalOpening: true } }, select: { id: true, name: true, processTypeId: true, processType: { select: { name: true } } }, orderBy: { name: "asc" } }) : [],
-    canOpen ? context.prisma.constructionCase.findMany({ where: { AND: [constructionCaseWhere(access), { category: "BUILDING" }] }, select: { id: true, process: { select: { protocolNumber: true } } }, orderBy: { createdAt: "desc" }, take: 100 }) : [],
-    canOpen ? context.prisma.person.findMany({ where: { status: "Ativo" }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" }, take: 200 }) : [],
-    canOpen ? context.prisma.company.findMany({ where: { status: "Ativo" }, select: { id: true, corporateName: true }, orderBy: { corporateName: "asc" }, take: 200 }) : [],
+  const database = context.database ?? db;
+  const { total, page, cases } = await loadPageEnforcementList(database, access, { q, status, locationType, permitStatus, page: params.page });
+  const [properties, subjects, permits, persons, companies] = await Promise.all([
+    canOpen ? listPageEnforcementProperties(database, q) : [],
+    canOpen ? listPageSubjects(database) : [],
+    canOpen ? listPageCaseOptions(database, access, { category: "BUILDING", limit: 100 }) : [],
+    canOpen ? listPagePeople(database, 200) : [],
+    canOpen ? listPageCompanies(database, true, 200) : [],
   ]);
   const href = (target: number) => `?${new URLSearchParams({ q, status, locationType, permitStatus, page: String(target) })}`;
   return <PageFrame className="space-y-3 p-3"><PageHeader title="Construção Civil — Fiscalização edilícia / posturas" icon={<ShieldCheck className="size-4" />} action={<Link href="/obras/construcao-civil" className="text-xs text-blue-700 underline">Solicitações de obra</Link>} />

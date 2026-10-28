@@ -1,4 +1,5 @@
 import { SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
+import { Decimal } from "@/db/decimal";
 
 export const contractAmendmentTypes = ["Prazo", "Valor", "Ambos", "Suspensão", "Rescisão"] as const;
 
@@ -238,14 +239,14 @@ export function assertMeasurementStatusTransition(currentStatus: string, request
 export function assertMeasurementCanBeAttested(input: {
   quantity: number | null;
   unit: string | null;
-  value: number;
+  value: Decimal | string | number;
   itemCount: number;
-  itemValueTotal: number;
+  itemValueTotal: Decimal | string | number;
 }) {
   if (input.itemCount === 0 && (input.quantity === null || !input.unit)) {
     throw new ContractLifecycleError("Uma medição atestada exige quantidade e unidade ou ao menos um item de execução.");
   }
-  if (input.itemCount > 0 && Math.abs(input.value - input.itemValueTotal) > 0.01) {
+  if (input.itemCount > 0 && new Decimal(input.value).minus(input.itemValueTotal).abs().greaterThan("0.01")) {
     throw new ContractLifecycleError("O valor da medição atestada deve corresponder à soma de seus itens.");
   }
 }

@@ -2,9 +2,15 @@
 
 import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
+import { taxActionConnection } from "@/db/repositories/tax-actions/context";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { taxInfractions } from "@/db/schema/taxation-core";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { auditEventTypes } from "@/lib/contracts/audit";
 
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("TRIBUTACAO", operation)).prisma;
+async function getContext(operation: ModuleOperation) {
+  return getTenantContextForModuleOperation("TRIBUTACAO", operation);
 }
 
 export async function createInfraction(data: {
@@ -13,15 +19,17 @@ export async function createInfraction(data: {
   defenseDeadline?: string;
   taxpayerId: string;
 }) {
-  const prisma = await getTenantPrisma("create");
-  const result = await prisma.infraction.create({
-    data: {
+  const context = await getContext("create");
+  const result = await withDatabaseTransaction(taxActionConnection(context), async tx => {
+    const [record] = await tx.insert(taxInfractions).values({
       infractionType: data.infractionType,
       penaltyValue: data.penaltyValue,
       defenseDeadline: data.defenseDeadline ? new Date(data.defenseDeadline) : undefined,
       taxpayerId: data.taxpayerId,
       status: "Emitido"
-    }
+    }).returning();
+    await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "Infraction", targetId: record.id });
+    return record;
   });
 
   revalidatePath("/tributacao/fiscalizacao");
@@ -33,14 +41,16 @@ export async function updateInfraction(id: string, data: {
   penaltyValue?: number;
   defenseDeadline?: string;
 }) {
-  const prisma = await getTenantPrisma("update");
-  const result = await prisma.infraction.update({
-    where: { id },
-    data: {
+  const context = await getContext("update");
+  const result = await withDatabaseTransaction(taxActionConnection(context), async tx => {
+    const [record] = await tx.update(taxInfractions).set({
       infractionType: data.infractionType,
       penaltyValue: data.penaltyValue,
       defenseDeadline: data.defenseDeadline ? new Date(data.defenseDeadline) : undefined,
-    }
+    }).where(eq(taxInfractions.id, id)).returning();
+    if (!record) throw new Error("Auto de infração não encontrado.");
+    await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "Infraction", targetId: record.id });
+    return record;
   });
 
   revalidatePath("/tributacao/fiscalizacao");
@@ -48,10 +58,12 @@ export async function updateInfraction(id: string, data: {
 }
 
 export async function updateInfractionStatus(id: string, status: string) {
-  const prisma = await getTenantPrisma("update");
-  const result = await prisma.infraction.update({
-    where: { id },
-    data: { status }
+  const context = await getContext("update");
+  const result = await withDatabaseTransaction(taxActionConnection(context), async tx => {
+    const [record] = await tx.update(taxInfractions).set({ status }).where(eq(taxInfractions.id, id)).returning();
+    if (!record) throw new Error("Auto de infração não encontrado.");
+    await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "Infraction", targetId: record.id });
+    return record;
   });
 
   revalidatePath("/tributacao/fiscalizacao");

@@ -9,6 +9,8 @@ import {
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { loadWorksReports } from "@/db/repositories/works-pages/infrastructure";
 
 export const dynamic = "force-dynamic";
 
@@ -20,35 +22,8 @@ const currency = new Intl.NumberFormat("pt-BR", {
 const number = new Intl.NumberFormat("pt-BR");
 
 export default async function RelatoriosPage() {
-  const { prisma } = await getTenantContextForModule("OBRAS");
-  const [obrasPorStatus, medicoes, servicosPorStatusETipo, materiaisEmitidos] = await Promise.all([
-    prisma.obrasObra.groupBy({
-      by: ["status"],
-      where: { active: true },
-      _count: { _all: true },
-      orderBy: { status: "asc" },
-    }),
-    prisma.obrasMedicao.aggregate({
-      where: { active: true },
-      _count: { _all: true },
-      _sum: { valorMedido: true },
-    }),
-    prisma.obrasServico.groupBy({
-      by: ["status", "tipo"],
-      where: { active: true },
-      _count: { _all: true },
-      orderBy: [{ status: "asc" }, { tipo: "asc" }],
-    }),
-    prisma.materialMovement.groupBy({
-      by: ["unitValue"],
-      where: {
-        type: "Saída",
-        obrasServicoId: { not: null },
-      },
-      _count: { _all: true },
-      _sum: { quantity: true },
-    }),
-  ]);
+  const context = await getTenantContextForModule("OBRAS");
+  const { obrasPorStatus, medicoes, servicosPorStatusETipo, materiaisEmitidos } = await loadWorksReports(context.database ?? db);
 
   const totalObras = obrasPorStatus.reduce((total, obra) => total + obra._count._all, 0);
   const totalServicos = servicosPorStatusETipo.reduce(

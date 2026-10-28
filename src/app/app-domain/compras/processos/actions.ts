@@ -1,15 +1,17 @@
 "use server";
 
-import { getTenantContextForModuleOperation, isSystemAdministrator, type ModuleOperation } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
-import { nextYearlyCode } from "@/lib/sequence";
-import { Prisma } from "@prisma/client";
+import { eq, inArray } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { nextYearlyCodeDrizzle } from "@/db/repositories/platform/sequences";
+import { loadPurchaseProcessForEdit } from "@/db/repositories/procurement/purchase-processes";
+import { loadRequestCatalogItems } from "@/db/repositories/procurement/purchase-requests";
+import { purchaseProcesses, purchaseProcessItems } from "@/db/schema/procurement-core";
+import { purchaseProcessRequestOrigins, purchaseProcessItemOrigins } from "@/db/schema/procurement-requests";
 import { createPurchaseProcessFromApprovedRequests, ProcurementLifecycleError } from "@/lib/compras/procurement-lifecycle";
 import { normalizePurchaseItems, PurchaseItemInputError } from "./purchase-item-input";
-
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("COMPRAS", operation)).prisma;
-}
 
 type PurchaseProcessItemInput = {
   id?: string;
@@ -32,28 +34,20 @@ type PurchaseProcessInput = {
 };
 
 export async function deletePurchaseProcess(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  await getTenantContextForModuleOperation("COMPRAS", "delete");
   try {
-    const affectedPurchaseRequestIds = await prisma.$transaction(async (tx) => {
-      const process = await tx.purchaseProcess.findUnique({
-        where: { id },
-        select: {
-          purchaseRequestId: true,
-          items: { select: { id: true } },
-          requestOrigins: { select: { purchaseRequestId: true } },
-        },
-      });
+    const affectedPurchaseRequestIds = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const process = await loadPurchaseProcessForEdit(tx, id);
+      const requestOrigins = await tx.select({ purchaseRequestId: purchaseProcessRequestOrigins.purchaseRequestId }).from(purchaseProcessRequestOrigins).where(eq(purchaseProcessRequestOrigins.purchaseProcessId, id));
       if (!process) throw new Error("Processo não encontrado.");
       if (process.items.length) {
-        await tx.purchaseProcessItemOrigin.deleteMany({
-          where: { purchaseProcessItemId: { in: process.items.map((item) => item.id) } },
-        });
+        await tx.delete(purchaseProcessItemOrigins).where(inArray(purchaseProcessItemOrigins.purchaseProcessItemId, process.items.map(item => item.id)));
       }
-      await tx.purchaseProcessRequestOrigin.deleteMany({ where: { purchaseProcessId: id } });
-      await tx.purchaseProcess.delete({ where: { id } });
+      await tx.delete(purchaseProcessRequestOrigins).where(eq(purchaseProcessRequestOrigins.purchaseProcessId, id));
+      await tx.delete(purchaseProcesses).where(eq(purchaseProcesses.id, id));
       return [...new Set([
         ...(process.purchaseRequestId ? [process.purchaseRequestId] : []),
-        ...process.requestOrigins.map((origin) => origin.purchaseRequestId),
+        ...requestOrigins.map((origin) => origin.purchaseRequestId),
       ])];
     });
     revalidatePath("/compras/processos");
@@ -70,11 +64,10 @@ export async function savePurchaseProcess(payload: PurchaseProcessInput) {
   try {
     const { id, number, object, type, modality, items, purchaseRequestId, purchaseRequestIds } = payload;
     const context = await getTenantContextForModuleOperation("COMPRAS", id ? "update" : "create");
-    const { prisma } = context;
     let finalNumber = number?.trim();
     if (!finalNumber && !id) {
-      const processes = await prisma.purchaseProcess.findMany({ select: { number: true } });
-      finalNumber = await nextYearlyCode({ prisma, key: "compras-processo", prefix: "PROC", existingCodes: processes.map(({ number }) => ({ code: number })) });
+      const processes = await databaseConnection.db.select({ number: purchaseProcesses.number }).from(purchaseProcesses);
+      finalNumber = await withDatabaseTransaction(databaseConnection, tx => nextYearlyCodeDrizzle({ db: tx, key: "compras-processo", prefix: "PROC", existingCodes: processes.map(({ number }) => ({ code: number })) }));
     }
     if (!finalNumber) {
       return { success: false, error: "Informe o número do processo." };
@@ -85,7 +78,7 @@ export async function savePurchaseProcess(payload: PurchaseProcessInput) {
         ? purchaseRequestIds.map((requestId) => requestId.trim()).filter(Boolean)
         : purchaseRequestId?.trim() ? [purchaseRequestId.trim()] : [];
       if (!selectedPurchaseRequestIds.length) return { success: false, error: "Selecione ao menos uma solicitação de compra aprovada." };
-      await createPurchaseProcessFromApprovedRequests(prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, {
+      await createPurchaseProcessFromApprovedRequests(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, {
         purchaseRequestIds: selectedPurchaseRequestIds,
         number: finalNumber,
         object,
@@ -99,34 +92,8 @@ export async function savePurchaseProcess(payload: PurchaseProcessInput) {
     }
 
     const normalizedItems = normalizePurchaseItems(items);
-    const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.purchaseProcess.findUnique({
-        where: { id },
-        select: {
-          status: true,
-          items: {
-            select: {
-              id: true,
-              catalogItemId: true,
-              customName: true,
-              materialId: true,
-              quantity: true,
-              estimatedUnitValue: true,
-              receiptItems: {
-                select: {
-                  quantity: true,
-                  purchaseReceipt: { select: { status: true } },
-                },
-              },
-              requestItemOrigins: {
-                select: {
-                  quantity: true,
-                },
-              },
-            },
-          },
-        },
-      });
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const existing = await loadPurchaseProcessForEdit(tx, id);
       if (!existing || existing.status !== "Em Planejamento") {
         return { error: "Somente processos em planejamento podem ser editados." };
       }
@@ -146,12 +113,7 @@ export async function savePurchaseProcess(payload: PurchaseProcessInput) {
         const existingItem = item.id ? existingItemsById.get(item.id) : null;
         return !existingItem || existingItem.catalogItemId !== item.catalogItemId ? [item.catalogItemId] : [];
       });
-      const catalogItems = catalogItemIdsToResolve.length
-        ? await tx.catalogItem.findMany({
-          where: { id: { in: catalogItemIdsToResolve }, isActive: true },
-          select: { id: true, materials: { select: { id: true } } },
-        })
-        : [];
+      const catalogItems = await loadRequestCatalogItems(tx, catalogItemIdsToResolve);
       if (catalogItems.length !== new Set(catalogItemIdsToResolve).size) {
         return { error: "Selecione itens ativos do catálogo ou descreva o item livre." };
       }
@@ -206,18 +168,15 @@ export async function savePurchaseProcess(payload: PurchaseProcessInput) {
         return { error: "Não é possível remover um item que já possui recebimentos." };
       }
 
-      await tx.purchaseProcess.update({
-        where: { id },
-        data: {
+      await tx.update(purchaseProcesses).set({
           number: finalNumber,
           object,
           type,
           modality,
           estimatedValue: normalizedItems.estimatedValue,
-        },
-      });
+      }).where(eq(purchaseProcesses.id, id));
       if (removedItems.length) {
-        await tx.purchaseProcessItem.deleteMany({ where: { id: { in: removedItems.map((item) => item.id) } } });
+        await tx.delete(purchaseProcessItems).where(inArray(purchaseProcessItems.id, removedItems.map(item => item.id)));
       }
       for (const item of itemsToSave) {
         const data = {
@@ -228,14 +187,14 @@ export async function savePurchaseProcess(payload: PurchaseProcessInput) {
           estimatedUnitValue: item.estimatedUnitValue,
         };
         if (item.id) {
-          await tx.purchaseProcessItem.update({ where: { id: item.id }, data });
+          await tx.update(purchaseProcessItems).set(data).where(eq(purchaseProcessItems.id, item.id));
         } else {
-          await tx.purchaseProcessItem.create({ data: { purchaseProcessId: id, ...data } });
+          await tx.insert(purchaseProcessItems).values({ purchaseProcessId: id, ...data });
         }
       }
 
       return { id };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }, { isolationLevel: "serializable" });
 
     if ("error" in result) return { success: false, error: result.error };
     revalidatePath("/compras/processos");

@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { AccessError, canPerformModuleOperation, canViewModule, getTenantContextForModule, isSystemAdministrator, type AppContext, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { jurisdictionSchema, type PlanningJurisdiction } from "./policy";
 
-export type PlanningContext = AppContext & { jurisdiction: PlanningJurisdiction };
+export type PlanningContext = AppContext & { jurisdiction: PlanningJurisdiction; connection?: import("@/db/connection").DatabaseConnection };
 
 export async function getPlanningContext(jurisdiction: PlanningJurisdiction): Promise<PlanningContext> {
   jurisdictionSchema.parse(jurisdiction);

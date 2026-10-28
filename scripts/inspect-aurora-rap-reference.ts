@@ -1,14 +1,19 @@
 import { config } from "dotenv";
-import { Prisma } from "@prisma/client";
+import { and, asc, eq, like, sql } from "drizzle-orm";
+import type { DatabaseExecutor } from "../src/db/transaction";
+import { setupCatalogEntries } from "../src/db/schema/finance-setup-tools";
+import { openFinanceSetupConnection, readSetupVersion } from "./lib/finance-setup-tools";
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
-async function main() {
-  const { prisma } = await import("../src/lib/prisma");
-  try {
-    const source = await prisma.planningCatalogVersion.findUniqueOrThrow({ where: { id: "p1-tce-pr-account-2026-1.0d" } });
-    const entries = await prisma.planningCatalogEntry.findMany({ where: { versionId: source.id, kind: "ACCOUNT", code: { startsWith: "6.3." }, attributes: { path: ["postingAllowed"], equals: true } }, orderBy: { code: "asc" } });
-    console.log(JSON.stringify({ sourceHash: source.sourceHash, accounts: entries.map(entry => ({ id: entry.id, code: entry.code, name: entry.name, degree: entry.degree, attributes: entry.attributes as Prisma.JsonObject })) }, null, 2));
-  } finally { await prisma.$disconnect(); }
+export async function inspectRapReference(db: DatabaseExecutor) {
+    const source = await readSetupVersion(db, "p1-tce-pr-account-2026-1.0d");
+    const entries = await db.select().from(setupCatalogEntries).where(and(eq(setupCatalogEntries.versionId, source.id), eq(setupCatalogEntries.kind, "ACCOUNT"), like(setupCatalogEntries.code, "6.3.%"), sql`${setupCatalogEntries.attributes} #> '{postingAllowed}' = 'true'::jsonb`)).orderBy(asc(setupCatalogEntries.code));
+    return { sourceHash: source.sourceHash, accounts: entries.map(entry => ({ id: entry.id, code: entry.code, name: entry.name, degree: entry.degree, attributes: entry.attributes })) };
 }
-main().catch(error => { console.error(error); process.exitCode = 1; });
+async function main() {
+  const connection = openFinanceSetupConnection();
+  try { console.log(JSON.stringify(await inspectRapReference(connection.db), null, 2)); }
+  finally { await connection.pool.end(); }
+}
+if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

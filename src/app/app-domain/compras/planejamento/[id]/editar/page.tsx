@@ -1,21 +1,15 @@
 import { notFound } from "next/navigation";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listPurchasePlannings, loadPurchasePlanningOptions } from "@/db/repositories/procurement/purchase-planning";
 import { PlanningForm } from "../../PlanningForm";
 
 export default async function EditarPlanejamentoComprasPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModuleOperation("COMPRAS", "update");
+  const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   const { id } = await params;
-  const [planning, catalogItems, purchaseRequests] = await Promise.all([
-    prisma.purchasePlanning.findUnique({ where: { id } }),
-    prisma.catalogItem.findMany({
-      where: { isActive: true },
-      select: { id: true, code: true, name: true, unit: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.purchaseRequest.findMany({
-      select: { id: true, number: true, object: true, status: true },
-      orderBy: { createdAt: "desc" },
-    }),
+  const [[planning], { catalogItems, purchaseRequests }] = await Promise.all([
+    listPurchasePlannings(context.database ?? db, id),
+    loadPurchasePlanningOptions(context.database ?? db),
   ]);
 
   if (!planning) notFound();

@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { Decimal } from "@/db/decimal";
+import { withDatabaseTransaction, type DatabaseExecutor, type DatabaseTransaction } from "@/db/transaction";
+import type { ConfiguredFiscalEntry } from "@/lib/contracts/tax-configured-records-operations";
+import { changeConfiguredFiscalPropertyStatus, configuredFiscalNeighborhoodExists, configuredFiscalOriginExists, configuredFiscalProcessExists, configuredFiscalSnapshot, configuredFiscalStreetExists, insertConfiguredFiscalAudit, insertConfiguredFiscalEntry, listConfiguredFiscalActivities, listConfiguredFiscalCatalogCode, lockConfiguredFiscalKey, lockConfiguredFiscalSubject, readLatestConfiguredFiscalEntry, readValidConfiguredFiscalDocuments } from "@/db/repositories/tax-configured-records-operations/records";
 import { z } from "zod";
 import type { TaxActor } from "./index";
 import { taxScopeSnapshot } from "./scope";
@@ -36,7 +40,7 @@ export function validateFiscalFields(fields: z.infer<typeof fiscalFieldSchema>[]
     else {
       if (typeof value !== "string" || value.length > 4000) throw new Error(`${field.label} inválido.`);
       if (!value.trim()) { if (field.required) throw new Error(`${field.label} é obrigatório.`); result[field.key] = null; continue; }
-      if (field.type === "NUMBER") { let parsed: Prisma.Decimal; try { parsed = new Prisma.Decimal(value); } catch { throw new Error(`${field.label} deve ser numérico.`); } if (!parsed.isFinite()) throw new Error(`${field.label} deve ser finito.`); result[field.key] = parsed.toString(); }
+      if (field.type === "NUMBER") { let parsed: Decimal; try { parsed = new Decimal(value); } catch { throw new Error(`${field.label} deve ser numérico.`); } if (!parsed.isFinite()) throw new Error(`${field.label} deve ser finito.`); result[field.key] = parsed.toString(); }
       else if (field.type === "DATE") { const date = new Date(`${value}T12:00:00.000Z`); if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== value) throw new Error(`${field.label} deve ser uma data válida.`); result[field.key] = value; }
       else if (field.type === "LIST") { if (!field.options.includes(value)) throw new Error(`${field.label} não pertence à lista configurada.`); result[field.key] = value; }
       else result[field.key] = value.trim();
@@ -45,33 +49,33 @@ export function validateFiscalFields(fields: z.infer<typeof fiscalFieldSchema>[]
   return result;
 }
 
-async function authorize(tx: Prisma.TransactionClient, actor: TaxActor, governmentEntityId: string, budgetUnitId: string) {
+async function authorize(tx: DatabaseExecutor, actor: TaxActor, governmentEntityId: string, budgetUnitId: string) {
   if (actor.allowedBudgetUnitIds && !actor.allowedBudgetUnitIds.includes(budgetUnitId)) throw new Error("UG fora do acesso autorizado.");
-  if (!await tx.planningEntityUnit.findFirst({ where: { governmentEntityId, budgetUnitId } })) throw new Error("UG não pertence ao ente selecionado.");
+  if (!await configuredFiscalOriginExists(tx, governmentEntityId, budgetUnitId)) throw new Error("UG não pertence ao ente selecionado.");
 }
 
-export async function publishFiscalCatalog(db: PrismaClient, actor: TaxActor, raw: z.input<typeof fiscalCatalogSchema>) {
-  return db.$transaction(tx => publishFiscalCatalogInTransaction(tx, actor, raw));
+export async function publishFiscalCatalog(db: DatabaseConnection, actor: TaxActor, raw: z.input<typeof fiscalCatalogSchema>): Promise<ConfiguredFiscalEntry> {
+  return withDatabaseTransaction(db, tx => publishFiscalCatalogInTransaction(tx, actor, raw), { timeoutMs: 5000 });
 }
 
-export async function publishFiscalCatalogInTransaction(tx: Prisma.TransactionClient, actor: TaxActor, raw: z.input<typeof fiscalCatalogSchema>) {
+export async function publishFiscalCatalogInTransaction(tx: DatabaseTransaction, actor: TaxActor, raw: z.input<typeof fiscalCatalogSchema>): Promise<ConfiguredFiscalEntry> {
   const input = fiscalCatalogSchema.parse(raw);
   if (input.catalogValues !== undefined) input.catalogValues = validateFiscalFields(input.fields, input.catalogValues);
     await authorize(tx, actor, input.governmentEntityId, input.budgetUnitId);
-    if (input.kind === "ZONEAMENTO") await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ECONOMIC_ACTIVITY:${input.budgetUnitId}`},0))::text`;
+    if (input.kind === "ZONEAMENTO") await lockConfiguredFiscalKey(tx, `ECONOMIC_ACTIVITY:${input.budgetUnitId}`);
     const id = input.catalogId ?? randomUUID();
-    if (input.catalogId) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`FISCAL_CATALOG_ID:${id}`},0))::text`;
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`FISCAL_CATALOG:${input.budgetUnitId}:${input.kind}:${input.code}`},0))::text`;
-    const previous = await tx.taxRegistryEntry.findFirst({ where: { entityType: "FISCAL_CATALOG", entityId: id, category: "TYPED_FISCAL_CATALOG" }, orderBy: { version: "desc" } });
+    if (input.catalogId) await lockConfiguredFiscalKey(tx, `FISCAL_CATALOG_ID:${id}`);
+    await lockConfiguredFiscalKey(tx, `FISCAL_CATALOG:${input.budgetUnitId}:${input.kind}:${input.code}`);
+    const previous = await readLatestConfiguredFiscalEntry(tx, "FISCAL_CATALOG", id, "TYPED_FISCAL_CATALOG");
     if ((previous?.version ?? 0) !== input.expectedVersion) throw new Error("O catálogo foi alterado. Recarregue antes de publicar.");
     if (previous) { const data = taxScopeSnapshot(previous.data); if (data.budgetUnitId !== input.budgetUnitId || data.governmentEntityId !== input.governmentEntityId || data.kind !== input.kind || data.code !== input.code) throw new Error("Origem, tipo e código são imutáveis; crie outro catálogo."); }
-    const codeEntries = await tx.taxRegistryEntry.findMany({ where: { entityType: "FISCAL_CATALOG", category: "TYPED_FISCAL_CATALOG", data: { path: ["code"], equals: input.code } } });
+    const codeEntries = await listConfiguredFiscalCatalogCode(tx, input.code);
     if (codeEntries.some(entry => entry.entityId !== id && taxScopeSnapshot(entry.data).kind === input.kind && taxScopeSnapshot(entry.data).budgetUnitId === input.budgetUnitId)) throw new Error("Já existe esse código no catálogo da UG.");
-    if (input.neighborhoodId && !await tx.neighborhood.findUnique({ where: { id: input.neighborhoodId } })) throw new Error("Bairro não encontrado.");
-    if (input.streetId && !await tx.street.findUnique({ where: { id: input.streetId } })) throw new Error("Logradouro não encontrado.");
+    if (input.neighborhoodId && !await configuredFiscalNeighborhoodExists(tx, input.neighborhoodId)) throw new Error("Bairro não encontrado.");
+    if (input.streetId && !await configuredFiscalStreetExists(tx, input.streetId)) throw new Error("Logradouro não encontrado.");
     const zoningActivitySnapshots: { cnae: string; activityId: string; definitionId: string; version: number; name: string }[] = [];
     if (input.zoningActivities?.length) {
-      const definitions = await tx.taxRegistryEntry.findMany({ where: { entityType: "ECONOMIC_ACTIVITY", category: "ECONOMIC_ACTIVITY_DEFINITION", AND: [{ data: { path: ["governmentEntityId"], equals: input.governmentEntityId } }, { data: { path: ["budgetUnitId"], equals: input.budgetUnitId } }] }, orderBy: { version: "desc" } });
+      const definitions = await listConfiguredFiscalActivities(tx, input.governmentEntityId, input.budgetUnitId);
       const latest = new Map<string, typeof definitions[number]>(); for (const definition of definitions) if (!latest.has(definition.entityId)) latest.set(definition.entityId, definition);
       for (const rule of input.zoningActivities) {
         const matching = [...latest.values()].filter(definition => { const data = taxScopeSnapshot(definition.data); return data.cnae === rule.cnae && data.active === true; });
@@ -82,68 +86,66 @@ export async function publishFiscalCatalogInTransaction(tx: Prisma.TransactionCl
     }
     if (input.kind === "PGV") {
       if (!input.neighborhoodId || !input.streetId || input.landUnitValue === null) throw new Error("A PGV exige bairro, logradouro e valor do m².");
-      const value = new Prisma.Decimal(input.landUnitValue);
+      const value = new Decimal(input.landUnitValue);
       if (!value.isFinite() || value.lt(0)) throw new Error("Valor do m² inválido.");
     }
-    const entry = await tx.taxRegistryEntry.create({ data: { entityType: "FISCAL_CATALOG", entityId: id, category: "TYPED_FISCAL_CATALOG", title: input.name, version: input.expectedVersion + 1, status: input.active ? "ATIVO" : "INATIVO", actorUsuarioId: actor.usuarioId, data: JSON.parse(JSON.stringify({ ...input, catalogId: id, ...(input.kind === "ZONEAMENTO" ? { zoningActivitySnapshots } : {}) })) } });
-    await tx.taxAuditLog.create({ data: { action: "PUBLISH_FISCAL_CATALOG", entityType: "TaxRegistryEntry", entityId: entry.id, authorUsuarioId: actor.usuarioId, authorEmployeeId: actor.employeeId, payload: { previousId: previous?.id ?? null, catalogId: id, version: entry.version, governmentEntityId: input.governmentEntityId, budgetUnitId: input.budgetUnitId } } });
+    const entry = await insertConfiguredFiscalEntry(tx, { entityType: "FISCAL_CATALOG", entityId: id, category: "TYPED_FISCAL_CATALOG", title: input.name, version: input.expectedVersion + 1, status: input.active ? "ATIVO" : "INATIVO", actorUsuarioId: actor.usuarioId, data: configuredFiscalSnapshot({ ...input, catalogId: id, ...(input.kind === "ZONEAMENTO" ? { zoningActivitySnapshots } : {}) }) });
+    await insertConfiguredFiscalAudit(tx, { action: "PUBLISH_FISCAL_CATALOG", entityType: "TaxRegistryEntry", entityId: entry.id, authorUsuarioId: actor.usuarioId, authorEmployeeId: actor.employeeId, payload: { previousId: previous?.id ?? null, catalogId: id, version: entry.version, governmentEntityId: input.governmentEntityId, budgetUnitId: input.budgetUnitId } });
     return entry;
 }
 
-export async function saveConfiguredFiscalRecord(db: PrismaClient, actor: TaxActor, raw: z.input<typeof fiscalRecordSchema>) {
-  return db.$transaction(tx => saveConfiguredFiscalRecordInTransaction(tx, actor, raw));
+export async function saveConfiguredFiscalRecord(db: DatabaseConnection, actor: TaxActor, raw: z.input<typeof fiscalRecordSchema>): Promise<ConfiguredFiscalEntry> {
+  return withDatabaseTransaction(db, tx => saveConfiguredFiscalRecordInTransaction(tx, actor, raw), { timeoutMs: 5000 });
 }
 
-export async function saveConfiguredFiscalRecordInTransaction(tx: Prisma.TransactionClient, actor: TaxActor, raw: z.input<typeof fiscalRecordSchema>) {
+export async function saveConfiguredFiscalRecordInTransaction(tx: DatabaseTransaction, actor: TaxActor, raw: z.input<typeof fiscalRecordSchema>): Promise<ConfiguredFiscalEntry> {
   const input = fiscalRecordSchema.parse(raw);
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`FISCAL_CATALOG_ID:${input.catalogId}`},0))::text`;
-    const definition = await tx.taxRegistryEntry.findFirstOrThrow({ where: { entityType: "FISCAL_CATALOG", entityId: input.catalogId, category: "TYPED_FISCAL_CATALOG" }, orderBy: { version: "desc" } });
+    await lockConfiguredFiscalKey(tx, `FISCAL_CATALOG_ID:${input.catalogId}`);
+    const definition = await readLatestConfiguredFiscalEntry(tx, "FISCAL_CATALOG", input.catalogId, "TYPED_FISCAL_CATALOG");
+    if (!definition) throw new Error("Catálogo fiscal não encontrado.");
     const catalog = fiscalCatalogSchema.parse(definition.data);
     await authorize(tx, actor, catalog.governmentEntityId, catalog.budgetUnitId);
     if (!catalog.active) throw new Error("Catálogo desativado.");
     if (input.entityType !== fiscalCatalogEntityType(catalog.kind)) throw new Error("O catálogo não se aplica ao tipo de cadastro selecionado.");
-    if (input.entityType === "REAL_ESTATE") { await tx.$queryRaw`SELECT id FROM "RealEstate" WHERE id=${input.entityId} FOR UPDATE`; await tx.realEstate.findUniqueOrThrow({ where: { id: input.entityId } }); }
-    if (input.entityType === "ECONOMIC_REGISTRATION") { await tx.$queryRaw`SELECT id FROM "EconomicRegistration" WHERE id=${input.entityId} FOR UPDATE`; await tx.economicRegistration.findUniqueOrThrow({ where: { id: input.entityId } }); }
+    const subjectSnapshot = await lockConfiguredFiscalSubject(tx, input.entityType, input.entityId);
     if (input.entityType === "ITBI_DECLARATION") {
-      await tx.$queryRaw`SELECT id FROM "ItbiDeclaration" WHERE id=${input.entityId} FOR UPDATE`;
-      const declaration = await tx.itbiDeclaration.findUniqueOrThrow({ where: { id: input.entityId } });
-      const scope = taxScopeSnapshot(declaration.calculationSnapshot);
+      const scope = taxScopeSnapshot(subjectSnapshot);
       if (scope.budgetUnitId !== catalog.budgetUnitId || scope.governmentEntityId !== catalog.governmentEntityId) throw new Error("Declaração de outro ente/UG.");
     }
-    if (input.processId && !await tx.process.findUnique({ where: { id: input.processId } })) throw new Error("Protocolo não encontrado.");
-    const documents = await tx.document.findMany({ where: { id: { in: input.documentIds }, status: "Válido" }, select: { id: true } });
+    if (input.processId && !await configuredFiscalProcessExists(tx, input.processId)) throw new Error("Protocolo não encontrado.");
+    const documents = await readValidConfiguredFiscalDocuments(tx, input.documentIds);
     if (documents.length !== new Set(input.documentIds).size) throw new Error("Selecione documentos válidos no GED.");
     if (catalog.kind === "PGV" && input.active) {
       if (!input.frontage?.trim()) throw new Error("Identifique a testada do terreno.");
-      const frontage = new Prisma.Decimal(input.frontage);
+      const frontage = new Decimal(input.frontage);
       if (!frontage.isFinite() || frontage.lte(0)) throw new Error("Testada deve ser positiva.");
     }
     const inspection = ["TIPO_VISTORIA_IMOVEL", "TIPO_VISTORIA_EMPRESA"].includes(catalog.kind);
     if (inspection && !input.occurrenceId) throw new Error("Identifique a ocorrência da vistoria.");
     if (!inspection && input.occurrenceId) throw new Error("Ocorrências independentes se aplicam às vistorias.");
     const recordKey = inspection ? `${input.catalogId}:${input.occurrenceId}` : input.catalogId;
-    const previous = await tx.taxRegistryEntry.findFirst({ where: { entityType: input.entityType, entityId: input.entityId, category: "TYPED_FISCAL_RECORD", title: recordKey }, orderBy: { version: "desc" } });
+    const previous = await readLatestConfiguredFiscalEntry(tx, input.entityType, input.entityId, "TYPED_FISCAL_RECORD", recordKey);
     if ((previous?.version ?? 0) !== input.expectedVersion) throw new Error("O formulário foi alterado. Recarregue antes de salvar.");
     const values = validateFiscalFields(catalog.fields, input.values);
     if (input.entityType === "ECONOMIC_REGISTRATION" && catalog.kind !== "SITUACAO_EMPRESA") await enforceEconomicProfileDebtPolicy(tx, actor, input.entityId);
     if (input.entityType === "REAL_ESTATE") {
-      const profile = await tx.taxRegistryEntry.findFirst({ where: { entityType: input.entityType, entityId: input.entityId, category: "PROPERTY_PROFILE" }, orderBy: { version: "desc" } });
+      const profile = await readLatestConfiguredFiscalEntry(tx, input.entityType, input.entityId, "PROPERTY_PROFILE");
       const data = taxScopeSnapshot(profile?.data);
       if (profile && (data.governmentEntityId !== catalog.governmentEntityId || data.budgetUnitId !== catalog.budgetUnitId)) throw new Error("Catálogo de outro ente/UG em relação ao imóvel conciliado.");
-      const expectedKind = ({ BCI_TERRENO: "Terreno", BCI_UNIDADE: "Unidade", BCI_RURAL: "Rural" } as Record<string, string>)[catalog.kind];
+      const bulletinKinds: Partial<Record<typeof catalog.kind, string>> = { BCI_TERRENO: "Terreno", BCI_UNIDADE: "Unidade", BCI_RURAL: "Rural" };
+      const expectedKind = bulletinKinds[catalog.kind];
       if (expectedKind && data.kind !== expectedKind) throw new Error("O boletim deve corresponder ao tipo conciliado do imóvel.");
       if (catalog.kind !== "SITUACAO_IMOVEL" || !input.active) await touchPropertyMetadata(tx, actor.usuarioId, input.entityId, input.processId);
     }
     if (input.active && catalog.kind === "SITUACAO_IMOVEL") {
       await attributePropertyHistory(tx, actor.usuarioId);
-      await tx.$queryRaw`SELECT set_config('celeriflow.cadastral_process', ${input.processId ?? ""}, true), set_config('celeriflow.cadastral_profile_change','true',true)`;
-      await tx.realEstate.update({ where: { id: input.entityId }, data: { status: catalog.name } });
+      await changeConfiguredFiscalPropertyStatus(tx, input.entityId, catalog.name, input.processId);
     }
     if (input.active && catalog.kind === "SITUACAO_EMPRESA") {
       await updateEconomicRegistrationWithHistoryInTransaction(tx, actor, input.entityId, { status: catalog.name });
     }
-    const entry = await tx.taxRegistryEntry.create({ data: { entityType: input.entityType, entityId: input.entityId, category: "TYPED_FISCAL_RECORD", title: recordKey, version: input.expectedVersion + 1, status: input.active ? "ATIVO" : "INATIVO", actorUsuarioId: actor.usuarioId, processId: input.processId, documentId: input.documentIds[0] ?? null, data: { ...catalog, catalogId: input.catalogId, occurrenceId: input.occurrenceId ?? null, catalogVersion: definition.version, definitionId: definition.id, values, frontage: input.frontage, documentIds: input.documentIds, previousId: previous?.id ?? null } as Prisma.InputJsonValue } });
-    await tx.taxAuditLog.create({ data: { action: "SAVE_CONFIGURED_FISCAL_RECORD", entityType: "TaxRegistryEntry", entityId: entry.id, authorUsuarioId: actor.usuarioId, authorEmployeeId: actor.employeeId, payload: { beforeId: previous?.id ?? null, afterId: entry.id, entityId: input.entityId, entityType: input.entityType, catalogId: input.catalogId, fields: values } } });
+    const entry = await insertConfiguredFiscalEntry(tx, { entityType: input.entityType, entityId: input.entityId, category: "TYPED_FISCAL_RECORD", title: recordKey, version: input.expectedVersion + 1, status: input.active ? "ATIVO" : "INATIVO", actorUsuarioId: actor.usuarioId, processId: input.processId, documentId: input.documentIds[0] ?? null, data: configuredFiscalSnapshot({ ...catalog, catalogId: input.catalogId, occurrenceId: input.occurrenceId ?? null, catalogVersion: definition.version, definitionId: definition.id, values, frontage: input.frontage, documentIds: input.documentIds, previousId: previous?.id ?? null }) });
+    await insertConfiguredFiscalAudit(tx, { action: "SAVE_CONFIGURED_FISCAL_RECORD", entityType: "TaxRegistryEntry", entityId: entry.id, authorUsuarioId: actor.usuarioId, authorEmployeeId: actor.employeeId, payload: { beforeId: previous?.id ?? null, afterId: entry.id, entityId: input.entityId, entityType: input.entityType, catalogId: input.catalogId, fields: values } });
     if (input.entityType === "ITBI_DECLARATION") await linkItbiPropertyAttachments(tx, actor, input.entityId, input.documentIds);
     return entry;
 }

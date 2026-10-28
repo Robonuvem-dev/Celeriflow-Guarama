@@ -1,13 +1,14 @@
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 
-export default async function ConfiguredFiscalDetails({ prisma, entityType, entityId, at }: { prisma: PrismaClient; entityType: "REAL_ESTATE" | "ECONOMIC_REGISTRATION"; entityId: string; at?: string }) {
+export default async function ConfiguredFiscalDetails({ database, entityType, entityId, at }: { database: DatabaseExecutor; entityType: "REAL_ESTATE" | "ECONOMIC_REGISTRATION"; entityId: string; at?: string }) {
   const { user } = await getTenantContextForModule("TRIBUTACAO");
-  const scope = isSystemAdministrator(user) ? {} : { OR: user.allowedBudgetUnitIds.map(budgetUnitId => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) };
+  const allowedBudgetUnitIds = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const reference = at ? new Date(at) : new Date();
   if (!Number.isFinite(reference.valueOf())) return <p className="text-xs">Referência inválida.</p>;
-  const entries = await prisma.taxRegistryEntry.findMany({ where: { entityType, entityId, category: "TYPED_FISCAL_RECORD", createdAt: { lte: reference }, ...scope }, orderBy: [{ version: "desc" }, { createdAt: "desc" }] });
+  const entries = await listFiscalEntries(database, { entityType, entityIds: [entityId], categories: ["TYPED_FISCAL_RECORD"], recordedBy: reference, allowedBudgetUnitIds, order: "version-created" });
   const latest = new Map<string, typeof entries[number]>();
   for (const entry of entries) if (!latest.has(entry.title)) latest.set(entry.title, entry);
   const visible = [...latest.values()].filter(entry => entry.status === "ATIVO");

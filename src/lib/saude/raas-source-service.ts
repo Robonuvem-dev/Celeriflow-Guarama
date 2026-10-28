@@ -1,18 +1,42 @@
 import { z } from "zod";
-import { assertHealthUnitAccess, type AppContext } from "@/lib/platform/tenant-context";
+import { and, asc, eq, getTableColumns, gte, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { employees } from "@/db/schema/administration";
+import { people } from "@/db/schema/people";
+import { patients } from "@/db/schema/health-registration";
+import { healthProfessionals, healthUnits } from "@/db/schema/health-workforce";
+import { healthDiagnoses, healthPerformedProcedures, medicalRecords } from "@/db/schema/health-care";
+import { healthSusProcedures, healthSusReferences } from "@/db/schema/health-catalogs";
+import { healthHomeCareAssessments, healthHomeCareAttendances, healthHomeCareRequests } from "@/db/schema/health-territory";
+import type { HealthDiagnosticsContext as AppContext } from "@/lib/contracts/health-diagnostics";
+import { assertHealthUnitAccess } from "@/lib/platform/tenant-context";
 
-export async function getHealthRaasSources(context: AppContext, raw: unknown) {
+export async function getHealthRaasSources(context: AppContext, raw: unknown, executor: DatabaseExecutor = db) {
   const input = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), unitId: z.string().max(200).default(""), modality: z.enum(["ALL", "DOMICILIAR", "PSICOSSOCIAL"]).default("ALL") }).strict().parse(raw);
   if (input.unitId) assertHealthUnitAccess(context.user, input.unitId);
   const units = input.unitId ? [input.unitId] : context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const [year, month] = input.period.split("-").map(Number);
   const period = { gte: new Date(`${input.period}-01T00:00:00-03:00`), lt: new Date(`${new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10)}T00:00:00-03:00`) };
-  const home = input.modality === "PSICOSSOCIAL" ? [] : await context.prisma.healthHomeCareAttendance.findMany({ where: { performedAt: period, ...(units ? { request: { unitId: { in: units } } } : {}) }, include: { assessment: true, request: { select: { patientId: true, unitId: true, requestedAt: true, reason: true } } }, orderBy: { performedAt: "asc" } });
+  const homeRows = input.modality === "PSICOSSOCIAL" ? [] : await executor.select({ attendance: getTableColumns(healthHomeCareAttendances), assessment: getTableColumns(healthHomeCareAssessments), request: { patientId: healthHomeCareRequests.patientId, unitId: healthHomeCareRequests.unitId, requestedAt: healthHomeCareRequests.requestedAt, reason: healthHomeCareRequests.reason } }).from(healthHomeCareAttendances)
+    .innerJoin(healthHomeCareAssessments, eq(healthHomeCareAssessments.id, healthHomeCareAttendances.assessmentId))
+    .innerJoin(healthHomeCareRequests, eq(healthHomeCareRequests.id, healthHomeCareAttendances.requestId))
+    .where(and(gte(healthHomeCareAttendances.performedAt, period.gte), lt(healthHomeCareAttendances.performedAt, period.lt), units ? inArray(healthHomeCareRequests.unitId, units) : undefined)).orderBy(asc(healthHomeCareAttendances.performedAt));
+  const home = homeRows.map(({ attendance, assessment, request }) => ({ ...attendance, assessment, request }));
   const homeByRecord = new Map(home.map(item => [item.medicalRecordId, item]));
-  const records = await context.prisma.medicalRecord.findMany({ where: { ...(units ? { unitId: { in: units } } : {}), completedAt: { not: null }, OR: [
-    ...(home.length ? [{ id: { in: home.map(item => item.medicalRecordId) } }] : []),
-    ...(input.modality !== "DOMICILIAR" ? [{ date: period, unit: { type: { equals: "CAPS", mode: "insensitive" as const } } }] : []),
-  ] }, include: { patient: { include: { person: { select: { fullName: true, birthDate: true, gender: true } } } }, unit: { select: { id: true, name: true, cnes: true, type: true } }, professional: { select: { id: true, cns: true, cbo: true, employee: { select: { name: true } } } }, diagnoses: { include: { cidReference: { select: { code: true, description: true } } } }, procedures: { include: { procedure: { select: { id: true, code: true, description: true } } } } }, orderBy: [{ date: "asc" }, { id: "asc" }] });
+  const recordRows = await executor.select({ record: getTableColumns(medicalRecords), patient: { cns: patients.cns }, person: { fullName: people.fullName, birthDate: people.birthDate, gender: people.gender }, unit: { id: healthUnits.id, name: healthUnits.name, cnes: healthUnits.cnes, type: healthUnits.type }, professional: { id: healthProfessionals.id, cns: healthProfessionals.cns, cbo: healthProfessionals.cbo }, employee: { name: employees.name } }).from(medicalRecords)
+    .innerJoin(patients, eq(patients.id, medicalRecords.patientId)).innerJoin(people, eq(people.id, patients.personId))
+    .innerJoin(healthUnits, eq(healthUnits.id, medicalRecords.unitId)).innerJoin(healthProfessionals, eq(healthProfessionals.id, medicalRecords.professionalId)).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId))
+    .where(and(units ? inArray(medicalRecords.unitId, units) : undefined, isNotNull(medicalRecords.completedAt), or(
+      home.length ? inArray(medicalRecords.id, home.map(item => item.medicalRecordId)) : undefined,
+      input.modality !== "DOMICILIAR" ? and(gte(medicalRecords.date, period.gte), lt(medicalRecords.date, period.lt), sql`lower(${healthUnits.type}) = 'caps'`) : undefined,
+    ) ?? sql`false`)).orderBy(asc(medicalRecords.date), asc(medicalRecords.id));
+  const recordIds = recordRows.map(row => row.record.id);
+  const [diagnoses, procedures] = recordIds.length ? await Promise.all([
+    executor.select({ medicalRecordId: healthDiagnoses.medicalRecordId, isPrimary: healthDiagnoses.isPrimary, cidReference: { code: healthSusReferences.code, description: healthSusReferences.description } }).from(healthDiagnoses).innerJoin(healthSusReferences, eq(healthSusReferences.id, healthDiagnoses.cidReferenceId)).where(inArray(healthDiagnoses.medicalRecordId, recordIds)),
+    executor.select({ id: healthPerformedProcedures.id, medicalRecordId: healthPerformedProcedures.medicalRecordId, quantity: healthPerformedProcedures.quantity, performedAt: healthPerformedProcedures.performedAt, professionalId: healthPerformedProcedures.professionalId, procedure: { id: healthSusProcedures.id, code: healthSusProcedures.code, description: healthSusProcedures.description } }).from(healthPerformedProcedures).innerJoin(healthSusProcedures, eq(healthSusProcedures.id, healthPerformedProcedures.procedureId)).where(inArray(healthPerformedProcedures.medicalRecordId, recordIds)),
+  ]) : [[], []];
+  const records = recordRows.map(({ record, patient, person, unit, professional, employee }) => ({ ...record, patient: { ...patient, person }, unit, professional: { ...professional, employee }, diagnoses: diagnoses.filter(item => item.medicalRecordId === record.id), procedures: procedures.filter(item => item.medicalRecordId === record.id) }));
   const origins = records.map(record => {
     const attendance = homeByRecord.get(record.id), modality = attendance ? "DOMICILIAR" : "PSICOSSOCIAL";
     const criticisms: string[] = [];

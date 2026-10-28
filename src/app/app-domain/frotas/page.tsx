@@ -1,7 +1,9 @@
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { fleetQuerySchema, type FleetQuery } from "@/lib/frotas/contract";
 import { queryFleet } from "@/lib/frotas/queries";
-import { departmentWhere, fleetScope } from "@/lib/frotas/service";
+import { fleetScope } from "@/lib/frotas/service";
+import { fleetDatabase } from "@/db/repositories/fleet/records";
+import { fleetSelectedUnit, fleetSelectedUnits } from "@/db/repositories/fleet/page-data";
 import { fleetPageIssue } from "@/lib/frotas/page-errors";
 import { FrotasClient } from "./FrotasClient";
 import { FleetUnavailable } from "./FleetUnavailable";
@@ -14,8 +16,8 @@ async function loadFleetPage(query: FleetQuery) {
     const context = await getTenantContextForModule("FROTAS"), scope = fleetScope(context);
     const [list, selectedUnit, selectedUnits] = await Promise.all([
       queryFleet(context, query),
-      query.unitId ? context.prisma.fleetUnit.findFirst({ where: { id: query.unitId, ...departmentWhere(scope) }, select: { id: true, code: true, name: true, category: true } }) : null,
-      query.unitIds ? context.prisma.fleetUnit.findMany({ where: { id: { in: query.unitIds.split(",") }, ...departmentWhere(scope) }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }) : [],
+      query.unitId ? fleetSelectedUnit(fleetDatabase(context), scope, query.unitId) : null,
+      query.unitIds ? fleetSelectedUnits(fleetDatabase(context), scope, query.unitIds.split(",")) : [],
     ]);
     const permissions = { create: canPerformModuleOperation(context.user, "FROTAS", "create"), update: canPerformModuleOperation(context.user, "FROTAS", "update"), issueReports: canPerformModuleOperation(context.user, "FROTAS", "issueReports") };
     return { ok: true as const, list, selectedUnit, selectedUnits, permissions, departmentId: scope.departmentId || "" };

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { addBenefitToEmployee, removeBenefitFromEmployee } from "./benefitActions";
-import type { BenefitConfig, Employee, PayrollBenefit } from "@prisma/client";
+import type { BenefitConfig, Employee, PayrollBenefit } from "@/lib/contracts/personnel-pages";
 
 type EmployeeWithBenefits = Pick<Employee, "id"> & {
   benefits?: (PayrollBenefit & { benefitConfig: BenefitConfig })[];

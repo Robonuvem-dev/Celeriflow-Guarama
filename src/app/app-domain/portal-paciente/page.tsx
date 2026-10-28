@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getPatientPortalAccess } from "@/lib/portal-paciente/access";
 import { portalAppointments, portalLabReports } from "@/lib/saude/patient-portal-service";
 import { listPatientTimeline } from "@/lib/saude/patient-timeline-service";
+import { db } from "@/db/client";
 
 export default async function PortalPacienteHome() {
   const access = await getPatientPortalAccess();
@@ -18,7 +19,7 @@ export default async function PortalPacienteHome() {
   const [appointments, reports, timeline] = await Promise.all([
     portalAppointments(access.context, access.patient.id),
     portalLabReports(access.context, access.patient.id),
-    listPatientTimeline(access.context.prisma, access.patient.id, 30),
+    listPatientTimeline(access.context.database ?? db, access.patient.id, 30),
   ]);
   const upcoming = appointments.filter(a => ["Agendado", "Confirmado"].includes(a.status)).slice(0, 5);
   return (

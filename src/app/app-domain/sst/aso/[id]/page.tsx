@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { assertSstClinicalAccess } from "@/lib/sst/access";
 import { asoKinds, asoResults, asoSnapshot, asoExamSnapshot, formatSstCivilDate } from "@/lib/sst/aso-policy";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { findSstAsoScope } from "@/db/repositories/sst-pages/aso";
+import { readSstAso } from "@/db/repositories/sst/clinical";
+import { sstDatabase } from "@/lib/sst/database";
 import { readAsoFollowUp } from "@/lib/sst/aso-flow-service";
 import { SstForm } from "../../SstForm";
 import { saveSstAsoCorrection, saveSstAsoDocument } from "../actions";
@@ -11,13 +15,14 @@ import { saveSstAsoCorrection, saveSstAsoDocument } from "../actions";
 export default async function SstAsoDetails({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SST");
   const { id } = await params;
-  const scope = await context.prisma.sstAso.findUnique({ where: { id }, select: { budgetUnitId: true } });
+  const database = sstDatabase(context);
+  const scope = await findSstAsoScope(database, id);
   if (!scope) notFound();
   await assertSstClinicalAccess(context, scope.budgetUnitId);
-  const record = await context.prisma.sstAso.findUniqueOrThrow({ where: { id }, include: { exams: { orderBy: { id: "asc" } } } });
+  const record = await readSstAso(database, id);
   const snapshot = asoSnapshot.parse(record.snapshot);
   const flow = await readAsoFollowUp(context, id);
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.pageView, targetType: "SST_ASO_CLINICAL", targetId: record.id });
+  await writeAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.pageView, targetType: "SST_ASO_CLINICAL", targetId: record.id });
   return <div className="space-y-4 p-4"><header className="space-y-2"><h1 className="text-xl font-semibold">ASO · {snapshot.personName}</h1><Link href="/sst/aso" className="mr-4 underline">Voltar à consulta</Link>{canPerformModuleOperation(context.user, "SST", "issueReports") && <Link href={`/sst/aso/${id}/imprimir`} className="underline">Emitir documento para impressão</Link>}</header>
     <Link className="inline-block rounded border px-3 py-2" href={`/sst/aso/${id}/anamnese`}>Anamnese e histórico de revisões</Link>
     {flow.corrections.map((c) => <section className="rounded border p-4" key={c.id}><h2 className="font-semibold">{c.kind === "ANNULMENT" ? "ASO anulado" : "ASO retificado"}</h2><p>{c.reason}</p>{c.replacementAsoId && <Link className="underline" href={`/sst/aso/${c.replacementAsoId}`}>Abrir versão sucessora</Link>}<p>O original permanece preservado.</p></section>)}

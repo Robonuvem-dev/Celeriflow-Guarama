@@ -3,17 +3,15 @@
 import { getTenantContextForModule, getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { countConstitutionalRules, findBankException, findConstitutionalRevenueCodes, findConstitutionalRuleText, insertBankClassificationRule, listAutomationBankAccounts, listBankExceptionQueue, listConstitutionalRules, updateBankClassificationRule, updateBankException, upsertConstitutionalRevenueNature, type ConstitutionalRuleBankAccount, type ConstitutionalRuleForClient } from "@/db/repositories/finance/bank-automation";
+import { findInvestmentStatement, updateInvestmentStatement } from "@/db/repositories/finance/investments";
+import { insertAnnualAudit } from "@/db/repositories/finance/annual-stages";
 import { recordConfirmedRevenue, type FinanceActor } from "@/lib/financeiro";
 import { isPocVirtualBank, pocVirtualBank } from "@/lib/poc/poc-config";
 
 type ActionResult<T = unknown> = { error?: string; data?: T };
-type ConstitutionalRuleForClient = Prisma.ClassificationRuleGetPayload<{
-  include: { bankAccount: { select: { id: true; bankName: true; agency: true; accountNumber: true } } };
-}>;
-type ConstitutionalRuleBankAccount = Prisma.BankAccountGetPayload<{
-  select: { id: true; bankName: true; agency: true; accountNumber: true };
-}>;
 type ConstitutionalRulesData = { rules: ConstitutionalRuleForClient[]; bankAccounts: ConstitutionalRuleBankAccount[] };
 
 function errorMessage(error: unknown, fallback: string) {
@@ -40,16 +38,9 @@ const ruleSchema = z.object({
  */
 export async function seedConstitutionalRulesAction(): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const { prisma } = context;
-
-    const count = await prisma.classificationRule.count({
-      where: { tipoMovimento: "RECEITA_CONSTITUCIONAL" },
-    });
-    const revenueAccount = await prisma.bankAccount.findFirst({
-      where: { bankName: pocVirtualBank.name, agency: pocVirtualBank.agency, accountNumber: "20001-1", isActive: true },
-      select: { id: true },
-    });
+    await getTenantContextForModuleOperation("FINANCEIRO", "update");
+    const count = await countConstitutionalRules(db);
+    const [revenueAccount] = await listAutomationBankAccounts(db, { bankName: pocVirtualBank.name, agency: pocVirtualBank.agency, accountNumber: "20001-1" });
     if (!revenueAccount) throw new Error("A conta de receitas 20001-1 deve estar ativa antes de cadastrar as regras constitucionais.");
     const revenueAccountLabel = `${pocVirtualBank.name} / ${pocVirtualBank.agency} / 20001-1`;
 
@@ -183,12 +174,10 @@ export async function seedConstitutionalRulesAction(): Promise<ActionResult> {
       ];
 
       for (const rule of defaultRules) {
-        const exists = await prisma.classificationRule.findFirst({
-          where: { textoProcurado: rule.textoProcurado, tipoMovimento: "RECEITA_CONSTITUCIONAL" },
-        });
+        const exists = await findConstitutionalRuleText(db, rule.textoProcurado);
         const data = { ...rule, bankAccountId: revenueAccount.id, bancoContaFiltro: revenueAccountLabel };
-        if (exists) await prisma.classificationRule.update({ where: { id: exists.id }, data });
-        else await prisma.classificationRule.create({ data });
+        if (exists) await updateBankClassificationRule(db, exists.id, data);
+        else await insertBankClassificationRule(db, data);
       }
 
     }
@@ -216,10 +205,10 @@ export async function seedConstitutionalRulesAction(): Promise<ActionResult> {
       },
     ];
     for (const rule of missingRules) {
-      const exists = await prisma.classificationRule.findFirst({ where: { textoProcurado: rule.textoProcurado, tipoMovimento: "RECEITA_CONSTITUCIONAL" } });
+      const exists = await findConstitutionalRuleText(db, rule.textoProcurado);
       const data = { ...rule, tipoMovimento: "RECEITA_CONSTITUCIONAL", bankAccountId: revenueAccount.id, bancoContaFiltro: revenueAccountLabel };
-      if (exists) await prisma.classificationRule.update({ where: { id: exists.id }, data });
-      else await prisma.classificationRule.create({ data });
+      if (exists) await updateBankClassificationRule(db, exists.id, data);
+      else await insertBankClassificationRule(db, data);
     }
     const natures = [
       ["1.7.1.8.01.2.1", "Cota-Parte do Fundo de Participação dos Municípios - FPM"],
@@ -232,7 +221,7 @@ export async function seedConstitutionalRulesAction(): Promise<ActionResult> {
       ["1.7.2.8.01.3.1", "Cota-Parte do IPI Exportação"],
       ["1.7.1.8.02.2.1", "Royalties do Petróleo"],
     ] as const;
-    for (const [code, name] of natures) await prisma.revenueNature.upsert({ where: { code }, create: { code, name }, update: { name } });
+    for (const [code, name] of natures) await upsertConstitutionalRevenueNature(db, code, name);
 
     revalidatePath("/financeiro/receitas-constitucionais");
     return { data: { count } };
@@ -244,20 +233,10 @@ export async function seedConstitutionalRulesAction(): Promise<ActionResult> {
 export async function getConstitutionalRulesAction(): Promise<ActionResult<ConstitutionalRulesData>> {
   try {
     const context = await getTenantContextForModule("FINANCEIRO");
-    const rules = await context.prisma.classificationRule.findMany({
-      where: { tipoMovimento: "RECEITA_CONSTITUCIONAL" },
-      orderBy: { prioridade: "asc" },
-      include: { bankAccount: { select: { id: true, bankName: true, agency: true, accountNumber: true } } },
-    });
-    const bankAccounts = await context.prisma.bankAccount.findMany({
-      where: {
-        bankName: pocVirtualBank.name,
-        isActive: true,
-        ...(isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } }),
-      },
-      orderBy: [{ agency: "asc" }, { accountNumber: "asc" }],
-      select: { id: true, bankName: true, agency: true, accountNumber: true },
-    });
+    const database = context.database ?? db;
+    const rules = await listConstitutionalRules(database);
+    const accounts = await listAutomationBankAccounts(database, { bankName: pocVirtualBank.name, unitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
+    const bankAccounts = accounts.map(({ id, bankName, agency, accountNumber }) => ({ id, bankName, agency, accountNumber }));
     return { data: { rules, bankAccounts } };
   } catch (err: unknown) {
     return { error: errorMessage(err, "Erro ao buscar regras de receita.") };
@@ -267,10 +246,7 @@ export async function getConstitutionalRulesAction(): Promise<ActionResult<Const
 export async function getExceptionQueueAction(): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModule("FINANCEIRO");
-    const items = await context.prisma.exceptionQueueItem.findMany({
-      where: { status: "PENDENTE", banco: pocVirtualBank.name },
-      orderBy: { createdAt: "desc" },
-    });
+    const items = await listBankExceptionQueue(context.database ?? db, pocVirtualBank.name);
     return { data: items };
   } catch (err: unknown) {
     return { error: errorMessage(err, "Erro ao buscar fila de exceções.") };
@@ -283,27 +259,16 @@ export async function createRuleAction(data: z.infer<typeof ruleSchema>): Promis
 
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const bankAccount = await context.prisma.bankAccount.findFirst({
-      where: {
-        id: parsed.data.bankAccountId,
-        bankName: pocVirtualBank.name,
-        isActive: true,
-        ...(isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } }),
-      },
-      select: { bankName: true, agency: true, accountNumber: true },
-    });
+    const [bankAccount] = await listAutomationBankAccounts(db, { id: parsed.data.bankAccountId, bankName: pocVirtualBank.name, unitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
     if (!bankAccount) return { error: "A conta bancária selecionada não está disponível para esta Unidade Gestora." };
-    const newRule = await context.prisma.classificationRule.create({
-      data: {
+    const newRule = await insertBankClassificationRule(db, {
         ...parsed.data,
         bancoContaFiltro: `${bankAccount.bankName} / ${bankAccount.agency} / ${bankAccount.accountNumber}`,
         tipoMovimento: "RECEITA_CONSTITUCIONAL",
-      },
-      include: { bankAccount: { select: { id: true, bankName: true, agency: true, accountNumber: true } } },
     });
 
     revalidatePath("/financeiro/receitas-constitucionais");
-    return { data: newRule };
+    return { data: { ...newRule, bankAccount: { id: bankAccount.id, bankName: bankAccount.bankName, agency: bankAccount.agency, accountNumber: bankAccount.accountNumber } } };
   } catch (err: unknown) {
     return { error: errorMessage(err, "Erro ao criar regra de receita.") };
   }
@@ -312,24 +277,17 @@ export async function createRuleAction(data: z.infer<typeof ruleSchema>): Promis
 export async function resolveExceptionAction(exceptionId: string, ruleText?: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const { prisma, user } = context;
-
-    const exceptionItem = await prisma.exceptionQueueItem.findUnique({
-      where: { id: exceptionId },
-    });
+    const { user } = context;
+    const exceptionItem = await findBankException(db, exceptionId);
 
     if (!exceptionItem) return { error: "Item da fila de exceção não encontrado." };
 
     // Se fornecido texto para nova regra, cria a regra no banco
     let newRuleId: string | undefined = undefined;
     if (ruleText && ruleText.trim() !== "") {
-      const bankAccount = await prisma.bankAccount.findFirst({
-        where: { bankName: exceptionItem.banco, accountNumber: exceptionItem.contaNumero, isActive: true },
-        select: { id: true, bankName: true, agency: true, accountNumber: true },
-      });
+      const [bankAccount] = await listAutomationBankAccounts(db, { bankName: exceptionItem.banco, accountNumber: exceptionItem.contaNumero });
       if (!bankAccount) return { error: "A exceção não pertence a uma conta bancária ativa e vinculada." };
-      const newRule = await prisma.classificationRule.create({
-        data: {
+      const newRule = await insertBankClassificationRule(db, {
           textoProcurado: ruleText.trim(),
           bankAccountId: bankAccount.id,
           bancoContaFiltro: `${bankAccount.bankName} / ${bankAccount.agency} / ${bankAccount.accountNumber}`,
@@ -340,19 +298,15 @@ export async function resolveExceptionAction(exceptionId: string, ruleText?: str
           deducaoAplicavel: true,
           prioridade: 10,
           tipoMovimento: "RECEITA_CONSTITUCIONAL",
-        },
       });
       newRuleId = newRule.id;
     }
 
-    await prisma.exceptionQueueItem.update({
-      where: { id: exceptionId },
-      data: {
+    await updateBankException(db, exceptionId, {
         status: "RESOLVIDO",
         resolvidoPor: user.email || user.id,
         resolvidoEm: new Date(),
         regraGeradaId: newRuleId,
-      },
     });
 
     revalidatePath("/financeiro/receitas-constitucionais");
@@ -365,31 +319,20 @@ export async function resolveExceptionAction(exceptionId: string, ruleText?: str
 export async function processConstitutionalRevenueAction(statementItemId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const result = await context.prisma.$transaction(async (tx) => {
-      const item = await tx.bankStatementItem.findUnique({ where: { id: statementItemId } });
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const item = await findInvestmentStatement(tx, statementItemId);
       if (!item) throw new Error("Lançamento bancário não encontrado.");
       if (!isPocVirtualBank(item.banco)) throw new Error("O lançamento não pertence ao Banco Virtual Robonuvem.");
       if (item.treasuryMovementId) return { treasuryMovementId: item.treasuryMovementId, alreadyProcessed: true };
       if (item.sinal !== "CREDITO") throw new Error("Apenas créditos bancários podem ser tratados como receitas constitucionais.");
 
-      const account = await tx.bankAccount.findFirst({
-        where: {
-          bankName: item.banco || undefined,
-          agency: item.agencia || undefined,
-          accountNumber: item.contaNumero || undefined,
-          isActive: true,
-        },
-        select: { id: true, budgetUnitId: true, resourceSourceId: true },
-      });
+      const [account] = await listAutomationBankAccounts(tx, { bankName: item.banco || undefined, agency: item.agencia || undefined, accountNumber: item.contaNumero || undefined });
       if (!account?.resourceSourceId) throw new Error("A conta de recebimento deve estar ativa e vinculada a uma fonte de recurso.");
       if (!isSystemAdministrator(context.user) && (!account.budgetUnitId || !context.user.allowedBudgetUnitIds.includes(account.budgetUnitId))) {
         throw new Error("Sem permissão para processar receita desta Unidade Gestora.");
       }
 
-      const rules = await tx.classificationRule.findMany({
-        where: { ativo: true, tipoMovimento: "RECEITA_CONSTITUCIONAL", bankAccountId: account.id },
-        orderBy: { prioridade: "asc" },
-      });
+      const rules = await listConstitutionalRules(tx, account.id);
       const description = (item.description || "").toUpperCase();
       const rule = rules.find((candidate) => description.includes(candidate.textoProcurado.toUpperCase()));
       if (!rule?.naturezaReceita || !rule.fonteRecurso) throw new Error("Não há regra constitucional completa para este lançamento.");
@@ -397,10 +340,7 @@ export async function processConstitutionalRevenueAction(statementItemId: string
       const natureCode = rule.naturezaReceita.match(/^\d[\d.]+/)?.[0]?.replace(/(?:\.00)+$/, "");
       const sourceCode = rule.fonteRecurso.match(/^\d+/)?.[0];
       if (!natureCode || !sourceCode) throw new Error("A regra constitucional possui natureza ou fonte inválida.");
-      const [nature, source] = await Promise.all([
-        tx.revenueNature.findUnique({ where: { code: natureCode }, select: { id: true } }),
-        tx.resourceSource.findUnique({ where: { code: sourceCode }, select: { id: true } }),
-      ]);
+      const { nature, source } = await findConstitutionalRevenueCodes(tx, natureCode, sourceCode);
       if (!nature || !source) throw new Error("Cadastre a natureza e a fonte informadas na regra antes de processar a receita.");
       // A conta registra o crédito bancário; a regra define a fonte legal da receita.
 
@@ -424,28 +364,23 @@ export async function processConstitutionalRevenueAction(statementItemId: string
         idempotencyKey,
         integrationEventId: item.integrationEventId ?? undefined,
         bankTransactionId: item.bankTransactionId ?? item.codigoTransacao ?? undefined,
-        bankAccountExternalId: account.id ? (await tx.bankAccount.findUnique({ where: { id: account.id }, select: { externalId: true } }))?.externalId ?? undefined : undefined,
+        bankAccountExternalId: account.externalId ?? undefined,
         collectionReference: item.collectionReference ?? undefined,
       });
       if (!revenue.treasuryMovement) throw new Error("A receita constitucional não gerou movimento de tesouraria.");
-      await tx.bankStatementItem.update({
-        where: { id: item.id },
-        data: {
+      await updateInvestmentStatement(tx, item.id, {
           treasuryMovementId: revenue.treasuryMovement.id,
           status: "Processado",
           categoriaClassificada: "RECEITA_CONSTITUCIONAL",
           reciboMunicipal: `REC-REC-${revenue.id}`,
-        },
       });
-      await tx.financialAuditLog.create({
-        data: {
+      await insertAnnualAudit(tx, {
           action: "RECEITA_CONSTITUCIONAL_PROCESSADA",
           entityType: "Revenue",
           entityId: revenue.id,
           authorUsuarioId: context.user.id,
           budgetUnitId: account.budgetUnitId,
           payload: { statementItemId: item.id, ruleId: rule.id, treasuryMovementId: revenue.treasuryMovement.id, deducaoAplicavel: rule.deducaoAplicavel },
-        },
       });
       return { treasuryMovementId: revenue.treasuryMovement.id, revenueId: revenue.id, alreadyProcessed: false };
     });

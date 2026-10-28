@@ -1,15 +1,17 @@
 import { getTenantContextForModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
 import { certificateReport, reportCivilRange } from "@/lib/sst/report-service";
 import { SstValidationError } from "@/lib/sst/errors";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { z } from "zod";
 
 export default async function SstReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const context = await getTenantContextForModuleOperation("SST", "issueReports");
   const filters = await searchParams;
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), select: { id: true, name: true } });
+  const units = await listSstUnits(sstDatabase(context), context);
   let report: Awaited<ReturnType<typeof certificateReport>> | null = null;
   let error: string | null = null;
   let costs: Record<string, number | null> | null = null;
@@ -20,7 +22,7 @@ export default async function SstReportsPage({ searchParams }: { searchParams: P
         await getTenantContextForModule("RH");
         costs = Object.fromEntries(report.statistics.map((item) => [item.employeeId, null]));
       }
-      await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SST_CERTIFICATES_REPORT", targetId: filters.budgetUnitId });
+      await writeAuditEvent(sstDatabase(context), { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SST_CERTIFICATES_REPORT", targetId: filters.budgetUnitId });
     } catch (cause) {
       if (cause instanceof z.ZodError) error = cause.issues[0]?.message || "Confira os filtros.";
       else if (cause instanceof SstValidationError) error = cause.message;

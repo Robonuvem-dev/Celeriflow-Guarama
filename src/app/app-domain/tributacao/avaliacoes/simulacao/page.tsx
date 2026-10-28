@@ -2,13 +2,14 @@ import { getTenantContextForModule,isSystemAdministrator } from "@/lib/platform/
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import { simulateGroupedPropertyValuation } from "@/lib/tributacao/property-group-simulation";
 import ConfirmPropertySimulationClient from "./ConfirmPropertySimulationClient";
+import { db, databaseConnection } from "@/db/client";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
 
 export const dynamic="force-dynamic";
 export default async function GroupSimulationPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
-  const {prisma,user}=await getTenantContextForModule("TRIBUTACAO");const params=await searchParams;
+  const context=await getTenantContextForModule("TRIBUTACAO"); const {user}=context; const database=context.database ?? db; const params=await searchParams;
   const allowedBudgetUnitIds=isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const scope=allowedBudgetUnitIds ? {OR:allowedBudgetUnitIds.map(budgetUnitId=>({data:{path:["budgetUnitId"],equals:budgetUnitId}}))} : {};
-  const [profiles,rules]=await Promise.all([prisma.taxRegistryEntry.findMany({where:{entityType:"REAL_ESTATE",category:"PROPERTY_PROFILE",...scope},orderBy:{version:"desc"}}),prisma.taxRegistryEntry.findMany({where:{entityType:"TAX",category:"PROPERTY_VALUATION_RULE",...scope},orderBy:{version:"desc"}})]);
+  const [profiles,rules]=await Promise.all([listFiscalEntries(database,{entityType:"REAL_ESTATE",categories:["PROPERTY_PROFILE"],allowedBudgetUnitIds}),listFiscalEntries(database,{entityType:"TAX",categories:["PROPERTY_VALUATION_RULE"],allowedBudgetUnitIds})]);
   const latestProfiles=new Map<string,typeof profiles[number]>();for(const profile of profiles) if(!latestProfiles.has(profile.entityId)) latestProfiles.set(profile.entityId,profile);
   const latestRules=new Map<string,typeof rules[number]>();for(const rule of rules) {const key=`${rule.entityId}:${rule.title}`;if(!latestRules.has(key)) latestRules.set(key,rule);}
   const value=(key:string)=>typeof params[key]==="string" ? params[key] as string : "";
@@ -17,7 +18,7 @@ export default async function GroupSimulationPage({searchParams}:{searchParams:P
   const unitBuiltAreaOverrides=Object.fromEntries(unitIds.filter(id=>value(`area.${id}`)!=="").map(id=>[id,value(`area.${id}`)]));
   const simulation={parentId,unitIds,ruleId:value("ruleId"),includeParentConstruction:params.includeParentConstruction==="on",taxRate:value("taxRate") || "0",...(value("landArea") ? {landAreaOverride:value("landArea")} : {}),...(value("builtArea") ? {parentBuiltAreaOverride:value("builtArea")} : {}),unitBuiltAreaOverrides};
   let result:Awaited<ReturnType<typeof simulateGroupedPropertyValuation>>|null=null;let error="";
-  if(params.calculate==="1") try {result=await simulateGroupedPropertyValuation(prisma,{usuarioId:user.id,employeeId:user.employeeId,allowedBudgetUnitIds},simulation);}catch(cause){error=cause instanceof Error ? cause.message : "Simulação indisponível.";}
+  if(params.calculate==="1") try {result=await simulateGroupedPropertyValuation(databaseConnection,{usuarioId:user.id,employeeId:user.employeeId,allowedBudgetUnitIds},simulation);}catch(cause){error=cause instanceof Error ? cause.message : "Simulação indisponível.";}
   const field="mt-1 w-full rounded border p-2 text-xs";
   return <div className="h-full space-y-3 overflow-auto p-4"><h1 className="text-lg font-bold">Simulação individual e englobamento de unidades</h1>
     <form className="grid gap-3 rounded border bg-white p-3 sm:grid-cols-2">

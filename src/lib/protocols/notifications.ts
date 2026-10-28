@@ -1,5 +1,9 @@
-import type { Prisma } from "@prisma/client";
-import { createInternalNotifications, type InternalNotificationPriority } from "@/lib/notifications/internal-notifications";
+import { and, eq, inArray } from "drizzle-orm";
+import type { DatabaseTransaction } from "@/db/transaction";
+import { users, accessProfiles, userModulePermissions, modules } from "@/db/schema/identity";
+import { employees } from "@/db/schema/administration";
+import { insertInternalNotifications } from "@/db/repositories/platform/notifications";
+import type { InternalNotificationPriority } from "@/lib/contracts/notifications";
 import { canViewModule, type AppContext } from "@/lib/platform/tenant-context";
 
 type NotificationInput = {
@@ -39,25 +43,23 @@ function hasProcessModuleAccess(recipient: NotificationRecipient) {
   return recipient.perfil.ativo && canViewModule(user, "PROCESSOS");
 }
 
-const recipientInclude = {
-  perfil: { select: { codigo: true, permissoes: true, ativo: true, nome: true } },
-  permissoesModulo: { include: { modulo: { select: { codigo: true } } } },
-} satisfies Prisma.UsuarioInclude;
+async function eligibleProtocolRecipients(tx: DatabaseTransaction, selection: { departmentId: string } | { userIds: string[] }): Promise<NotificationRecipient[]> {
+  const recipients = await tx.select({ id: users.id, perfil: { codigo: accessProfiles.codigo, permissoes: accessProfiles.permissoes, ativo: accessProfiles.ativo, nome: accessProfiles.nome } }).from(users).innerJoin(accessProfiles, eq(accessProfiles.id, users.perfilId)).leftJoin(employees, eq(employees.id, users.employeeId)).where(and(eq(users.ativo, true), "departmentId" in selection ? and(eq(employees.isActive, true), eq(employees.departmentId, selection.departmentId)) : inArray(users.id, selection.userIds)));
+  if (!recipients.length) return [];
+  const permissions = await tx.select({ usuarioId: userModulePermissions.usuarioId, canView: userModulePermissions.canView, canEdit: userModulePermissions.canEdit, codigo: modules.codigo }).from(userModulePermissions).innerJoin(modules, eq(modules.id, userModulePermissions.moduloId)).where(inArray(userModulePermissions.usuarioId, recipients.map(row => row.id)));
+  return recipients.map(row => ({ ...row, permissoesModulo: permissions.filter(permission => permission.usuarioId === row.id).map(permission => ({ canView: permission.canView, canEdit: permission.canEdit, modulo: { codigo: permission.codigo } })) })).filter(hasProcessModuleAccess);
+}
 
 export async function notifyProtocolDepartment(
-  tx: Prisma.TransactionClient,
+  tx: DatabaseTransaction,
   actorUsuarioId: string,
   departmentId: string,
   notification: NotificationInput,
 ) {
-  const recipients = await tx.usuario.findMany({
-    where: { ativo: true, employee: { is: { isActive: true, departmentId } } },
-    include: recipientInclude,
-  });
-  const eligibleRecipients = recipients.filter(hasProcessModuleAccess);
+  const eligibleRecipients = await eligibleProtocolRecipients(tx, { departmentId });
   if (!eligibleRecipients.length) return { created: 0 };
 
-  return createInternalNotifications(tx, {
+  return insertInternalNotifications(tx, {
     actorUsuarioId,
     recipientUserIds: eligibleRecipients.map((recipient) => recipient.id),
     sourceModule: "PROCESSOS",
@@ -68,21 +70,17 @@ export async function notifyProtocolDepartment(
 }
 
 export async function notifyProtocolUsers(
-  tx: Prisma.TransactionClient,
+  tx: DatabaseTransaction,
   actorUsuarioId: string,
   userIds: string[],
   notification: NotificationInput,
 ) {
   const requestedIds = [...new Set(userIds)].filter(Boolean);
   if (!requestedIds.length) return { created: 0 };
-  const recipients = await tx.usuario.findMany({
-    where: { id: { in: requestedIds }, ativo: true },
-    include: recipientInclude,
-  });
-  const eligibleRecipients = recipients.filter(hasProcessModuleAccess);
+  const eligibleRecipients = await eligibleProtocolRecipients(tx, { userIds: requestedIds });
   if (!eligibleRecipients.length) return { created: 0 };
 
-  return createInternalNotifications(tx, {
+  return insertInternalNotifications(tx, {
     actorUsuarioId,
     recipientUserIds: eligibleRecipients.map((recipient) => recipient.id),
     sourceModule: "PROCESSOS",

@@ -1,18 +1,12 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { calculateInclusiveContractTermDays } from "@/lib/compras/contract-lifecycle";
 import { ContratosListClient } from "./ContratosListClient";
+import { databaseConnection } from "@/db/client";
+import { listProcurementContracts } from "@/db/repositories/procurement/instruments";
 
 export default async function ContratosPage() {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
-  const contracts = await prisma.contract.findMany({
-    include: {
-      supplier: { include: { person: true, company: true } },
-      secretariat: { select: { name: true } },
-      sourceBudgetUnit: { select: { code: true, name: true } },
-      _count: { select: { amendments: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  }).catch(() => []);
+  await getTenantContextForModule("COMPRAS");
+  const contracts = await listProcurementContracts(databaseConnection.db).catch(() => []);
 
   return <ContratosListClient contracts={contracts.map((contract) => ({
     id: contract.id,

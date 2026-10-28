@@ -12,17 +12,12 @@ import Link from "next/link"
 import { PageFrame } from "@/components/app-ui/PageFrame"
 import { ErpPageTitle as PageHeader } from "@/components/app-ui/erp/ErpPageTitle"
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { readPersonnelDashboard } from "@/db/repositories/personnel-pages/records";
 
 export default async function RHDashboard() {
-  const { prisma } = await getTenantContextForModule("RH");
-  const totalEmployees = await prisma.employee.count().catch(() => 0)
-  const activeEmployees = await prisma.employee.count({ where: { isActive: true } }).catch(() => 0)
-  const totalRoles = await prisma.role.count().catch(() => 0)
-  const activeRoles = await prisma.role.count({ where: { isActive: true } }).catch(() => 0)
-
-  const activePayrolls = await prisma.payroll.count({ where: { status: "Aberta" } }).catch(() => 0)
-  const vacationRequests = await prisma.vacation.count({ where: { status: "Programada" } }).catch(() => 0)
-  const totalAttendances = await prisma.attendanceRecord.count().catch(() => 0)
+  const context = await getTenantContextForModule("RH");
+  const { totalEmployees, activeEmployees, totalRoles, activeRoles, activePayrolls, vacationRequests, totalAttendances } = await readPersonnelDashboard(context.database ?? db);
 
   return (
     <PageFrame className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">

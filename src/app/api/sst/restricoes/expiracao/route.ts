@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db, databaseConnection } from "@/db/client";
 import { restrictionCronAuthorized, configuredRestrictionEmailSender, RestrictionEmailConfigurationError } from "@/lib/sst/restriction-email-provider";
 import { restrictionCronScope, runRestrictionExpiryCron } from "@/lib/sst/restriction-cron-service";
 export const runtime = "nodejs";
@@ -13,8 +13,8 @@ export async function GET(request: Request) {
   if (!restrictionCronAuthorized(request.headers.get("authorization"),secret)) return Response.json({ error:"Não autorizado." }, { status:401 });
   try {
     const send = configuredRestrictionEmailSender();
-    const scope = await restrictionCronScope(prisma,process.env.SST_RESTRICTION_EMAIL_ACTOR_USER_ID);
-    const result = await runRestrictionExpiryCron(prisma,scope,send);
+    const scope = await restrictionCronScope(db,process.env.SST_RESTRICTION_EMAIL_ACTOR_USER_ID);
+    const result = await runRestrictionExpiryCron(databaseConnection,scope,send);
     if (result.failed || result.reconciliationRequired) console.error("SST_RESTRICTION_EMAIL_DELIVERY_BLOCKED", { failed:result.failed, reconciliationRequired:result.reconciliationRequired });
     return Response.json({ status:result.failed || result.reconciliationRequired ? "ATTENTION" : "PROCESSED", ...result }, { headers: { "Cache-Control":"no-store" } });
   } catch (error) {

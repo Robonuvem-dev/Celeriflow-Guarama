@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AccessError, getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { readBenefitStatement, readBenefitReconciliation } from "@/lib/sst/benefit-query";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { sstDatabase } from "@/lib/sst/database";
 import { SstForm } from "../../SstForm";
 import { saveBenefitEntry, generateMonthly, approveBenefitPosting, saveBenefitPayrollMapping, saveBenefitPayrollScope, compensateBenefitCharge } from "../actions";
 import { BenefitStatement } from "../BenefitStatement";
@@ -18,7 +20,7 @@ export default async function BenefitDetailPage({ params, searchParams }: { para
   if (!data) notFound();
   const rh = await getTenantContextForModule("RH").catch((error: unknown) => { if (error instanceof AccessError) return null; throw error; });
   const reconciliation = rh ? await readBenefitReconciliation(context, id, data.to) : null;
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: query.print === "1" ? auditEventTypes.reportIssued : auditEventTypes.pageView, targetType: "SST_BENEFIT_STATEMENT", targetId: id });
+  await writeAuditEvent(sstDatabase(context), { actorUsuarioId: context.user.id, eventType: query.print === "1" ? auditEventTypes.reportIssued : auditEventTypes.pageView, targetType: "SST_BENEFIT_STATEMENT", targetId: id });
   const field = "block w-full rounded border p-2";
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Plano de saúde — ficha e demonstrativo</h1><div className="flex gap-4 print:hidden"><Link className="underline" href="/sst/planos">Voltar</Link><Link className="underline" href={`/sst/planos/${id}?${new URLSearchParams({ from: data.from, to: data.to, print: "1" })}`}>Emissão do demonstrativo</Link></div>
     {query.print === "1" && <p>Demonstrativo contratual emitido em {new Date().toISOString()}. Utilize a impressão do navegador; não é comprovante fiscal de rendimentos.</p>}

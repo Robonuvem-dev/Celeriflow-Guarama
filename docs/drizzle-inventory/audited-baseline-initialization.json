@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "at": "2026-10-28T18:52:59.686Z",
+  "result": "PASS",
+  "authority": "celeriflow-explicit-sql-v1",
+  "origin": "baselined",
+  "historicalReceipts": 156,
+  "historicalSqlExecuted": 0,
+  "baselineManifestDigest": "2b6df6002e92bf0725bae8f5574ea6d00c7d1e9d1b9214900881ddc96d201825",
+  "reviewedCatalogDigest": "a84b2392d6dcb19e0c9fce24dc6b4bdf91a72fe19665c7865c4dfe3e2c0ac76c",
+  "catalogDifferences": [],
+  "preservation": {
+    "dataTables": 1006,
+    "rows": 154398,
+    "sequences": 1,
+    "digestBefore": "6028a6dc3c327dba28f56b46035388b2b17635dcc2743c7b2591cba56a6936fa",
+    "digestAfter": "6028a6dc3c327dba28f56b46035388b2b17635dcc2743c7b2591cba56a6936fa",
+    "scope": "All existing user data tables, including the complete original legacy migration ledger; sequence state compared separately. Only the two new SQL-authority tables are excluded."
+  },
+  "firstDeployApplied": [],
+  "secondDeployApplied": [],
+  "unresolvedHistoricalDifferences": [
+    {
+      "name": "20261011010000_add_sst_clinical_services",
+      "installedChecksum": "56942636553fc17917a3e70970ac21b9d9bad907c4289960170333f6fd3f5a80",
+      "recordedLocalChecksum": "d8822bb147ec2e24a48ec2c74ed02d5808809d5d48dacde896850b8b5a5d6fbb",
+      "lfChecksum": "e4590cc6c6426625afe58396ebfd7a5f07f75ed2dfdfb32eb319586a82c1ea2a",
+      "classification": "UNRESOLVED_HISTORICAL_DIFFERENCE",
+      "byteProof": null
+    }
+  ]
+}

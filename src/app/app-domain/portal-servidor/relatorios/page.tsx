@@ -2,6 +2,10 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { personalReportKinds } from "@/lib/portal-servidor/personal-reports";
 import { attendanceTotalsPolicySchema } from "@/lib/portal-servidor/attendance-totals";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import type { JsonValue } from "@/db/json";
+import { portalRows } from "@/db/repositories/portal-servidor/records";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +21,10 @@ const labels: Record<(typeof personalReportKinds)[number], string> = {
 export default async function PersonalReportsPage() {
   const access = await getEmployeePortalAccess();
   if (access.status !== "AVAILABLE") return <p className="p-4">Acesso funcional indisponível.</p>;
-  const contracts = await access.context.prisma.hrEmploymentContract.findMany({
-    where: { employeeId: access.employee.id }, select: { id: true, registration: true, status: true }, orderBy: { registration: "asc" },
-  });
+  const executor = access.context.database ?? db;
+  const contracts = await portalRows<{ id: string; registration: string; status: string }>(executor, sql`SELECT id,registration,status FROM "HrEmploymentContract" WHERE "employeeId"=${access.employee.id} ORDER BY registration`);
   const today = new Date().toISOString().slice(0, 10);
-  const rules = await access.context.prisma.hrPayrollRule.findMany({ where: { category: "PORTAL", isActive: true, valueType: "JSON", ruleSet: { status: "ATIVA" } }, select: { id: true, name: true, value: true } });
+  const rules = await portalRows<{ id: string; name: string; value: JsonValue }>(executor, sql`SELECT r.id,r.name,r.value FROM "HrPayrollRule" r JOIN "HrPayrollRuleSet" s ON s.id=r."ruleSetId" WHERE r.category='PORTAL' AND r."isActive" AND r."valueType"='JSON' AND s.status='ATIVA'`);
   const totalizers = rules.filter(rule => { const policy = attendanceTotalsPolicySchema.safeParse(rule.value); return policy.success && (!policy.data.employeeIds.length || policy.data.employeeIds.includes(access.employee.id)); });
   const control = "h-9 rounded border border-slate-300 bg-white px-2 text-sm";
   return <div className="flex flex-1 flex-col gap-3 p-3">

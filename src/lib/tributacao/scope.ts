@@ -1,18 +1,33 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { readTaxAssessmentCompensationMovements } from "@/db/repositories/taxation/assessment-credit";
 import type { TaxActor } from "./index";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
-export function taxScopeSnapshot(value?: Prisma.JsonValue | null) {
+// Optional JSON object members retain the existing snapshot DTO while accepting
+// both the independent database JSON contract and legacy persisted JSON values.
+type TaxScopeJsonValue = string | number | boolean | null | TaxScopeJsonValue[] | TaxScopeSnapshot;
+export type TaxScopeSnapshot = { [key: string]: TaxScopeJsonValue | undefined };
+
+export function taxScopeSnapshot(value?: TaxScopeJsonValue | null): TaxScopeSnapshot {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
-export async function taxAssessmentCompensatedValue(db: Db, assessmentId: string) {
-  const movements = await db.taxRegistryEntry.findMany({ where: { entityType: "TAX_ASSESSMENT", entityId: assessmentId, category: "CREDIT_MOVEMENT", status: "EFETIVADO" }, select: { data: true } });
+/** @deprecated Preserves existing Prisma units until their entire transaction migrates. */
+export function taxAssessmentCompensatedValue(db: Db, assessmentId: string): Promise<Decimal>;
+export function taxAssessmentCompensatedValue(db: DatabaseExecutor, assessmentId: string): Promise<Decimal>;
+export async function taxAssessmentCompensatedValue(db: DatabaseExecutor | Db, assessmentId: string): Promise<Decimal> {
+  // Each branch reads only the executor supplied by its caller. Never acquire a
+  // connection or open a transaction here: C7 supplies its repeatable-read tx.
+  const movements = "select" in db
+    ? await readTaxAssessmentCompensationMovements(db, assessmentId)
+    : await db.taxRegistryEntry.findMany({ where: { entityType: "TAX_ASSESSMENT", entityId: assessmentId, category: "CREDIT_MOVEMENT", status: "EFETIVADO" }, select: { data: true } });
   return movements.reduce((sum, movement) => {
     const data = taxScopeSnapshot(movement.data);
-    return data.operation === "COMPENSAR" ? sum.plus(new Prisma.Decimal(String(data.amount))) : sum;
-  }, new Prisma.Decimal(0));
+    return data.operation === "COMPENSAR" ? sum.plus(new Decimal(String(data.amount))) : sum;
+  }, new Decimal(0));
 }
 
 /** Legacy rows without recorded origin remain available to the technical administrator. */
@@ -42,7 +57,7 @@ export async function synchronizeAssessmentDebt(tx: Prisma.TransactionClient, ac
     if (!payment.amountPaidDecimal) throw new Error("Arrecadação da dívida sem Decimal conciliado.");
     return sum.plus(payment.amountPaidDecimal);
   }, await taxAssessmentCompensatedValue(tx, assessmentId));
-  const remaining = Prisma.Decimal.max(0, total.minus(paid));
+  const remaining = Decimal.max(0, total.minus(paid));
   const collecting = ["Paga", "PAGA", "Inscrita", "INSCRITA", "EM_COBRANCA", "Parcelada", "PARCELADA", "EM_PROTESTO", "AJUIZADA"].includes(debt.status);
   return tx.activeDebt.update({ where: { id: debt.id }, data: { updatedValue: Number(remaining), updatedValueDecimal: remaining, ...(collecting ? { status: remaining.isZero() ? "PAGA" : ["EM_PROTESTO", "AJUIZADA"].includes(debt.status) ? debt.status : paid.gt(0) ? "EM_COBRANCA" : "INSCRITA" } : {}) } });
 }

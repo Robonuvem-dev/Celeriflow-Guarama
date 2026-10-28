@@ -5,6 +5,11 @@ import { assetOperationWhere } from "@/lib/patrimonio/asset-operations";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { AssetOperationsClient } from "./AssetOperationsClient";
+import { and, asc, count as rowCount, desc, eq, inArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { db } from "@/db/client";
+import { assets, assetMaintenances, assetTransfers } from "@/db/schema/assets";
+import { departments, employees } from "@/db/schema/administration";
 
 export const dynamic = "force-dynamic";
 const day = (v: Date | null) => v?.toISOString().slice(0, 10).split("-").reverse().join("/") || "—";
@@ -13,13 +18,24 @@ export default async function AssetDetailPage({ params, searchParams }: { params
   let id: string;
   try { id = decodeURIComponent(routeId); } catch { notFound(); }
   const page = Math.min(100000, Math.max(1, Number.parseInt((await searchParams).page || "1", 10) || 1));
-  const asset = await context.prisma.asset.findFirst({ where: { id, ...assetOperationWhere(context) }, include: { department: true, responsible: { select: { name: true } }, fleetUnit: { select: { id: true, code: true, name: true, status: true } } } });
+  const scope = assetOperationWhere(context);
+  const [loaded] = await db.select({ asset: assets, department: { name: departments.name }, responsible: { name: employees.name }, fleetUnit: sql<{ id: string; code: string; name: string; status: string } | null>`(SELECT json_build_object('id',u.id,'code',u.code,'name',u.name,'status',u.status) FROM "FleetUnit" u WHERE u."assetId"=${assets.id})` }).from(assets)
+    .leftJoin(departments, eq(departments.id, assets.departmentId)).leftJoin(employees, eq(employees.id, assets.responsibleId))
+    .where(and(eq(assets.id, id), scope.departmentId ? eq(assets.departmentId, scope.departmentId) : undefined)).limit(1);
+  const asset = loaded ? { ...loaded.asset, department: loaded.department, responsible: loaded.responsible, fleetUnit: loaded.fleetUnit } : undefined;
   if (!asset) notFound();
+  const fromDepartments = alias(departments, "transfer_origin"), toDepartments = alias(departments, "transfer_destination");
+  const maintenanceSelection = { maintenance: assetMaintenances, fleetOrderId: sql<string | null>`(SELECT o.id FROM "FleetWorkOrder" o WHERE o."assetMaintenanceId"=${assetMaintenances.id})` };
   const [maintenances, count, open, transfers] = await Promise.all([
-    context.prisma.assetMaintenance.findMany({ where: { assetId: id }, orderBy: [{ startDate: "desc" }, { id: "desc" }], take: 10, skip: (page - 1) * 10, include: { fleetOrder: { select: { id: true } } } }),
-    context.prisma.assetMaintenance.count({ where: { assetId: id } }),
-    context.prisma.assetMaintenance.findMany({ where: { assetId: id, status: { in: ["Solicitada", "Em manutenção"] } }, orderBy: [{ startDate: "asc" }, { id: "asc" }], include: { fleetOrder: { select: { id: true } } } }),
-    context.prisma.assetTransfer.findMany({ where: { assetId: id }, take: 10, orderBy: [{ date: "desc" }, { id: "desc" }], include: { fromDepartment: { select: { name: true } }, toDepartment: { select: { name: true } }, toResponsible: { select: { name: true } } } }),
+    db.select(maintenanceSelection).from(assetMaintenances).where(eq(assetMaintenances.assetId, id)).orderBy(desc(assetMaintenances.startDate), desc(assetMaintenances.id)).limit(10).offset((page - 1) * 10)
+      .then(rows => rows.map(row => ({ ...row.maintenance, fleetOrder: row.fleetOrderId ? { id: row.fleetOrderId } : null }))),
+    db.select({ count: rowCount() }).from(assetMaintenances).where(eq(assetMaintenances.assetId, id)).then(rows => rows[0].count),
+    db.select(maintenanceSelection).from(assetMaintenances).where(and(eq(assetMaintenances.assetId, id), inArray(assetMaintenances.status, ["Solicitada", "Em manutenção"]))).orderBy(asc(assetMaintenances.startDate), asc(assetMaintenances.id))
+      .then(rows => rows.map(row => ({ ...row.maintenance, fleetOrder: row.fleetOrderId ? { id: row.fleetOrderId } : null }))),
+    db.select({ transfer: assetTransfers, fromDepartment: { name: fromDepartments.name }, toDepartment: { name: toDepartments.name }, toResponsible: { name: employees.name } }).from(assetTransfers)
+      .leftJoin(fromDepartments, eq(fromDepartments.id, assetTransfers.fromDepartmentId)).leftJoin(toDepartments, eq(toDepartments.id, assetTransfers.toDepartmentId)).leftJoin(employees, eq(employees.id, assetTransfers.toResponsibleId))
+      .where(eq(assetTransfers.assetId, id)).orderBy(desc(assetTransfers.date), desc(assetTransfers.id)).limit(10)
+      .then(rows => rows.map(row => ({ ...row.transfer, fromDepartment: row.fromDepartment, toDepartment: row.toDepartment, toResponsible: row.toResponsible }))),
   ]);
   return <PageFrame className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
     <PageHeader title={`${asset.code || asset.patrimonyNumber} · ${asset.name}`} action={<Link href="/patrimonio/bens" className="rounded border bg-white px-3 py-2 text-sm">Bens patrimoniais</Link>} />

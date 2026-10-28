@@ -2,94 +2,35 @@ import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform
 import LiquidacoesClient from "./LiquidacoesClient"
 import { SettlementCostsPanel } from "../custos/SettlementCostsPanel";
 import { readMunicipalCosts } from "@/lib/financeiro/cost-overview";
+import { db, databaseConnection } from "@/db/client";
+import { Decimal } from "@/db/decimal";
+import { listFinancePageCommitments, listFinancePageDocuments, listFinancePageEmployees, listFinancePageRetentionRules, listFinancePageSettlements } from "@/db/repositories/finance-pages/operations";
+import { listFinancePageYears } from "@/db/repositories/finance-pages/catalog";
 
 export default async function LiquidacoesPage() {
   const context = await getTenantContextForModule("FINANCEIRO");
-  const { prisma } = context;
-  const appropriationFilter = isSystemAdministrator(context.user)
-    ? {}
-    : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } };
-  const settlements = await prisma.settlement.findMany({
-    where: { commitment: { appropriation: appropriationFilter } },
-    include: {
-      commitment: {
-        include: {
-          supplier: {
-            include: {
-              person: true,
-              company: true
-            }
-          },
-          purchaseReceipt: { select: { number: true } },
-          appropriation: { select: { financialYearId: true } },
-        },
-      },
-      author: true,
-      document: { select: { id: true, title: true } },
-      financialDocument: { select: { id: true, number: true, title: true } },
-      payments: { where: { status: { in: ["Emitida", "Paga"] } }, select: { valueDecimal: true, value: true } },
-    },
-    orderBy: {
-      date: 'desc'
-    },
-    take: 50
-  })
-
-  const commitments = await prisma.commitment.findMany({
-    where: {
-      status: { in: ["Emitido", "Liquidado", "Pago"] }
-      , appropriation: appropriationFilter
-    },
-    include: {
-      supplier: {
-        include: {
-          person: true,
-          company: true
-        }
-      },
-      movements: { select: { type: true, valueDecimal: true } },
-      settlements: { where: { status: "Liquidado" }, select: { valueDecimal: true, value: true } },
-      purchaseReceipt: { select: { number: true } },
-    }
-  })
-
-  const employees = await prisma.employee.findMany({
-    where: {
-      isActive: true
-    },
-    orderBy: {
-      name: 'asc'
-    }
-  })
-
-  const documents = await prisma.document.findMany({
-    where: { status: "Válido", documentType: { not: "Modelo" } },
-    select: { id: true, title: true, documentType: true },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-
-  const retentionRules = await prisma.retentionRule.findMany({
-    where: { isActive: true },
-    select: { id: true, code: true, type: true, description: true, calculationBasePercentage: true, ratePercentage: true, serviceCode: true },
-    orderBy: { code: "asc" },
-  });
+  const executor = context.database ?? db;
+  const access = { allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
+  const [settlements, commitments, employees, documents, retentionRules] = await Promise.all([
+    listFinancePageSettlements(executor, access, true), listFinancePageCommitments(executor, access),
+    listFinancePageEmployees(executor), listFinancePageDocuments(executor), listFinancePageRetentionRules(executor),
+  ]);
 
   const displaySettlements = settlements.map(({ valueDecimal, payments, ...settlement }) => ({
     ...settlement,
     value: Number(valueDecimal ?? settlement.value),
-    paidValue: payments.reduce((total, payment) => total + Number(payment.valueDecimal ?? payment.value), 0),
+    paidValue: payments.reduce((total, payment) => total.plus(payment.valueDecimal ?? payment.value), new Decimal(0)).toNumber(),
   }))
 
-  const displayCommitments = commitments.map(({ valueDecimal, movements, settlements, ...commitment }) => {
-    const originalValue = Number(valueDecimal ?? commitment.value);
-    const value = movements.reduce((total, movement) => total + (movement.type === "Reforço" ? Number(movement.valueDecimal) : -Number(movement.valueDecimal)), originalValue);
-    const settledValue = settlements.reduce((total, settlement) => total + Number(settlement.valueDecimal ?? settlement.value), 0);
-    return { ...commitment, value, settledValue, availableToSettle: value - settledValue };
+  const displayCommitments = commitments.map(commitment => {
+    const value = commitment.movements.reduce((total, movement) => movement.type === "Reforço" ? total.plus(movement.valueDecimal) : total.minus(movement.valueDecimal), new Decimal(commitment.valueDecimal ?? commitment.value));
+    const settledValue = commitment.settlements.reduce((total, settlement) => total.plus(settlement.valueDecimal ?? settlement.value), new Decimal(0));
+    return { id: commitment.id, number: commitment.number, purchaseReceipt: commitment.purchaseReceipt, value: value.toNumber(), settledValue: settledValue.toNumber(), availableToSettle: value.minus(settledValue).toNumber() };
   })
 
-  const years = await prisma.financialYear.findMany({ where: { id: { in: [...new Set(settlements.map(row => row.commitment.appropriation.financialYearId))] }, governmentEntityId: { not: null } }, select: { id: true } });
-  const costData = await Promise.all(years.map(year => readMunicipalCosts(prisma, { usuarioId: context.user.id, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, year.id)));
+  const yearIds = new Set(settlements.map(row => row.commitment.appropriation.financialYearId));
+  const years = (await listFinancePageYears(executor)).filter(year => year.governmentEntityId !== null && yearIds.has(year.id));
+  const costData = await Promise.all(years.map(year => readMunicipalCosts(databaseConnection, { usuarioId: context.user.id, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, year.id)));
   const settlementIds = new Set(settlements.map(row => row.id));
   return <><LiquidacoesClient settlements={displaySettlements} commitments={displayCommitments} employees={employees} documents={documents} retentionRules={retentionRules.map((rule) => ({ ...rule, calculationBasePercentage: Number(rule.calculationBasePercentage), ratePercentage: Number(rule.ratePercentage) }))} /><SettlementCostsPanel sources={costData.flatMap(data => data.sources.filter(source => ["SETTLEMENT", "PAYROLL"].includes(source.sourceType) && settlementIds.has(source.settlementId ?? source.sourceId)).map(source => ({ ...source, financialYearId: data.year.id })))} objects={costData.flatMap(data => data.objects.filter(object => object.isActive))} items={costData.flatMap(data => data.items.filter(item => item.isActive))} /></>;
 }

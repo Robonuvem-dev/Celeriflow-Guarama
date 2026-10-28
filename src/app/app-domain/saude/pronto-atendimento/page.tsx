@@ -5,7 +5,13 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { ensureRiskProtocols } from "@/lib/saude/reception-service";
 import { admitBedAction, createObservationAction, createReceptionAction, dischargeBedAction, linkReceptionAction, saveBedAction, saveDestinationAction, saveProtocolAction, saveRoomAction, transitionBedAction, transitionObservationAction, transitionReceptionAction } from "./actions";
-import type { Prisma } from "@prisma/client";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthReceptions, healthRooms, healthDestinations, healthRiskProtocols, healthBeds, healthBedOccupancies } from "@/db/schema/health-reception";
+import { healthObservations } from "@/db/schema/health-care";
+import { healthUnits } from "@/db/schema/health-workforce";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
 const PAGE_SIZE = 20;
@@ -16,28 +22,27 @@ const waitMinutes = (since: Date) => Math.max(0, Math.round((Date.now() - since.
 
 export default async function ProntoAtendimentoPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const database = context.database ?? db;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   await ensureRiskProtocols(context);
-  const where: Prisma.HealthReceptionWhereInput = {
-    ...(unitIds ? { unitId: { in: unitIds } } : {}),
-    ...(q ? { OR: [{ patient: { person: { fullName: { contains: q, mode: "insensitive" } } } }, { unidentifiedName: { contains: q, mode: "insensitive" } }, { companionName: { contains: q, mode: "insensitive" } }] } : {}),
-  };
-  const total = await prisma.healthReception.count({ where });
+  const where = and(unitIds ? inArray(healthReceptions.unitId, unitIds) : undefined, q ? or(sql`strpos(lower(${people.fullName}), lower(${q})) > 0`, sql`strpos(lower(${healthReceptions.unidentifiedName}), lower(${q})) > 0`, sql`strpos(lower(${healthReceptions.companionName}), lower(${q})) > 0`) : undefined);
+  const [{ total }] = await database.select({ total: sql<number>`count(*)::int` }).from(healthReceptions).leftJoin(patientTable, eq(patientTable.id, healthReceptions.patientId)).leftJoin(people, eq(people.id, patientTable.personId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [receptions, patients, units, rooms, destinations, protocols, beds, occupancies, observations] = await Promise.all([
-    prisma.healthReception.findMany({ where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { arrivalAt: "desc" }, include: { patient: { select: { person: { select: { fullName: true } } } }, unit: { select: { name: true } }, room: { select: { name: true } }, destination: { select: { name: true } } } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, take: 300, orderBy: { person: { fullName: "asc" } }, include: { person: { select: { fullName: true } } } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthRoom.findMany({ where: { isActive: true, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, orderBy: { name: "asc" }, take: 200 }),
-    prisma.healthDestination.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.healthRiskProtocol.findMany({ where: { isActive: true }, orderBy: { level: "asc" } }),
-    prisma.healthBed.findMany({ where: unitIds ? { unitId: { in: unitIds } } : {}, orderBy: [{ unitId: "asc" }, { code: "asc" }], take: 200, include: { unit: { select: { name: true } } } }),
-    prisma.healthBedOccupancy.findMany({ where: { dischargedAt: null, ...(unitIds ? { bed: { unitId: { in: unitIds } } } : {}) }, include: { bed: { include: { unit: { select: { name: true } } } }, patient: { include: { person: { select: { fullName: true } } } } }, orderBy: { admittedAt: "desc" }, take: 200 }),
-    prisma.healthObservation.findMany({ where: { status: "Em observação", ...(unitIds ? { unitId: { in: unitIds } } : {}) }, include: { patient: { include: { person: { select: { fullName: true } } } }, unit: { select: { name: true } }, bed: { select: { code: true } } }, orderBy: { admittedAt: "desc" }, take: 200 }),
+  const [receptionRows, patients, units, rooms, destinations, protocols, bedRows, occupancyRows, observationRows] = await Promise.all([
+    database.select({ reception: healthReceptions, person: { fullName: people.fullName }, unit: { name: healthUnits.name }, room: { name: healthRooms.name }, destination: { name: healthDestinations.name } }).from(healthReceptions).leftJoin(patientTable, eq(patientTable.id, healthReceptions.patientId)).leftJoin(people, eq(people.id, patientTable.personId)).innerJoin(healthUnits, eq(healthUnits.id, healthReceptions.unitId)).leftJoin(healthRooms, eq(healthRooms.id, healthReceptions.roomId)).leftJoin(healthDestinations, eq(healthDestinations.id, healthReceptions.destinationId)).where(where).orderBy(desc(healthReceptions.arrivalAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    database.select({ id: patientTable.id, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(and(eq(patientTable.status, "Ativo"), unitIds ? inArray(patientTable.referenceUnitId, unitIds) : undefined)).orderBy(asc(people.fullName)).limit(300),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    database.select({ id: healthRooms.id, name: healthRooms.name }).from(healthRooms).where(and(eq(healthRooms.isActive, true), unitIds ? inArray(healthRooms.unitId, unitIds) : undefined)).orderBy(asc(healthRooms.name)).limit(200),
+    database.select({ id: healthDestinations.id, name: healthDestinations.name }).from(healthDestinations).where(eq(healthDestinations.isActive, true)).orderBy(asc(healthDestinations.name)),
+    database.select().from(healthRiskProtocols).where(eq(healthRiskProtocols.isActive, true)).orderBy(asc(healthRiskProtocols.level)),
+    database.select({ bed: healthBeds, unit: { name: healthUnits.name } }).from(healthBeds).innerJoin(healthUnits, eq(healthUnits.id, healthBeds.unitId)).where(unitIds ? inArray(healthBeds.unitId, unitIds) : undefined).orderBy(asc(healthBeds.unitId), asc(healthBeds.code)).limit(200),
+    database.select({ occupancy: healthBedOccupancies, bed: { code: healthBeds.code }, unit: { name: healthUnits.name }, person: { fullName: people.fullName } }).from(healthBedOccupancies).innerJoin(healthBeds, eq(healthBeds.id, healthBedOccupancies.bedId)).innerJoin(healthUnits, eq(healthUnits.id, healthBeds.unitId)).innerJoin(patientTable, eq(patientTable.id, healthBedOccupancies.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(and(isNull(healthBedOccupancies.dischargedAt), unitIds ? inArray(healthBeds.unitId, unitIds) : undefined)).orderBy(desc(healthBedOccupancies.admittedAt)).limit(200),
+    database.select({ observation: healthObservations, person: { fullName: people.fullName }, unit: { name: healthUnits.name }, bed: { code: healthBeds.code } }).from(healthObservations).innerJoin(patientTable, eq(patientTable.id, healthObservations.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(healthUnits, eq(healthUnits.id, healthObservations.unitId)).leftJoin(healthBeds, eq(healthBeds.id, healthObservations.bedId)).where(and(eq(healthObservations.status, "Em observação"), unitIds ? inArray(healthObservations.unitId, unitIds) : undefined)).orderBy(desc(healthObservations.admittedAt)).limit(200),
   ]);
+  const receptions = receptionRows.map(row => ({ ...row.reception, patient: row.person ? { person: row.person } : null, unit: row.unit, room: row.room, destination: row.destination }));
+  const beds = bedRows.map(row => ({ ...row.bed, unit: row.unit })), occupancies = occupancyRows.map(row => ({ ...row.occupancy, bed: { ...row.bed, unit: row.unit }, patient: { person: row.person } })), observations = observationRows.map(row => ({ ...row.observation, patient: { person: row.person }, unit: row.unit, bed: row.bed }));
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { PGlite } from "@electric-sql/pglite";
 import { assertAsoProfessional, secondVacationWarning, asoCorrectionVersion } from "../src/lib/sst/aso-flow-policy";
 import { prepareAsoFlow } from "../src/lib/sst/aso-flow-registration";
 import { asoInput } from "../src/lib/sst/aso-policy";
-import type { Prisma } from "@prisma/client";
+import { createSstClinicalFixture } from "./helpers/sst-clinical-fixture";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { registerAso } from "../src/lib/sst/aso-service";
 import { correctAso, readAsoFollowUp } from "../src/lib/sst/aso-flow-service";
-import type { AppContext } from "../src/lib/platform/tenant-context";
 import { asoDocumentOwners } from "../src/lib/sst/aso-flow-access";
 import { loadEsocialSource } from "../src/lib/sst/esocial-source";
 
@@ -29,38 +30,33 @@ test("second open acquisition period uses recorded RH deadline without adding a 
 test("pre-emission refuses specialized questionnaires, wrong answer types and absent explicit RH contract", async () => {
   const input = asoInput.parse({ budgetUnitId: "ug", personId: "worker", examinerPersonId: "doctor", examinerCouncil: "CRM PR 1", kind: "PERIODICO", result: "APTO", performedAt: "2026-10-01", validUntil: "2027-10-01", programGroupId: "group", submissionKey: "2d161f17-63ca-4d57-9c87-82c4f74e4d5a", anamnesis: { questionnaireVersionId: "q", answers: { history: false, count: 0 } }, exams: [{ name: "Clínico", kind: "CLINICO", source: "REALIZADO", performedAt: "2026-10-01", validUntil: "2027-10-01", result: "Normal", professionalPersonId: "doctor", professionalCouncil: "CRM PR 1" }] });
   const q = { id: "q", budgetUnitId: "ug", discipline: "MEDICINE", questions: [{ key: "history", label: "Histórico", kind: "BOOLEAN", required: true }, { key: "count", label: "Quantidade", kind: "NUMBER", required: true }] };
-  const tx = { sstProfessionalRole: { findMany: async () => [role] }, sstQuestionnaireVersion: { findUnique: async () => q }, $queryRaw: async () => [] } as unknown as Prisma.TransactionClient;
-  const candidate = await prepareAsoFlow(tx, input, undefined);
-  assert.deepEqual(candidate.answers, { history: false, count: 0 });
-  assert.equal(candidate.functional, null);
-  await assert.rejects(prepareAsoFlow(tx, { ...input, functionalPeriodId: "period" }, undefined), /Candidato sem servidor/);
-  await assert.rejects(prepareAsoFlow(tx, input, "employee"), /vínculo funcional histórico/);
-  await assert.rejects(prepareAsoFlow(tx, { ...input, anamnesis: { ...input.anamnesis, answers: { history: "false", count: 0 } } }, undefined));
-  q.discipline = "PSYCHOLOGY";
-  await assert.rejects(prepareAsoFlow(tx, input, undefined), /Medicina/);
+  const f = await createSstClinicalFixture();
+  try {
+    await f.database.query(`INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId",discipline,council,"startsAt","endsAt","createdById") VALUES ('doctor-role','ug','doctor','MEDICINE','CRM PR 1','2026-10-01','2026-10-01','user')`);
+    await f.database.query(`INSERT INTO "SstQuestionnaireVersion" (id,"budgetUnitId",code,title,version,questions,"submissionKey","requestHash","createdById",discipline) VALUES ('q','ug','FLOW','Fluxo',1,$1,'flow','hash','user','MEDICINE'),('specialized','ug','PSY','Psicologia',1,$1,'psy','hash','user','PSYCHOLOGY')`, [JSON.stringify(q.questions)]);
+    const prepare = (value: typeof input, employee?: string) => withDatabaseTransaction(f.connection, tx => prepareAsoFlow(tx, value, employee));
+    const candidate = await prepare(input);
+    assert.deepEqual(candidate.answers, { history: false, count: 0 }); assert.equal(candidate.functional, null);
+    await assert.rejects(prepare({ ...input, functionalPeriodId: "period" }), /Candidato sem servidor/);
+    await assert.rejects(prepare(input, "employee"), /vínculo funcional histórico/);
+    await assert.rejects(prepare({ ...input, anamnesis: { ...input.anamnesis, answers: { history: "false", count: 0 } } }));
+    await assert.rejects(prepare({ ...input, anamnesis: { ...input.anamnesis, questionnaireVersionId: "specialized" } }), /Medicina/);
+  } finally { await f.close(); }
 });
 test("pre-emission returns the typed historical contract and snapshot for an employee", async () => {
   const input = asoInput.parse({ budgetUnitId: "ug", personId: "worker", functionalPeriodId: "period", examinerPersonId: "doctor", examinerCouncil: "CRM PR 1", kind: "PERIODICO", result: "APTO", performedAt: "2026-10-01", validUntil: "2027-10-01", programGroupId: "group", submissionKey: "2d161f17-63ca-4d57-9c87-82c4f74e4d5a", anamnesis: { questionnaireVersionId: "q", answers: { history: false } }, exams: [{ name: "Clínico", kind: "CLINICO", source: "REALIZADO", performedAt: "2026-10-01", validUntil: "2027-10-01", result: "Normal", professionalPersonId: "doctor", professionalCouncil: "CRM PR 1" }] });
-  const period = { id: "period", governmentEntityId: "entity", contractReference: "Contrato RH 001", employmentRegimeId: "regime", localId: "local", costCenterId: "center", startsAt: new Date("2026-01-01"), endsAt: new Date("2027-01-01"), sourceReference: "Registro oficial RH", roleId: "historical-role", departmentId: "historical-department", snapshot: { registration: "001", role: "Cargo histórico", department: "Lotação histórica" } };
-  const tx = {
-    sstProfessionalRole: { findMany: async () => [role] },
-    sstQuestionnaireVersion: { findUnique: async () => ({ id: "q", budgetUnitId: "ug", discipline: "MEDICINE", questions: [{ key: "history", label: "Histórico", kind: "BOOLEAN", required: true }] }) },
-    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
-      if (!strings.join("").includes('FROM "HrEmployeeFunctionalPeriod"')) return [];
-      assert.deepEqual(values.slice(0, 3), ["period", "employee", "ug"]);
-      return [period];
-    },
-  } as unknown as Prisma.TransactionClient;
-  const flow = await prepareAsoFlow(tx, input, "employee");
-  assert.ok(flow.functional);
-  assert.equal(flow.functional.id, "period");
-  assert.equal(flow.functional.roleId, "historical-role");
-  assert.equal(flow.functional.departmentId, "historical-department");
-  assert.equal(flow.functional.governmentEntityId, "entity");
-  assert.deepEqual(flow.functional.snapshot, period.snapshot);
+  const f = await createSstClinicalFixture();
+  try {
+    const value = { ...input, examinerCouncil: "CRM PR 123", anamnesis: { ...input.anamnesis, questionnaireVersionId: "questionnaire" }, exams: input.exams.map(exam => ({ ...exam, professionalCouncil: "CRM PR 123" })) };
+    const flow = await withDatabaseTransaction(f.connection, tx => prepareAsoFlow(tx, value, "employee"));
+    assert.ok(flow.functional); assert.equal(flow.functional.id, "period");
+    assert.equal(flow.functional.roleId, "historical-role"); assert.equal(flow.functional.departmentId, "department");
+    assert.equal(flow.functional.governmentEntityId, "entity"); assert.deepEqual(flow.functional.snapshot, { registration: "001", role: "Cargo histórico", department: "Departamento histórico" });
+    assert.equal(flow.functional.startsAt.toISOString(), "2026-01-01T00:00:00.000Z");
+  } finally { await f.close(); }
 });
 test("additive workflow migration enforces atomic source, immutable correction and exam document ownership", async () => {
-  const db = new PGlite();
+  const local = await createLocalDrizzleDatabase(), db = local.database;
   try {
     await db.exec(`CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY); CREATE TABLE "Document" (id TEXT PRIMARY KEY,"fileUrl" TEXT); CREATE TABLE "Vacation" (id TEXT PRIMARY KEY);
       CREATE TABLE "DocumentVersion" ("documentId" TEXT,"fileUrl" TEXT);
@@ -91,73 +87,55 @@ test("additive workflow migration enforces atomic source, immutable correction a
     await db.exec(`INSERT INTO "SstOccupationalExam" (id,"asoId") VALUES ('exam','legacy')`);
     await assert.rejects(db.exec(`INSERT INTO "SstAsoDocument" (id,"asoId","examId","documentId",kind,"requestHash","createdById") VALUES ('link','new','exam','doc','ORIGIN','hash','user')`), /another ASO/);
     await db.exec(`INSERT INTO "SstAsoDocument" (id,"asoId","documentId",kind,"requestHash","createdById") VALUES ('generated','new','doc','GENERATED','hash','user')`);
-    const adapter = { $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
-      const sql = strings.reduce((result, chunk, i) => result + chunk + (i < values.length ? `$${i + 1}` : ""), "");
-      return (await db.query(sql, values)).rows;
-    } } as unknown as Parameters<typeof asoDocumentOwners>[0];
-    assert.deepEqual(await asoDocumentOwners(adapter, "private:original"), [{ budgetUnitId: "ug" }]);
-    assert.deepEqual(await asoDocumentOwners(adapter, "private:old-version"), [{ budgetUnitId: "ug" }]);
-    assert.deepEqual(await asoDocumentOwners(adapter, "unrelated"), []);
+    assert.deepEqual(await asoDocumentOwners(local.connection.db, "private:original"), [{ budgetUnitId: "ug" }]);
+    assert.deepEqual(await asoDocumentOwners(local.connection.db, "private:old-version"), [{ budgetUnitId: "ug" }]);
+    assert.deepEqual(await asoDocumentOwners(local.connection.db, "unrelated"), []);
     assert.equal((await db.query(`SELECT id FROM "SstAso" WHERE id='legacy'`)).rows.length, 1);
-  } finally { await db.close(); }
+  } finally { await local.close(); }
 });
 
-function workflowContext(readOnly = false) {
-  const corrections: { id: string; requestHash: string; createdById: string }[] = [];
-  const origin = { id: "aso", budgetUnitId: "ug", personId: "worker", employeeId: "employee", createdAt: day };
-  const replacement = { ...origin, id: "successor", createdAt: new Date("2026-10-02") };
-  const tx = {
-    $queryRaw: async () => corrections,
-    $executeRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
-      if (strings.join("").includes("INSERT INTO")) corrections.push({ id: String(values[0]), requestHash: String(values[5]), createdById: String(values[6]) });
-      return 1;
-    },
-    sstAso: { findUniqueOrThrow: async () => origin, findUnique: async ({ where }: { where: { id: string } }) => where.id === "successor" ? replacement : origin },
-    auditEvent: { create: async () => ({}) },
-  };
-  const context = {
-    user: { id: "user", role: "SST", profileCode: "SST_OPERATOR", modulePermissions: [], allowedBudgetUnitIds: ["ug"], permissions: JSON.stringify({ modules: { SST: { update: true } } }) },
-    prisma: { sstAso: tx.sstAso, sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess: !readOnly }) }, $transaction: async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx) },
-  } as unknown as AppContext;
-  return { context, corrections };
+async function workflowContext() {
+  const local = await createSstClinicalFixture();
+  const raw = { budgetUnitId: "ug", personId: "worker", functionalPeriodId: "period", programGroupId: "pg", examinerPersonId: "doctor", examinerCouncil: "CRM PR 123", kind: "PERIODICO", result: "APTO", performedAt: "2026-10-01", validUntil: "2027-10-01", submissionKey: "2d161f17-63ca-4d57-9c87-82c4f74e4d5a", anamnesis: { questionnaireVersionId: "questionnaire", answers: { history: false } }, exams: [{ name: "Clínico", kind: "CLINICO", source: "REALIZADO", performedAt: "2026-10-01", validUntil: "2027-10-01", result: "Normal", professionalPersonId: "doctor", professionalCouncil: "CRM PR 123" }] };
+  const asoId = await registerAso(local.context, raw);
+  const issue = (submissionKey: string) => registerAso(local.context, { ...raw, submissionKey });
+  return { ...local, asoId, issue };
 }
 test("correction retry never mutates or duplicates issued origins, and clinical reader cannot correct", async () => {
-  const raw = { asoId: "aso", kind: "ANNULMENT", reason: "Justificativa registrada", submissionKey: "2d161f17-63ca-4d57-9c87-82c4f74e4d5a" };
-  const fixture = workflowContext();
-  assert.equal(await correctAso(fixture.context, raw), raw.submissionKey);
-  assert.equal(await correctAso(fixture.context, raw), raw.submissionKey);
-  assert.equal(fixture.corrections.length, 1);
-  await assert.rejects(correctAso(fixture.context, { ...raw, reason: "Justificativa alterada" }), /já corrigido/);
-  const reader = workflowContext(true);
-  await assert.rejects(correctAso(reader.context, raw), /clínica/);
-  assert.equal(reader.corrections.length, 0);
+  const f = await workflowContext();
+  try {
+    const raw = { asoId: f.asoId, kind: "ANNULMENT", reason: "Justificativa registrada", submissionKey: "2d161f17-63ca-4d57-9c87-82c4f74e4d5a" };
+    await f.database.exec('UPDATE "SstAccessGrant" SET "canAssess"=false');
+    await assert.rejects(correctAso(f.context, raw), /clínica/);
+    assert.equal((await f.database.query('SELECT id FROM "SstAsoCorrection"')).rows.length, 0);
+    await f.database.exec('UPDATE "SstAccessGrant" SET "canAssess"=true');
+    assert.equal(await correctAso(f.context, raw), raw.submissionKey);
+    assert.equal(await correctAso(f.context, raw), raw.submissionKey);
+    assert.equal((await f.database.query('SELECT id FROM "SstAsoCorrection"')).rows.length, 1);
+    await assert.rejects(correctAso(f.context, { ...raw, reason: "Justificativa alterada" }), /já corrigido/);
+  } finally { await f.close(); }
 });
 test("follow-up checks UG clinical authorization before fetching records, slots, deadlines or GED links", async () => {
-  let queried = false;
-  const { context } = workflowContext();
-  context.prisma = { sstAso: { findUnique: async () => ({ budgetUnitId: "other" }) }, $queryRaw: async () => { queried = true; return []; } } as unknown as AppContext["prisma"];
-  await assert.rejects(readAsoFollowUp(context, "aso"), /Unidade Gestora/);
-  assert.equal(queried, false);
+  const f = await workflowContext();
+  try {
+    f.context.user.allowedBudgetUnitIds = [];
+    await f.database.exec('ALTER TABLE "SstAsoFlowSettings" RENAME TO "HiddenSettings"');
+    await assert.rejects(readAsoFollowUp(f.context, f.asoId), /Unidade Gestora/);
+  } finally { await f.close(); }
 });
 test("ASO correction changes eSocial source hash/version and preserves predecessor provenance on successor", async () => {
-  const { context } = workflowContext();
-  let correction: { id: string; kind: string; replacementAsoId: string | null; requestHash: string } | undefined;
-  let predecessor: { id: string; asoId: string; requestHash: string } | undefined = undefined;
-  context.prisma = {
-    sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true }) },
-    sstDisciplineGrant: { findUnique: async () => ({ isActive: true, canRead: true }) },
-    sstAso: { findFirst: async () => ({ id: "aso", employeeId: "employee", budgetUnitId: "ug", requestHash: "issued-hash", kind: "PERIODICO", result: "APTO", performedAt: day, examinerCouncil: "CRM PR 1", snapshot: { cpf: "12345678901", registration: "123", examinerName: "Médico" }, exams: [] }) },
-    $queryRaw: async (strings: TemplateStringsArray) => strings.join("").includes('WHERE "replacementAsoId"=') ? predecessor ? [predecessor] : [] : correction ? [correction] : [],
-  } as unknown as AppContext["prisma"];
-  const original = await loadEsocialSource(context, "S2220", "aso", "ug");
-  correction = { id: "correction", kind: "ANNULMENT", replacementAsoId: null, requestHash: "correction-hash" };
-  const annulled = await loadEsocialSource(context, "S2220", "aso", "ug");
-  assert.notEqual(original.sourceVersion, annulled.sourceVersion);
-  assert.notEqual(original.sourceHash, annulled.sourceHash);
-  assert.ok(annulled.missing.some((m) => m.includes("ASO anulado")));
-  correction = undefined;
-  predecessor = { id: "predecessor", asoId: "original-aso", requestHash: "predecessor-hash" };
-  const successor = await loadEsocialSource(context, "S2220", "aso", "ug");
-  assert.notEqual(original.sourceVersion, successor.sourceVersion);
-  assert.ok(successor.missing.some((m) => m.includes("original-aso")));
+  const f = await workflowContext();
+  try {
+    const original = await loadEsocialSource(f.context, "S2220", f.asoId, "ug");
+    await correctAso(f.context, { asoId: f.asoId, kind: "ANNULMENT", reason: "Anulação fundamentada", submissionKey: "3d161f17-63ca-4d57-9c87-82c4f74e4d5a" });
+    const annulled = await loadEsocialSource(f.context, "S2220", f.asoId, "ug");
+    assert.notEqual(original.sourceVersion, annulled.sourceVersion); assert.notEqual(original.sourceHash, annulled.sourceHash);
+    assert.ok(annulled.missing.some(m => m.includes("ASO anulado")));
+    const predecessorId = await f.issue("4d161f17-63ca-4d57-9c87-82c4f74e4d5a"), successorId = await f.issue("5d161f17-63ca-4d57-9c87-82c4f74e4d5a");
+    const before = await loadEsocialSource(f.context, "S2220", successorId, "ug");
+    await correctAso(f.context, { asoId: predecessorId, kind: "RECTIFICATION", replacementAsoId: successorId, reason: "Retificação fundamentada", submissionKey: "6d161f17-63ca-4d57-9c87-82c4f74e4d5a" });
+    const successor = await loadEsocialSource(f.context, "S2220", successorId, "ug");
+    assert.notEqual(before.sourceVersion, successor.sourceVersion); assert.notEqual(before.sourceHash, successor.sourceHash);
+    assert.ok(successor.missing.some(m => m.includes(predecessorId)));
+  } finally { await f.close(); }
 });

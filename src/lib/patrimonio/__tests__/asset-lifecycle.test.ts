@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AssetLifecycleError, calculateAssetDisposal, calculateAssetValueAdjustment, calculateStraightLineDepreciation, normalizeReferenceMonth, recordAssetDisposal } from "../asset-lifecycle";
+import { assets, assetIntegrationPendingConfigurations, assetWriteOffs } from "@/db/schema/assets";
+import { createAssetsFixture } from "./drizzle-fixture";
 
 test("calculates straight-line depreciation and absorbs rounding in the final competence", () => {
   assert.equal(calculateStraightLineDepreciation({ acquisitionValue: 100, bookValue: 100, lifeSpanMonths: 3, periodNumber: 1 }), 33.33);
@@ -36,35 +38,32 @@ test("rejects unsafe asset value adjustments", () => {
 });
 
 test("records a configuration pending item instead of faking disposal accounting", async () => {
-  const pending: Array<Record<string, unknown>> = [];
-  let status = "Ativo";
-  const transaction = {
-    $queryRaw: async () => [{ id: "asset-1" }],
-    assetValueAdjustment: { findFirst: async () => null },
-    assetValueHistory: { findFirst: async () => null },
-    asset: {
-      findUnique: async () => ({ id: "asset-1", status, acquisitionDate: new Date("2026-01-01"), currentValue: 75, maintenances: [] }),
-      update: async ({ data }: { data: { status: string } }) => { status = data.status; },
-    },
-    assetWriteOff: {
-      findFirst: async () => null,
-      create: async ({ data }: { data: Record<string, unknown> }) => ({ id: "write-off-1", date: data.date, gainLoss: data.gainLoss }),
-    },
-    assetIntegrationPendingConfiguration: {
-      create: async ({ data }: { data: Record<string, unknown> }) => { pending.push(data); return data; },
-    },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
+  const f = await createAssetsFixture();
+  try {
+    await f.connection.db.insert(assets).values({ id: "asset-1", patrimonyNumber: "PAT00001", name: "Equipamento", acquisitionDate: new Date("2026-01-01T12:00:00Z"), acquisitionValue: 100, currentValue: 75, categoryId: "asset-category" });
+    const input = { assetId: "asset-1", date: new Date("2026-08-01T12:00:00.000Z"), type: "Alienação" as const, reason: "Leilão", justification: "Processo 1", disposalValue: 100 };
+    const result = await recordAssetDisposal(f.connection, input);
+    assert.equal(result.integration.pending, true);
+    assert.equal((await f.connection.db.select().from(assets))[0].status, "Baixado");
+    const [pending] = await f.connection.db.select().from(assetIntegrationPendingConfigurations);
+    assert.equal(pending.assetWriteOffId, result.id);
+    assert.equal(pending.expectedEventCode, "ASSET_DISPOSAL_GAIN");
+    assert.equal(pending.reason, "A baixa não possui servidor responsável apto a postar o evento contábil.");
+    assert.equal(result.gainLoss, 25);
+    await assert.rejects(recordAssetDisposal(f.connection, input), /baixado ou inativo/);
+    assert.equal((await f.connection.db.select().from(assetWriteOffs)).length, 1);
+  } finally { await f.close(); }
+});
 
-  const result = await recordAssetDisposal(database as never, {
-    assetId: "asset-1", date: new Date("2026-08-01T12:00:00.000Z"), type: "Alienação", reason: "Leilão", justification: "Processo 1", disposalValue: 100,
-  });
-
-  assert.equal(result.integration.pending, true);
-  assert.equal(status, "Baixado");
-  assert.deepEqual(pending[0], {
-    assetWriteOffId: "write-off-1",
-    expectedEventCode: "ASSET_DISPOSAL_GAIN",
-    reason: "A baixa não possui servidor responsável apto a postar o evento contábil.",
-  });
+test("Drizzle disposal rolls back its history and pending integration when asset update fails", async () => {
+  const f = await createAssetsFixture();
+  try {
+    await f.connection.db.insert(assets).values({ id: "asset-1", patrimonyNumber: "PAT00001", name: "Equipamento", acquisitionDate: new Date("2026-01-01T12:00:00Z"), acquisitionValue: 100, currentValue: 75, categoryId: "asset-category" });
+    await f.pg.exec(`CREATE FUNCTION fail_asset_disposal() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'asset unavailable'; END $$;
+      CREATE TRIGGER fail_asset_disposal BEFORE UPDATE ON "Asset" FOR EACH ROW EXECUTE FUNCTION fail_asset_disposal();`);
+    await assert.rejects(recordAssetDisposal(f.connection, { assetId: "asset-1", date: new Date("2026-08-01T12:00:00Z"), type: "Baixa", reason: "Perda", justification: "Processo 2" }));
+    assert.equal((await f.connection.db.select().from(assets))[0].status, "Ativo");
+    assert.equal((await f.connection.db.select().from(assetWriteOffs)).length, 0);
+    assert.equal((await f.connection.db.select().from(assetIntegrationPendingConfigurations)).length, 0);
+  } finally { await f.close(); }
 });

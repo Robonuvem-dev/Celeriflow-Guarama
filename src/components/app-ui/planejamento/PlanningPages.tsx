@@ -10,7 +10,10 @@ import { PlanningForm, type PlanningField } from "./PlanningForm";
 import { PlanningMovementHistory } from "./PlanningMovementHistory";
 import { PlanningVersionPage } from "./PlanningVersionPage";
 import { planningManagementSections } from "./PlanningManagementPage";
-import { getPlanningContext, planningEntityWhere, planningUnitWhere } from "@/lib/planejamento/access";
+import { getPlanningContext } from "@/lib/planejamento/access";
+import { pageDatabase, pageEntityOptions, pageUnitOptions } from "@/db/repositories/planning-pages/shared";
+import { pageCounterparties, pageEntities, pageParentOptions, pagePrograms } from "@/db/repositories/planning-pages/navigation";
+import { pageClassifiers, pagePublishedCatalogs } from "@/db/repositories/planning-pages/catalogs";
 import { getPlanningInstrument, listPlanningInstruments } from "@/lib/planejamento/service";
 import { planningBasePath, type PlanningJurisdiction } from "@/lib/planejamento/policy";
 import { canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
@@ -38,12 +41,8 @@ export async function PlanningDashboard({ jurisdiction }: { jurisdiction: Planni
 
 export async function PlanningEntitiesPage({ jurisdiction }: { jurisdiction: PlanningJurisdiction }) {
   const context = await getPlanningContext(jurisdiction);
-  const entities = await context.prisma.governmentEntity.findMany({ where: planningEntityWhere(context), include: { planningUnits: { where: isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } }, include: { budgetUnit: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }] });
   const admin = isSystemAdministrator(context.user) && canPerformModuleOperation(context.user, "PLANEJAMENTO", "update");
-  const [allEntities, units] = admin ? await Promise.all([
-    context.prisma.governmentEntity.findMany({ where: { status: "ATIVA" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    context.prisma.budgetUnit.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-  ]) : [[], []];
+  const { entities, allEntities, units } = await pageEntities(pageDatabase(context), context, admin);
   return <PageFrame className="space-y-3 p-3"><PageHeader title="Entidades e unidades orçamentárias" />
     <Card><CardContent className="pt-3">{entities.map((entity) => <section key={entity.id} className="border-b py-3"><h2 className="font-semibold">{entity.name}</h2><p className="text-sm text-muted-foreground">{entity.planningUnits.map((unit) => unit.budgetUnit.name).join(" · ") || "Nenhuma unidade vinculada"}</p></section>)}{!entities.length && <p className="text-sm">Nenhuma entidade autorizada vinculada nesta área.</p>}</CardContent></Card>
     {admin && <Card><CardHeader><CardTitle>Vincular entidade e unidade</CardTitle></CardHeader><CardContent><PlanningForm jurisdiction={jurisdiction} operation="scope" fields={[field("governmentEntityId", "Entidade", { type: "select", options: allEntities }), field("budgetUnitId", "Unidade orçamentária", { type: "select", options: units })]} /></CardContent></Card>}
@@ -57,12 +56,12 @@ export async function PlanningInstrumentsPage({ jurisdiction, kind, filters }: {
   const base = `${planningBasePath(jurisdiction)}/${kind}`;
   const [data, entities, parents] = await Promise.all([
     listPlanningInstruments(context, { ...filters, kind: kind.toUpperCase() }),
-    context.prisma.governmentEntity.findMany({ where: planningEntityWhere(context), select: { id: true, name: true }, orderBy: { name: "asc" }, take: 20 }),
-    kind === "ppa" ? Promise.resolve([]) : context.prisma.planningInstrument.findMany({ where: { governmentEntity: planningEntityWhere(context), kind: kind === "ldo" ? "PPA" : "LDO" }, select: { id: true, title: true, governmentEntity: { select: { name: true } } }, orderBy: [{ startYear: "desc" }, { id: "asc" }], take: 20 }),
+    pageEntityOptions(pageDatabase(context), context, 20),
+    kind === "ppa" ? Promise.resolve([]) : pageParentOptions(pageDatabase(context), context, kind === "ldo" ? "PPA" : "LDO"),
   ]);
   const href = (page: number) => `${base}?${new URLSearchParams({ q: filters.q ?? "", entityId: filters.entityId ?? "", page: String(page) })}`;
   const fields: PlanningField[] = [field("governmentEntityId", "Entidade", { type: "select", options: entities }), field("code", "Código / número"), field("title", "Título"), field("startYear", "Exercício inicial", { type: "number" }), field("endYear", "Exercício final", { type: "number" }), field("revenueDegree", "Grau da receita", { type: "number", value: "6" }), field("expenseLevel", "Detalhamento da despesa", { type: "select", value: "ELEMENT_SOURCE", options: [{ id: "ELEMENT_SOURCE", name: "Elemento e fonte de recursos" }, { id: "SOURCE", name: "Fonte de recursos" }] }), field("projectNumber", "Projeto de lei", { required: false }), field("legalText", "Texto jurídico", { type: "textarea", required: false })];
-  const catalogs = await context.prisma.planningCatalogVersion.findMany({ where: { status: "PUBLISHED", entries: { some: { kind: { in: ["SOURCE", "REVENUE", "EXPENSE"] } } } }, select: { id: true, year: true, label: true }, orderBy: [{ year: "desc" }, { id: "asc" }], take: 20 });
+  const catalogs = await pagePublishedCatalogs(pageDatabase(context));
   fields.push(field("expenseDegree", "Grau da despesa", { type: "number", value: "6" }), field("catalogVersionId", "Catálogo normativo vigente", { type: "select", required: false, options: catalogs.map((catalog) => ({ id: catalog.id, name: `${catalog.year} · ${catalog.label}` })) }));
   if (kind !== "ppa") fields.push(field("parentId", kind === "ldo" ? "PPA vinculado" : "LDO vinculada", { type: "select", options: parents.map((row) => ({ id: row.id, name: `${row.governmentEntity.name} · ${row.title}` })) }));
   return <PageFrame className="space-y-3 p-3"><PageHeader title={labels[key]} />
@@ -79,13 +78,12 @@ export async function PlanningDetailPage({ jurisdiction, kind, id, page, asOf, m
   if (data.instrument.kind.toLowerCase() !== kind) notFound();
   const base = `${planningBasePath(jurisdiction)}/${kind}`;
   const ppaId = data.instrument.multiYearPlanId ?? data.instrument.parent?.multiYearPlanId ?? data.instrument.parent?.parent?.multiYearPlanId;
-  const [units, sources, revenues, expenses, programs, counterparties] = await Promise.all([
-    context.prisma.budgetUnit.findMany({ where: { ...planningUnitWhere(context), planningEntityUnit: { is: { governmentEntityId: data.instrument.governmentEntityId } } }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 20 }),
-    context.prisma.resourceSource.findMany({ select: { id: true, name: true }, orderBy: { code: "asc" }, take: 20 }),
-    context.prisma.revenueNature.findMany({ select: { id: true, name: true }, orderBy: { code: "asc" }, take: 20 }),
-    context.prisma.expenseNature.findMany({ select: { id: true, name: true }, orderBy: { code: "asc" }, take: 20 }),
-    ppaId ? context.prisma.programPPA.findMany({ where: { multiYearPlanId: ppaId }, include: { actions: { take: 20, orderBy: { code: "asc" } }, objectives: { take: 20, include: { indicators: { take: 20 } } } }, orderBy: { code: "asc" }, take: 20 }) : Promise.resolve([]),
-    context.prisma.governmentEntity.findMany({ where: { status: "ATIVA", id: { not: data.instrument.governmentEntityId } }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 20 }),
+  const database = pageDatabase(context);
+  const [units, { sources, revenues, expenses }, programs, counterparties] = await Promise.all([
+    pageUnitOptions(database, context, data.instrument.governmentEntityId, 20),
+    pageClassifiers(database, 20),
+    ppaId ? pagePrograms(database, ppaId) : Promise.resolve([]),
+    pageCounterparties(database, data.instrument.governmentEntityId),
   ]);
   const canCreate = canPerformModuleOperation(context.user, "PLANEJAMENTO", "create") && (data.instrument.multiYearPlan?.status ?? data.instrument.budgetGuideline?.status ?? data.instrument.annualBudgetLaw?.status) === "DRAFT";
   const canRevise = canPerformModuleOperation(context.user, "PLANEJAMENTO", "update") && ["SANCTIONED", "PUBLISHED"].includes(data.instrument.multiYearPlan?.status ?? data.instrument.budgetGuideline?.status ?? data.instrument.annualBudgetLaw?.status ?? "");

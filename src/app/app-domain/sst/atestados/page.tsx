@@ -2,13 +2,14 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { listCertificatesWithFunctionalFilters, type CertificateFunctionalFilters } from "@/lib/sst/functional-certificate-list";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
 
 export default async function SstCertificatesPage({ searchParams }: { searchParams: Promise<CertificateFunctionalFilters> }) {
   const context = await getTenantContextForModule("SST");
   const filters = await searchParams;
   const { records, total, page, regimes, locals, centers } = await listCertificatesWithFunctionalFilters(context, filters);
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
+  const units = await listSstUnits(sstDatabase(context), context);
   const href = (value: number) => `/sst/atestados?${new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter((entry): entry is [string, string] => !!entry[1])), page: String(value) })}`;
   return <div className="space-y-4 p-4">
     <header className="flex flex-wrap items-center justify-between gap-2"><h1 className="text-xl font-semibold">Atestados ocupacionais</h1><Link className="rounded bg-teal-700 px-3 py-2 text-sm text-white" href="/sst/atestados/novo">Registrar atestado</Link></header>

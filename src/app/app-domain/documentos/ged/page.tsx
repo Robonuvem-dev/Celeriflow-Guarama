@@ -4,6 +4,8 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import GEDClient from "./GEDClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listGedDocuments, listGedFolders, listGedSelectors, readGedFolder } from "@/db/repositories/documents/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -12,67 +14,28 @@ export default async function GEDPage({
 }: {
   searchParams: Promise<{ folderId?: string; view?: string }>;
 }) {
-  const { prisma } = await getTenantContextForModule("DOCUMENTOS");
+  await getTenantContextForModule("DOCUMENTOS");
   const resolved = await searchParams;
   const currentFolderId = resolved?.folderId || null;
   const view = resolved?.view || null;
-  const [documentClasses, signers] = await Promise.all([
-    prisma.documentClass.findMany({
-      where: { isActive: true },
-      select: { code: true, label: true, signaturePolicy: true },
-      orderBy: { label: "asc" },
-    }),
-    prisma.usuario.findMany({
-      where: { ativo: true },
-      select: { id: true, nome: true, email: true },
-      orderBy: { nome: "asc" },
-    }),
-  ]);
+  const { documentClasses, signers } = await listGedSelectors(db);
 
   // Current folder metadata
   let currentFolder = null;
   if (currentFolderId) {
-    currentFolder = await prisma.folder.findUnique({
-      where: { id: currentFolderId },
-      include: { parent: true },
-    });
+    currentFolder = await readGedFolder(db, currentFolderId);
   }
 
   // All root folders for sidebar
-  const rootFolders = await prisma.folder.findMany({
-    where: { parentId: null },
-    include: { _count: { select: { documents: true, children: true } } },
-    orderBy: { name: "asc" },
-  });
+  const rootFolders = await listGedFolders(db, null);
 
   // Folders to show in main grid
   const displayFolders = currentFolderId
-    ? await prisma.folder.findMany({
-        where: { parentId: currentFolderId },
-        include: { _count: { select: { documents: true, children: true } } },
-        orderBy: { name: "asc" },
-      })
+    ? await listGedFolders(db, currentFolderId)
     : rootFolders;
 
   // Documents query based on view/folder
-  let documents;
-  if (currentFolderId) {
-    documents = await prisma.document.findMany({
-      where: { folderId: currentFolderId },
-      orderBy: { createdAt: "desc" },
-    });
-  } else if (view === "recentes") {
-    documents = await prisma.document.findMany({
-      where: { documentType: { not: "Modelo" } },
-      orderBy: { createdAt: "desc" },
-    });
-  } else {
-    // Root: show docs without folder (any status except Modelo)
-    documents = await prisma.document.findMany({
-      where: { folderId: null, documentType: { not: "Modelo" } },
-      orderBy: { createdAt: "desc" },
-    });
-  }
+  const documents = await listGedDocuments(db, currentFolderId, view === "recentes");
 
   return (
     <PageFrame className="h-full space-y-2 overflow-y-auto">

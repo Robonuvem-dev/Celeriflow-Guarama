@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { insertPublicationUpload, readPublication } from "@/db/repositories/transparency/publications";
 import { getFile, getBlobDocumentPrefix } from "@/lib/platform/blob";
 import { publicationMetadataSchema,isTransparencyCollectionEnabled } from "./publication-policy";
 import {getTransparencySettings} from "./presentation-settings";
@@ -18,16 +19,16 @@ export function validatePublicFileBytes(bytes: Uint8Array, contentType: string) 
   if (contentType === "image/jpeg" && data.subarray(0, 3).toString("hex") !== "ffd8ff") throw new Error("JPEG inválido.");
   if (contentType === "application/zip" && data.subarray(0, 2).toString() !== "PK") throw new Error("ZIP inválido.");
 }
-export async function registerPublicationUpload(db: PrismaClient, data: { uploadId: string; userId: string; url: string; pathname: string; filename: string; metadata: unknown }) {
+export async function registerPublicationUpload(db: DatabaseExecutor, data: { uploadId: string; userId: string; url: string; pathname: string; filename: string; metadata: unknown }) {
   const metadata = publicationMetadataSchema.parse(data.metadata);
   const settings=await getTransparencySettings(db);if(!isTransparencyCollectionEnabled(metadata.collectionSlug,settings)||!settings.availableYears.includes(metadata.year))throw new Error("Consulta ou exercício não publicado na configuração.");
   if (!data.pathname.startsWith(publicationUploadPrefix(data.userId, data.uploadId))) throw new Error("Arquivo fora do upload autorizado.");
-  const existing = await db.transparencyPublication.findUnique({ where: { id: data.uploadId } });
+  const existing = await readPublication(db, data.uploadId);
   if (existing) { if (existing.filePathname !== data.pathname) throw new Error("Identidade de upload divergente."); return existing; }
   const file = await getFile(data.url);
   if (!file || file.blob.pathname !== data.pathname) throw new Error("Arquivo ainda não confirmado no Vercel Blob. Tente confirmar novamente.");
   const contentType = (file.blob.contentType || "").split(";")[0];
   const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
   validatePublicFileBytes(bytes, contentType);
-  return db.transparencyPublication.upsert({ where: { id: data.uploadId }, update: {}, create: { id: data.uploadId, ...metadata, source: "DOCUMENTOS", values: { origin: "Upload municipal no Vercel Blob", name: metadata.title, uploadedBy: data.userId, sizeBytes: bytes.length }, fileUrl: data.url, filePathname: data.pathname, filename: data.filename, contentType, sha256: createHash("sha256").update(bytes).digest("hex") } });
+  return insertPublicationUpload(db, { id: data.uploadId, ...metadata, order: 0, values: { origin: "Upload municipal no Vercel Blob", name: metadata.title, uploadedBy: data.userId, sizeBytes: bytes.length }, fileUrl: data.url, filePathname: data.pathname, filename: data.filename, contentType, sha256: createHash("sha256").update(bytes).digest("hex") });
 }

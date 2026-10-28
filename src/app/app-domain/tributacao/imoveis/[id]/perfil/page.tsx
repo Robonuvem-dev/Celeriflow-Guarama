@@ -3,26 +3,28 @@ import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform
 import { propertyProfileSchema, propertyRegistrationPolicySchema } from "@/lib/tributacao/property-profile-schema";
 import PropertyProfileClient from "./PropertyProfileClient";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
+import { db } from "@/db/client";
+import { listFiscalPlanningUnits, listFiscalProperties, listFiscalProcessOptions, listFiscalDocumentOptions } from "@/db/repositories/taxation-pages/lookups";
+import { listFiscalEntries, listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
 
 export const dynamic = "force-dynamic";
 export default async function PropertyProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
-  const property = await prisma.realEstate.findUnique({ where: { id } }); if (!property) notFound();
+  const { id } = await params; const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
+  const property = (await listFiscalProperties(database, { ids: [id], limit: 1 }))[0]; if (!property) notFound();
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const scope = allowed ? { OR: allowed.map(budgetUnitId => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {};
   const [entry, units, policies, taxpayers, properties, processes, documents] = await Promise.all([
-    prisma.taxRegistryEntry.findFirst({ where: { entityType: "REAL_ESTATE", entityId: id, category: "PROPERTY_PROFILE" }, orderBy: { version: "desc" } }),
-    prisma.planningEntityUnit.findMany({ where: allowed ? { budgetUnitId: { in: allowed } } : {}, include: { governmentEntity: true, budgetUnit: true } }),
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "BUDGET_UNIT", category: "PROPERTY_REGISTRATION_POLICY", ...scope }, orderBy: { version: "desc" } }),
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, select: { id: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } } }, take: 1000 }),
-    prisma.realEstate.findMany({ where: { id: { not: id } }, select: { id: true, municipalInsc: true, propertyType: true }, take: 1000 }),
-    prisma.process.findMany({ select: { id: true, protocolNumber: true }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.document.findMany({ where: { status: "Válido" }, select: { id: true, title: true }, take: 200 }),
+    listFiscalEntries(database, { entityType: "REAL_ESTATE", entityIds: [id], categories: ["PROPERTY_PROFILE"], limit: 1 }).then(rows => rows[0]),
+    listFiscalPlanningUnits(database, allowed),
+    listFiscalEntries(database, { entityType: "BUDGET_UNIT", categories: ["PROPERTY_REGISTRATION_POLICY"], allowedBudgetUnitIds: allowed }),
+    listPageTaxpayers(database, { active: true, limit: 1000 }),
+    listFiscalProperties(database, { excludeId: id, limit: 1000 }),
+    listFiscalProcessOptions(database),
+    listFiscalDocumentOptions(database),
   ]);
   const profile = entry ? propertyProfileSchema.parse(entry.data) : null;
   if (profile && allowed && !allowed.includes(profile.budgetUnitId)) notFound();
   if (profile) {
-    const ownership = await prisma.taxRegistryEntry.findFirst({ where: { entityType: "REAL_ESTATE", entityId: id, category: "FISCAL_OWNERSHIP", status: "ATIVO" }, orderBy: { version: "desc" } });
+    const ownership = (await listFiscalEntries(database, { entityType: "REAL_ESTATE", entityIds: [id], categories: ["FISCAL_OWNERSHIP"], status: "ATIVO", limit: 1 }))[0];
     const data = taxScopeSnapshot(ownership?.data);
     if (Array.isArray(data.owners)) profile.owners = propertyProfileSchema.shape.owners.parse(data.owners.map(owner => { const value = taxScopeSnapshot(owner); return { taxpayerId: value.taxpayerId, sharePercent: value.sharePercent, primary: value.taxpayerId === property.taxpayerId }; }));
   }

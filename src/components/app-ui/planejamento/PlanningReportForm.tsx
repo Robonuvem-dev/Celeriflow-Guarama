@@ -1,5 +1,7 @@
 import { planningReportCatalog } from "@/lib/planejamento/report-catalog";
-import { planningInstrumentWhere, planningLineWhere, planningUnitWhere, type PlanningContext } from "@/lib/planejamento/access";
+import type { PlanningContext } from "@/lib/planejamento/access";
+import { pageReportOptions } from "@/db/repositories/planning-pages/management";
+import { pageDatabase, pageUnitOptions } from "@/db/repositories/planning-pages/shared";
 import { planningBasePath } from "@/lib/planejamento/policy";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanningReportSubmission } from "./PlanningReportSubmission";
@@ -8,12 +10,10 @@ import { canDecidePlanningLegally } from "@/lib/planejamento/access";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
 
 export async function PlanningReportForm({ context, instrumentId, creditId }: { context: PlanningContext; instrumentId: string; creditId?: string }) {
-  const [pieces, units, sources, dimensions, credits] = await Promise.all([
-    context.prisma.planningInstrument.findMany({ where: planningInstrumentWhere(context), select: { id: true, title: true, kind: true, governmentEntity: { select: { name: true } } }, orderBy: [{ startYear: "desc" }, { id: "asc" }], take: 20 }),
-    context.prisma.budgetUnit.findMany({ where: planningUnitWhere(context), select: { id: true, name: true }, orderBy: { name: "asc" }, take: 20 }),
-    context.prisma.resourceSource.findMany({ select: { id: true, name: true }, orderBy: { code: "asc" }, take: 20 }),
-    context.prisma.planningBudgetLine.findMany({ where: { instrumentId, ...planningLineWhere(context) }, distinct: ["programId", "actionId"], select: { program: { select: { id: true, name: true } }, action: { select: { id: true, name: true } } }, take: 20 }),
-    context.prisma.planningCreditBatch.findMany({ where: { instrumentId, items: { every: { line: planningLineWhere(context) } } }, select: { id: true, creditRequest: { select: { number: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20 }),
+  const database = pageDatabase(context);
+  const [{ pieces, dimensions, credits, sources }, units] = await Promise.all([
+    pageReportOptions(database, context, instrumentId),
+    pageUnitOptions(database, context, undefined, 20),
   ]);
   const selectedKind = pieces.find((piece) => piece.id === instrumentId)?.kind;
   const programs = [...new Map(dimensions.filter((row) => row.program).map((row) => [row.program!.id, row.program!])).values()];

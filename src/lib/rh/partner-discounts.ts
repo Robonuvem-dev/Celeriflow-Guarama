@@ -1,53 +1,67 @@
-import { Prisma } from "@prisma/client";
+import { db, databaseConnection } from "@/db/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import type { ExternalOperationsContext, ExternalPayrollMovement, PartnerDiscountAgreement, PartnerDiscountGrant } from "@/lib/contracts/personnel-external-operations";
+import { requirePayrollRule } from "@/db/repositories/personnel/workforce";
+import { findPartnerInstallment, findPartnerPayrollScope, markPartnerEventProcessed, readPartnerAgreements, readPartnerContractOptions, readPartnerPortalRules, readPartnerUnits, requirePartnerContract, requirePartnerReferenceRun, requirePartnerUnit } from "@/db/repositories/personnel-external-operations/partners";
 import { z } from "zod";
-import { AccessError, type AppContext } from "@/lib/platform/tenant-context";
+import { AccessError } from "@/lib/platform/access-error";
 import { reserveConsignmentAgreementInTransaction, postConsignmentInstallment } from "./consignment-service";
-import { enqueueHrIntegration } from "./workforce-service";
+import { enqueueHrIntegration } from "@/db/repositories/personnel/integration";
+
+function partnerConnection(context: ExternalOperationsContext, connection: DatabaseConnection): DatabaseConnection {
+  if (context.database && context.database !== connection.db) throw new Error("A conexão do convenente deve corresponder ao banco do contexto.");
+  return connection;
+}
 
 export const partnerDiscountPolicySchema = z.object({ origin: z.literal("DESCONTOS_CONVENENTES"), budgetUnitId: z.string().min(1), actorUserIds: z.array(z.string().min(1)).min(1), supplierId: z.string().min(1), contractIds: z.array(z.string().min(1)).min(1), sourceRunId: z.string().min(1), consignmentRuleId: z.string().min(1), rubricCode: z.string().min(1), payrollIds: z.array(z.string().min(1)), instructions: z.string().max(4000) }).strict();
 
-export async function listOwnPartnerDiscountGrants(context: AppContext) {
+async function readOwnPartnerDiscountGrants(executor: DatabaseExecutor, userId: string): Promise<PartnerDiscountGrant[]> {
   const now = new Date();
-  const rules = await context.prisma.hrPayrollRule.findMany({ where: { category: "PORTAL", valueType: "JSON", isActive: true, ruleSet: { status: "ATIVA", effectiveFrom: { lte: now }, OR: [{ effectiveUntil: null }, { effectiveUntil: { gte: now } }] } }, orderBy: { name: "asc" } });
-  const grants = rules.flatMap(rule => { const policy = partnerDiscountPolicySchema.safeParse(rule.value); return policy.success && policy.data.actorUserIds.includes(context.user.id) ? [{ id: rule.id, name: rule.name, policy: policy.data }] : []; });
-  const contracts = await context.prisma.hrEmploymentContract.findMany({ where: { id: { in: [...new Set(grants.flatMap(grant => grant.policy.contractIds))] }, employee: { isActive: true } }, select: { id: true, registration: true, employee: { select: { name: true, secretariatId: true } } } });
-  const units = await context.prisma.budgetUnit.findMany({ where: { id: { in: [...new Set(grants.map(grant => grant.policy.budgetUnitId))] } }, select: { id: true, secretariatId: true } });
+  const rules = await readPartnerPortalRules(executor, now);
+  const grants = rules.flatMap(rule => { const policy = partnerDiscountPolicySchema.safeParse(rule.value); return policy.success && policy.data.actorUserIds.includes(userId) ? [{ id: rule.id, name: rule.name, policy: policy.data }] : []; });
+  const contracts = await readPartnerContractOptions(executor, [...new Set(grants.flatMap(grant => grant.policy.contractIds))]);
+  const units = await readPartnerUnits(executor, [...new Set(grants.map(grant => grant.policy.budgetUnitId))]);
   return grants.map(grant => ({ ...grant, contracts: contracts.filter(contract => grant.policy.contractIds.includes(contract.id) && contract.employee.secretariatId === units.find(unit => unit.id === grant.policy.budgetUnitId)?.secretariatId).map(contract => ({ id: contract.id, label: `${contract.registration} · ${contract.employee.name}` })) }));
 }
 
-export async function reservePartnerDiscount(context: AppContext, raw: unknown) {
+export async function listOwnPartnerDiscountGrants(context: ExternalOperationsContext): Promise<PartnerDiscountGrant[]> {
+  return readOwnPartnerDiscountGrants(context.database ?? db, context.user.id);
+}
+
+export async function reservePartnerDiscount(context: ExternalOperationsContext, raw: unknown, connection: DatabaseConnection = databaseConnection): Promise<string> {
   const input = z.object({ grantId: z.string().min(1), contractId: z.string().min(1), requestKey: z.uuid(), number: z.string().trim().min(1).max(100), firstCompetence: z.string(), count: z.coerce.number().int().min(1).max(120), amount: z.string(), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
-  return context.prisma.$transaction(async tx => {
-    const rule = await tx.hrPayrollRule.findUniqueOrThrow({ where: { id: input.grantId }, include: { ruleSet: true } });
+  return withDatabaseTransaction(partnerConnection(context, connection), async tx => {
+    const rule = await requirePayrollRule(tx, input.grantId);
     const policy = partnerDiscountPolicySchema.parse(rule.value), now = new Date();
     if (rule.category !== "PORTAL" || !rule.isActive || rule.ruleSet.status !== "ATIVA" || now < rule.ruleSet.effectiveFrom || rule.ruleSet.effectiveUntil && now > rule.ruleSet.effectiveUntil || !policy.actorUserIds.includes(context.user.id) || !policy.contractIds.includes(input.contractId)) throw new AccessError("Lançamento fora da autorização do convenente.", 403);
-    const contract = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: input.contractId }, include: { employee: { select: { secretariatId: true } } } });
-    const unit = await tx.budgetUnit.findUniqueOrThrow({ where: { id: policy.budgetUnitId } });
+    const contract = await requirePartnerContract(tx, input.contractId);
+    const unit = await requirePartnerUnit(tx, policy.budgetUnitId);
     if (contract.employee.secretariatId !== unit.secretariatId) throw new AccessError("Contrato fora da unidade autorizada.", 403);
-    const referenceRun = await tx.hrPayrollRun.findUniqueOrThrow({ where: { id: policy.sourceRunId }, select: { payrollId: true } });
-    const scope = await tx.sstBenefitPayrollScope.findUnique({ where: { payrollId: referenceRun.payrollId } });
+    const referenceRun = await requirePartnerReferenceRun(tx, policy.sourceRunId);
+    const scope = await findPartnerPayrollScope(tx, referenceRun.payrollId);
     if (scope && scope.budgetUnitId !== policy.budgetUnitId) throw new AccessError("Referência de folha fora da unidade autorizada.", 403);
     const result = await reserveConsignmentAgreementInTransaction(tx, context.user.id, { sourceKey: `CONVENENTE:${context.user.id}:${input.requestKey}`, contractId: contract.id, supplierId: policy.supplierId, sourceRunId: policy.sourceRunId, ruleId: policy.consignmentRuleId, rubricCode: policy.rubricCode, number: input.number, firstCompetence: input.firstCompetence, count: input.count, amount: input.amount, reason: input.reason });
     const event = await enqueueHrIntegration(tx, { sourceKey: `CONVENENTE:PEDIDO:${result.id}`, domain: "PORTAL", environment: "INTERNO", eventType: "DESCONTO_CONVENENTE_RESERVADO", payload: { grantId: rule.id, agreementId: result.id, actorId: context.user.id, supplierId: policy.supplierId, budgetUnitId: policy.budgetUnitId } });
-    await tx.hrIntegrationEvent.update({ where: { id: event.id }, data: { status: "PROCESSADO" } });
+    await markPartnerEventProcessed(tx, event.id);
     return result.id;
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }
 
-export async function listOwnPartnerDiscounts(context: AppContext) {
+export async function listOwnPartnerDiscounts(context: ExternalOperationsContext): Promise<{ grants: PartnerDiscountGrant[]; agreements: PartnerDiscountAgreement[] }> {
   const grants = await listOwnPartnerDiscountGrants(context);
-  const where: Prisma.HrConsignmentAgreementWhereInput = { OR: grants.map(grant => ({ supplierId: grant.policy.supplierId, contractId: { in: grant.contracts.map(contract => contract.id) }, sourceRunId: grant.policy.sourceRunId })) };
-  const agreements = grants.length ? await context.prisma.hrConsignmentAgreement.findMany({ where, include: { installments: { include: { entries: { select: { kind: true } } }, orderBy: { sequence: "asc" } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }) : [];
+  const agreements = await readPartnerAgreements(context.database ?? db, grants);
   return { grants, agreements };
 }
 
-export async function postPartnerDiscount(context: AppContext, raw: unknown) {
+export async function postPartnerDiscount(context: ExternalOperationsContext, raw: unknown, connection: DatabaseConnection = databaseConnection): Promise<ExternalPayrollMovement> {
   const input = z.object({ grantId: z.string().min(1), installmentId: z.string().min(1), payrollId: z.string().min(1) }).strict().parse(raw);
-  const grant = (await listOwnPartnerDiscountGrants(context)).find(row => row.id === input.grantId);
+  const source = partnerConnection(context, connection);
+  const grant = (await readOwnPartnerDiscountGrants(source.db, context.user.id)).find(row => row.id === input.grantId);
   if (!grant || !grant.policy.payrollIds.includes(input.payrollId)) throw new AccessError("Folha fora da autorização do convenente.", 403);
-  const installment = await context.prisma.hrConsignmentInstallment.findFirst({ where: { id: input.installmentId, agreement: { supplierId: grant.policy.supplierId, contractId: { in: grant.contracts.map(contract => contract.id) }, sourceRunId: grant.policy.sourceRunId } }, select: { id: true } });
+  const installment = await findPartnerInstallment(source.db, input.installmentId, grant);
   if (!installment) throw new AccessError("Parcela indisponível para o convenente.", 403);
-  const scope = await context.prisma.sstBenefitPayrollScope.findUnique({ where: { payrollId: input.payrollId } });
+  const scope = await findPartnerPayrollScope(source.db, input.payrollId);
   if (scope && scope.budgetUnitId !== grant.policy.budgetUnitId) throw new AccessError("Folha fora da unidade autorizada.", 403);
-  return postConsignmentInstallment(context.prisma, context.user.id, { installmentId: installment.id, payrollId: input.payrollId });
+  return postConsignmentInstallment(source, context.user.id, { installmentId: installment.id, payrollId: input.payrollId });
 }

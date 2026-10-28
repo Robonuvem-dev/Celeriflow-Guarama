@@ -1,7 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
-import type { AppContext } from "@/lib/platform/tenant-context";
+import { and, count, desc, eq, gte, isNull, lt, lte, ne, notInArray, or, sql } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import * as d from "@/db/schema/health-diagnostics";
+import { healthProfessionals } from "@/db/schema/health-workforce";
+import { pageLaboratoryConfigurations } from "@/db/schema/health-pages";
+import { documentSignatures, documentVersions } from "@/db/schema/document-workflow";
+import { diagnosticJson, diagnosticOptionalJson, lockDiagnosticLabOrder, readDiagnosticLabOrder, readDiagnosticLabReport, requiredDiagnosticRecord } from "@/db/repositories/health-diagnostics/records";
+import type { HealthDiagnosticsContext as AppContext } from "@/lib/contracts/health-diagnostics";
 import { assertHealthUnitAccess } from "@/lib/platform/tenant-context";
 import { uploadFile } from "@/lib/platform/blob";
 import { ingestGedDocument } from "@/lib/documents/document-flow-service";
@@ -12,24 +20,25 @@ const scheduleSchema = z.object({ orderId: z.string().min(1), collectionUnitId: 
 const collectSchema = z.object({ orderId: z.string().min(1), sampleBarcode: z.string().trim().min(3).max(120), collectionByThirdParty: z.boolean().default(false) }).strict();
 const resultSchema = z.object({ orderId: z.string().min(1), status: z.enum(["PARTIAL", "FINAL"]), values: z.record(z.string(), z.unknown()), interpretation: z.string().trim().max(4000).nullable().optional(), source: z.enum(["MANUAL", "DEVICE"]).default("MANUAL"), deviceCorrelationId: z.string().trim().max(180).nullable().optional() }).strict();
 
-async function professionalForUser(context: AppContext) {
+async function professionalForUser(context: AppContext, executor: DatabaseExecutor) {
   if (!context.user.employeeId) throw new LaboratoryError("Vincule o usuário autenticado a um profissional de saúde.");
-  const professional = await context.prisma.healthProfessional.findFirst({ where: { employeeId: context.user.employeeId, isActive: true }, select: { id: true } });
+  const [professional] = await executor.select({ id: healthProfessionals.id }).from(healthProfessionals).where(and(eq(healthProfessionals.employeeId, context.user.employeeId), eq(healthProfessionals.isActive, true))).limit(1);
   if (!professional) throw new LaboratoryError("Profissional de saúde ativo não encontrado.");
   return professional;
 }
 
-export async function scheduleLabOrder(context: AppContext, raw: unknown) {
+export async function scheduleLabOrder(context: AppContext, raw: unknown, connection: DatabaseConnection = databaseConnection) {
   const input = scheduleSchema.parse(raw);
   assertHealthUnitAccess(context.user, input.collectionUnitId);
-  return context.prisma.$transaction(async (tx) => {
-    const order = await tx.healthLabOrder.findUnique({ where: { id: input.orderId }, select: { id: true, status: true, patientId: true, requestUnitId: true, collectionUnitId: true, examModelId: true, examModel: { select: { deliveryDays: true, duplicateWindowDays: true } } } });
+  return withDatabaseTransaction(connection, async (tx) => {
+    await lockDiagnosticLabOrder(tx, input.orderId);
+    const order = await readDiagnosticLabOrder(tx, input.orderId);
     if (!order || !["REQUESTED", "RECOLLECT"].includes(order.status)) throw new LaboratoryError("A solicitação não está disponível para agendamento.");
     assertHealthUnitAccess(context.user, order.collectionUnitId || order.requestUnitId || "");
     if (order.examModel?.duplicateWindowDays) {
       const duplicateSince = new Date(input.scheduledAt);
       duplicateSince.setDate(duplicateSince.getDate() - order.examModel.duplicateWindowDays);
-      const duplicate = await tx.healthLabOrder.findFirst({ where: { id: { not: order.id }, patientId: order.patientId, examModelId: order.examModelId, scheduledAt: { gte: duplicateSince, lte: input.scheduledAt }, status: { notIn: ["CANCELLED", "RECOLLECT"] } }, select: { id: true } });
+      const [duplicate] = await tx.select({ id: d.diagnosticLabOrders.id }).from(d.diagnosticLabOrders).where(and(ne(d.diagnosticLabOrders.id, order.id), eq(d.diagnosticLabOrders.patientId, order.patientId), order.examModelId === null ? isNull(d.diagnosticLabOrders.examModelId) : eq(d.diagnosticLabOrders.examModelId, order.examModelId), gte(d.diagnosticLabOrders.scheduledAt, duplicateSince), lte(d.diagnosticLabOrders.scheduledAt, input.scheduledAt), notInArray(d.diagnosticLabOrders.status, ["CANCELLED", "RECOLLECT"]))).limit(1);
       if (duplicate) throw new LaboratoryError("Há exame do paciente dentro da janela de repetição configurada.");
     }
     const expectedResultAt = new Date(input.scheduledAt);
@@ -37,109 +46,122 @@ export async function scheduleLabOrder(context: AppContext, raw: unknown) {
     if (order.examModelId) {
       const dayStart = new Date(input.scheduledAt); dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(input.scheduledAt); dayEnd.setHours(23, 59, 59, 999);
-      const schedule = await tx.healthLabSchedule.findFirst({ where: { unitId: input.collectionUnitId, examModelId: order.examModelId, isActive: true, OR: [{ date: { gte: dayStart, lte: dayEnd } }, { date: null, weekday: input.scheduledAt.getDay() }] }, orderBy: { date: "desc" } });
+      const [schedule] = await tx.select().from(d.diagnosticLabSchedules).where(and(eq(d.diagnosticLabSchedules.unitId, input.collectionUnitId), eq(d.diagnosticLabSchedules.examModelId, order.examModelId), eq(d.diagnosticLabSchedules.isActive, true), or(and(gte(d.diagnosticLabSchedules.date, dayStart), lte(d.diagnosticLabSchedules.date, dayEnd)), and(isNull(d.diagnosticLabSchedules.date), eq(d.diagnosticLabSchedules.weekday, input.scheduledAt.getDay()))))).orderBy(desc(d.diagnosticLabSchedules.date)).limit(1);
       if (schedule) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${schedule.id}:${dayStart.toISOString()}`}))`;
-        const occupied = await tx.healthLabOrder.count({ where: { id: { not: order.id }, collectionUnitId: input.collectionUnitId, examModelId: order.examModelId, scheduledAt: { gte: dayStart, lte: dayEnd }, status: { not: "CANCELLED" } } });
-        if (occupied >= schedule.capacity) throw new LaboratoryError("Não há vaga disponível no cronograma do exame para esta data.");
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${schedule.id}:${dayStart.toISOString()}`}))`);
+        const [occupied] = await tx.select({ total: count() }).from(d.diagnosticLabOrders).where(and(ne(d.diagnosticLabOrders.id, order.id), eq(d.diagnosticLabOrders.collectionUnitId, input.collectionUnitId), eq(d.diagnosticLabOrders.examModelId, order.examModelId), gte(d.diagnosticLabOrders.scheduledAt, dayStart), lte(d.diagnosticLabOrders.scheduledAt, dayEnd), ne(d.diagnosticLabOrders.status, "CANCELLED")));
+        if (occupied.total >= schedule.capacity) throw new LaboratoryError("Não há vaga disponível no cronograma do exame para esta data.");
       }
       if (input.providerSupplierId && order.status !== "RECOLLECT") {
         const period = input.scheduledAt.toISOString().slice(0, 7);
-        const allowedQuantity = await providerQuotaLimit(tx, input.providerSupplierId, input.collectionUnitId, order.examModelId, period);
-        const quota = await tx.healthLabProviderQuota.updateMany({ where: { providerSupplierId: input.providerSupplierId, unitId: input.collectionUnitId, examModelId: order.examModelId, period, consumedQuantity: { lt: allowedQuantity } }, data: { consumedQuantity: { increment: 1 } } });
-        if (quota.count !== 1) throw new LaboratoryError("A cota do prestador para o exame está indisponível ou esgotada.");
+        const quota = await tx.update(d.diagnosticLabProviderQuotas).set({ consumedQuantity: sql`${d.diagnosticLabProviderQuotas.consumedQuantity} + 1` }).where(and(eq(d.diagnosticLabProviderQuotas.providerSupplierId, input.providerSupplierId), eq(d.diagnosticLabProviderQuotas.unitId, input.collectionUnitId), eq(d.diagnosticLabProviderQuotas.examModelId, order.examModelId), eq(d.diagnosticLabProviderQuotas.period, period), lt(d.diagnosticLabProviderQuotas.consumedQuantity, d.diagnosticLabProviderQuotas.allowedQuantity))).returning({ id: d.diagnosticLabProviderQuotas.id });
+        if (quota.length !== 1) throw new LaboratoryError("A cota do prestador para o exame está indisponível ou esgotada.");
       }
     }
-    const updated = await tx.healthLabOrder.update({ where: { id: order.id }, data: { collectionUnitId: input.collectionUnitId, providerSupplierId: input.providerSupplierId, scheduledAt: input.scheduledAt, expectedResultAt, status: "SCHEDULED", authorizationKey: input.providerSupplierId ? randomUUID() : null }, select: { id: true, status: true, authorizationKey: true } });
-    await tx.healthLabOrderEvent.create({ data: { orderId: order.id, eventType: "SCHEDULED", fromStatus: order.status, toStatus: "SCHEDULED", actorUsuarioId: context.user.id } });
+    const updated = requiredDiagnosticRecord((await tx.update(d.diagnosticLabOrders).set({ collectionUnitId: input.collectionUnitId, providerSupplierId: input.providerSupplierId, scheduledAt: input.scheduledAt, expectedResultAt, status: "SCHEDULED", authorizationKey: input.providerSupplierId ? randomUUID() : null }).where(eq(d.diagnosticLabOrders.id, order.id)).returning({ id: d.diagnosticLabOrders.id, status: d.diagnosticLabOrders.status, authorizationKey: d.diagnosticLabOrders.authorizationKey }))[0]);
+    await tx.insert(d.diagnosticLabOrderEvents).values({ orderId: order.id, eventType: "SCHEDULED", fromStatus: order.status, toStatus: "SCHEDULED", actorUsuarioId: context.user.id });
     return updated;
   });
 }
 
-export async function collectLabSample(context: AppContext, raw: unknown) {
+export async function collectLabSample(context: AppContext, raw: unknown, connection: DatabaseConnection = databaseConnection) {
   const input = collectSchema.parse(raw);
-  const professional = await professionalForUser(context);
-  return context.prisma.$transaction(async (tx) => {
-    const order = await tx.healthLabOrder.findUnique({ where: { id: input.orderId }, select: { id: true, status: true, collectionUnitId: true } });
+  return withDatabaseTransaction(connection, async (tx) => {
+    const professional = await professionalForUser(context, tx);
+    await lockDiagnosticLabOrder(tx, input.orderId);
+    const order = await readDiagnosticLabOrder(tx, input.orderId);
     if (!order?.collectionUnitId || !["SCHEDULED", "RECOLLECT"].includes(order.status)) throw new LaboratoryError("O exame não está disponível para coleta.");
     assertHealthUnitAccess(context.user, order.collectionUnitId);
-    const updated = await tx.healthLabOrder.update({ where: { id: order.id }, data: { status: "COLLECTED", collectedAt: new Date(), sampleBarcode: input.sampleBarcode, collectionByThirdParty: input.collectionByThirdParty, collectorProfessionalId: professional.id }, select: { id: true, status: true } });
-    await tx.healthLabOrderEvent.create({ data: { orderId: order.id, eventType: "COLLECTED", fromStatus: order.status, toStatus: "COLLECTED", actorUsuarioId: context.user.id } });
+    const updated = requiredDiagnosticRecord((await tx.update(d.diagnosticLabOrders).set({ status: "COLLECTED", collectedAt: new Date(), sampleBarcode: input.sampleBarcode, collectionByThirdParty: input.collectionByThirdParty, collectorProfessionalId: professional.id }).where(eq(d.diagnosticLabOrders.id, order.id)).returning({ id: d.diagnosticLabOrders.id, status: d.diagnosticLabOrders.status }))[0]);
+    await tx.insert(d.diagnosticLabOrderEvents).values({ orderId: order.id, eventType: "COLLECTED", fromStatus: order.status, toStatus: "COLLECTED", actorUsuarioId: context.user.id });
     return updated;
   });
 }
 
-export async function requestLabRecollection(context: AppContext, orderId: string, reason: string) {
+export async function requestLabRecollection(context: AppContext, orderId: string, reason: string, connection: DatabaseConnection = databaseConnection) {
   if (reason.trim().length < 3) throw new LaboratoryError("Informe o motivo da recoleta.");
-  const order = await context.prisma.healthLabOrder.findUnique({ where: { id: orderId }, select: { id: true, collectionUnitId: true, status: true } });
-  if (!order?.collectionUnitId || !["COLLECTED", "RECEIVED", "ENTERED"].includes(order.status)) throw new LaboratoryError("A etapa atual não permite recoleta.");
-  assertHealthUnitAccess(context.user, order.collectionUnitId);
-  return context.prisma.$transaction(async tx => {
-    const updated = await tx.healthLabOrder.update({ where: { id: order.id }, data: { status: "RECOLLECT", sampleBarcode: null, collectedAt: null }, select: { id: true, status: true } });
-    await tx.healthLabOrderEvent.create({ data: { orderId: order.id, eventType: "RECOLLECTION_REQUESTED", fromStatus: order.status, toStatus: "RECOLLECT", reason: reason.trim(), actorUsuarioId: context.user.id } });
+  return withDatabaseTransaction(connection, async tx => {
+    await lockDiagnosticLabOrder(tx, orderId);
+    const order = await readDiagnosticLabOrder(tx, orderId);
+    if (!order?.collectionUnitId || !["COLLECTED", "RECEIVED", "ENTERED"].includes(order.status)) throw new LaboratoryError("A etapa atual não permite recoleta.");
+    assertHealthUnitAccess(context.user, order.collectionUnitId);
+    const updated = requiredDiagnosticRecord((await tx.update(d.diagnosticLabOrders).set({ status: "RECOLLECT", sampleBarcode: null, collectedAt: null }).where(eq(d.diagnosticLabOrders.id, order.id)).returning({ id: d.diagnosticLabOrders.id, status: d.diagnosticLabOrders.status }))[0]);
+    await tx.insert(d.diagnosticLabOrderEvents).values({ orderId: order.id, eventType: "RECOLLECTION_REQUESTED", fromStatus: order.status, toStatus: "RECOLLECT", reason: reason.trim(), actorUsuarioId: context.user.id });
     return updated;
   });
 }
 
-export async function enterLabResult(context: AppContext, raw: unknown) {
+export async function enterLabResult(context: AppContext, raw: unknown, connection: DatabaseConnection = databaseConnection) {
   const input = resultSchema.parse(raw);
-  return context.prisma.$transaction(async (tx) => {
-    const order = await tx.healthLabOrder.findUnique({ where: { id: input.orderId }, select: { id: true, status: true, collectionUnitId: true, results: { orderBy: { version: "desc" }, take: 1, select: { version: true } } } });
+  return withDatabaseTransaction(connection, async (tx) => {
+    await lockDiagnosticLabOrder(tx, input.orderId);
+    const order = await readDiagnosticLabOrder(tx, input.orderId);
     if (!order?.collectionUnitId || !["COLLECTED", "RECEIVED", "ENTERED"].includes(order.status)) throw new LaboratoryError("O exame não está disponível para digitação de resultado.");
     assertHealthUnitAccess(context.user, order.collectionUnitId);
-    const result = await tx.healthLabResult.create({ data: { orderId: order.id, version: (order.results[0]?.version ?? 0) + 1, status: input.status, source: input.source, values: input.values as Prisma.InputJsonValue, interpretation: input.interpretation, deviceCorrelationId: input.deviceCorrelationId, enteredByUsuarioId: context.user.id }, select: { id: true, status: true } });
-    await tx.healthLabOrder.update({ where: { id: order.id }, data: { status: "ENTERED" } });
-    await tx.healthLabOrderEvent.create({ data: { orderId: order.id, eventType: input.status === "FINAL" ? "FINAL_RESULT_ENTERED" : "PARTIAL_RESULT_ENTERED", fromStatus: order.status, toStatus: "ENTERED", actorUsuarioId: context.user.id } });
+    const [previous] = await tx.select({ version: d.diagnosticLabResults.version }).from(d.diagnosticLabResults).where(eq(d.diagnosticLabResults.orderId, order.id)).orderBy(desc(d.diagnosticLabResults.version)).limit(1);
+    const result = requiredDiagnosticRecord((await tx.insert(d.diagnosticLabResults).values({ orderId: order.id, version: (previous?.version ?? 0) + 1, status: input.status, source: input.source, values: diagnosticJson(input.values), interpretation: input.interpretation, deviceCorrelationId: input.deviceCorrelationId, enteredByUsuarioId: context.user.id }).returning({ id: d.diagnosticLabResults.id, status: d.diagnosticLabResults.status }))[0]);
+    await tx.update(d.diagnosticLabOrders).set({ status: "ENTERED" }).where(eq(d.diagnosticLabOrders.id, order.id));
+    await tx.insert(d.diagnosticLabOrderEvents).values({ orderId: order.id, eventType: input.status === "FINAL" ? "FINAL_RESULT_ENTERED" : "PARTIAL_RESULT_ENTERED", fromStatus: order.status, toStatus: "ENTERED", actorUsuarioId: context.user.id });
     return result;
   });
 }
 
-export async function createLabReport(context: AppContext, input: { orderId: string; title: string; file: File }) {
-  const order = await context.prisma.healthLabOrder.findUnique({ where: { id: input.orderId }, select: { id: true, collectionUnitId: true, results: { where: { status: "FINAL" }, take: 1, select: { id: true } } } });
-  if (!order?.collectionUnitId || order.results.length === 0) throw new LaboratoryError("O laudo exige um resultado final registrado.");
+export async function createLabReport(context: AppContext, input: { orderId: string; title: string; file: File }, connection: DatabaseConnection = databaseConnection) {
+  const order = await readDiagnosticLabOrder(connection.db, input.orderId);
+  const [final] = await connection.db.select({ id: d.diagnosticLabResults.id }).from(d.diagnosticLabResults).where(and(eq(d.diagnosticLabResults.orderId, input.orderId), eq(d.diagnosticLabResults.status, "FINAL"))).limit(1);
+  if (!order?.collectionUnitId || !final) throw new LaboratoryError("O laudo exige um resultado final registrado.");
   assertHealthUnitAccess(context.user, order.collectionUnitId);
   const blob = await uploadFile(input.file);
   const content = new Uint8Array(await input.file.arrayBuffer());
-  return ingestGedDocument(context.prisma, { title: input.title, documentType: "LAUDO_LABORATORIAL", documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content, actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => { await tx.healthLabReport.create({ data: { orderId: order.id, documentId } }); } });
+  return ingestGedDocument(connection, { title: input.title, documentType: "LAUDO_LABORATORIAL", documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content, actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => {
+    await lockDiagnosticLabOrder(tx, order.id);
+    const current = await readDiagnosticLabOrder(tx, order.id);
+    const [result] = await tx.select({ id: d.diagnosticLabResults.id }).from(d.diagnosticLabResults).where(and(eq(d.diagnosticLabResults.orderId, order.id), eq(d.diagnosticLabResults.status, "FINAL"))).limit(1);
+    if (!current?.collectionUnitId || !result) throw new LaboratoryError("O laudo exige um resultado final registrado.");
+    assertHealthUnitAccess(context.user, current.collectionUnitId);
+    await tx.insert(d.diagnosticLabReports).values({ orderId: order.id, documentId });
+  } });
 }
 
-export async function reviewLabReport(context: AppContext, reportId: string) {
-  const professional = await professionalForUser(context);
-  return context.prisma.$transaction(async (tx) => {
-    const report = await tx.healthLabReport.findUnique({ where: { id: reportId }, select: { id: true, status: true, order: { select: { id: true, status: true, collectionUnitId: true } } } });
+export async function reviewLabReport(context: AppContext, reportId: string, connection: DatabaseConnection = databaseConnection) {
+  return withDatabaseTransaction(connection, async (tx) => {
+    const professional = await professionalForUser(context, tx);
+    const initial = await readDiagnosticLabReport(tx, reportId);
+    if (initial) await lockDiagnosticLabOrder(tx, initial.order.id);
+    const report = await readDiagnosticLabReport(tx, reportId);
     if (!report?.order.collectionUnitId || report.status !== "DRAFT" || report.order.status !== "ENTERED") throw new LaboratoryError("Laudo indisponível para revisão.");
     assertHealthUnitAccess(context.user, report.order.collectionUnitId);
-    await tx.healthLabOrder.update({ where: { id: report.order.id }, data: { status: "REVIEWED" } });
-    await tx.healthLabOrderEvent.create({ data: { orderId: report.order.id, eventType: "REPORT_REVIEWED", fromStatus: report.order.status, toStatus: "REVIEWED", actorUsuarioId: context.user.id } });
-    return tx.healthLabReport.update({ where: { id: report.id }, data: { status: "REVIEWED", reviewedAt: new Date(), reviewerProfessionalId: professional.id }, select: { id: true, status: true } });
+    await tx.update(d.diagnosticLabOrders).set({ status: "REVIEWED" }).where(eq(d.diagnosticLabOrders.id, report.order.id));
+    await tx.insert(d.diagnosticLabOrderEvents).values({ orderId: report.order.id, eventType: "REPORT_REVIEWED", fromStatus: report.order.status, toStatus: "REVIEWED", actorUsuarioId: context.user.id });
+    return requiredDiagnosticRecord((await tx.update(d.diagnosticLabReports).set({ status: "REVIEWED", reviewedAt: new Date(), reviewerProfessionalId: professional.id }).where(eq(d.diagnosticLabReports.id, report.id)).returning({ id: d.diagnosticLabReports.id, status: d.diagnosticLabReports.status }))[0]);
   });
 }
 
-export async function releaseLabReport(context: AppContext, reportId: string, publishToPatient: boolean) {
-  return context.prisma.$transaction(async (tx) => {
-    const report = await tx.healthLabReport.findUnique({ where: { id: reportId }, select: { id: true, status: true, documentId: true, order: { select: { id: true, collectionUnitId: true } } } });
+export async function releaseLabReport(context: AppContext, reportId: string, publishToPatient: boolean, connection: DatabaseConnection = databaseConnection) {
+  return withDatabaseTransaction(connection, async (tx) => {
+    const initial = await readDiagnosticLabReport(tx, reportId);
+    if (initial) await lockDiagnosticLabOrder(tx, initial.order.id);
+    const report = await readDiagnosticLabReport(tx, reportId);
     if (!report?.order.collectionUnitId || report.status !== "REVIEWED") throw new LaboratoryError("Somente laudo revisado pode ser liberado.");
     assertHealthUnitAccess(context.user, report.order.collectionUnitId);
-    const configuration = await tx.healthLaboratoryConfiguration.findFirst({ where: { unitId: report.order.collectionUnitId, isActive: true }, orderBy: { createdAt: "desc" } });
-    if (configuration?.usesDigitalSignature && !await tx.documentSignature.findFirst({ where: { documentId: report.documentId, status: "SIGNED", documentVersion: { status: "SIGNED" } }, select: { id: true } })) throw new LaboratoryError("A configuração da unidade exige assinatura digital concluída antes da liberação.");
+    const [configuration] = await tx.select().from(pageLaboratoryConfigurations).where(and(eq(pageLaboratoryConfigurations.unitId, report.order.collectionUnitId), eq(pageLaboratoryConfigurations.isActive, true))).orderBy(desc(pageLaboratoryConfigurations.createdAt)).limit(1);
+    if (configuration?.usesDigitalSignature && !(await tx.select({ id: documentSignatures.id }).from(documentSignatures).innerJoin(documentVersions, eq(documentVersions.id, documentSignatures.documentVersionId)).where(and(eq(documentSignatures.documentId, report.documentId), eq(documentSignatures.status, "SIGNED"), eq(documentVersions.status, "SIGNED"))).limit(1))[0]) throw new LaboratoryError("A configuração da unidade exige assinatura digital concluída antes da liberação.");
     if (publishToPatient && !configuration?.publishesPatientPortal) throw new LaboratoryError("A publicação ao paciente não está habilitada para a unidade.");
     const now = new Date();
-    await tx.healthLabOrder.update({ where: { id: report.order.id }, data: { status: "RELEASED" } });
-    await tx.healthLabOrderEvent.create({ data: { orderId: report.order.id, eventType: "REPORT_RELEASED", fromStatus: "REVIEWED", toStatus: "RELEASED", actorUsuarioId: context.user.id } });
-    return tx.healthLabReport.update({ where: { id: report.id }, data: { status: "RELEASED", releasedAt: now, publishedAt: publishToPatient ? now : null }, select: { id: true, status: true } });
+    await tx.update(d.diagnosticLabOrders).set({ status: "RELEASED" }).where(eq(d.diagnosticLabOrders.id, report.order.id));
+    await tx.insert(d.diagnosticLabOrderEvents).values({ orderId: report.order.id, eventType: "REPORT_RELEASED", fromStatus: "REVIEWED", toStatus: "RELEASED", actorUsuarioId: context.user.id });
+    return requiredDiagnosticRecord((await tx.update(d.diagnosticLabReports).set({ status: "RELEASED", releasedAt: now, publishedAt: publishToPatient ? now : null }).where(eq(d.diagnosticLabReports.id, report.id)).returning({ id: d.diagnosticLabReports.id, status: d.diagnosticLabReports.status }))[0]);
   });
 }
 
-export async function recordDeviceMessage(context: AppContext, input: { deviceId: string; direction: string; correlationId: string; idempotencyKey: string; payload: string; sanitizedData?: unknown }) {
-  const existing = await context.prisma.healthDeviceMessage.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true, status: true } });
-  if (existing) return existing;
-  const device = await context.prisma.healthAssistentialDevice.findFirst({ where: { id: input.deviceId, isActive: true }, select: { id: true, operatorUsuarioIds: true } });
-  const operators = Array.isArray(device?.operatorUsuarioIds) ? device.operatorUsuarioIds : [];
-  if (!device || !operators.includes(context.user.id)) throw new LaboratoryError("Operador sem vínculo ativo com o equipamento.");
-  return context.prisma.healthDeviceMessage.create({ data: { deviceId: device.id, direction: input.direction, correlationId: input.correlationId, idempotencyKey: input.idempotencyKey, status: "RECEIVED", payloadHash: createHash("sha256").update(input.payload).digest("hex"), sanitizedData: input.sanitizedData as Prisma.InputJsonValue | undefined }, select: { id: true, status: true } });
-}
-
-async function providerQuotaLimit(tx: Prisma.TransactionClient, providerSupplierId: string, unitId: string, examModelId: string, period: string) {
-  const quota = await tx.healthLabProviderQuota.findUnique({ where: { providerSupplierId_unitId_examModelId_period: { providerSupplierId, unitId, examModelId, period } }, select: { allowedQuantity: true } });
-  return quota?.allowedQuantity ?? -1;
+export async function recordDeviceMessage(context: AppContext, input: { deviceId: string; direction: string; correlationId: string; idempotencyKey: string; payload: string; sanitizedData?: unknown }, connection: DatabaseConnection = databaseConnection) {
+  return withDatabaseTransaction(connection, async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`HEALTH_DEVICE_MESSAGE:${input.idempotencyKey}`}))`);
+    const [existing] = await tx.select({ id: d.diagnosticDeviceMessages.id, status: d.diagnosticDeviceMessages.status }).from(d.diagnosticDeviceMessages).where(eq(d.diagnosticDeviceMessages.idempotencyKey, input.idempotencyKey)).limit(1);
+    if (existing) return existing;
+    const [device] = await tx.select({ id: d.diagnosticDevices.id, operatorUsuarioIds: d.diagnosticDevices.operatorUsuarioIds }).from(d.diagnosticDevices).where(and(eq(d.diagnosticDevices.id, input.deviceId), eq(d.diagnosticDevices.isActive, true))).limit(1);
+    const operators = Array.isArray(device?.operatorUsuarioIds) ? device.operatorUsuarioIds : [];
+    if (!device || !operators.includes(context.user.id)) throw new LaboratoryError("Operador sem vínculo ativo com o equipamento.");
+    return requiredDiagnosticRecord((await tx.insert(d.diagnosticDeviceMessages).values({ deviceId: device.id, direction: input.direction, correlationId: input.correlationId, idempotencyKey: input.idempotencyKey, status: "RECEIVED", payloadHash: createHash("sha256").update(input.payload).digest("hex"), sanitizedData: diagnosticOptionalJson(input.sanitizedData) }).returning({ id: d.diagnosticDeviceMessages.id, status: d.diagnosticDeviceMessages.status }))[0]);
+  });
 }

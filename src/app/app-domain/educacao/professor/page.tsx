@@ -6,20 +6,21 @@ import { EducationListClient } from "../EducationListClient";
 import { S1ActionForm } from "../S1ActionForm";
 import { ProfessorEntryGrids } from "./ProfessorEntryGrids";
 import { createAcademicRecordAction, createActivityAction, createAssessmentAction, publishAssessmentAction, reviewSubmissionAction, setDiaryStatusAction } from "./actions";
+import { asc, inArray } from "drizzle-orm";
+import { db } from "@/db/client";
+import { schoolSubjects } from "@/db/schema/education-core";
+import { findTeachingWorkspaceIdentity, listTeachingWorkspaceClasses, loadTeachingWorkspaceRecords } from "@/db/repositories/education/teaching";
 
 export const dynamic="force-dynamic";
 export default async function ProfessorWorkspacePage(){
-  const {prisma,user}=await getTenantContextForModule("EDUCACAO");
-  const teacher= user.employeeId ? await prisma.teacher.findUnique({where:{employeeId:user.employeeId},include:{employee:true}}) : isSystemAdministrator(user) ? await prisma.teacher.findFirst({include:{employee:true},orderBy:{employee:{name:"asc"}}}) : null;
+  const context=await getTenantContextForModule("EDUCACAO"),{user}=context,database=context.database??db;
+  const teacher=await findTeachingWorkspaceIdentity(database,user.employeeId,isSystemAdministrator(user));
   if(!teacher)return <PageFrame><PageHeader title="Área do professor" icon={<BookOpenCheck className="size-4 text-emerald-600"/>}/><p className="rounded border bg-white p-4 text-sm">O usuário autenticado ainda não possui vínculo de professor.</p></PageFrame>;
-  const classes=await prisma.schoolClass.findMany({where:{OR:[{teacherId:teacher.id},{teacherAssignments:{some:{teacherId:teacher.id,isActive:true}}}]},include:{school:true,period:true,matrix:{include:{subjects:{include:{subject:true}}}},enrollments:{where:{status:"Matriculado"},include:{student:{include:{person:true}}},orderBy:{student:{person:{fullName:"asc"}}}},teacherAssignments:{where:{teacherId:teacher.id,isActive:true},include:{subject:true}}},orderBy:[{school:{name:"asc"}},{name:"asc"}]});
+  const classes=await listTeachingWorkspaceClasses(database,teacher.id);
   const subjectIds=Array.from(new Set(classes.flatMap(x=>[...x.teacherAssignments.map(a=>a.subjectId),...(x.teacherId===teacher.id?x.matrix?.subjects.map(s=>s.subjectId)||[]:[])])));
-  const [subjects,diaries,assessments,records,activities]=await Promise.all([
-    prisma.schoolSubject.findMany({where:{id:{in:subjectIds}},orderBy:{name:"asc"}}),
-    prisma.classDiary.findMany({where:{teacherId:teacher.id},include:{schoolClass:true,schoolSubject:true,_count:{select:{attendances:true}}},orderBy:{date:"desc"},take:200}),
-    prisma.educationAssessment.findMany({where:{teacherId:teacher.id},include:{schoolClass:{include:{enrollments:{where:{status:"Matriculado"},include:{student:{include:{person:true}}},orderBy:{student:{person:{fullName:"asc"}}}}}},subject:true,grades:true},orderBy:{date:"desc"}}),
-    prisma.teacherAcademicRecord.findMany({where:{teacherId:teacher.id},include:{schoolClass:true,subject:true},orderBy:{startDate:"desc"},take:200}),
-    prisma.learningActivity.findMany({where:{teacherId:teacher.id},include:{schoolClass:true,subject:true,questions:true,submissions:{include:{student:{include:{person:true}}}}},orderBy:{createdAt:"desc"},take:200}),
+  const [subjects,{diaries,assessments,records,activities}]=await Promise.all([
+    subjectIds.length?database.select({id:schoolSubjects.id,name:schoolSubjects.name}).from(schoolSubjects).where(inArray(schoolSubjects.id,subjectIds)).orderBy(asc(schoolSubjects.name)):Promise.resolve([]),
+    loadTeachingWorkspaceRecords(database,teacher.id),
   ]);
   const classOptions=classes.map(x=>({value:x.id,label:`${x.school.name} · ${x.name}`})); const subjectOptions=subjects.map(x=>({value:x.id,label:x.name})); const stages=["1º Bimestre","2º Bimestre","3º Bimestre","4º Bimestre","Final"].map(x=>({value:x,label:x}));
   const classData=classes.map(x=>({id:x.id,label:`${x.school.name} · ${x.name}`,subjects:Array.from(new Map([...x.teacherAssignments.map(a=>a.subject),...(x.teacherId===teacher.id?x.matrix?.subjects.map(s=>s.subject)||[]:[])].map(s=>[s.id,{id:s.id,name:s.name}])).values()),students:x.enrollments.map(e=>({id:e.student.id,name:e.student.person.fullName,code:e.student.studentCode,status:e.status,enrollmentDate:e.enrollmentDate.toISOString()}))}));

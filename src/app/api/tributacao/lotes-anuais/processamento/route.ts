@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { prisma } from "@/lib/prisma";
+import { databaseConnection } from "@/db/client";
 import { processTaxAnnualCron } from "@/lib/tributacao/annual-batch-cron";
 
 export const runtime = "nodejs";
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const supplied = Buffer.from(request.headers.get("authorization") ?? ""), expected = Buffer.from(`Bearer ${secret}`);
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return Response.json({ error: "Não autorizado." }, { status: 401 });
   try {
-    const result = await processTaxAnnualCron(prisma, process.env.TAX_ANNUAL_ACTOR_USER_ID);
+    const result = await processTaxAnnualCron(databaseConnection, process.env.TAX_ANNUAL_ACTOR_USER_ID);
     const failed = result.results.some(batch => batch.failures.length);
     return Response.json({ status: failed ? "ATTENTION" : "PROCESSED", ...result }, { status: failed ? 503 : 200, headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ error: "Verifique o ator tributário, suas UGs e a configuração do módulo." }, { status: 503 }); }

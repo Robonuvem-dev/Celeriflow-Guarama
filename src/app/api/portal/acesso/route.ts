@@ -1,4 +1,7 @@
-import { prisma } from "@/lib/prisma";
+import { db, databaseConnection } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { citizenAccessApplications } from "@/db/schema/citizen-access";
+import { processes } from "@/db/schema/processes";
 import { getIdTokenPrincipal } from "@/lib/platform/session";
 import { isSameOriginRequest } from "@/lib/transparencia/request-origin";
 import { checkRateLimit } from "@/lib/platform/rate-limit";
@@ -13,9 +16,9 @@ export async function POST(request: Request) {
     const principal = typeof body.idToken === "string" ? await getIdTokenPrincipal(body.idToken) : null;
     if (!principal) return Response.json({ error: "Entre com uma conta de e-mail verificado para solicitar acesso." }, { status: 401 });
     if (body.operation === "consultar") {
-      const application = await prisma.citizenAccessApplication.findUnique({ where: { firebaseUid: principal.firebaseUid }, select: { status: true, reason: true, process: { select: { protocolNumber: true } } } });
-      return application ? Response.json({ status: application.status, reason: application.reason, protocolNumber: application.process.protocolNumber }) : Response.json({ error: "Solicitação não encontrada." }, { status: 404 });
+      const [application] = await db.select({ status: citizenAccessApplications.status, reason: citizenAccessApplications.reason, protocolNumber: processes.protocolNumber }).from(citizenAccessApplications).innerJoin(processes, eq(processes.id, citizenAccessApplications.processId)).where(eq(citizenAccessApplications.firebaseUid, principal.firebaseUid)).limit(1);
+      return application ? Response.json(application) : Response.json({ error: "Solicitação não encontrada." }, { status: 404 });
     }
-    return Response.json(await requestCitizenAccess(prisma, principal, body.document), { status: 201 });
+    return Response.json(await requestCitizenAccess(databaseConnection, principal, body.document), { status: 201 });
   } catch (error) { return portalApiError(error); }
 }

@@ -1,20 +1,16 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
-import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { readAdvancesPage } from "@/db/repositories/personnel-pages/requests";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { OperationForm } from "../operacoes/OperationForm";
 
 export const dynamic = "force-dynamic";
 export default async function AdvancesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const { prisma, user } = await getTenantContextForModule("RH");
-  const where: Prisma.HrPortalRequestWhereInput = { kind: "ADIANTAMENTO", ...(isSystemAdministrator(user) ? {} : { OR: user.allowedBudgetUnitIds.map(id => ({ payload: { path: ["input", "budgetUnitId"], equals: id } })) }) };
-  const total = await prisma.hrPortalRequest.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt((await searchParams).page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const rows = await prisma.hrPortalRequest.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 });
-  const units = await prisma.budgetUnit.findMany({ where: isSystemAdministrator(user) ? {} : { id: { in: user.allowedBudgetUnitIds } }, orderBy: { code: "asc" } });
-  const events = await prisma.hrIntegrationEvent.findMany({ where: { sourceKey: { in: rows.map(row => `DIARIA:PROCESSO:${row.id}`) } }, select: { sourceKey: true, payload: true } });
+  const context = await getTenantContextForModule("RH");
+  const { total, page, rows, units, events } = await readAdvancesPage(context.database ?? db, context.user, (await searchParams).page);
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
     <ErpPageTitle title="Adiantamentos — concessão e prestação" description="Roteiro publicado, empenho automático, contas de controle e revisão independente." action={<Link href="/rh/diarias">Diárias</Link>} />
     <OperationForm command="adiantamento-solicitar" title="Solicitar adiantamento" fields={[{ name: "requestKey", label: "Chave", value: randomUUID(), required: true }, { name: "contractId", label: "Contrato", type: "lookup:contract", required: true }, { name: "budgetUnitId", label: "UG", options: [{ value: "", label: "Selecione" }, ...units.map(unit => ({ value: unit.id, label: `${unit.code} — ${unit.name}` }))], required: true }, { name: "amount", label: "Valor BRL", required: true }, { name: "date", label: "Data da concessão", type: "date", required: true }, { name: "reportDueDate", label: "Prazo de prestação", type: "date", required: true }, { name: "purpose", label: "Finalidade", type: "textarea", required: true }]} />

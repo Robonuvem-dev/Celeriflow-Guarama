@@ -3,16 +3,16 @@ import Link from "next/link";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { count } from "drizzle-orm";
+import { portalNews, portalPages, officialDiaries } from "@/db/schema/portal-content";
+import { biddings, procurementContracts } from "@/db/schema/procurement-core";
 
 export const dynamic = "force-dynamic";
 
 export default async function TransparenciaPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
-  const newsCount = await prisma.portalNews.count();
-  const pagesCount = await prisma.portalPage.count();
-  const diariesCount = await prisma.officialDiary.count();
-  const biddingsCount = await prisma.bidding.count();
-  const contractsCount = await prisma.contract.count();
+  await getTenantContextForModule("TRANSPARENCIA");
+  const [[{value:newsCount}],[{value:pagesCount}],[{value:diariesCount}],[{value:biddingsCount}],[{value:contractsCount}]]=await Promise.all([db.select({value:count()}).from(portalNews),db.select({value:count()}).from(portalPages),db.select({value:count()}).from(officialDiaries),db.select({value:count()}).from(biddings),db.select({value:count()}).from(procurementContracts)]);
 
   return (
     <PageFrame className="max-w-7xl space-y-2">

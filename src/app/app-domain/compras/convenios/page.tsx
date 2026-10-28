@@ -1,23 +1,12 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { calculateInclusiveContractTermDays } from "@/lib/compras/contract-lifecycle";
 import { ConveniosListClient } from "./ConveniosListClient";
+import { databaseConnection } from "@/db/client";
+import { listProcurementCovenants } from "@/db/repositories/procurement/instruments";
 
 export default async function ConveniosPage() {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
-  const covenants = await prisma.covenant.findMany({
-    select: {
-      id: true,
-      number: true,
-      grantor: true,
-      description: true,
-      totalValueDecimal: true,
-      startDate: true,
-      endDate: true,
-      status: true,
-      _count: { select: { instrumentParties: true, measurements: true, installments: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  await getTenantContextForModule("COMPRAS");
+  const covenants = await listProcurementCovenants(databaseConnection.db);
 
   return <ConveniosListClient covenants={covenants.map((covenant) => ({
     id: covenant.id,

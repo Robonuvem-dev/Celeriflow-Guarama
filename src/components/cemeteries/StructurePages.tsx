@@ -8,6 +8,8 @@ import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { StructureForm } from "./StructureForm";
 import { StructureCemeteryFilter } from "./StructureFilters";
+import { databaseConnection, db } from "@/db/client";
+import { readLotGraves, readStructureFields, readStructureHistory, readStructureOperators, readStructureTaxpayers } from "@/db/repositories/cemeteries/structure";
 
 export type StructureSearch = Record<string, string | string[] | undefined>;
 const scalar = (search: StructureSearch) => Object.fromEntries(Object.entries(search).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
@@ -15,7 +17,7 @@ export async function StructureListPage({ search, occupancy = false }: { search:
   const c = await getTenantContextForModule("CEMITERIOS");
   const input = scalar(search);
   if (!input.tipo) input.tipo = occupancy ? "LOTE" : "CEMITERIO";
-  const { filters, rows, total } = await listStructure(c.prisma, input);
+  const { filters, rows, total } = await listStructure(databaseConnection, input);
   const config = structureConfig[filters.tipo];
   const path = occupancy ? "/cemiterios/ocupacao" : "/cemiterios/estrutura";
   const values = { tipo: filters.tipo, q: filters.q, cemeteryId: filters.cemeteryId, active: filters.active, status: filters.status };
@@ -42,20 +44,20 @@ export async function StructureDetailPage({ id, search, occupancy = false }: { i
   const c = await getTenantContextForModule("CEMITERIOS");
   const input = scalar(search);
   const filters = structureFilters.parse({ ...input, tipo: input.tipo ?? (occupancy ? "LOTE" : "CEMITERIO") });
-  const record: StructureRecord = id === "novo" ? { id: "" } : await getStructure(c.prisma, filters.tipo, id) ?? notFound();
+  const database = c.database ?? db;
+  const record: StructureRecord = id === "novo" ? { id: "" } : await getStructure(database, filters.tipo, id) ?? notFound();
   const path = occupancy ? "/cemiterios/ocupacao" : "/cemiterios/estrutura";
   const returnHref = `${path}?${new URLSearchParams({ ...scalar(search), tipo: filters.tipo })}`;
-  const fields = ["LOTE", "SEPULTURA"].includes(filters.tipo) ? await c.prisma.cemeteryIdentificationField.findMany({ where: { targetType: filters.tipo, ...(record.cemeteryId ? { cemeteryId: String(record.cemeteryId) } : { active: true }) }, orderBy: [{ label: "asc" }, { id: "asc" }] }) : [];
+  const fields = ["LOTE", "SEPULTURA"].includes(filters.tipo) ? await readStructureFields(database, filters.tipo, record.cemeteryId ? String(record.cemeteryId) : undefined) : [];
   const historyPage = z.coerce.number().int().min(1).max(1000000).default(1).parse(input.historyPage);
-  const where = { targetType: filters.tipo, targetId: id };
-  const [historyTotal, history] = id === "novo" ? [0, []] : await Promise.all([c.prisma.cemeteryChangeHistory.count({ where }), c.prisma.cemeteryChangeHistory.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (historyPage - 1) * 20, take: 20 })]);
-  const users = await c.prisma.usuario.findMany({ where: { id: { in: history.map(h => h.actorUsuarioId) } }, select: { id: true, nome: true } });
+  const { total: historyTotal, history } = id === "novo" ? { total: 0, history: [] } : await readStructureHistory(database, filters.tipo, id, historyPage);
+  const users = await readStructureOperators(database, history.map(h => h.actorUsuarioId));
   const taxpayerIds = structureConfig[filters.tipo].fields.filter(f => f.lookup === "taxpayer").map(f => String(record[f.key] ?? "")).filter(Boolean);
-  const taxpayers = await c.prisma.taxpayer.findMany({ where: { id: { in: taxpayerIds } }, include: { person: true, company: true } });
+  const taxpayers = await readStructureTaxpayers(database, taxpayerIds);
   const serialized = JSON.parse(JSON.stringify({ ...record, cemeteryId: record.cemeteryId ?? filters.cemeteryId })) as Record<string, unknown>;
   const historyHref = (page: number) => `${path}/${id}?${new URLSearchParams({ ...scalar(search), tipo: filters.tipo, historyPage: String(page) })}`;
   const lotPage = z.coerce.number().int().min(1).max(1000000).default(1).parse(input.lotPage);
-  const [graveTotal, graves] = filters.tipo === "LOTE" && id !== "novo" ? await Promise.all([c.prisma.taxGrave.count({ where: { lotId: id } }), c.prisma.taxGrave.findMany({ where: { lotId: id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (lotPage - 1) * 20, take: 20 })]) : [0, []];
+  const { total: graveTotal, graves } = filters.tipo === "LOTE" && id !== "novo" ? await readLotGraves(database, id, lotPage) : { total: 0, graves: [] };
   const lotHref = (page: number) => `${path}/${id}?${new URLSearchParams({ ...scalar(search), tipo: filters.tipo, lotPage: String(page) })}`;
   return <div className="space-y-6 p-4">
     <Link href={returnHref} className="text-sm text-emerald-700">← Voltar à lista</Link><h1 className="text-xl font-semibold">{id === "novo" ? "Novo cadastro" : "Ficha / editar"} · {structureConfig[filters.tipo].title}</h1>

@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Plus, Users, Search } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ServidorRowActions } from "./ServidorRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readEmployeesPage } from "@/db/repositories/personnel-pages/records";
 import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
 import { RhPagination } from "../_components/RhPagination";
-import { rhPagination } from "@/lib/rh/list-pagination";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import {
   ErpTableContainer,
@@ -26,39 +26,13 @@ export default async function ServidoresPage(
     }>;
   }
 ) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH");
   const searchParams = await props.searchParams;
   const q = searchParams?.q || "";
   const status = searchParams?.status || "";
   const departmentId = searchParams?.departmentId || "";
 
-  const where: Prisma.EmployeeWhereInput = {};
-  if (q) {
-    where.OR = [
-      { name: { contains: q, mode: "insensitive" } },
-      { cpf: { contains: q } },
-      { registration: { contains: q } },
-    ];
-  }
-  if (status && status !== "all") {
-    where.isActive = status === "active";
-  }
-  if (departmentId && departmentId !== "all") {
-    where.departmentId = departmentId;
-  }
-
-  const total = await prisma.employee.count({ where });
-  const pagination = rhPagination(searchParams?.page, total);
-  const [employees, departments] = await Promise.all([
-    prisma.employee.findMany({
-      where,
-      take: pagination.take,
-      skip: pagination.skip,
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      include: { role: true, department: true },
-    }),
-    prisma.department.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const { total, pagination, employees, departments } = await readEmployeesPage(context.database ?? db, { q, status, departmentId, page: searchParams?.page });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">

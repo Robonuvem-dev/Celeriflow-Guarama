@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { taxActionContext } from "@/db/repositories/tax-actions/context";
 import {
   communicateDesifFiscalCase,
   createDesifAgency,
@@ -22,7 +22,7 @@ const result = (error?: unknown) => ({
         : undefined,
 });
 async function ctx(operation: "create" | "update") {
-  return getTenantContextForModuleOperation("TRIBUTACAO", operation);
+  return taxActionContext(operation);
 }
 const actor = (context: Awaited<ReturnType<typeof ctx>>) => ({
   usuarioId: context.user.id,
@@ -34,7 +34,7 @@ export async function createInstitutionAction(
 ) {
   try {
     const context = await ctx("create");
-    await createDesifInstitution(context.prisma, input);
+    await createDesifInstitution(context.connection, input);
     revalidatePath(path);
     return result();
   } catch (error) {
@@ -46,7 +46,7 @@ export async function createAgencyAction(
 ) {
   try {
     const context = await ctx("create");
-    await createDesifAgency(context.prisma, input);
+    await createDesifAgency(context.connection, input);
     revalidatePath(path);
     return result();
   } catch (error) {
@@ -56,7 +56,7 @@ export async function createAgencyAction(
 export async function validateImportAction(id: string) {
   try {
     const context = await ctx("update");
-    await validateDesifImport(context.prisma, actor(context), id);
+    await validateDesifImport(context.connection, actor(context), id);
     revalidatePath(path);
     return result();
   } catch (error) {
@@ -66,7 +66,7 @@ export async function validateImportAction(id: string) {
 export async function processImportAction(id: string) {
   try {
     const context = await ctx("update");
-    await processDesifImport(context.prisma, actor(context), id);
+    await processDesifImport(context.connection, actor(context), id);
     revalidatePath(path);
     return result();
   } catch (error) {
@@ -78,7 +78,7 @@ export async function receiveImportAction(
 ) {
   try {
     const context = await ctx("create");
-    await receiveDesifImport(context.prisma, actor(context), input);
+    await receiveDesifImport(context.connection, actor(context), input);
     revalidatePath(path);
     return result();
   } catch (error) {
@@ -88,7 +88,7 @@ export async function receiveImportAction(
 export async function issueGuideAction(id: string) {
   try {
     const context = await ctx("create");
-    await issueDesifGuide(context.prisma, id);
+    await issueDesifGuide(context.connection, id);
     revalidatePath(path);
     return result();
   } catch (error) {
@@ -102,7 +102,7 @@ export async function openFiscalCaseAction(
 ) {
   try {
     const context = await ctx("create");
-    await openDesifFiscalCase(context.prisma, actor(context), {
+    await openDesifFiscalCase(context.connection, actor(context), {
       assessmentId: id,
       findingType,
       processId,
@@ -116,7 +116,7 @@ export async function openFiscalCaseAction(
 export async function communicateFiscalCaseAction(id: string) {
   try {
     const context = await ctx("update");
-    await communicateDesifFiscalCase(context.prisma, actor(context), id);
+    await communicateDesifFiscalCase(context.connection, actor(context), id);
     revalidatePath(path);
     return result();
   } catch (error) {

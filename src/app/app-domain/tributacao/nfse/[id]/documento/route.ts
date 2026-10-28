@@ -1,10 +1,15 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { readNfseDocument, readNfseDocumentHistory } from "@/db/repositories/taxation/nfse-documents";
 export const dynamic = "force-dynamic";
 const esc = (value: unknown) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const invoice = await prisma.invoice.findUnique({ where: { id }, include: { provider: { include: { person: true, company: true } }, taker: { include: { person: true, company: true } } } });
-  const [fiscal, events, letters] = invoice ? await Promise.all([prisma.nfseInvoiceData.findUnique({ where: { invoiceId: invoice.id } }), prisma.nfseEvent.findMany({ where: { invoiceId: invoice.id }, orderBy: { createdAt: "asc" } }), prisma.nfseCorrectionLetter.findMany({ where: { invoiceId: invoice.id }, orderBy: { createdAt: "asc" } })]) : [null, [], []];
+  const { id } = await params; const context = await getTenantContextForModule("TRIBUTACAO");
+  const database = context.database ?? db;
+  const document = await readNfseDocument(database, { id });
+  const invoice = document?.invoice;
+  const fiscal = document?.fiscal;
+  const { events, letters } = invoice ? await readNfseDocumentHistory(database, invoice.id) : { events: [], letters: [] };
   if (!invoice || !fiscal) return new Response("NFS-e não encontrada.", { status: 404 });
   const provider = invoice.provider.company?.corporateName ?? invoice.provider.person?.fullName ?? invoice.providerId; const taker = invoice.taker?.company?.corporateName ?? invoice.taker?.person?.fullName ?? "Não informado";
   const history = events.map((event) => `<li>${esc(event.createdAt.toLocaleString("pt-BR"))} — <b>${esc(event.eventType)}</b>: ${esc(event.description)}</li>`).join("");

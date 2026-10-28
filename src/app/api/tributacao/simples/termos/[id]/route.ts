@@ -2,22 +2,30 @@ import PDFDocument from "pdfkit";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import { simplesOptionLayoutSchema } from "@/lib/tributacao/simples-option-files";
+import { taxActionConnection } from "@/db/repositories/tax-actions/context";
+import { actionRegistryEntry, latestActionRegistryEntry, firstActionRegistryEntry } from "@/db/repositories/tax-actions/registry";
+import { actionActorName } from "@/db/repositories/tax-actions/documents";
+import { readEconomicOrigin } from "@/db/repositories/tax-economic/registrations";
 
 export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { prisma, user } = await getTenantContextForModule("TRIBUTACAO"); const { id } = await params;
-    const decision = await prisma.taxRegistryEntry.findFirstOrThrow({ where: { id, entityType: "SIMPLES_OPTION_COMPANY", category: "SIMPLES_OPTION_DECISION" } });
+    const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const { id } = await params;
+    const database = taxActionConnection(context).db;
+    const decision = await actionRegistryEntry(database, id);
+    if (!decision || decision.entityType !== "SIMPLES_OPTION_COMPANY" || decision.category !== "SIMPLES_OPTION_DECISION") throw new Error("Termo não encontrado.");
     const data = taxScopeSnapshot(decision.data);
     if (!isSystemAdministrator(user) && !user.allowedBudgetUnitIds.includes(String(data.budgetUnitId))) throw new Error("Termo fora da UG autorizada.");
-    const binding = await prisma.planningEntityUnit.findFirstOrThrow({ where: { governmentEntityId: String(data.governmentEntityId), budgetUnitId: String(data.budgetUnitId) }, include: { governmentEntity: true, budgetUnit: true } });
-    const latest = await prisma.taxRegistryEntry.findFirstOrThrow({ where: { entityType: decision.entityType, entityId: decision.entityId, category: decision.category }, orderBy: { version: "desc" } });
-    if (latest.id !== decision.id) throw new Error("Decisão substituída. Emita o termo da versão atual.");
-    const source = await prisma.taxRegistryEntry.findFirstOrThrow({ where: { entityType: "SIMPLES_OPTION_FILE", entityId: String(data.fileId), category: "SIMPLES_OPTION_FILE" } });
+    const binding = await readEconomicOrigin(database, String(data.governmentEntityId), String(data.budgetUnitId));
+    if (!binding) throw new Error("Origem do termo não conciliada.");
+    const latest = await latestActionRegistryEntry(database, decision.entityType, decision.entityId, decision.category);
+    if (latest?.id !== decision.id) throw new Error("Decisão substituída. Emita o termo da versão atual.");
+    const source = await firstActionRegistryEntry(database, "SIMPLES_OPTION_FILE", String(data.fileId), "SIMPLES_OPTION_FILE");
+    if (!source) throw new Error("Arquivo de origem não encontrado.");
     const original = taxScopeSnapshot(source.data); const company = Array.isArray(original.rows) ? original.rows.find(row => taxScopeSnapshot(row).cnpj === data.cnpj) : undefined;
     if (!company) throw new Error("Empresa não encontrada no arquivo de origem.");
     const snapshot = taxScopeSnapshot(company); const layout = simplesOptionLayoutSchema.parse(data.layout);
-    const actor = decision.actorUsuarioId ? await prisma.usuario.findUnique({ where: { id: decision.actorUsuarioId }, select: { nome: true } }) : null;
+    const actor = decision.actorUsuarioId ? await actionActorName(database, decision.actorUsuarioId) : null;
     const bytes = await new Promise<Uint8Array>((resolve, reject) => {
       const title = data.approved === true ? layout.approvalTitle : layout.refusalTitle;
       const doc = new PDFDocument({ size: "A4", margin: 48, info: { Title: title, Author: binding.governmentEntity.name } }); const chunks: Buffer[] = [];

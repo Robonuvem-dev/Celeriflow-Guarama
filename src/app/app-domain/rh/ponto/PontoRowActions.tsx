@@ -4,7 +4,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { deletePonto } from "./actions";
-import type { AttendanceRecord } from "@prisma/client";
+import type { AttendanceRecord } from "@/lib/contracts/personnel-pages";
 
 export function PontoRowActions({ record }: { record: AttendanceRecord }) {
   const handleDelete = async () => {

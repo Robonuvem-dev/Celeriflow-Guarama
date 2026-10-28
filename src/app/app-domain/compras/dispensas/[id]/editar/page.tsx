@@ -1,16 +1,15 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { DispensaForm } from "../../DispensaForm";
 import { notFound } from "next/navigation";
+import { db } from "@/db/client";
+import { loadDirectContracting, loadDirectContractingOptions } from "@/db/repositories/procurement/direct-contracting";
 
 export default async function EditarDispensaPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
+  const context = await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const [dispensa, processos, fornecedores] = await Promise.all([
-    prisma.directContracting.findUnique({
-      where: { id: resolvedParams.id }
-    }),
-    prisma.purchaseProcess.findMany({ orderBy: { number: 'desc' } }),
-    prisma.supplier.findMany({ include: { company: true }, orderBy: { company: { corporateName: 'asc' } } })
+  const [dispensa, { processos, fornecedores }] = await Promise.all([
+    loadDirectContracting(context.database ?? db, resolvedParams.id),
+    loadDirectContractingOptions(context.database ?? db),
   ]);
 
   if (!dispensa) {

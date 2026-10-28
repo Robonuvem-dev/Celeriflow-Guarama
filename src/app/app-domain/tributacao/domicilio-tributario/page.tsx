@@ -1,21 +1,20 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ensureTributarioS3Defaults } from "@/lib/tributacao/s3-service";
 import DteClient from "./DteClient";
+import { db } from "@/db/client";
+import { listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
+import { listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
+import { readDtePage } from "@/db/repositories/taxation-pages/dte";
 
 export const dynamic = "force-dynamic";
 function name(item: { person: { fullName: string; cpf: string | null } | null; company: { corporateName: string; cnpj: string } | null }) { return item.company ? `${item.company.corporateName} · ${item.company.cnpj}` : item.person ? `${item.person.fullName} · ${item.person.cpf || "CPF não informado"}` : "Contribuinte sem identificação"; }
 
 export default async function DtePage() {
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO"); await ensureTributarioS3Defaults(prisma);
-  const [taxpayers, mailboxes, categories, messages, powers, processes, documents, accessGrants] = await Promise.all([
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, include: { person: true, company: true }, orderBy: { createdAt: "desc" }, take: 500 }),
-    prisma.dteMailbox.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.dteCategory.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.dteMessage.findMany({ include: { category: true, events: { orderBy: { createdAt: "desc" } } }, orderBy: { availableAt: "desc" }, take: 500 }),
-    prisma.dtePowerOfAttorney.findMany({ include: { events: { orderBy: { createdAt: "desc" } } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.process.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, protocolNumber: true }, take: 200 }),
-    prisma.document.findMany({ where: { status: { in: ["Válido", "Pendente"] } }, include: { signatures: { orderBy: { requestedAt: "desc" } } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.dteAccessGrant.findMany({ include: { mailbox: true }, orderBy: { createdAt: "desc" }, take: 200 }),
+  const context = await getTenantContextForModule("TRIBUTACAO"); const database = context.database ?? db; await ensureTributarioS3Defaults(database);
+  const [taxpayers, { mailboxes, categories, messages, powers, documents, accessGrants }, processes] = await Promise.all([
+    listPageTaxpayers(database, { active: true, order: "created-desc", limit: 500 }),
+    readDtePage(database),
+    listFiscalProcessOptions(database),
   ]);
   const names = new Map(taxpayers.map((item) => [item.id, name(item)])); const boxes = new Map(mailboxes.map((item) => [item.id, item])); const documentMap = new Map(documents.map((item) => [item.id, item]));
   return <DteClient

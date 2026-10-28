@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Plus, Wallet } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { FolhaRowActions } from "./FolhaRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readPayrollsPage } from "@/db/repositories/personnel-pages/records";
 import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
 import { RhPagination } from "../_components/RhPagination";
 import { RhSearchToolbar } from "../_components/RhSearchToolbar";
-import { rhPagination } from "@/lib/rh/list-pagination";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import {
   ErpTableContainer,
@@ -25,21 +25,9 @@ function folhaVariant(status: string): ErpStatusVariant {
 }
 
 export default async function FolhaPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH");
   const { q = "", page } = await searchParams;
-  const where: Prisma.PayrollWhereInput = q ? { OR: [
-    { competence: { contains: q, mode: "insensitive" } },
-    { type: { contains: q, mode: "insensitive" } },
-    { status: { contains: q, mode: "insensitive" } },
-  ] } : {};
-  const total = await prisma.payroll.count({ where });
-  const pagination = rhPagination(page, total);
-  const payrolls = await prisma.payroll.findMany({
-    where,
-    take: pagination.take,
-    skip: pagination.skip,
-    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-  });
+  const { total, pagination, payrolls } = await readPayrollsPage(context.database ?? db, { q, page });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">

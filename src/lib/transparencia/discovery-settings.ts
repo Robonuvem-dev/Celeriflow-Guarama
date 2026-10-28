@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cache } from "react";
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { readTransparencyParameter } from "@/db/repositories/transparency/settings";
 import type { DiscoverySection } from "./discovery";
 
 const publicUrl = z.string().url().refine(value => {
@@ -44,12 +45,12 @@ export type DiscoverySettings = z.infer<typeof discoverySettingsSchema>;
 export const discoverySettingsKey = "TRANSPARENCY_DISCOVERY_PRESENTATION";
 
 // Deduplicate metadata/page reads in one server render without retaining stale publication settings across requests.
-const readDiscoverySettings = cache(async (db: Pick<PrismaClient, "configuracaoParametroInstancia">) => {
-  const parameter = await db.configuracaoParametroInstancia.findFirst({ where: { chave: discoverySettingsKey }, orderBy: { createdAt: "asc" }, select: { valor: true } });
+const readDiscoverySettings = cache(async (db: DatabaseExecutor) => {
+  const parameter = await readTransparencyParameter(db, discoverySettingsKey);
   return discoverySettingsSchema.parse(parameter?.valor || {});
 });
 
-export async function getDiscoverySettings(db: Pick<PrismaClient, "configuracaoParametroInstancia">) {
+export async function getDiscoverySettings(db: DatabaseExecutor) {
   return readDiscoverySettings(db);
 }
 

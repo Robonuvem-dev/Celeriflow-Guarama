@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { findActiveConstructionPortalIdentity } from "@/db/repositories/infrastructure/construction-access";
 import { createSession, getIdTokenPrincipal, SESSION_COOKIE_NAME, SESSION_DURATION_MS } from "@/lib/platform/session";
 import { checkRateLimit } from "@/lib/platform/rate-limit";
 
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     const principal = await getIdTokenPrincipal(idToken);
     if (!principal) return NextResponse.json({ error: "Conta ou e-mail verificado inválido." }, { status: 401 });
     const today = new Date(new Date().toISOString().slice(0,10) + "T00:00:00Z");
-    const identity = await prisma.constructionPortalIdentity.findFirst({ where: { firebaseUid: principal.firebaseUid, email: principal.email, isActive: true, professional: { isActive: true, startsAt: { lte: today }, OR: [{ endsAt: null }, { endsAt: { gte: today } }], person: { status: "Ativo" } } }, select: { id: true } });
+    const identity = await findActiveConstructionPortalIdentity(db, principal, today);
     if (!identity) return NextResponse.json({ error: "Conta sem habilitação profissional vigente." }, { status: 403 });
     const response = NextResponse.json({ ok: true });
     response.cookies.set(SESSION_COOKIE_NAME, await createSession(idToken), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: Math.floor(SESSION_DURATION_MS/1000), path: "/" });

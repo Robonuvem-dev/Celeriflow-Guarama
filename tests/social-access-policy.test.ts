@@ -1,17 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { asc } from "drizzle-orm";
+import { socialAttendances } from "../src/db/schema/social";
 import { assertSocialUnitAccess, socialAttendanceWhere, type SocialAccess } from "../src/lib/social/access-policy";
 import { professionalLinkSchema } from "../src/lib/social/professional-input";
 
-test("sigilo e escopo SUAS são aplicados pela consulta Prisma no banco", async () => {
-  const db = new PGlite();
-  const server = new PGLiteSocketServer({ db, port: 0, host: "127.0.0.1" });
-  let prisma: PrismaClient | undefined;
+test("sigilo e escopo SUAS são aplicados pela consulta SQL no banco", async () => {
+  const fixture = await createLocalDrizzleDatabase();
+  const db = fixture.database;
   try {
     await db.exec(`
       CREATE TABLE "Employee" (id TEXT PRIMARY KEY);
@@ -31,10 +29,9 @@ test("sigilo e escopo SUAS são aplicados pela consulta Prisma no banco", async 
         ('outside-own','unit-b','me','Restrito','{}'),
         ('secret-outside','secret-unit','other','Normal','{}');
     `);
-    await server.start();
-    prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`, max: 1 }) });
+    const database = fixture.connection.db;
     const access: SocialAccess = { administrator: false, employeeId: "me", links: [{ unitId: "unit-a", individualScope: "UNIT", familyScope: "UNIT" }] };
-    const ids = async (scope: SocialAccess) => (await prisma!.socialAttendance.findMany({ where: socialAttendanceWhere(scope), select: { id: true }, orderBy: { id: "asc" } })).map((row) => row.id);
+    const ids = async (scope: SocialAccess) => (await database.select({ id: socialAttendances.id }).from(socialAttendances).where(socialAttendanceWhere(scope)).orderBy(asc(socialAttendances.id))).map(row => row.id);
     assert.deepEqual(await ids(access), ["own", "restricted-involved", "team"]);
     assert.deepEqual(await ids({ ...access, links: [] }), []);
     assert.deepEqual(await ids({ ...access, links: [{ unitId: "unit-a", individualScope: "OWN", familyScope: "OWN" }] }), ["own", "restricted-involved"]);
@@ -42,9 +39,7 @@ test("sigilo e escopo SUAS são aplicados pela consulta Prisma no banco", async 
     assert.equal((await ids({ ...access, administrator: true })).length, 7);
     assert.throws(() => assertSocialUnitAccess(access, "unit-b"));
   } finally {
-    await prisma?.$disconnect();
-    await server.stop();
-    await db.close();
+    await fixture.close();
   }
 });
 

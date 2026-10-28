@@ -3,6 +3,7 @@ import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { listServiceRightLedger } from "@/lib/rh/service-right-query";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { db } from "@/db/client";
 
 export const dynamic = "force-dynamic";
 export default async function MyServiceRights({ searchParams }: { searchParams: Promise<{ scope?: string; contractId?: string; periodStart?: string; page?: string }> }) {
@@ -10,7 +11,7 @@ export default async function MyServiceRights({ searchParams }: { searchParams: 
   if (access.status !== "AVAILABLE") return <p className="p-4">Cadastro funcional indisponível.</p>;
   const params = await searchParams;
   const scope = ["PRODUCAO", "HOMOLOGACAO", "DEMONSTRACAO"].includes(params.scope || "") ? params.scope! : "PRODUCAO";
-  const result = await listServiceRightLedger(access.context.prisma, access.employee.id, { scope, contractId: params.contractId || undefined, periodStart: params.periodStart || undefined, page: Math.max(1, Number.parseInt(params.page || "1") || 1) });
+  const result = await listServiceRightLedger(access.context.database ?? db, access.employee.id, { scope, contractId: params.contractId || undefined, periodStart: params.periodStart || undefined, page: Math.max(1, Number.parseInt(params.page || "1") || 1) });
   const href = (page: number) => `?${new URLSearchParams({ scope, page: String(page), contractId: params.contractId || "", periodStart: params.periodStart || "" })}`;
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title="Minha licença-prêmio" description="Aquisitivos, reservas e cancelamentos reconhecidos pelo RH, por vínculo e escopo." action={<Link href="/portal-servidor">Portal</Link>} />

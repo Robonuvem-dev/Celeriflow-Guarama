@@ -1,14 +1,14 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 
 export class TributarioS9Error extends Error {}
 
-const money = (value: Prisma.Decimal | string | number, label: string) => {
-  const result = new Prisma.Decimal(String(value)).toDecimalPlaces(2);
+const money = (value: Decimal | string | number, label: string) => {
+  const result = new Decimal(String(value)).toDecimalPlaces(2);
   if (!result.isFinite() || result.lessThan(0)) throw new TributarioS9Error(`${label} inválido.`);
   return result;
 };
 
-const num = (value: Prisma.Decimal | string | number | null | undefined) => Number(money(value ?? 0, "Valor").toString());
+const num = (value: Decimal | string | number | null | undefined) => Number(money(value ?? 0, "Valor").toString());
 
 // TRI-341 — Validação antes da inscrição: cadastro suficiente para identificar e localizar.
 export function validateEnrollmentEligibility(input: {
@@ -16,7 +16,7 @@ export function validateEnrollmentEligibility(input: {
   hasIdentification: boolean;
   hasAddress: boolean;
   debtStatus: string;
-  debtValue: Prisma.Decimal | string | number;
+  debtValue: Decimal | string | number;
   alreadyEnrolled: boolean;
   suspended: boolean;
 }) {
@@ -97,7 +97,7 @@ export function assertCemeteryTransferAllowed(input: { deceasedStatus: string; c
   if (input.deceasedStatus !== "SEPULTADO" || input.currentGraveId !== input.originGraveId) throw new TributarioS9Error("A transferência só pode ocorrer para um falecido atualmente sepultado na origem informada.");
 }
 
-export function cemeteryFeeAmount(input: { formula: "VALOR_FIXO" | "BASE_X_QUANTIDADE"; baseAmount: Prisma.Decimal | string | number; quantity?: number }) {
+export function cemeteryFeeAmount(input: { formula: "VALOR_FIXO" | "BASE_X_QUANTIDADE"; baseAmount: Decimal | string | number; quantity?: number }) {
   const base = money(input.baseAmount, "Valor-base");
   const quantity = input.quantity ?? 1;
   if (!Number.isFinite(quantity) || quantity <= 0) throw new TributarioS9Error("Quantidade inválida para o cálculo da taxa.");
@@ -113,24 +113,24 @@ export function concessionSituation(concession: { concessionType: string; status
 }
 
 // TRI-437..444 — Agregações do BI sobre linhas reais (sem arrays hard-coded).
-export function sumBy<T extends Record<string, unknown>>(rows: T[], key: (row: T) => string, value: (row: T) => Prisma.Decimal | string | number | null | undefined) {
+export function sumBy<T extends Record<string, unknown>>(rows: T[], key: (row: T) => string, value: (row: T) => Decimal | string | number | null | undefined) {
   const grouped = new Map<string, { count: number; total: number }>();
   for (const row of rows) {
     const label = key(row);
     const current = grouped.get(label) ?? { count: 0, total: 0 };
     current.count += 1;
-    current.total = Number(new Prisma.Decimal(current.total).plus(num(value(row))).toFixed(2));
+    current.total = Number(new Decimal(current.total).plus(num(value(row))).toFixed(2));
     grouped.set(label, current);
   }
   return [...grouped.entries()].map(([label, aggregates]) => ({ label, ...aggregates })).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
 }
 
-export function trendByMonth(rows: { date: Date | string; value: Prisma.Decimal | string | number | null | undefined }[]) {
+export function trendByMonth(rows: { date: Date | string; value: Decimal | string | number | null | undefined }[]) {
   return sumBy(rows, (row) => { const date = new Date(row.date); return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`; }, (row) => row.value)
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export function collectionRate(predicted: Prisma.Decimal | string | number, realized: Prisma.Decimal | string | number) {
+export function collectionRate(predicted: Decimal | string | number, realized: Decimal | string | number) {
   const expected = money(predicted, "Previsto");
   const actual = money(realized, "Realizado");
   return { predicted: expected, realized: actual, rate: expected.greaterThan(0) ? Number(actual.div(expected).mul(100).toFixed(2)) : 0 };

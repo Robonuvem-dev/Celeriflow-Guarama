@@ -1,21 +1,23 @@
 import { z } from "zod";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { equipmentRequirementsReport } from "@/lib/sst/equipment-queries";
-import type { Equipment } from "@/lib/sst/equipment-service";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstEquipmentRequirementOptions, searchSstPageEquipment } from "@/db/repositories/sst-pages/equipment";
 import { EquipmentPagination as ErpPagination } from "../EquipmentPagination";
 import { SstForm } from "../../SstForm";
 import { saveEquipmentRequirement } from "../actions";
 import { EquipmentNav,EquipmentField,equipmentControl as control } from "../EquipmentUi";
 import { PrintEquipment } from "../PrintEquipment";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 
 export default async function EquipmentRequirementsPage({searchParams}:{searchParams:Promise<{budgetUnitId?:string;q?:string;page?:string;includeDeliveries?:string;programQ?:string;programGroupId?:string;equipmentQ?:string}>}) {
   const context=await getTenantContextForModuleOperation("SST","issueReports"); const params=await searchParams; const data=await equipmentRequirementsReport(context,params); const unit=data.units.find(u=>u.id===params.budgetUnitId);
-  await writeAuditEvent(context.prisma,{actorUsuarioId:context.user.id,eventType:auditEventTypes.reportIssued,targetType:"SST_EQUIPMENT_REQUIREMENTS",targetId:params.budgetUnitId||context.user.id});
-  const groups=unit?await context.prisma.sstProgramExposureGroup.findMany({where:{program:{budgetUnitId:unit.id,kind:"PGR",code:{contains:params.programQ||"",mode:"insensitive"}}},include:{program:true,group:{select:{name:true,code:true}}},take:20,orderBy:[{program:{createdAt:"desc"}},{id:"asc"}]}):[];
-  const selected=params.programGroupId?await context.prisma.sstProgramExposureGroup.findFirst({where:{id:params.programGroupId,program:{budgetUnitId:{in:data.ids},kind:"PGR"}},include:{program:true}}):null;
+  const database=sstDatabase(context);
+  await writeAuditEvent(database,{actorUsuarioId:context.user.id,eventType:auditEventTypes.reportIssued,targetType:"SST_EQUIPMENT_REQUIREMENTS",targetId:params.budgetUnitId||context.user.id});
+  const {groups,selected}=await readSstEquipmentRequirementOptions(database,unit?.id,data.ids,params);
   const recommendations=selected?Array.from(new Set(z.array(z.object({epiApplicable:z.boolean(),epis:z.array(z.string())})).parse(selected.risks).filter(r=>r.epiApplicable).flatMap(r=>r.epis))):[];
-  const equipment=unit?await context.prisma.$queryRaw<Equipment[]>`SELECT e.*,m."name",m."code" FROM "SstEquipment" e JOIN "Material" m ON m."id"=e."materialId" WHERE e."budgetUnitId"=${unit.id} AND m."name" ILIKE ${`%${params.equipmentQ||""}%`} ORDER BY m."name",e."id" LIMIT 20`:[];
+  const equipment=unit?await searchSstPageEquipment(database,unit.id,params.equipmentQ||""):[];
   const href=(page:number)=>`/sst/equipamentos/necessidades?${new URLSearchParams(Object.entries({...params,page:String(page)}).filter((entry):entry is [string,string]=>entry[1]!==undefined))}`;
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Necessidade de equipamentos pelo PGR</h1><EquipmentNav/>
     <form className="grid gap-3 sm:grid-cols-3 print:hidden"><EquipmentField label="UG"><select name="budgetUnitId" defaultValue={params.budgetUnitId} className={control}><option value="">Todas autorizadas</option>{data.units.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></EquipmentField><EquipmentField label="Servidor"><input name="q" defaultValue={params.q} className={control}/></EquipmentField><label className="self-end"><input type="checkbox" name="includeDeliveries" value="1" defaultChecked={params.includeDeliveries==="1"}/> Incluir entregas em uso</label><EquipmentField label="Buscar código PGR (até 20 GHEs)"><input name="programQ" defaultValue={params.programQ} className={control}/></EquipmentField><EquipmentField label="Versão / GHE para vincular catálogo"><select name="programGroupId" defaultValue={params.programGroupId} className={control}><option value="">Selecione</option>{groups.map(g=><option key={g.id} value={g.id}>{g.program.code} v{g.program.version} — {g.group.code} {g.group.name}</option>)}</select></EquipmentField><EquipmentField label="Buscar equipamento canônico (até 20)"><input name="equipmentQ" defaultValue={params.equipmentQ} className={control}/></EquipmentField><button className="w-fit rounded border p-2">Consultar / carregar</button></form>

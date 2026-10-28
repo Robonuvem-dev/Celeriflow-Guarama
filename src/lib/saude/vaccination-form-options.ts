@@ -1,15 +1,9 @@
-import type { AppContext } from "@/lib/platform/tenant-context";
-export async function vaccinationFormOptions(context: AppContext) {
+import { db } from "@/db/client";
+import { listVaccinationFormRows } from "@/db/repositories/health-vaccination/search";
+import type { HealthVaccinationContext } from "@/lib/contracts/health-vaccination";
+export async function vaccinationFormOptions(context: HealthVaccinationContext) {
   const units = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const warehouseScope = { healthUnitId: units ? { in: units } : { not: null } };
-  const [vaccines, stocks, diluents, vials, professionals, campaigns] = await Promise.all([
-    context.prisma.vaccine.findMany({ where: { isActive: true, materialId: { not: null } }, select: { id: true, name: true, diluentMaterialId: true }, orderBy: { name: "asc" } }),
-    context.prisma.materialStock.findMany({ where: { quantity: { gt: 0 }, warehouse: warehouseScope, material: { vaccine: { isActive: true } } }, include: { warehouse: true, vaccineLotProfile: true, material: { select: { vaccine: { select: { id: true } } } } }, orderBy: { expirationDate: "asc" } }),
-    context.prisma.materialStock.findMany({ where: { quantity: { gt: 0 }, warehouse: warehouseScope, material: { isActive: true, healthProfile: { productKind: "DILUENT", isActive: true } } }, include: { warehouse: true, material: { select: { name: true } } } }),
-    context.prisma.healthVaccineOpenedVial.findMany({ where: { remainingDoses: { gt: 0 }, stock: { warehouse: warehouseScope } }, orderBy: { openedAt: "asc" } }),
-    context.prisma.healthProfessional.findMany({ where: { isActive: true, employee: { isActive: true }, ...(units ? { OR: [{ unitId: { in: units } }, { assignments: { some: { unitId: { in: units }, isActive: true } } }] } : {}) }, include: { employee: { select: { name: true } }, assignments: { where: { isActive: true }, select: { unitId: true } } }, orderBy: { employee: { name: "asc" } } }),
-    context.prisma.healthVaccinationCampaign.findMany({ orderBy: { startsAt: "desc" } }),
-  ]);
+  const { vaccines, stocks, diluents, vials, professionals, campaigns } = await listVaccinationFormRows(context.database ?? db, units);
   return {
     vaccines,
     stocks: stocks.map(stock => ({ id: stock.id, vaccineId: stock.material.vaccine!.id, warehouseId: stock.warehouseId, warehouseName: stock.warehouse.name, unitId: stock.warehouse.healthUnitId!, batchNumber: stock.batchNumber, quantity: stock.quantity, expirationDate: stock.expirationDate?.toISOString().slice(0, 10) || null, configured: !!stock.vaccineLotProfile, blocked: !!stock.blockedAt })),

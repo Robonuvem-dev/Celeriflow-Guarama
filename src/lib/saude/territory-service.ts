@@ -1,5 +1,15 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
+import { and, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { families, familyMembers } from "@/db/schema/master-data";
+import { people } from "@/db/schema/people";
+import { patients } from "@/db/schema/health-registration";
+import { healthProfessionals, healthProfessionalAssignments } from "@/db/schema/health-workforce";
+import { healthFamilies, healthFamilyMembers, healthTerritoryAreas, healthMicroareas, healthHouseholds, healthHomeVisits, healthHomeVisitParticipants, healthEsusForms } from "@/db/schema/health-territory";
+import { medicalRecords } from "@/db/schema/health-care";
+import { healthProductionFacts } from "@/db/schema/health-production";
+import { runHealthTransaction } from "./health-transaction";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import { assertHealthUnitAccess } from "@/lib/platform/tenant-context";
 import { registerProductionFactTx } from "./production-service";
@@ -12,90 +22,68 @@ export async function saveArea(context: AppContext, input: { code: string; name:
   if (!code || name.length < 2) throw new TerritoryError("Informe código e nome da área.");
   if (input.unitId) assertHealthUnitAccess(context.user, input.unitId);
   else if (context.user.hasHealthAccessScope) throw new TerritoryError("Informe a unidade da área.");
-  return context.prisma.healthTerritoryArea.upsert({
-    where: { code },
-    create: { code, name, unitId: input.unitId || null, teamId: input.teamId || null },
-    update: { name, unitId: input.unitId || null, teamId: input.teamId || null, isActive: true },
-    select: { id: true },
-  });
+  const [area] = await (context.database ?? db).insert(healthTerritoryAreas).values({ code, name, unitId: input.unitId || null, teamId: input.teamId || null }).onConflictDoUpdate({ target: healthTerritoryAreas.code, set: { name, unitId: input.unitId || null, teamId: input.teamId || null, isActive: true } }).returning({ id: healthTerritoryAreas.id });
+  return area;
 }
 
 export async function saveMicroarea(context: AppContext, input: { code: string; areaId: string; agentProfessionalId?: string | null }) {
   const code = input.code.trim().toUpperCase();
   if (!code) throw new TerritoryError("Informe o código da microárea.");
-  const area = await context.prisma.healthTerritoryArea.findUnique({ where: { id: input.areaId }, select: { id: true, unitId: true } });
+  const database = context.database ?? db;
+  const [area] = await database.select({ id: healthTerritoryAreas.id, unitId: healthTerritoryAreas.unitId }).from(healthTerritoryAreas).where(eq(healthTerritoryAreas.id, input.areaId)).limit(1);
   if (!area) throw new TerritoryError("Área não encontrada.");
   if (area.unitId) assertHealthUnitAccess(context.user, area.unitId);
-  return context.prisma.healthMicroarea.upsert({
-    where: { areaId_code: { areaId: input.areaId, code } },
-    create: { code, areaId: input.areaId, agentProfessionalId: input.agentProfessionalId || null },
-    update: { agentProfessionalId: input.agentProfessionalId || null, isActive: true },
-    select: { id: true },
-  });
+  const [microarea] = await database.insert(healthMicroareas).values({ code, areaId: input.areaId, agentProfessionalId: input.agentProfessionalId || null }).onConflictDoUpdate({ target: [healthMicroareas.areaId, healthMicroareas.code], set: { agentProfessionalId: input.agentProfessionalId || null, isActive: true } }).returning({ id: healthMicroareas.id });
+  return microarea;
 }
 
 export async function saveHousehold(context: AppContext, input: { householdCode?: string | null; microareaId?: string | null }) {
+  const database = context.database ?? db;
   if (input.microareaId) {
-    const micro = await context.prisma.healthMicroarea.findUnique({ where: { id: input.microareaId }, select: { id: true, area: { select: { unitId: true } } } });
+    const [micro] = await database.select({ id: healthMicroareas.id, area: { unitId: healthTerritoryAreas.unitId } }).from(healthMicroareas).innerJoin(healthTerritoryAreas, eq(healthTerritoryAreas.id, healthMicroareas.areaId)).where(eq(healthMicroareas.id, input.microareaId)).limit(1);
     if (!micro) throw new TerritoryError("Microárea não encontrada.");
     if (micro.area.unitId) assertHealthUnitAccess(context.user, micro.area.unitId);
   }
   const code = input.householdCode?.trim() || null;
   if (code) {
-    const existing = await context.prisma.healthHousehold.findUnique({ where: { householdCode: code }, select: { id: true } });
-    if (existing) return context.prisma.healthHousehold.update({ where: { id: existing.id }, data: { microareaId: input.microareaId || null, isActive: true }, select: { id: true } });
+    const [household] = await database.insert(healthHouseholds).values({ householdCode: code, microareaId: input.microareaId || null }).onConflictDoUpdate({ target: healthHouseholds.householdCode, set: { microareaId: input.microareaId || null, isActive: true } }).returning({ id: healthHouseholds.id });
+    return household;
   }
-  return context.prisma.healthHousehold.create({ data: { householdCode: code, microareaId: input.microareaId || null }, select: { id: true } });
+  const [household] = await database.insert(healthHouseholds).values({ householdCode: code, microareaId: input.microareaId || null }).returning({ id: healthHouseholds.id });
+  return household;
 }
 
 export async function saveFamily(context: AppContext, input: { familyCode?: string | null; householdId?: string | null; responsiblePersonId?: string | null }) {
-  if (input.householdId && !await context.prisma.healthHousehold.findUnique({ where: { id: input.householdId }, select: { id: true } })) throw new TerritoryError("Domicílio não encontrado.");
-  if (input.responsiblePersonId && !await context.prisma.person.findUnique({ where: { id: input.responsiblePersonId }, select: { id: true } })) throw new TerritoryError("Responsável não encontrado.");
+  const database = context.database ?? db;
+  if (input.householdId && !(await database.select({ id: healthHouseholds.id }).from(healthHouseholds).where(eq(healthHouseholds.id, input.householdId)).limit(1)).length) throw new TerritoryError("Domicílio não encontrado.");
+  if (input.responsiblePersonId && !(await database.select({ id: people.id }).from(people).where(eq(people.id, input.responsiblePersonId)).limit(1)).length) throw new TerritoryError("Responsável não encontrado.");
   const familyCode = input.familyCode?.trim() || null;
-  return context.prisma.$transaction(async (tx) => {
-    const codeCandidate = familyCode ? await tx.family.findUnique({ where: { code: familyCode }, include: { healthProfile: { select: { id: true } } } }) : null;
-    if (codeCandidate?.healthProfile) throw new TerritoryError("O código familiar já está vinculado a outra família da Saúde.");
+  return runHealthTransaction(context, async (tx) => {
+    const codeCandidate = familyCode ? (await tx.select().from(families).where(eq(families.code, familyCode)).limit(1))[0] : null;
+    if (codeCandidate && (await tx.select({ id: healthFamilies.id }).from(healthFamilies).where(eq(healthFamilies.masterFamilyId, codeCandidate.id)).limit(1)).length) throw new TerritoryError("O código familiar já está vinculado a outra família da Saúde.");
     if (codeCandidate?.responsiblePersonId && input.responsiblePersonId && codeCandidate.responsiblePersonId !== input.responsiblePersonId) throw new TerritoryError("O código familiar pertence a outro responsável.");
     const masterFamilyId = codeCandidate?.id || null;
     const responsiblePersonId = input.responsiblePersonId || codeCandidate?.responsiblePersonId || null;
-    const masterFamily = masterFamilyId
-      ? await tx.family.update({ where: { id: masterFamilyId }, data: { code: familyCode || undefined, responsiblePersonId: input.responsiblePersonId || undefined, status: "ATIVA" } })
-      : await tx.family.create({ data: { code: familyCode, responsiblePersonId: input.responsiblePersonId || null } });
+    const [masterFamily] = masterFamilyId
+      ? await tx.update(families).set({ code: familyCode || undefined, responsiblePersonId: input.responsiblePersonId || undefined, status: "ATIVA" }).where(eq(families.id, masterFamilyId)).returning()
+      : await tx.insert(families).values({ code: familyCode, responsiblePersonId: input.responsiblePersonId || null }).returning();
     if (input.responsiblePersonId) {
-      await tx.familyMember.upsert({
-        where: { familyId_personId: { familyId: masterFamily.id, personId: input.responsiblePersonId } },
-        update: { isRepresentative: true, status: "ATIVO", leftAt: null },
-        create: { familyId: masterFamily.id, personId: input.responsiblePersonId, kinship: "RESPONSAVEL", isRepresentative: true },
-      });
+      await tx.insert(familyMembers).values({ familyId: masterFamily.id, personId: input.responsiblePersonId, kinship: "RESPONSAVEL", isRepresentative: true }).onConflictDoUpdate({ target: [familyMembers.familyId, familyMembers.personId], set: { isRepresentative: true, status: "ATIVO", leftAt: null } });
     }
-    return tx.healthFamily.create({
-      data: { familyCode, householdId: input.householdId || null, responsiblePersonId, masterFamilyId: masterFamily.id },
-      select: { id: true },
-    });
+    const [family] = await tx.insert(healthFamilies).values({ familyCode, householdId: input.householdId || null, responsiblePersonId, masterFamilyId: masterFamily.id }).returning({ id: healthFamilies.id });
+    return family;
   });
 }
 
 export async function addFamilyMember(context: AppContext, input: { familyId: string; personId: string; kinship?: string | null }) {
-  const family = await context.prisma.healthFamily.findUnique({ where: { id: input.familyId }, select: { id: true, masterFamilyId: true } });
-  if (!family) throw new TerritoryError("Família não encontrada.");
-  if (!await context.prisma.person.findUnique({ where: { id: input.personId }, select: { id: true } })) throw new TerritoryError("Pessoa não encontrada.");
-  const existing = await context.prisma.healthFamilyMember.findUnique({ where: { personId: input.personId }, select: { id: true, familyId: true } });
-  if (existing) {
-    if (existing.familyId !== input.familyId) throw new TerritoryError("Pessoa já vinculada a outra família.");
-    if (family.masterFamilyId) await context.prisma.familyMember.upsert({
-      where: { familyId_personId: { familyId: family.masterFamilyId, personId: input.personId } },
-      update: { kinship: input.kinship?.trim() || null, status: "ATIVO", leftAt: null },
-      create: { familyId: family.masterFamilyId, personId: input.personId, kinship: input.kinship?.trim() || null },
-    });
-    return existing;
-  }
-  return context.prisma.$transaction(async (tx) => {
-    const member = await tx.healthFamilyMember.create({ data: { familyId: input.familyId, personId: input.personId, kinship: input.kinship?.trim() || null }, select: { id: true } });
-    if (family.masterFamilyId) await tx.familyMember.upsert({
-      where: { familyId_personId: { familyId: family.masterFamilyId, personId: input.personId } },
-      update: { kinship: input.kinship?.trim() || null, status: "ATIVO", leftAt: null },
-      create: { familyId: family.masterFamilyId, personId: input.personId, kinship: input.kinship?.trim() || null },
-    });
+  return runHealthTransaction(context, async (tx) => {
+    const [family] = await tx.select({ id: healthFamilies.id, masterFamilyId: healthFamilies.masterFamilyId }).from(healthFamilies).where(eq(healthFamilies.id, input.familyId)).limit(1);
+    if (!family) throw new TerritoryError("Família não encontrada.");
+    if (!(await tx.select({ id: people.id }).from(people).where(eq(people.id, input.personId)).limit(1)).length) throw new TerritoryError("Pessoa não encontrada.");
+    const [existing] = await tx.select({ id: healthFamilyMembers.id, familyId: healthFamilyMembers.familyId }).from(healthFamilyMembers).where(eq(healthFamilyMembers.personId, input.personId)).limit(1);
+    if (existing && existing.familyId !== input.familyId) throw new TerritoryError("Pessoa já vinculada a outra família.");
+    const member = existing || (await tx.insert(healthFamilyMembers).values({ familyId: input.familyId, personId: input.personId, kinship: input.kinship?.trim() || null }).returning({ id: healthFamilyMembers.id }))[0];
+    if (family.masterFamilyId) await tx.insert(familyMembers).values({ familyId: family.masterFamilyId, personId: input.personId, kinship: input.kinship?.trim() || null }).onConflictDoUpdate({ target: [familyMembers.familyId, familyMembers.personId], set: { kinship: input.kinship?.trim() || null, status: "ATIVO", leftAt: null } });
     return member;
   });
 }
@@ -116,28 +104,29 @@ const visitSchema = z.object({
 export async function createVisit(context: AppContext, raw: unknown) {
   const input = visitSchema.parse(raw);
   if (!input.householdId && !input.familyId) throw new TerritoryError("Informe o domicílio ou a família visitada.");
-  const professional = await context.prisma.healthProfessional.findUnique({ where: { id: input.professionalId }, select: { id: true, unitId: true } });
+  const database = context.database ?? db;
+  const [professional] = await database.select({ id: healthProfessionals.id, unitId: healthProfessionals.unitId }).from(healthProfessionals).where(eq(healthProfessionals.id, input.professionalId)).limit(1);
   if (!professional) throw new TerritoryError("Agente/profissional não encontrado.");
   const unitId = input.unitId || professional.unitId;
   if (unitId) assertHealthUnitAccess(context.user, unitId);
   else if (context.user.hasHealthAccessScope) throw new TerritoryError("Informe a unidade responsável pela visita.");
-  if (unitId && professional.unitId !== unitId && !await context.prisma.healthProfessionalAssignment.count({ where: { professionalId: professional.id, unitId, isActive: true, AND: [{ OR: [{ validFrom: null }, { validFrom: { lte: input.visitedAt } }] }, { OR: [{ validUntil: null }, { validUntil: { gte: input.visitedAt } }] }] } })) throw new TerritoryError("Profissional sem vínculo vigente na unidade da visita.");
-  return context.prisma.healthHomeVisit.create({
-    data: { ...input, unitId, householdId: input.householdId || null, familyId: input.familyId || null, teamId: input.teamId || null, areaId: input.areaId || null, microareaId: input.microareaId || null, observations: input.observations || null, createdByUsuarioId: context.user.id },
-    select: { id: true },
-  });
+  if (unitId && professional.unitId !== unitId && !(await database.select({ id: healthProfessionalAssignments.id }).from(healthProfessionalAssignments).where(and(eq(healthProfessionalAssignments.professionalId, professional.id), eq(healthProfessionalAssignments.unitId, unitId), eq(healthProfessionalAssignments.isActive, true), or(isNull(healthProfessionalAssignments.validFrom), lte(healthProfessionalAssignments.validFrom, input.visitedAt)), or(isNull(healthProfessionalAssignments.validUntil), gte(healthProfessionalAssignments.validUntil, input.visitedAt)))).limit(1)).length) throw new TerritoryError("Profissional sem vínculo vigente na unidade da visita.");
+  const [visit] = await database.insert(healthHomeVisits).values({ ...input, unitId, householdId: input.householdId || null, familyId: input.familyId || null, teamId: input.teamId || null, areaId: input.areaId || null, microareaId: input.microareaId || null, observations: input.observations || null, createdByUsuarioId: context.user.id }).returning({ id: healthHomeVisits.id });
+  return visit;
 }
 
 export async function addVisitParticipant(context: AppContext, input: { visitId: string; personId: string }) {
-  const visit = await context.prisma.healthHomeVisit.findUnique({ where: { id: input.visitId }, select: { id: true, status: true } });
+  const database = context.database ?? db;
+  const [visit] = await database.select({ id: healthHomeVisits.id, status: healthHomeVisits.status }).from(healthHomeVisits).where(eq(healthHomeVisits.id, input.visitId)).limit(1);
   if (!visit) throw new TerritoryError("Visita não encontrada.");
   if (visit.status === "CANCELADA") throw new TerritoryError("Visita cancelada não aceita participantes.");
-  const person = await context.prisma.person.findUnique({ where: { id: input.personId }, select: { id: true } });
+  const [person] = await database.select({ id: people.id }).from(people).where(eq(people.id, input.personId)).limit(1);
   if (!person) throw new TerritoryError("Pessoa não encontrada.");
-  const patient = await context.prisma.patient.findUnique({ where: { personId: input.personId }, select: { id: true } });
-  const existing = await context.prisma.healthHomeVisitParticipant.findUnique({ where: { visitId_personId: { visitId: input.visitId, personId: input.personId } }, select: { id: true } });
+  const [patient] = await database.select({ id: patients.id }).from(patients).where(eq(patients.personId, input.personId)).limit(1);
+  const [existing] = await database.select({ id: healthHomeVisitParticipants.id }).from(healthHomeVisitParticipants).where(and(eq(healthHomeVisitParticipants.visitId, input.visitId), eq(healthHomeVisitParticipants.personId, input.personId))).limit(1);
   if (existing) return existing;
-  return context.prisma.healthHomeVisitParticipant.create({ data: { visitId: input.visitId, personId: input.personId, patientId: patient?.id || null }, select: { id: true } });
+  const [participant] = await database.insert(healthHomeVisitParticipants).values({ visitId: input.visitId, personId: input.personId, patientId: patient?.id || null }).returning({ id: healthHomeVisitParticipants.id });
+  return participant;
 }
 
 const formSchema = z.object({
@@ -170,16 +159,15 @@ export async function saveForm(context: AppContext, raw: unknown) {
   const input = formSchema.parse(raw);
   validateFormLinks(input);
   const { validateEsusFields } = await import("./sisab-form-config");
-  const typedError = validateEsusFields(input.kind, (input.fields || {}) as Record<string, unknown>);
+  const typedError = validateEsusFields(input.kind, input.fields || {});
   if (typedError) throw new TerritoryError(typedError);
   assertHealthUnitAccess(context.user, input.unitId!);
   if (input.originMedicalRecordId) {
-    const record = await context.prisma.medicalRecord.findUnique({ where: { id: input.originMedicalRecordId }, select: { id: true, unitId: true } });
+    const [record] = await (context.database ?? db).select({ id: medicalRecords.id, unitId: medicalRecords.unitId }).from(medicalRecords).where(eq(medicalRecords.id, input.originMedicalRecordId)).limit(1);
     if (!record) throw new TerritoryError("Prontuário de origem não encontrado.");
     assertHealthUnitAccess(context.user, record.unitId);
   }
-  return context.prisma.healthEsusForm.create({
-    data: {
+  const [form] = await (context.database ?? db).insert(healthEsusForms).values({
       kind: input.kind,
       householdId: input.householdId || null,
       familyId: input.familyId || null,
@@ -193,29 +181,25 @@ export async function saveForm(context: AppContext, raw: unknown) {
       originMedicalRecordId: input.originMedicalRecordId || null,
       idempotencyKey: randomUUID(),
       createdByUsuarioId: context.user.id,
-    },
-    select: { id: true },
-  });
+  }).returning({ id: healthEsusForms.id });
+  return form;
 }
 
 export async function finalizeForm(context: AppContext, formId: string) {
-  const form = await context.prisma.healthEsusForm.findUnique({ where: { id: formId }, select: { id: true, status: true, unitId: true, period: true, patientId: true, personId: true, professionalId: true, kind: true } });
-  if (!form) throw new TerritoryError("Ficha não encontrada.");
-  if (form.unitId) assertHealthUnitAccess(context.user, form.unitId);
-  if (form.status === "FINALIZADA") return { id: form.id };
-  return context.prisma.$transaction(async tx => {
-    await tx.$queryRaw`SELECT id FROM "HealthEsusForm" WHERE id=${formId} FOR UPDATE`;
-    const form = await tx.healthEsusForm.findUniqueOrThrow({ where: { id: formId }, select: { id: true, status: true, unitId: true, period: true, patientId: true, personId: true, professionalId: true, kind: true } });
+  return runHealthTransaction(context, async tx => {
+    await tx.execute(sql`SELECT id FROM "HealthEsusForm" WHERE id=${formId} FOR UPDATE`);
+    const [form] = await tx.select().from(healthEsusForms).where(eq(healthEsusForms.id, formId)).limit(1);
+    if (!form) throw new TerritoryError("Ficha não encontrada.");
     if (form.unitId) assertHealthUnitAccess(context.user, form.unitId);
     if (form.status === "FINALIZADA") return { id: form.id };
-    await tx.healthEsusForm.update({ where: { id: form.id }, data: { status: "FINALIZADA", finalizedAt: new Date() } });
+    await tx.update(healthEsusForms).set({ status: "FINALIZADA", finalizedAt: new Date() }).where(eq(healthEsusForms.id, form.id));
     // Produção automática idempotente a partir da ficha (reutiliza a origem)
     const key = `ESUS_FORM:${form.id}`;
-    const exists = await tx.healthProductionFact.findUnique({ where: { idempotencyKey: key }, select: { id: true } });
+    const [exists] = await tx.select({ id: healthProductionFacts.id }).from(healthProductionFacts).where(eq(healthProductionFacts.idempotencyKey, key)).limit(1);
     if (!exists) {
       let patientId = form.patientId;
       if (!patientId && form.personId) {
-        const patient = await tx.patient.findUnique({ where: { personId: form.personId }, select: { id: true } });
+        const [patient] = await tx.select({ id: patients.id }).from(patients).where(eq(patients.personId, form.personId)).limit(1);
         patientId = patient?.id || null;
       }
       await registerProductionFactTx(tx, { originType: "ESUS_FORM", originId: form.id, patientId, unitId: form.unitId, professionalId: form.professionalId, quantity: 1, occurredAt: new Date(), period: form.period, idempotencyKey: key });

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readCemeteryTransferPage } from "@/db/repositories/cemeteries/workflow-pages";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { WorkflowTransferForm } from "@/components/cemeteries/WorkflowForms";
-import { workflowPage } from "@/lib/cemeteries/workflow";
 import { WORKFLOW_MOVEMENT_LABELS } from "@/lib/cemeteries/workflow-labels";
 
 export const dynamic = "force-dynamic";
@@ -11,15 +11,7 @@ type Filters = { page?: string; q?: string; type?: string; cemeteryId?: string }
 export default async function CemeteryTransfersPage({ searchParams }: { searchParams: Promise<Filters> }) {
   const filters = await searchParams;
   const context = await getTenantContextForModule("CEMITERIOS");
-  const { prisma } = context;
-  const where: Prisma.TaxBurialMovementWhereInput = { movementType: filters.type || { not: "SEPULTAMENTO" }, ...(filters.cemeteryId ? { grave: { cemeteryId: filters.cemeteryId } } : {}), ...(filters.q?.trim() ? { deceased: { fullName: { contains: filters.q.trim(), mode: "insensitive" } } } : {}) };
-  const total = await prisma.taxBurialMovement.count({ where });
-  const page = Math.min(workflowPage(filters.page), Math.max(1, Math.ceil(total / 20)));
-  const rows = await prisma.taxBurialMovement.findMany({ where, include: { deceased: true, grave: true, toOssuary: true }, orderBy: [{ movementDate: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 });
-  const [graves, operators] = await Promise.all([
-    prisma.taxGrave.findMany({ where: { id: { in: rows.flatMap(row => [row.fromGraveId, row.toGraveId].filter((id): id is string => Boolean(id))) } }, include: { cemetery: true } }),
-    prisma.usuario.findMany({ where: { id: { in: rows.map(row => row.createdByUsuarioId) } }, select: { id: true, nome: true } }),
-  ]);
+  const { total, page, rows, graves, operators } = await readCemeteryTransferPage(context.database ?? db, filters);
   const graveNames = new Map(graves.map(grave => [grave.id, `${grave.code} · ${grave.cemetery.name}`]));
   const operatorNames = new Map(operators.map(operator => [operator.id, operator.nome]));
   const values = { q: filters.q || "", type: filters.type || "", cemeteryId: filters.cemeteryId || "" };

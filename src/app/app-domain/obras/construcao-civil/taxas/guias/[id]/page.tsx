@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
+import { db } from "@/db/client";
+import { findPageGuide } from "@/db/repositories/works-pages/taxation";
 import { confirmedConstructionBalance } from "@/lib/obras/construction-tax-engine";
 import ConstructionDemonstrationBarcode from "@/components/construction/ConstructionDemonstrationBarcode";
 
@@ -10,7 +11,7 @@ export default async function ConstructionGuidePage({ params }: { params: Promis
   const { id } = await params;
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
-  const fee = await context.prisma.constructionFee.findFirst({ where: { case: constructionCaseWhere(access), assessment: { guides: { some: { id } } } }, include: { case: { include: { process: true } }, rule: true, assessment: { include: { taxpayer: { include: { person: true, company: true } }, realEstate: true, guides: { where: { id }, include: { payments: { where: { status: "Confirmado" } } } } } } } });
+  const fee = await findPageGuide(context.database ?? db, access, id);
   const guide = fee?.assessment?.guides[0];
   if (!fee?.assessment || !guide) notFound();
   const snapshot = guide.calculationSnapshot as Record<string, unknown> | null;

@@ -1,0 +1,11 @@
+{
+  "sourceSha256": "49b17eed370f8763aeff60152c99226136d07cf6e09451c2d1686fe341289445",
+  "originalAssertionsSha256": "8a4815532e6ea8a3e9e805fda2b57e2d9b9f2505c6d9186fd3da981155d6ec5d",
+  "assertions": 498,
+  "expectedOperandsHash": "db4f6523c8a81289a28b0149e1150a77b56be1824a569b91658d77c308b74abe",
+  "serviceGuards": 132,
+  "serviceGuardsHash": "2c8510cc9cc086fd799c2046679b9c823ff106dbbfc65656c63aceda18c25153",
+  "titles": ["Saúde: aprovação de entradas, cotas sem duplicação e observação vinculada à evolução clínica"],
+  "titlesHash": "4d880eaa4b67b554524cb603a9a087b83dc9908d7e20a287fa8697e86eb01819",
+  "capture": "Capturado do arquivo original antes de editar. Printer TypeScript LF, SHA256(JSON.stringify). ExpectedOperands: método assert e argumentos após o primeiro. ServiceGuards: assert.rejects exceto operações diretas do banco. Normalização permitida: identidade f.db/database, Prisma.Decimal/Decimal e remoção de as/type assertions. A tradução individual das consultas é auditada separadamente."
+}

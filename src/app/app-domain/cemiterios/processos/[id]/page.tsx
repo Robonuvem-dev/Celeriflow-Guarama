@@ -3,19 +3,22 @@ import { notFound } from "next/navigation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { WorkflowAdvance, WorkflowReceiptPrint } from "@/components/cemeteries/WorkflowForms";
 import { CemeteryAttachments } from "@/components/cemeteries/CemeteryAttachments";
+import { db } from "@/db/client";
+import { readWorkflowFuneralHome, readWorkflowProcess, readWorkflowTaxpayer } from "@/db/repositories/cemeteries/workflow-pages";
 
 export const dynamic = "force-dynamic";
 export default async function CemeteryProcessPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const { prisma } = await getTenantContextForModule("CEMITERIOS");
-  const process = await prisma.cemeteryProcess.findUnique({ where: { id }, include: { deceased: { include: { cause: true, funeralHome: true } }, cemetery: true, grave: true, chapel: true } });
+  const { id } = await params; const context = await getTenantContextForModule("CEMITERIOS");
+  const database = context.database ?? db;
+  const process = await readWorkflowProcess(database, { id });
   if (!process) notFound();
   const debt = process.declarantDebtSnapshot as { total?: string; hasDebt?: boolean; checkedAt?: string };
   const groups = process.deceased.groups as Record<string, unknown>;
   const metadata = groups._workflow as { burialType?: string; exceptionReason?: string; memberOwnerDeceased?: boolean } | undefined;
   const [declarant, funeralHome, linked] = await Promise.all([
-    prisma.taxpayer.findUnique({ where: { id: process.declarantTaxpayerId }, include: { person: true, company: true } }),
-    process.funeralHomeId ? prisma.taxFuneralHome.findUnique({ where: { id: process.funeralHomeId } }) : null,
-    process.deceased.deceasedTaxpayerId ? prisma.taxpayer.findUnique({ where: { id: process.deceased.deceasedTaxpayerId }, include: { person: true } }) : null,
+    readWorkflowTaxpayer(database, process.declarantTaxpayerId),
+    process.funeralHomeId ? readWorkflowFuneralHome(database, process.funeralHomeId) : null,
+    process.deceased.deceasedTaxpayerId ? readWorkflowTaxpayer(database, process.deceased.deceasedTaxpayerId) : null,
   ]);
   const civilDate = (date: Date) => date.toLocaleDateString("pt-BR", { timeZone: "UTC" });
   const ceremonyDate = (date: Date) => date.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });

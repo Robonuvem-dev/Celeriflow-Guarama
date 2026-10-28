@@ -1,6 +1,12 @@
 import { ArrowLeft, Clock, FileText, User, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { getProtocolContext, protocolScope } from "@/lib/protocols/access";
+import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
+import { db } from "@/db/client";
+import { and, asc, eq } from "drizzle-orm";
+import { departments } from "@/db/schema/administration";
+import { documentClasses as classTable } from "@/db/schema/document-workflow";
+import { processes } from "@/db/schema/processes";
+import { readOperationalProcess, listProtocolSigners, listProcessCitizenAccesses, citizenTrackingEligibleCondition } from "@/db/repositories/processes/details";
 import { canViewModule } from "@/lib/platform/tenant-context";
 import { notFound } from "next/navigation";
 import ProcessControls from "./ProcessControls";
@@ -19,52 +25,20 @@ export default async function ProcessoDetalhesPage({
   const requestTime = new Date();
   const { id } = await params;
   const context = await getProtocolContext();
-  const { prisma, user } = context;
+  const { user } = context;
   const requestedReturnTo = searchParams ? await searchParams : {};
   const rawReturnTo = Array.isArray(requestedReturnTo.returnTo) ? requestedReturnTo.returnTo[0] : requestedReturnTo.returnTo;
   const returnTo = rawReturnTo?.startsWith("/protocolos/processos") ? rawReturnTo : "/protocolos/processos";
-  const processo = await prisma.process.findFirst({
-    where: { id, ...protocolScope(context) },
-    include: {
-      processType: true,
-      subject: true,
-      person: true,
-      company: true,
-      currentDepartment: true,
-      dispatches: {
-        include: { employee: true },
-        orderBy: { createdAt: 'desc' }
-      },
-      movements: {
-        include: { fromDepartment: true, toDepartment: true, employee: true, receivedByEmployee: true },
-        orderBy: { movedAt: 'desc' }
-      },
-      documents: {
-        include: { employee: true, document: true },
-        orderBy: { createdAt: 'desc' }
-      },
-      events: {
-        include: { employee: true, department: true },
-        orderBy: { createdAt: 'desc' }
-      },
-      genericWorkflowInstance: {
-        include: { definition: { include: { stages: { orderBy: { position: "asc" } } } } },
-      },
-    }
-  });
+  const processo = await readOperationalProcess(db, id, protocolScopeCondition(context));
 
   if (!processo) {
     notFound();
   }
 
   const [departamentos, documentClasses, signers] = await Promise.all([
-    prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.documentClass.findMany({ where: { isActive: true, signaturePolicy: "INTERNAL_ALLOWED" }, select: { id: true, label: true }, orderBy: { label: "asc" } }),
-    prisma.usuario.findMany({
-      where: { ativo: true, perfil: { ativo: true } },
-      include: { perfil: true, permissoesModulo: { include: { modulo: { select: { codigo: true } } } } },
-      orderBy: { nome: "asc" },
-    }),
+    db.select({ id: departments.id, name: departments.name }).from(departments).where(eq(departments.isActive, true)).orderBy(asc(departments.name)),
+    db.select({ id: classTable.id, label: classTable.label }).from(classTable).where(and(eq(classTable.isActive, true), eq(classTable.signaturePolicy, "INTERNAL_ALLOWED"))).orderBy(asc(classTable.label)),
+    listProtocolSigners(db),
   ]);
   const canOperate = context.protocolAccess.canUpdate && Boolean(
     user.employeeId && user.departmentId && user.departmentId === processo.currentDepartmentId,
@@ -83,8 +57,8 @@ export default async function ProcessoDetalhesPage({
     ? Math.ceil((processo.expectedCompletionAt.getTime() - requestTime.getTime()) / 86_400_000)
     : null;
   const genericStage = processo.genericWorkflowInstance?.definition.stages.find((stage) => stage.position === processo.genericWorkflowInstance?.currentPosition) || null;
-  const canManageCitizenAccess = context.protocolAccess.canUpdate && (context.protocolAccess.isAdmin || canOperate) && Boolean(await prisma.process.findFirst({ where: { id: processo.id, ombudsman: { is: null }, functionalPortalBinding: { is: null }, sstCertificates: { none: {} } }, select: { id: true } }));
-  const citizenAccesses = canManageCitizenAccess ? await prisma.processCitizenAccess.findMany({ where: { processId: processo.id }, include: { usuario: { select: { nome: true, email: true } } }, orderBy: { grantedAt: "desc" } }) : [];
+  const canManageCitizenAccess = context.protocolAccess.canUpdate && (context.protocolAccess.isAdmin || canOperate) && (await db.select({ id: processes.id }).from(processes).where(and(eq(processes.id, processo.id), citizenTrackingEligibleCondition())).limit(1)).length > 0;
+  const citizenAccesses = canManageCitizenAccess ? await listProcessCitizenAccesses(db, processo.id) : [];
 
   return (
     <PageFrame className="max-w-6xl space-y-3">

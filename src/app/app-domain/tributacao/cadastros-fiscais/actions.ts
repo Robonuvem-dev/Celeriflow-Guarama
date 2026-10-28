@@ -1,9 +1,14 @@
 "use server";
 
 import { createHash } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { taxActionContext } from "@/db/repositories/tax-actions/context";
+import { actionFiscalEntityExists, actionProcessExists, actionDocumentExists, actionOriginExists, latestActionRegistryEntry, actionRegistryEntry, insertActionRegistryEntries, reviewActionRegistryEntry, insertActionAudit } from "@/db/repositories/tax-actions/registry";
+import { actionIntegrationReplay, actionLatestRedesimEvent, actionRedesimTaxpayer, insertActionIntegration, actionTaxpayerSelection, updateActionTaxpayerStatus } from "@/db/repositories/tax-actions/integrations";
+import { economicSnapshot } from "@/db/repositories/tax-economic/snapshot";
 import { revalidatePath } from "next/cache";
-import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { updateEconomicRegistrationWithHistoryInTransaction } from "@/lib/tributacao/economic-history";
 import { createEconomicRegistrationWithProfileInTransaction, economicProfileSchema } from "@/lib/tributacao/economic-profile";
 import { enforceEconomicProfileDebtPolicy } from "@/lib/tributacao/economic-debt-policy";
@@ -38,12 +43,6 @@ function dateValue(value: unknown, label: string, required = false) {
   const date = new Date(`${text}T12:00:00.000Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== text) throw new Error(`${label} inválida.`);
   return date;
-}
-
-async function assertFiscalEntity(prisma: Prisma.TransactionClient, entityType: FiscalEntityType, entityId: string) {
-  if (entityType === "TAXPAYER") return Boolean(await prisma.taxpayer.findUnique({ where: { id: entityId }, select: { id: true } }));
-  if (entityType === "REAL_ESTATE") return Boolean(await prisma.realEstate.findUnique({ where: { id: entityId }, select: { id: true } }));
-  return Boolean(await prisma.economicRegistration.findUnique({ where: { id: entityId }, select: { id: true } }));
 }
 
 function revalidateFiscalEntity(entityType: FiscalEntityType, entityId: string) {
@@ -101,37 +100,32 @@ export async function saveTaxRegistryEntry(input: {
       if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) throw new Error("O percentual deve estar entre 0 e 100.");
     }
 
-    const context = await getTenantContextForModuleOperation("TRIBUTACAO", "create");
-    const entry = await context.prisma.$transaction(async (tx) => {
-      if (!await assertFiscalEntity(tx, input.entityType, entityId)) throw new Error("O cadastro de origem não foi encontrado.");
+    const context = await taxActionContext("create");
+    const entry = await withDatabaseTransaction(context.connection, async (tx) => {
+      if (!await actionFiscalEntityExists(tx, input.entityType, entityId)) throw new Error("O cadastro de origem não foi encontrado.");
       const processId = optionalText(input.processId);
       const documentId = optionalText(input.documentId);
-      if (processId && !await tx.process.findUnique({ where: { id: processId }, select: { id: true } })) throw new Error("O processo informado não existe.");
-      if (documentId && !await tx.document.findUnique({ where: { id: documentId }, select: { id: true } })) throw new Error("O documento informado não existe no GED.");
+      if (processId && !await actionProcessExists(tx, processId)) throw new Error("O processo informado não existe.");
+      if (documentId && !await actionDocumentExists(tx, documentId)) throw new Error("O documento informado não existe no GED.");
 
       let origin: { governmentEntityId: string; budgetUnitId: string } | null = null;
       if (input.entityType === "REAL_ESTATE" || input.entityType === "ECONOMIC_REGISTRATION") {
-        const profile = await tx.taxRegistryEntry.findFirst({ where: { entityType: input.entityType, entityId, category: input.entityType === "REAL_ESTATE" ? "PROPERTY_PROFILE" : "ECONOMIC_PROFILE" }, orderBy: { version: "desc" } });
+        const profile = await latestActionRegistryEntry(tx, input.entityType, entityId, input.entityType === "REAL_ESTATE" ? "PROPERTY_PROFILE" : "ECONOMIC_PROFILE");
         const scope = taxScopeSnapshot(profile?.data);
         if (profile) {
-          if (typeof scope.governmentEntityId !== "string" || typeof scope.budgetUnitId !== "string" || !await tx.planningEntityUnit.findFirst({ where: { governmentEntityId: scope.governmentEntityId, budgetUnitId: scope.budgetUnitId } })) throw new Error("Origem cadastral não conciliada.");
+          if (typeof scope.governmentEntityId !== "string" || typeof scope.budgetUnitId !== "string" || !await actionOriginExists(tx, scope.governmentEntityId, scope.budgetUnitId)) throw new Error("Origem cadastral não conciliada.");
           origin = { governmentEntityId: scope.governmentEntityId, budgetUnitId: scope.budgetUnitId };
         }
         if (!isSystemAdministrator(context.user) && (!origin || !context.user.allowedBudgetUnitIds.includes(origin.budgetUnitId))) throw new Error("Cadastro sem origem conciliada ou fora da UG autorizada.");
         if (input.entityType === "REAL_ESTATE") await touchPropertyMetadata(tx, context.user.id, entityId, processId);
         else {
-          await tx.$queryRaw`SELECT id FROM "EconomicRegistration" WHERE id=${entityId} FOR UPDATE`;
+          await tx.execute(sql`SELECT id FROM "EconomicRegistration" WHERE id=${entityId} FOR UPDATE`);
           await enforceEconomicProfileDebtPolicy(tx, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, entityId);
         }
       }
 
-      const previous = await tx.taxRegistryEntry.findFirst({
-        where: { entityType: input.entityType, entityId, category, title },
-        orderBy: { version: "desc" },
-        select: { version: true },
-      });
-      const created = await tx.taxRegistryEntry.create({
-        data: {
+      const previous = await latestActionRegistryEntry(tx, input.entityType, entityId, category, title);
+      const [created] = await insertActionRegistryEntries(tx, [{
           entityType: input.entityType,
           entityId,
           category,
@@ -141,7 +135,7 @@ export async function saveTaxRegistryEntry(input: {
             details,
             ...(optionalText(input.value, 500) ? { value: optionalText(input.value, 500) } : {}),
             ...(percentage !== null ? { percentage } : {}),
-          } as Prisma.InputJsonValue,
+          },
           status: input.requiresReview ? "PENDENTE_VALIDACAO" : "ATIVO",
           source: optionalText(input.source, 80) ?? "INTERNO",
           effectiveFrom,
@@ -150,20 +144,17 @@ export async function saveTaxRegistryEntry(input: {
           documentId,
           actorUsuarioId: context.user.id,
           version: (previous?.version ?? 0) + 1,
-        },
-      });
-      await tx.taxAuditLog.create({
-        data: {
+      }]);
+      await insertActionAudit(tx, {
           action: input.requiresReview ? "REQUEST" : "CREATE",
           entityType: "TaxRegistryEntry",
           entityId: created.id,
           payload: { targetType: input.entityType, targetId: entityId, category, status: created.status, version: created.version },
           authorUsuarioId: context.user.id,
           authorEmployeeId: context.user.employeeId,
-        },
       });
       return created;
-    });
+    }, { timeoutMs: 5000 });
     revalidateFiscalEntity(input.entityType, entityId);
     revalidatePath("/tributacao/pessoas");
     return { id: entry.id };
@@ -174,31 +165,26 @@ export async function saveTaxRegistryEntry(input: {
 
 export async function reviewTaxRegistryEntry(id: string, decision: "APPROVE" | "REJECT"): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
-    const entry = await context.prisma.$transaction(async (tx) => {
-      const current = await tx.taxRegistryEntry.findUnique({ where: { id } });
+    const context = await taxActionContext("update");
+    const entry = await withDatabaseTransaction(context.connection, async (tx) => {
+      const current = await actionRegistryEntry(tx, id);
       if (!current) throw new Error("Registro fiscal não encontrado.");
       if (current.status !== "PENDENTE_VALIDACAO") throw new Error("O registro não está aguardando validação.");
-      const updated = await tx.taxRegistryEntry.update({
-        where: { id },
-        data: {
+      const updated = await reviewActionRegistryEntry(tx, id, {
           status: decision === "APPROVE" ? "ATIVO" : "REJEITADO",
           reviewedByUsuarioId: context.user.id,
           reviewedAt: new Date(),
-        },
       });
-      await tx.taxAuditLog.create({
-        data: {
+      await insertActionAudit(tx, {
           action: decision,
           entityType: "TaxRegistryEntry",
           entityId: id,
           payload: { before: current.status, after: updated.status, targetType: current.entityType, targetId: current.entityId },
           authorUsuarioId: context.user.id,
           authorEmployeeId: context.user.employeeId,
-        },
       });
       return updated;
-    });
+    }, { timeoutMs: 5000 });
     revalidateFiscalEntity(entry.entityType as FiscalEntityType, entry.entityId);
     return {};
   } catch (error) {
@@ -241,40 +227,33 @@ export async function registerRedesimEvent(input: {
       ...(input.profile ? { profile: economicProfileSchema.parse(input.profile) } : {}),
     };
     const idempotencyKey = redesimKey(normalized);
-    const context = await getTenantContextForModuleOperation("TRIBUTACAO", "create");
-    const result = await context.prisma.$transaction(async (tx) => {
+    const context = await taxActionContext("create");
+    const result = await withDatabaseTransaction(context.connection, async (tx) => {
       const actor = { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`REDESIM:${taxpayerId}`},0))::text`;
-      const existing = await tx.taxIntegrationEvent.findUnique({ where: { idempotencyKey } });
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`REDESIM:${taxpayerId}`},0))::text`);
+      const existing = await actionIntegrationReplay(tx, idempotencyKey);
       if (existing) {
         if (existing.economicRegistrationId) {
-          const profile = await tx.taxRegistryEntry.findFirst({ where: { entityType: "ECONOMIC_REGISTRATION", entityId: existing.economicRegistrationId, category: "ECONOMIC_PROFILE" }, orderBy: { version: "desc" } });
+          const profile = await latestActionRegistryEntry(tx, "ECONOMIC_REGISTRATION", existing.economicRegistrationId, "ECONOMIC_PROFILE");
           const scope = taxScopeSnapshot(profile?.data);
           if (actor.allowedBudgetUnitIds && (typeof scope.budgetUnitId !== "string" || !actor.allowedBudgetUnitIds.includes(scope.budgetUnitId))) throw new Error("Evento fora da origem autorizada.");
         }
         return { event: existing, duplicate: true };
       }
-      const taxpayer = await tx.taxpayer.findUnique({
-        where: { id: taxpayerId },
-        include: { company: true, economicRegistrations: { orderBy: { createdAt: "desc" } } },
-      });
+      const taxpayer = await actionRedesimTaxpayer(tx, taxpayerId);
       if (!taxpayer?.company) throw new Error("A REDESIM exige contribuinte vinculado a uma pessoa jurídica existente.");
 
       const candidates = normalized.municipalInsc ? taxpayer.economicRegistrations.filter(row => row.municipalInsc === normalized.municipalInsc) : taxpayer.economicRegistrations;
       if (candidates.length > 1) throw new Error("Informe a inscrição municipal exata para selecionar o cadastro do evento.");
       let registration = candidates[0] ?? null;
       if (registration) {
-        const profile = await tx.taxRegistryEntry.findFirst({ where: { entityType: "ECONOMIC_REGISTRATION", entityId: registration.id, category: "ECONOMIC_PROFILE" }, orderBy: { version: "desc" } });
+        const profile = await latestActionRegistryEntry(tx, "ECONOMIC_REGISTRATION", registration.id, "ECONOMIC_PROFILE");
         const scope = taxScopeSnapshot(profile?.data);
         if (actor.allowedBudgetUnitIds && (typeof scope.budgetUnitId !== "string" || !actor.allowedBudgetUnitIds.includes(scope.budgetUnitId))) throw new Error("Cadastro econômico fora da origem autorizada ou sem perfil conciliado.");
       }
       let status = "PROCESSADO_INTERNO";
       const municipalInsc = normalized.municipalInsc;
-      const latestApplied = await tx.taxIntegrationEvent.findFirst({
-        where: { integrationCode: "REDESIM", taxpayerId, economicRegistrationId: registration?.id ?? null, status: "PROCESSADO_INTERNO" },
-        orderBy: { receivedAt: "desc" },
-        select: { receivedAt: true },
-      });
+      const latestApplied = await actionLatestRedesimEvent(tx, taxpayerId, registration?.id ?? null);
       const outOfOrder = ["ABERTURA", "FORMALIZACAO", "MEI", "ALTERACAO", "BAIXA"].includes(eventType)
         && Boolean(latestApplied && eventDate < latestApplied.receivedAt);
       if (outOfOrder) {
@@ -302,11 +281,10 @@ export async function registerRedesimEvent(input: {
         status = "PENDENTE_REGRA";
       }
 
-      const currentProfile = registration ? await tx.taxRegistryEntry.findFirst({ where: { entityType: "ECONOMIC_REGISTRATION", entityId: registration.id, category: "ECONOMIC_PROFILE" }, orderBy: { version: "desc" } }) : null;
+      const currentProfile = registration ? await latestActionRegistryEntry(tx, "ECONOMIC_REGISTRATION", registration.id, "ECONOMIC_PROFILE") : null;
       const recordedOrigin = taxScopeSnapshot(currentProfile?.data);
       const eventScope = typeof recordedOrigin.governmentEntityId === "string" && typeof recordedOrigin.budgetUnitId === "string" ? { governmentEntityId: recordedOrigin.governmentEntityId, budgetUnitId: recordedOrigin.budgetUnitId } : {};
-      const event = await tx.taxIntegrationEvent.create({
-        data: {
+      const event = await insertActionIntegration(tx, {
           integrationCode: "REDESIM",
           eventType,
           idempotencyKey,
@@ -316,15 +294,13 @@ export async function registerRedesimEvent(input: {
           evidenceLevel: "L0",
           taxpayerId,
           economicRegistrationId: registration?.id,
-          payload: { ...normalized, ...eventScope } as Prisma.InputJsonValue,
+          payload: economicSnapshot({ ...normalized, ...eventScope }),
           result: { registrationId: registration?.id ?? null, ...eventScope, status, officialConfirmation: false },
           receivedAt: eventDate,
           processedAt: new Date(),
-        },
       });
       if (!outOfOrder && normalized.riskLevel) {
-        await tx.taxRegistryEntry.create({
-          data: {
+        await insertActionRegistryEntries(tx, [{
             entityType: registration ? "ECONOMIC_REGISTRATION" : "TAXPAYER",
             entityId: registration?.id ?? taxpayerId,
             category: "RISCO_ATIVIDADE",
@@ -333,12 +309,10 @@ export async function registerRedesimEvent(input: {
             source: "REDESIM",
             effectiveFrom: eventDate,
             actorUsuarioId: context.user.id,
-          },
-        });
+        }]);
       }
       if (!outOfOrder && registration && normalized.serviceActivity && ["FORMALIZACAO", "ABERTURA", "MEI"].includes(eventType)) {
-        await tx.taxRegistryEntry.create({
-          data: {
+        await insertActionRegistryEntries(tx, [{
             entityType: "ECONOMIC_REGISTRATION",
             entityId: registration.id,
             category: "CREDENCIAMENTO_NFSE",
@@ -348,21 +322,18 @@ export async function registerRedesimEvent(input: {
             source: "REDESIM",
             effectiveFrom: eventDate,
             actorUsuarioId: context.user.id,
-          },
-        });
+        }]);
       }
-      await tx.taxAuditLog.create({
-        data: {
+      await insertActionAudit(tx, {
           action: "INTEGRATION_EVENT",
           entityType: "TaxIntegrationEvent",
           entityId: event.id,
           payload: { integrationCode: "REDESIM", eventType, status, evidenceLevel: "L0", registrationId: registration?.id ?? null },
           authorUsuarioId: context.user.id,
           authorEmployeeId: context.user.employeeId,
-        },
       });
       return { event, duplicate: false };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 60000 });
+    }, { isolationLevel: "serializable", timeoutMs: 60000 });
     revalidatePath("/tributacao/redesim");
     revalidatePath("/tributacao/economico");
     if (result.event.economicRegistrationId) revalidatePath(`/tributacao/economico/${result.event.economicRegistrationId}`);
@@ -378,11 +349,10 @@ export async function requestRegistrySourceLookup(input: { source: string; ident
     if (!["SERPRO_CPF", "SERPRO_CNPJ", "CORREIOS_DNE"].includes(source)) throw new Error("Fonte cadastral não suportada.");
     const identifier = requiredText(input.identifier, "Identificador", 120).toUpperCase();
     const idempotencyKey = redesimKey({ source, identifier });
-    const context = await getTenantContextForModuleOperation("TRIBUTACAO", "create");
-    const existing = await context.prisma.taxIntegrationEvent.findUnique({ where: { idempotencyKey } });
+    const context = await taxActionContext("create");
+    const existing = await actionIntegrationReplay(context.database, idempotencyKey);
     if (existing) return { id: existing.id, duplicate: true };
-    const event = await context.prisma.taxIntegrationEvent.create({
-      data: {
+    const event = await insertActionIntegration(context.database, {
         integrationCode: source,
         eventType: "CONSULTA_CADASTRAL",
         idempotencyKey,
@@ -390,7 +360,6 @@ export async function requestRegistrySourceLookup(input: { source: string; ident
         evidenceLevel: "L0",
         payload: { identifier, requestedAt: new Date().toISOString() },
         result: { officialConfirmation: false, message: "Credencial ou contrato ainda não configurado; o cadastro manual permanece disponível." },
-      },
     });
     revalidatePath("/tributacao/fontes-cadastrais");
     return { id: event.id };
@@ -405,25 +374,16 @@ export async function bulkUpdateTaxpayersByFilter(input: { query?: string; expec
     const status = requiredText(input.status, "Situação", 40);
     if (!["Ativo", "Suspenso", "Inativo"].includes(status)) throw new Error("Situação cadastral inválida.");
     if (!Number.isInteger(input.expectedCount) || input.expectedCount < 1) throw new Error("A seleção em lote está vazia.");
-    const digits = query.replace(/\D/g, "");
-    const alphanumeric = query.replace(/[^A-Za-z0-9]/g, "");
-    const where = query ? { OR: [
-      { municipalInsc: { contains: query, mode: "insensitive" as const } },
-      { person: { is: { fullName: { contains: query, mode: "insensitive" as const } } } },
-      ...(digits ? [{ person: { is: { cpf: { contains: digits } } } }] : []),
-      { company: { is: { corporateName: { contains: query, mode: "insensitive" as const } } } },
-      ...(alphanumeric ? [{ company: { is: { cnpj: { contains: alphanumeric } } } }] : []),
-    ] } : {};
-    const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
-    const ids = await context.prisma.taxpayer.findMany({ where, select: { id: true }, orderBy: { id: "asc" } });
+    const context = await taxActionContext("update");
+    const ids = await actionTaxpayerSelection(context.database, query);
     if (ids.length !== input.expectedCount) throw new Error("O conjunto mudou desde a prévia. Atualize a consulta antes de confirmar.");
     if (ids.length > 1_000) throw new Error("Refine o filtro para no máximo 1.000 registros por lote.");
     const now = new Date();
-    await context.prisma.$transaction(async (tx) => {
-      await tx.taxpayer.updateMany({ where: { id: { in: ids.map((item) => item.id) } }, data: { status } });
-      await tx.taxRegistryEntry.createMany({ data: ids.map((item) => ({ entityType: "TAXPAYER", entityId: item.id, category: "SITUACAO", title: `Alteração em lote para ${status}`, data: { details: `Situação atualizada pelo filtro ${query || "todos os contribuintes"}.` }, status: "ATIVO", source: "LOTE_INTERNO", effectiveFrom: now, actorUsuarioId: context.user.id })) });
-      await tx.taxAuditLog.create({ data: { action: "BULK_UPDATE", entityType: "Taxpayer", entityId: `batch:${now.toISOString()}`, payload: { query, count: ids.length, status }, authorUsuarioId: context.user.id, authorEmployeeId: context.user.employeeId } });
-    });
+    await withDatabaseTransaction(context.connection, async (tx) => {
+      await updateActionTaxpayerStatus(tx, ids.map(item => item.id), status);
+      await insertActionRegistryEntries(tx, ids.map((item) => ({ entityType: "TAXPAYER", entityId: item.id, category: "SITUACAO", title: `Alteração em lote para ${status}`, data: { details: `Situação atualizada pelo filtro ${query || "todos os contribuintes"}.` }, status: "ATIVO", source: "LOTE_INTERNO", effectiveFrom: now, actorUsuarioId: context.user.id })));
+      await insertActionAudit(tx, { action: "BULK_UPDATE", entityType: "Taxpayer", entityId: `batch:${now.toISOString()}`, payload: { query, count: ids.length, status }, authorUsuarioId: context.user.id, authorEmployeeId: context.user.employeeId });
+    }, { timeoutMs: 5000 });
     revalidatePath("/tributacao/pessoas");
     return { id: String(ids.length) };
   } catch (error) {

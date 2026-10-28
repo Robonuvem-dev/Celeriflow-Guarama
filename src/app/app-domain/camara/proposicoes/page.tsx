@@ -4,12 +4,14 @@ import { NewProposicaoSheet } from "../components/NewProposicaoSheet";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ProposicoesClient } from "./ProposicoesClient";
+import { db } from "@/db/client";
+import { listPropositions, listServingCouncilors } from "@/db/repositories/chamber/queries";
 
 export default async function ProposicoesPage() {
-  const { prisma } = await getTenantContextForModule("CAMARA");
+  await getTenantContextForModule("CAMARA");
   const [proposicoes, vereadores] = await Promise.all([
-    prisma.camProposicao.findMany({ include: { autor: true, sessao: true }, orderBy: { createdAt: "desc" } }),
-    prisma.camVereador.findMany({ where: { status: "Em Exercício" }, orderBy: { nomeParlamentar: "asc" } }),
+    listPropositions(db),
+    listServingCouncilors(db),
   ]);
   const rows = proposicoes.map((proposicao) => ({
     id: proposicao.id,

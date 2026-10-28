@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Prisma } from "@prisma/client";
+import { Decimal } from "../src/db/decimal";
 import { allocatePayrollAmount, calculateContractRubrics, calculateContribution, evaluatePayrollFormula, payrollPeriod, type PayrollRubricInput } from "../src/lib/rh/calculation-engine";
 import { parsePayrollMovementImport } from "../src/lib/rh/movement-import";
 import { calculateDailyBenefit, hrBenefitRuleSchema } from "../src/lib/rh/benefit-calculation";
@@ -12,7 +12,7 @@ import { contractCustomFieldsPolicySchema, validateContractCustomFields } from "
 import { assessPositionPlan, positionPlanSchema } from "../src/lib/rh/position-plan";
 
 test("fórmula Decimal preserva precisão, precedência e rejeita execução/ciclos", () => {
-  const resolve = (name: string) => { if (name === "SALARIO_BASE") return new Prisma.Decimal("1000.01"); throw new Error("Base ausente"); };
+  const resolve = (name: string) => { if (name === "SALARIO_BASE") return new Decimal("1000.01"); throw new Error("Base ausente"); };
   assert.equal(evaluatePayrollFormula("SALARIO_BASE * (1 + 10 / 100)", resolve).toFixed(3), "1100.011");
   for (const formula of ["process.exit()", "A; B", "1 / 0", "(1 + 2", "1 2", "", "1+", "1%2"]) assert.throws(() => evaluatePayrollFormula(formula, resolve));
   const rubric: PayrollRubricInput = { code: "SALARIO", name: "Salário", type: "PROVENTO", calculationMethod: "FORMULA_CONTROLADA", formulaExpression: "SALARIO_BASE * DIAS / 30", calculationBaseCode: null, fixedValue: null, percentageRate: null, incidences: [{ incidenceType: "RGPS", isIncluded: true }] };
@@ -24,14 +24,14 @@ test("fórmula Decimal preserva precisão, precedência e rejeita execução/cic
 
 test("previdência progressiva, teto compartilhado e rateio fecham os centavos", () => {
   const bands = [{ lowerLimit: "0", upperLimit: "1000", employeeRate: "10" }, { lowerLimit: "1000", upperLimit: null, employeeRate: "20" }];
-  const amount = calculateContribution(new Prisma.Decimal("3000"), bands, "PROGRESSIVA", "2000");
+  const amount = calculateContribution(new Decimal("3000"), bands, "PROGRESSIVA", "2000");
   assert.equal(amount.toFixed(2), "300.00");
-  const shares = allocatePayrollAmount(new Prisma.Decimal("0.01"), [new Prisma.Decimal(1), new Prisma.Decimal(1), new Prisma.Decimal(1)]);
-  assert.equal(shares.reduce((a, b) => a.add(b), new Prisma.Decimal(0)).toFixed(2), "0.01");
-  const many = allocatePayrollAmount(new Prisma.Decimal("0.02"), Array.from({ length: 4 }, () => new Prisma.Decimal(1)));
+  const shares = allocatePayrollAmount(new Decimal("0.01"), [new Decimal(1), new Decimal(1), new Decimal(1)]);
+  assert.equal(shares.reduce((a, b) => a.add(b), new Decimal(0)).toFixed(2), "0.01");
+  const many = allocatePayrollAmount(new Decimal("0.02"), Array.from({ length: 4 }, () => new Decimal(1)));
   assert.deepEqual(many.map(value => value.toFixed(2)), ["0.01", "0.01", "0.00", "0.00"]);
-  assert.throws(() => calculateContribution(new Prisma.Decimal("3000"), [{ lowerLimit: "1", upperLimit: null, employeeRate: "10" }], "PROGRESSIVA", null), /incompletas/);
-  assert.throws(() => allocatePayrollAmount(new Prisma.Decimal(1), [new Prisma.Decimal(0)]), /base válida/);
+  assert.throws(() => calculateContribution(new Decimal("3000"), [{ lowerLimit: "1", upperLimit: null, employeeRate: "10" }], "PROGRESSIVA", null), /incompletas/);
+  assert.throws(() => allocatePayrollAmount(new Decimal(1), [new Decimal(0)]), /base válida/);
 });
 
 test("competências civis validam mês e ano sem depender do fuso", () => {
@@ -49,21 +49,21 @@ test("layout de importação preserva aspas, separadores e observações multili
 
 test("VT diário exclui afastamentos sem duplicar dias e limita o desconto do servidor", () => {
   const policy = hrBenefitRuleSchema.parse({ kind: "TRANSPORTE", benefitConfigId: "vt", rubricCode: "VT", posting: "DESCONTO", dailyValue: "10.00", weekdays: [1, 2, 3, 4, 5], excludeVacation: true, excludeLeaveTypes: ["Licença"], maxEmployeeDiscountRate: "6" });
-  const input = { policy, from: new Date("2026-11-01"), until: new Date("2026-11-30"), admittedAt: new Date("2026-01-01"), endsAt: null, salary: new Prisma.Decimal(1000), absences: [{ from: new Date("2026-11-02"), until: new Date("2026-11-06"), reason: "Licença" }, { from: new Date("2026-11-04"), until: new Date("2026-11-06"), reason: "Sobreposição" }], customValue: null };
+  const input = { policy, from: new Date("2026-11-01"), until: new Date("2026-11-30"), admittedAt: new Date("2026-01-01"), endsAt: null, salary: new Decimal(1000), absences: [{ from: new Date("2026-11-02"), until: new Date("2026-11-06"), reason: "Licença" }, { from: new Date("2026-11-04"), until: new Date("2026-11-06"), reason: "Sobreposição" }], customValue: null };
   const result = calculateDailyBenefit(input);
   assert.equal(result.total.toFixed(2), "160.00");
   assert.equal(result.employee.toFixed(2), "60.00");
   assert.equal(result.entity.toFixed(2), "100.00");
-  assert.throws(() => calculateDailyBenefit({ ...input, customValue: new Prisma.Decimal(1) }), /autorização/);
+  assert.throws(() => calculateDailyBenefit({ ...input, customValue: new Decimal(1) }), /autorização/);
 });
 
 test("média das 80% maiores expõe seleção e arredondamento sem excluir períodos implicitamente", () => {
-  const values = [100, 500, 200, 400, 300].map((amount, index) => ({ month: `${index + 1}/2026`, amount: new Prisma.Decimal(amount) }));
-  const result = selectRemunerationAverage(values, new Prisma.Decimal(80), "CEIL");
+  const values = [100, 500, 200, 400, 300].map((amount, index) => ({ month: `${index + 1}/2026`, amount: new Decimal(amount) }));
+  const result = selectRemunerationAverage(values, new Decimal(80), "CEIL");
   assert.equal(result.average.toFixed(2), "350.00");
   assert.equal(result.selected.length, 4);
   assert.equal(result.excluded[0].amount.toFixed(2), "100.00");
-  assert.throws(() => selectRemunerationAverage(values, new Prisma.Decimal(0), "CEIL"));
+  assert.throws(() => selectRemunerationAverage(values, new Decimal(0), "CEIL"));
 });
 
 test("margem consignável agrega vínculos e valida rubricas sem duplicar o limite", () => {
@@ -127,11 +127,11 @@ test("campos configuráveis validam tipos, limites exatos, opções e datas civi
 test("quadro de cargos conta contratos futuros e troca de ocupante sem duplicar a vaga", () => {
   const role = { roleId: "role", authorizedSeats: 1, classification: "Efetivo", cbo: "411005", education: "Ensino médio", legalReference: "Lei sintética", duties: "Atribuições sintéticas", competencies: "Competências sintéticas", documentIds: [], levels: [{ code: "A", vertical: 0, horizontal: 0, salary: "1000.00", monthlyHours: 200 }], initialLevel: "A", finalLevel: "A" };
   const plan = { origin: "QUADRO_CARGOS", legalReference: "Lei sintética", periods: [{ startsAt: "2026-01-01", endsAt: null, roles: [role] }] };
-  const segment = { contractId: "first", regimeId: "regime", roleId: "role", salaryLevel: "A", salary: new Prisma.Decimal("1000.00"), monthlyHours: 200, start: new Date("2026-01-01").getTime(), end: new Date("2026-02-01").getTime() };
+  const segment = { contractId: "first", regimeId: "regime", roleId: "role", salaryLevel: "A", salary: new Decimal("1000.00"), monthlyHours: 200, start: new Date("2026-01-01").getTime(), end: new Date("2026-02-01").getTime() };
   const successor = { ...segment, contractId: "second", start: segment.end, end: Infinity };
   assert.equal(assessPositionPlan(plan, [segment, successor], ["regime"])[0].peakOccupied, 1);
   assert.throws(() => assessPositionPlan(plan, [segment, { ...successor, start: new Date("2026-01-31").getTime() }], ["regime"]), /Vagas autorizadas/);
-  assert.throws(() => assessPositionPlan(plan, [{ ...successor, salary: new Prisma.Decimal("1000.01") }], ["regime"]), /nível\/salário\/jornada/);
+  assert.throws(() => assessPositionPlan(plan, [{ ...successor, salary: new Decimal("1000.01") }], ["regime"]), /nível\/salário\/jornada/);
   assert.equal(assessPositionPlan(plan, [{ ...successor, regimeId: "outro-conjunto" }], ["regime"])[0].peakOccupied, 0);
   assert.equal(positionPlanSchema.safeParse({ ...plan, periods: [plan.periods[0], plan.periods[0]] }).success, false);
 });

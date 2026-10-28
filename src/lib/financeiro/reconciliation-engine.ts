@@ -1,5 +1,9 @@
-import { PrismaClient, Prisma } from "@prisma/client";
-import type { BankReconciliationSession } from "@prisma/client";
+import { and, eq, sql } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { bankReconciliationMatches, bankReconciliationSessions } from "@/db/schema/finance-reconciliation";
+import type { BankReconciliationSession } from "@/lib/contracts/finance-reconciliation";
 import { type FinanceActor } from "@/lib/financeiro";
 import { readReconciliationPosition } from "./reconciliation-allocations";
 
@@ -38,7 +42,7 @@ export interface SessionBalancesSummary {
   itensDivergentes: number;
 }
 
-function statementDirection(item: { sinal: string | null; direction: string; valueDecimal: Prisma.Decimal }) {
+function statementDirection(item: { sinal: string | null; direction: string; valueDecimal: Decimal }) {
   if (item.sinal === "DEBITO" || item.direction === "DEBIT" || item.direction === "Saída") return "Saída";
   if (item.sinal === "CREDITO" || item.direction === "CREDIT" || item.direction === "Entrada") return "Entrada";
   return item.valueDecimal.lessThan(0) ? "Saída" : "Entrada";
@@ -50,7 +54,7 @@ function treasuryDirection(direction: string) {
   throw new Error(`Direção de tesouraria inválida: ${direction}.`);
 }
 
-function sameValue(first: Prisma.Decimal, second: Prisma.Decimal) {
+function sameValue(first: Decimal, second: Decimal) {
   return first.abs().minus(second.abs()).abs().lessThan(0.01);
 }
 
@@ -58,7 +62,7 @@ function sameValue(first: Prisma.Decimal, second: Prisma.Decimal) {
  * Executa o motor de correspondência automática de conciliação bancária cobrindo as 9 regras do edital
  */
 export async function runAutoReconciliation(
-  prisma: PrismaClient,
+  connection: DatabaseConnection,
   sessionId: string,
   actor: FinanceActor,
 ): Promise<{
@@ -66,8 +70,8 @@ export async function runAutoReconciliation(
   matches: ReconciliationMatchResult[];
   balances: SessionBalancesSummary;
 }> {
-  return prisma.$transaction(async (tx) => {
-  await tx.$queryRaw`SELECT id FROM "BankReconciliationSession" WHERE id = ${sessionId} FOR UPDATE`;
+  return withDatabaseTransaction(connection, async (tx) => {
+  await tx.execute(sql`SELECT id FROM "BankReconciliationSession" WHERE id = ${sessionId} FOR UPDATE`);
   const position = await readReconciliationPosition(tx, actor, sessionId);
   const session = position.session;
   if (["CONCILIADA", "CANCELADA"].includes(session.status)) throw new Error("Sessão encerrada; reabra antes de recalcular correspondências.");
@@ -234,13 +238,10 @@ export async function runAutoReconciliation(
   }
 
   // Gravar matches no banco de dados
-  await tx.bankReconciliationMatch.deleteMany({
-    where: { sessionId: session.id, status: "AUTOMATICO" },
-  });
+  await tx.delete(bankReconciliationMatches).where(and(eq(bankReconciliationMatches.sessionId, session.id), eq(bankReconciliationMatches.status, "AUTOMATICO")));
 
   for (const m of matches) {
-    await tx.bankReconciliationMatch.create({
-      data: {
+    await tx.insert(bankReconciliationMatches).values({
         sessionId: session.id,
         statementItemId: m.statementItemId,
         treasuryMovementId: m.treasuryMovementId,
@@ -248,7 +249,6 @@ export async function runAutoReconciliation(
         percentualConfianca: m.confidenceScore * 100,
         observacao: m.description,
         status: "AUTOMATICO",
-      },
     });
   }
 
@@ -263,9 +263,7 @@ export async function runAutoReconciliation(
   const itensConciliados = position.matched;
   const itensDivergentes = position.pending;
 
-  const updatedSession = await tx.bankReconciliationSession.update({
-    where: { id: sessionId },
-    data: {
+  const [updatedSession] = await tx.update(bankReconciliationSessions).set({
         totalDebitosDecimal: position.debits,
         totalCreditosDecimal: position.credits,
         saldoFinalDecimal: position.finalBalance,
@@ -276,8 +274,7 @@ export async function runAutoReconciliation(
       itensConciliados,
       itensDivergentes,
         status: "EM_ANDAMENTO",
-    },
-  });
+  }).where(eq(bankReconciliationSessions.id, sessionId)).returning();
 
   return {
     session: updatedSession,

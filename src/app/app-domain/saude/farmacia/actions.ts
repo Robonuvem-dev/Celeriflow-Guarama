@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createPharmacyStockRequest } from "@/lib/saude/pharmacy-request-service";
 import { executeConfiguredHealthHttp } from "@/lib/integrations/runtime";
 import type { IntegrationOperation } from "@/lib/integrations/registry";
+import { db } from "@/db/client";
 
 const text = (data: FormData, name: string) => String(data.get(name) || "").trim();
 const number = (data: FormData, name: string) => Number(data.get(name));
@@ -77,7 +78,7 @@ export async function dispatchPharmacyIntegrationAction(data: FormData): Promise
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const stocks = await context.prisma.materialStock.findMany({ where: { quantity: { gt: 0 }, material: { healthProfile: { isActive: true } }, warehouse: { healthUnitId: unitIds ? { in: unitIds } : { not: null } } }, select: { quantity: true, batchNumber: true, expirationDate: true, material: { select: { code: true, name: true } }, warehouse: { select: { name: true, healthUnit: { select: { cnes: true } } } } } });
   const payload = code === "TRANSPARENCIA_SAUDE" ? stocks.map(({ material, warehouse, quantity }) => ({ productCode: material.code, productName: material.name, unit: warehouse.name, quantity })) : stocks;
-  await executeConfiguredHealthHttp(context.prisma, { code, operation, payload: { generatedAt: new Date().toISOString(), stocks: payload } });
+  await executeConfiguredHealthHttp(db, { code, operation, payload: { generatedAt: new Date().toISOString(), stocks: payload } });
   revalidatePath("/saude/farmacia");
 }
 

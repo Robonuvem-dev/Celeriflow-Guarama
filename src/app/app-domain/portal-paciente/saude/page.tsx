@@ -5,6 +5,8 @@ import { getPatientPortalAccess } from "@/lib/portal-paciente/access";
 import { portalDispensations, portalDocuments, portalLabReports, portalReferralsRegulation } from "@/lib/saude/patient-portal-service";
 import { getVaccinationCard } from "@/lib/saude/vaccination-registry-service";
 import { vaccinationStatusNames } from "@/lib/saude/vaccination-document-service";
+import { db } from "@/db/client";
+import { readPortalCampaigns } from "@/db/repositories/health/patient-portal";
 
 const box = "rounded border bg-white p-2";
 
@@ -18,7 +20,7 @@ export default async function PortalSaudePage() {
     portalDispensations(access.context, access.patient.id),
     portalReferralsRegulation(access.context, access.patient.id),
     portalDocuments(access.context, access.patient.id),
-    access.context.prisma.healthVaccinationCampaign.findMany({ where: { startsAt: { lte: new Date() }, endsAt: { gte: new Date() } }, orderBy: { startsAt: "asc" } }),
+    readPortalCampaigns(access.context.database ?? db),
   ]);
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

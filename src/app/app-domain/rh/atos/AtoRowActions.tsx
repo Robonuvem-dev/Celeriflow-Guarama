@@ -4,7 +4,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { deleteAtoPessoal } from "./actions";
-import type { PersonnelAct } from "@prisma/client";
+import type { PersonnelAct } from "@/lib/contracts/personnel-pages";
 
 export function AtoRowActions({ ato }: { ato: PersonnelAct }) {
   const handleDelete = async () => {

@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { taxActionContext } from "@/db/repositories/tax-actions/context";
 import {
   completeCollectionAction,
   createBenefitRule,
@@ -21,7 +21,7 @@ const done = (error?: unknown) => ({
         : undefined,
 });
 async function ctx(operation: "create" | "update") {
-  return getTenantContextForModuleOperation("TRIBUTACAO", operation);
+  return taxActionContext(operation);
 }
 const actor = (c: Awaited<ReturnType<typeof ctx>>) => ({
   usuarioId: c.user.id,
@@ -31,7 +31,7 @@ export async function createPortfolioAction(
 ) {
   try {
     const c = await ctx("create");
-    await createCollectionPortfolio(c.prisma, actor(c), input);
+    await createCollectionPortfolio(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -43,7 +43,7 @@ export async function scheduleCollectionActionAction(
 ) {
   try {
     const c = await ctx("create");
-    await scheduleCollectionAction(c.prisma, actor(c), input);
+    await scheduleCollectionAction(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -55,7 +55,7 @@ export async function completeCollectionActionAction(
 ) {
   try {
     const c = await ctx("update");
-    await completeCollectionAction(c.prisma, actor(c), input);
+    await completeCollectionAction(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -65,7 +65,7 @@ export async function completeCollectionActionAction(
 export async function grantPortalAccessAction(taxpayerId: string) {
   try {
     const c = await ctx("update");
-    await grantPortalAccess(c.prisma, actor(c), taxpayerId);
+    await grantPortalAccess(c.connection, actor(c), taxpayerId);
     revalidatePath(path);
     revalidatePath("/portal/tributario");
     return done();
@@ -78,7 +78,7 @@ export async function createBenefitRuleAction(
 ) {
   try {
     const c = await ctx("create");
-    await createBenefitRule(c.prisma, actor(c), input);
+    await createBenefitRule(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -90,7 +90,7 @@ export async function createPrizeDrawAction(
 ) {
   try {
     const c = await ctx("create");
-    await createPrizeDraw(c.prisma, actor(c), input);
+    await createPrizeDraw(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -102,7 +102,7 @@ export async function issuePrizeCouponAction(
 ) {
   try {
     const c = await ctx("create");
-    await issuePrizeCoupon(c.prisma, input);
+    await issuePrizeCoupon(c.connection, input);
     revalidatePath(path);
     return done();
   } catch (e) {
@@ -112,7 +112,7 @@ export async function issuePrizeCouponAction(
 export async function executePrizeDrawAction(drawId: string) {
   try {
     const c = await ctx("create");
-    await executePrizeDraw(c.prisma, actor(c), drawId);
+    await executePrizeDraw(c.connection, actor(c), drawId);
     revalidatePath(path);
     return done();
   } catch (e) {

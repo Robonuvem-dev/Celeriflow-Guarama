@@ -1,10 +1,15 @@
 import PDFDocument from "pdfkit";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { and, eq, inArray } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { taxRegistryEntries } from "@/db/schema/taxation-registry";
+import { readDebtBinding, requiredDebtRow } from "@/db/repositories/tax-active-debt/records";
+import { listIssuedDebtNotices, readNoticeOrigin, readPayableNoticeGuide } from "@/db/repositories/tax-active-debt/notices";
 import type { TaxActor } from "./index";
 import { taxScopeSnapshot } from "./scope";
 
 function drawBankBarcode(doc: PDFKit.PDFDocument, code: string, amount: string) {
-  if (!/^\d{44}$/.test(code) || code[0] === "8" || code[3] !== "9" || !new Prisma.Decimal(code.slice(9, 19)).div(100).eq(amount)) throw new Error("Código bancário incompatível com o boleto registrado.");
+  if (!/^\d{44}$/.test(code) || code[0] === "8" || code[3] !== "9" || !new Decimal(code.slice(9, 19)).div(100).eq(amount)) throw new Error("Código bancário incompatível com o boleto registrado.");
   const source = code.slice(0, 4) + code.slice(5); let weight = 2, sum = 0;
   for (let index = source.length - 1; index >= 0; index--) { sum += Number(source[index]) * weight; weight = weight === 9 ? 2 : weight + 1; }
   const remainder = 11 - sum % 11; const digit = remainder === 0 || remainder === 10 || remainder === 11 ? 1 : remainder;
@@ -16,15 +21,15 @@ function drawBankBarcode(doc: PDFKit.PDFDocument, code: string, amount: string) 
   widths.forEach((width, index) => { if (index % 2 === 0) doc.rect(x, y, width * unit, 36).fill("#000000"); x += width * unit; }); doc.y = y + 44;
 }
 
-export async function renderDebtNoticeOutput(db: PrismaClient, actor: TaxActor, input: { noticeId?: string; batchId?: string; format: "PDF" | "TXT" | "XML" }) {
+export async function renderDebtNoticeOutput(db: DatabaseExecutor, actor: TaxActor, input: { noticeId?: string; batchId?: string; format: "PDF" | "TXT" | "XML" }) {
   if (!input.noticeId && !input.batchId) throw new Error("Selecione uma notificação ou lote.");
-  const entries = await db.taxRegistryEntry.findMany({ where: { entityType: "DEBT_NOTICE", category: "DEBT_NOTICE_ISSUANCE", ...(input.noticeId ? { entityId: input.noticeId } : { data: { path: ["batchId"], equals: input.batchId! } }) }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+  const entries = await listIssuedDebtNotices(db, input);
   if (!entries.length) throw new Error("Notificação não encontrada.");
-  const cancellationEntries = await db.taxRegistryEntry.findMany({ where: { entityType: "DEBT_NOTICE", entityId: { in: entries.map(row => row.entityId) }, category: "DEBT_NOTICE_CANCELLATION" } }); const cancelled = new Set(cancellationEntries.map(row => row.entityId));
+  const cancellationEntries = await db.select().from(taxRegistryEntries).where(and(eq(taxRegistryEntries.entityType, "DEBT_NOTICE"), inArray(taxRegistryEntries.entityId, entries.map(row => row.entityId)), eq(taxRegistryEntries.category, "DEBT_NOTICE_CANCELLATION"))); const cancelled = new Set(cancellationEntries.map(row => row.entityId));
   for (const entry of entries) {
     const data = taxScopeSnapshot(entry.data);
     if (actor.allowedBudgetUnitIds && !actor.allowedBudgetUnitIds.includes(String(data.budgetUnitId))) throw new Error("Notificação fora da UG autorizada.");
-    if (!await db.planningEntityUnit.findFirst({ where: { governmentEntityId: String(data.governmentEntityId), budgetUnitId: String(data.budgetUnitId) } })) throw new Error("Origem da notificação não conciliada.");
+    if ((await readDebtBinding(db, String(data.budgetUnitId)))?.governmentEntityId !== String(data.governmentEntityId)) throw new Error("Origem da notificação não conciliada.");
   }
   const rows = entries.map(entry => ({ id: entry.entityId, data: taxScopeSnapshot(entry.data), cancelled: cancelled.has(entry.entityId) }));
   const esc = (value: unknown) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
@@ -38,13 +43,13 @@ export async function renderDebtNoticeOutput(db: PrismaClient, actor: TaxActor, 
     return { bytes: new TextEncoder().encode(xml), contentType: "application/xml; charset=utf-8", extension: "xml" };
   }
   const origin = rows[0].data;
-  const unit = await db.planningEntityUnit.findFirstOrThrow({ where: { governmentEntityId: String(origin.governmentEntityId), budgetUnitId: String(origin.budgetUnitId) }, include: { governmentEntity: true, budgetUnit: true } });
+  const unit = requiredDebtRow(await readNoticeOrigin(db, String(origin.governmentEntityId), String(origin.budgetUnitId)));
   const payableGuides = new Set<string>();
   for (const row of rows.filter(row => row.data.includeBankSlip === true && !row.cancelled)) {
     const target = taxScopeSnapshot(row.data.target); const debts = Array.isArray(target.debts) ? target.debts : [];
     for (const item of debts) {
       const debt = taxScopeSnapshot(item); if (typeof debt.guideId !== "string") continue;
-      const guide = await db.taxGuide.findFirst({ where: { id: debt.guideId, status: { notIn: ["Cancelada", "Paga"] }, dueDate: { gte: new Date() } }, include: { assessment: true, payments: { where: { status: "Confirmado" } } } });
+      const guide = await readPayableNoticeGuide(db, debt.guideId);
       const bank = taxScopeSnapshot(taxScopeSnapshot(guide?.calculationSnapshot).bankRegistration);
       if (guide && !guide.payments.length && guide.barcode === debt.barcode && bank.status === "REGISTERED" && !["Cancelado", "Pago", "Extinto", "Suspenso"].includes(guide.assessment.status)) payableGuides.add(guide.id);
     }

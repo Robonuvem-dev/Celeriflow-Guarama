@@ -1,7 +1,12 @@
 import React from "react";
 import { Stethoscope, HeartPulse, Users, Activity, Pill, CalendarCheck, ClipboardType, AlertTriangle, Lock } from "lucide-react";
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
+import { and, count, eq, gte, lt, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { getPostgresError } from "@/db/errors";
+import { healthUnits } from "@/db/schema/health-workforce";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { healthAppointments } from "@/db/schema/health-agenda";
 import { AccessError, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -41,31 +46,18 @@ export default async function SaudeDashboardPage() {
   let todayVaccines = 0;
 
   try {
-    const { prisma } = await getTenantContextForModule("SAUDE");
+    const context = await getTenantContextForModule("SAUDE"), database = context.database ?? db;
+    const start = new Date(new Date().setHours(0, 0, 0, 0)), end = new Date(new Date().setHours(23, 59, 59, 999));
     const [units, patients, appointments, vaccines] = await Promise.all([
-      prisma.healthUnit.count({ where: { isActive: true } }),
-      prisma.patient.count({ where: { status: "Ativo" } }),
-      prisma.healthAppointment.count({
-        where: {
-          date: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
-            lt: new Date(new Date().setHours(23, 59, 59, 999))
-          }
-        }
-      }),
-      prisma.vaccinationRecord.count({
-        where: {
-          date: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
-            lt: new Date(new Date().setHours(23, 59, 59, 999))
-          }
-        }
-      })
+      database.select({ total: count() }).from(healthUnits).where(eq(healthUnits.isActive, true)),
+      database.select({ total: count() }).from(patientTable).where(eq(patientTable.status, "Ativo")),
+      database.select({ total: count() }).from(healthAppointments).where(and(gte(healthAppointments.date, start), lt(healthAppointments.date, end))),
+      database.execute<{ total: number }>(sql`SELECT count(*)::int AS total FROM "VaccinationRecord" WHERE date>=${start} AND date<${end}`),
     ]);
-    totalUnits = units;
-    totalPatients = patients;
-    todayAppointments = appointments;
-    todayVaccines = vaccines;
+    totalUnits = units[0].total;
+    totalPatients = patients[0].total;
+    todayAppointments = appointments[0].total;
+    todayVaccines = vaccines.rows[0].total;
   } catch (error) {
     if (error instanceof AccessError) {
       if (error.status === 401) {
@@ -73,7 +65,7 @@ export default async function SaudeDashboardPage() {
       }
       return <SaudeUnavailable title="Acesso à Saúde indisponível" message={error.message} />;
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2021", "P2022"].includes(error.code)) {
+    if (["42P01", "42703"].includes(getPostgresError(error)?.code || "")) {
       return <SaudeUnavailable title="Saúde aguarda atualização do banco" message="A estrutura necessária para a Saúde ainda não está disponível no banco desta instância. O administrador precisa concluir a atualização do banco para liberar o módulo." />;
     }
     console.error("[saude/page] unexpected error:", error);

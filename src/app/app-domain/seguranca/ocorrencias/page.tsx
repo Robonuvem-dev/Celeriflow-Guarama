@@ -2,6 +2,8 @@ import SegMobCrudClient from "../components/SegMobCrudClient";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { mapOcorrencia } from "../data";
 import type { SegMobPageConfig } from "../types";
+import { db } from "@/db/client";
+import { listSecurityOccurrences } from "@/db/repositories/security-mobility/queries";
 
 const config: SegMobPageConfig = {
   title: "Ocorrencias e Despachos Operacionais",
@@ -20,7 +22,7 @@ const config: SegMobPageConfig = {
 };
 
 export default async function OcorrenciasPage() {
-  const { prisma } = await getTenantContextForModule("SEGURANCA");
-  const ocorrencias = await prisma.segurancaOcorrencia.findMany({ orderBy: { createdAt: "desc" } });
+  await getTenantContextForModule("SEGURANCA");
+  const ocorrencias = await listSecurityOccurrences(db);
   return <SegMobCrudClient items={ocorrencias.map(mapOcorrencia)} config={config} />;
 }

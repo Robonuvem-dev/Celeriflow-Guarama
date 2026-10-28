@@ -1,4 +1,7 @@
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { processes, processTypes, processSubjects } from "@/db/schema/processes";
+import { departments } from "@/db/schema/administration";
+import { processCitizenAccesses } from "@/db/schema/citizen-access";
 
 export function citizenReturnTo(value: unknown): string {
   if (typeof value !== "string") return "/portal/minha-area";
@@ -17,27 +20,21 @@ export function hasCitizenProcessScope(scopes: unknown): boolean {
   return Array.isArray(scopes) && scopes.includes("PROCESSOS");
 }
 
-export function citizenProcessWhere(usuarioId: string, taxpayerIds: string[], now = new Date()): Prisma.ProcessWhereInput {
-  return {
-    // Confidential attendance and functional/medical requests keep their specialized policies.
-    ombudsman: { is: null },
-    functionalPortalBinding: { is: null },
-    sstCertificates: { none: {} },
-    transparencyCitizenRequests: { none: {} },
-    citizenAccessApplication: { is: null },
-    OR: [
-      { citizenAccesses: { some: { usuarioId, revokedAt: null, grantedAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] } } },
-      ...(taxpayerIds.length ? [
-        { taxServiceRequests: { some: { taxpayerId: { in: taxpayerIds } } } },
-        { taxCaseLinks: { some: { taxpayerId: { in: taxpayerIds } } } },
-      ] : []),
-    ],
-  };
+export function citizenProcessWhere(usuarioId: string, taxpayerIds: string[], now = new Date()) {
+  // Confidential attendance and functional/medical requests keep their specialized policies.
+  const taxpayerList = taxpayerIds.length ? sql.join(taxpayerIds.map(id => sql`${id}`), sql`,`) : sql`NULL`;
+  return sql`NOT EXISTS(SELECT 1 FROM "Ombudsman" protected WHERE protected."processId"=${processes.id})
+    AND NOT EXISTS(SELECT 1 FROM "HrPortalRequestBinding" protected WHERE protected."processId"=${processes.id})
+    AND NOT EXISTS(SELECT 1 FROM "SstMedicalCertificate" protected WHERE protected."processId"=${processes.id})
+    AND NOT EXISTS(SELECT 1 FROM "TransparencyCitizenRequest" protected WHERE protected."processId"=${processes.id})
+    AND NOT EXISTS(SELECT 1 FROM "CitizenAccessApplication" protected WHERE protected."processId"=${processes.id})
+    AND (EXISTS(SELECT 1 FROM ${processCitizenAccesses} WHERE ${processCitizenAccesses.processId}=${processes.id} AND ${processCitizenAccesses.usuarioId}=${usuarioId} AND ${processCitizenAccesses.revokedAt} IS NULL AND ${processCitizenAccesses.grantedAt}<=${now} AND (${processCitizenAccesses.expiresAt} IS NULL OR ${processCitizenAccesses.expiresAt}>${now}))
+      OR EXISTS(SELECT 1 FROM "TaxServiceRequest" fiscal WHERE fiscal."processId"=${processes.id} AND fiscal."taxpayerId" IN (${taxpayerList}))
+      OR EXISTS(SELECT 1 FROM "TaxCaseLink" fiscal WHERE fiscal."processId"=${processes.id} AND fiscal."taxpayerId" IN (${taxpayerList})))`;
 }
 
 export const citizenProcessSelect = {
-  id: true, protocolNumber: true, status: true, createdAt: true, updatedAt: true,
-  expectedCompletionAt: true, completedAt: true, archivedAt: true,
-  processType: { select: { name: true } }, subject: { select: { name: true } },
-  currentDepartment: { select: { name: true } },
-} satisfies Prisma.ProcessSelect;
+  id: processes.id, protocolNumber: processes.protocolNumber, status: processes.status, createdAt: processes.createdAt, updatedAt: processes.updatedAt,
+  expectedCompletionAt: processes.expectedCompletionAt, completedAt: processes.completedAt, archivedAt: processes.archivedAt,
+  processType: { name: processTypes.name }, subject: { name: processSubjects.name }, currentDepartment: { name: departments.name },
+};

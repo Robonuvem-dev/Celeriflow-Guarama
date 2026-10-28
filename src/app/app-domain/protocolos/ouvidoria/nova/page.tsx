@@ -3,6 +3,10 @@ import { getOmbudsmanContextForProtocols } from "@/lib/attendance/access";
 import { createOmbudsman } from "../../../atendimento/actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { asc, eq } from "drizzle-orm";
+import { supportChannels } from "@/db/schema/attendance-portals";
+import { departments as departmentTable } from "@/db/schema/administration";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +16,8 @@ export default async function NovaManifestacaoProtocolosPage() {
     throw new Error("Abertura de manifestações restrita à Ouvidoria com permissão de edição em Processos.");
   }
   const [channels, departments] = await Promise.all([
-    context.prisma.supportChannel.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-    context.prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.select({ id: supportChannels.id, name: supportChannels.name }).from(supportChannels).where(eq(supportChannels.isActive, true)).orderBy(asc(supportChannels.sortOrder), asc(supportChannels.name)),
+    db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(eq(departmentTable.isActive, true)).orderBy(asc(departmentTable.name)),
   ]);
 
   return (

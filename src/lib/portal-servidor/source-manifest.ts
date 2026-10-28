@@ -1,5 +1,10 @@
 import { z } from "zod";
-import type { PrismaClient } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { Decimal } from "@/db/decimal";
+import { portalFirst } from "@/db/repositories/portal-servidor/records";
+import { portalStatements } from "@/db/repositories/portal-servidor/payroll";
+import type { JsonValue } from "@/db/json";
 import { createHash } from "node:crypto";
 import { payrollSnapshotHash } from "./payroll-publication";
 const hash = (value: unknown) => { const order = (item: unknown): unknown => Array.isArray(item) ? item.map(order) : item && typeof item === "object" ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)).map(([key, child]) => [key, order(child)])) : item; return createHash("sha256").update(JSON.stringify(order(JSON.parse(JSON.stringify(value))))).digest("hex"); };
@@ -25,34 +30,34 @@ export function makeFunctionalSourceManifest(snapshot: unknown) {
   visit(snapshot);
   return manifest;
 }
-export async function functionalSourceManifestIsCurrent(db: PrismaClient, raw: unknown) {
+export async function functionalSourceManifestIsCurrent(db: DatabaseExecutor, raw: unknown) {
   const manifest = functionalSourceManifestSchema.parse(raw);
   for (const source of manifest.statements) {
-    const statement = await db.hrPayrollStatement.findFirst({ where: { id: source.id, revokedAt: null, run: { status: "FECHADA", mode: "OFICIAL" } } });
+    const statement = (await portalStatements(db, sql`s.id=${source.id} AND s."revokedAt" IS NULL AND r.status='FECHADA' AND r.mode='OFICIAL'`))[0];
     if (!statement || payrollSnapshotHash(statement) !== source.hash) return false;
   }
-  for (const proof of manifest.proofs) if (!await db.documentVersion.findFirst({ where: { id: proof.id, hashSha256: proof.hash, status: { in: ["FINAL", "SIGNED"] }, document: { status: { in: ["Válido", "Assinado"] } } }, select: { id: true } })) return false;
+  for (const proof of manifest.proofs) if (!await portalFirst<{ id: string }>(db, sql`SELECT v.id FROM "DocumentVersion" v JOIN "Document" d ON d.id=v."documentId" WHERE v.id=${proof.id} AND v."hashSha256"=${proof.hash} AND v.status IN ('FINAL','SIGNED') AND d.status IN ('Válido','Assinado') LIMIT 1`)) return false;
   for (const expected of manifest.payments) {
-    const payment = await db.payment.findUnique({ where: { id: expected.id } });
-    if (!payment || payment.status !== "Paga" || payment.date.toISOString() !== expected.date || (payment.netValueDecimal?.toString() || null) !== expected.net) return false;
+    const payment = await portalFirst<{ status: string; date: Date; netValueDecimal: string | null }>(db, sql`SELECT status,date,"netValueDecimal" FROM "Payment" WHERE id=${expected.id}`);
+    if (!payment || payment.status !== "Paga" || payment.date.toISOString() !== expected.date || (payment.netValueDecimal === null ? null : new Decimal(payment.netValueDecimal).toString()) !== expected.net) return false;
   }
   for (const source of manifest.periods) {
-    const [period] = await db.$queryRaw<unknown[]>`SELECT p.* FROM "HrEmployeeFunctionalPeriod" p WHERE p.id=${source.id} AND NOT p.voided AND NOT EXISTS(SELECT 1 FROM "HrEmployeeFunctionalPeriod" n WHERE n."supersedesId"=p.id)`;
+    const period = await portalFirst<Record<string, unknown>>(db, sql`SELECT p.* FROM "HrEmployeeFunctionalPeriod" p WHERE p.id=${source.id} AND NOT p.voided AND NOT EXISTS(SELECT 1 FROM "HrEmployeeFunctionalPeriod" n WHERE n."supersedesId"=p.id)`);
     if (!period || hash(period) !== source.hash) return false;
   }
-  for (const id of manifest.events) if (!await db.hrIntegrationEvent.findFirst({ where: { id, status: "PROCESSADO" }, select: { id: true } })) return false;
+  for (const id of manifest.events) if (!await portalFirst<{ id: string }>(db, sql`SELECT id FROM "HrIntegrationEvent" WHERE id=${id} AND status='PROCESSADO'`)) return false;
   for (const responsibility of manifest.responsibilities) {
-    const [row] = await db.$queryRaw<{ effectiveEndsAt: Date }[]>`SELECT LEAST(r."endsAt",COALESCE(v."createdAt",r."endsAt")) AS "effectiveEndsAt" FROM "SstTechnicalResponsibility" r LEFT JOIN "SstFoundationalRevocation" v ON v."responsibilityId"=r.id WHERE r.id=${responsibility.id}`;
+    const row = await portalFirst<{ effectiveEndsAt: Date }>(db, sql`SELECT LEAST(r."endsAt",COALESCE(v."createdAt",r."endsAt")) AS "effectiveEndsAt" FROM "SstTechnicalResponsibility" r LEFT JOIN "SstFoundationalRevocation" v ON v."responsibilityId"=r.id WHERE r.id=${responsibility.id}`);
     if (!row || row.effectiveEndsAt.toISOString() !== responsibility.effectiveEndsAt) return false;
   }
   for (const source of manifest.groups) {
-    const group = await db.sstProgramExposureGroup.findFirst({ where: { id: source.id, program: { version: source.version } }, select: { groupSnapshot: true, risks: true } });
+    const group = await portalFirst<{ groupSnapshot: JsonValue; risks: JsonValue }>(db, sql`SELECT g."groupSnapshot",g.risks FROM "SstProgramExposureGroup" g JOIN "SstOccupationalProgram" p ON p.id=g."programId" WHERE g.id=${source.id} AND p.version=${source.version} LIMIT 1`);
     if (!group || hash({ group: group.groupSnapshot, risks: group.risks }) !== source.hash) return false;
   }
   if (manifest.margin) {
     const margin = manifest.margin;
-    const current = await db.hrConsignmentEntry.aggregate({ where: { installment: { competenceAt: new Date(margin.competence), agreement: { scope: margin.scope, contract: { employeeId: margin.employeeId } } } }, _sum: { amount: true } });
-    if ((current._sum.amount?.toString() || "0") !== margin.reserved) return false;
+    const current = await portalFirst<{ amount: string | null }>(db, sql`SELECT sum(e.amount) AS amount FROM "HrConsignmentEntry" e JOIN "HrConsignmentInstallment" i ON i.id=e."installmentId" JOIN "HrConsignmentAgreement" a ON a.id=i."agreementId" JOIN "HrEmploymentContract" c ON c.id=a."contractId" WHERE i."competenceAt"=${new Date(margin.competence)} AND a.scope=${margin.scope} AND c."employeeId"=${margin.employeeId}`);
+    if (new Decimal(current?.amount || "0").toString() !== margin.reserved) return false;
   }
   return true;
 }

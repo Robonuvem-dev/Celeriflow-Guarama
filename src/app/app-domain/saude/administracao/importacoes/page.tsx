@@ -5,19 +5,13 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { AccessError, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ImportHistory, type ImportBatchRow } from "./ImportHistory";
 import { ImportPanel } from "./ImportPanel";
+import { db } from "@/db/client";
+import { healthSusImportPageRows } from "@/db/repositories/health-pages/catalogs";
 
 export default async function HealthSusImportsPage() {
   const context = await getTenantContextForModule("SAUDE");
   if (context.user.hasHealthAccessScope) throw new AccessError("Cargas globais do SUS exigem acesso administrativo sem restrição por unidade.", 403);
-  const { prisma } = context;
-  const batches = await prisma.healthSusImportBatch.findMany({
-    take: 20,
-    orderBy: [{ startedAt: "desc" }, { id: "desc" }],
-    include: {
-      actorUsuario: { select: { nome: true } },
-      issues: { take: 100, orderBy: [{ rowNumber: "asc" }, { id: "asc" }], select: { id: true, rowNumber: true, entityType: true, reason: true } },
-    },
-  });
+  const batches = await healthSusImportPageRows(context.database ?? db);
   const rows: ImportBatchRow[] = batches.map(batch => ({
     id: batch.id, source: batch.source, competence: batch.competence, origin: batch.origin, fileName: batch.fileName,
     fileFormat: batch.fileFormat, contractVersion: batch.contractVersion, status: batch.status,

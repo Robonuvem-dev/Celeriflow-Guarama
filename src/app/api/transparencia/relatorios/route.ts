@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { financialReportFilename } from "@/lib/financeiro/report-delivery";
 import { getFile } from "@/lib/platform/blob";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { getPublicFinancialReportSnapshot, isPublicFinancialReportType } from "@/lib/transparencia/portal-public";
 
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const snapshot = await getPublicFinancialReportSnapshot(prisma, { year, reportType, version, governmentEntityId });
+    const snapshot = await getPublicFinancialReportSnapshot(db, { year, reportType, version, governmentEntityId });
     if (!snapshot) return NextResponse.json({ error: "Relatório público não encontrado." }, { status: 404 });
     const file = await getFile(snapshot.fileUrl);
     if (!file?.stream) return NextResponse.json({ error: "Snapshot do relatório não está disponível." }, { status: 404 });

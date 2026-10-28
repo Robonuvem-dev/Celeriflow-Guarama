@@ -8,6 +8,9 @@ import { sendControlNotice, respondControlNotice, reviewControlNoticeResponse } 
 import { scheduleControlObligation, completeControlObligation, runControlAgendaAlerts } from "@/lib/c7/control-agenda";
 import { runMunicipalControlDiagnostics } from "@/lib/c7/municipal-diagnostics";
 import { FiscalIndexError } from "@/lib/financeiro/fiscal-indices";
+import { db, databaseConnection } from "@/db/client";
+import { and, eq, inArray } from "drizzle-orm";
+import { modules as applicationModules } from "@/db/schema/identity";
 
 type Result = { error?: string };
 const date = (value?: string) => {
@@ -24,9 +27,9 @@ export async function runMunicipalDiagnosticsAction(input: { planId: string; fin
     const cut = date(input.fiscalThrough);
     if (!cut) throw new C7OperationError("Informe o corte fiscal.");
     cut.setUTCHours(23, 59, 59, 999);
-    const modules = await context.prisma.configuracaoModulo.findMany({ where: { codigo: { in: ["FINANCEIRO", "COMPRAS", "TRIBUTACAO"] }, ativo: true }, select: { codigo: true } });
+    const modules = await db.select({ codigo: applicationModules.codigo }).from(applicationModules).where(and(inArray(applicationModules.codigo, ["FINANCEIRO", "COMPRAS", "TRIBUTACAO"]), eq(applicationModules.ativo, true)));
     const enabled = (code: string) => modules.some(module => module.codigo === code) && canViewModule(context.user, code);
-    await runMunicipalControlDiagnostics(context.prisma, { ...controlActor(context), sourcePermissions: { financial: enabled("FINANCEIRO"), procurement: enabled("COMPRAS"), tax: enabled("TRIBUTACAO") } }, { ...input, fiscalThrough: cut });
+    await runMunicipalControlDiagnostics(databaseConnection, { ...controlActor(context), sourcePermissions: { financial: enabled("FINANCEIRO"), procurement: enabled("COMPRAS"), tax: enabled("TRIBUTACAO") } }, { ...input, fiscalThrough: cut });
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError || error instanceof FiscalIndexError ? error.message : "Não foi possível executar os diagnósticos municipais." }; }
@@ -36,7 +39,7 @@ export async function createControlPlanAction(input: { title: string; reference:
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "create");
     if (!input.budgetUnitId?.trim()) throw new C7OperationError("Selecione a unidade gestora do plano.");
-    await createInternalControlPlan(context.prisma, controlActor(context), { ...input, dueAt: date(input.dueAt) });
+    await createInternalControlPlan(databaseConnection, controlActor(context), { ...input, dueAt: date(input.dueAt) });
     revalidatePath("/controle-interno");
     revalidatePath("/indicadores");
     return {};
@@ -46,7 +49,7 @@ export async function createControlPlanAction(input: { title: string; reference:
 export async function createControlFindingAction(input: { planId: string; title: string; description: string; responsibleId?: string; evidenceDocumentId?: string; dueAt?: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "create");
-    await createInternalControlFinding(context.prisma, controlActor(context), { ...input, dueAt: date(input.dueAt) });
+    await createInternalControlFinding(databaseConnection, controlActor(context), { ...input, dueAt: date(input.dueAt) });
     revalidatePath("/controle-interno");
     revalidatePath("/indicadores");
     return {};
@@ -56,7 +59,7 @@ export async function createControlFindingAction(input: { planId: string; title:
 export async function resolveControlFindingAction(id: string, reason: string): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "update");
-    await resolveInternalControlFinding(context.prisma, controlActor(context), id, reason);
+    await resolveInternalControlFinding(databaseConnection, controlActor(context), id, reason);
     revalidatePath("/controle-interno");
     revalidatePath("/indicadores");
     return {};
@@ -66,7 +69,7 @@ export async function resolveControlFindingAction(id: string, reason: string): P
 export async function transitionControlPlanAction(input: { planId: string; status: "CONCLUIDO" | "ABERTO"; reason: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "update");
-    await transitionInternalControlPlan(context.prisma, controlActor(context), input);
+    await transitionInternalControlPlan(databaseConnection, controlActor(context), input);
     revalidatePath("/controle-interno");
     revalidatePath("/indicadores");
     return {};
@@ -76,7 +79,7 @@ export async function transitionControlPlanAction(input: { planId: string; statu
 export async function recordControlOpinionAction(input: { findingId: string; opinion: string; correctiveAction: string; recruitment: boolean; employeeId?: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "update");
-    await recordInternalControlOpinion(context.prisma, controlActor(context), input);
+    await recordInternalControlOpinion(databaseConnection, controlActor(context), input);
     revalidatePath("/controle-interno");
     revalidatePath("/indicadores");
     return {};
@@ -98,7 +101,7 @@ export async function publishControlChecklistAction(input: { planId: string; tit
       group.items.push({ number: Number(number), question, ...(diagnosticRule ? { diagnosticRule: "BANK_ACCOUNT_SOURCE" as const } : {}) });
       groups.set(name, group);
     }
-    await publishControlChecklist(context.prisma, controlActor(context), { ...input, groups: input.groups ?? [...groups.values()] });
+    await publishControlChecklist(databaseConnection, controlActor(context), { ...input, groups: input.groups ?? [...groups.values()] });
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível publicar o checklist." }; }
@@ -107,7 +110,7 @@ export async function publishControlChecklistAction(input: { planId: string; tit
 export async function answerControlChecklistAction(input: { checklistId: string; number: number; response: string; reason: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "update");
-    await answerControlChecklist(context.prisma, controlActor(context), input);
+    await answerControlChecklist(databaseConnection, controlActor(context), input);
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível registrar a resposta." }; }
@@ -117,7 +120,7 @@ export async function runControlChecklistDiagnosticsAction(checklistId: string):
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "update");
     await getTenantContextForModule("FINANCEIRO");
-    await runControlChecklistDiagnostics(context.prisma, controlActor(context), checklistId);
+    await runControlChecklistDiagnostics(databaseConnection, controlActor(context), checklistId);
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível executar o diagnóstico." }; }
@@ -126,7 +129,7 @@ export async function runControlChecklistDiagnosticsAction(checklistId: string):
 export async function sendControlNoticeAction(input: { planId: string; findingId?: string; recipientId: string; title: string; message: string; dueAt: string; documentIds: string[]; idempotencyKey: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "create");
-    await sendControlNotice(context.prisma, controlActor(context), { ...input, dueAt: date(input.dueAt) ?? new Date(NaN) });
+    await sendControlNotice(databaseConnection, controlActor(context), { ...input, dueAt: date(input.dueAt) ?? new Date(NaN) });
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível enviar a notificação." }; }
@@ -135,7 +138,7 @@ export async function sendControlNoticeAction(input: { planId: string; findingId
 export async function respondControlNoticeAction(input: { noticeId: string; response: string; documentIds: string[] }): Promise<Result> {
   try {
     const context = await getTenantContextForModule("ADMINISTRACAO");
-    await respondControlNotice(context.prisma, controlActor(context), input);
+    await respondControlNotice(databaseConnection, controlActor(context), input);
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível registrar a resposta." }; }
@@ -144,7 +147,7 @@ export async function respondControlNoticeAction(input: { noticeId: string; resp
 export async function reviewControlNoticeResponseAction(input: { noticeId: string; accepted: boolean; reason: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "update");
-    await reviewControlNoticeResponse(context.prisma, controlActor(context), input);
+    await reviewControlNoticeResponse(databaseConnection, controlActor(context), input);
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível analisar a resposta." }; }
@@ -153,7 +156,7 @@ export async function reviewControlNoticeResponseAction(input: { noticeId: strin
 export async function scheduleControlObligationAction(input: { planId: string; title: string; description: string; dueAt: string; criticality: "BAIXA" | "MEDIA" | "ALTA"; alertDays: number; expirationDays: number; viewerIds: string[]; closerIds: string[]; costCenterId?: string; idempotencyKey: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "create");
-    await scheduleControlObligation(context.prisma, controlActor(context), { ...input, dueAt: date(input.dueAt) ?? new Date(NaN) });
+    await scheduleControlObligation(databaseConnection, controlActor(context), { ...input, dueAt: date(input.dueAt) ?? new Date(NaN) });
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível agendar a obrigação." }; }
@@ -162,7 +165,7 @@ export async function scheduleControlObligationAction(input: { planId: string; t
 export async function completeControlObligationAction(input: { obligationId: string; reason: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModule("ADMINISTRACAO");
-    await completeControlObligation(context.prisma, controlActor(context), input);
+    await completeControlObligation(databaseConnection, controlActor(context), input);
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível baixar a obrigação." }; }
@@ -171,7 +174,7 @@ export async function completeControlObligationAction(input: { obligationId: str
 export async function runControlAgendaAlertsAction(planId: string): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "create");
-    await runControlAgendaAlerts(context.prisma, controlActor(context), planId);
+    await runControlAgendaAlerts(databaseConnection, controlActor(context), planId);
     revalidatePath("/controle-interno");
     return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível processar os alertas." }; }

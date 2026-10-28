@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { asoInput, assertAsoProgram, formatSstCivilDate, sstCivilDate } from "../src/lib/sst/aso-policy";
 import { registerAso } from "../src/lib/sst/aso-service";
 import type { AppContext } from "../src/lib/platform/tenant-context";
+import { createSstClinicalFixture } from "./helpers/sst-clinical-fixture";
 
 const raw = {
   budgetUnitId: "ug", personId: "candidate", programGroupId: "pg", examinerPersonId: "doctor", examinerCouncil: "CRM PR 123",
@@ -50,55 +51,39 @@ test("PCMSO scope, validity, exposure criteria and prescribed exams are enforced
   assert.doesNotThrow(() => assertAsoProgram(input, { ...program, startsAt: new Date("2026-10-01T03:00:00Z") }, { ...group, startsAt: "2026-10-01T03:00:00Z" }, [], employee, "s"));
 });
 
-function contextFixture(grant = { isActive: true, canReadClinical: true, canAssess: true }) {
-  const records: { id: string; requestHash: string; createdById: string }[] = [];
-  const writes: Record<string, unknown>[] = [];
-  const tx = {
-    $executeRaw: async () => 1,
-    $queryRaw: async () => [],
-    sstProfessionalRole: { findMany: async () => [{ id: "role", budgetUnitId: "ug", personId: "doctor", discipline: "MEDICINE", council: "CRM PR 123", startsAt: new Date("2026-01-01"), endsAt: new Date("2027-12-31"), isActive: true }] },
-    sstQuestionnaireVersion: { findUnique: async () => ({ id: "questionnaire", budgetUnitId: "ug", discipline: "MEDICINE", title: "Anamnese", code: "MED", version: 1, questions: [{ key: "history", label: "Histórico", section: "Geral", kind: "BOOLEAN", required: true, choices: [] }] }) },
-    sstAnamnesis: { create: async () => ({ id: "anamnesis" }) },
-    sstAso: {
-      findUnique: async () => records[0] || null,
-      create: async ({ data }: { data: Record<string, unknown> }) => {
-        writes.push(data);
-        const record = { id: "aso", requestHash: String(data.requestHash), createdById: String(data.createdById) };
-        records.push(record); return record;
-      },
-    },
-    budgetUnit: { findUnique: async () => ({ id: "ug", name: "Prefeitura", secretariatId: "s" }) },
-    person: {
-      findUnique: async ({ where }: { where: { id: string } }) => where.id === "doctor" ? { fullName: "Médico" } : { id: "candidate", fullName: "Candidato", cpf: "00000000000", employee: null },
-      findMany: async () => [{ id: "doctor", fullName: "Médico" }],
-    },
-    sstProgramExposureGroup: { findUnique: async () => ({ id: "pg", program, groupSnapshot: group, exams: [], risks: [] }) },
-    auditEvent: { create: async () => ({}) },
-  };
-  const context = { user: { ...user }, prisma: { sstAccessGrant: { findUnique: async () => grant }, $transaction: async (callback: (db: typeof tx) => Promise<unknown>) => callback(tx) } } as unknown as AppContext;
-  return { context, writes };
+async function contextFixture(canAssess = true) {
+  const local = await createSstClinicalFixture();
+  local.context.user = { ...user };
+  await local.database.query('UPDATE "SstAccessGrant" SET "canAssess"=$1', [canAssess]);
+  const records = async () => (await local.database.query<{ employeeId: string | null; candidateReference: string; snapshot: { personName: string } }>('SELECT "employeeId","candidateReference",snapshot FROM "SstAso"')).rows;
+  return { ...local, records };
 }
 
 test("ASO cannot be issued with module access alone, read-only clinical grants or another UG", async () => {
-  const reader = contextFixture({ isActive: true, canReadClinical: true, canAssess: false });
-  await assert.rejects(registerAso(reader.context, raw), /clínica/);
-  assert.equal(reader.writes.length, 0);
-  const context = contextFixture();
-  await assert.rejects(registerAso(context.context, { ...raw, budgetUnitId: "other" }), /Unidade Gestora/);
-  context.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: false, create: false } } });
-  await assert.rejects(registerAso(context.context, raw), /incluir ASO/);
-  assert.equal(context.writes.length, 0);
+  const f = await contextFixture(false);
+  try {
+    await assert.rejects(registerAso(f.context, raw), /clínica/);
+    await f.database.exec('UPDATE "SstAccessGrant" SET "canAssess"=true');
+    await assert.rejects(registerAso(f.context, { ...raw, budgetUnitId: "other" }), /Unidade Gestora/);
+    f.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: false, create: false } } });
+    await assert.rejects(registerAso(f.context, raw), /incluir ASO/);
+    assert.equal((await f.records()).length, 0);
+  } finally { await f.close(); }
 });
 
 test("ASO retry preserves the issued snapshot without creating an artificial employee or duplicate exams", async () => {
-  const { context, writes } = contextFixture();
-  assert.equal(await registerAso(context, raw), "aso");
-  assert.equal(await registerAso(context, raw), "aso");
-  assert.equal(writes.length, 1);
-  assert.equal(writes[0].employeeId, null);
-  assert.equal(writes[0].candidateReference, "Concurso 01/2026");
-  assert.equal((writes[0].snapshot as { personName: string }).personName, "Candidato");
-  await assert.rejects(registerAso(context, { ...raw, result: "INAPTO" }), /outros dados/);
+  const f = await contextFixture();
+  try {
+    const id = await registerAso(f.context, raw);
+    assert.equal(await registerAso(f.context, raw), id);
+    const writes = await f.records();
+    assert.equal(writes.length, 1); assert.equal(writes[0].employeeId, null);
+    assert.equal(writes[0].candidateReference, "Concurso 01/2026");
+    assert.equal(writes[0].snapshot.personName, "Candidato");
+    assert.equal((await f.database.query('SELECT id FROM "SstOccupationalExam"')).rows.length, 1);
+    assert.equal((await f.database.query('SELECT id FROM "Employee"')).rows.length, 1);
+    await assert.rejects(registerAso(f.context, { ...raw, result: "INAPTO" }), /outros dados/);
+  } finally { await f.close(); }
 });
 
 test("additive ASO migration requires an atomic complete exam set and prevents later modifications", async () => {

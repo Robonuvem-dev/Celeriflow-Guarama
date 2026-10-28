@@ -1,0 +1,24 @@
+import { sql } from "drizzle-orm";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { Decimal } from "@/db/decimal";
+import { databaseTimestamp } from "@/db/temporal";
+
+type ImportRaw = { id: string; sourceType: string; originMode: string; fileName: string; competence: string | null; status: string; totalRows: number; acceptedRows: number; rejectedRows: number; createdAt: string };
+type DivergenceRaw = { id: string; taxpayerId: string; competence: string; divergenceType: string; status: string; nfseServiceDecimal: string; declaredServiceDecimal: string; revenueDifferenceDecimal: string; municipalIssDecimal: string; confirmedPaymentDecimal: string; paymentDifferenceDecimal: string; dteMessageId: string | null; events: { eventType: string; description: string }[] };
+type ExclusionRaw = { id: string; taxpayerId: string; competence: string; reason: string; calendarRevenueDecimal: string; legalLimitDecimal: string; status: string; documentId: string | null; dteMessageId: string | null; externalReceipt: string | null };
+type AllocationRaw = { id: string; taxpayerId: string; competence: string; revenueCode: string; taxpayerRegime: string; nationalDasDecimal: string; municipalComponentDecimal: string; confirmedDecimal: string; differenceDecimal: string };
+type SimplesSource = {
+  imports: (Omit<ImportRaw, "createdAt"> & { createdAt: Date })[];
+  divergences: (Omit<DivergenceRaw, "nfseServiceDecimal" | "declaredServiceDecimal" | "revenueDifferenceDecimal" | "municipalIssDecimal" | "confirmedPaymentDecimal" | "paymentDifferenceDecimal"> & { nfseServiceDecimal: Decimal; declaredServiceDecimal: Decimal; revenueDifferenceDecimal: Decimal; municipalIssDecimal: Decimal; confirmedPaymentDecimal: Decimal; paymentDifferenceDecimal: Decimal })[];
+  exclusions: (Omit<ExclusionRaw, "calendarRevenueDecimal" | "legalLimitDecimal"> & { calendarRevenueDecimal: Decimal; legalLimitDecimal: Decimal })[];
+  allocations: (Omit<AllocationRaw, "nationalDasDecimal" | "municipalComponentDecimal" | "confirmedDecimal" | "differenceDecimal"> & { nationalDasDecimal: Decimal; municipalComponentDecimal: Decimal; confirmedDecimal: Decimal; differenceDecimal: Decimal })[];
+};
+export async function readSimplesPage(database: DatabaseExecutor): Promise<SimplesSource> {
+  const [imports, divergences, exclusions, allocations] = await Promise.all([
+    database.execute<ImportRaw>(sql`SELECT id,"sourceType","originMode","fileName",competence,status,"totalRows","acceptedRows","rejectedRows","createdAt" FROM "SimplesImportBatch" ORDER BY "createdAt" DESC LIMIT 100`),
+    database.execute<DivergenceRaw>(sql`SELECT d.id,d."taxpayerId",d.competence,d."divergenceType",d.status,d."nfseServiceDecimal"::text,d."declaredServiceDecimal"::text,d."revenueDifferenceDecimal"::text,d."municipalIssDecimal"::text,d."confirmedPaymentDecimal"::text,d."paymentDifferenceDecimal"::text,d."dteMessageId",COALESCE((SELECT jsonb_agg(jsonb_build_object('eventType',e."eventType",'description',e.description) ORDER BY e."createdAt" DESC) FROM (SELECT * FROM "SimplesRegularizationEvent" e WHERE e."divergenceId"=d.id ORDER BY e."createdAt" DESC LIMIT 8) e),'[]'::jsonb) AS events FROM "SimplesDivergence" d ORDER BY d."updatedAt" DESC LIMIT 300`),
+    database.execute<ExclusionRaw>(sql`SELECT id,"taxpayerId",competence,reason,"calendarRevenueDecimal"::text,"legalLimitDecimal"::text,status,"documentId","dteMessageId","externalReceipt" FROM "SimplesExclusionCase" ORDER BY "createdAt" DESC LIMIT 100`),
+    database.execute<AllocationRaw>(sql`SELECT id,"taxpayerId",competence,"revenueCode","taxpayerRegime","nationalDasDecimal"::text,"municipalComponentDecimal"::text,"confirmedDecimal"::text,"differenceDecimal"::text FROM "SimplesPaymentAllocation" ORDER BY "createdAt" DESC LIMIT 100`),
+  ]);
+  return { imports: imports.rows.map(row => ({ ...row, createdAt: databaseTimestamp(row.createdAt) })), divergences: divergences.rows.map(row => ({ ...row, nfseServiceDecimal: new Decimal(row.nfseServiceDecimal), declaredServiceDecimal: new Decimal(row.declaredServiceDecimal), revenueDifferenceDecimal: new Decimal(row.revenueDifferenceDecimal), municipalIssDecimal: new Decimal(row.municipalIssDecimal), confirmedPaymentDecimal: new Decimal(row.confirmedPaymentDecimal), paymentDifferenceDecimal: new Decimal(row.paymentDifferenceDecimal) })), exclusions: exclusions.rows.map(row => ({ ...row, calendarRevenueDecimal: new Decimal(row.calendarRevenueDecimal), legalLimitDecimal: new Decimal(row.legalLimitDecimal) })), allocations: allocations.rows.map(row => ({ ...row, nationalDasDecimal: new Decimal(row.nationalDasDecimal), municipalComponentDecimal: new Decimal(row.municipalComponentDecimal), confirmedDecimal: new Decimal(row.confirmedDecimal), differenceDecimal: new Decimal(row.differenceDecimal) })) };
+}

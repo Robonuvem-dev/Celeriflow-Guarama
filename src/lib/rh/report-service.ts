@@ -1,4 +1,9 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { and, asc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { employees, roles } from "@/db/schema/administration";
+import { hrEmploymentRegimes } from "@/db/schema/personnel-configuration";
+import { hrEmploymentContracts, hrEmploymentRevisions, hrPayrollRuns, hrPayrollStatements, hrRightEntries, payrolls } from "@/db/schema/personnel-workforce";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import { z } from "zod";
@@ -23,24 +28,31 @@ const payrollSnapshot = z.object({
   items: z.array(z.object({ code: z.string(), name: z.string(), type: z.string(), value: z.string() })),
 });
 
-export async function buildHrReport(db: PrismaClient, input: z.infer<typeof hrReportInputSchema>, payrollScope: Prisma.PayrollWhereInput = {}): Promise<Report> {
+async function historicalReportContracts(db: DatabaseExecutor, where: SQL | undefined, byHolder: boolean) {
+  const selected = await db.select({ contract: hrEmploymentContracts, employee: { id: employees.id, name: employees.name } }).from(hrEmploymentContracts).innerJoin(employees, eq(employees.id, hrEmploymentContracts.employeeId)).where(where).orderBy(byHolder ? asc(hrEmploymentContracts.employeeId) : asc(hrEmploymentContracts.registration), asc(hrEmploymentContracts.id));
+  const revisions = await db.select().from(hrEmploymentRevisions).where(inArray(hrEmploymentRevisions.contractId, selected.map(row => row.contract.id)));
+  return selected.map(row => ({ ...row.contract, employee: row.employee, revisions: revisions.filter(revision => revision.contractId === row.contract.id) }));
+}
+
+export async function buildHrReport(db: DatabaseExecutor, input: z.infer<typeof hrReportInputSchema>, payrollScope?: SQL): Promise<Report> {
   if (input.kind === "INFORME_ANUAL_POC") {
     if (input.q || input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("Informe anual POC usa ano de pagamento e acesso orçamentário; remova os demais filtros.");
     return buildPocAnnualIncomeReport(db, input.year ?? new Date().getUTCFullYear(), payrollScope);
   }
-  const contractWhere: Prisma.HrEmploymentContractWhereInput = input.q ? { OR: [{ registration: { contains: input.q, mode: "insensitive" } }, { employee: { name: { contains: input.q, mode: "insensitive" } } }] } : {};
+  let contractWhere = input.q ? or(sql`strpos(lower(${hrEmploymentContracts.registration}),lower(${input.q})) > 0`, sql`strpos(lower(${employees.name}),lower(${input.q})) > 0`) : undefined;
   if (input.customCode) {
     if (input.kind !== "CONTRATOS") throw new Error("Filtro de campo configurável disponível no relatório de contratos atuais.");
     if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(input.customCode) || input.customValue === undefined || (input.customType === "BOOLEANO" && !["true", "false"].includes(input.customValue))) throw new Error("Filtro de campo configurável inválido.");
-    contractWhere.details = { path: ["customFields", input.customCode], equals: input.customType === "BOOLEANO" ? input.customValue === "true" : input.customValue };
+    contractWhere = and(contractWhere, sql`jsonb_extract_path(${hrEmploymentContracts.details},'customFields',${input.customCode}) = ${JSON.stringify(input.customType === "BOOLEANO" ? input.customValue === "true" : input.customValue)}::jsonb`);
   }
   if (input.kind === "CONTRATOS") {
-    const rows = await db.hrEmploymentContract.findMany({ where: contractWhere, include: { employee: { select: { name: true } } }, orderBy: [{ registration: "asc" }, { id: "asc" }] });
+    const selected = await db.select({ contract: hrEmploymentContracts, employee: { name: employees.name } }).from(hrEmploymentContracts).innerJoin(employees, eq(employees.id, hrEmploymentContracts.employeeId)).where(contractWhere).orderBy(asc(hrEmploymentContracts.registration), asc(hrEmploymentContracts.id));
+    const rows = selected.map(row => ({ ...row.contract, employee: row.employee }));
     return { title: "Contratos funcionais — última revisão cadastrada", headers: ["Matrícula", "Servidor", "Admissão", "Término", "Local", "Jornada", "Salário BRL", "Situação", "Versão", "Campos configuráveis (JSON)"], rows: rows.map(row => [row.registration, row.employee.name, row.admittedAt.toISOString().slice(0, 10), row.endsAt?.toISOString().slice(0, 10) || "", row.workLocation, String(row.monthlyHours), row.salary.toFixed(2), row.status, String(row.version), JSON.stringify((row.details as { customFields?: unknown })?.customFields || {})]) };
   }
   if (input.kind === "CONTRATOS_MULTIPLOS") {
     const reference = input.competence ? payrollPeriod(input.competence).start : new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
-    const contracts = await db.hrEmploymentContract.findMany({ where: input.q ? { employee: { OR: [{ name: { contains: input.q, mode: "insensitive" } }, { hrContracts: { some: { registration: { contains: input.q, mode: "insensitive" } } } }] } } : {}, include: { revisions: true, employee: { select: { id: true, name: true } } }, orderBy: [{ employeeId: "asc" }, { id: "asc" }] });
+    const contracts = await historicalReportContracts(db, input.q ? or(sql`strpos(lower(${employees.name}),lower(${input.q})) > 0`, sql`EXISTS (SELECT 1 FROM "HrEmploymentContract" c WHERE c."employeeId"=${employees.id} AND strpos(lower(c.registration),lower(${input.q})) > 0)`) : undefined, true);
     const grouped = new Map<string, { name: string; registrations: string[]; regimes: string[] }>();
     for (const contract of contracts) {
       if (!contract.revisions.some(revision => revision.effectiveFrom <= reference)) continue;
@@ -55,13 +67,13 @@ export async function buildHrReport(db: PrismaClient, input: z.infer<typeof hrRe
     const reference = input.referenceDate
       ? new Date(`${input.referenceDate}T00:00:00Z`)
       : input.competence ? payrollPeriod(input.competence).end : new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
-    const contracts = await db.hrEmploymentContract.findMany({ where: contractWhere, include: { revisions: true, employee: { select: { id: true, name: true } } }, orderBy: [{ registration: "asc" }, { id: "asc" }] });
+    const contracts = await historicalReportContracts(db, contractWhere, false);
     const active = contracts.flatMap(contract => {
       if (!contract.revisions.some(revision => revision.effectiveFrom <= reference)) return [];
       const snapshot = resolveContractRevision(contract, contract.revisions, { start: reference, end: reference }).contract;
       return snapshot.status === "ATIVO" && snapshot.admittedAt <= reference && (!snapshot.endsAt || snapshot.endsAt >= reference) ? [{ ...snapshot, employee: contract.employee }] : [];
     });
-    const regimes = await db.hrEmploymentRegime.findMany({ where: { id: { in: [...new Set(active.map(contract => contract.regimeId))] } }, select: { id: true, name: true } });
+    const regimes = await db.select({ id: hrEmploymentRegimes.id, name: hrEmploymentRegimes.name }).from(hrEmploymentRegimes).where(inArray(hrEmploymentRegimes.id, [...new Set(active.map(contract => contract.regimeId))]));
     const regimeNames = new Map(regimes.map(regime => [regime.id, regime.name]));
     const date = reference.toISOString().slice(0, 10);
     if (input.kind === "QUANTIDADE_SERVIDORES") {
@@ -75,12 +87,13 @@ export async function buildHrReport(db: PrismaClient, input: z.infer<typeof hrRe
         [date, "TOTAL", "Total do filtro", String(new Set(active.map(contract => contract.employeeId)).size), String(active.length)],
       ] };
     }
-    const roles = await db.role.findMany({ where: { id: { in: [...new Set(active.map(contract => contract.roleId))] } }, select: { id: true, name: true } });
-    const roleNames = new Map(roles.map(role => [role.id, role.name]));
+    const selectedRoles = await db.select({ id: roles.id, name: roles.name }).from(roles).where(inArray(roles.id, [...new Set(active.map(contract => contract.roleId))]));
+    const roleNames = new Map(selectedRoles.map(role => [role.id, role.name]));
     return { title: "Relação de servidores/vínculos ativos — referência documental Ibema; nomes de cargo/regime do cadastro atual", headers: ["Referência", "Matrícula", "Nome", "Cargo/Função", "Lotação", "Situação", "Regime", "Admissão", "Faixa salarial", "Jornada mensal (horas)", "Versão contratual"], rows: active.map(contract => [date, contract.registration, contract.employee.name, roleNames.get(contract.roleId) || contract.roleId, contract.workLocation, contract.status, regimeNames.get(contract.regimeId) || contract.regimeId, contract.admittedAt.toISOString().slice(0, 10), contract.salaryLevel || "", String(contract.monthlyHours), String(contract.version)]) };
   }
   if (["FOLHA", "RESUMO_CONTABIL", "PREVIDENCIA", "IRRF", "PENSOES", "REMESSA_SALARIAL_POC"].includes(input.kind)) {
-    const rows = await db.hrPayrollStatement.findMany({ where: { contract: contractWhere, run: { mode: "OFICIAL", status: "FECHADA", ...(input.payrollId ? { payrollId: input.payrollId } : {}), payroll: { AND: [payrollScope, ...(input.competence ? [{ competence: input.competence }] : [])] } } }, include: { contract: { select: { registration: true, employee: { select: { name: true } } } }, run: { select: { payroll: { select: { competence: true, type: true } }, scope: true } } }, orderBy: [{ run: { createdAt: "asc" } }, { id: "asc" }] });
+    const selected = await db.select({ statement: hrPayrollStatements, registration: hrEmploymentContracts.registration, employeeName: employees.name, payroll: { competence: payrolls.competence, type: payrolls.type }, scope: hrPayrollRuns.scope }).from(hrPayrollStatements).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrPayrollStatements.contractId)).innerJoin(employees, eq(employees.id, hrEmploymentContracts.employeeId)).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(and(contractWhere, eq(hrPayrollRuns.mode, "OFICIAL"), eq(hrPayrollRuns.status, "FECHADA"), input.payrollId ? eq(hrPayrollRuns.payrollId, input.payrollId) : undefined, payrollScope, input.competence ? eq(payrolls.competence, input.competence) : undefined)).orderBy(asc(hrPayrollRuns.createdAt), asc(hrPayrollStatements.id));
+    const rows = selected.map(row => ({ ...row.statement, contract: { registration: row.registration, employee: { name: row.employeeName } }, run: { payroll: row.payroll, scope: row.scope } }));
     if (input.kind === "PENSOES") {
       const pensionSnapshot = z.object({ pensions: z.array(z.object({ id: z.string(), courtReference: z.string(), method: z.string(), basis: z.string(), base: z.string(), value: z.string(), amount: z.string(), deductFromIncomeTax: z.boolean(), beneficiary: z.object({ id: z.string(), fullName: z.string(), cpf: z.string() }) })).optional().default([]) });
       return { title: "Pensões calculadas — beneficiários e memória; não comprova repasse", headers: ["Competência", "Tipo", "Escopo", "Matrícula", "Servidor", "Pensão", "Beneficiário", "CPF beneficiário", "Processo", "Método", "Base", "Base BRL", "Parâmetro", "Desconto BRL", "Dedutível IRRF", "Demonstrativo"], rows: rows.flatMap(row => {
@@ -110,7 +123,7 @@ export async function buildHrReport(db: PrismaClient, input: z.infer<typeof hrRe
       return [row.run.payroll.competence, row.run.scope, snapshot.contract.registration, snapshot.contract.employee.name, scheme?.name || "—", scheme ? snapshot.bases[scheme.regime] || "0.00" : "0.00", social, row.employer.sub(fgts).toFixed(2), fgts, row.id];
     }) };
     if (input.kind === "RESUMO_CONTABIL") {
-      const grouped = new Map<string, { labels: string[]; value: Prisma.Decimal }>();
+      const grouped = new Map<string, { labels: string[]; value: Decimal }>();
       for (const row of rows) {
         const snapshot = payrollSnapshot.parse(row.snapshot);
         if ((row.snapshot as { proration?: unknown }).proration) {
@@ -119,7 +132,7 @@ export async function buildHrReport(db: PrismaClient, input: z.infer<typeof hrRe
             const totals = [{ code: "TOTAL_BRUTO", type: "TOTAL", value: part.gross }, { code: "TOTAL_DESCONTOS", type: "TOTAL", value: part.deductions }, { code: "TOTAL_LIQUIDO", type: "TOTAL", value: part.net }, { code: "TOTAL_ENCARGOS", type: "TOTAL", value: part.employer }];
             for (const item of [...part.items, ...totals]) {
               const labels = [...prefix, item.code, item.type], key = JSON.stringify(labels);
-              const group = grouped.get(key) ?? { labels, value: new Prisma.Decimal(0) };
+              const group = grouped.get(key) ?? { labels, value: new Decimal(0) };
               group.value = group.value.add(item.value); grouped.set(key, group);
             }
           }
@@ -129,7 +142,7 @@ export async function buildHrReport(db: PrismaClient, input: z.infer<typeof hrRe
         const totals = [{ code: "TOTAL_BRUTO", type: "TOTAL", value: row.gross }, { code: "TOTAL_DESCONTOS", type: "TOTAL", value: row.deductions }, { code: "TOTAL_LIQUIDO", type: "TOTAL", value: row.net }, { code: "TOTAL_ENCARGOS", type: "TOTAL", value: row.employer }];
         for (const item of [...snapshot.items, ...totals]) {
           const labels = [...prefix, item.code, item.type]; const key = JSON.stringify(labels);
-          const group = grouped.get(key) || { labels, value: new Prisma.Decimal(0) };
+          const group = grouped.get(key) || { labels, value: new Decimal(0) };
           group.value = group.value.add(item.value); grouped.set(key, group);
         }
       }
@@ -137,13 +150,14 @@ export async function buildHrReport(db: PrismaClient, input: z.infer<typeof hrRe
     }
     return { title: "Folha calculada e fechada — não comprova pagamento", headers: ["Competência", "Tipo", "Escopo", "Matrícula", "Servidor", "Bruto BRL", "Descontos BRL", "Líquido BRL", "Encargos BRL", "Versão"], rows: rows.map(row => { const snapshot = payrollSnapshot.parse(row.snapshot); return [row.run.payroll.competence, row.run.payroll.type, row.run.scope, snapshot.contract.registration, snapshot.contract.employee.name, row.gross.toFixed(2), row.deductions.toFixed(2), row.net.toFixed(2), row.employer.toFixed(2), row.id]; }) };
   }
-  const entries = await db.hrRightEntry.findMany({ where: { contract: contractWhere }, include: { contract: { select: { registration: true, employee: { select: { name: true } } } } }, orderBy: [{ periodStart: "asc" }, { createdAt: "asc" }, { id: "asc" }] });
-  const totals = new Map<string, { registration: string; name: string; kind: string; scope: string; start: string; end: string; quantity: Prisma.Decimal; amount: Prisma.Decimal }>();
+  const selectedEntries = await db.select({ entry: hrRightEntries, registration: hrEmploymentContracts.registration, employeeName: employees.name }).from(hrRightEntries).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrRightEntries.contractId)).innerJoin(employees, eq(employees.id, hrEmploymentContracts.employeeId)).where(contractWhere).orderBy(asc(hrRightEntries.periodStart), asc(hrRightEntries.createdAt), asc(hrRightEntries.id));
+  const entries = selectedEntries.map(row => ({ ...row.entry, contract: { registration: row.registration, employee: { name: row.employeeName } } }));
+  const totals = new Map<string, { registration: string; name: string; kind: string; scope: string; start: string; end: string; quantity: Decimal; amount: Decimal }>();
   for (const entry of entries) {
     const start = entry.periodStart.toISOString().slice(0, 10); const end = entry.periodEnd.toISOString().slice(0, 10);
     const scope = (entry.details as { scope?: string }).scope || "LEGADO_SEM_ESCOPO";
     const key = `${entry.contractId}:${entry.kind}:${scope}:${start}:${end}`;
-    const row = totals.get(key) || { registration: entry.contract.registration, name: entry.contract.employee.name, kind: entry.kind, scope, start, end, quantity: new Prisma.Decimal(0), amount: new Prisma.Decimal(0) };
+    const row = totals.get(key) || { registration: entry.contract.registration, name: entry.contract.employee.name, kind: entry.kind, scope, start, end, quantity: new Decimal(0), amount: new Decimal(0) };
     row.quantity = row.quantity.add(entry.quantity); row.amount = row.amount.add(entry.amount); totals.set(key, row);
   }
   return { title: "Saldos de direitos e provisões por escopo", headers: ["Matrícula", "Servidor", "Direito", "Escopo", "Início", "Fim", "Saldo quantidade", "Saldo BRL"], rows: [...totals.values()].map(row => [row.registration, row.name, row.kind, row.scope, row.start, row.end, row.quantity.toString(), row.amount.toFixed(2)]) };

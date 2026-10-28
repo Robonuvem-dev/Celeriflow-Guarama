@@ -11,6 +11,11 @@ export async function insertInternalNotifications(tx: DatabaseTransaction, input
   const { priority, dedupeKey, recipients } = validateInternalNotification(input);
   let created = 0;
   for (const userId of recipients) {
+    // Preserve the legacy replay lookup, including on a historical fixture
+    // before the forward unique-index migration has been deployed.
+    const [existing] = await tx.select({ id: internalNotifications.id }).from(internalNotifications)
+      .where(and(eq(internalNotifications.userId, userId), eq(internalNotifications.dedupeKey, dedupeKey))).limit(1);
+    if (existing) continue;
     // DO NOTHING preserves a usable transaction when the partial unique index
     // resolves concurrent producers racing to deliver the same event.
     const [notification] = await tx.insert(internalNotifications).values({ userId, processId: input.processId ?? null, sourceModule: input.sourceModule, entityType: input.entityType, entityId: input.entityId, type: input.type, title: input.title.trim(), message: input.message.trim(), priority, dedupeKey }).onConflictDoNothing().returning({ id: internalNotifications.id });

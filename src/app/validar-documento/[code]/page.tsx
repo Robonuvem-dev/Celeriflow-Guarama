@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { findPublicDocumentValidation } from "@/lib/documents/document-flow-service";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 
 export const dynamic = "force-dynamic";
 
 export default async function PublicDocumentValidationPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   if (!/^CFV-[A-Z0-9]{20}$/.test(code)) notFound();
-  const validation = await findPublicDocumentValidation(prisma, code);
+  const validation = await findPublicDocumentValidation(db, code);
   if (!validation) notFound();
 
   return (

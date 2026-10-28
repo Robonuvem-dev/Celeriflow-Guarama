@@ -7,7 +7,14 @@ import { registerCertificate, registerCertificateReason, assessCertificate } fro
 import { assertSstClinicalAccess } from "@/lib/sst/access";
 import { uploadProcessFile } from "@/lib/platform/blob";
 import { ingestGedDocument } from "@/lib/documents/document-flow-service";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { eq } from "drizzle-orm";
+import { sstCertificates, sstCertificateDocuments } from "@/db/schema/sst-certificates";
+import { sstAccessGrants } from "@/db/schema/sst-access";
+import { users } from "@/db/schema/identity";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { sstContextConnection, sstDatabase } from "@/lib/sst/database";
 import { SstValidationError } from "@/lib/sst/errors";
 
 function errorResult(error: unknown) {
@@ -59,16 +66,16 @@ export async function attachSstCertificateDocument(form: FormData) {
   try {
     const context = await getTenantContextForModuleOperation("SST", "update");
     const certificateId = z.string().min(1).parse(form.get("certificateId"));
-    const certificate = await context.prisma.sstMedicalCertificate.findUnique({ where: { id: certificateId }, select: { budgetUnitId: true } });
+    const [certificate] = await sstDatabase(context).select({ budgetUnitId: sstCertificates.budgetUnitId }).from(sstCertificates).where(eq(sstCertificates.id, certificateId));
     if (!certificate) throw new SstValidationError("Atestado não encontrado.");
     await assertSstClinicalAccess(context, certificate.budgetUnitId);
     const file = form.get("file");
     if (!(file instanceof File) || !file.size || file.size > 10 * 1024 * 1024 || !["application/pdf", "image/jpeg", "image/png"].includes(file.type)) throw new SstValidationError("Selecione um anexo PDF, JPG ou PNG de até 10 MB.");
     const blob = await uploadProcessFile(file);
-    const result = await ingestGedDocument(context.prisma, {
+    const result = await ingestGedDocument(sstContextConnection(context), {
       title: "Anexo ocupacional restrito", documentType: "SST_ATESTADO", documentClassCode: "SST_OCUPACIONAL",
       fileUrl: blob.url, content: new Uint8Array(await file.arrayBuffer()), actorUsuarioId: context.user.id,
-      afterCreate: async (tx, documentId) => { await tx.sstCertificateDocument.create({ data: { certificateId, documentId, createdById: context.user.id } }); },
+      afterCreate: async (tx, documentId) => { await tx.insert(sstCertificateDocuments).values({ certificateId, documentId, createdById: context.user.id }); },
     });
     refresh(); return { error: null, id: result.documentId };
   } catch (error) { return errorResult(error); }
@@ -82,9 +89,9 @@ export async function saveSstAccessGrant(form: FormData) {
     const budgetUnitId = z.string().min(1).parse(form.get("budgetUnitId"));
     const data = { canReadClinical: form.get("canReadClinical") === "on", canAssess: form.get("canAssess") === "on", isActive: form.get("isActive") === "on" };
     if (data.canAssess && !data.canReadClinical) throw new SstValidationError("Perícias exigem leitura clínica habilitada.");
-    await context.prisma.$transaction(async (tx) => {
-      if (!await tx.usuario.findUnique({ where: { id: usuarioId }, select: { id: true } })) throw new SstValidationError("Usuário não encontrado.");
-      const grant = await tx.sstAccessGrant.upsert({ where: { usuarioId_budgetUnitId: { usuarioId, budgetUnitId } }, create: { usuarioId, budgetUnitId, ...data }, update: data });
+    await withDatabaseTransaction(sstContextConnection(context), async (tx) => {
+      if (!(await tx.select({ id: users.id }).from(users).where(eq(users.id, usuarioId))).length) throw new SstValidationError("Usuário não encontrado.");
+      const [grant] = await tx.insert(sstAccessGrants).values({ usuarioId, budgetUnitId, ...data }).onConflictDoUpdate({ target: [sstAccessGrants.usuarioId, sstAccessGrants.budgetUnitId], set: data }).returning({ id: sstAccessGrants.id });
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SST_ACCESS_GRANT", targetId: grant.id });
     });
     refresh(); return { error: null };

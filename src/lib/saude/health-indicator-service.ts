@@ -1,4 +1,14 @@
 import { z } from "zod";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthTimestamp } from "@/db/repositories/health/timestamp";
+import { patients as patientTable, healthPatientRegistrations, healthPatientContacts } from "@/db/schema/health-registration";
+import { people as personTable } from "@/db/schema/people";
+import { addresses } from "@/db/schema/registry";
+import { neighborhoods } from "@/db/schema/localities";
+import { medicalRecords, healthPatientConditions } from "@/db/schema/health-care";
+import { healthPregnancies, healthPregnancyVisits, healthPostpartumVisits, healthChronicAssessments, healthClinicalScreenings, healthDentalMarks } from "@/db/schema/health-care-lines";
+import { healthCollectiveActivities, healthHomeVisits } from "@/db/schema/health-territory";
 import { assertHealthUnitAccess, type AppContext } from "@/lib/platform/tenant-context";
 import { careContextSchema, consultationKind } from "./indicator-context";
 
@@ -25,22 +35,33 @@ const evidence = (type: string, id: string, date: Date, recordId: string): Indic
 export async function healthCareIndicators(context: AppContext, raw: unknown) {
   const input = querySchema.parse(raw), range = indicatorPeriod(input.period), unitIds = unitIdsFor(context, input.unitId), now = new Date();
   if (input.period > now.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7)) throw new Error("Selecione período atual ou passado para indicadores de atendimentos realizados.");
-  const patients = await context.prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, orderBy: [{ person: { fullName: "asc" } }, { id: "asc" }], include: { person: { include: { addresses: { where: { addressType: "Residencial" }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, include: { neighborhood: { select: { name: true, city: true, state: true } } } } } }, contactRecords: { where: { isActive: true }, orderBy: { createdAt: "desc" }, take: 1 }, registrationProfile: true } });
+  const database = context.database ?? db;
+  const patientRows = await database.select({ patient: patientTable, person: personTable, registrationProfile: healthPatientRegistrations }).from(patientTable).innerJoin(personTable, eq(personTable.id, patientTable.personId)).leftJoin(healthPatientRegistrations, eq(healthPatientRegistrations.patientId, patientTable.id)).where(and(eq(patientTable.status, "Ativo"), unitIds ? inArray(patientTable.referenceUnitId, unitIds) : undefined)).orderBy(asc(personTable.fullName), asc(patientTable.id));
+  const [addressRows, contactRows] = await Promise.all([
+    database.select({ address: addresses, neighborhood: { name: neighborhoods.name, city: neighborhoods.city, state: neighborhoods.state } }).from(addresses).leftJoin(neighborhoods, eq(neighborhoods.id, addresses.neighborhoodId)).where(and(inArray(addresses.personId, patientRows.map(row => row.patient.personId)), eq(addresses.addressType, "Residencial"))).orderBy(desc(addresses.createdAt), desc(addresses.id)),
+    database.select().from(healthPatientContacts).where(and(inArray(healthPatientContacts.patientId, patientRows.map(row => row.patient.id)), eq(healthPatientContacts.isActive, true))).orderBy(desc(healthPatientContacts.createdAt)),
+  ]);
+  const patients = patientRows.map(row => ({ ...row.patient, person: { ...row.person, addresses: addressRows.filter(address => address.address.personId === row.patient.personId).slice(0, 1).map(address => ({ ...address.address, neighborhood: address.neighborhood })) }, registrationProfile: row.registrationProfile, contactRecords: contactRows.filter(contact => contact.patientId === row.patient.id).slice(0, 1) }));
   const patientIds = patients.map(patient => patient.id), all = new Set(patientIds);
-  const records = await context.prisma.medicalRecord.findMany({ where: { patientId: { in: patientIds }, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, select: { id: true, patientId: true, unitId: true, date: true, completedAt: true, weight: true, height: true, careContextSnapshot: true } });
+  const records = await database.select({ id: medicalRecords.id, patientId: medicalRecords.patientId, unitId: medicalRecords.unitId, date: medicalRecords.date, completedAt: medicalRecords.completedAt, weight: medicalRecords.weight, height: medicalRecords.height, careContextSnapshot: medicalRecords.careContextSnapshot }).from(medicalRecords).where(and(inArray(medicalRecords.patientId, patientIds), unitIds ? inArray(medicalRecords.unitId, unitIds) : undefined));
   const recordById = new Map(records.map(record => [record.id, record]));
   const inPeriod = (date: Date) => date >= range.gte && date < range.lt && date <= now;
   const isConcluded = (id: string) => { const record = recordById.get(id); return Boolean(record?.completedAt && record.completedAt <= now && record.date <= now); };
   const concluded = records.filter(record => isConcluded(record.id) && inPeriod(record.date));
   const recordIds = records.map(record => record.id);
-  const [pregnancies, conditions, assessments, screenings, dental, activities] = await Promise.all([
-    context.prisma.healthPregnancy.findMany({ where: { patientId: { in: patientIds }, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, include: { visits: true, postpartumVisits: true } }),
-    context.prisma.healthPatientCondition.findMany({ where: { patientId: { in: patientIds }, kind: "CHRONIC", OR: [{ medicalRecordId: { in: recordIds } }, { medicalRecordId: null }] }, select: { id: true, patientId: true, chronicKind: true, startedAt: true, endedAt: true, medicalRecordId: true } }),
-    context.prisma.healthChronicAssessment.findMany({ where: { medicalRecordId: { in: recordIds } } }),
-    context.prisma.healthClinicalScreening.findMany({ where: { medicalRecordId: { in: recordIds } }, orderBy: [{ requestedAt: "desc" }, { id: "desc" }] }),
-    context.prisma.healthDentalMark.findMany({ where: { medicalRecordId: { in: recordIds } } }),
-    context.prisma.healthCollectiveActivity.findMany({ where: { occurredAt: { gte: range.gte, lt: range.lt }, activityType: { notIn: ["TEAM_MEETING", "COMMUNITY_MEETING"] }, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, select: { id: true, occurredAt: true, participantIds: true, teamSnapshot: true } }),
+  const [pregnancyRows, conditions, assessments, screenings, dental, activities] = await Promise.all([
+    database.select().from(healthPregnancies).where(and(inArray(healthPregnancies.patientId, patientIds), unitIds ? inArray(healthPregnancies.unitId, unitIds) : undefined)),
+    database.select({ id: healthPatientConditions.id, patientId: healthPatientConditions.patientId, chronicKind: healthPatientConditions.chronicKind, startedAt: healthPatientConditions.startedAt, endedAt: healthPatientConditions.endedAt, medicalRecordId: healthPatientConditions.medicalRecordId }).from(healthPatientConditions).where(and(inArray(healthPatientConditions.patientId, patientIds), eq(healthPatientConditions.kind, "CHRONIC"), or(inArray(healthPatientConditions.medicalRecordId, recordIds), isNull(healthPatientConditions.medicalRecordId)))),
+    database.select().from(healthChronicAssessments).where(inArray(healthChronicAssessments.medicalRecordId, recordIds)),
+    database.select().from(healthClinicalScreenings).where(inArray(healthClinicalScreenings.medicalRecordId, recordIds)).orderBy(desc(healthClinicalScreenings.requestedAt), desc(healthClinicalScreenings.id)),
+    database.select().from(healthDentalMarks).where(inArray(healthDentalMarks.medicalRecordId, recordIds)),
+    database.select({ id: healthCollectiveActivities.id, occurredAt: healthCollectiveActivities.occurredAt, participantIds: healthCollectiveActivities.participantIds, teamSnapshot: healthCollectiveActivities.teamSnapshot }).from(healthCollectiveActivities).where(and(gte(healthCollectiveActivities.occurredAt, range.gte), lt(healthCollectiveActivities.occurredAt, range.lt), notInArray(healthCollectiveActivities.activityType, ["TEAM_MEETING", "COMMUNITY_MEETING"]), unitIds ? inArray(healthCollectiveActivities.unitId, unitIds) : undefined)),
   ]);
+  const [visits, postpartumVisits] = await Promise.all([
+    database.select().from(healthPregnancyVisits).where(inArray(healthPregnancyVisits.pregnancyId, pregnancyRows.map(row => row.id))),
+    database.select().from(healthPostpartumVisits).where(inArray(healthPostpartumVisits.pregnancyId, pregnancyRows.map(row => row.id))),
+  ]);
+  const pregnancies = pregnancyRows.map(row => ({ ...row, visits: visits.filter(visit => visit.pregnancyId === row.id), postpartumVisits: postpartumVisits.filter(visit => visit.pregnancyId === row.id) }));
   const people = new Map(patients.map(patient => {
     const address = patient.person.addresses[0], profile = patient.registrationProfile, contact = patient.contactRecords[0];
     const hours = profile?.contactStartTime || profile?.contactEndTime ? `${profile.contactStartTime || "—"} a ${profile.contactEndTime || "—"}` : null;
@@ -128,13 +149,15 @@ export async function healthAnnualSeries(context: AppContext, raw: unknown) {
   const now = new Date();
   if (input.toYear > Number(now.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 4))) throw new Error("Selecione anos atuais ou passados para séries de registros realizados.");
   const units = unitIdsFor(context, input.unitId), dates = { gte: new Date(`${input.fromYear}-01-01T00:00:00-03:00`), lt: new Date(Math.min(new Date(`${input.toYear + 1}-01-01T00:00:00-03:00`).valueOf(), now.valueOf() + 1)) };
-  const [dispensations, vaccinations, visits, records] = await Promise.all([
-    context.prisma.medicineDispensation.findMany({ where: { status: "ACTIVE", date: dates, ...(units ? { unitId: { in: units } } : {}) }, select: { date: true } }),
-    context.prisma.vaccinationRecord.findMany({ where: { date: dates, ...(units ? { unitId: { in: units } } : {}) }, select: { date: true } }),
-    context.prisma.healthHomeVisit.findMany({ where: { visitedAt: dates, status: "REALIZADA", participants: { some: { outcome: "PRESENT" } }, ...(units ? { unitId: { in: units } } : {}) }, select: { visitedAt: true } }),
-    context.prisma.medicalRecord.findMany({ where: { date: dates, completedAt: { not: null, lte: now }, ...(units ? { unitId: { in: units } } : {}) }, select: { id: true, date: true, careContextSnapshot: true } }),
+  const database = context.database ?? db;
+  const [dispensationResult, vaccinationResult, visits, records] = await Promise.all([
+    database.execute<{ date: string }>(sql`SELECT date FROM "MedicineDispensation" WHERE status='ACTIVE' AND date>=${dates.gte} AND date<${dates.lt} AND ${units ? inArray(sql`"unitId"`, units) : sql`true`}`),
+    database.execute<{ date: string }>(sql`SELECT date FROM "VaccinationRecord" WHERE date>=${dates.gte} AND date<${dates.lt} AND ${units ? inArray(sql`"unitId"`, units) : sql`true`}`),
+    database.select({ visitedAt: healthHomeVisits.visitedAt }).from(healthHomeVisits).where(and(gte(healthHomeVisits.visitedAt, dates.gte), lt(healthHomeVisits.visitedAt, dates.lt), eq(healthHomeVisits.status, "REALIZADA"), sql`EXISTS (SELECT 1 FROM "HealthHomeVisitParticipant" p WHERE p."visitId"=${healthHomeVisits.id} AND p.outcome='PRESENT')`, units ? inArray(healthHomeVisits.unitId, units) : undefined)),
+    database.select({ id: medicalRecords.id, date: medicalRecords.date, careContextSnapshot: medicalRecords.careContextSnapshot }).from(medicalRecords).where(and(gte(medicalRecords.date, dates.gte), lt(medicalRecords.date, dates.lt), isNotNull(medicalRecords.completedAt), lte(medicalRecords.completedAt, now), units ? inArray(medicalRecords.unitId, units) : undefined)),
   ]);
-  const dentalMarks = await context.prisma.healthDentalMark.findMany({ where: { medicalRecordId: { in: records.map(record => record.id) } }, select: { medicalRecordId: true } });
+  const dispensations = dispensationResult.rows.map(row => ({ date: healthTimestamp(row.date) })), vaccinations = vaccinationResult.rows.map(row => ({ date: healthTimestamp(row.date) }));
+  const dentalMarks = await database.select({ medicalRecordId: healthDentalMarks.medicalRecordId }).from(healthDentalMarks).where(inArray(healthDentalMarks.medicalRecordId, records.map(record => record.id)));
   const dentalIds = new Set(dentalMarks.map(mark => mark.medicalRecordId));
   const rows = Array.from({ length: input.toYear - input.fromYear + 1 }, (_, index) => ({ year: input.fromYear + index, dispensations: 0, vaccinations: 0, visits: 0, medicalConsultations: 0, dentalConsultations: 0, otherOrUnclassifiedCare: 0 }));
   const byYear = new Map(rows.map(row => [row.year, row]));

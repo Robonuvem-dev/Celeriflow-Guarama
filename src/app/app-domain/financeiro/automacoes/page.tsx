@@ -3,6 +3,8 @@ import { Activity, Archive, CircleAlert, CircleCheck, ExternalLink } from "lucid
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { pocVirtualBank } from "@/lib/poc/poc-config";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { db } from "@/db/client";
+import { readFinancePageAutomations } from "@/db/repositories/finance-pages/banking";
 
 function displayDate(value: Date) {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" }).format(value);
@@ -34,16 +36,8 @@ export default async function AutomacoesFinanceirasPage() {
   let loadError: string | null = null;
 
   try {
-    const { prisma } = await getTenantContextForModule("FINANCEIRO");
-    [downloads, runs] = await Promise.all([
-      prisma.automatedBankDownload.findMany({ where: { banco: pocVirtualBank.name }, orderBy: { createdAt: "desc" }, take: 20 }),
-      prisma.integrationRun.findMany({
-        where: { connection: { category: "BANCARIA" } },
-        include: { connection: { select: { name: true, code: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
-    ]);
+    const context = await getTenantContextForModule("FINANCEIRO");
+    ({ downloads, runs } = await readFinancePageAutomations(context.database ?? db, pocVirtualBank.name));
   } catch (error) {
     console.error("Erro ao carregar automações financeiras:", error);
     loadError = "Não foi possível carregar o histórico agora. Tente novamente em instantes.";

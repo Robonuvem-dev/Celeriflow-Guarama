@@ -2,14 +2,17 @@ import PDFDocument from "pdfkit";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { scopedPatient, getPatientRegistrationPolicy } from "@/lib/saude/patient-registration-service";
 import { byteStream } from "@/lib/transparencia/export-files";
+import { db } from "@/db/client";
+import { institutions } from "@/db/schema/administration";
 
 export const runtime = "nodejs";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModuleOperation("SAUDE", "issueReports");
-  const id = decodeURIComponent((await params).id), patient = await scopedPatient(context.prisma, context, id);
+  const database = context.database ?? db;
+  const id = decodeURIComponent((await params).id), patient = await scopedPatient(database, context, id);
   const card = new URL(request.url).searchParams.get("kind") === "CARD";
-  const policy = await getPatientRegistrationPolicy(context.prisma, patient.referenceUnitId);
-  const institution = await context.prisma.institution.findFirst();
+  const policy = await getPatientRegistrationPolicy(database, patient.referenceUnitId);
+  const [institution] = await database.select().from(institutions).limit(1);
   const document = new PDFDocument({ size: "A4", margin: 40 }), chunks: Buffer[] = [];
   const finished = new Promise<Buffer>((resolve, reject) => { document.on("data", chunk => chunks.push(Buffer.from(chunk))); document.on("end", () => resolve(Buffer.concat(chunks))); document.on("error", reject); });
   document.fontSize(14).text(institution?.name || "Saúde municipal").fontSize(9).text(institution?.cnpj || "").moveDown();

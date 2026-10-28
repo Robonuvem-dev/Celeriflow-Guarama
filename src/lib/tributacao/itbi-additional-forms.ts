@@ -1,10 +1,13 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { desc } from "drizzle-orm";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { taxRegistryEntries } from "@/db/schema/taxation-registry";
+import { itbiRegistryPosition, readItbiRegistryEntries } from "@/db/repositories/tax-itbi/records";
 import { fiscalFieldSchema } from "./configurable-cadastres";
 import { taxScopeSnapshot } from "./scope";
 
 /** Callers authorize the declaration before exposing its frozen form values. */
-export async function readItbiAdditionalForms(db: PrismaClient | Prisma.TransactionClient, declarationId: string, scope: { governmentEntityId: string; budgetUnitId: string }) {
-  const entries = await db.taxRegistryEntry.findMany({ where: { entityType: "ITBI_DECLARATION", entityId: declarationId, category: "TYPED_FISCAL_RECORD" }, orderBy: { version: "desc" } });
+export async function readItbiAdditionalForms(db: DatabaseExecutor, declarationId: string, scope: { governmentEntityId: string; budgetUnitId: string }) {
+  const entries = await readItbiRegistryEntries(db, itbiRegistryPosition("ITBI_DECLARATION", declarationId, "TYPED_FISCAL_RECORD"), [desc(taxRegistryEntries.version)]);
   const latest = new Map<string, typeof entries[number]>();
   for (const entry of entries) if (!latest.has(entry.title)) latest.set(entry.title, entry);
   return [...latest.values()].flatMap(entry => {

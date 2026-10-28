@@ -1,18 +1,14 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readPharmacyInventoryPage } from "@/db/repositories/health-pharmacy-pages/inventory";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { closePharmacyInventoryAction, countPharmacyInventoryAction, startPharmacyInventoryAction, submitPharmacyInventoryAction } from "./actions";
 const field = "min-w-0 rounded border bg-white p-2 text-sm";
 const states: Record<string, string> = { COUNTING: "Em contagem", PENDING_APPROVAL: "Aguardando aprovação", CLOSED: "Concluído", CANCELLED: "Cancelado" };
 export default async function PharmacyInventoryPage({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
-  const params = await searchParams, context = await getTenantContextForModule("SAUDE"), { prisma } = context;
+  const params = await searchParams, context = await getTenantContextForModule("SAUDE");
   const units = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const where: Prisma.InventorySessionWhereInput = { warehouse: { healthUnitId: units ? { in: units } : { not: null } }, ...(states[params.status || ""] ? { status: params.status } : {}) };
-  const total = await prisma.inventorySession.count({ where }), page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const [sessions, warehouses] = await Promise.all([
-    prisma.inventorySession.findMany({ where, include: { warehouse: true, createdByUsuario: { select: { nome: true } }, approvedByUsuario: { select: { nome: true } }, items: { include: { stock: { include: { material: true } }, adjustmentMovement: { select: { id: true, date: true, quantity: true } } }, orderBy: { stock: { material: { name: "asc" } } } } }, orderBy: { startedAt: "desc" }, take: 20, skip: (page - 1) * 20 }),
-    prisma.warehouse.findMany({ where: { isActive: true, healthUnitId: units ? { in: units } : { not: null } }, select: { id: true, name: true } }),
-  ]);
+  const { total, page, sessions, warehouses } = await readPharmacyInventoryPage(context.database ?? db, units, { ...params, status: states[params.status || ""] ? params.status : undefined });
   return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"><header className="flex flex-wrap justify-between gap-3"><h1 className="font-semibold">Inventário farmacêutico por estoque e lote</h1><Link href="/saude/farmacia" className="text-sm underline">Farmácia</Link></header>
     <p className="text-sm">O inventário utiliza as posições e os ajustes do estoque compartilhado. Enquanto estiver em contagem/aprovação, as movimentações físicas do estoque ficam bloqueadas. O encerramento segue a aprovação do inventário existente na plataforma.</p>
     <form action={startPharmacyInventoryAction} className="flex flex-wrap items-end gap-3 rounded border bg-white p-3"><label className="grid gap-1 text-sm">Estoque a inventariar<select name="warehouseId" required className={field}><option value="">Selecione</option>{warehouses.map(warehouse => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label><button className={field}>Iniciar inventário por lote</button></form>

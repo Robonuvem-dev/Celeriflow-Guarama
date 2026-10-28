@@ -25,7 +25,7 @@ import {
 import { getTenantContextForModuleOperation, isSystemAdministrator, type AppContext } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { databaseConnection } from "@/db/client";
 
 type ActionResult<T = undefined> = { error?: string; data?: T };
 
@@ -140,7 +140,7 @@ const planningAmendmentSchema = z.object({
   entityType: z.enum(["PPA", "LDO", "LOA"]),
   entityId: z.string().min(1),
   reason: z.string().trim().min(1),
-  amendedSnapshot: z.record(z.string(), z.unknown()),
+  amendedSnapshot: z.record(z.string(), z.json()),
 });
 
 const planningTransitionSchema = z.object({
@@ -168,7 +168,7 @@ export async function actionCreateMultiYearPlan(input: {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const actor = financeActor(context);
-    const plan = await createMultiYearPlan(context.prisma, actor, multiYearPlanSchema.parse(input));
+    const plan = await createMultiYearPlan(databaseConnection, actor, multiYearPlanSchema.parse(input));
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: plan.id } };
   } catch (error) {
@@ -185,7 +185,7 @@ export async function actionAddProgramPPA(input: {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const actor = financeActor(context);
-    const program = await addProgramPPA(context.prisma, actor, programSchema.parse(input));
+    const program = await addProgramPPA(databaseConnection, actor, programSchema.parse(input));
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: program.id } };
   } catch (error) {
@@ -201,7 +201,7 @@ export async function actionAddActionPPA(input: {
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const action = await addActionPPA(context.prisma, financeActor(context), actionSchema.parse(input));
+    const action = await addActionPPA(databaseConnection, financeActor(context), actionSchema.parse(input));
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: action.id } };
   } catch (error) {
@@ -216,7 +216,7 @@ export async function actionAddObjectivePPA(input: {
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const objective = await addObjectivePPA(context.prisma, financeActor(context), objectiveSchema.parse(input));
+    const objective = await addObjectivePPA(databaseConnection, financeActor(context), objectiveSchema.parse(input));
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: objective.id } };
   } catch (error) {
@@ -233,7 +233,7 @@ export async function actionAddIndicatorPPA(input: {
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const indicator = await addIndicatorPPA(context.prisma, financeActor(context), indicatorSchema.parse(input));
+    const indicator = await addIndicatorPPA(databaseConnection, financeActor(context), indicatorSchema.parse(input));
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: indicator.id } };
   } catch (error) {
@@ -249,7 +249,7 @@ export async function actionAddGoalPPA(input: {
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const goal = await addGoalPPA(context.prisma, financeActor(context), goalSchema.parse(input));
+    const goal = await addGoalPPA(databaseConnection, financeActor(context), goalSchema.parse(input));
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: goal.id } };
   } catch (error) {
@@ -266,7 +266,7 @@ export async function actionCreateBudgetGuideline(input: {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const actor = financeActor(context);
-    const guideline = await createBudgetGuideline(context.prisma, actor, guidelineSchema.parse(input));
+    const guideline = await createBudgetGuideline(databaseConnection, actor, guidelineSchema.parse(input));
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: guideline.id } };
   } catch (error) {
@@ -288,7 +288,7 @@ export async function actionCreateAnnualBudgetLaw(input: {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const actor = financeActor(context);
     const parsedInput = annualBudgetLawSchema.parse(input);
-    const loa = await createAnnualBudgetLaw(context.prisma, actor, {
+    const loa = await createAnnualBudgetLaw(databaseConnection, actor, {
       ...parsedInput,
       publicationDate: new Date(parsedInput.publicationDate),
     });
@@ -309,7 +309,7 @@ export async function actionTransitionPlanningLegalWorkflow(input: {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
     const parsedInput = planningTransitionSchema.parse(input);
-    await transitionPlanningLegalWorkflow(context.prisma, financeActor(context), {
+    await transitionPlanningLegalWorkflow(databaseConnection, financeActor(context), {
       ...parsedInput,
       legalEvidence: parsedInput.legalEvidence && { ...parsedInput.legalEvidence, legalActDate: new Date(parsedInput.legalEvidence.legalActDate) },
       publication: parsedInput.publication && { ...parsedInput.publication, publicationDate: new Date(parsedInput.publication.publicationDate) },
@@ -330,10 +330,7 @@ export async function actionCreatePlanningAmendment(input: {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const parsedInput = planningAmendmentSchema.parse(input);
-    const amendment = await createPlanningAmendment(context.prisma, financeActor(context), {
-      ...parsedInput,
-      amendedSnapshot: parsedInput.amendedSnapshot as Prisma.InputJsonObject,
-    });
+    const amendment = await createPlanningAmendment(databaseConnection, financeActor(context), parsedInput);
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: amendment.id } };
   } catch (error) {
@@ -353,7 +350,7 @@ export async function actionCreateBudgetAppropriationFromFixation(input: {
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const appropriation = await createBudgetAppropriationFromFixation(context.prisma, financeActor(context), input);
+    const appropriation = await createBudgetAppropriationFromFixation(databaseConnection, financeActor(context), input);
     revalidatePath("/financeiro/orcamento");
     return { data: { id: appropriation.id } };
   } catch (error) {
@@ -369,7 +366,7 @@ export async function actionSaveMonthlyDisbursementSchedule(input: {
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const schedule = await saveMonthlyDisbursementSchedule(context.prisma, financeActor(context), input);
+    const schedule = await saveMonthlyDisbursementSchedule(databaseConnection, financeActor(context), input);
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: schedule.id } };
   } catch (error) {
@@ -384,7 +381,7 @@ export async function actionSaveBimonthlyRevenueTarget(input: {
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    const target = await saveBimonthlyRevenueTarget(context.prisma, financeActor(context), input);
+    const target = await saveBimonthlyRevenueTarget(databaseConnection, financeActor(context), input);
     revalidatePath("/financeiro/orcamento/planejamento");
     return { data: { id: target.id } };
   } catch (error) {
@@ -407,7 +404,7 @@ export async function actionCreateCreditRequest(input: {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const parsedInput = creditRequestSchema.parse(input);
-    const credit = await createCreditRequest(context.prisma, financeActor(context), { ...parsedInput, legalActDate: new Date(parsedInput.legalActDate) });
+    const credit = await createCreditRequest(databaseConnection, financeActor(context), { ...parsedInput, legalActDate: new Date(parsedInput.legalActDate) });
     revalidatePath("/financeiro/orcamento");
     return { data: { id: credit.id } };
   } catch (error) {
@@ -418,7 +415,7 @@ export async function actionCreateCreditRequest(input: {
 export async function actionSubmitCreditRequest(creditRequestId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await submitCreditRequest(context.prisma, financeActor(context), z.string().min(1).parse(creditRequestId));
+    await submitCreditRequest(databaseConnection, financeActor(context), z.string().min(1).parse(creditRequestId));
     revalidatePath("/financeiro/orcamento");
     return {};
   } catch (error) {
@@ -429,7 +426,7 @@ export async function actionSubmitCreditRequest(creditRequestId: string): Promis
 export async function actionApproveCreditRequest(creditRequestId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await approveCreditRequest(context.prisma, financeActor(context), z.string().min(1).parse(creditRequestId));
+    await approveCreditRequest(databaseConnection, financeActor(context), z.string().min(1).parse(creditRequestId));
     revalidatePath("/financeiro/orcamento");
     return {};
   } catch (error) {
@@ -440,7 +437,7 @@ export async function actionApproveCreditRequest(creditRequestId: string): Promi
 export async function actionExecuteCreditRequest(creditRequestId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await executeCreditRequest(context.prisma, financeActor(context), z.string().min(1).parse(creditRequestId));
+    await executeCreditRequest(databaseConnection, financeActor(context), z.string().min(1).parse(creditRequestId));
     revalidatePath("/financeiro/orcamento");
     return {};
   } catch (error) {
@@ -451,7 +448,7 @@ export async function actionExecuteCreditRequest(creditRequestId: string): Promi
 export async function actionSanctionCreditRequest(creditRequestId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
-    await sanctionCreditRequest(context.prisma, financeActor(context), z.string().min(1).parse(creditRequestId));
+    await sanctionCreditRequest(databaseConnection, financeActor(context), z.string().min(1).parse(creditRequestId));
     revalidatePath("/financeiro/orcamento");
     return {};
   } catch (error) {
@@ -467,7 +464,7 @@ export async function actionPublishCreditRequest(input: {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "update");
     const parsedInput = z.object({ creditRequestId: z.string().min(1), publicationDate: z.string().min(1), publicationReference: z.string().trim().min(1) }).parse(input);
-    await publishCreditRequest(context.prisma, financeActor(context), parsedInput.creditRequestId, {
+    await publishCreditRequest(databaseConnection, financeActor(context), parsedInput.creditRequestId, {
       publicationDate: new Date(parsedInput.publicationDate),
       publicationReference: parsedInput.publicationReference,
     });

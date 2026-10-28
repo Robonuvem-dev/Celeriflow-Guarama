@@ -1,4 +1,13 @@
 import Link from "next/link";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthUnits, healthTeams, healthProfessionals } from "@/db/schema/health-workforce";
+import { people as personTable } from "@/db/schema/people";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { addresses as addressTable, documents } from "@/db/schema/registry";
+import { neighborhoods } from "@/db/schema/localities";
+import { families as familyTable, familyMembers } from "@/db/schema/master-data";
+import { healthFamilies, healthFamilyEvents, healthFamilyDocuments, healthHouseholds, healthMicroareas, healthTerritoryAreas, healthHomeVisits, healthHomeVisitParticipants, healthHomeCareRequests, healthHomeCareAssessments, healthHomeCareAttendances, healthCollectiveActivities, healthFoodMarkers } from "@/db/schema/health-territory";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { collectiveActivityTypes, collectivePractices, collectiveThemes } from "@/lib/saude/primary-care-contract";
 import { assessHomeCareAction, changeFamilyMemberAction, createHomeCareRequestAction, moveFamilyAction, performHomeCareAction, recordCollectiveActivityAction, recordVisitOutcomeAction, saveHouseholdDetailsAction, savePrimaryFamilyAction, uploadFamilyDocumentAction } from "./actions";
@@ -6,25 +15,38 @@ import { FoodMarkerForm } from "./FoodMarkerForm";
 const field = "h-9 min-w-0 rounded border bg-white px-2 text-sm";
 
 export default async function PrimaryCareManagementPage() {
-  const context = await getTenantContextForModule("SAUDE"), { prisma } = context;
+  const context = await getTenantContextForModule("SAUDE"), database = context.database ?? db;
   const ids = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const [units, teams, people, patients, microareas, addresses, households, families, masterFamilies, visits, requests, activities, food] = await Promise.all([
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(ids ? { id: { in: ids } } : {}) } }),
-    prisma.healthTeam.findMany({ where: { isActive: true, ...(ids ? { unitId: { in: ids } } : {}) } }),
-    prisma.person.findMany({ where: { status: "Ativo" }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(ids ? { referenceUnitId: { in: ids } } : {}) }, include: { person: true } }),
-    prisma.healthMicroarea.findMany({ where: ids ? { area: { unitId: { in: ids } } } : {}, include: { area: true } }),
-    prisma.address.findMany({ include: { neighborhood: true }, orderBy: { createdAt: "desc" }, take: 1000 }),
-    prisma.healthHousehold.findMany({ where: ids ? { microarea: { area: { unitId: { in: ids } } } } : {}, include: { address: { include: { neighborhood: true } } } }),
-    prisma.healthFamily.findMany({ where: ids ? { OR: [{ unitId: { in: ids } }, { household: { microarea: { area: { unitId: { in: ids } } } } }] } : {}, include: { masterFamily: { include: { members: { include: { person: true } }, socialProfile: true } }, household: true, events: { orderBy: { effectiveAt: "desc" } } } }),
-    prisma.family.findMany({ include: { responsiblePerson: true } }),
-    prisma.healthHomeVisit.findMany({ where: ids ? { professional: { unitId: { in: ids } } } : {}, include: { participants: { include: { person: true } } }, orderBy: { visitedAt: "desc" }, take: 100 }),
-    prisma.healthHomeCareRequest.findMany({ where: ids ? { unitId: { in: ids } } : {}, include: { patient: { include: { person: true } }, assessments: { orderBy: { assessedAt: "desc" } }, attendances: true }, orderBy: { requestedAt: "desc" } }),
-    prisma.healthCollectiveActivity.findMany({ where: ids ? { unitId: { in: ids } } : {}, orderBy: { occurredAt: "desc" }, take: 100 }),
-    prisma.healthFoodMarker.findMany({ where: ids ? { unitId: { in: ids } } : {}, include: { patient: { include: { person: true } } }, orderBy: { recordedAt: "desc" }, take: 100 }),
+  const [units, teams, people, patients, microareaRows, addressRows, householdRows, familyRows, masterFamilyRows, visitRows, requestRows, activities, foodRows] = await Promise.all([
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), ids ? inArray(healthUnits.id, ids) : undefined)),
+    database.select({ id: healthTeams.id, name: healthTeams.name }).from(healthTeams).where(and(eq(healthTeams.isActive, true), ids ? inArray(healthTeams.unitId, ids) : undefined)),
+    database.select({ id: personTable.id, fullName: personTable.fullName }).from(personTable).where(eq(personTable.status, "Ativo")).orderBy(asc(personTable.fullName)),
+    database.select({ id: patientTable.id, person: { fullName: personTable.fullName } }).from(patientTable).innerJoin(personTable, eq(personTable.id, patientTable.personId)).where(and(eq(patientTable.status, "Ativo"), ids ? inArray(patientTable.referenceUnitId, ids) : undefined)),
+    database.select({ microarea: healthMicroareas, area: healthTerritoryAreas }).from(healthMicroareas).innerJoin(healthTerritoryAreas, eq(healthTerritoryAreas.id, healthMicroareas.areaId)).where(ids ? inArray(healthTerritoryAreas.unitId, ids) : undefined),
+    database.select({ address: addressTable, neighborhood: { city: neighborhoods.city } }).from(addressTable).leftJoin(neighborhoods, eq(neighborhoods.id, addressTable.neighborhoodId)).orderBy(desc(addressTable.createdAt)).limit(1000),
+    database.select({ household: healthHouseholds, address: { streetName: addressTable.streetName } }).from(healthHouseholds).leftJoin(addressTable, eq(addressTable.id, healthHouseholds.addressId)).leftJoin(healthMicroareas, eq(healthMicroareas.id, healthHouseholds.microareaId)).leftJoin(healthTerritoryAreas, eq(healthTerritoryAreas.id, healthMicroareas.areaId)).where(ids ? inArray(healthTerritoryAreas.unitId, ids) : undefined),
+    database.select({ family: healthFamilies, masterFamily: familyTable }).from(healthFamilies).leftJoin(familyTable, eq(familyTable.id, healthFamilies.masterFamilyId)).leftJoin(healthHouseholds, eq(healthHouseholds.id, healthFamilies.householdId)).leftJoin(healthMicroareas, eq(healthMicroareas.id, healthHouseholds.microareaId)).leftJoin(healthTerritoryAreas, eq(healthTerritoryAreas.id, healthMicroareas.areaId)).where(ids ? or(inArray(healthFamilies.unitId, ids), inArray(healthTerritoryAreas.unitId, ids)) : undefined),
+    database.select({ family: familyTable, responsiblePerson: { fullName: personTable.fullName } }).from(familyTable).leftJoin(personTable, eq(personTable.id, familyTable.responsiblePersonId)),
+    database.select({ visit: healthHomeVisits }).from(healthHomeVisits).innerJoin(healthProfessionals, eq(healthProfessionals.id, healthHomeVisits.professionalId)).where(ids ? inArray(healthProfessionals.unitId, ids) : undefined).orderBy(desc(healthHomeVisits.visitedAt)).limit(100),
+    database.select({ request: healthHomeCareRequests, person: { fullName: personTable.fullName } }).from(healthHomeCareRequests).innerJoin(patientTable, eq(patientTable.id, healthHomeCareRequests.patientId)).innerJoin(personTable, eq(personTable.id, patientTable.personId)).where(ids ? inArray(healthHomeCareRequests.unitId, ids) : undefined).orderBy(desc(healthHomeCareRequests.requestedAt)),
+    database.select().from(healthCollectiveActivities).where(ids ? inArray(healthCollectiveActivities.unitId, ids) : undefined).orderBy(desc(healthCollectiveActivities.occurredAt)).limit(100),
+    database.select({ food: healthFoodMarkers, person: { fullName: personTable.fullName } }).from(healthFoodMarkers).innerJoin(patientTable, eq(patientTable.id, healthFoodMarkers.patientId)).innerJoin(personTable, eq(personTable.id, patientTable.personId)).where(ids ? inArray(healthFoodMarkers.unitId, ids) : undefined).orderBy(desc(healthFoodMarkers.recordedAt)).limit(100),
   ]);
+  const masterIds = familyRows.flatMap(row => row.family.masterFamilyId ? [row.family.masterFamilyId] : []);
+  const [memberRows, events, participants, assessments, attendances, familyDocumentRows] = await Promise.all([
+    database.select({ member: familyMembers, person: { fullName: personTable.fullName } }).from(familyMembers).innerJoin(personTable, eq(personTable.id, familyMembers.personId)).where(inArray(familyMembers.familyId, masterIds)),
+    database.select().from(healthFamilyEvents).where(inArray(healthFamilyEvents.familyId, familyRows.map(row => row.family.id))).orderBy(desc(healthFamilyEvents.effectiveAt)),
+    database.select({ participant: healthHomeVisitParticipants, person: { fullName: personTable.fullName } }).from(healthHomeVisitParticipants).innerJoin(personTable, eq(personTable.id, healthHomeVisitParticipants.personId)).where(inArray(healthHomeVisitParticipants.visitId, visitRows.map(row => row.visit.id))),
+    database.select().from(healthHomeCareAssessments).where(inArray(healthHomeCareAssessments.requestId, requestRows.map(row => row.request.id))).orderBy(desc(healthHomeCareAssessments.assessedAt)),
+    database.select().from(healthHomeCareAttendances).where(inArray(healthHomeCareAttendances.requestId, requestRows.map(row => row.request.id))),
+    database.select({ link: healthFamilyDocuments, document: { title: documents.title } }).from(healthFamilyDocuments).innerJoin(documents, eq(documents.id, healthFamilyDocuments.documentId)).where(inArray(healthFamilyDocuments.familyId, masterIds)),
+  ]);
+  const microareas = microareaRows.map(row => ({ ...row.microarea, area: row.area })), addresses = addressRows.map(row => ({ ...row.address, neighborhood: row.neighborhood })), households = householdRows.map(row => ({ ...row.household, address: row.address }));
+  const families = familyRows.map(row => ({ ...row.family, masterFamily: row.masterFamily ? { ...row.masterFamily, members: memberRows.filter(member => member.member.familyId === row.masterFamily?.id).map(member => ({ ...member.member, person: member.person })) } : null, events: events.filter(event => event.familyId === row.family.id) })), masterFamilies = masterFamilyRows.map(row => ({ ...row.family, responsiblePerson: row.responsiblePerson }));
+  const visits = visitRows.map(row => ({ ...row.visit, participants: participants.filter(participant => participant.participant.visitId === row.visit.id).map(participant => ({ ...participant.participant, person: participant.person })) })), requests = requestRows.map(row => ({ ...row.request, patient: { person: row.person }, assessments: assessments.filter(assessment => assessment.requestId === row.request.id), attendances: attendances.filter(attendance => attendance.requestId === row.request.id) }));
+  const food = foodRows.map(row => ({ ...row.food, patient: { person: row.person } }));
   const unitOptions = units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>);
-  const familyDocuments = await prisma.healthFamilyDocument.findMany({ where: { familyId: { in: families.flatMap(family => family.masterFamilyId ? [family.masterFamilyId] : []) } }, include: { document: { select: { title: true } } } });
+  const familyDocuments = familyDocumentRows.map(row => ({ ...row.link, document: row.document }));
   const familyOptions = families.map(family => <option key={family.id} value={family.id}>{family.familyCode || family.id} · {family.masterFamily?.responsiblePersonId}</option>);
   const personOptions = people.map(person => <option key={person.id} value={person.id}>{person.fullName}</option>);
   const householdOptions = households.map(household => <option key={household.id} value={household.id}>{household.householdCode} · {household.address?.streetName}</option>);

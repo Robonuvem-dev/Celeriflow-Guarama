@@ -1,5 +1,6 @@
-import type { Prisma } from "@prisma/client";
-import { getProtocolContext, protocolScope } from "@/lib/protocols/access";
+import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
+import { db } from "@/db/client";
+import { countProcesses, listOperationalProcesses, processListCondition } from "@/db/repositories/processes/listing";
 import { parseProcessListFilters, PROCESS_LIST_PAGE_SIZE, resolveProcessListPage } from "@/lib/protocols/process-listing-policy";
 import ArquivadosClient from "./ArquivadosClient";
 
@@ -13,47 +14,14 @@ type SearchParams = {
 export default async function ArquivadosPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const context = await getProtocolContext();
   const filters = parseProcessListFilters(await searchParams);
-  const conditions: Prisma.ProcessWhereInput[] = [
-    protocolScope(context),
-    { status: "Arquivado" },
-  ];
-
-  if (filters.q) {
-    conditions.push({
-      OR: [
-        { protocolNumber: { contains: filters.q, mode: "insensitive" } },
-        { description: { contains: filters.q, mode: "insensitive" } },
-        { processType: { is: { name: { contains: filters.q, mode: "insensitive" } } } },
-        { subject: { is: { name: { contains: filters.q, mode: "insensitive" } } } },
-        { person: { is: { fullName: { contains: filters.q, mode: "insensitive" } } } },
-        { company: { is: { corporateName: { contains: filters.q, mode: "insensitive" } } } },
-      ],
-    });
-  }
-
-  const where: Prisma.ProcessWhereInput = { AND: conditions };
-  const total = await context.prisma.process.count({ where });
+  const where = processListCondition(protocolScopeCondition(context), { ...filters, status: "Arquivado" });
+  const total = await countProcesses(db, where);
   const page = resolveProcessListPage(filters.page, total);
-  const processos = await context.prisma.process.findMany({
-    where,
-    select: {
-      id: true,
-      protocolNumber: true,
-      status: true,
-      archivedAt: true,
-      processType: { select: { name: true } },
-      subject: { select: { name: true } },
-      person: { select: { fullName: true } },
-      company: { select: { corporateName: true } },
-    },
-    orderBy: [{ archivedAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PROCESS_LIST_PAGE_SIZE,
-    take: PROCESS_LIST_PAGE_SIZE,
-  });
+  const processos = await listOperationalProcesses(db, where, { order: "archived", offset: (page - 1) * PROCESS_LIST_PAGE_SIZE, limit: PROCESS_LIST_PAGE_SIZE });
 
   return (
     <ArquivadosClient
-      processos={processos}
+      processos={processos.map(({id,protocolNumber,status,archivedAt,processType,subject,person,company})=>({id,protocolNumber,status,archivedAt,processType,subject,person,company}))}
       query={filters.q}
       total={total}
       page={page}

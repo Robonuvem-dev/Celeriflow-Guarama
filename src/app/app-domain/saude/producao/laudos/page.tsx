@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthTreatmentReports, healthTreatmentAuthorizations, healthAuthorizationIssuers, healthAuthorizationNumberRanges } from "@/db/schema/health-treatment";
+import { patients } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthUnits } from "@/db/schema/health-workforce";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { authorizationRangePosition } from "@/lib/saude/treatment-authorization-service";
 import { createIssuerAction, createNumberRangeAction, configureAihCancellationAction } from "./actions";
@@ -8,15 +14,17 @@ const field = "w-full rounded border bg-white p-2";
 export default async function TreatmentReportsPage({ searchParams }: { searchParams: Promise<{ kind?: string; status?: string; q?: string; page?: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), params = await searchParams;
   const kind = params.kind === "APAC" ? "APAC" : "AIH", status = typeof params.status === "string" ? params.status.slice(0, 30) : "", q = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
-  const where = { kind, ...(status ? { status } : {}), ...(context.user.hasHealthAccessScope ? { unitId: { in: context.user.allowedHealthUnitIds || [] } } : {}), ...(q ? { patient: { person: { fullName: { contains: q, mode: "insensitive" as const } } } } : {}) };
-  const total = await context.prisma.healthTreatmentReport.count({ where });
+  const database = context.database ?? db;
+  const where = and(eq(healthTreatmentReports.kind, kind), status ? eq(healthTreatmentReports.status, status) : undefined, context.user.hasHealthAccessScope ? inArray(healthTreatmentReports.unitId, context.user.allowedHealthUnitIds || []) : undefined, q ? sql`strpos(lower(${people.fullName}), lower(${q})) > 0` : undefined);
+  const [{ total }] = await database.select({ total: sql<number>`count(*)::int` }).from(healthTreatmentReports).innerJoin(patients, eq(patients.id, healthTreatmentReports.patientId)).innerJoin(people, eq(people.id, patients.personId)).where(where);
   const page = Math.min(typeof params.page === "string" && /^\d+$/.test(params.page) ? Math.max(1, Number(params.page)) : 1, Math.max(1, Math.ceil(total / 30)));
-  const [reports, issuers, ranges, units] = await Promise.all([
-    context.prisma.healthTreatmentReport.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * 30, take: 30, include: { patient: { include: { person: { select: { fullName: true } } } }, unit: true, authorization: true } }),
-    context.prisma.healthAuthorizationIssuer.findMany({ orderBy: { name: "asc" } }),
-    context.prisma.healthAuthorizationNumberRange.findMany({ where: { kind }, include: { issuer: true }, orderBy: { validUntil: "asc" } }),
-    context.prisma.healthUnit.findMany({ where: context.user.hasHealthAccessScope ? { id: { in: context.user.allowedHealthUnitIds || [] } } : {}, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  const [reportRows, issuers, rangeRows, units] = await Promise.all([
+    database.select({ report: healthTreatmentReports, person: { fullName: people.fullName }, unit: { name: healthUnits.name }, authorization: healthTreatmentAuthorizations }).from(healthTreatmentReports).innerJoin(patients, eq(patients.id, healthTreatmentReports.patientId)).innerJoin(people, eq(people.id, patients.personId)).innerJoin(healthUnits, eq(healthUnits.id, healthTreatmentReports.unitId)).leftJoin(healthTreatmentAuthorizations, eq(healthTreatmentAuthorizations.reportId, healthTreatmentReports.id)).where(where).orderBy(desc(healthTreatmentReports.createdAt)).offset((page - 1) * 30).limit(30),
+    database.select().from(healthAuthorizationIssuers).orderBy(asc(healthAuthorizationIssuers.name)),
+    database.select({ range: healthAuthorizationNumberRanges, issuer: healthAuthorizationIssuers }).from(healthAuthorizationNumberRanges).innerJoin(healthAuthorizationIssuers, eq(healthAuthorizationIssuers.id, healthAuthorizationNumberRanges.issuerId)).where(eq(healthAuthorizationNumberRanges.kind, kind)).orderBy(asc(healthAuthorizationNumberRanges.validUntil)),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(context.user.hasHealthAccessScope ? inArray(healthUnits.id, context.user.allowedHealthUnitIds || []) : undefined).orderBy(asc(healthUnits.name)),
   ]);
+  const reports = reportRows.map(row => ({ ...row.report, patient: { person: row.person }, unit: row.unit, authorization: row.authorization })), ranges = rangeRows.map(row => ({ ...row.range, issuer: row.issuer }));
   const day = new Date(`${new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })}T00:00:00Z`);
   const activeRanges = ranges.filter(range => range.issuer.isActive && range.validFrom <= day && range.validUntil >= day && authorizationRangePosition(range).available !== "0").map(range => ({ id: range.id, name: `${range.issuer.name} · ${range.firstNumber}–${range.lastNumber}`, ...authorizationRangePosition(range) }));
   const pageUrl = (value: number) => `/saude/producao/laudos?${new URLSearchParams({ kind, status, q, page: String(value) })}`;

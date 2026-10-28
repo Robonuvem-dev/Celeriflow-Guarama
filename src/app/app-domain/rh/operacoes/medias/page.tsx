@@ -4,13 +4,14 @@ import { accessiblePayrollWhere } from "@/lib/rh/payroll-access";
 import { calculateRemunerationAverage } from "@/lib/rh/remuneration-average";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ReferenceLookup } from "../ReferenceLookup";
+import { db } from "@/db/client";
 
 export const dynamic = "force-dynamic";
 export default async function AveragePage({ searchParams }: { searchParams: Promise<{ contractId?: string; ruleId?: string; from?: string; until?: string }> }) {
-  const { prisma, user } = await getTenantContextForModule("RH"); const params = await searchParams;
+  const context = await getTenantContextForModule("RH"), user = context.user; const params = await searchParams;
   let result: Awaited<ReturnType<typeof calculateRemunerationAverage>> | null = null; let error = "";
   if (params.contractId && params.ruleId && params.from && params.until) {
-    try { result = await calculateRemunerationAverage(prisma, params, accessiblePayrollWhere(user)); }
+    try { result = await calculateRemunerationAverage(context.database ?? db, params, accessiblePayrollWhere(user)); }
     catch (exception) { error = exception instanceof Error ? exception.message : "Não foi possível calcular a média."; }
   }
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">

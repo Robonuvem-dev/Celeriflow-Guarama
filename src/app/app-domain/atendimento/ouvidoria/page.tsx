@@ -1,6 +1,9 @@
 import { MessageSquareWarning, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { canViewOmbudsmanIdentity, getAttendanceContext, ombudsmanScope } from "@/lib/attendance/access";
+import { canViewOmbudsmanIdentity, getAttendanceContext } from "@/lib/attendance/access";
+import { db } from "@/db/client";
+import { ombudsmanScopeCondition } from "@/db/repositories/attendance-portals/scope";
+import { listOmbudsmanSummaries } from "@/db/repositories/attendance-portals/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import OuvidoriaClient from "./OuvidoriaClient";
@@ -9,12 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OuvidoriaPage() {
   const context = await getAttendanceContext();
-  const { prisma } = context;
-  const manifestacoes = await prisma.ombudsman.findMany({
-    where: ombudsmanScope(context),
-    orderBy: { createdAt: 'desc' },
-    select: { id: true, protocolNumber: true, type: true, subject: true, isAnonymous: true, isConfidential: true, status: true, createdAt: true, person: { select: { fullName: true } }, accessGrants: { where: { userId: context.user.id }, select: { canViewIdentity: true } } },
-  });
+  const manifestacoes = await listOmbudsmanSummaries(db, ombudsmanScopeCondition(context), context.user.id);
   const safeManifestacoes = manifestacoes.map((manifestacao) => ({
     ...manifestacao,
     person: canViewOmbudsmanIdentity(context, manifestacao.isConfidential, manifestacao.accessGrants.some((grant) => grant.canViewIdentity)) ? manifestacao.person : null,

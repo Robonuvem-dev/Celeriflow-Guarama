@@ -4,14 +4,15 @@ import { FileOutput } from "lucide-react";
 import PaginasTable from "./PaginasTable";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { desc } from "drizzle-orm";
+import { portalPages } from "@/db/schema/portal-content";
 
 export const dynamic = "force-dynamic";
 
 export default async function PaginasPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
-  const pages = await prisma.portalPage.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
+  await getTenantContextForModule("TRANSPARENCIA");
+  const pages = await db.select().from(portalPages).orderBy(desc(portalPages.createdAt));
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-1 overflow-hidden">

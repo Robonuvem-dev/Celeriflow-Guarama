@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { eq } from "drizzle-orm";
+import { auditEvents } from "../src/db/schema/audit";
+import { createPlatformAuditFixture } from "./helpers/platform-audit-fixture";
 import {
   AREA_EMPLOYEE_PROFILE_CODE,
   AREA_MANAGEMENT_PROFILE_CODE,
@@ -15,7 +18,8 @@ import {
   SYSTEM_ADMIN_PROFILE_CODE,
 } from "../src/lib/administration/c3-policy";
 import { createFirebaseUserProvisioner } from "../src/lib/firebase/user-provisioning";
-import { auditEventTypes, writeAuditEvent } from "../src/lib/platform/audit-evidence";
+import { auditEventTypes } from "../src/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "../src/db/repositories/platform/audit";
 
 test("institution identifiers are optional and validated only when supplied", () => {
   assert.deepEqual(normalizeOptionalInstitutionIdentifiers({ cnpj: "", zipCode: "" }), { cnpj: null, zipCode: null });
@@ -83,11 +87,17 @@ test("Firebase provisioner coordinates creation, email, and lifecycle without a 
 });
 
 test("administrative audit events persist stable identifiers and migration remains additive", async () => {
-  const events: unknown[] = [];
-  await writeAuditEvent({ auditEvent: { create: async ({ data }: { data: unknown }) => { events.push(data); } } } as never, {
-    actorUsuarioId: "actor-1", eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: "employee-1",
-  });
-  assert.deepEqual(events, [{ actorUsuarioId: "actor-1", eventType: "ADMINISTRATIVE_MUTATION", targetType: "EMPLOYEE", targetId: "employee-1" }]);
+  const fixture = await createPlatformAuditFixture();
+  try {
+    await writeAuditEvent(fixture.connection.db, {
+      actorUsuarioId: fixture.actorId, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: "employee-1",
+    });
+    const events = await fixture.connection.db.select({
+      actorUsuarioId: auditEvents.actorUsuarioId, eventType: auditEvents.eventType,
+      targetType: auditEvents.targetType, targetId: auditEvents.targetId,
+    }).from(auditEvents).where(eq(auditEvents.actorUsuarioId, fixture.actorId));
+    assert.deepEqual(events, [{ actorUsuarioId: fixture.actorId, eventType: "ADMINISTRATIVE_MUTATION", targetType: "EMPLOYEE", targetId: "employee-1" }]);
+  } finally { await fixture.close(); }
   const migration = await readFile(path.join(process.cwd(), "prisma/migrations/20260817160000_add_c3_administration_integrity/migration.sql"), "utf8");
   const schema = await readFile(path.join(process.cwd(), "prisma/schema.prisma"), "utf8");
   assert.match(migration, /ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true/);

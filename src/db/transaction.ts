@@ -5,7 +5,7 @@ import type { Database, DatabaseConnection } from "./connection";
 import { PersistenceError } from "./errors";
 
 export type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-export type DatabaseExecutor = Pick<Database, "select" | "insert" | "update" | "delete" | "execute">;
+export type DatabaseExecutor = Pick<Database, "select" | "selectDistinct" | "selectDistinctOn" | "insert" | "update" | "delete" | "execute">;
 export type TransactionOptions = PgTransactionConfig & {
   timeoutMs?: number;
   lockTimeoutMs?: number;

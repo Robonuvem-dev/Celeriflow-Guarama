@@ -1,4 +1,11 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import { leaves } from "@/db/schema/personnel-records";
+import { hrEmploymentContracts, hrPayrollRuns, hrPayrollStatements, hrRightEntries, payrolls } from "@/db/schema/personnel-workforce";
+import { lockPersonnel, personnelJson as json } from "@/db/repositories/personnel/integration";
+import { requireEmploymentContract, requireEmploymentHolderHistory, requireEmploymentRegime, requirePayrollRule, requireRightEntry } from "@/db/repositories/personnel/workforce";
 import { z } from "zod";
 import { resolveContractRevision } from "./contract-timeline";
 import { enqueueHrIntegration } from "./workforce-service";
@@ -11,7 +18,6 @@ const civil = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }, "Data civil inválida.");
 const date = (value: string) => new Date(`${value}T00:00:00.000Z`);
-const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
 const fingerprint = (value: unknown) => JSON.stringify(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)));
 export const serviceRightPolicySchema = z.object({
   origin: z.literal("LICENCA_PREMIO"), acquisitionDays: z.number().int().min(1).max(36500), entitlementDays: z.number().int().min(1).max(365),
@@ -48,13 +54,13 @@ export function calculateServiceAcquisitions(start: Date, through: Date, rawPoli
   return { periods, pending: { periodStart, countedDays, suspendedDays }, policy };
 }
 
-async function loadPolicy(tx: Prisma.TransactionClient, contractId: string, ruleId: string, start: Date, end: Date) {
-  const stored = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: contractId }, include: { revisions: true, employee: true } });
+async function loadPolicy(tx: DatabaseExecutor, contractId: string, ruleId: string, start: Date, end: Date) {
+  const stored = await requireEmploymentHolderHistory(tx, contractId);
   const contract = resolveContractRevision(stored, stored.revisions, { start, end: start }).contract;
   if (!stored.employee.personId || !stored.employee.isActive || contract.status !== "ATIVO" || start < contract.admittedAt || (contract.endsAt && end > contract.endsAt)) throw new Error("Direito fora do vínculo ativo do titular.");
   if (stored.revisions.some(revision => revision.effectiveFrom > start && revision.effectiveFrom <= end && ((revision.snapshot as { regimeId: string; status: string }).regimeId !== contract.regimeId || (revision.snapshot as { status: string }).status !== "ATIVO"))) throw new Error("Transição de regime/situação exige apuração específica dos direitos.");
-  const regime = await tx.hrEmploymentRegime.findUniqueOrThrow({ where: { id: contract.regimeId } });
-  const rule = await tx.hrPayrollRule.findUniqueOrThrow({ where: { id: ruleId }, include: { ruleSet: true } });
+  const regime = await requireEmploymentRegime(tx, contract.regimeId);
+  const rule = await requirePayrollRule(tx, ruleId);
   const policy = serviceRightPolicySchema.parse(rule.value);
   const set = rule.ruleSet;
   if (!rule.isActive || !regime.isActive || regime.ruleSetId !== set.id || set.status !== "ATIVA" || set.effectiveFrom > start || (set.effectiveUntil && set.effectiveUntil < end)) throw new Error("Política de licença-prêmio deve cobrir todo o período no regime do vínculo.");
@@ -62,93 +68,94 @@ async function loadPolicy(tx: Prisma.TransactionClient, contractId: string, rule
   return { contract, rule, policy };
 }
 
-export async function acquireServiceRights(db: PrismaClient, actorId: string, raw: unknown) {
+export async function acquireServiceRights(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ contractId: z.string().min(1), ruleId: z.string().min(1), through: civil }).strict().parse(raw);
   const through = date(input.through);
   if (through > new Date()) throw new Error("Aquisição futura não permitida.");
-  return db.$transaction(async tx => {
-    const initial = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: input.contractId } });
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${initial.employeeId}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:contract:${initial.id}`}))`;
+  return withDatabaseTransaction(db, async tx => {
+    const initial = await requireEmploymentContract(tx, input.contractId);
+    await lockPersonnel(tx, `employee:${initial.employeeId}`);
+    await lockPersonnel(tx, `contract:${initial.id}`);
     const { contract, rule, policy } = await loadPolicy(tx, initial.id, input.ruleId, initial.admittedAt, through);
-    const absences = await tx.leave.findMany({ where: { employeeId: contract.employeeId, status: "Ativa", startDate: { lte: through }, endDate: { gte: contract.admittedAt } }, orderBy: { id: "asc" } });
+    const absences = await tx.select().from(leaves).where(and(eq(leaves.employeeId, contract.employeeId), eq(leaves.status, "Ativa"), lte(leaves.startDate, through), gte(leaves.endDate, contract.admittedAt))).orderBy(asc(leaves.id));
     const assessment = calculateServiceAcquisitions(contract.admittedAt, through, policy, absences);
-    const existing = await tx.hrRightEntry.findMany({ where: { contractId: contract.id, kind: "LICENCA_PREMIO", AND: [{ details: { path: ["operation"], equals: "AQUISICAO" } }, { details: { path: ["scope"], equals: rule.ruleSet.scope } }] } });
+    const existing = await tx.select().from(hrRightEntries).where(and(eq(hrRightEntries.contractId, contract.id), eq(hrRightEntries.kind, "LICENCA_PREMIO"), sql`${hrRightEntries.details}->>'operation' = 'AQUISICAO'`, sql`${hrRightEntries.details}->>'scope' = ${rule.ruleSet.scope}`));
     for (const entry of existing.filter(row => row.periodEnd <= through)) {
       if (!assessment.periods.some(period => period.periodStart.getTime() === entry.periodStart.getTime() && period.periodEnd.getTime() === entry.periodEnd.getTime()) || !entry.quantity.eq(policy.entitlementDays)) throw new Error("Afastamentos ou política alteraram aquisição já registrada; concilie o histórico antes de prosseguir.");
     }
     const ids = [];
     for (const period of assessment.periods) {
       const sourceKey = `LICENCA_PREMIO:AQUISICAO:${contract.id}:${rule.ruleSet.scope}:${period.periodStart.toISOString().slice(0, 10)}`;
-      const previous = await tx.hrRightEntry.findUnique({ where: { sourceKey } });
+      const [previous] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
       if (previous) { ids.push(previous.id); continue; }
-      const entry = await tx.hrRightEntry.create({ data: { contractId: contract.id, sourceKey, kind: "LICENCA_PREMIO", periodStart: period.periodStart, periodEnd: period.periodEnd, quantity: policy.entitlementDays, amount: 0, actorId, details: json({ operation: "AQUISICAO", scope: rule.ruleSet.scope, policy, ruleId: rule.id, contractVersion: contract.version, countedDays: period.countedDays, suspendedDays: period.suspendedDays, absences: absences.map(row => ({ id: row.id, type: row.type, startDate: row.startDate, endDate: row.endDate })) }) } });
+      const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey, kind: "LICENCA_PREMIO", periodStart: period.periodStart, periodEnd: period.periodEnd, quantity: new Decimal(policy.entitlementDays), amount: new Decimal(0), actorId, details: json({ operation: "AQUISICAO", scope: rule.ruleSet.scope, policy, ruleId: rule.id, contractVersion: contract.version, countedDays: period.countedDays, suspendedDays: period.suspendedDays, absences: absences.map(row => ({ id: row.id, type: row.type, startDate: row.startDate, endDate: row.endDate })) }) }).returning();
       await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: rule.ruleSet.scope, eventType: "LICENCA_PREMIO_ADQUIRIDA", payload: { entryId: entry.id, actorId } });
       ids.push(entry.id);
     }
     return { ids, pending: assessment.pending };
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }
 
-export async function reserveServiceRight(db: PrismaClient, actorId: string, raw: unknown) {
+export async function reserveServiceRight(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ contractId: z.string().min(1), ruleId: z.string().min(1), sourceKey: z.string().trim().min(1).max(120), periodStart: civil, periodEnd: civil, start: civil, days: z.coerce.number().int().min(1).max(365), kind: z.enum(["GOZO", "PECUNIA"]), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
   const start = date(input.start); const end = new Date(start.getTime() + (input.days - 1) * day);
   const periodStart = date(input.periodStart); const periodEnd = date(input.periodEnd);
   if (periodEnd < periodStart || start <= periodEnd) throw new Error("Gozo/pecúnia exige aquisitivo completo anterior ao início.");
-  return db.$transaction(async tx => {
-    const initial = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: input.contractId } });
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${initial.employeeId}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:contract:${initial.id}`}))`;
+  return withDatabaseTransaction(db, async tx => {
+    const initial = await requireEmploymentContract(tx, input.contractId);
+    await lockPersonnel(tx, `employee:${initial.employeeId}`);
+    await lockPersonnel(tx, `contract:${initial.id}`);
     const sourceKey = `LICENCA_PREMIO:RESERVA:${input.sourceKey}`;
-    const previous = await tx.hrRightEntry.findUnique({ where: { sourceKey } });
+    const [previous] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
     if (previous) {
       if (fingerprint((previous.details as { input: unknown }).input) !== fingerprint(input)) throw new Error("Origem da licença-prêmio reutilizada com outros dados.");
       return previous;
     }
     const { contract, rule, policy } = await loadPolicy(tx, input.contractId, input.ruleId, start, end);
-    const entries = await tx.hrRightEntry.findMany({ where: { contractId: contract.id, kind: "LICENCA_PREMIO", periodStart, periodEnd, details: { path: ["scope"], equals: rule.ruleSet.scope } } });
-    if (entries.reduce((sum, entry) => sum.add(entry.quantity), new Prisma.Decimal(0)).lt(input.days)) throw new Error("Dias excedem saldo da licença-prêmio.");
+    const entries = await tx.select().from(hrRightEntries).where(and(eq(hrRightEntries.contractId, contract.id), eq(hrRightEntries.kind, "LICENCA_PREMIO"), eq(hrRightEntries.periodStart, periodStart), eq(hrRightEntries.periodEnd, periodEnd), sql`${hrRightEntries.details}->>'scope' = ${rule.ruleSet.scope}`));
+    if (entries.reduce((sum, entry) => sum.add(entry.quantity), new Decimal(0)).lt(input.days)) throw new Error("Dias excedem saldo da licença-prêmio.");
     const cancelled = new Set(entries.map(entry => (entry.details as { cancelsId?: string }).cancelsId));
     const reservations = entries.filter(entry => entry.quantity.lt(0) && !cancelled.has(entry.id));
-    const cash = reservations.filter(entry => (entry.details as { kind?: string }).kind === "PECUNIA").reduce((sum, row) => sum.sub(row.quantity), new Prisma.Decimal(0));
+    const cash = reservations.filter(entry => (entry.details as { kind?: string }).kind === "PECUNIA").reduce((sum, row) => sum.sub(row.quantity), new Decimal(0));
     let leaveId: string | null = null;
     if (input.kind === "PECUNIA") {
       if (!policy.allowsCash || cash.add(input.days).gt(policy.maxCashDays)) throw new Error("Pecúnia não autorizada ou superior ao limite da licença-prêmio.");
     } else {
       if (input.days < policy.minSplitDays || reservations.filter(entry => (entry.details as { kind?: string }).kind === "GOZO").length >= policy.maxSplits) throw new Error("Fracionamento incompatível com a licença-prêmio.");
       await assertRhAbsenceDoesNotOverlap(tx, { employeeId: contract.employeeId, startsAt: start, endsAt: end, kind: "LICENCA" });
-      leaveId = (await tx.leave.create({ data: { employeeId: contract.employeeId, type: "Licença-prêmio", startDate: start, endDate: end, status: "Ativa", reason: input.reason } })).id;
+      leaveId = (await tx.insert(leaves).values({ employeeId: contract.employeeId, type: "Licença-prêmio", startDate: start, endDate: end, status: "Ativa", reason: input.reason }).returning())[0].id;
     }
-    const entry = await tx.hrRightEntry.create({ data: { contractId: contract.id, sourceKey, kind: "LICENCA_PREMIO", periodStart, periodEnd, quantity: -input.days, amount: 0, actorId, details: json({ operation: "RESERVA", input, kind: input.kind, scope: rule.ruleSet.scope, leaveId, policy, reason: input.reason }) } });
+    const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey, kind: "LICENCA_PREMIO", periodStart, periodEnd, quantity: new Decimal(-input.days), amount: new Decimal(0), actorId, details: json({ operation: "RESERVA", input, kind: input.kind, scope: rule.ruleSet.scope, leaveId, policy, reason: input.reason }) }).returning();
     await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: rule.ruleSet.scope, eventType: "LICENCA_PREMIO_RESERVADA", payload: { entryId: entry.id, leaveId, actorId, input } });
     return entry;
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }
 
-export async function cancelServiceReservation(db: PrismaClient, actorId: string, raw: unknown) {
+export async function cancelServiceReservation(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ entryId: z.string().min(1), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
-  return db.$transaction(async tx => {
-    const original = await tx.hrRightEntry.findUniqueOrThrow({ where: { id: input.entryId } });
+  return withDatabaseTransaction(db, async tx => {
+    const original = await requireRightEntry(tx, input.entryId);
     const memory = z.object({ operation: z.literal("RESERVA"), input: z.object({ start: civil, days: z.number(), kind: z.enum(["GOZO", "PECUNIA"]) }), scope: z.string(), leaveId: z.string().nullable() }).parse(original.details);
     if (original.kind !== "LICENCA_PREMIO" || !original.quantity.lt(0)) throw new Error("Selecione uma reserva original de licença-prêmio.");
-    const contract = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: original.contractId } });
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${contract.employeeId}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:contract:${contract.id}`}))`;
+    const contract = await requireEmploymentContract(tx, original.contractId);
+    await lockPersonnel(tx, `employee:${contract.employeeId}`);
+    await lockPersonnel(tx, `contract:${contract.id}`);
     const sourceKey = `LICENCA_PREMIO:CANCELAMENTO:${original.id}`;
-    const previous = await tx.hrRightEntry.findUnique({ where: { sourceKey } });
+    const [previous] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
     if (previous) { if ((previous.details as { reason: string }).reason !== input.reason) throw new Error("Reserva cancelada com outro fundamento."); return previous; }
     const start = date(memory.input.start); const end = new Date(start.getTime() + (memory.input.days - 1) * day);
     if (start <= new Date(new Date().toISOString().slice(0, 10))) throw new Error("Cancelamento exige reserva futura ainda não iniciada.");
-    const closed = await tx.hrPayrollStatement.findMany({ where: { contract: { employeeId: contract.employeeId }, run: { mode: "OFICIAL", status: "FECHADA" } }, select: { run: { select: { payroll: { select: { competence: true } } } } } });
-    if (closed.some(row => { const [month, year] = row.run.payroll.competence.split("/"); return `${year}-${month}` >= start.toISOString().slice(0, 7) && `${year}-${month}` <= end.toISOString().slice(0, 7); })) throw new Error("Competência fechada exige conciliação antes de devolver direitos.");
+    const closed = await tx.select({ competence: payrolls.competence }).from(hrPayrollStatements).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrPayrollStatements.contractId)).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(and(eq(hrEmploymentContracts.employeeId, contract.employeeId), eq(hrPayrollRuns.mode, "OFICIAL"), eq(hrPayrollRuns.status, "FECHADA")));
+    if (closed.some(row => { const [month, year] = row.competence.split("/"); return `${year}-${month}` >= start.toISOString().slice(0, 7) && `${year}-${month}` <= end.toISOString().slice(0, 7); })) throw new Error("Competência fechada exige conciliação antes de devolver direitos.");
     if (memory.leaveId) {
-      await tx.$queryRaw`SELECT id FROM "Leave" WHERE id=${memory.leaveId} FOR UPDATE`;
-      const leave = await tx.leave.findUniqueOrThrow({ where: { id: memory.leaveId } });
+      await tx.execute(sql`SELECT id FROM "Leave" WHERE id=${memory.leaveId} FOR UPDATE`);
+      const [leave] = await tx.select().from(leaves).where(eq(leaves.id, memory.leaveId)).limit(1);
+      if (!leave) throw new Error("Projeção de licença não encontrada.");
       if (leave.employeeId !== contract.employeeId || leave.status !== "Ativa" || leave.startDate.getTime() !== start.getTime() || leave.endDate.getTime() !== end.getTime()) throw new Error("Projeção de licença incompatível com a reserva.");
-      await tx.leave.update({ where: { id: leave.id }, data: { status: "Cancelada" } });
+      await tx.update(leaves).set({ status: "Cancelada" }).where(eq(leaves.id, leave.id));
     }
-    const entry = await tx.hrRightEntry.create({ data: { contractId: original.contractId, sourceKey, kind: original.kind, periodStart: original.periodStart, periodEnd: original.periodEnd, quantity: original.quantity.negated(), amount: 0, actorId, details: { operation: "CANCELAMENTO", scope: memory.scope, cancelsId: original.id, reason: input.reason, leaveId: memory.leaveId } } });
+    const [entry] = await tx.insert(hrRightEntries).values({ contractId: original.contractId, sourceKey, kind: original.kind, periodStart: original.periodStart, periodEnd: original.periodEnd, quantity: original.quantity.negated(), amount: new Decimal(0), actorId, details: { operation: "CANCELAMENTO", scope: memory.scope, cancelsId: original.id, reason: input.reason, leaveId: memory.leaveId } }).returning();
     await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: memory.scope, eventType: "LICENCA_PREMIO_CANCELADA", payload: { entryId: entry.id, originalEntryId: original.id, actorId, reason: input.reason } });
     return entry;
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }

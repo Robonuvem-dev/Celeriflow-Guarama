@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { Decimal as DecimalJs } from "decimal.js";
 import { z } from "zod";
 
 export const consignmentPolicySchema = z.object({
@@ -22,13 +23,13 @@ export const consignmentMarginSchema = z.object({
 type MarginRow = { contractId: string; items: { code: string; type: string; value: string }[] };
 
 /** One limit per PF and calculation, never one duplicated limit per contract. */
-export function calculateConsignmentMargin(rows: MarginRow[], rawPolicy: unknown, maximumRate: Prisma.Decimal.Value) {
+export function calculateConsignmentMargin(rows: MarginRow[], rawPolicy: unknown, maximumRate: DecimalJs.Value) {
   const policy = consignmentPolicySchema.parse(rawPolicy);
-  const rate = new Prisma.Decimal(maximumRate);
+  const rate = new Decimal(maximumRate);
   if (!rate.isFinite() || rate.lt(0) || rate.gt(100)) throw new Error("Margem consignável exige percentual entre 0 e 100.");
   if (!rows.length || new Set(rows.map(row => row.contractId)).size !== rows.length) throw new Error("Contratos da margem ausentes ou duplicados.");
   const memory: z.infer<typeof consignmentMarginSchema>["memory"] = [];
-  let remuneration = new Prisma.Decimal(0); let compulsory = new Prisma.Decimal(0); let used = new Prisma.Decimal(0);
+  let remuneration = new Decimal(0); let compulsory = new Decimal(0); let used = new Decimal(0);
   for (const row of rows) {
     if (new Set(row.items.map(item => item.code)).size !== row.items.length) throw new Error("Rubrica duplicada na memória da margem.");
     for (const [codes, purpose, type] of [
@@ -39,7 +40,7 @@ export function calculateConsignmentMargin(rows: MarginRow[], rawPolicy: unknown
       for (const code of codes) {
         const item = row.items.find(item => item.code === code);
         if (!item) throw new Error(`Rubrica ${code} não encontrada na memória para margem consignável.`);
-        const value = new Prisma.Decimal(item.value);
+        const value = new Decimal(item.value);
         if (item.type !== type || !value.isFinite() || value.lt(0)) throw new Error(`Rubrica ${code} incompatível com sua finalidade na margem consignável.`);
         memory.push({ contractId: row.contractId, rubricCode: code, purpose, value: value.toFixed(2) });
         if (purpose === "REMUNERACAO") remuneration = remuneration.add(value);
@@ -48,7 +49,7 @@ export function calculateConsignmentMargin(rows: MarginRow[], rawPolicy: unknown
       }
     }
   }
-  const base = Prisma.Decimal.max(0, remuneration.sub(compulsory));
-  const limit = base.mul(rate).div(100).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-  return consignmentMarginSchema.parse({ policy, rate: rate.toString(), remuneration: remuneration.toFixed(2), compulsoryDeductions: compulsory.toFixed(2), base: base.toFixed(2), limit: limit.toFixed(2), used: used.toFixed(2), available: Prisma.Decimal.max(0, limit.sub(used)).toFixed(2), excess: Prisma.Decimal.max(0, used.sub(limit)).toFixed(2), contractIds: rows.map(row => row.contractId).sort(), memory });
+  const base = Decimal.max(0, remuneration.sub(compulsory));
+  const limit = base.mul(rate).div(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  return consignmentMarginSchema.parse({ policy, rate: rate.toString(), remuneration: remuneration.toFixed(2), compulsoryDeductions: compulsory.toFixed(2), base: base.toFixed(2), limit: limit.toFixed(2), used: used.toFixed(2), available: Decimal.max(0, limit.sub(used)).toFixed(2), excess: Decimal.max(0, used.sub(limit)).toFixed(2), contractIds: rows.map(row => row.contractId).sort(), memory });
 }

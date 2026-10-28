@@ -4,6 +4,8 @@ import { dateOnly } from "@/lib/frotas/contract";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { MunicipalCostIndicators } from "./MunicipalCostIndicators";
+import { db } from "@/db/client";
+import { countIndicatorControlPlans, countIndicatorEnvironmentalLicenses, countIndicatorPendingFindings, countIndicatorSocialBenefits, sumIndicatorPayments } from "@/db/repositories/administration/indicators";
 
 async function readIndicator<T>(label: string, query: () => Promise<T>): Promise<T | null> {
   try {
@@ -16,8 +18,8 @@ async function readIndicator<T>(label: string, query: () => Promise<T>): Promise
 
 export default async function IndicadoresPage({ searchParams }: { searchParams: Promise<{ start?: string; end?: string; costYearId?: string }> }) {
   const context = await getTenantContextForModule("ADMINISTRACAO");
-  const { prisma } = context;
-  const unitScope = isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } };
+  const database = context.database ?? db;
+  const budgetUnitIds = isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds;
   const params = await searchParams;
   let start: Date;
   let end: Date;
@@ -31,12 +33,12 @@ export default async function IndicadoresPage({ searchParams }: { searchParams: 
   const canReadFleet = canViewModule(context.user, "FROTAS") && (isSystemAdministrator(context.user) || Boolean(context.user.departmentId));
   const canReadPayments = canViewModule(context.user, "FINANCEIRO");
   const [plans, pendingFindings, fleetCost, payments, socialBenefits, licenses] = await Promise.all([
-    readIndicator("Planos de controle", () => prisma.internalControlPlan.count({ where: { ...unitScope, createdAt: { gte: start, lte: end } } })),
-    readIndicator("Apontamentos", () => prisma.internalControlFinding.count({ where: { plan: unitScope, status: { not: "RESOLVIDO" } } })),
+    readIndicator("Planos de controle", () => countIndicatorControlPlans(database, start, end, budgetUnitIds)),
+    readIndicator("Apontamentos", () => countIndicatorPendingFindings(database, budgetUnitIds)),
     canReadFleet ? readIndicator("Frotas", () => getFleetExpenseIndicators(context, start, end)) : null,
-    canReadPayments ? readIndicator("Pagamentos", () => prisma.payment.aggregate({ where: { commitment: { appropriation: unitScope }, date: { gte: start, lte: end }, status: { in: ["Emitida", "Paga"] } }, _sum: { valueDecimal: true } })) : null,
-    readIndicator("Benefícios sociais", () => prisma.socialBenefitConcession.count({ where: { createdAt: { gte: start, lte: end } } })),
-    readIndicator("Licenças ambientais", () => prisma.environmentalLicense.count({ where: { createdAt: { gte: start, lte: end } } })),
+    canReadPayments ? readIndicator("Pagamentos", () => sumIndicatorPayments(database, start, end, budgetUnitIds)) : null,
+    readIndicator("Benefícios sociais", () => countIndicatorSocialBenefits(database, start, end)),
+    readIndicator("Licenças ambientais", () => countIndicatorEnvironmentalLicenses(database, start, end)),
   ]);
   const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
   const cards = [

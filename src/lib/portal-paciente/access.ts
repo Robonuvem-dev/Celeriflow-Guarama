@@ -1,4 +1,6 @@
 import { getTenantContextForModule, type AppContext } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { findPortalPatient } from "@/db/repositories/health/patient-portal";
 
 export type PatientPortalAccess =
   | { status: "AVAILABLE"; context: AppContext; patient: { id: string; personId: string; fullName: string } }
@@ -12,21 +14,7 @@ export type PatientPortalAccess =
  */
 export async function getPatientPortalAccess(): Promise<PatientPortalAccess> {
   const context = await getTenantContextForModule("PORTAL_PACIENTE");
-  const direct = await context.prisma.patient.findUnique({
-    where: { usuarioId: context.user.id },
-    select: { id: true, status: true, personId: true, person: { select: { fullName: true } } },
-  });
-  if (direct && direct.status === "Ativo") {
-    return { status: "AVAILABLE", context, patient: { id: direct.id, personId: direct.personId, fullName: direct.person.fullName } };
-  }
-  if (context.user.employeeId) {
-    const viaEmployee = await context.prisma.patient.findFirst({
-      where: { status: "Ativo", person: { employee: { id: context.user.employeeId } } },
-      select: { id: true, personId: true, person: { select: { fullName: true } } },
-    });
-    if (viaEmployee) {
-      return { status: "AVAILABLE", context, patient: { id: viaEmployee.id, personId: viaEmployee.personId, fullName: viaEmployee.person.fullName } };
-    }
-  }
+  const patient = await findPortalPatient(context.database ?? db, context.user.id, context.user.employeeId);
+  if (patient) return { status: "AVAILABLE", context, patient };
   return { status: "UNAVAILABLE", reason: "Nenhum cadastro de paciente vinculado a este acesso. Procure a unidade de saúde para vincular." };
 }

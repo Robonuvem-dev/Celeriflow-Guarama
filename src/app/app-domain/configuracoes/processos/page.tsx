@@ -13,6 +13,8 @@ import {
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import Link from "next/link";
+import { db } from "@/db/client";
+import { readProcessConfiguration } from "@/db/repositories/processes/configuration";
 
 export const dynamic = "force-dynamic";
 
@@ -34,14 +36,8 @@ function TypeFields({ type, departments }: { type?: { id: string; name: string; 
 
 export default async function ProcessosConfiguracaoPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const { q = "", page: pageParam = "1" } = await searchParams;
-  const { prisma } = await getTenantContextForModule("CONFIGURACOES");
-  const [types, departments, legacyStages, definitions, documentClasses] = await Promise.all([
-    prisma.processType.findMany({ include: { subjects: { orderBy: { name: "asc" } }, initialDepartment: true }, orderBy: { name: "asc" } }),
-    prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.processWorkflowStage.findMany({ include: { processType: true, subject: true, department: true }, orderBy: [{ processType: { name: "asc" } }, { subjectId: "asc" }, { position: "asc" }] }),
-    prisma.genericProcessWorkflowDefinition.findMany({ include: { processType: true, stages: { include: { department: true, requiredDocumentClass: true }, orderBy: { position: "asc" } } }, orderBy: [{ processType: { name: "asc" } }, { version: "desc" }] }),
-    prisma.documentClass.findMany({ where: { isActive: true }, select: { id: true, label: true }, orderBy: { label: "asc" } }),
-  ]);
+  await getTenantContextForModule("CONFIGURACOES");
+  const { types, departments, legacyStages, definitions, documentClasses } = await readProcessConfiguration(db);
   const optInTypes = types.filter((type) => type.genericWorkflowEnabled);
   const draftDefinitions = definitions.filter((definition) => definition.status === "DRAFT");
   const normalizedSearch = q.trim().toLowerCase();

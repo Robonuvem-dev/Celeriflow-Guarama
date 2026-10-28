@@ -1,16 +1,11 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import VereadoresClient from "./VereadoresClient";
+import { db } from "@/db/client";
+import { listCouncilors } from "@/db/repositories/chamber/queries";
 
 export default async function VereadoresPage() {
-  const { prisma } = await getTenantContextForModule("CAMARA");
-  const vereadores = await prisma.camVereador.findMany({
-    orderBy: { nomeParlamentar: 'asc' },
-    include: {
-      gabinete: true,
-      cargosMesa: true,
-      legislatura: true
-    }
-  });
+  await getTenantContextForModule("CAMARA");
+  const vereadores = await listCouncilors(db);
 
   return <VereadoresClient vereadores={vereadores} />;
 }

@@ -11,7 +11,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { FileUpload } from "@/components/ui/FileUpload";
-import type { Employee, PersonnelAct } from "@prisma/client";
+import type { Employee, PersonnelAct } from "@/lib/contracts/personnel-pages";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle as PageHeader } from "@/components/app-ui/erp/ErpPageTitle";
 

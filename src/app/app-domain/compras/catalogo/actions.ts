@@ -4,6 +4,12 @@ import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-contex
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { saveSharedCatalogItem } from "@/lib/compras/shared-catalog";
+import { eq } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { catalogItems } from "@/db/schema/master-data";
+import { materials } from "@/db/schema/assets-stock";
+import { PersistenceError } from "@/db/errors";
 
 const catalogInput = z.object({
   id: z.string().nullable(), code: z.string(), name: z.string().trim().min(1).max(200),
@@ -19,8 +25,8 @@ function refreshCatalog() {
 export async function saveCatalogItem(formData: z.input<typeof catalogInput>) {
   try {
     const input = catalogInput.parse(formData);
-    const { prisma } = await getTenantContextForModuleOperation("COMPRAS", input.id ? "update" : "create");
-    await prisma.$transaction(tx => saveSharedCatalogItem(tx, input));
+    await getTenantContextForModuleOperation("COMPRAS", input.id ? "update" : "create");
+    await withDatabaseTransaction(databaseConnection, tx => saveSharedCatalogItem(tx, input));
     refreshCatalog();
     return { success: true };
   } catch (error) {
@@ -30,10 +36,11 @@ export async function saveCatalogItem(formData: z.input<typeof catalogInput>) {
 
 export async function toggleCatalogItemStatus(id: string, isActive: boolean) {
   try {
-    const { prisma } = await getTenantContextForModuleOperation("COMPRAS", "update");
-    await prisma.$transaction(async tx => {
-      await tx.material.updateMany({ where: { catalogItemId: id }, data: { isActive } });
-      await tx.catalogItem.update({ where: { id }, data: { isActive } });
+    await getTenantContextForModuleOperation("COMPRAS", "update");
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      await tx.update(materials).set({ isActive }).where(eq(materials.catalogItemId, id));
+      const [updated] = await tx.update(catalogItems).set({ isActive }).where(eq(catalogItems.id, id)).returning({ id: catalogItems.id });
+      if (!updated) throw new PersistenceError("not-found", "Item de catálogo não encontrado.");
     });
     refreshCatalog();
     return { success: true };

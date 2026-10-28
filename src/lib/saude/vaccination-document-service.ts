@@ -1,12 +1,13 @@
 import PDFDocument from "pdfkit";
-import type { AppContext } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { readVaccinationDocumentHeader } from "@/db/repositories/health-vaccination/cards";
+import type { HealthVaccinationContext } from "@/lib/contracts/health-vaccination";
 import { getVaccinationCard } from "./vaccination-registry-service";
 export const vaccinationStatusNames: Record<string, string> = { UP_TO_DATE: "Em dia", NOT_DUE: "Ainda não exigível", OUT_OF_RANGE: "Fora da faixa etária atual", CONTRAINDICATED: "Contraindicação vigente", MISSING_PREVIOUS: "Dose anterior pendente", DUE: "Pendente" };
-export async function vaccinationPatientDocument(context: AppContext, patientId: string, kind: "CARD" | "CERTIFICATE") {
+export async function vaccinationPatientDocument(context: HealthVaccinationContext, patientId: string, kind: "CARD" | "CERTIFICATE") {
   const card = await getVaccinationCard(context, patientId);
   if (kind === "CERTIFICATE" && (!card.configured || card.birthDateMissing)) throw new Error("Configure o calendário vigente e complete o nascimento para calcular a regularidade vacinal.");
-  const institution = await context.prisma.institution.findFirst();
-  const unit = card.patient.referenceUnitId ? await context.prisma.healthUnit.findUnique({ where: { id: card.patient.referenceUnitId }, select: { name: true } }) : null;
+  const { institution, unit } = await readVaccinationDocumentHeader(context.database ?? db, card.patient.referenceUnitId);
   const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: kind === "CARD" ? "Carteira de vacinação" : "Certidão de regularidade vacinal", Subject: `${card.patient.person.fullName} · ${card.patient.id}` } }), chunks: Buffer[] = [];
   const completed = new Promise<Buffer>((resolve, reject) => { doc.on("data", chunk => chunks.push(Buffer.from(chunk))); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject); });
   doc.fontSize(15).text(institution?.name || "Saúde municipal").fontSize(9).text(institution?.cnpj || "").text(unit?.name || "Rede municipal de saúde").moveDown();

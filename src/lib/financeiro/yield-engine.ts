@@ -1,4 +1,8 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { findInvestmentBank, findInvestmentRevenueNature, findInvestmentStatement, findInvestmentYield, insertInvestmentYield, updateInvestmentStatement, updateInvestmentYieldReceipt } from "@/db/repositories/finance/investments";
+import { findAccountingReplay, insertAccountingAudit } from "@/db/repositories/finance/accounting";
 import crypto from "crypto";
 import { recordConfirmedRevenue, type FinanceActor } from "./index";
 
@@ -73,7 +77,7 @@ export function calculateInvestmentYield(data: {
  * Registra o rendimento apurado no CeleriFlow.
  */
 export async function transmitYieldToMunicipalSystem(
-  prisma: PrismaClient,
+  connection: DatabaseConnection,
   data: {
     statementItemId?: string;
     contaNumero: string;
@@ -93,22 +97,15 @@ export async function transmitYieldToMunicipalSystem(
     throw new Error("O estorno de rendimento exige fluxo contábil reverso próprio e não pode ser registrado como receita positiva.");
   }
   const actor: FinanceActor = { usuarioId: data.usuarioId, employeeId: data.employeeId };
-  const result = await prisma.$transaction(async (tx) => {
-    const account = await tx.bankAccount.findFirst({
-      where: { accountNumber: data.contaNumero, isActive: true },
-      select: { id: true, resourceSourceId: true, accountingPlanId: true },
-    });
+  const result = await withDatabaseTransaction(connection, async (tx) => {
+    const account = await findInvestmentBank(tx, { accountNumber: data.contaNumero, active: true });
     if (!account?.resourceSourceId || !account.accountingPlanId) throw new Error("A conta de aplicação deve estar ativa, vinculada a uma fonte de recurso e possuir conta analítica.");
 
-    const nature = await tx.revenueNature.findFirst({
-      where: { code: { startsWith: "1.3.2.1" } },
-      select: { id: true },
-      orderBy: { code: "asc" },
-    });
+    const nature = await findInvestmentRevenueNature(tx);
     if (!nature) throw new Error("Cadastre uma natureza de receita para rendimentos de aplicação antes da transmissão.");
 
     const statement = data.statementItemId
-      ? await tx.bankStatementItem.findUnique({ where: { id: data.statementItemId }, select: { id: true, treasuryMovementId: true, codigoTransacao: true, contaNumero: true } })
+      ? await findInvestmentStatement(tx, data.statementItemId)
       : null;
     if (statement && statement.contaNumero !== data.contaNumero) throw new Error("O rendimento deve ser registrado na mesma conta identificada no extrato.");
     if (statement?.treasuryMovementId) throw new Error("Este rendimento já foi registrado no CeleriFlow.");
@@ -116,21 +113,19 @@ export async function transmitYieldToMunicipalSystem(
     const idempotencyKey = statement?.codigoTransacao
       ? `BANK:YIELD:${account.id}:${statement.codigoTransacao}`
       : `BANK:YIELD:${account.id}:${data.data.toISOString().slice(0, 10)}:${data.valorLiquido.toFixed(2)}:${data.tipo}`;
-    const existing = await tx.yieldTransaction.findUnique({ where: { idempotencyKey } });
-    const yieldRecord = existing ?? await tx.yieldTransaction.create({
-      data: {
+    const existing = await findInvestmentYield(tx, idempotencyKey);
+    const yieldRecord = existing ?? await insertInvestmentYield(tx, {
         statementItemId: data.statementItemId,
         contaNumero: data.contaNumero,
         data: data.data,
-        valorBrutoDecimal: new Prisma.Decimal(data.valorBruto),
-        irrfDecimal: new Prisma.Decimal(data.irrf),
-        iofDecimal: new Prisma.Decimal(data.iof),
-        correcaoDecimal: new Prisma.Decimal(data.correcaoMonetaria),
-        valorLiquidoDecimal: new Prisma.Decimal(data.valorLiquido),
-        saldoAcumuladoDecimal: new Prisma.Decimal(data.saldoAcumulado),
+        valorBrutoDecimal: new Decimal(data.valorBruto),
+        irrfDecimal: new Decimal(data.irrf),
+        iofDecimal: new Decimal(data.iof),
+        correcaoDecimal: new Decimal(data.correcaoMonetaria),
+        valorLiquidoDecimal: new Decimal(data.valorLiquido),
+        saldoAcumuladoDecimal: new Decimal(data.saldoAcumulado),
         tipoRendimento: data.tipo,
         idempotencyKey,
-      },
     });
 
     const revenue = await recordConfirmedRevenue(tx, actor, {
@@ -148,26 +143,20 @@ export async function transmitYieldToMunicipalSystem(
     });
     const treasuryMovement = revenue.treasuryMovement;
     if (!treasuryMovement) throw new Error("A receita de rendimento não possui movimento de tesouraria vinculado.");
-    const accounting = await tx.accountingTransaction.findUnique({ where: { idempotencyKey: `${idempotencyKey}:REVENUE:RECEITA_ARRECADADA` }, select: { id: true } });
+    const accounting = await findAccountingReplay(tx, `${idempotencyKey}:REVENUE:RECEITA_ARRECADADA`);
     if (!accounting) throw new Error("O rendimento não possui lançamento contábil vinculado.");
     const reciboId = `REC-REND-${treasuryMovement.id}`;
     const numeroLancamento = `LANC-REND-${treasuryMovement.id.slice(-8).toUpperCase()}`;
     const hashTransmissao = crypto.createHash("sha256").update(`${yieldRecord.id}:${treasuryMovement.id}`).digest("hex");
-    await tx.financialAuditLog.create({
-      data: {
+    await insertAccountingAudit(tx, actor, {
         action: "RENDIMENTO_APLICACAO_TRANSMITIDO",
         entityType: "YieldTransaction",
         entityId: yieldRecord.id,
-        authorUsuarioId: data.usuarioId,
         payload: { reciboId, numeroLancamento, valorBruto: data.valorBruto, valorLiquido: data.valorLiquido, hashTransmissao, treasuryMovementId: treasuryMovement.id },
-      },
     });
-    await tx.yieldTransaction.update({ where: { id: yieldRecord.id }, data: { reciboMunicipal: reciboId, lancamentoContabilId: accounting.id } });
+    await updateInvestmentYieldReceipt(tx, yieldRecord.id, { reciboMunicipal: reciboId, lancamentoContabilId: accounting.id });
     if (statement) {
-      await tx.bankStatementItem.update({
-        where: { id: statement.id },
-        data: { treasuryMovementId: treasuryMovement.id, status: "Processado", reciboMunicipal: reciboId, lancamentoContabilId: accounting.id, categoriaClassificada: "RENDIMENTO" },
-      });
+      await updateInvestmentStatement(tx, statement.id, { treasuryMovementId: treasuryMovement.id, status: "Processado", reciboMunicipal: reciboId, lancamentoContabilId: accounting.id, categoriaClassificada: "RENDIMENTO" });
     }
     return { yieldRecord, reciboId, numeroLancamento, hashTransmissao };
   });

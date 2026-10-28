@@ -1,4 +1,11 @@
-import { Prisma } from "@prisma/client";
+import { and, eq, inArray, isNull, notInArray, ne, or, sql } from "drizzle-orm";
+import type { DatabaseTransaction } from "@/db/transaction";
+import { getPostgresError } from "@/db/errors";
+import { healthAppointments, healthAppointmentEvents, healthCareSchedules, healthTriages } from "@/db/schema/health-agenda";
+import { medicalRecords, healthSpecialtyProcedureRules } from "@/db/schema/health-care";
+import { healthProfessionals, healthProfessionalAssignments, healthUnits } from "@/db/schema/health-workforce";
+import { patients } from "@/db/schema/health-registration";
+import { employees } from "@/db/schema/administration";
 import { assertPatientRegistrationCurrent } from "./patient-registration-service";
 import { registerProductionFactTx } from "./production-service";
 import { captureCareIndicatorContext } from "./indicator-context";
@@ -6,7 +13,8 @@ import { syncRegulationAppointment } from "./regulation-agenda-service";
 import { professionalAcceptsTime, professionalBookingWindows } from "./professional-booking-service";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import { assertHealthUnitAccess } from "@/lib/platform/tenant-context";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 import {
   healthAppointmentCompletionSchema,
   healthAppointmentCreateSchema,
@@ -21,60 +29,42 @@ import {
   parseBrazilDateTime,
 } from "./appointment-policy";
 
-type Tx = Prisma.TransactionClient;
+type Tx = DatabaseTransaction;
 
-export class HealthOperationError extends Error {}
-
-export async function runHealthTransaction<T>(context: Pick<AppContext, "prisma">, operation: (tx: Tx) => Promise<T>) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await context.prisma.$transaction(operation, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        timeout: 15000,
-      });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 2) continue;
-      throw error;
-    }
-  }
-  throw new HealthOperationError("Nao foi possivel confirmar a operacao concorrente. Reabra a agenda e tente novamente.");
-}
+import { HealthOperationError, runHealthTransaction } from "./health-transaction";
+export { HealthOperationError, runHealthTransaction } from "./health-transaction";
 
 async function requireActiveAppointmentReferences(tx: Tx, patientId: string, unitId: string, professionalId: string | null) {
   const [patient, unit] = await Promise.all([
-    tx.patient.findFirst({ where: { id: patientId, status: "Ativo" }, select: { id: true } }),
-    tx.healthUnit.findFirst({ where: { id: unitId, isActive: true }, select: { id: true } }),
+    tx.select({ id: patients.id }).from(patients).where(and(eq(patients.id, patientId), eq(patients.status, "Ativo"))).limit(1).then(rows => rows[0]),
+    tx.select({ id: healthUnits.id }).from(healthUnits).where(and(eq(healthUnits.id, unitId), eq(healthUnits.isActive, true))).limit(1).then(rows => rows[0]),
   ]);
 
   if (!patient) throw new HealthOperationError("Paciente nao encontrado ou inativo.");
   if (!unit) throw new HealthOperationError("Unidade de saude nao encontrada ou inativa.");
 
   if (!professionalId) return null;
-  const professional = await tx.healthProfessional.findFirst({
-    where: { id: professionalId, isActive: true },
-    select: { id: true, unitId: true, employee: { select: { isActive: true } } },
-  });
+  const [professional] = await tx.select({ id: healthProfessionals.id, unitId: healthProfessionals.unitId, employee: { isActive: employees.isActive } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(and(eq(healthProfessionals.id, professionalId), eq(healthProfessionals.isActive, true))).limit(1);
   if (!professional || !professional.employee.isActive) throw new HealthOperationError("Profissional nao encontrado ou inativo.");
-  if (professional.unitId !== unitId && !await tx.healthProfessionalAssignment.count({ where: { professionalId, unitId, isActive: true } })) {
+  if (professional.unitId !== unitId && !(await tx.select({ id: healthProfessionalAssignments.id }).from(healthProfessionalAssignments).where(and(eq(healthProfessionalAssignments.professionalId, professionalId), eq(healthProfessionalAssignments.unitId, unitId), eq(healthProfessionalAssignments.isActive, true))).limit(1)).length) {
     throw new HealthOperationError("O profissional selecionado deve pertencer a unidade do agendamento.");
   }
   return professional;
 }
 
 async function patientMunicipalitySnapshot(tx: Tx, patientId: string) {
-  const patient = await tx.patient.findUnique({ where: { id: patientId }, select: { person: { select: { addresses: { where: { canonicalAddressId: null }, orderBy: { createdAt: "desc" }, take: 1, select: { neighborhood: { select: { city: true, state: true } } } } } } } });
-  const place = patient?.person.addresses[0]?.neighborhood;
+  const place = (await tx.execute<{ city: string | null; state: string | null }>(sql`SELECT n.city, n.state FROM "Patient" p JOIN "Address" a ON a."personId"=p."personId" LEFT JOIN "Neighborhood" n ON n.id=a."neighborhoodId" WHERE p.id=${patientId} AND a."canonicalAddressId" IS NULL ORDER BY a."createdAt" DESC LIMIT 1`)).rows[0];
   return { municipalitySnapshot: place?.city || null, stateSnapshot: place?.state || null };
 }
 
 async function validateSchedulingReferences(tx: Tx, unitId: string, schedulingGroupId: string | null, specialtyId: string | null, serviceId: string | null) {
-  if (specialtyId && !await tx.healthUnitSpecialty.findFirst({ where: { unitId, specialtyId, isActive: true }, select: { id: true } })) throw new HealthOperationError("Especialidade não está ativa na unidade selecionada.");
-  if (serviceId && !await tx.healthServiceAssignment.findFirst({ where: { unitId, serviceId, isActive: true }, select: { id: true } })) throw new HealthOperationError("Serviço não está ativo na unidade selecionada.");
+  if (specialtyId && !(await tx.execute(sql`SELECT id FROM "HealthUnitSpecialty" WHERE "unitId"=${unitId} AND "specialtyId"=${specialtyId} AND "isActive"=true LIMIT 1`)).rows.length) throw new HealthOperationError("Especialidade não está ativa na unidade selecionada.");
+  if (serviceId && !(await tx.execute(sql`SELECT id FROM "HealthServiceAssignment" WHERE "unitId"=${unitId} AND "serviceId"=${serviceId} AND "isActive"=true LIMIT 1`)).rows.length) throw new HealthOperationError("Serviço não está ativo na unidade selecionada.");
   if (schedulingGroupId) {
-    const group = await tx.healthSchedulingGroup.findFirst({ where: { id: schedulingGroupId, unitId, isActive: true }, select: { specialtyGroupId: true } });
+    const group = (await tx.execute<{ specialtyGroupId: string }>(sql`SELECT "specialtyGroupId" FROM "HealthSchedulingGroup" WHERE id=${schedulingGroupId} AND "unitId"=${unitId} AND "isActive"=true LIMIT 1`)).rows[0];
     if (!group) throw new HealthOperationError("Grupo de agendamento não pertence à unidade selecionada.");
-    if (specialtyId && !await tx.healthSpecialtyGroupMember.findFirst({ where: { groupId: group.specialtyGroupId, specialtyId }, select: { id: true } })) throw new HealthOperationError("Especialidade não pertence ao grupo de especialidades do agendamento.");
-    if (serviceId && !await tx.healthSpecialtyGroupService.findFirst({ where: { groupId: group.specialtyGroupId, serviceId }, select: { id: true } })) throw new HealthOperationError("Serviço não pertence ao grupo de especialidades do agendamento.");
+    if (specialtyId && !(await tx.execute(sql`SELECT id FROM "HealthSpecialtyGroupMember" WHERE "groupId"=${group.specialtyGroupId} AND "specialtyId"=${specialtyId} LIMIT 1`)).rows.length) throw new HealthOperationError("Especialidade não pertence ao grupo de especialidades do agendamento.");
+    if (serviceId && !(await tx.execute(sql`SELECT id FROM "HealthSpecialtyGroupService" WHERE "groupId"=${group.specialtyGroupId} AND "serviceId"=${serviceId} LIMIT 1`)).rows.length) throw new HealthOperationError("Serviço não pertence ao grupo de especialidades do agendamento.");
   }
 }
 
@@ -82,14 +72,15 @@ export async function createHealthAppointment(context: AppContext, raw: unknown)
   return runHealthTransaction(context, tx => createHealthAppointmentInTransaction(context, tx, raw));
 }
 
-export async function createHealthAppointmentInTransaction(context: AppContext, tx: Prisma.TransactionClient, raw: unknown) {
+export async function createHealthAppointmentInTransaction(context: AppContext, tx: Tx, raw: unknown) {
   const input = healthAppointmentCreateSchema.parse(raw);
   const date = parseBrazilDateTime(input.date);
   assertHealthUnitAccess(context.user, input.unitId);
 
     let agreementIdSnapshot: string | null = null;
     if (input.scheduleId) {
-      const schedule = await tx.healthCareSchedule.findUniqueOrThrow({ where: { id: input.scheduleId }, select: { professionalId: true, agreementId: true } });
+      const [schedule] = await tx.select({ professionalId: healthCareSchedules.professionalId, agreementId: healthCareSchedules.agreementId }).from(healthCareSchedules).where(eq(healthCareSchedules.id, input.scheduleId)).limit(1);
+      if (!schedule) throw new HealthOperationError("Cronograma não encontrado.");
       agreementIdSnapshot = schedule.agreementId;
       if (schedule.professionalId && input.professionalId && schedule.professionalId !== input.professionalId) throw new HealthOperationError("O profissional deve corresponder ao responsável da agenda.");
       input.professionalId ||= schedule.professionalId;
@@ -100,25 +91,14 @@ export async function createHealthAppointmentInTransaction(context: AppContext, 
     await validateSchedulingReferences(tx, input.unitId, input.schedulingGroupId, input.specialtyId, input.serviceId);
      const { assertBookingRules } = await import("./schedule-service");
      await assertBookingRules(tx, { patientId: input.patientId, unitId: input.unitId, specialtyId: input.specialtyId || null, specialty: input.specialty || null, scheduleId: input.scheduleId || null, date });
-     for (const key of [`HEALTH_BOOKING_PATIENT:${input.patientId}:${date.toISOString()}`, ...(input.professionalId ? [`HEALTH_BOOKING_PROFESSIONAL:${input.professionalId}:${date.toISOString()}`] : [])].sort()) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
-    const conflict = await tx.healthAppointment.findFirst({
-      where: {
-        date,
-        status: { notIn: ["Cancelado", "Faltou"] },
-        OR: [
-          { patientId: input.patientId },
-          ...(input.professionalId ? [{ professionalId: input.professionalId }] : []),
-        ],
-      },
-      select: { id: true },
-    });
+      for (const key of [`HEALTH_BOOKING_PATIENT:${input.patientId}:${date.toISOString()}`, ...(input.professionalId ? [`HEALTH_BOOKING_PROFESSIONAL:${input.professionalId}:${date.toISOString()}`] : [])].sort()) await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
+     const [conflict] = await tx.select({ id: healthAppointments.id }).from(healthAppointments).where(and(eq(healthAppointments.date, date), notInArray(healthAppointments.status, ["Cancelado", "Faltou"]), or(eq(healthAppointments.patientId, input.patientId), input.professionalId ? eq(healthAppointments.professionalId, input.professionalId) : undefined))).limit(1);
     if (conflict) {
       throw new HealthOperationError("O paciente ou profissional ja possui um agendamento ativo nesse horario.");
     }
 
     const snapshot = await patientMunicipalitySnapshot(tx, input.patientId);
-    const appointment = await tx.healthAppointment.create({
-      data: {
+     const [appointment] = await tx.insert(healthAppointments).values({
         date,
         patientId: input.patientId,
         unitId: input.unitId,
@@ -133,10 +113,8 @@ export async function createHealthAppointmentInTransaction(context: AppContext, 
         priority: input.priority,
         status: "Agendado",
         ...snapshot,
-      },
-      select: { id: true },
-    });
-    await tx.healthAppointmentEvent.create({ data: { appointmentId: appointment.id, eventType: "SCHEDULED", toStatus: "Agendado", actorUsuarioId: context.user.id } });
+     }).returning({ id: healthAppointments.id });
+     await tx.insert(healthAppointmentEvents).values({ appointmentId: appointment.id, eventType: "SCHEDULED", toStatus: "Agendado", actorUsuarioId: context.user.id });
     await writeAuditEvent(tx, {
       actorUsuarioId: context.user.id,
       eventType: auditEventTypes.administrativeMutation,
@@ -150,23 +128,16 @@ export async function transitionHealthAppointment(context: AppContext, raw: unkn
   const input = healthAppointmentTransitionSchema.parse(raw);
 
   return runHealthTransaction(context, async tx => {
-    const appointment = await tx.healthAppointment.findUnique({
-      where: { id: input.appointmentId },
-      select: { id: true, unitId: true, status: true, medicalRecord: { select: { id: true } } },
-    });
+    const [appointment] = await tx.select({ id: healthAppointments.id, unitId: healthAppointments.unitId, status: healthAppointments.status, medicalRecord: { id: medicalRecords.id } }).from(healthAppointments).leftJoin(medicalRecords, eq(medicalRecords.appointmentId, healthAppointments.id)).where(eq(healthAppointments.id, input.appointmentId)).limit(1);
     if (!appointment) throw new HealthOperationError("Agendamento nao encontrado.");
     assertHealthUnitAccess(context.user, appointment.unitId);
     if (appointment.medicalRecord) throw new HealthOperationError("O agendamento ja possui prontuario e seu status esta protegido.");
     assertHealthAppointmentTransition(appointment.status, input.status);
 
-    const updated = await tx.healthAppointment.update({
-      where: { id: appointment.id },
-      data: input.status === "Cancelado"
+    const [updated] = await tx.update(healthAppointments).set(input.status === "Cancelado"
         ? { status: input.status, cancelledAt: new Date(), cancellationReason: input.cancellationReason }
-        : { status: input.status, cancelledAt: null, cancellationReason: null, ...(input.status === "Confirmado" ? { confirmedAt: new Date() } : {}), ...(input.status === "Aguardando" ? { arrivedAt: new Date() } : {}), ...(input.status === "Em Atendimento" ? { startedAt: new Date() } : {}) },
-      select: { id: true },
-    });
-    await tx.healthAppointmentEvent.create({ data: { appointmentId: appointment.id, eventType: input.status === "Cancelado" ? "CANCELLED" : "STATUS_CHANGED", fromStatus: appointment.status, toStatus: input.status, notes: input.cancellationReason, actorUsuarioId: context.user.id } });
+        : { status: input.status, cancelledAt: null, cancellationReason: null, ...(input.status === "Confirmado" ? { confirmedAt: new Date() } : {}), ...(input.status === "Aguardando" ? { arrivedAt: new Date() } : {}), ...(input.status === "Em Atendimento" ? { startedAt: new Date() } : {}) }).where(eq(healthAppointments.id, appointment.id)).returning({ id: healthAppointments.id });
+    await tx.insert(healthAppointmentEvents).values({ appointmentId: appointment.id, eventType: input.status === "Cancelado" ? "CANCELLED" : "STATUS_CHANGED", fromStatus: appointment.status, toStatus: input.status, notes: input.cancellationReason, actorUsuarioId: context.user.id });
     await syncRegulationAppointment(tx, appointment.id, input.status, context.user.id);
     await writeAuditEvent(tx, {
       actorUsuarioId: context.user.id,
@@ -186,11 +157,10 @@ export async function createSpontaneousCare(context: AppContext, raw: unknown) {
     await validateSchedulingReferences(tx, input.unitId, null, input.specialtyId, input.serviceId);
     await assertPatientRegistrationCurrent(tx, input.patientId, input.unitId, input.priority === "Urgência");
     const snapshot = await patientMunicipalitySnapshot(tx, input.patientId);
-    const reporting = await tx.healthUnit.findUniqueOrThrow({ where: { id: input.unitId }, select: { spontaneousProviderUnit: { select: { id: true, name: true, cnes: true, isActive: true } } } });
-    if (reporting.spontaneousProviderUnit && !reporting.spontaneousProviderUnit.isActive) throw new HealthOperationError("A unidade prestadora da demanda espontânea está inativa. Corrija a configuração da origem.");
-    const provider = reporting.spontaneousProviderUnit;
-    const appointment = await tx.healthAppointment.create({ data: { date: new Date(), origin: "SPONTANEOUS", status: "Aguardando", priority: input.priority, patientId: input.patientId, unitId: input.unitId, professionalId: input.professionalId, specialtyId: input.specialtyId, serviceId: input.serviceId, arrivalNotes: input.arrivalNotes, arrivedAt: new Date(), ...snapshot, billingContextSnapshot: { agreementId: null, providerUnit: provider ? { id: provider.id, name: provider.name, cnes: provider.cnes } : null } }, select: { id: true } });
-    await tx.healthAppointmentEvent.create({ data: { appointmentId: appointment.id, eventType: "SPONTANEOUS_ARRIVAL", toStatus: "Aguardando", notes: input.arrivalNotes, actorUsuarioId: context.user.id } });
+    const provider = (await tx.execute<{ id: string; name: string; cnes: string | null; isActive: boolean }>(sql`SELECT p.id, p.name, p.cnes, p."isActive" FROM "HealthUnit" u JOIN "HealthUnit" p ON p.id=u."spontaneousProviderUnitId" WHERE u.id=${input.unitId} LIMIT 1`)).rows[0];
+    if (provider && !provider.isActive) throw new HealthOperationError("A unidade prestadora da demanda espontânea está inativa. Corrija a configuração da origem.");
+    const [appointment] = await tx.insert(healthAppointments).values({ date: new Date(), origin: "SPONTANEOUS", status: "Aguardando", priority: input.priority, patientId: input.patientId, unitId: input.unitId, professionalId: input.professionalId, specialtyId: input.specialtyId, serviceId: input.serviceId, arrivalNotes: input.arrivalNotes, arrivedAt: new Date(), ...snapshot, billingContextSnapshot: { agreementId: null, providerUnit: provider ? { id: provider.id, name: provider.name, cnes: provider.cnes } : null } }).returning({ id: healthAppointments.id });
+    await tx.insert(healthAppointmentEvents).values({ appointmentId: appointment.id, eventType: "SPONTANEOUS_ARRIVAL", toStatus: "Aguardando", notes: input.arrivalNotes, actorUsuarioId: context.user.id });
     return appointment;
   });
 }
@@ -199,18 +169,18 @@ export async function registerHealthTriage(context: AppContext, raw: unknown) {
   const input = healthTriageInputSchema.parse(raw);
   if (!context.user.employeeId) throw new HealthOperationError("Vincule o usuário a um profissional de saúde para registrar o acolhimento.");
   return runHealthTransaction(context, async tx => {
-    const professional = await tx.healthProfessional.findFirst({ where: { employeeId: context.user.employeeId!, isActive: true }, select: { id: true } });
+    const [professional] = await tx.select({ id: healthProfessionals.id }).from(healthProfessionals).where(and(eq(healthProfessionals.employeeId, context.user.employeeId!), eq(healthProfessionals.isActive, true))).limit(1);
     if (!professional) throw new HealthOperationError("Profissional de saúde ativo não encontrado.");
-    const appointment = await tx.healthAppointment.findUnique({ where: { id: input.appointmentId }, select: { id: true, patientId: true, unitId: true, specialtyId: true, status: true, billingContextSnapshot: true } });
+    const [appointment] = await tx.select().from(healthAppointments).where(eq(healthAppointments.id, input.appointmentId)).limit(1);
     if (!appointment) throw new HealthOperationError("Atendimento não encontrado.");
     assertHealthUnitAccess(context.user, appointment.unitId);
     if (appointment.status !== "Aguardando") throw new HealthOperationError("Registre a chegada do paciente antes do acolhimento.");
     await requireActiveAppointmentReferences(tx, appointment.patientId, appointment.unitId, professional.id);
-    const triage = await tx.healthTriage.upsert({ where: { appointmentId: appointment.id }, create: { ...input, professionalId: professional.id }, update: { ...input, professionalId: professional.id }, select: { id: true } });
-    await tx.healthAppointment.update({ where: { id: appointment.id }, data: { triagedAt: new Date(), status: "Aguardando", priority: input.priorityLabel } });
-    await tx.healthAppointmentEvent.create({ data: { appointmentId: appointment.id, eventType: "TRIAGED", fromStatus: appointment.status, toStatus: "Aguardando", notes: input.riskClassification, actorUsuarioId: context.user.id } });
+    const [triage] = await tx.insert(healthTriages).values({ ...input, professionalId: professional.id }).onConflictDoUpdate({ target: healthTriages.appointmentId, set: { ...input, professionalId: professional.id } }).returning({ id: healthTriages.id });
+    await tx.update(healthAppointments).set({ triagedAt: new Date(), status: "Aguardando", priority: input.priorityLabel }).where(eq(healthAppointments.id, appointment.id));
+    await tx.insert(healthAppointmentEvents).values({ appointmentId: appointment.id, eventType: "TRIAGED", fromStatus: appointment.status, toStatus: "Aguardando", notes: input.riskClassification, actorUsuarioId: context.user.id });
     const now = new Date();
-    const rules = await tx.healthSpecialtyProcedureRule.findMany({ where: { isActive: true, eventType: "TRIAGE_COMPLETED", AND: [{ OR: [{ unitId: null }, { unitId: appointment.unitId }] }, { OR: [{ specialtyId: null }, { specialtyId: appointment.specialtyId || "__SEM_ESPECIALIDADE__" }] }] } });
+    const rules = await tx.select().from(healthSpecialtyProcedureRules).where(and(eq(healthSpecialtyProcedureRules.isActive, true), eq(healthSpecialtyProcedureRules.eventType, "TRIAGE_COMPLETED"), or(isNull(healthSpecialtyProcedureRules.unitId), eq(healthSpecialtyProcedureRules.unitId, appointment.unitId)), or(isNull(healthSpecialtyProcedureRules.specialtyId), eq(healthSpecialtyProcedureRules.specialtyId, appointment.specialtyId || "__SEM_ESPECIALIDADE__"))));
     for (const rule of rules) await registerProductionFactTx(tx, { originType: "TRIAGE", originId: triage.id, unitId: appointment.unitId, professionalId: professional.id, patientId: appointment.patientId, procedureId: rule.procedureId, quantity: rule.quantity, occurredAt: now, idempotencyKey: `TRIAGE_RULE:${triage.id}:${rule.id}` }, appointment.billingContextSnapshot);
     return triage;
   });
@@ -218,11 +188,11 @@ export async function registerHealthTriage(context: AppContext, raw: unknown) {
 
 export async function callHealthAppointment(context: AppContext, appointmentId: string) {
   return runHealthTransaction(context, async tx => {
-    const appointment = await tx.healthAppointment.findUnique({ where: { id: appointmentId }, select: { id: true, unitId: true, status: true } });
+    const [appointment] = await tx.select({ id: healthAppointments.id, unitId: healthAppointments.unitId, status: healthAppointments.status }).from(healthAppointments).where(eq(healthAppointments.id, appointmentId)).limit(1);
     if (!appointment || appointment.status !== "Aguardando") throw new HealthOperationError("Atendimento não está aguardando na fila.");
     assertHealthUnitAccess(context.user, appointment.unitId);
-    await tx.healthAppointment.update({ where: { id: appointment.id }, data: { calledAt: new Date() } });
-    await tx.healthAppointmentEvent.create({ data: { appointmentId: appointment.id, eventType: "CALLED", fromStatus: appointment.status, toStatus: appointment.status, actorUsuarioId: context.user.id } });
+    await tx.update(healthAppointments).set({ calledAt: new Date() }).where(eq(healthAppointments.id, appointment.id));
+    await tx.insert(healthAppointmentEvents).values({ appointmentId: appointment.id, eventType: "CALLED", fromStatus: appointment.status, toStatus: appointment.status, actorUsuarioId: context.user.id });
     return appointment;
   });
 }
@@ -235,24 +205,11 @@ export async function completeHealthAppointment(context: AppContext, raw: unknow
 
   try {
     return await runHealthTransaction(context, async tx => {
-      const professional = await tx.healthProfessional.findFirst({
-        where: { employeeId: context.user.employeeId!, isActive: true },
-        select: { id: true, unitId: true, employee: { select: { isActive: true } } },
-      });
+      const [professional] = await tx.select({ id: healthProfessionals.id, unitId: healthProfessionals.unitId, employee: { isActive: employees.isActive } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(and(eq(healthProfessionals.employeeId, context.user.employeeId!), eq(healthProfessionals.isActive, true))).limit(1);
       if (!professional || !professional.employee.isActive) throw new HealthOperationError("O servidor autenticado nao possui cadastro ativo como profissional de saude.");
 
-      const appointment = await tx.healthAppointment.findUnique({
-        where: { id: input.appointmentId },
-        select: {
-          id: true,
-          date: true,
-          status: true,
-          patientId: true,
-          unitId: true,
-          professionalId: true,
-          medicalRecord: { select: { id: true } },
-        },
-      });
+      const [row] = await tx.select({ appointment: healthAppointments, medicalRecord: { id: medicalRecords.id } }).from(healthAppointments).leftJoin(medicalRecords, eq(medicalRecords.appointmentId, healthAppointments.id)).where(eq(healthAppointments.id, input.appointmentId)).limit(1);
+      const appointment = row ? { ...row.appointment, medicalRecord: row.medicalRecord } : null;
       if (!appointment) throw new HealthOperationError("Agendamento nao encontrado.");
       assertHealthUnitAccess(context.user, appointment.unitId);
       if (appointment.medicalRecord) throw new HealthOperationError("Este agendamento ja possui um prontuario registrado.");
@@ -264,21 +221,12 @@ export async function completeHealthAppointment(context: AppContext, raw: unknow
       if (professional.unitId && professional.unitId !== appointment.unitId) {
         throw new HealthOperationError("O profissional autenticado nao esta vinculado a unidade deste agendamento.");
       }
-      const professionalConflict = await tx.healthAppointment.findFirst({
-        where: {
-          id: { not: appointment.id },
-          date: appointment.date,
-          professionalId: professional.id,
-          status: { notIn: ["Cancelado", "Faltou"] },
-        },
-        select: { id: true },
-      });
+      const [professionalConflict] = await tx.select({ id: healthAppointments.id }).from(healthAppointments).where(and(ne(healthAppointments.id, appointment.id), eq(healthAppointments.date, appointment.date), eq(healthAppointments.professionalId, professional.id), notInArray(healthAppointments.status, ["Cancelado", "Faltou"]))).limit(1);
       if (professionalConflict) {
         throw new HealthOperationError("O profissional autenticado ja possui outro agendamento ativo nesse horario.");
       }
 
-      const record = await tx.medicalRecord.create({
-        data: {
+      const [record] = await tx.insert(medicalRecords).values({
           type: input.type,
           bloodPressure: input.bloodPressure,
           temperature: input.temperature,
@@ -293,13 +241,8 @@ export async function completeHealthAppointment(context: AppContext, raw: unknow
           professionalId: professional.id,
           appointmentId: appointment.id,
           careContextSnapshot: await captureCareIndicatorContext(tx, professional.id, appointment.unitId),
-        },
-        select: { id: true },
-      });
-      await tx.healthAppointment.update({
-        where: { id: appointment.id },
-        data: { status: "Atendido", professionalId: professional.id },
-      });
+      }).returning({ id: medicalRecords.id });
+      await tx.update(healthAppointments).set({ status: "Atendido", professionalId: professional.id }).where(eq(healthAppointments.id, appointment.id));
       await writeAuditEvent(tx, {
         actorUsuarioId: context.user.id,
         eventType: auditEventTypes.administrativeMutation,
@@ -315,7 +258,7 @@ export async function completeHealthAppointment(context: AppContext, raw: unknow
       return record;
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (getPostgresError(error)?.code === "23505") {
       throw new HealthOperationError("Este agendamento ja possui um prontuario registrado.");
     }
     throw error;

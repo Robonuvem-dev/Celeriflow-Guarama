@@ -5,6 +5,8 @@ import { calculateInvestmentYield, transmitYieldToMunicipalSystem, type YieldCal
 import { bankIntegrationClient, type InvestmentYieldDTO } from "@/lib/financeiro/bank-integration-client";
 import { revalidatePath } from "next/cache";
 import { isPocVirtualBank, isPocVirtualBankAccount, pocVirtualBank } from "@/lib/poc/poc-config";
+import { databaseConnection, db } from "@/db/client";
+import { listInvestmentStatementReferences, listInvestmentYieldHistory } from "@/db/repositories/finance/investments";
 
 type ActionResult<T = unknown> = { error?: string; data?: T };
 type ExternalYieldForClient = Omit<InvestmentYieldDTO, "data"> & { data: string; statementItemId?: string; alreadyProcessed: boolean };
@@ -47,7 +49,7 @@ export async function transmitYieldAction(input: {
   try {
     if (!isPocVirtualBankAccount(input.contaNumero)) return { error: "A conta informada não pertence ao Banco Virtual Robonuvem." };
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const result = await transmitYieldToMunicipalSystem(context.prisma, {
+    const result = await transmitYieldToMunicipalSystem(databaseConnection, {
       ...input,
       data: new Date(input.data),
       usuarioId: context.user.id,
@@ -63,12 +65,8 @@ export async function transmitYieldAction(input: {
 
 export async function getYieldHistoryAction(): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForModule("FINANCEIRO");
-    const history = await context.prisma.yieldTransaction.findMany({
-      where: { contaNumero: { in: [...pocVirtualBank.accountNumbers] } },
-      orderBy: { createdAt: "desc" },
-      take: 15,
-    });
+    await getTenantContextForModule("FINANCEIRO");
+    const history = await listInvestmentYieldHistory(db, [...pocVirtualBank.accountNumbers], 15);
     return { data: history };
   } catch (err: unknown) {
     return { error: errorMessage(err, "Erro ao buscar histórico de rendimentos.") };
@@ -86,7 +84,7 @@ export async function fetchExternalYieldsAction(input: {
     if (!isPocVirtualBank(input.banco) || !isPocVirtualBankAccount(input.contaNumero)) {
       return { error: "A POC aceita somente contas do Banco Virtual Robonuvem." };
     }
-    const context = await getTenantContextForModule("FINANCEIRO");
+    await getTenantContextForModule("FINANCEIRO");
     const yields = await bankIntegrationClient.fetchYieldReport(
       {
         banco: input.banco,
@@ -99,10 +97,7 @@ export async function fetchExternalYieldsAction(input: {
       }
     );
     const references = yields.map((item) => item.documentoRef).filter((reference): reference is string => Boolean(reference));
-    const statementItems = await context.prisma.bankStatementItem.findMany({
-      where: { banco: input.banco, agencia: input.agencia, contaNumero: input.contaNumero, codigoTransacao: { in: references } },
-      select: { id: true, codigoTransacao: true, treasuryMovementId: true },
-    });
+    const statementItems = await listInvestmentStatementReferences(db, { bank: input.banco, agency: input.agencia, account: input.contaNumero, references });
     const itemsByReference = new Map(statementItems.map((item) => [item.codigoTransacao, item]));
     return {
       data: yields.map((item) => ({

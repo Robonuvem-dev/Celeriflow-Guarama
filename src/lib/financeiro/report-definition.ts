@@ -6,6 +6,10 @@ import {
   type InternalReportType,
 } from "./report-delivery";
 import { createReportTemplatePresentation, type ReportEmissionMetadata, type ReportInstitutionIdentity } from "@/lib/reports/report-template";
+import { databaseConnection, db } from "@/db/client";
+import { findFinancialScopeUnits, findFinancialScopeYear } from "@/db/repositories/finance/report-scopes";
+import { findReportTemplate } from "@/db/repositories/platform/report-template";
+import { readFinanceReportInstitution } from "@/db/repositories/finance/report-delivery";
 
 export const financeInternalReportKey = "finance.internal";
 
@@ -38,35 +42,27 @@ export const financeInternalReportDefinition: ReportDefinition<FinanceReportInpu
   key: financeInternalReportKey,
   moduleCode: "FINANCEIRO",
   async createDataset(context, input) {
-    const financialYear = await context.prisma.financialYear.findUnique({
-      where: { id: input.financialYearId },
-      select: { id: true, year: true, governmentEntityId: true },
-    });
+    const database = context.database ?? db;
+    const financialYear = await findFinancialScopeYear(database, input.financialYearId);
     if (!financialYear) {
       throw new AccessError("Exercício financeiro não encontrado.", 404);
     }
     if (!isSystemAdministrator(context.user)) {
-      const binding = financialYear.governmentEntityId ? await context.prisma.planningEntityUnit.findFirst({ where: { governmentEntityId: financialYear.governmentEntityId, budgetUnitId: { in: context.user.allowedBudgetUnitIds } }, select: { budgetUnitId: true } }) : null;
-      if (!binding) throw new AccessError("Exercício fora das entidades autorizadas.", 403);
+      const bindings = financialYear.governmentEntityId ? await findFinancialScopeUnits(database, { governmentEntityId: financialYear.governmentEntityId, budgetUnitIds: context.user.allowedBudgetUnitIds }) : [];
+      if (!bindings.length) throw new AccessError("Exercício fora das entidades autorizadas.", 403);
     }
 
     const [report, institution, storedTemplate] = await Promise.all([
       generateInternalReportDataset(
-        context.prisma,
+        databaseConnection,
         input.reportType,
         financialYear.id,
         financialYear.year,
         { month: input.month },
         { budgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds },
       ),
-      context.prisma.institution.findFirst({
-        select: { name: true, legalName: true, cnpj: true, address: true, city: true, state: true },
-        orderBy: { createdAt: "asc" },
-      }),
-      context.prisma.reportTemplate.findUnique({
-        where: { scope: "GLOBAL" },
-        select: { version: true, fingerprint: true, header: true, footer: true, orientation: true, includeEmissionMetadata: true },
-      }),
+      readFinanceReportInstitution(database),
+      findReportTemplate(database, "GLOBAL"),
     ]);
     const template = createReportTemplatePresentation(storedTemplate);
     return {

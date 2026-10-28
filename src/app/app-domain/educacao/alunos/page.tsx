@@ -2,6 +2,8 @@ import { UserRoundCheck } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listEducationPeople, listEducationStudents } from "@/db/repositories/education/core";
 import { EducationListClient } from "../EducationListClient";
 import { S1ActionForm } from "../S1ActionForm";
 import { createStudentAction } from "../s1-actions";
@@ -9,11 +11,11 @@ import { createStudentAction } from "../s1-actions";
 export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
-  const { prisma } = await getTenantContextForModule("EDUCACAO");
+  await getTenantContextForModule("EDUCACAO");
   const [students, availablePeople, people] = await Promise.all([
-    prisma.student.findMany({ include: { person: true, guardians: { include: { person: true } }, enrollments: { where: { status: "Matriculado" }, include: { school: true, schoolClass: true }, take: 1 } }, orderBy: { person: { fullName: "asc" } } }),
-    prisma.person.findMany({ where: { studentInfo: null, status: "Ativo" }, orderBy: { fullName: "asc" }, take: 500 }),
-    prisma.person.findMany({ where: { status: "Ativo" }, orderBy: { fullName: "asc" }, take: 500 }),
+    listEducationStudents(db),
+    listEducationPeople(db, true),
+    listEducationPeople(db),
   ]);
   return <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
     <PageHeader title="Alunos e responsáveis" icon={<UserRoundCheck className="size-4 text-blue-600" />} />

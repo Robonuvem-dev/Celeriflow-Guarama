@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { fiscalPaymentOptionsSchema, type FiscalPaymentOption } from "./fiscal-payment-option-schema";
 
 export type FiscalFormula = "PERCENTUAL_BASE" | "VALOR_FIXO" | "UNIDADE_FISCAL";
@@ -22,8 +22,8 @@ export type FiscalRuleConfiguration = {
   legalBasis?: string;
 };
 
-function decimal(value: string | number | Prisma.Decimal | undefined, label: string, allowZero = true) {
-  const parsed = new Prisma.Decimal(String(value ?? 0));
+function decimal(value: string | number | Decimal | undefined, label: string, allowZero = true) {
+  const parsed = new Decimal(String(value ?? 0));
   if (!parsed.isFinite() || (allowZero ? parsed.lessThan(0) : parsed.lessThanOrEqualTo(0))) {
     throw new Error(`${label} deve ser ${allowZero ? "não negativo" : "maior que zero"}.`);
   }
@@ -52,14 +52,14 @@ export function parseFiscalRuleConfiguration(value: unknown): FiscalRuleConfigur
 }
 
 export function evaluateFiscalRule(input: {
-  taxableBase: string | number | Prisma.Decimal;
+  taxableBase: string | number | Decimal;
   configuration: FiscalRuleConfiguration;
 }) {
   const base = decimal(input.taxableBase, "Base de cálculo");
   const rule = parseFiscalRuleConfiguration(input.configuration);
   const indexFactor = decimal(rule.indexFactor ?? 1, "Índice", false);
   const indexedBase = base.mul(indexFactor).toDecimalPlaces(2);
-  let calculated: Prisma.Decimal;
+  let calculated: Decimal;
   if (rule.formula === "PERCENTUAL_BASE") {
     calculated = indexedBase.mul(decimal(rule.rate, "Alíquota")).div(100);
   } else if (rule.formula === "VALOR_FIXO") {
@@ -68,13 +68,13 @@ export function evaluateFiscalRule(input: {
     calculated = decimal(rule.fiscalUnitValue, "Unidade fiscal").mul(decimal(rule.fiscalUnits, "Quantidade de unidades"));
   }
   const minimumValue = decimal(rule.minimumValue ?? 0, "Valor mínimo");
-  const principal = Prisma.Decimal.max(calculated.toDecimalPlaces(2), minimumValue).toDecimalPlaces(2);
+  const principal = Decimal.max(calculated.toDecimalPlaces(2), minimumValue).toDecimalPlaces(2);
   const requestedInstallments = rule.installments ?? 1;
   const minimumInstallment = decimal(rule.minimumInstallmentValue ?? 0, "Valor mínimo da parcela");
-  const effectiveMinimum = Prisma.Decimal.max(minimumInstallment.toDecimalPlaces(2, Prisma.Decimal.ROUND_UP), "0.01");
+  const effectiveMinimum = Decimal.max(minimumInstallment.toDecimalPlaces(2, Decimal.ROUND_UP), "0.01");
   const installments = Math.max(1, Math.min(requestedInstallments, principal.div(effectiveMinimum).floor().toNumber()));
   if (rule.calendar?.length && rule.calendar.length < installments) throw new Error("O calendário deve informar vencimento para cada parcela.");
-  const installmentBase = principal.div(installments).toDecimalPlaces(2, Prisma.Decimal.ROUND_DOWN);
+  const installmentBase = principal.div(installments).toDecimalPlaces(2, Decimal.ROUND_DOWN);
   const remainder = principal.minus(installmentBase.mul(installments));
   const schedule = Array.from({ length: installments }, (_, index) => ({
     number: index + 1,
@@ -106,11 +106,11 @@ export function evaluateFiscalRule(input: {
 }
 
 export function calculateSimpleAccruals(input: {
-  principal: string | number | Prisma.Decimal;
-  correctionFactor?: string | number | Prisma.Decimal;
-  monthlyInterestRate?: string | number | Prisma.Decimal;
+  principal: string | number | Decimal;
+  correctionFactor?: string | number | Decimal;
+  monthlyInterestRate?: string | number | Decimal;
   monthsLate?: number;
-  penaltyRate?: string | number | Prisma.Decimal;
+  penaltyRate?: string | number | Decimal;
 }) {
   const principal = decimal(input.principal, "Principal");
   const correctionFactor = decimal(input.correctionFactor ?? 1, "Índice de correção", false);
@@ -125,20 +125,20 @@ export function calculateSimpleAccruals(input: {
 }
 
 export function calculateAccountBalance(input: {
-  constituted: string | number | Prisma.Decimal;
-  revisions?: Array<string | number | Prisma.Decimal>;
-  payments?: Array<{ idempotencyKey: string; amount: string | number | Prisma.Decimal }>;
-  nonFinancialExtinctions?: Array<string | number | Prisma.Decimal>;
+  constituted: string | number | Decimal;
+  revisions?: Array<string | number | Decimal>;
+  payments?: Array<{ idempotencyKey: string; amount: string | number | Decimal }>;
+  nonFinancialExtinctions?: Array<string | number | Decimal>;
 }) {
   const constituted = decimal(input.constituted, "Crédito constituído");
-  const revisions = (input.revisions ?? []).reduce<Prisma.Decimal>((sum, value) => sum.plus(new Prisma.Decimal(String(value))), new Prisma.Decimal(0));
-  const uniquePayments = new Map<string, Prisma.Decimal>();
+  const revisions = (input.revisions ?? []).reduce<Decimal>((sum, value) => sum.plus(new Decimal(String(value))), new Decimal(0));
+  const uniquePayments = new Map<string, Decimal>();
   for (const payment of input.payments ?? []) {
     if (!uniquePayments.has(payment.idempotencyKey)) uniquePayments.set(payment.idempotencyKey, decimal(payment.amount, "Pagamento"));
   }
-  const paid = [...uniquePayments.values()].reduce<Prisma.Decimal>((sum, value) => sum.plus(value), new Prisma.Decimal(0));
-  const extinct = (input.nonFinancialExtinctions ?? []).reduce<Prisma.Decimal>((sum, value) => sum.plus(decimal(value, "Extinção")), new Prisma.Decimal(0));
+  const paid = [...uniquePayments.values()].reduce<Decimal>((sum, value) => sum.plus(value), new Decimal(0));
+  const extinct = (input.nonFinancialExtinctions ?? []).reduce<Decimal>((sum, value) => sum.plus(decimal(value, "Extinção")), new Decimal(0));
   const total = constituted.plus(revisions).toDecimalPlaces(2);
-  const balance = Prisma.Decimal.max(total.minus(paid).minus(extinct), 0).toDecimalPlaces(2);
+  const balance = Decimal.max(total.minus(paid).minus(extinct), 0).toDecimalPlaces(2);
   return { constituted, revisions: revisions.toDecimalPlaces(2), total, paid: paid.toDecimalPlaces(2), extinct: extinct.toDecimalPlaces(2), balance };
 }

@@ -10,6 +10,8 @@ import { getPlanningContext } from "@/lib/planejamento/access";
 import { planningBasePath, type PlanningJurisdiction } from "@/lib/planejamento/policy";
 import { PlanningForm, type PlanningField } from "./PlanningForm";
 import { PlanningReferencePage } from "./PlanningReferencePage";
+import { pageDatabase } from "@/db/repositories/planning-pages/shared";
+import { pageCanonicalCatalog, pageClassifiers } from "@/db/repositories/planning-pages/catalogs";
 
 export async function PlanningCatalogPage({ jurisdiction, catalog, filters }: {
   jurisdiction: PlanningJurisdiction; catalog: string; filters: { page?: string; q?: string; versionId?: string };
@@ -19,19 +21,13 @@ export async function PlanningCatalogPage({ jurisdiction, catalog, filters }: {
   if (!Object.hasOwn(names, catalog)) notFound();
   const context = await getPlanningContext(jurisdiction);
   const base = `${planningBasePath(jurisdiction)}/cadastros/${catalog}`;
-  const where = filters.q ? { OR: [{ name: { contains: filters.q.slice(0, 200), mode: "insensitive" as const } }, { code: { contains: filters.q.slice(0, 200), mode: "insensitive" as const } }] } : {};
-  const total = catalog === "source" ? await context.prisma.resourceSource.count({ where }) : catalog === "revenue" ? await context.prisma.revenueNature.count({ where }) : await context.prisma.expenseNature.count({ where });
-  const pageValue = Number(filters.page ?? 1);
-  const page = Math.min(Number.isSafeInteger(pageValue) && pageValue > 0 ? pageValue : 1, Math.max(1, Math.ceil(total / 20)));
-  const query = { where, orderBy: [{ code: "asc" as const }, { id: "asc" as const }], skip: (page - 1) * 20, take: 20 };
-  const records = catalog === "source" ? await context.prisma.resourceSource.findMany(query) : catalog === "revenue" ? await context.prisma.revenueNature.findMany({ ...query, include: { planningAllocations: { include: { resourceSource: { select: { name: true } } } } } }) : await context.prisma.expenseNature.findMany(query);
+  const database = pageDatabase(context);
+  const { total, page, records } = await pageCanonicalCatalog(database, catalog, filters);
   const fields: PlanningField[] = [{ name: "code", label: "Código" }, { name: "name", label: "Descrição" }, { name: "referenceYear", label: "Exercício de referência", type: "number", value: String(new Date().getUTCFullYear()) }];
   if (catalog === "source") fields.push({ name: "tceCode", label: "Código TCE" }, { name: "stnGroup", label: "Grupo STN" }, { name: "stnSpecification", label: "Especificação STN" }, { name: "stnDetail", label: "Detalhamento STN" });
   if (catalog === "revenue") fields.push({ name: "degree", label: "Grau da receita", type: "number", value: "6" }, { name: "shortCode", label: "Código reduzido" });
   const href = (value: number) => `${base}?${new URLSearchParams({ q: filters.q ?? "", page: String(value) })}`;
-  const [revenues, sources] = catalog === "revenue" && canPerformModuleOperation(context.user, "PLANEJAMENTO", "update") ? await Promise.all([
-    context.prisma.revenueNature.findMany({ select: { id: true, name: true }, orderBy: { code: "asc" } }), context.prisma.resourceSource.findMany({ select: { id: true, name: true }, orderBy: { code: "asc" } }),
-  ]) : [[], []];
+  const { revenues, sources } = catalog === "revenue" && canPerformModuleOperation(context.user, "PLANEJAMENTO", "update") ? await pageClassifiers(database) : { revenues: [], sources: [] };
   return <PageFrame className="space-y-3 p-3"><PageHeader title={names[catalog]} />
     <p className="text-xs text-muted-foreground">Catálogo municipal compartilhado entre as entidades.</p>
     <form method="get" className="flex gap-2"><input name="q" aria-label="Buscar código ou descrição" placeholder="Código ou descrição" defaultValue={filters.q} className="rounded border bg-background p-2 text-sm" /><button className="rounded border px-3 text-sm">Consultar</button><Link href={base} className="p-2 text-sm underline">Limpar</Link></form>

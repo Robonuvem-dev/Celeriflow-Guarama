@@ -61,3 +61,7 @@ export async function findModuleActivation(db: DatabaseExecutor, code: string): 
   const [module] = await db.select({ ativo: modules.ativo }).from(modules).where(eq(modules.codigo, code)).limit(1);
   return module ?? null;
 }
+
+export async function listModuleActivations(db: DatabaseExecutor): Promise<{ codigo: string; ativo: boolean }[]> {
+  return db.select({ codigo: modules.codigo, ativo: modules.ativo }).from(modules);
+}

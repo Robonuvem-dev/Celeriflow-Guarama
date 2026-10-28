@@ -4,35 +4,21 @@ import ContasBancariasClient from "./ContasBancariasClient"
 import TreasuryTransferSection from "./TreasuryTransferSection";
 import BankResourceSourcesClient from "./BankResourceSourcesClient";
 import { getBankResourceSourceBalance } from "@/lib/financeiro/bank-resource-sources";
+import { db } from "@/db/client";
+import { listFinancePageAccounts, listFinancePageSources } from "@/db/repositories/finance-pages/catalog";
+import { hasFinancePageUndocumentedMovement, listFinancePageBankAccounts, listFinancePageBanks, listFinancePageBudgetUnits, listFinancePageTransfers } from "@/db/repositories/finance-pages/banking";
 
 export default async function ContasBancariasPage() {
   const context = await getTenantContextForModule("FINANCEIRO");
-  const { prisma } = context;
-  const accounts = await prisma.bankAccount.findMany({
-    where: {
-      ...(isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } }),
-    },
-    include: {
-      resourceSource: true,
-      budgetUnit: true,
-      bank: true,
-      bankBranch: true,
-      permittedSources: { where: { isActive: true } },
-    },
-    orderBy: {
-      bankName: 'asc'
-    }
-  })
-
-  const resourceSources = await prisma.resourceSource.findMany({
-    orderBy: { name: 'asc' }
-  })
-
-  const balances = await getBankAccountBalances(prisma, accounts.map((account) => account.id));
+  const executor = context.database ?? db;
+  const access = { allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
+  const accounts = await listFinancePageBankAccounts(executor, access);
+  const resourceSources = await listFinancePageSources(executor, "name");
+  const balances = await getBankAccountBalances(executor, accounts.map((account) => account.id));
   const sourceAccounts = await Promise.all(accounts.map(async account => {
     const sourceIds = [...new Set([...(account.resourceSourceId ? [account.resourceSourceId] : []), ...account.permittedSources.map(source => source.resourceSourceId)])];
-    const undocumented = Boolean(await prisma.treasuryMovement.count({ where: { bankAccountId: account.id, status: "Confirmado", resourceSourceId: null } }));
-    return { id: account.id, label: `${account.bankName} · ${account.agency} · ${account.accountNumber}`, sourceIds, undocumented, balances: undocumented ? [] : await Promise.all(sourceIds.map(async sourceId => ({ sourceId, balance: (await getBankResourceSourceBalance(prisma, account.id, sourceId)).toFixed(2) }))) };
+    const undocumented = await hasFinancePageUndocumentedMovement(executor, account.id);
+    return { id: account.id, label: `${account.bankName} · ${account.agency} · ${account.accountNumber}`, sourceIds, undocumented, balances: undocumented ? [] : await Promise.all(sourceIds.map(async sourceId => ({ sourceId, balance: (await getBankResourceSourceBalance(executor, account.id, sourceId)).toFixed(2) }))) };
   }));
   const displayAccounts = accounts.map((account) => ({
     id: account.id,
@@ -52,35 +38,9 @@ export default async function ContasBancariasPage() {
     currentBalance: Number(balances[account.id] ?? 0),
   }))
 
-  const budgetUnits = await prisma.budgetUnit.findMany({
-    where: isSystemAdministrator(context.user) ? {} : { id: { in: context.user.allowedBudgetUnitIds } },
-    orderBy: { code: "asc" },
-  });
-  const accountingPlans = await prisma.accountingPlan.findMany({
-    orderBy: { code: "asc" },
-    select: { id: true, code: true, name: true },
-  });
-  const banks = await prisma.bank.findMany({
-    where: { status: "ATIVO" },
-    include: { branches: { where: { status: "ATIVA" }, orderBy: { code: "asc" } } },
-    orderBy: { compe: "asc" },
-  });
-
-  const transferAccountAccess = isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } };
-  const transfers = await prisma.treasuryTransfer.findMany({
-    where: {
-      AND: [
-        { sourceBankAccount: transferAccountAccess },
-        { destinationBankAccount: transferAccountAccess },
-      ],
-    },
-    include: {
-      sourceBankAccount: { select: { id: true, bankName: true, agency: true, accountNumber: true, isActive: true } },
-      destinationBankAccount: { select: { id: true, bankName: true, agency: true, accountNumber: true, isActive: true } },
-    },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    take: 20,
-  });
+  const [budgetUnits, accountingPlans, banks, transfers] = await Promise.all([
+    listFinancePageBudgetUnits(executor, access), listFinancePageAccounts(executor), listFinancePageBanks(executor), listFinancePageTransfers(executor, access),
+  ]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">

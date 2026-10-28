@@ -1,7 +1,17 @@
-import { Prisma } from "@prisma/client";
-import type { AppContext } from "@/lib/platform/tenant-context";
+import { and, eq } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import { databaseConnection } from "@/db/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import { getPostgresError } from "@/db/errors";
+import * as f from "@/db/schema/fleet";
+import { departments } from "@/db/schema/administration";
+import { fleetJson, requiredFleetRecord } from "@/db/repositories/fleet/records";
+import { fleetPaymentInBudgetScope, readFleetContract } from "@/db/repositories/fleet/sources";
+import type { FleetContext as AppContext } from "@/lib/contracts/fleet";
 import { canPerformModuleOperation, canViewModule, AccessError } from "@/lib/platform/tenant-context";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import { fleetScope } from "./service";
 import { fleetControlRequest, controlSchemas, stableFleetHash, type FleetControlOperation } from "./control-policy";
 import { assertFleetVersion, FleetControlError, lockFleetResources, scopedFleetDriver, scopedFleetUnit, type FleetControlTx } from "./control-access";
@@ -20,17 +30,18 @@ async function replayScope(tx: FleetControlTx, context: AppContext, event: { tar
   if (event.unitId) { await scopedFleetUnit(tx, scope, event.unitId, false); return; }
   if (event.targetType === "DRIVER") { await scopedFleetDriver(tx, scope, event.targetId); return; }
   if (event.targetType === "DESTINATION") {
-    const destination = await tx.fleetDestination.findUniqueOrThrow({ where: { id: event.targetId }, select: { departmentId: true } });
+    const destination = requiredFleetRecord(await tx.select({ departmentId: f.fleetDestinations.departmentId }).from(f.fleetDestinations).where(eq(f.fleetDestinations.id, event.targetId)).limit(1));
     if (!scope.administrator && destination.departmentId !== scope.departmentId) throw new FleetControlError("Destino fora da repartição atual.");
   }
   if (["CATALOG", "MACHINE_TYPE", "PROVIDER"].includes(event.targetType) && !scope.administrator) throw new FleetControlError("Confirmação exige administração atual do catálogo/credenciamento.");
   if (event.targetType === "FUEL_AGREEMENT") {
-    const agreement = await tx.fleetFuelAgreement.findUniqueOrThrow({ where: { id: event.targetId }, select: { contractId: true } });
-    const contract = await tx.contract.findUniqueOrThrow({ where: { id: agreement.contractId }, select: { secretariatId: true } });
+    const agreement = requiredFleetRecord(await tx.select({ contractId: f.fleetFuelAgreements.contractId }).from(f.fleetFuelAgreements).where(eq(f.fleetFuelAgreements.id, event.targetId)).limit(1));
+    const contract = await readFleetContract(tx, agreement.contractId);
+    if (!contract) throw new FleetControlError("Origem contratual não encontrada.");
     if (!canViewModule(context.user, "COMPRAS") || !scope.administrator && contract.secretariatId !== context.user.secretariatId) throw new FleetControlError("Origem contratual fora do escopo atual.");
   }
 }
-async function applyControl(tx: FleetControlTx, context: AppContext, operation: FleetControlOperation, data: unknown): Promise<{ id: string; type: string; unitId?: string; token?: string }> {
+async function applyControl(tx: DatabaseTransaction, context: AppContext, operation: FleetControlOperation, data: unknown): Promise<{ id: string; type: string; unitId?: string; token?: string }> {
   const scope = fleetScope(context);
   switch (operation) {
     case "unitControl": return saveFleetUnitControl(tx, scope, data);
@@ -58,7 +69,7 @@ async function applyControl(tx: FleetControlTx, context: AppContext, operation: 
     case "payDebt": {
       const payment = controlSchemas.payDebt.parse(data);
       if (payment.financialPaymentId && !canViewModule(context.user, "FINANCEIRO")) throw new FleetControlError("Vínculo de pagamento exige leitura de Financeiro.");
-      if (payment.financialPaymentId && !scope.administrator && !await tx.payment.findFirst({ where: { id: payment.financialPaymentId, bankAccount: { budgetUnitId: { in: context.user.allowedBudgetUnitIds } } }, select: { id: true } })) throw new FleetControlError("Ordem de pagamento fora das unidades gestoras autorizadas.");
+      if (payment.financialPaymentId && !scope.administrator && !await fleetPaymentInBudgetScope(tx, payment.financialPaymentId, context.user.allowedBudgetUnitIds)) throw new FleetControlError("Ordem de pagamento fora das unidades gestoras autorizadas.");
       return payFleetDebt(tx, scope, payment);
     }
     case "reverseDebtPayment": return reverseFleetDebtPayment(tx, scope, data);
@@ -67,7 +78,7 @@ async function applyControl(tx: FleetControlTx, context: AppContext, operation: 
     case "payFine": {
       const payment = controlSchemas.payFine.parse(data);
       if (payment.financialPaymentId && !canViewModule(context.user, "FINANCEIRO")) throw new FleetControlError("Vínculo de pagamento exige leitura de Financeiro.");
-      if (payment.financialPaymentId && !scope.administrator && !await tx.payment.findFirst({ where: { id: payment.financialPaymentId, bankAccount: { budgetUnitId: { in: context.user.allowedBudgetUnitIds } } }, select: { id: true } })) throw new FleetControlError("Ordem de pagamento fora das unidades gestoras autorizadas.");
+      if (payment.financialPaymentId && !scope.administrator && !await fleetPaymentInBudgetScope(tx, payment.financialPaymentId, context.user.allowedBudgetUnitIds)) throw new FleetControlError("Ordem de pagamento fora das unidades gestoras autorizadas.");
       return recordFleetFinePayment(tx, scope, payment);
     }
     case "reverseFinePayment": return reverseFleetFinePayment(tx, scope, data);
@@ -78,43 +89,43 @@ async function applyControl(tx: FleetControlTx, context: AppContext, operation: 
       if (!scope.administrator) throw new FleetControlError("Configuração de máquinas exige administração.");
       const input = controlSchemas.machineType.parse(data);
       await lockFleetResources(tx, [`MACHINE_TYPE:${input.code}`]);
-      const previous = input.id ? await tx.fleetMachineType.findUniqueOrThrow({ where: { id: input.id } }) : null;
+      const previous = input.id ? requiredFleetRecord(await tx.select().from(f.fleetMachineTypes).where(eq(f.fleetMachineTypes.id, input.id)).limit(1)) : null;
       if (previous) { assertFleetVersion(previous.updatedAt, input.version); if (previous.code !== input.code) throw new FleetControlError("Preserve o código do tipo de máquina."); }
       const values = { code: input.code, name: input.name, fields: input.fields, active: input.active };
-      const result = previous ? await tx.fleetMachineType.update({ where: { id: previous.id }, data: values }) : await tx.fleetMachineType.create({ data: values });
+      const result = requiredFleetRecord(previous ? await tx.update(f.fleetMachineTypes).set(values).where(eq(f.fleetMachineTypes.id, previous.id)).returning() : await tx.insert(f.fleetMachineTypes).values(values).returning());
       return { id: result.id, type: "MACHINE_TYPE" };
     }
     case "destination": {
       const input = controlSchemas.destination.parse(data);
-      if (!scope.administrator && input.departmentId !== scope.departmentId || !await tx.department.findFirst({ where: { id: input.departmentId, isActive: true }, select: { id: true } })) throw new FleetControlError("Repartição não autorizada.");
-      const result = await tx.fleetDestination.create({ data: { ...input, address: input.address || null, distance: input.distance ? new Prisma.Decimal(input.distance) : null } });
+      if (!scope.administrator && input.departmentId !== scope.departmentId || !(await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.isActive, true))).limit(1)).length) throw new FleetControlError("Repartição não autorizada.");
+      const result = requiredFleetRecord(await tx.insert(f.fleetDestinations).values({ ...input, address: input.address || null, distance: input.distance ? new Decimal(input.distance) : null }).returning());
       return { id: result.id, type: "DESTINATION" };
     }
   }
 }
 
-export async function mutateFleetControl(context: AppContext, raw: unknown) {
+export async function mutateFleetControl(context: AppContext, raw: unknown, connection: DatabaseConnection = databaseConnection) {
   const request = fleetControlRequest.parse(raw), parsed = controlSchemas[request.operation].parse(request.data);
   const operation = fleetControlPermission(request.operation, request.data);
   if (!canPerformModuleOperation(context.user, "FROTAS", operation)) throw new AccessError("Perfil sem autorização para esta operação de Frota.", 403);
   const hash = stableFleetHash({ operation: request.operation, data: parsed });
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      return await context.prisma.$transaction(async (tx) => {
+      return await withDatabaseTransaction(connection, async (tx) => {
         await lockFleetResources(tx, [`REQUEST:${request.requestId}`]);
-        const previous = await tx.fleetControlEvent.findUnique({ where: { requestId: request.requestId } });
+        const [previous] = await tx.select().from(f.fleetControlEvents).where(eq(f.fleetControlEvents.requestId, request.requestId)).limit(1);
         if (previous) {
           if (previous.actorId !== context.user.id || previous.payloadHash !== hash) throw new FleetControlError("Chave de confirmação já utilizada com outro ator/conteúdo.");
           await replayScope(tx, context, previous);
           return { id: previous.targetId, type: previous.targetType, repeated: true, token: undefined as string | undefined };
         }
         const result = await applyControl(tx, context, request.operation, parsed);
-        await tx.fleetControlEvent.create({ data: { requestId: request.requestId, actorId: context.user.id, payloadHash: hash, operation: request.operation, targetType: result.type, targetId: result.id, unitId: result.unitId, snapshot: parsed as Prisma.InputJsonValue } });
-        await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.fleetOperationRegistered, targetType: result.type, targetId: result.id });
+        await tx.insert(f.fleetControlEvents).values({ requestId: request.requestId, actorId: context.user.id, payloadHash: hash, operation: request.operation, targetType: result.type, targetId: result.id, unitId: result.unitId, snapshot: fleetJson(parsed) });
+        await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.fleetOperationRegistered, targetType: result.type, targetId: result.id });
         return { id: result.id, type: result.type, repeated: false, token: result.token };
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000, maxWait: 30000 });
+      }, { isolationLevel: "serializable", timeoutMs: 30000, lockTimeoutMs: 30000 });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2034", "P2002"].includes(error.code) && attempt < 3) continue;
+      if (["40001", "40P01", "23505"].includes(getPostgresError(error)?.code || "") && attempt < 3) continue;
       throw error;
     }
   }

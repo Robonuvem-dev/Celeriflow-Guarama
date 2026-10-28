@@ -8,3 +8,11 @@
 # These two applied migrations were recorded with uniform LF bytes.
 /prisma/migrations-ibema/20261011130000_hr_contract_temporal_revisions/migration.sql text eol=lf
 /prisma/migrations-ibema/20261011160000_hr_consignment_schedule/migration.sql text eol=lf
+# New authority artifacts and future SQL use the same bytes on Windows and CI.
+/db/** text eol=lf
+# These two original reports are pinned by raw SHA-256 in the audited baseline.
+/docs/drizzle-inventory/migration-history.json text eol=lf
+/docs/drizzle-inventory/recovery.json text eol=lf
+# The portable test catalog is exported from the pinned read-only catalog.
+/tests/fixtures/installed-physical-catalog.json text eol=lf
+/tests/fixtures/historical-visual-baselines.json text eol=lf

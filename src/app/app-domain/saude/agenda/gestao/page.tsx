@@ -1,4 +1,15 @@
 import Link from "next/link";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { employees } from "@/db/schema/administration";
+import { healthSpecialties } from "@/db/schema/health-administration";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
+import { healthCareAgreements } from "@/db/schema/health-agreements";
+import { healthCareSchedules, healthWaitlists } from "@/db/schema/health-agenda";
+import { healthRegulationRequests, healthRegulationReviews, healthRegulationEvents, healthRegulationQuotas, healthRegulationQuotaAllocations, healthCallPanels } from "@/db/schema/health-regulation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { AvailableSlots } from "./AvailableSlots";
 import { addProgramWaitlistAction, bookRegulationAction, callPatientAction, configureReviewsAction, convertWaitlistAction, distributeQuotaAction, reviewRequestAction, saveCallPanelAction, saveExtendedScheduleAction, saveScheduleBlockAction, updateBookingIdentityAction } from "./actions";
@@ -9,21 +20,30 @@ const Input = ({ name, label, type = "text", required = false }: { name: string;
 const formStyle = "mt-3 grid gap-3 sm:grid-cols-2";
 
 export default async function HealthAgendaManagementPage() {
-  const context = await getTenantContextForModule("SAUDE"), { prisma } = context;
+  const context = await getTenantContextForModule("SAUDE"), database = context.database ?? db;
   const ids = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const [units, patients, professionals, specialties, procedures, agreements, schedules, requests, quotas, waitlist, panels, pharmacyRequests] = await Promise.all([
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(ids ? { id: { in: ids } } : {}) } }),
-    prisma.patient.findMany({ where: { status: "Ativo" }, include: { person: true } }),
-    prisma.healthProfessional.findMany({ where: { isActive: true }, include: { employee: true } }),
-    prisma.healthSpecialty.findMany({ where: { isActive: true } }), prisma.healthSusProcedure.findMany({ where: { isActive: true, isCurrent: true }, take: 1000 }),
-    prisma.healthCareAgreement.findMany({ where: { isActive: true } }),
-    prisma.healthCareSchedule.findMany({ where: ids ? { unitId: { in: ids } } : {}, include: { unit: true, specialty: true, blocks: true } }),
-    prisma.healthRegulationRequest.findMany({ where: ids ? { requestUnitId: { in: ids } } : {}, include: { patient: { include: { person: true } }, reviews: { orderBy: { createdAt: "desc" } }, events: { orderBy: { createdAt: "desc" } } }, take: 500 }),
-    prisma.healthRegulationQuota.findMany({ where: ids ? { OR: [{ unitId: { in: ids } }, { unitId: null }] } : {}, include: { allocations: true, requests: { select: { id: true, patient: { select: { person: { select: { fullName: true } } } }, status: true, requestUnitId: true } } } }),
-    prisma.healthWaitlist.findMany({ where: ids ? { unitId: { in: ids } } : {}, include: { patient: { include: { person: true } }, regulationRequest: { select: { protocolNumber: true, status: true } } }, orderBy: { createdAt: "asc" } }),
-    prisma.healthCallPanel.findMany({ where: ids ? { unitId: { in: ids } } : {} }),
-    prisma.pharmacyRequest.findMany({ where: ids ? { destinationWarehouse: { healthUnitId: { in: ids } } } : {}, include: { patient: { include: { person: true } } }, take: 300 }),
+  const [units, patients, professionals, specialties, procedures, agreements, scheduleRows, requestRows, quotaRows, waitlistRows, panels, pharmacyRows] = await Promise.all([
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), ids ? inArray(healthUnits.id, ids) : undefined)),
+    database.select({ id: patientTable.id, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(eq(patientTable.status, "Ativo")),
+    database.select({ id: healthProfessionals.id, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(eq(healthProfessionals.isActive, true)),
+    database.select({ id: healthSpecialties.id, name: healthSpecialties.name }).from(healthSpecialties).where(eq(healthSpecialties.isActive, true)),
+    database.select({ id: healthSusProcedures.id, code: healthSusProcedures.code, description: healthSusProcedures.description }).from(healthSusProcedures).where(and(eq(healthSusProcedures.isActive, true), eq(healthSusProcedures.isCurrent, true))).limit(1000),
+    database.select({ id: healthCareAgreements.id, name: healthCareAgreements.name }).from(healthCareAgreements).where(eq(healthCareAgreements.isActive, true)),
+    database.select({ schedule: healthCareSchedules, unit: { name: healthUnits.name }, specialty: { name: healthSpecialties.name } }).from(healthCareSchedules).innerJoin(healthUnits, eq(healthUnits.id, healthCareSchedules.unitId)).leftJoin(healthSpecialties, eq(healthSpecialties.id, healthCareSchedules.specialtyId)).where(ids ? inArray(healthCareSchedules.unitId, ids) : undefined),
+    database.select({ request: healthRegulationRequests, person: { fullName: people.fullName } }).from(healthRegulationRequests).innerJoin(patientTable, eq(patientTable.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(ids ? inArray(healthRegulationRequests.requestUnitId, ids) : undefined).limit(500),
+    database.select().from(healthRegulationQuotas).where(ids ? or(inArray(healthRegulationQuotas.unitId, ids), isNull(healthRegulationQuotas.unitId)) : undefined),
+    database.select({ waiting: healthWaitlists, person: { fullName: people.fullName }, regulationRequest: { protocolNumber: healthRegulationRequests.protocolNumber, status: healthRegulationRequests.status } }).from(healthWaitlists).innerJoin(patientTable, eq(patientTable.id, healthWaitlists.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).leftJoin(healthRegulationRequests, eq(healthRegulationRequests.id, healthWaitlists.regulationRequestId)).where(ids ? inArray(healthWaitlists.unitId, ids) : undefined).orderBy(asc(healthWaitlists.createdAt)),
+    database.select({ id: healthCallPanels.id, title: healthCallPanels.title, sector: healthCallPanels.sector }).from(healthCallPanels).where(ids ? inArray(healthCallPanels.unitId, ids) : undefined),
+    database.execute<{ id: string; patientId: string | null; patientName: string | null }>(sql`SELECT r.id, p.id AS "patientId", n."fullName" AS "patientName" FROM "PharmacyRequest" r LEFT JOIN "Patient" p ON p.id=r."patientId" LEFT JOIN "Person" n ON n.id=p."personId" LEFT JOIN "Warehouse" w ON w.id=r."destinationWarehouseId" WHERE ${ids ? inArray(sql`w."healthUnitId"`, ids) : sql`true`} LIMIT 300`),
   ]);
+  const [reviews, events, allocations, quotaRequests] = await Promise.all([
+    database.select().from(healthRegulationReviews).where(inArray(healthRegulationReviews.requestId, requestRows.map(row => row.request.id))).orderBy(desc(healthRegulationReviews.createdAt)),
+    database.select().from(healthRegulationEvents).where(inArray(healthRegulationEvents.requestId, requestRows.map(row => row.request.id))).orderBy(desc(healthRegulationEvents.createdAt)),
+    database.select().from(healthRegulationQuotaAllocations).where(inArray(healthRegulationQuotaAllocations.quotaId, quotaRows.map(row => row.id))),
+    database.select({ id: healthRegulationRequests.id, quotaId: healthRegulationRequests.quotaId, status: healthRegulationRequests.status, requestUnitId: healthRegulationRequests.requestUnitId, person: { fullName: people.fullName } }).from(healthRegulationRequests).innerJoin(patientTable, eq(patientTable.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(inArray(healthRegulationRequests.quotaId, quotaRows.map(row => row.id))),
+  ]);
+  const schedules = scheduleRows.map(row => ({ ...row.schedule, unit: row.unit, specialty: row.specialty })), requests = requestRows.map(row => ({ ...row.request, patient: { person: row.person }, reviews: reviews.filter(review => review.requestId === row.request.id), events: events.filter(event => event.requestId === row.request.id) }));
+  const quotas = quotaRows.map(row => ({ ...row, allocations: allocations.filter(allocation => allocation.quotaId === row.id), requests: quotaRequests.filter(request => request.quotaId === row.id).map(({ person, ...request }) => ({ ...request, patient: { person } })) })), waitlist = waitlistRows.map(row => ({ ...row.waiting, patient: { person: row.person }, regulationRequest: row.regulationRequest })), pharmacyRequests = pharmacyRows.rows.map(row => ({ id: row.id, patient: row.patientId ? { person: { fullName: row.patientName } } : null }));
   const patientOptions = patients.map(row => ({ id: row.id, name: row.person.fullName })), professionalOptions = professionals.map(row => ({ id: row.id, name: row.employee.name }));
   const scheduleOptions = schedules.map(row => ({ id: row.id, name: `${row.unit.name} · ${row.specialty?.name || "Agenda"} · ${row.kind}` }));
   const requestOptions = requests.map(row => ({ id: row.id, name: `${row.patient.person.fullName} · ${row.protocolNumber || row.id} · ${row.status}` }));

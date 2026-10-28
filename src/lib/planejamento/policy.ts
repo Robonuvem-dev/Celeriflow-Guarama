@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { z } from "zod";
 
 export const jurisdictionSchema = z.enum(["EXECUTIVE", "LEGISLATIVE"]);
@@ -68,8 +68,8 @@ export function planningBasePath(jurisdiction: PlanningJurisdiction) {
 }
 
 export function projectedValue(base: string, rate: string) {
-  return new Prisma.Decimal(base).mul(new Prisma.Decimal(1).plus(new Prisma.Decimal(rate).div(100)))
-    .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  return new Decimal(base).mul(new Decimal(1).plus(new Decimal(rate).div(100)))
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 }
 
 /** Largest-remainder allocation conserves cents; stable source ID breaks ties. */
@@ -78,17 +78,17 @@ export function allocateRevenue(value: string, sources: { id: string; percentage
   if (!sources.length || new Set(sources.map((source) => source.id)).size !== sources.length) throw new Error("Informe fontes distintas.");
   const weights = sources.map((source) => {
     if (!/^\d{1,3}(\.\d{1,6})?$/.test(source.percentage)) throw new Error("Percentual inválido.");
-    const weight = new Prisma.Decimal(source.percentage);
+    const weight = new Decimal(source.percentage);
     if (weight.lessThanOrEqualTo(0) || weight.greaterThan(100)) throw new Error("Percentual deve ser maior que zero e até 100%.");
     return { ...source, weight };
   });
-  if (!weights.reduce((sum, row) => sum.plus(row.weight), new Prisma.Decimal(0)).equals(100)) throw new Error("O rateio exige total de 100%.");
-  const cents = new Prisma.Decimal(value).mul(100);
+  if (!weights.reduce((sum, row) => sum.plus(row.weight), new Decimal(0)).equals(100)) throw new Error("O rateio exige total de 100%.");
+  const cents = new Decimal(value).mul(100);
   const rows = weights.map((row) => {
     const raw = cents.mul(row.weight).div(100);
     return { id: row.id, cents: raw.floor(), remainder: raw.minus(raw.floor()) };
   });
-  const remaining = cents.minus(rows.reduce((sum, row) => sum.plus(row.cents), new Prisma.Decimal(0))).toNumber();
+  const remaining = cents.minus(rows.reduce((sum, row) => sum.plus(row.cents), new Decimal(0))).toNumber();
   const order = [...rows].sort((a, b) => b.remainder.comparedTo(a.remainder) || a.id.localeCompare(b.id));
   for (let i = 0; i < remaining; i++) order[i].cents = order[i].cents.plus(1);
   return rows.map((row) => ({ id: row.id, value: row.cents.div(100).toFixed(2) }));

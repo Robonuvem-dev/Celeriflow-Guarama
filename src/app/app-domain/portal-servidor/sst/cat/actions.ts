@@ -3,12 +3,17 @@ import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { registerAccident } from "@/lib/sst/accident-service";
 import { revalidatePath } from "next/cache";
 import { accidentActionError } from "@/lib/sst/accident-errors";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { activePortalEmployee, portalRows } from "@/db/repositories/portal-servidor/records";
 export async function reportOwnAccident(form: FormData) {
   try {
     const access = await getEmployeePortalAccess();
     if (access.status !== "AVAILABLE") return { error: "Usuário sem vínculo funcional ativo." };
-    const employee = await access.context.prisma.employee.findUniqueOrThrow({ where: { id: access.employee.id }, select: { secretariatId: true } });
-    const units = employee.secretariatId ? await access.context.prisma.budgetUnit.findMany({ where: { secretariatId: employee.secretariatId }, select: { id: true } }) : [];
+    const executor = access.context.database ?? db;
+    const employee = await activePortalEmployee(executor, access.employee.id);
+    if (!employee) return { error: "Usuário sem vínculo funcional ativo." };
+    const units = employee.secretariatId ? await portalRows<{ id: string }>(executor, sql`SELECT id FROM "BudgetUnit" WHERE "secretariatId"=${employee.secretariatId}`) : [];
     if (units.length !== 1) return { error: "Lotação não identifica uma única UG. Procure a gestão de pessoas." };
     const fields = Object.fromEntries(form.entries());
     if (fields.kind === "INCIDENT") return { error: "Este serviço é exclusivo de comunicação de CAT." };

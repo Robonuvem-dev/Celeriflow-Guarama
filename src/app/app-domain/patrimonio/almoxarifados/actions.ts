@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { warehouses } from "@/db/schema/assets-stock";
+import { employees } from "@/db/schema/administration";
+import { costCenters } from "@/db/schema/master-data";
 
 const text = (maximum: number) => z.string().trim().max(maximum).optional();
 const warehouseInput = z.object({
@@ -47,15 +52,14 @@ function normalizedAddress(input: z.output<typeof warehouseInput>) {
 }
 
 async function validateReferences(
-  prisma: Awaited<ReturnType<typeof getTenantContextForModuleOperation>>["prisma"],
   input: z.output<typeof warehouseInput>,
   currentCostCenterId?: string | null,
 ) {
   const managerId = input.managerId || undefined;
   const costCenterId = input.costCenterId || undefined;
   const [manager, costCenter] = await Promise.all([
-    managerId ? prisma.employee.findFirst({ where: { id: managerId, isActive: true }, select: { id: true } }) : null,
-    costCenterId ? prisma.costCenter.findUnique({ where: { id: costCenterId }, select: { id: true, isActive: true } }) : null,
+    managerId ? db.select({ id: employees.id }).from(employees).where(and(eq(employees.id, managerId), eq(employees.isActive, true))).limit(1).then(rows => rows[0]) : null,
+    costCenterId ? db.select({ id: costCenters.id, isActive: costCenters.isActive }).from(costCenters).where(eq(costCenters.id, costCenterId)).limit(1).then(rows => rows[0]) : null,
   ]);
   if (managerId && !manager) throw new Error("Selecione um responsável ativo.");
   if (costCenterId && (!costCenter || (!costCenter.isActive && costCenter.id !== currentCostCenterId))) throw new Error("Selecione um centro de custo ativo.");
@@ -72,10 +76,9 @@ function revalidateWarehouses() {
 export async function createWarehouseAction(formData: FormData): Promise<void> {
   const parsed = formInput(formData);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || "Dados do almoxarifado inválidos.");
-  const context = await getTenantContextForModuleOperation("PATRIMONIO", "create");
-  const references = await validateReferences(context.prisma, parsed.data);
-  await context.prisma.warehouse.create({
-    data: {
+  await getTenantContextForModuleOperation("PATRIMONIO", "create");
+  const references = await validateReferences(parsed.data);
+  await db.insert(warehouses).values({
       name: parsed.data.name,
       type: parsed.data.type,
       zipCode: parsed.data.zipCode || null,
@@ -86,7 +89,6 @@ export async function createWarehouseAction(formData: FormData): Promise<void> {
       state: parsed.data.state || null,
       address: normalizedAddress(parsed.data),
       ...references,
-    },
   });
   revalidateWarehouses();
   redirect("/patrimonio/almoxarifados");
@@ -95,14 +97,12 @@ export async function createWarehouseAction(formData: FormData): Promise<void> {
 export async function updateWarehouseAction(id: string, formData: FormData): Promise<void> {
   const parsed = formInput(formData);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || "Dados do almoxarifado inválidos.");
-  const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
-  const existing = await context.prisma.warehouse.findUnique({ where: { id }, select: { id: true, address: true, costCenterId: true } });
+  await getTenantContextForModuleOperation("PATRIMONIO", "update");
+  const [existing] = await db.select({ id: warehouses.id, address: warehouses.address, costCenterId: warehouses.costCenterId }).from(warehouses).where(eq(warehouses.id, id)).limit(1);
   if (!existing) throw new Error("Almoxarifado não encontrado.");
-  const references = await validateReferences(context.prisma, parsed.data, existing.costCenterId);
+  const references = await validateReferences(parsed.data, existing.costCenterId);
   const address = normalizedAddress(parsed.data);
-  await context.prisma.warehouse.update({
-    where: { id: existing.id },
-    data: {
+  await db.update(warehouses).set({
       name: parsed.data.name,
       type: parsed.data.type,
       zipCode: parsed.data.zipCode || null,
@@ -113,18 +113,17 @@ export async function updateWarehouseAction(id: string, formData: FormData): Pro
       state: parsed.data.state || null,
       address: address ?? existing.address,
       ...references,
-    },
-  });
+  }).where(eq(warehouses.id, existing.id));
   revalidateWarehouses();
   redirect("/patrimonio/almoxarifados");
 }
 
 export async function setWarehouseActiveAction(id: string, active: boolean): Promise<WarehouseActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
-    const warehouse = await context.prisma.warehouse.findUnique({ where: { id }, select: { id: true } });
+    await getTenantContextForModuleOperation("PATRIMONIO", "update");
+    const [warehouse] = await db.select({ id: warehouses.id }).from(warehouses).where(eq(warehouses.id, id)).limit(1);
     if (!warehouse) throw new Error("Almoxarifado não encontrado.");
-    await context.prisma.warehouse.update({ where: { id: warehouse.id }, data: { isActive: active } });
+    await db.update(warehouses).set({ isActive: active }).where(eq(warehouses.id, warehouse.id));
     revalidateWarehouses();
     return {};
   } catch (error) {
@@ -134,15 +133,18 @@ export async function setWarehouseActiveAction(id: string, active: boolean): Pro
 
 export async function deleteWarehouseAction(id: string): Promise<WarehouseActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("PATRIMONIO", "delete");
-    const warehouse = await context.prisma.warehouse.findUnique({
-      where: { id },
-      select: { id: true, _count: { select: { stocks: true, movements: true, receiptItems: true, inventorySessions: true, schoolMeals: true } } },
-    });
+    await getTenantContextForModuleOperation("PATRIMONIO", "delete");
+    const [warehouse] = await db.select({ id: warehouses.id, linkedRecords: sql<number>`(
+      (SELECT count(*) FROM "MaterialStock" WHERE "warehouseId"=${warehouses.id}) +
+      (SELECT count(*) FROM "MaterialMovement" WHERE "warehouseId"=${warehouses.id}) +
+      (SELECT count(*) FROM "PurchaseReceiptItem" WHERE "warehouseId"=${warehouses.id}) +
+      (SELECT count(*) FROM "InventorySession" WHERE "warehouseId"=${warehouses.id}) +
+      (SELECT count(*) FROM "SchoolMeal" WHERE "warehouseId"=${warehouses.id})
+    )::int` }).from(warehouses).where(eq(warehouses.id, id)).limit(1);
     if (!warehouse) throw new Error("Almoxarifado não encontrado.");
-    const linkedRecords = Object.values(warehouse._count).reduce((total, value) => total + value, 0);
+    const linkedRecords = warehouse.linkedRecords;
     if (linkedRecords > 0) throw new Error("Este almoxarifado possui movimentações, estoque ou outros registros vinculados. Inative-o em vez de excluir.");
-    await context.prisma.warehouse.delete({ where: { id: warehouse.id } });
+    await db.delete(warehouses).where(eq(warehouses.id, warehouse.id));
     revalidateWarehouses();
     return {};
   } catch (error) {

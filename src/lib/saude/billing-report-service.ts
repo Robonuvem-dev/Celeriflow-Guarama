@@ -1,4 +1,14 @@
-import { Prisma } from "@prisma/client";
+import { and, asc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { Decimal } from "@/db/decimal";
+import { healthProductionFacts, healthProductionCompetences, healthProductionCriticisms } from "@/db/schema/health-production";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { employees } from "@/db/schema/administration";
+import { patients } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthSusProcedures, healthSusReferences } from "@/db/schema/health-catalogs";
+import { medicalRecords, healthMedicationAdministrations } from "@/db/schema/health-care";
+import { materialMovements, materials, warehouses } from "@/db/schema/assets-stock";
 import { z } from "zod";
 import { assertHealthUnitAccess, type AppContext } from "@/lib/platform/tenant-context";
 import { appointmentBillingContextSchema } from "./billing-price-service";
@@ -11,12 +21,15 @@ function unitScope(context: AppContext, selected: string) {
 
 export async function healthBillingPreview(context: AppContext, raw: unknown) {
   const input = filtersSchema.parse(raw), unitIds = unitScope(context, input.unitId);
-  const [facts, competence] = await Promise.all([
-    context.prisma.healthProductionFact.findMany({ where: { period: input.period, ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(input.professionalId ? { professionalId: input.professionalId } : {}), ...(input.patientId ? { patientId: input.patientId } : {}) }, orderBy: [{ occurredAt: "asc" }, { id: "asc" }], include: { unit: { select: { name: true, cnes: true } }, professional: { select: { employee: { select: { name: true } }, cns: true, cbo: true } }, patient: { select: { cns: true, person: { select: { fullName: true, birthDate: true, gender: true } } } }, procedure: { select: { code: true, description: true } }, cidReference: { select: { code: true } }, criticisms: { where: { status: "ABERTA" }, select: { code: true, message: true } } } }),
-    context.prisma.healthProductionCompetence.findUnique({ where: { period: input.period }, select: { status: true } }),
+  const database = context.database ?? db;
+  const [factRows, competenceRows] = await Promise.all([
+    database.select({ fact: healthProductionFacts, unit: { name: healthUnits.name, cnes: healthUnits.cnes }, professional: { cns: healthProfessionals.cns, cbo: healthProfessionals.cbo }, employee: { name: employees.name }, patient: { cns: patients.cns }, person: { fullName: people.fullName, birthDate: people.birthDate, gender: people.gender }, procedure: { code: healthSusProcedures.code, description: healthSusProcedures.description }, cidReference: { code: healthSusReferences.code } }).from(healthProductionFacts).leftJoin(healthUnits, eq(healthUnits.id, healthProductionFacts.unitId)).leftJoin(healthProfessionals, eq(healthProfessionals.id, healthProductionFacts.professionalId)).leftJoin(employees, eq(employees.id, healthProfessionals.employeeId)).leftJoin(patients, eq(patients.id, healthProductionFacts.patientId)).leftJoin(people, eq(people.id, patients.personId)).leftJoin(healthSusProcedures, eq(healthSusProcedures.id, healthProductionFacts.procedureId)).leftJoin(healthSusReferences, eq(healthSusReferences.id, healthProductionFacts.cidReferenceId)).where(and(eq(healthProductionFacts.period, input.period), unitIds ? inArray(healthProductionFacts.unitId, unitIds) : undefined, input.professionalId ? eq(healthProductionFacts.professionalId, input.professionalId) : undefined, input.patientId ? eq(healthProductionFacts.patientId, input.patientId) : undefined)).orderBy(asc(healthProductionFacts.occurredAt), asc(healthProductionFacts.id)),
+    database.select({ status: healthProductionCompetences.status }).from(healthProductionCompetences).where(eq(healthProductionCompetences.period, input.period)).limit(1),
   ]);
+  const criticisms = await database.select({ factId: healthProductionCriticisms.factId, code: healthProductionCriticisms.code, message: healthProductionCriticisms.message }).from(healthProductionCriticisms).where(and(inArray(healthProductionCriticisms.factId, factRows.map(row => row.fact.id)), eq(healthProductionCriticisms.status, "ABERTA")));
+  const competence = competenceRows[0], facts = factRows.map(row => ({ ...row.fact, unit: row.unit, professional: row.professional && row.employee ? { ...row.professional, employee: row.employee } : null, patient: row.patient && row.person ? { ...row.patient, person: row.person } : null, procedure: row.procedure, cidReference: row.cidReference, criticisms: criticisms.filter(item => item.factId === row.fact.id) }));
   const validated = competence && ["PROCESSADA", "FECHADA"].includes(competence.status);
-  type Group = { key: string; name: string; quantity: number; validQuantity: number; criticizedQuantity: number; pendingQuantity: number; knownValue: Prisma.Decimal; unknownValueFacts: number; patientIds: Set<string> };
+  type Group = { key: string; name: string; quantity: number; validQuantity: number; criticizedQuantity: number; pendingQuantity: number; knownValue: Decimal; unknownValueFacts: number; patientIds: Set<string> };
   const groups = new Map<string, Group>();
   const rows = facts.map(fact => {
     const pricing = z.object({ source: z.string().optional(), table: z.object({ id: z.string(), code: z.string(), version: z.number() }).nullable().optional(), billingContext: appointmentBillingContextSchema.nullable().optional() }).safeParse(fact.pricingSnapshot);
@@ -24,7 +37,7 @@ export async function healthBillingPreview(context: AppContext, raw: unknown) {
     const key = input.groupBy === "GENERAL" ? "GENERAL" : input.groupBy === "PROFESSIONAL" ? fact.professionalId || "UNKNOWN" : fact.unitId || "UNKNOWN";
     const name = input.groupBy === "GENERAL" ? "Geral do recorte autorizado" : input.groupBy === "PROFESSIONAL" ? fact.professional?.employee.name || "Profissional não informado" : fact.unit?.name || "Unidade não informada";
     const status = fact.criticisms.length || fact.status === "CRITICADO" ? "CRITICADO" : validated ? "VALIDO" : "PENDENTE_VALIDACAO";
-    const group = groups.get(key) || { key, name, quantity: 0, validQuantity: 0, criticizedQuantity: 0, pendingQuantity: 0, knownValue: new Prisma.Decimal(0), unknownValueFacts: 0, patientIds: new Set<string>() };
+    const group = groups.get(key) || { key, name, quantity: 0, validQuantity: 0, criticizedQuantity: 0, pendingQuantity: 0, knownValue: new Decimal(0), unknownValueFacts: 0, patientIds: new Set<string>() };
     group.quantity += fact.quantity;
     if (status === "VALIDO") group.validQuantity += fact.quantity;
     else if (status === "CRITICADO") group.criticizedQuantity += fact.quantity;
@@ -40,30 +53,34 @@ export async function healthBillingPreview(context: AppContext, raw: unknown) {
 export async function healthPatientConsumptionCost(context: AppContext, raw: unknown) {
   const input = filtersSchema.omit({ groupBy: true, professionalId: true }).extend({ patientId: z.string().min(1).max(200) }).parse(raw);
   const unitIds = unitScope(context, input.unitId);
-  const patient = await context.prisma.patient.findUniqueOrThrow({ where: { id: input.patientId }, include: { person: { select: { fullName: true } } } });
+  const database = context.database ?? db;
+  const [patientRow] = await database.select({ patient: patients, person: { fullName: people.fullName } }).from(patients).innerJoin(people, eq(people.id, patients.personId)).where(eq(patients.id, input.patientId)).limit(1);
+  if (!patientRow) throw new Error("Paciente não encontrado.");
+  const patient = { ...patientRow.patient, person: patientRow.person };
   if (unitIds && (!patient.referenceUnitId || !unitIds.includes(patient.referenceUnitId))) {
-    if (!await context.prisma.medicalRecord.count({ where: { patientId: patient.id, unitId: { in: unitIds } } })) throw new Error("Paciente fora do escopo de unidades autorizado.");
+    if (!(await database.select({ id: medicalRecords.id }).from(medicalRecords).where(and(eq(medicalRecords.patientId, patient.id), inArray(medicalRecords.unitId, unitIds))).limit(1)).length) throw new Error("Paciente fora do escopo de unidades autorizado.");
   }
   const [year, month] = input.period.split("-").map(Number);
   const dateRange = { gte: new Date(`${input.period}-01T00:00:00-03:00`), lt: new Date(`${new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10)}T00:00:00-03:00`) };
-  const [dispensations, administrations, vaccinations, distributions, fulfillments, kits] = await Promise.all([
-    context.prisma.medicineDispensation.findMany({ where: { patientId: patient.id, status: "ACTIVE", date: dateRange, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, select: { id: true, movementId: true, medicine: { select: { name: true } } } }),
-    context.prisma.healthMedicationAdministration.findMany({ where: { administeredAt: dateRange, medicalRecord: { patientId: patient.id, ...(unitIds ? { unitId: { in: unitIds } } : {}) } }, select: { id: true, movementId: true, materials: true, patientOwned: true, medicineName: true, medicalRecordId: true } }),
-    context.prisma.vaccinationRecord.findMany({ where: { patientId: patient.id, date: dateRange, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, select: { id: true, movementId: true, vaccine: { select: { name: true } }, openedVial: { select: { diluentMovementId: true, totalDoses: true } } } }),
-    context.prisma.specializedDistribution.findMany({ where: { patientId: patient.id, deliveredAt: dateRange, ...(unitIds ? { warehouse: { healthUnitId: { in: unitIds } } } : {}) }, select: { id: true, movementId: true } }),
-    context.prisma.pharmacyRequestFulfillment.findMany({ where: { status: "ACTIVE", dispensationId: null, createdAt: dateRange, requestItem: { request: { patientId: patient.id, ...(unitIds ? { destinationWarehouse: { healthUnitId: { in: unitIds } } } : {}) } } }, select: { id: true, movementId: true } }),
-    context.prisma.healthPharmacyKitDeliveryItem.findMany({ where: { dispensation: null, delivery: { patientId: patient.id, status: "DELIVERED", deliveredAt: dateRange, ...(unitIds ? { warehouse: { healthUnitId: { in: unitIds } } } : {}) } }, select: { id: true, movementId: true } }),
+  const [dispensationResult, administrations, vaccinationResult, distributionResult, fulfillmentResult, kitResult] = await Promise.all([
+    database.execute<{ id: string; movementId: string | null; medicineName: string }>(sql`SELECT d.id, d."movementId", m.name AS "medicineName" FROM "MedicineDispensation" d JOIN "Medicine" m ON m.id=d."medicineId" WHERE d."patientId"=${patient.id} AND d.status='ACTIVE' AND d.date>=${dateRange.gte} AND d.date<${dateRange.lt} AND ${unitIds ? inArray(sql`d."unitId"`, unitIds) : sql`true`}`),
+    database.select({ id: healthMedicationAdministrations.id, movementId: healthMedicationAdministrations.movementId, materials: healthMedicationAdministrations.materials, patientOwned: healthMedicationAdministrations.patientOwned, medicineName: healthMedicationAdministrations.medicineName, medicalRecordId: healthMedicationAdministrations.medicalRecordId }).from(healthMedicationAdministrations).innerJoin(medicalRecords, eq(medicalRecords.id, healthMedicationAdministrations.medicalRecordId)).where(and(eq(medicalRecords.patientId, patient.id), gte(healthMedicationAdministrations.administeredAt, dateRange.gte), lt(healthMedicationAdministrations.administeredAt, dateRange.lt), unitIds ? inArray(medicalRecords.unitId, unitIds) : undefined)),
+    database.execute<{ id: string; movementId: string | null; vaccineName: string; diluentMovementId: string | null; totalDoses: number | null }>(sql`SELECT v.id, v."movementId", x.name AS "vaccineName", f."diluentMovementId", f."totalDoses" FROM "VaccinationRecord" v JOIN "Vaccine" x ON x.id=v."vaccineId" LEFT JOIN "HealthVaccineOpenedVial" f ON f.id=v."openedVialId" WHERE v."patientId"=${patient.id} AND v.date>=${dateRange.gte} AND v.date<${dateRange.lt} AND ${unitIds ? inArray(sql`v."unitId"`, unitIds) : sql`true`}`),
+    database.execute<{ id: string; movementId: string | null }>(sql`SELECT d.id, d."movementId" FROM "SpecializedDistribution" d JOIN "Warehouse" w ON w.id=d."warehouseId" WHERE d."patientId"=${patient.id} AND d."deliveredAt">=${dateRange.gte} AND d."deliveredAt"<${dateRange.lt} AND ${unitIds ? inArray(sql`w."healthUnitId"`, unitIds) : sql`true`}`),
+    database.execute<{ id: string; movementId: string | null }>(sql`SELECT f.id, f."movementId" FROM "PharmacyRequestFulfillment" f JOIN "PharmacyRequestItem" i ON i.id=f."requestItemId" JOIN "PharmacyRequest" r ON r.id=i."requestId" LEFT JOIN "Warehouse" w ON w.id=r."destinationWarehouseId" WHERE f.status='ACTIVE' AND f."dispensationId" IS NULL AND f."createdAt">=${dateRange.gte} AND f."createdAt"<${dateRange.lt} AND r."patientId"=${patient.id} AND ${unitIds ? inArray(sql`w."healthUnitId"`, unitIds) : sql`true`}`),
+    database.execute<{ id: string; movementId: string | null }>(sql`SELECT i.id, i."movementId" FROM "HealthPharmacyKitDeliveryItem" i JOIN "HealthPharmacyKitDelivery" d ON d.id=i."deliveryId" JOIN "Warehouse" w ON w.id=d."warehouseId" WHERE NOT EXISTS (SELECT 1 FROM "MedicineDispensation" x WHERE x."kitDeliveryItemId"=i.id) AND d."patientId"=${patient.id} AND d.status='DELIVERED' AND d."deliveredAt">=${dateRange.gte} AND d."deliveredAt"<${dateRange.lt} AND ${unitIds ? inArray(sql`w."healthUnitId"`, unitIds) : sql`true`}`),
   ]);
-  const references = new Map<string, { origins: string[]; weight: Prisma.Decimal; full: boolean }>();
+  const dispensations = dispensationResult.rows, vaccinations = vaccinationResult.rows, distributions = distributionResult.rows, fulfillments = fulfillmentResult.rows, kits = kitResult.rows;
+  const references = new Map<string, { origins: string[]; weight: Decimal; full: boolean }>();
   const unlinked: string[] = [], patientOwned: string[] = [];
-  const add = (movementId: string | null, origin: string, weight?: Prisma.Decimal) => {
+  const add = (movementId: string | null, origin: string, weight?: Decimal) => {
     if (!movementId) { unlinked.push(origin); return; }
-    const current = references.get(movementId) || { origins: [], weight: new Prisma.Decimal(0), full: false };
+    const current = references.get(movementId) || { origins: [], weight: new Decimal(0), full: false };
     current.origins.push(origin);
     if (!weight) current.full = true; else current.weight = current.weight.plus(weight);
     references.set(movementId, current);
   };
-  for (const item of dispensations) add(item.movementId, `DISPENSACAO:${item.id} · ${item.medicine.name}`);
+  for (const item of dispensations) add(item.movementId, `DISPENSACAO:${item.id} · ${item.medicineName}`);
   for (const item of administrations) {
     if (item.patientOwned) patientOwned.push(`${item.id} · ${item.medicineName}`); else add(item.movementId, `ADMINISTRACAO:${item.id} · ${item.medicineName}`);
     const materials = z.array(z.object({ movementId: z.string().min(1) })).safeParse(item.materials);
@@ -71,24 +88,26 @@ export async function healthPatientConsumptionCost(context: AppContext, raw: unk
     else for (const material of materials.data) add(material.movementId, `MATERIAIS_ADMINISTRACAO:${item.id}`);
   }
   for (const item of vaccinations) {
-    add(item.movementId, `VACINACAO:${item.id} · ${item.vaccine.name}`);
-    if (item.openedVial?.diluentMovementId && item.openedVial.totalDoses > 0) add(item.openedVial.diluentMovementId, `DILUENTE_RATEADO:${item.id}`, new Prisma.Decimal(1).div(item.openedVial.totalDoses));
+    add(item.movementId, `VACINACAO:${item.id} · ${item.vaccineName}`);
+    if (item.diluentMovementId && item.totalDoses !== null && item.totalDoses > 0) add(item.diluentMovementId, `DILUENTE_RATEADO:${item.id}`, new Decimal(1).div(item.totalDoses));
   }
   for (const item of distributions) add(item.movementId, `DISTRIBUICAO_ESPECIALIZADA:${item.id}`);
   for (const item of fulfillments) add(item.movementId, `ENTREGA_CORRELATO:${item.id}`);
   for (const item of kits) add(item.movementId, `KIT_CORRELATO:${item.id}`);
-  const movements = await context.prisma.materialMovement.findMany({ where: { id: { in: [...references.keys()] }, ...(unitIds ? { warehouse: { healthUnitId: { in: unitIds } } } : {}) }, include: { material: { select: { name: true } }, warehouse: { select: { name: true } }, reversalMovement: { select: { id: true } }, returnMovements: { include: { reversalMovement: { select: { id: true } } } } } });
-  let knownCost = new Prisma.Decimal(0), unknownCosts = unlinked.length;
+  const movementRows = await database.select({ movement: materialMovements, material: { name: materials.name }, warehouse: { name: warehouses.name }, reversed: sql<boolean>`EXISTS (SELECT 1 FROM "MaterialMovement" r WHERE r."reversedMovementId"=${materialMovements.id})` }).from(materialMovements).innerJoin(materials, eq(materials.id, materialMovements.materialId)).innerJoin(warehouses, eq(warehouses.id, materialMovements.warehouseId)).where(and(inArray(materialMovements.id, [...references.keys()]), unitIds ? inArray(warehouses.healthUnitId, unitIds) : undefined));
+  const returns = await database.select({ originId: materialMovements.returnedMovementId, quantity: materialMovements.quantity, quantityDecimal: materialMovements.quantityDecimal, reversed: sql<boolean>`EXISTS (SELECT 1 FROM "MaterialMovement" r WHERE r."reversedMovementId"=${materialMovements.id})` }).from(materialMovements).where(inArray(materialMovements.returnedMovementId, movementRows.map(row => row.movement.id)));
+  const movements = movementRows.map(row => ({ ...row.movement, material: row.material, warehouse: row.warehouse, reversalMovement: row.reversed, returnMovements: returns.filter(item => item.originId === row.movement.id) }));
+  let knownCost = new Decimal(0), unknownCosts = unlinked.length;
   const rows = movements.map(movement => {
     const reference = references.get(movement.id)!;
-    const originalQuantity = movement.quantityDecimal || new Prisma.Decimal(movement.quantity);
-    const returned = movement.returnMovements.filter(item => !item.reversalMovement).reduce((sum, item) => sum.plus(item.quantityDecimal || item.quantity), new Prisma.Decimal(0));
-    const netQuantity = movement.reversalMovement ? new Prisma.Decimal(0) : Prisma.Decimal.max(0, originalQuantity.minus(returned));
-    const weight = reference.full ? new Prisma.Decimal(1) : Prisma.Decimal.min(reference.weight, 1);
-    let cost: Prisma.Decimal | null = netQuantity.isZero() ? new Prisma.Decimal(0) : null;
+    const originalQuantity = movement.quantityDecimal || new Decimal(movement.quantity);
+    const returned = movement.returnMovements.filter(item => !item.reversed).reduce((sum, item) => sum.plus(item.quantityDecimal || item.quantity), new Decimal(0));
+    const netQuantity = movement.reversalMovement ? new Decimal(0) : Decimal.max(0, originalQuantity.minus(returned));
+    const weight = reference.full ? new Decimal(1) : Decimal.min(reference.weight, 1);
+    let cost: Decimal | null = netQuantity.isZero() ? new Decimal(0) : null;
     if (!cost && originalQuantity.gt(0)) {
       if (movement.totalValueDecimal !== null) cost = movement.totalValueDecimal.mul(netQuantity).div(originalQuantity);
-      else if (movement.unitValueDecimal !== null || movement.unitValue !== null) cost = new Prisma.Decimal(movement.unitValueDecimal ?? movement.unitValue!).mul(netQuantity);
+      else if (movement.unitValueDecimal !== null || movement.unitValue !== null) cost = new Decimal(movement.unitValueDecimal ?? movement.unitValue!).mul(netQuantity);
     }
     const allocatedCost = cost?.mul(weight) ?? null;
     if (allocatedCost === null) unknownCosts += 1; else knownCost = knownCost.plus(allocatedCost);

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 
 export const purchasePlanningStatuses = ["Rascunho", "Planejado", "Cancelado"] as const;
 
@@ -44,7 +44,7 @@ function numericValue(value: string | number | null | undefined, label: string, 
   if (!Number.isFinite(number) || number < 0 || (options.positive && number === 0)) {
     throw new PurchasePlanningError(`Informe ${label.toLocaleLowerCase("pt-BR")} ${options.positive ? "maior que zero" : "maior ou igual a zero"}.`);
   }
-  return { number, decimal: new Prisma.Decimal(normalized) };
+  return { number, decimal: new Decimal(normalized) };
 }
 
 function utcCalendarDay(date: Date) {

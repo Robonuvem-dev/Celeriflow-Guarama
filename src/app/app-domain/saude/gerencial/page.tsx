@@ -5,6 +5,7 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { listPatientTimeline } from "@/lib/saude/patient-timeline-service";
 import { tfdTripAccessWhere } from "@/lib/saude/tfd-service";
+import { db } from "@/db/client";
 
 const card = "rounded border bg-white p-2";
 const kpi = "text-lg font-bold tabular-nums";
@@ -55,7 +56,7 @@ export default async function GerencialPage({ searchParams }: { searchParams: Pr
     if (target) {
       if (target.referenceUnitId) assertHealthUnitAccess(context.user, target.referenceUnitId);
       else if (context.user.hasHealthAccessScope) throw new Error("Paciente sem unidade de referência acessível.");
-      timeline = await listPatientTimeline(prisma, target.id);
+      timeline = await listPatientTimeline(context.database ?? db, target.id);
       timelinePatient = target.person.fullName;
     }
   }

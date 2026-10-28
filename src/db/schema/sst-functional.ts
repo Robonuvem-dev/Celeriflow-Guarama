@@ -1,0 +1,6 @@
+import { boolean, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+
+/** Immutable RH history used by SST. SQL history owns all triggers/constraints. */
+export const sstFunctionalPeriods = pgTable("HrEmployeeFunctionalPeriod", {
+  id: text("id").primaryKey(), employeeId: text("employeeId").notNull(), budgetUnitId: text("budgetUnitId").notNull(), governmentEntityId: text("governmentEntityId").notNull(), employmentRegimeId: text("employmentRegimeId").notNull(), roleId: text("roleId").notNull(), functionRoleId: text("functionRoleId"), departmentId: text("departmentId").notNull(), localId: text("localId").notNull(), costCenterId: text("costCenterId").notNull(), startsAt: timestamp("startsAt", { precision: 3 }).notNull(), endsAt: timestamp("endsAt", { precision: 3 }).notNull(), contractReference: text("contractReference").notNull(), sourceReference: text("sourceReference").notNull(), supersedesId: text("supersedesId"), voided: boolean("voided").notNull().default(false), snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(), requestHash: text("requestHash").notNull(), createdById: text("createdById").notNull(), createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, t => [uniqueIndex("HrEmployeeFunctionalPeriod_supersedesId_key").on(t.supersedesId)]);

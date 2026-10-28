@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getAttendanceContext } from "@/lib/attendance/access";
-import type { Prisma } from "@prisma/client";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { tickets as ticketTable } from "@/db/schema/attendance-portals";
+import { listAttendanceTickets } from "@/db/repositories/attendance-portals/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 
@@ -10,8 +13,8 @@ export default async function FilaAtendimentoPage({ searchParams }: { searchPara
   const { status = "" } = await searchParams;
   const context = await getAttendanceContext();
   const departmentId = context.user.departmentId;
-  const where: Prisma.TicketWhereInput = context.attendanceAccess.isManager ? (status ? { status } : {}) : { departmentId: departmentId || "__sem-departamento__", ...(status ? { status } : {}) };
-  const tickets = await context.prisma.ticket.findMany({ where, take: 100, orderBy: [{ dueAt: "asc" }, { createdAt: "asc" }], include: { person: { select: { fullName: true } }, company: { select: { corporateName: true } }, assignee: { select: { name: true } }, department: { select: { name: true } } } });
+  const where = and(context.attendanceAccess.isManager ? undefined : eq(ticketTable.departmentId, departmentId || "__sem-departamento__"), status ? eq(ticketTable.status, status) : undefined);
+  const tickets = await listAttendanceTickets(db, where, { limit: 100, order: "deadline-created" });
   return (
     <PageFrame className="space-y-2">
       <PageHeader title="Fila do Setor" />

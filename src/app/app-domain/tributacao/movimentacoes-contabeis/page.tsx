@@ -2,20 +2,22 @@ import Link from "next/link";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { readTaxAccountingMovements, taxAccountingFilters } from "@/lib/tributacao/accounting-movements";
 import PrintMovements from "./PrintMovements";
+import { db } from "@/db/client";
+import { listFiscalPlanningUnits, listFiscalTaxLabels, listFiscalYears } from "@/db/repositories/taxation-pages/lookups";
 
 export const dynamic = "force-dynamic";
 
 export default async function TaxAccountingMovementsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
   const params = await searchParams;
   const raw = Object.fromEntries(Object.entries(params).filter(([, value]) => typeof value === "string" && value !== ""));
   const allowedBudgetUnitIds = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const units = await prisma.planningEntityUnit.findMany({ where: allowedBudgetUnitIds ? { budgetUnitId: { in: allowedBudgetUnitIds } } : {}, select: { governmentEntityId: true, budgetUnitId: true, governmentEntity: { select: { name: true } }, budgetUnit: { select: { code: true, name: true } } }, orderBy: [{ governmentEntityId: "asc" }, { budgetUnitId: "asc" }] });
+  const units = await listFiscalPlanningUnits(database, allowedBudgetUnitIds, "entity-unit");
   const entities = [...new Map(units.map(unit => [unit.governmentEntityId, unit.governmentEntity.name])).entries()];
   const governmentEntityId = typeof raw.governmentEntityId === "string" ? raw.governmentEntityId : entities[0]?.[0];
   if (!governmentEntityId || !entities.some(([id]) => id === governmentEntityId)) return <p className="p-5">Selecione ente com UG autorizada na Tributação.</p>;
   const entityUnits = units.filter(unit => unit.governmentEntityId === governmentEntityId);
-  const years = await prisma.financialYear.findMany({ where: { governmentEntityId }, select: { id: true, year: true, status: true }, orderBy: { year: "desc" } });
+  const years = await listFiscalYears(database, governmentEntityId);
   const financialYearId = typeof raw.financialYearId === "string" ? raw.financialYearId : years.find(year => year.status === "Aberto")?.id ?? years[0]?.id;
   if (!financialYearId || !years.some(year => year.id === financialYearId)) return <p className="p-5">Exercício fora do ente selecionado.</p>;
   const parsed = taxAccountingFilters.safeParse({ ...raw, governmentEntityId, financialYearId });
@@ -23,9 +25,9 @@ export default async function TaxAccountingMovementsPage({ searchParams }: { sea
   const filters = parsed.data;
   if (filters.budgetUnitId && !entityUnits.some(unit => unit.budgetUnitId === filters.budgetUnitId)) return <p className="p-5">UG fora do acesso autorizado.</p>;
   let result: Awaited<ReturnType<typeof readTaxAccountingMovements>>;
-  try { result = await readTaxAccountingMovements(prisma, { allowedBudgetUnitIds }, filters); }
+  try { result = await readTaxAccountingMovements(database, { allowedBudgetUnitIds }, filters); }
   catch (error) { return <section className="p-5"><Link href="/tributacao">Tributação</Link><p>{error instanceof Error ? error.message : "Não foi possível consultar as partidas tributárias."}</p></section>; }
-  const taxes = await prisma.tax.findMany({ select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
+  const taxes = await listFiscalTaxLabels(database, "name-id");
   const href = (page: number) => {
     const query = new URLSearchParams({ governmentEntityId, financialYearId, page: String(page) });
     for (const key of ["budgetUnitId", "from", "through", "taxId", "eventType", "account", "minimum", "maximum"] as const) if (filters[key]) query.set(key, filters[key]);
