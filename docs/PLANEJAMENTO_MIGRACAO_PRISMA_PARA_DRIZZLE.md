@@ -47,7 +47,7 @@ O histórico SQL contém centenas de definições de funções e triggers. O nú
 - A etapa inicial `prisma generate`, incluindo inicialização do comando, levou aproximadamente 64–149 segundos nas execuções observadas.
 - A checagem TypeScript chegou perto de 6 GB de heap; uma execução terminou com erro de falta de memória.
 - Há geração Prisma no `postinstall` e em `scripts/build.mjs`.
-- `scripts/typecheck-build.mjs` divide fontes e validações de rotas em processos separados. Existe uma alteração local de quatro para oito partições que **ainda não foi validada em um build completo** na inspeção inicial.
+- `scripts/typecheck-build.mjs` divide fontes e validações de rotas em processos separados. Após a inspeção inicial, a divisão de quatro para **oito partições passou em um `npm run build` local completo em 27/10/2026**, junto com a correção da configuração `dynamic` de Administração. A execução aproveitou caches de checagens anteriores; não comprova a meta de 4 GiB nem substitui a medição fria exigida neste plano.
 - `scripts/build.mjs` normaliza o heap para 6.144 MB; alterar apenas `NODE_OPTIONS` externamente não muda esse limite nesse fluxo.
 - `next.config.ts` pula somente a checagem duplicada do Next quando a checagem independente já passou. Esse mecanismo não autoriza omitir a verificação de tipos.
 
