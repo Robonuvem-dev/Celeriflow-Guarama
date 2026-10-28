@@ -2,8 +2,11 @@
 
 **Data:** 28/10/2026  
 **Base de código inspecionada:** `0831a93` — `ajuste de links e cards`  
-**Referência de requisitos:** [Padrão de Tabelas.md](Padr%C3%A3o%20de%20Tabelas.md), versão 1.0.  
+**Referência de requisitos:** [Padrão de Tabelas.md](Padr%C3%A3o%20de%20Tabelas.md), versão 1.1.
+
 **Estado:** diagnóstico e planejamento; nenhuma tela foi alterada nesta auditoria.
+
+**Revisão do plano após a validação do piloto:** o menu deve recolher para uma barra de ícones, como na entrada de Água e Saneamento, e não desaparecer. Ícones nas células são condicionais: só quando o valor não cabe ou quando o campo precisa de visualização composta. Uma barra de ícones funcional não é um desvio de R10, e texto integral que cabe não deve receber acionador redundante. As contagens e medições abaixo continuam identificadas pelo snapshot original; a interpretação e os próximos ajustes seguem a revisão 1.1.
 
 ## 1. Resposta objetiva e quantidade antes de começar
 
@@ -132,12 +135,12 @@ Um único componente de Segurança atende nove rotas-template; Educação reutil
 | R02 — sem rolagem/recorte fora do celular | A amostra mostrou rolagem, overflow da página e linhas fora da área visível; `overflow:hidden` também aparece em telas com recorte. | Medir ancestrais, última linha, colunas e rodapé; corrigir o orçamento completo. |
 | R03 — exceção de celular | Existem regras baseadas em largura, como `<640`, mas isso não identifica de forma confiável a classe física do dispositivo. | Definir a política de identificação e testar celular em paisagem e tablet/janela estreita. |
 | R04 — uma informação/uma linha | Há 90 pontos operacionais com indícios de células empilhadas; há cabeçalhos/células sem restrição uniforme. | Conferir os indícios, separar campos e abrir conteúdos compostos em detalhes, preservando a semântica. |
-| R05 — acesso integral por ícone/pop-up | As bases usam truncamento e `title` sem um mecanismo universal de detalhes por célula. Existem soluções pontuais, não cobertura integral. | Implementar célula de detalhes que reage ao espaço e reutilizar diálogo acessível. |
+| R05 — acesso integral sem ícone redundante | As bases usam truncamento e `title` sem um mecanismo universal de detalhes por célula. Existem soluções pontuais, não cobertura integral. | Medir o espaço real: mostrar ícone quando o conteúdo não cabe ou exige visão composta; retirar quando o texto passar a caber. |
 | R06 — ajuste sem ampliar a tabela | Nove pontos têm ajuste identificado: sete de Saneamento e dois de Patrimônio. Patrimônio amplia a soma das larguras; Saneamento mantém a soma, mas tem outros desvios. | Uma única distribuição limitada pela largura útil, com mínimos, teclado e restauração. |
 | R07 — estrutura estável | Alturas e paginações variam. Há rodapés fora de shell de listagem, tabelas com scroll e redução de densidade/fonte para caber. | Reservar header, filtros, corpo e rodapé; manter linhas uniformes, sem diminuir a fonte automaticamente. |
 | R08 — faixa compacta única | Há `flex-wrap`, filtros em várias linhas, títulos repetidos, cards de indicadores e textos entre header e tabela. | Ações no contexto/header; filtros excedentes em sobreposição, sem empurrar a grade. |
-| R09 — menu recolhido ao entrar | `ModuleShell`, RH e Compras iniciam o menu desktop aberto. O clique fecha somente o estado mobile nos casos inspecionados. | Recolher na entrada/navegação e oferecer menu em sobreposição pelo header. |
-| R10 — uso da área liberada | `ModuleShell` mantém trilha de ícones de 56 px ao recolher; RH/Compras mantêm 80 px. | Liberar a largura útil por completo e medir o reposicionamento. |
+| R09 — menu recolhido para ícones ao entrar | `ModuleShell`, RH e Compras iniciam o menu desktop expandido. O clique fecha somente o estado mobile nos casos inspecionados. | Recolher na entrada/navegação para uma barra de ícones e permitir expandir pelo sanduíche, como na entrada de Saneamento. |
+| R10 — uso da área liberada | As barras de ícones de 56/80 px são navegação funcional permitida pela revisão do solicitante. Conferir se a tabela utiliza corretamente o restante. | Descontar a largura real da barra; eliminar apenas margens/faixas vazias extras e recalcular a tabela. |
 | R11 — base/tokens únicos | Há seis famílias de renderização e estilos por módulo, não um componente que satisfaça todo o contrato. | Evoluir uma base única com configuração por tabela, sem acoplá-la ao ORM. |
 | R12 — evidência e cobertura | Esta auditoria oferece inventário completo das estruturas identificadas e amostra real; não homologação de todas as variantes. | Registrar validação por rota/aba, viewport, estados e interação antes de marcar cada item como concluído. |
 
@@ -200,8 +203,8 @@ Essas medidas descrevem o layout atual da amostra, não um limite definitivo da 
 - `ErpPagination.tsx:36–39`: mostra o total, mas não o intervalo obrigatório "1–20 de N".
 - `CompactItemsTable.tsx:22` e `PriceResearchDetailClient.tsx:38`: tamanho de página igual a oito.
 - `HealthReportsClient.tsx:89`: `<table>` dentro de `ErpTableContainer`, que já renderiza outra `<table>`; corrigir a estrutura na adequação.
-- `ModuleShell.tsx:300–303,342,400`: estado desktop começa aberto, mantém trilha recolhida e fecha somente o menu mobile no clique.
-- `rh/layout.tsx:45–46,68,108` e `compras/layout.tsx:35–36,63,100`: mesmo problema, com trilha recolhida de 80 px.
+- `ModuleShell.tsx:300–303,342,400` no snapshot: estado desktop começa expandido e o clique fecha somente o menu mobile. A trilha recolhida de ícones é o comportamento agora solicitado, não um problema a eliminar.
+- `rh/layout.tsx:45–46,68,108` e `compras/layout.tsx:35–36,63,100` no snapshot: revisar o recolhimento automático e o aproveitamento do restante da largura, preservando a barra de ícones.
 - `sst/layout.tsx:20`: ancestral do módulo declara rolagem vertical para todo o conteúdo; a análise não pode limitar-se ao componente da tabela.
 - `portal-servidor/layout.tsx:24`: usa `EmployeePortalShell`, fora do shell administrativo geral; validar sua composição e navegação no lote funcional.
 
@@ -253,9 +256,9 @@ As decisões não bloqueiam a análise dos outros casos nem autorizam exceções
 ### Etapa 1 — base comum + 20 estruturas compartilhadas
 
 1. Evoluir uma base comum em vez de manter estilos independentes por módulo.
-2. Implementar shell de listagem, tokens, paginação central de 20, célula de detalhes e diálogo acessível.
+2. Implementar shell de listagem, tokens, paginação central de 20, célula de detalhes condicionais ao espaço e diálogo acessível. Não adicionar ícones a todos os textos por categoria de campo.
 3. Implementar distribuição de larguras limitada ao contêiner, mínimos, teclado, restauração e revalidação de preferências.
-4. Ajustar `ModuleShell`, os shells próprios de RH/Compras e as composições específicas dos portais para recolhimento/overlay e largura liberada, conforme a navegação aplicável. Conferir também wrappers de módulo, como o scroll de SST.
+4. Ajustar os shells para recolhimento em barra de ícones, expansão manual e aproveitamento da largura restante. Preservar a referência visual do menu inicial de Saneamento; sobrepor a expansão apenas quando a largura for insuficiente para a grade. Conferir também wrappers de módulo, como o scroll de SST.
 5. Integrar título/ações ao contexto e manter uma única faixa de filtros; filtros excedentes em sobreposição.
 6. Tratar as 18 estruturas compartilhadas de Planejamento e duas de Cemitérios, com validação nas rotas consumidoras.
 
@@ -315,9 +318,9 @@ Verificar, em cada cenário aplicável:
 - Cabeçalho, registro 20, última coluna, botões e rodapé ficam dentro dos limites reais dos ancestrais.
 - Não há ocultação de colunas, recorte de foco/ícone ou rolagem não autorizada.
 - A fonte não é automaticamente reduzida para forçar o encaixe.
-- Cada valor truncado necessário tem botão de conteúdo completo; o diálogo preserva todo o texto e foco/teclado.
+- Valores integralmente legíveis não têm ícone redundante. Valores truncados e conteúdos compostos necessários têm botão de detalhes; o diálogo preserva todo o conteúdo e foco/teclado.
 - O arraste e o teclado não ampliam a soma das larguras além do espaço disponível.
-- O menu recolhe ao entrar/navegar e libera toda a largura prevista; abrir manualmente continua funcionando.
+- O menu recolhe para ícones ao entrar/navegar e libera a diferença de largura prevista; expandir manualmente continua funcionando e a barra de ícones permanece no modo recolhido.
 - Filtros não fazem a toolbar crescer verticalmente fora do cenário autorizado.
 - A validação usa também textos longos, valores grandes, acentos, nulos, datas e permissões diferentes.
 

@@ -10,7 +10,7 @@ export type OperationalColumn = {
   maxWidth?: number;
   resizable: boolean;
   sortable: boolean;
-  details: "always" | "overflow" | "none";
+  details: "overflow" | "none";
   align?: "left" | "center" | "right";
 };
 

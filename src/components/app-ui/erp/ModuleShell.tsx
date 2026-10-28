@@ -242,6 +242,11 @@ const iconRegistry = {
 
 export type ModuleIconName = keyof typeof iconRegistry;
 
+export function ModuleNavigationIcon({ name, className }: { name: ModuleIconName; className?: string }) {
+  const Icon = iconRegistry[name];
+  return <Icon className={className} aria-hidden="true" />;
+}
+
 export type ModuleNavItem = {
   title: string;
   href: string;

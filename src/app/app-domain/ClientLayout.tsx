@@ -68,7 +68,7 @@ export default function ClientLayout({
   const userRole = user?.role ? getRoleLabel(user.role) : "Gestor do Sistema";
   const initials = getInitials(userName);
   if (pathname === "/saneamento/unidades") return <OperationalWorkspace
-    title="Unidades Consumidoras" moduleTitle="Saneamento" institutionName={institution?.name || "Prefeitura Municipal"}
+    title="Unidades Consumidoras" moduleTitle="Saneamento" moduleCaption="Gestão de Água e Esgoto" moduleIcon="droplets" institutionName={institution?.name || "Prefeitura Municipal"}
     userId={user?.id || "anonymous"} userName={userName} userRole={userRole}
     navigation={sanitationNavigation} onLogout={handleLogout}
   ><UsageAuditTracker />{children}</OperationalWorkspace>;

@@ -5,7 +5,7 @@ import { unitColumns } from "../src/app/app-domain/saneamento/unidades/columns";
 
 test("as oito colunas cabem sem ampliar a grade; arrastes extremos preservam mínimos e ações", () => {
   assert.equal(OPERATIONAL_PAGE_SIZE, 20);
-  for (const available of [740, 741, 768, 800, 1024, 1280, 1366, 1920, 3840]) {
+  for (const available of [702, 703, 712, 740, 744, 768, 800, 1024, 1280, 1366, 1920, 3840]) {
     const result = fitOperationalWidths(unitColumns, available);
     assert.ok(result.fits);
     assert.equal(result.widths.reduce((sum, width) => sum + width, 0), available);
@@ -29,12 +29,12 @@ test("preferências de um monitor amplo são revalidadas no tablet sem perder ca
   const preferences = operationalWidthPreferences(unitColumns, edited);
   const restored = fitOperationalWidths(unitColumns, 1920, preferences);
   assert.deepEqual(restored.widths, edited);
-  const tablet = fitOperationalWidths(unitColumns, 768, preferences);
+  const tablet = fitOperationalWidths(unitColumns, 768 - 56, preferences);
   assert.ok(tablet.fits);
   assert.equal(tablet.widths.length, 8);
-  assert.equal(tablet.widths.reduce((sum, width) => sum + width, 0), 768);
+  assert.equal(tablet.widths.reduce((sum, width) => sum + width, 0), 768 - 56);
   tablet.widths.forEach((width, index) => assert.ok(width >= unitColumns[index].minWidth));
-  assert.equal(fitOperationalWidths(unitColumns, 739).fits, false, "Área insuficiente é um conflito explícito");
+  assert.equal(fitOperationalWidths(unitColumns, 701).fits, false, "Área insuficiente é um conflito explícito");
 });
 
 test("leitura por trechos preserva conteúdo integral, quebras e grafemas Unicode", () => {

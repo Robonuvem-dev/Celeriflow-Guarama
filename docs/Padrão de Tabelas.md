@@ -1,6 +1,8 @@
 # CelerFlow — padrão global de tabelas profissionais
 
-**Documento de instrução para o Codex · Versão 1.0 · 28/10/2026**
+**Documento de instrução para o Codex · Versão 1.1 · 28/10/2026**
+
+**Revisão do solicitante após o piloto:** recolher o menu significa manter a barra lateral estreita com os ícones, como na página inicial de Água e Saneamento; não remover o menu inteiro. O ícone de detalhes só aparece quando o conteúdo não cabe na largura real da célula ou quando há uma visualização composta que exige mais espaço. Texto integral já legível na célula não deve ganhar um ícone redundante. Estas orientações substituem as interpretações anteriores em contrário.
 
 ## Como executar esta instrução
 
@@ -24,12 +26,12 @@ A interface deve priorizar a leitura de muitos registros, o alinhamento de campo
 | R02 | Sem rolagem em computador, notebook e tablet | A página de listagem e a tabela cabem horizontal e verticalmente, com a última linha e a paginação acessíveis. |
 | R03 | Rolagem permitida no celular | A versão de celular mantém a paginação e pode rolar; o deslocamento horizontal, quando necessário, fica no contêiner da tabela. |
 | R04 | Uma linha visual por célula | Cabeçalhos e células não quebram em duas linhas e não empilham campos. |
-| R05 | Informação completa disponível | Textos médios, longos ou que não caibam têm um ícone visível para abrir o conteúdo integral em um pop-up. |
+| R05 | Informação completa disponível sem redundância | Texto que cabe é mostrado sem ícone. Conteúdo que não cabe ou exige visualização composta tem um ícone para abrir os detalhes completos. |
 | R06 | Colunas redimensionáveis | O usuário ajusta a largura arrastando as divisórias, dentro dos limites do espaço disponível. |
 | R07 | Estrutura vertical estável | A altura das linhas é uniforme; cabeçalho, área da tabela e paginação não se deslocam a cada página. |
 | R08 | Faixa intermediária mínima | Entre o header e a tabela existe apenas uma faixa compacta de busca e filtros. |
-| R09 | Menu lateral recolhível | O botão sanduíche permanece acessível e a navegação para uma subpágina recolhe o menu. |
-| R10 | Uso da área liberada | Com o menu recolhido, a tabela ocupa a largura útil disponível, sem uma faixa lateral vazia. |
+| R09 | Menu lateral recolhível para ícones | O botão sanduíche alterna menu expandido e barra estreita de ícones. Ao entrar na listagem, o menu recolhe para ícones e continua disponível. |
+| R10 | Uso da área liberada | A tabela ocupa a largura restante após descontar a barra de ícones real, sem margens ou faixas vazias adicionais. |
 | R11 | Implementação compartilhada | As telas usam o mesmo componente e os mesmos tokens, com configurações específicas por tabela. |
 | R12 | Verificação antes de concluir | A entrega demonstra a cobertura das telas, os testes executados e os conflitos ainda existentes. |
 
@@ -126,7 +128,7 @@ A sobreposição de filtros deve respeitar a mesma política de dispositivo e ro
 
 Usar margens pequenas e consistentes. Remover da região de listagem espaços decorativos excessivos, blocos vazios e cartões que repitam informações já presentes no contexto ou no rodapé. Se um indicador tiver função operacional necessária, preservar seu acesso em uma solução compacta e justificar sua posição.
 
-A área da tabela deve ocupar a largura liberada pelo menu e a altura restante do shell. Não exigir tela cheia do navegador para que o layout funcione.
+A área da tabela deve ocupar a largura liberada pelo recolhimento do menu, descontando a barra estreita de ícones que permanece visível, e a altura restante do shell. Não exigir tela cheia do navegador para que o layout funcione.
 
 ### 3.4 Acabamento visual
 
@@ -245,16 +247,19 @@ Campos de domínio compostos, como uma lista de horários, devem abrir uma apres
 
 Aplicar uma linha também aos títulos das colunas. Usar títulos curtos e compreensíveis, com acesso ao significado completo quando necessário.
 
-### 6.2 Textos médios, longos ou sem espaço
+### 6.2 Ícones somente quando o conteúdo precisa de mais espaço
 
-- Para descrição, observação, endereço extenso ou conteúdo composto: mostrar um botão com ícone de detalhes, sem preencher a célula com um parágrafo.
-- Para um identificador importante, como o nome do registro: preservar uma prévia de uma linha e adicionar o ícone ao lado quando necessário. Isso permite reconhecer a linha antes de abrir o conteúdo.
+- Para texto simples que cabe integralmente na célula, mostrar somente o texto, sem ícone de detalhes nem espaço vazio reservado para ele.
+- Para texto que não cabe: manter uma prévia de uma linha e disponibilizar o ícone de acesso integral. Não criar uma segunda linha na célula.
+- Para conteúdo composto que exige uma apresentação própria, como endereço completo, geolocalização com coordenadas ou planejamento com materiais/serviços: um ícone específico pode representar o conteúdo e abrir o pop-up correspondente.
+- O nome do campo não obriga o ícone: uma rua curta que já aparece completa na coluna Rua e número não precisa repeti-la em um pop-up.
+- Para um identificador importante, como o nome do registro: preservar sua leitura direta quando houver espaço e adicionar o ícone apenas quando necessário.
 - Se um texto normalmente curto deixar de caber após o ajuste de largura, disponibilizar também o acesso explícito ao valor completo.
 - Reticências podem compor a prévia; não podem ser a única forma de tratamento do texto cortado.
 - Tooltip pode ajudar a identificar a ação; não substitui o pop-up com o conteúdo integral.
 - Não depender exclusivamente de quantidade fixa de caracteres: a necessidade de detalhes depende do tipo de campo e do espaço real após o redimensionamento.
 
-Usar um componente interno de célula que reserve espaço para o ícone. Conter apenas a prévia do texto, sem recortar o botão, seu foco ou a própria célula. Reavaliar o espaço quando necessário após alteração de largura, dados e fontes.
+Usar um componente interno que compare o conteúdo com a largura efetivamente disponível. Reservar espaço para o botão somente quando ele for necessário; não medir contra uma largura artificialmente diminuída por um ícone que ainda não deveria existir. Conter apenas a prévia do texto, sem recortar o botão, seu foco ou a própria célula. Reavaliar após alteração de largura, dados e fontes: ao ampliar a coluna e o texto passar a caber, retirar o ícone novamente.
 
 O botão deve ter um nome acessível contextual, por exemplo: “Ver observação completa de [identificador]”. Reutilizar o conjunto de ícones do produto, sem emojis decorativos.
 
@@ -286,13 +291,16 @@ No celular, o diálogo pode ter rolagem interna, sem criar uma segunda área ver
 
 ## 8. Menu lateral e navegação
 
-- Disponibilizar o botão sanduíche em posição estável no header.
-- Ao entrar em uma subpágina de listagem, recolher automaticamente o menu lateral.
+- Disponibilizar o botão sanduíche em posição estável no cabeçalho do menu ou no header do aplicativo.
+- Manter dois estados: expandido, com nomes e ícones; recolhido, com a barra lateral estreita de ícones visíveis.
+- Ao entrar em uma subpágina de listagem, recolher automaticamente para a barra de ícones, sem fazer o menu desaparecer.
 - Aplicar o mesmo estado inicial ao acessar diretamente a rota ou recarregar a página.
-- Liberar a largura ocupada pelo menu, sem manter uma coluna vazia ou uma faixa de ícones sem necessidade.
-- Ao abrir o menu manualmente, preferir uma sobreposição que não reduza nem desorganize a tabela.
+- Liberar a diferença entre a largura expandida e a recolhida, mantendo somente a largura efetiva da barra de ícones. Essa barra é navegação funcional, não espaço desperdiçado.
+- Usar o mesmo comportamento e identidade do menu inicial de Água e Saneamento como referência. A tabela deve recalcular sua largura ao expandir/recolher.
+- Quando a largura não permitir manter o menu expandido ao lado da tabela, sua expansão pode sobrepor a área de conteúdo, preservando a barra recolhida e os mínimos da grade.
 - Recolher após a navegação efetiva para um item final. Apenas expandir um grupo do menu não deve ser confundido com navegar.
-- Permitir fechar a sobreposição pelo botão, por `Esc` e pelo comportamento externo apropriado, preservando o foco.
+- Permitir recolher pelo botão e por `Esc`; quando houver sobreposição, permitir também o fechamento externo apropriado, preservando o foco. Os ícones continuam disponíveis no estado recolhido.
+- Cada ícone deve ter nome acessível, indicação da rota ativa e identificação do destino ao passar o ponteiro.
 
 Evitar efeitos que fechem imediatamente o menu toda vez que o usuário o abre. O recolhimento automático deve estar associado à entrada na rota e à navegação, não a toda renderização.
 
@@ -400,13 +408,14 @@ Essas dimensões são cenários de verificação, não uma declaração prévia 
 - [ ] A página, seus contêineres intermediários e a tabela não apresentam overflow horizontal ou vertical nesses cenários.
 - [ ] A ausência de barras não esconde linhas, colunas, botões, ícones ou focos.
 - [ ] Nenhuma célula nem cabeçalho usa duas linhas visuais.
-- [ ] Textos médios, longos e textos que deixam de caber têm acionador visível para conteúdo integral.
+- [ ] Textos que cabem integralmente não exibem ícone redundante; textos que deixam de caber e conteúdos compostos necessários têm acionador visível para acesso integral.
+- [ ] O ícone aparece/desaparece conforme o conteúdo passa a não caber/caber após redimensionamento, sem reservar uma faixa vazia permanente na célula.
 - [ ] O pop-up mostra todo o conteúdo, com fechamento e navegação por teclado adequados.
 - [ ] Nos cenários sem rolagem, as larguras permanecem dentro do contêiner durante e depois do arraste.
 - [ ] As larguras mínimas impedem colunas inutilizáveis; as ações continuam acessíveis.
 - [ ] Preferências de largura são revalidadas ao trocar de dimensão e podem ser restauradas.
 - [ ] A toolbar permanece compacta e não cria linhas extras fora do celular.
-- [ ] O menu recolhe ao navegar, abre manualmente e libera a área prevista.
+- [ ] O menu recolhe para ícones ao navegar, expande manualmente e libera a diferença de largura prevista, sem desaparecer por completo.
 - [ ] Busca e filtros atuam sobre o conjunto correto e retornam à página 1.
 - [ ] Ordenação não fica limitada aos 20 registros da página atual.
 - [ ] Resultados vazios, carregamento, erro e última página incompleta preservam o layout.
@@ -434,10 +443,11 @@ O resultado não atende ao pedido se:
 - Libera rolagem em notebook ou tablet por causa de um breakpoint genérico, sem tratar a regra de dispositivo.
 - Mostra duas linhas na célula ou usa expansão de linhas para detalhes.
 - Corta texto sem um ícone que abra a informação completa.
+- Exibe um ícone de detalhes para apenas repetir um texto simples já integralmente legível na célula.
 - Nos cenários sem rolagem, aumenta a largura total ao arrastar uma coluna e empurra outra para fora da tela.
 - Esconde campos ou ações para aparentar responsividade.
 - Deixa a paginação ou a última linha fora da área visível.
-- Mantém o menu aberto após navegar para a subpágina ou deixa um espaço lateral vazio.
+- Mantém o menu expandido após navegar para a subpágina, remove a barra de ícones ao recolher ou deixa espaço lateral vazio além da navegação funcional.
 - Corrige somente uma tela e não identifica as demais no inventário.
 - Cria um estilo independente por módulo que volta a divergir do padrão comum.
 

@@ -26,7 +26,7 @@ function FullValueCell({ column, row, onDetails }: { column: OperationalColumn; 
     document.fonts.addEventListener("loadingdone", measure);
     return () => { observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
   }, [column.details, value]);
-  const details = value !== "—" && (column.details === "always" || (column.details === "overflow" && overflow));
+  const details = value !== "—" && column.details === "overflow" && overflow;
   return <div ref={container} className={`${styles.cell} ${column.type === "identifier" ? styles.identifier : ""}`}>
     <span ref={preview} className={`${styles.preview} ${column.type === "status" ? styles.status : ""}`} data-value={column.type === "status" ? value : undefined}>{value}</span>
     {details && <button type="button" className={styles.iconButton} aria-label={`Ver ${column.label.toLocaleLowerCase("pt-BR")} completo de ${row.label}`} title={`Ver ${column.label.toLocaleLowerCase("pt-BR")} completo`}
