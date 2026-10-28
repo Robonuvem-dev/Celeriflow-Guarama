@@ -2,14 +2,15 @@ import { ModuleShell, type ModuleNavGroup } from "@/components/app-ui/erp/Module
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 
 const navigation: ModuleNavGroup[] = [{
-  title: "Iluminaflow",
+  title: "IluminaFlow",
   items: [
-    { title: "Iluminação Pública", href: "/iluminacao-publica/iluminacao-energia", icon: "lightbulb" },
-    { title: "Ordens de Serviço", href: "/iluminacao-publica/ordens-servico", icon: "clipboardCheck" },
+    { title: "Dashboard", href: "/iluminacao-publica", icon: "layoutDashboard", exact: true },
+    { title: "IluminaFlow", href: "https://app.iluminaflow.com.br/", icon: "lightbulb" },
+    { title: "Site IluminaFlow", href: "https://www.iluminaflow.com.br/", icon: "globe" },
   ],
 }];
 
 export default async function LightingLayout({ children }: { children: React.ReactNode }) {
   await getTenantContextForModule("ILUMINACAO_PUBLICA");
-  return <ModuleShell moduleTitle="Iluminação Pública (Iluminaflow)" moduleCaption="Iluminação pública e operação de campo" moduleIcon="lightbulb" navigation={navigation}>{children}</ModuleShell>;
+  return <ModuleShell moduleTitle="Iluminação Pública" moduleCaption="Indicadores e acesso ao IluminaFlow" moduleIcon="lightbulb" navigation={navigation}>{children}</ModuleShell>;
 }
