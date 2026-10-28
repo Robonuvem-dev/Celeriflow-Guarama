@@ -12,13 +12,19 @@ type Secretariat = {
   name: string;
   acronym: string | null;
   managerName: string | null;
+  managerId: string | null;
+  manager: { id: string; name: string; registration: string | null; isActive: boolean; role: { name: string } | null } | null;
   isActive: boolean;
   _count: { departments: number };
 };
 
-export default function SecretariasClient({ secretariats }: { secretariats: Secretariat[] }) {
+type ManagerOption = { id: string; name: string; registration: string | null; secretariatId: string | null; role: { name: string } | null };
+
+export default function SecretariasClient({ secretariats, employees }: { secretariats: Secretariat[]; employees: ManagerOption[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", acronym: "", managerName: "" });
+  const [editForm, setEditForm] = useState({ name: "", acronym: "", managerId: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -27,6 +33,8 @@ export default function SecretariasClient({ secretariats }: { secretariats: Secr
     secretariat.name.toLowerCase().includes(normalizedSearchTerm)
     || secretariat.acronym?.toLowerCase().includes(normalizedSearchTerm)
     || secretariat.managerName?.toLowerCase().includes(normalizedSearchTerm)
+    || secretariat.manager?.name.toLowerCase().includes(normalizedSearchTerm)
+    || secretariat.manager?.role?.name.toLowerCase().includes(normalizedSearchTerm)
   ));
   const totalPages = Math.max(1, Math.ceil(filteredSecretariats.length / PAGE_SIZE));
   const activePage = Math.min(currentPage, totalPages);
@@ -38,18 +46,23 @@ export default function SecretariasClient({ secretariats }: { secretariats: Secr
 
   const handleEditClick = (secretariat: Secretariat) => {
     setEditingId(secretariat.id);
+    setError("");
     setEditForm({
       name: secretariat.name,
       acronym: secretariat.acronym || "",
-      managerName: secretariat.managerName || "",
+      managerId: secretariat.managerId || "",
     });
   };
 
   const handleSaveEdit = async () => {
-    if (!editingId || !window.confirm("Tem certeza que deseja salvar estas alterações?")) return;
-    const result = await updateSecretariat(editingId, editForm);
-    if (result.error) alert(result.error);
-    else setEditingId(null);
+    if (!editingId || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const result = await updateSecretariat(editingId, { ...editForm, managerId: editForm.managerId || null });
+      if (result.error) setError(result.error);
+      else setEditingId(null);
+    } finally { setSaving(false); }
   };
 
   const handleDeactivate = async (id: string) => {
@@ -84,6 +97,7 @@ export default function SecretariasClient({ secretariats }: { secretariats: Secr
         </label>
       </div>
 
+      {error && <p role="alert" className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
       <div className="min-h-0 flex-1 overflow-y-auto">
       <table className="w-full table-fixed text-left text-xs">
         <colgroup>
@@ -110,7 +124,7 @@ export default function SecretariasClient({ secretariats }: { secretariats: Secr
               <td className="px-3 font-medium text-slate-800">
                 {editingId === secretariat.id ? (
                   <input className="h-6 w-full rounded border border-slate-300 px-2 text-xs outline-none focus:border-blue-600" value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} />
-                ) : <span className="block truncate" title={secretariat.name}>{secretariat.name}</span>}
+                ) : <><span className="block truncate" title={secretariat.name}>{secretariat.name}</span><span className="block truncate text-[10px] font-normal text-slate-500 md:hidden">{secretariat.manager?.name || secretariat.managerName || "Sem responsável"}</span></>}
               </td>
               <td className="hidden px-3 text-slate-600 md:table-cell">
                 {editingId === secretariat.id ? (
@@ -119,8 +133,14 @@ export default function SecretariasClient({ secretariats }: { secretariats: Secr
               </td>
               <td className="hidden px-3 text-slate-600 md:table-cell">
                 {editingId === secretariat.id ? (
-                  <input className="h-6 w-full rounded border border-slate-300 px-2 text-xs outline-none focus:border-blue-600" value={editForm.managerName} onChange={(event) => setEditForm({ ...editForm, managerName: event.target.value })} />
-                ) : <span className="block truncate" title={secretariat.managerName || undefined}>{secretariat.managerName || "-"}</span>}
+                  <select aria-label={`Responsável por ${secretariat.name}`} className="h-7 w-full rounded border border-slate-300 px-1 text-xs" value={editForm.managerId} onChange={(event) => setEditForm({ ...editForm, managerId: event.target.value })}>
+                    <option value="">Sem responsável vinculado</option>
+                    {employees.filter(e => e.secretariatId === secretariat.id || !e.secretariatId).map(e => <option key={e.id} value={e.id}>{e.name} — {e.role?.name}{e.registration ? ` · ${e.registration}` : ""}</option>)}
+                  </select>
+                ) : <div className="py-1" title={secretariat.manager ? `${secretariat.manager.name} — ${secretariat.manager.role?.name || "Sem cargo"}` : secretariat.managerName || undefined}>
+                  <span className="block truncate font-medium text-slate-800">{secretariat.manager?.name || secretariat.managerName || "Não definido"}</span>
+                  <span className={`block truncate text-[10px] ${secretariat.manager ? "text-slate-500" : "text-amber-700"}`}>{secretariat.manager ? `${secretariat.manager.role?.name || "Sem cargo"}${!secretariat.manager.isActive ? " · Inativo" : ""}` : secretariat.managerName ? "Nome sem vínculo com servidor" : "Selecione um servidor"}</span>
+                </div>}
               </td>
               <td className="px-3 text-center text-slate-600">{secretariat._count.departments}</td>
               <td className="px-3 text-center">
@@ -131,7 +151,7 @@ export default function SecretariasClient({ secretariats }: { secretariats: Secr
               <td className="px-3">
                 {editingId === secretariat.id ? (
                   <div className="flex justify-end gap-1">
-                    <button type="button" onClick={handleSaveEdit} className="h-6 rounded bg-emerald-700 px-2 text-[10px] font-semibold text-white hover:bg-emerald-800">Salvar</button>
+                    <button type="button" disabled={saving} onClick={handleSaveEdit} className="h-6 rounded bg-emerald-700 px-2 text-[10px] font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Salvando" : "Salvar"}</button>
                     <button type="button" onClick={() => setEditingId(null)} className="h-6 rounded border border-slate-300 px-2 text-[10px] font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
                   </div>
                 ) : (

@@ -7,6 +7,7 @@ import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-c
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { calendarEventSchema } from "@/lib/administration/calendar-event";
+import { assertManagerEmployeeChange, resolveSecretariatManager, secretariatInputSchema } from "@/lib/administration/secretariat-manager";
 
 type ActionResult = { error: string | null };
 
@@ -47,9 +48,17 @@ export async function activateSecretariat(id: string) {
   return result;
 }
 
-export async function updateSecretariat(id: string, data: { name: string; acronym: string; managerName: string }) {
-  const result = await runAdministrativeMutation("SECRETARIAT", id, (context) => auditMutation(context, "SECRETARIAT", id, (tx) => tx.secretariat.update({ where: { id }, data }).then(() => undefined)));
-  if (!result.error) revalidatePath("/administracao/secretarias");
+export async function updateSecretariat(id: string, data: { name: string; acronym: string; managerId: string | null }) {
+  const parsed = secretariatInputSchema.safeParse(data);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const result = await runAdministrativeMutation("SECRETARIAT", id, (context) => auditMutation(context, "SECRETARIAT", id, async (tx) => {
+    const manager = await resolveSecretariatManager(tx, id, parsed.data.managerId);
+    await tx.secretariat.update({ where: { id }, data: { ...parsed.data, ...manager } });
+  }));
+  if (!result.error) {
+    revalidatePath("/administracao", "layout");
+    revalidatePath("/app-domain/administracao", "layout");
+  }
   return result;
 }
 
@@ -90,7 +99,10 @@ export async function updateDepartment(id: string, data: { name: string; descrip
 
 // Role.canSign remains informational; document signing has its own authorization flow.
 export async function deactivateRole(id: string) {
-  const result = await runAdministrativeMutation("ROLE", id, (context) => auditMutation(context, "ROLE", id, (tx) => tx.role.update({ where: { id }, data: { isActive: false } }).then(() => undefined)));
+  const result = await runAdministrativeMutation("ROLE", id, (context) => auditMutation(context, "ROLE", id, async (tx) => {
+    if (await tx.secretariat.count({ where: { manager: { roleId: id } } })) throw new Error("Substitua os responsáveis das secretarias antes de inativar este cargo.");
+    await tx.role.update({ where: { id }, data: { isActive: false } });
+  }));
   if (!result.error) revalidatePath("/administracao/cargos");
   return result;
 }
@@ -114,7 +126,10 @@ export async function updateRole(id: string, data: { name: string; description: 
 }
 
 export async function deactivateEmployee(id: string) {
-  const result = await runAdministrativeMutation("EMPLOYEE", id, (context) => auditMutation(context, "EMPLOYEE", id, (tx) => tx.employee.update({ where: { id }, data: { isActive: false } }).then(() => undefined)));
+  const result = await runAdministrativeMutation("EMPLOYEE", id, (context) => auditMutation(context, "EMPLOYEE", id, async (tx) => {
+    await assertManagerEmployeeChange(tx, id, { isActive: false });
+    await tx.employee.update({ where: { id }, data: { isActive: false } });
+  }));
   if (!result.error) revalidatePath("/administracao/servidores");
   return result;
 }
@@ -128,7 +143,11 @@ export async function activateEmployee(id: string) {
 export async function updateEmployee(id: string, data: { name: string; email: string; cpf: string; roleId: string | null; secretariatId: string | null; departmentId: string | null }) {
   const result = await runAdministrativeMutation("EMPLOYEE", id, async (context) => {
     const hierarchy = await validateEmployeeRelations(context.prisma, data);
-    await auditMutation(context, "EMPLOYEE", id, (tx) => tx.employee.update({ where: { id }, data: { ...data, secretariatId: hierarchy.secretariatId } }).then(() => undefined));
+    await auditMutation(context, "EMPLOYEE", id, async (tx) => {
+      await assertManagerEmployeeChange(tx, id, { ...data, secretariatId: hierarchy.secretariatId });
+      await tx.employee.update({ where: { id }, data: { ...data, secretariatId: hierarchy.secretariatId } });
+      await tx.secretariat.updateMany({ where: { managerId: id }, data: { managerName: data.name } });
+    });
   });
   if (!result.error) revalidatePath("/administracao/servidores");
   return result;

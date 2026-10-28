@@ -69,6 +69,8 @@ model Secretariat {
   name        String
   acronym     String?
   managerName String?
+  managerId   String?
+  manager     Employee? @relation("SecretariatManager", fields: [managerId], references: [id], onDelete: SetNull)
   departments Department[]
   units       AdministrativeUnit[]
   employees   Employee[]
@@ -92,6 +94,8 @@ model Secretariat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isActive  Boolean  @default(true)
+
+  @@index([managerId])
 }
 
 // Departamentos / Setores
@@ -324,6 +328,7 @@ model Employee {
 
   secretariatId String?
   secretariat   Secretariat? @relation(fields: [secretariatId], references: [id])
+  managedSecretariats Secretariat[] @relation("SecretariatManager")
 
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])

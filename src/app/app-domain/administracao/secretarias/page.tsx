@@ -11,13 +11,14 @@ export default async function SecretariasPage() {
   const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
   const secretariats = await prisma.secretariat.findMany({
     orderBy: { name: 'asc' },
-    include: { _count: { select: { departments: true } } }
+    include: { manager: { select: { id: true, name: true, registration: true, isActive: true, role: { select: { name: true } } } }, _count: { select: { departments: true } } }
   });
+  const employees = await prisma.employee.findMany({ where: { isActive: true, role: { isActive: true } }, select: { id: true, name: true, registration: true, secretariatId: true, role: { select: { name: true } } }, orderBy: { name: "asc" } });
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">
       <PageHeader title="Secretarias" icon={<Building2 className="size-4 shrink-0 text-blue-600" />} action={<Link href="/administracao/secretarias/novo" className="inline-flex h-7 items-center justify-center rounded bg-blue-700 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-800">Adicionar secretaria</Link>} />
-      <SecretariasClient secretariats={secretariats} />
+      <SecretariasClient secretariats={secretariats} employees={employees} />
     </PageFrame>
   );
 }
