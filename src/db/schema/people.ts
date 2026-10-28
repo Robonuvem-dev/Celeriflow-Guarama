@@ -1,0 +1,33 @@
+import { boolean, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { createId } from "../ids";
+
+export const people = pgTable("Person", {
+  id: text("id").primaryKey().$defaultFn(createId),
+  fullName: text("fullName").notNull(),
+  socialName: text("socialName"),
+  cpf: text("cpf"),
+  rg: text("rg"),
+  rgIssuer: text("rgIssuer"),
+  birthDate: timestamp("birthDate", { precision: 3 }),
+  gender: text("gender"),
+  raceColor: text("raceColor"),
+  nationality: text("nationality"),
+  birthPlace: text("birthPlace"),
+  maritalStatus: text("maritalStatus"),
+  profession: text("profession"),
+  educationLevel: text("educationLevel"),
+  motherName: text("motherName"),
+  fatherName: text("fatherName"),
+  motherUnknown: boolean("motherUnknown").notNull().default(false),
+  fatherUnknown: boolean("fatherUnknown").notNull().default(false),
+  status: text("status").notNull().default("Ativo"),
+  deathDate: timestamp("deathDate", { precision: 3 }),
+  estateApplied: boolean("estateApplied").notNull().default(false),
+  phonePrimary: text("phonePrimary"),
+  phoneSecondary: text("phoneSecondary"),
+  whatsapp: text("whatsapp"),
+  email: text("email"),
+  emailSecondary: text("emailSecondary"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
+}, table => [uniqueIndex("Person_cpf_key").on(table.cpf)]);

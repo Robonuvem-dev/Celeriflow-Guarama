@@ -2,7 +2,9 @@
 
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { parseInstanceConfigurationValues } from "@/lib/platform/instance-configuration";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { findOperationalInstance, saveInstanceParameterChanges } from "@/db/repositories/platform/instance-configuration";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -18,50 +20,20 @@ export async function saveInstanceConfiguration(rawInput: unknown): Promise<Acti
     const input = saveInstanceConfigurationSchema.parse(rawInput);
     const values = parseInstanceConfigurationValues(input.values);
     const context = await getTenantContextForSystemAdministration();
-    const instance = await context.prisma.configuracaoInstancia.findFirst({
-      orderBy: { createdAt: "asc" },
-      select: { id: true },
-    });
+    const instance = await findOperationalInstance(context.database ?? db);
 
     if (!instance || instance.id !== input.instanceId) {
       throw new Error("A instância operacional selecionada não está disponível.");
     }
 
-    const currentParameters = await context.prisma.configuracaoParametroInstancia.findMany({
-      where: { configuracaoInstanciaId: instance.id },
-      select: { chave: true, valor: true },
-    });
-    const currentValues = new Map(currentParameters.map((parameter) => [parameter.chave, parameter.valor]));
+    const currentValues = new Map(instance.parametros.map((parameter) => [parameter.chave, parameter.valor]));
     const changes = Object.entries(values).filter(([key, value]) => currentValues.get(key) !== value);
 
     if (changes.length === 0) {
       return { message: "Nenhuma configuração foi alterada." };
     }
 
-    await context.prisma.$transaction(async (tx) => {
-      for (const [key, value] of changes) {
-        await tx.configuracaoParametroInstancia.upsert({
-          where: {
-            configuracaoInstanciaId_chave: {
-              configuracaoInstanciaId: instance.id,
-              chave: key,
-            },
-          },
-          create: {
-            configuracaoInstanciaId: instance.id,
-            chave: key,
-            valor: value,
-          },
-          update: { valor: value },
-        });
-        await writeAuditEvent(tx, {
-          actorUsuarioId: context.user.id,
-          eventType: auditEventTypes.instanceConfigurationChanged,
-          targetType: "INSTANCE_CONFIGURATION",
-          targetId: `${instance.id}:${key}`,
-        });
-      }
-    });
+    await withDatabaseTransaction(databaseConnection, tx => saveInstanceParameterChanges(tx, instance.id, changes, context.user.id));
 
     revalidatePath("/configuracoes");
     revalidatePath("/configuracoes/instancia");

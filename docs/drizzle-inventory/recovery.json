@@ -1,0 +1,54 @@
+{
+  "result": "PASS",
+  "mode": "OFFLINE_REPLAY_AND_RESTORE",
+  "sourceSnapshotCapturedAt": "2026-10-28T01:28:43.995Z",
+  "sourceServer": "PostgreSQL 18.6 / Neon",
+  "rehearsalServer": "PostgreSQL 17.5 / PGlite 0.4.3",
+  "command": "node --max-old-space-size=512 scripts/drizzle-verify-recovery.mjs --replay --restore",
+  "artifacts": ".agent/drizzle/recovery-2026-10-28T03-24-45.842Z/",
+  "replay": {
+    "migrationsApplied": 156,
+    "scope": "public, excluding the installed legacy migration ledger",
+    "catalogDifferences": 0,
+    "relations": 998,
+    "columns": 10835,
+    "constraintsExcludingPg18NotNullObjects": 3807,
+    "indexes": 2752,
+    "functions": 163,
+    "triggers": 255,
+    "enumLabels": 17,
+    "views": 1,
+    "sequences": 1
+  },
+  "restore": {
+    "schemas": ["neon_auth", "public"],
+    "tables": 1006,
+    "records": 154016,
+    "catalogDifferences": 0,
+    "relations": 1008,
+    "columns": 10921,
+    "constraintsExcludingPg18NotNullObjects": 3827,
+    "indexes": 2773,
+    "functions": 163,
+    "triggers": 255,
+    "enumLabels": 17,
+    "views": 1,
+    "sequences": 1,
+    "dataVerification": "Every source file SHA-256 and row count checked; original JSON text restored through typed PostgreSQL records without JavaScript numeric parsing; sorted exact row_to_json hashes compared for every table, including the installed migration ledger."
+  },
+  "comparisonDetails": [
+    "CRLF/LF normalized only in textual catalog definitions.",
+    "PostgreSQL 18 named NOT NULL objects compared through column nullability, which is represented on pg_attribute in PostgreSQL 17.",
+    "Sequence definition and current value compared; local owner role differs from Neon provisioning.",
+    "Validated foreign keys and checks recreated after data loading; all captured indexes, functions, triggers and views recreated and compared.",
+    "The rehearsal operates on disposable local stores and never connects to production."
+  ],
+  "migrationLedgerProvenance": {
+    "result": "SEPARATE_UNRESOLVED_CHECKSUM_DIFFERENCES",
+    "exact": 125,
+    "lineEndingsOnly": 29,
+    "unresolved": 2,
+    "report": "docs/drizzle-inventory/migration-history.json",
+    "note": "Catalog/data restoration success does not replace historical SQL checksum provenance. The installed ledger and source SQL remain preserved."
+  }
+}

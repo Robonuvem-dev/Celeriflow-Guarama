@@ -4,23 +4,17 @@ import ServidoresClient from "./ServidoresClient";
 import { Users } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listActiveDepartmentOptions, listActiveRoleOptions, listActiveSecretariatOptions, listEmployeeDetails } from "@/db/repositories/administration/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function ServidoresPage() {
-  const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
-  const employees = await prisma.employee.findMany({
-    orderBy: { name: 'asc' },
-    include: {
-      role: true,
-      secretariat: true,
-      department: true
-    }
-  });
-
-  const roles = await prisma.role.findMany({ where: { isActive: true }, select: { id: true, name: true } });
-  const secretariats = await prisma.secretariat.findMany({ where: { isActive: true }, select: { id: true, name: true } });
-  const departments = await prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true, secretariatId: true } });
+  const context = await getTenantContextForModule("ADMINISTRACAO");
+  const employees = await listEmployeeDetails(context.database ?? db);
+  const roles = await listActiveRoleOptions(context.database ?? db);
+  const secretariats = await listActiveSecretariatOptions(context.database ?? db);
+  const departments = await listActiveDepartmentOptions(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

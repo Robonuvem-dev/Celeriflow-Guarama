@@ -2,10 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { assertAdministratorLifecycleChange, isSystemAdministratorEmail, isSystemAdministratorProfileCode, requiresSecretariatScope, SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
 import { AccessError, getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { adminAuth } from "@/lib/firebase/server";
 import { createFirebaseUserProvisioner } from "@/lib/firebase/user-provisioning";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { getPostgresError } from "@/db/errors";
+import { countSystemAdministrators, deleteManagedUser, findAccessProfile, findActiveUserEmployee, findManagedUser, findManagedUserLink, saveManagedUser, setManagedUserStatus } from "@/db/repositories/platform/system-administration";
 
 export async function upsertUsuario(data: {
   id?: string;
@@ -17,8 +20,8 @@ export async function upsertUsuario(data: {
 }) {
   try {
     const context = await getTenantContextForSystemAdministration();
-    const { prisma } = context;
-    const perfil = await prisma.configuracaoPerfil.findFirst({ where: { id: data.perfilId, ativo: true }, select: { id: true, codigo: true } });
+    const database = context.database ?? db;
+    const perfil = await findAccessProfile(database, data.perfilId, true);
     if (!perfil) return { error: "Selecione um perfil de acesso ativo." };
     if (isSystemAdministratorProfileCode(perfil.codigo)) {
       return { error: "O perfil técnico do administrador do sistema não pode ser atribuído nesta tela." };
@@ -30,13 +33,13 @@ export async function upsertUsuario(data: {
       return { error: "A conta técnica do administrador do sistema é gerenciada automaticamente." };
     }
     const existing = data.id
-      ? await prisma.usuario.findUnique({ where: { id: data.id }, include: { perfil: { select: { codigo: true } } } })
+      ? await findManagedUser(database, data.id)
       : null;
     if (data.id && !existing) return { error: "Usuário não encontrado." };
     if (existing && (isSystemAdministratorEmail(existing.email) || isSystemAdministratorProfileCode(existing.perfil.codigo))) {
       return { error: "A conta técnica do administrador do sistema não pode ser alterada nesta tela." };
     }
-    const duplicateEmailUser = await prisma.usuario.findUnique({ where: { email }, select: { id: true } });
+    const duplicateEmailUser = await findManagedUserLink(database, "email", email);
     if (duplicateEmailUser && duplicateEmailUser.id !== existing?.id) return { error: "Já existe um usuário com este e-mail." };
 
     const employeeId = data.employeeId || null;
@@ -44,23 +47,20 @@ export async function upsertUsuario(data: {
       return { error: "Este perfil exige vínculo com um servidor lotado em uma secretaria." };
     }
     if (employeeId) {
-      const employee = await prisma.employee.findFirst({
-        where: { id: employeeId, isActive: true },
-        select: { id: true, secretariatId: true },
-      });
+      const employee = await findActiveUserEmployee(database, employeeId);
       if (!employee) return { error: "Selecione um servidor ativo para vincular ao usuário." };
       if (requiresSecretariatScope(perfil.codigo) && !employee.secretariatId) {
         return { error: "O servidor selecionado precisa estar lotado em uma secretaria para utilizar este perfil." };
       }
 
-      const linkedUser = await prisma.usuario.findUnique({ where: { employeeId }, select: { id: true } });
+      const linkedUser = await findManagedUserLink(database, "employeeId", employeeId);
       if (linkedUser && linkedUser.id !== existing?.id) {
         return { error: "Este servidor já está vinculado a outro usuário." };
       }
     }
 
     if (existing) {
-      const activeSystemAdministratorCount = await prisma.usuario.count({ where: { ativo: true, perfil: { codigo: SYSTEM_ADMIN_PROFILE_CODE } } });
+      const activeSystemAdministratorCount = await countSystemAdministrators(database, SYSTEM_ADMIN_PROFILE_CODE);
       try {
         assertAdministratorLifecycleChange({
           actorUsuarioId: context.user.id,
@@ -83,22 +83,7 @@ export async function upsertUsuario(data: {
       firebaseUid: existing?.firebaseUid,
     });
 
-    await prisma.$transaction(async (tx) => {
-      const user = existing
-        ? await tx.usuario.update({
-          where: { id: existing.id },
-          data: {
-            nome: data.nome.trim(), email, firebaseUid, perfilId: data.perfilId, employeeId, ativo: data.ativo,
-            permissoesModulo: { deleteMany: {} },
-          },
-        })
-        : await tx.usuario.create({
-          data: {
-            nome: data.nome.trim(), email, firebaseUid, perfilId: data.perfilId, employeeId, ativo: data.ativo,
-          },
-        });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "USUARIO", targetId: user.id });
-    });
+    await withDatabaseTransaction(databaseConnection, tx => saveManagedUser(tx, { nome: data.nome.trim(), email, firebaseUid, perfilId: data.perfilId, employeeId, ativo: data.ativo }, context.user.id, existing?.id));
     revalidatePath("/configuracoes/usuarios");
     revalidatePath("/portal-servidor");
     return { error: null };
@@ -111,13 +96,13 @@ export async function upsertUsuario(data: {
 export async function toggleUsuarioStatus(id: string, ativo: boolean) {
   try {
     const context = await getTenantContextForSystemAdministration();
-    const { prisma } = context;
-    const target = await prisma.usuario.findUnique({ where: { id }, include: { perfil: { select: { codigo: true } } } });
+    const database = context.database ?? db;
+    const target = await findManagedUser(database, id);
     if (!target) return { error: "Usuário não encontrado." };
     if (isSystemAdministratorEmail(target.email) || isSystemAdministratorProfileCode(target.perfil.codigo)) {
       return { error: "A conta técnica do administrador do sistema não pode ser desativada." };
     }
-    const activeSystemAdministratorCount = await prisma.usuario.count({ where: { ativo: true, perfil: { codigo: SYSTEM_ADMIN_PROFILE_CODE } } });
+    const activeSystemAdministratorCount = await countSystemAdministrators(database, SYSTEM_ADMIN_PROFILE_CODE);
     try {
       assertAdministratorLifecycleChange({
         actorUsuarioId: context.user.id,
@@ -132,10 +117,7 @@ export async function toggleUsuarioStatus(id: string, ativo: boolean) {
     }
     const provisioner = createFirebaseUserProvisioner(adminAuth);
     const { firebaseUid } = await provisioner.provision({ email: target.email, displayName: target.nome, disabled: !ativo, firebaseUid: target.firebaseUid });
-    await prisma.$transaction(async (tx) => {
-      await tx.usuario.update({ where: { id }, data: { ativo, firebaseUid } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "USUARIO", targetId: id });
-    });
+    await withDatabaseTransaction(databaseConnection, tx => setManagedUserStatus(tx, id, ativo, firebaseUid, context.user.id));
     revalidatePath("/configuracoes/usuarios");
     return { error: null };
   } catch (error) {
@@ -147,15 +129,15 @@ export async function toggleUsuarioStatus(id: string, ativo: boolean) {
 export async function deleteUsuario(id: string) {
   try {
     const context = await getTenantContextForSystemAdministration();
-    const { prisma } = context;
-    const target = await prisma.usuario.findUnique({ where: { id }, include: { perfil: { select: { codigo: true } } } });
+    const database = context.database ?? db;
+    const target = await findManagedUser(database, id);
     if (!target) return { error: "Usuário não encontrado." };
     if (isSystemAdministratorEmail(target.email) || isSystemAdministratorProfileCode(target.perfil.codigo)) {
       return { error: "A conta técnica do administrador do sistema não pode ser excluída." };
     }
     if (target.id === context.user.id) return { error: "Você não pode excluir seu próprio usuário." };
 
-    const activeSystemAdministratorCount = await prisma.usuario.count({ where: { ativo: true, perfil: { codigo: SYSTEM_ADMIN_PROFILE_CODE } } });
+    const activeSystemAdministratorCount = await countSystemAdministrators(database, SYSTEM_ADMIN_PROFILE_CODE);
     try {
       assertAdministratorLifecycleChange({
         actorUsuarioId: context.user.id,
@@ -169,15 +151,12 @@ export async function deleteUsuario(id: string) {
       return { error: error instanceof Error ? error.message : "Não foi possível alterar o acesso administrativo." };
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.usuario.delete({ where: { id } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "USUARIO", targetId: id });
-    });
+    await withDatabaseTransaction(databaseConnection, tx => deleteManagedUser(tx, id, context.user.id));
     revalidatePath("/configuracoes/usuarios");
     return { error: null };
   } catch (error) {
     console.error(error);
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2003") {
+    if (["23503", "23001"].includes(getPostgresError(error)?.code ?? "")) {
       return { error: "Não é possível excluir este usuário porque ele possui histórico ou registros vinculados. Inative-o para revogar o acesso." };
     }
     return { error: error instanceof AccessError ? error.message : "Não foi possível excluir o usuário. Tente novamente." };

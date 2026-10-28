@@ -3,13 +3,12 @@ import { BarChart3 } from "lucide-react";
 import { ReportsClient } from "../components/ReportsClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listSavedReports } from "@/db/repositories/sanitation/queries";
 
 export default async function RelatoriosPage() {
-  const { prisma } = await getTenantContextForModule("SANEAMENTO");
-  const reports = await prisma.sanSavedReport.findMany({
-    select: { id: true, name: true, type: true, period: true, format: true, active: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const context = await getTenantContextForModule("SANEAMENTO");
+  const reports = await listSavedReports(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

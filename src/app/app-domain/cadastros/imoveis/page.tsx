@@ -4,23 +4,14 @@ import { Home, Plus, Upload, Download } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import ImoveisClient from "./ImoveisClient";
+import { db } from "@/db/client";
+import { listRealEstates } from "@/db/repositories/registry/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImoveisPage() {
-  const { prisma } = await getTenantContextForModule("CADASTROS");
-  const realEstates = await prisma.realEstate.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      neighborhood: true,
-      taxpayer: {
-        include: {
-          person: true,
-          company: true,
-        }
-      }
-    }
-  });
+  const context = await getTenantContextForModule("CADASTROS");
+  const realEstates = await listRealEstates(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

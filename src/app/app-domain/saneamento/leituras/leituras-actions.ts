@@ -4,6 +4,8 @@ import { getTenantContextForModule, getTenantContextForModuleOperation } from "@
 import { processWaterReadingAndBill } from "@/lib/saneamento/saneamento-engine";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { db } from "@/db/client";
+import { listLegacyWaterReadings } from "@/db/repositories/sanitation/queries";
 
 type ActionResult<T = unknown> = { error?: string; data?: T };
 
@@ -27,7 +29,7 @@ export async function processMeterReadingAction(input: z.infer<typeof readingSch
 
   try {
     const context = await getTenantContextForModuleOperation("SANEAMENTO", "update");
-    const result = await processWaterReadingAndBill(context.prisma, parsed.data);
+    const result = await processWaterReadingAndBill(context.database ?? db, parsed.data);
 
     revalidatePath("/saneamento/leituras");
     return { data: result };
@@ -39,10 +41,7 @@ export async function processMeterReadingAction(input: z.infer<typeof readingSch
 export async function getWaterReadingsAction() {
   try {
     const context = await getTenantContextForModule("SANEAMENTO");
-    const readings = await context.prisma.waterMeterReading.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 15,
-    });
+    const readings = await listLegacyWaterReadings(context.database ?? db);
     return { data: readings };
   } catch (err) {
     return { error: err instanceof Error && err.message ? err.message : "Erro ao carregar leituras de hidrômetros." };

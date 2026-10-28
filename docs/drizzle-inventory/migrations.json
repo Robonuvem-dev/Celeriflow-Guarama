@@ -1,0 +1,782 @@
+[
+  {
+    "name": "20261009232000_baseline",
+    "sha256": "a6ad6ecabb6124fd512cbaf934f3546c1574099a6c2c56f4b0c096a1670514d4",
+    "bytes": 686248
+  },
+  {
+    "name": "20261009232100_database_guards",
+    "sha256": "96058acf9363a6fbb445e43b5a8eace44ebb57b13f58dc21ab4d4c1ac56b6bb2",
+    "bytes": 24257
+  },
+  {
+    "name": "20261009232200_reference_data",
+    "sha256": "cd641185a2c05a0e7d23441006625c81b4c126889f46e0318ab8eae3b798b047",
+    "bytes": 4630
+  },
+  {
+    "name": "20261009232300_remove_siafic",
+    "sha256": "a5fea1917d345310c2861128cb42e8b34d3c0984fe8025b1271b444489699ff7",
+    "bytes": 379
+  },
+  {
+    "name": "20261010000000_align_ibema_modules",
+    "sha256": "f814ffacc2973886203cc2ddf6ab1f36d5701aa4b0e6590fc596ddfebbd572ca",
+    "bytes": 477
+  },
+  {
+    "name": "20261010010000_standardize_module_catalog",
+    "sha256": "aa991cf84d33980f7ecbb72897d94ef8534c0e38a36567c1d4dab8b25c4a53ad",
+    "bytes": 1177
+  },
+  {
+    "name": "20261010020000_default_access_profiles",
+    "sha256": "6f6a2bdf54a9b11ac4ed55ad6c3e7b7663cfbba30c2299116107699ea58ee9f9",
+    "bytes": 3969
+  },
+  {
+    "name": "20261010030000_add_cemiterios_auditoria_suporte_tecnico_modules",
+    "sha256": "1190b173cc59b9049016a48cce881e26a145d6e56d98cdab3d358017f9b7f313",
+    "bytes": 612
+  },
+  {
+    "name": "20261010040000_canonical_module_display_names",
+    "sha256": "ac08333e012356c275aad40f711c4181547b545ca5dd27c9114c97009f02e435",
+    "bytes": 397
+  },
+  {
+    "name": "20261010050000_social_suas_catalogs",
+    "sha256": "8908ada94f5dee03dae818360a0be531b58b3b9c0a67cf0c83e44d37bc99f61f",
+    "bytes": 988
+  },
+  {
+    "name": "20261010060000_social_unit_identification",
+    "sha256": "9c8fb78ae0eb2a000d62b0bfe09bf90d37627ce1b0a1f85f3a94f173d5608371",
+    "bytes": 605
+  },
+  {
+    "name": "20261010070000_social_professional_access",
+    "sha256": "f407f421f7f9919a4f02465afc6a4fba60c6c5c905fdc3900dff8dc914b71476",
+    "bytes": 1711
+  },
+  {
+    "name": "20261010080000_social_person_history",
+    "sha256": "7a2896b0c21c326792b534076449ef2ea06434251b449daf9c874580b3e6838d",
+    "bytes": 3001
+  },
+  {
+    "name": "20261010090000_social_benefit_workflow",
+    "sha256": "42508c3e05068e05ca95f857e1f46454637d13c5856f0fc95838679d891367b8",
+    "bytes": 4326
+  },
+  {
+    "name": "20261010100000_complete_cemetery_domain",
+    "sha256": "02fea0147d0b111882c7579d93d409457d51c4f830458a834f9bc903219ccfb9",
+    "bytes": 9709
+  },
+  {
+    "name": "20261010100000_social_network_referrals",
+    "sha256": "d90ea3259dd7fcf61fc72a029838b88d45367c01e9982789cfa016771ea85c5d",
+    "bytes": 1958
+  },
+  {
+    "name": "20261010110000_add_a1_certificate_evidence",
+    "sha256": "35c70dc77eda17d803acc9488efec85ad31159d37cc39f5a13c75b94ed25b11d",
+    "bytes": 4552
+  },
+  {
+    "name": "20261010120000_add_stock_return_reversal",
+    "sha256": "8f17346e87cdaf88875251861499f5e235b7fd64f9367aaa846d70d4890ce0ba",
+    "bytes": 928
+  },
+  {
+    "name": "20261010130000_add_master_data_foundation",
+    "sha256": "1b1bfd04980e8c8b8fb79667ce700d0b84af6db1027ce7ee93165a9a14a04337",
+    "bytes": 26560
+  },
+  {
+    "name": "20261010140000_add_planning_sst_modules",
+    "sha256": "bacb8c925c3fabb35a3a41cd3ffe589a0548af1a8675015e3b9fe8224bf6f51c",
+    "bytes": 493
+  },
+  {
+    "name": "20261010150000_add_sst_certificates",
+    "sha256": "a402d341d70cf8a87fb1d13615a7419712b22d1ce079fd376cb55495016a1a64",
+    "bytes": 6721
+  },
+  {
+    "name": "20261010160000_add_sst_agenda_boards",
+    "sha256": "23c65399753af7f3057a690612f99296deee5f75bfd753ac2f31c85d558363e5",
+    "bytes": 4484
+  },
+  {
+    "name": "20261010160000_construction_foundation",
+    "sha256": "646edbe51ed4084836fefdcc6c3fbca4c412925e8bde578ed7a1ce4b341aaea7",
+    "bytes": 6476
+  },
+  {
+    "name": "20261010170000_add_sst_exposure_groups",
+    "sha256": "a2e2b016936ba99d774b380d2336c0e5c0b0cf67ad55321c6eb7589bc9002160",
+    "bytes": 822
+  },
+  {
+    "name": "20261010170000_construction_rules_profiles",
+    "sha256": "0475fed249bc9c4f61e65c53340ef8066789e07ea539535ca194a85841ca9f89",
+    "bytes": 5103
+  },
+  {
+    "name": "20261010180000_add_sst_programs",
+    "sha256": "f0b7d18bb5740f935fe0e38e616461eac896c24253fa0d8300559b6fdc94887d",
+    "bytes": 1986
+  },
+  {
+    "name": "20261010180000_construction_project_reviews",
+    "sha256": "ebea53b55ae6c73d41499a8f8e7da49f8e23b9116129c0b2dd0a095aedd923cd",
+    "bytes": 1528
+  },
+  {
+    "name": "20261010190000_add_sst_aso",
+    "sha256": "def0cf4ef30ad410f80b33b0f9705337379344ea045c1c60ecaed7cb4aab3efb",
+    "bytes": 4660
+  },
+  {
+    "name": "20261010190000_construction_analyst_replacement",
+    "sha256": "b34eeed430d31b232a361816e40014fc82de536b80058a64e4b1745cb98bc46e",
+    "bytes": 1205
+  },
+  {
+    "name": "20261010200000_construction_portal_participation",
+    "sha256": "5e6a10284ba82815e6ba01a33202e565f1d2c93d0cb5d34e6437e9a0a954ae40",
+    "bytes": 3901
+  },
+  {
+    "name": "20261010210000_add_sst_questionnaires",
+    "sha256": "acc508a4e0a1970aa67109954a49ffad270ea9b7c0aa34edfeedf3d3f73df2f6",
+    "bytes": 2959
+  },
+  {
+    "name": "20261010210000_construction_external_requests",
+    "sha256": "b3206cc6a61828b3ac7908039c880f1b5d5bd1bc4734783be4d898eb35380626",
+    "bytes": 3083
+  },
+  {
+    "name": "20261010220000_construction_taxation",
+    "sha256": "abc20c41485dc9b6af152426c44b46a0eceb7d49edcfd963091037a6354953c8",
+    "bytes": 3246
+  },
+  {
+    "name": "20261010230000_construction_documents",
+    "sha256": "254edbeff36c2d17bda39386d8d554a8c4907abdc00605ac1bda130b7bfa2a04",
+    "bytes": 3827
+  },
+  {
+    "name": "20261010240000_construction_lifecycle",
+    "sha256": "c361cb3c73f1b0c484bae99f7b56b8a9965773236826a8e5607206f7bcbb2671",
+    "bytes": 3514
+  },
+  {
+    "name": "20261010250000_construction_enforcement",
+    "sha256": "d2b6912431da656cb200977b027e60ad5148cdf773404583ee440f1cfa19a5c2",
+    "bytes": 6808
+  },
+  {
+    "name": "20261010260000_construction_export_extraction",
+    "sha256": "be5da2493ce34afe7e86780d764c2a37b673f7a663f20c04f778f692ab542151",
+    "bytes": 2915
+  },
+  {
+    "name": "20261010270000_construction_company_validity",
+    "sha256": "99c059dd2a764f7f9b259ecee72b782102a9d3145762427b0761cf2cc69b40af",
+    "bytes": 1209
+  },
+  {
+    "name": "20261010280000_construction_consultations",
+    "sha256": "cd673038d8340c43a3fb627cf8aba93b001e4129beac4b2257fab5e0ca5ab85b",
+    "bytes": 1866
+  },
+  {
+    "name": "20261010290000_construction_automatic_viability",
+    "sha256": "c3ff88e78ada58a198e151d3d9236bd80d2dbf769cf87e4a67183b4c2b6e8167",
+    "bytes": 1488
+  },
+  {
+    "name": "20261010300000_construction_internal_documents",
+    "sha256": "3cbe20e9d8674fe0be1add9a2bebf2d3daa32cb4ada667a059878fe1e5dede83",
+    "bytes": 1041
+  },
+  {
+    "name": "20261010330000_construction_inspection_deadlines",
+    "sha256": "07c6b55c6e5e6bfd8b1998bead0d3bb549b01a780269680f92bbd241280b76c1",
+    "bytes": 2642
+  },
+  {
+    "name": "20261010340000_construction_project_stamp",
+    "sha256": "964dbd8284b17c92434612f5992a0946bf7d3e2dbd0a798dd751ef8d13a77635",
+    "bytes": 3201
+  },
+  {
+    "name": "20261011010000_add_sst_clinical_services",
+    "sha256": "d8822bb147ec2e24a48ec2c74ed02d5808809d5d48dacde896850b8b5a5d6fbb",
+    "bytes": 6941
+  },
+  {
+    "name": "20261011010000_cemetery_integrity",
+    "sha256": "a6287b47534be7e746e154258675d92adb458b72575536115e940e21570e8b6f",
+    "bytes": 1382
+  },
+  {
+    "name": "20261011020000_add_sst_equipment",
+    "sha256": "fbe23c52ee7711a03d1026aac43e0389ad34e587cae6e95b34b883c0f6426db8",
+    "bytes": 5670
+  },
+  {
+    "name": "20261011020000_cemetery_automatic_fees",
+    "sha256": "8730ecbb92d5bbf317c74eb4c1eebeed54bbf68687642ce59e75cafc9cee84c5",
+    "bytes": 3891
+  },
+  {
+    "name": "20261011030000_add_sst_accidents",
+    "sha256": "76a295a85036d43a4d3f3f66abea11889bfacaa1139a099e472887a3de7fb755",
+    "bytes": 7753
+  },
+  {
+    "name": "20261011030000_hr_workforce_foundation",
+    "sha256": "b0da3ace2e59d743cd4584c983729dbc87d0b0ba26156e86b8f0226d99ffd1f2",
+    "bytes": 8882
+  },
+  {
+    "name": "20261011040000_add_sst_prevention",
+    "sha256": "79e6b76d49584cb327f191ef11bbd0d3a8484f32e70095987803af9bc93246b3",
+    "bytes": 3049
+  },
+  {
+    "name": "20261011050000_add_sst_health_benefits",
+    "sha256": "2ec78701a750f8626a88244725bc79183251929c172b86d3e4be135bc0bdff54",
+    "bytes": 9465
+  },
+  {
+    "name": "20261011060000_add_sst_integrations",
+    "sha256": "fd9ae1c42b29b5dd23428f86db9eb15b52712b8b99be0d8102c02fc9e04b6640",
+    "bytes": 7484
+  },
+  {
+    "name": "20261011070000_add_sst_functional_history",
+    "sha256": "4c5539b09e8644d419f778a953df046d4114e16f0f1bacb64a35519331e0a9f0",
+    "bytes": 14283
+  },
+  {
+    "name": "20261011080000_complete_sst_aso_workflow",
+    "sha256": "a945c715f1f0f9619f245445c07d044b4dca86a047992b3f295e59422a230ee8",
+    "bytes": 7393
+  },
+  {
+    "name": "20261011090000_add_sst_payroll_origins",
+    "sha256": "b81e9f944e42a91502a6885345d96f30fdf1e44498e2193c2785a57ebe64a4a3",
+    "bytes": 23320
+  },
+  {
+    "name": "20261011100000_complete_sst_cat_layout",
+    "sha256": "1d73f25db1b77ed63553916a963088e05f462b83bbe2d40f3c12be8b0d69c356",
+    "bytes": 2945
+  },
+  {
+    "name": "20261011110000_add_sst_leave_payroll_origins",
+    "sha256": "574ce354528aa33fffe46175a578f109ebf53344852b27b613dfc6d4fa95de89",
+    "bytes": 25591
+  },
+  {
+    "name": "20261011120000_harden_sst_clinical_integrity",
+    "sha256": "cf401dae90c2ccc80c739a4277c49bbcac3daebe2b7f6627fd7594047bc55265",
+    "bytes": 2512
+  },
+  {
+    "name": "20261011130000_hr_contract_temporal_revisions",
+    "sha256": "3f5d8a57c8ba0c693da4868bb6088e6474defe2392bfa52b6f22130583a70d6c",
+    "bytes": 711
+  },
+  {
+    "name": "20261011150000_add_planning_scoped_instruments",
+    "sha256": "71d93ca582b42e8adb046c48147b04136032403fe721d8d25da5d06cc722b341",
+    "bytes": 13640
+  },
+  {
+    "name": "20261011160000_add_planning_import_batches",
+    "sha256": "e360aa98cc59d6b6e777ef345a8eea2de34f6d307e9332134165abadf46fc02f",
+    "bytes": 894
+  },
+  {
+    "name": "20261011160000_hr_consignment_schedule",
+    "sha256": "71ac51cab3db791b284de006763091011147581b94d4dda253d8cd77e73697fe",
+    "bytes": 2581
+  },
+  {
+    "name": "20261011170000_planning_immutable_movements",
+    "sha256": "c748d29d562300938b19d82f25e7c5d4571559ba10e5d29342ac6cb9e9bc7bc2",
+    "bytes": 1553
+  },
+  {
+    "name": "20261011180000_planning_legal_operations",
+    "sha256": "4dfd922fc1f20de850532b10afc8057b0f164c25cc9462b5a334e23d895d4688",
+    "bytes": 12419
+  },
+  {
+    "name": "20261011190000_planning_internal_connections",
+    "sha256": "9cd815ff5b1a6d4e2e21c49e054e3ca529757c9eed2837d2424b9845358796e7",
+    "bytes": 2178
+  },
+  {
+    "name": "20261011200000_planning_accounting_command_integrity",
+    "sha256": "762a2ccedf8fd3fe932dbc9d920d388a1ff07f8dd9161fb3c862e8cd3899ec96",
+    "bytes": 985
+  },
+  {
+    "name": "20261011210000_planning_catalog_maintenance",
+    "sha256": "3d2ecc93dde0b5e87811454248c8218f995ec7f07278a032ae92aa62ee3ca97e",
+    "bytes": 8184
+  },
+  {
+    "name": "20261011220000_planning_publication",
+    "sha256": "d2f6e264f67f0b62d6ad5ee8acf027e0c61f64d7325e2f2acd96911e2314f52f",
+    "bytes": 2798
+  },
+  {
+    "name": "20261012100000_accounting_entity_unit_scope",
+    "sha256": "c8bd95332bbca222c4e07a30fe588c244788be022974293168d8da9fa1e7cdc5",
+    "bytes": 1819
+  },
+  {
+    "name": "20261012110000_entity_scoped_financial_years",
+    "sha256": "2de39c1bbadbe3a38e0eb97a222460dc78aef6e584323e80ea673c7383bbdde3",
+    "bytes": 2213
+  },
+  {
+    "name": "20261012120000_accounting_year_entity_guard",
+    "sha256": "811a8bc43d93a5b9e72d64ab17f1e887ed99ddb9af33346db70660b50ade24a3",
+    "bytes": 767
+  },
+  {
+    "name": "20261012130000_scoped_year_requires_accounting_scope",
+    "sha256": "3f44da4627f926ed858aa832bbc7c0564f25aa55f1d54449e269eb44432b6da9",
+    "bytes": 1017
+  },
+  {
+    "name": "20261012140000_revenue_budget_unit_scope",
+    "sha256": "bc1009de7c936a817dc81114c7a00ddf1fe559f40589994ea5dadf401541cf6e",
+    "bytes": 1788
+  },
+  {
+    "name": "20261012150000_accounting_year_scope_update_guard",
+    "sha256": "4bb599e1e9b39f44481e96cd7dcd6174bccb3a877957fceb97855dad4679944c",
+    "bytes": 406
+  },
+  {
+    "name": "20261012160000_internal_control_budget_scope",
+    "sha256": "c4af29dc79c0e1e1006430351ea2ea8211410d282096ec32b270d884d9d3300f",
+    "bytes": 461
+  },
+  {
+    "name": "20261012170000_shared_official_catalog_accounts",
+    "sha256": "1c950e242d65aa8ddd5ec74ab1e2ab0ff9addf5785e36fe02751cd57e51f98cd",
+    "bytes": 687
+  },
+  {
+    "name": "20261012210000_bank_reconciliation_allocations",
+    "sha256": "6b75b40c9142e45858fbcf78c16de50a6f8fda1c71df4caba8d48d27f04a3419",
+    "bytes": 3482
+  },
+  {
+    "name": "20261012220000_functional_portal_bindings_recruitment",
+    "sha256": "c0e474d610aac46ed88e8b9ac7d12a7fdcc88049c487c6ee5b158545efd6d5df",
+    "bytes": 7428
+  },
+  {
+    "name": "20261013010000_asset_valuation_scope_decimal",
+    "sha256": "126ede345a0102c5c80d1c8cc139f639e4f60869359b62ec6c89a1cacbbb13b9",
+    "bytes": 1638
+  },
+  {
+    "name": "20261013010000_transparency_publications",
+    "sha256": "69b2f1372f4cbb0e7c3fb6c4df2903a650ea507c28b7fb5102347a31c10e5fa1",
+    "bytes": 1426
+  },
+  {
+    "name": "20261013020000_active_debt_municipal_origin",
+    "sha256": "27c15ab5401334d9fecd75ecd86c9ef9c30f7a6ff879fbb43c6e924b58c4e0f5",
+    "bytes": 766
+  },
+  {
+    "name": "20261013020000_transparency_citizen_access",
+    "sha256": "ca67e58b82b3d3cdb5279f2d92ca490cd5ce6120ebed032b828f49109aa5baaf",
+    "bytes": 1247
+  },
+  {
+    "name": "20261013030000_transparency_file_preservation",
+    "sha256": "4dc1e746687b943a58663022f75a37f3bf88a8723010bf8c22710648ada15d05",
+    "bytes": 1312
+  },
+  {
+    "name": "20261013040000_transparency_native_compliance_lai",
+    "sha256": "95f560cdc2b2b1b77cbb933c52ff4d3fc7dcecb0e6cc4fa1fcd257b70a5a67d7",
+    "bytes": 3334
+  },
+  {
+    "name": "20261013050000_transparency_attendance_satisfaction",
+    "sha256": "22a789c63c99e938f06e94d554010fe7ce3ffed346ffc6be05a7057b9d0c87d6",
+    "bytes": 1007
+  },
+  {
+    "name": "20261013060000_transparency_document_classification",
+    "sha256": "ef9a52f3cb38cda28b7c14a750f1ce77298cdd4c396ebf32903a2a88757dd06a",
+    "bytes": 530
+  },
+  {
+    "name": "20261013070000_citizen_process_tracking",
+    "sha256": "251f91e0cfe6293e80ea7e536753d9447595bc65c9f9a796e3d7695aa281e515",
+    "bytes": 1078
+  },
+  {
+    "name": "20261013100000_internal_control_decision_history",
+    "sha256": "d22838a7c08970f5fd0fc9e42d5a30a4f83391ff5fb5a756f8f55a422eae1181",
+    "bytes": 745
+  },
+  {
+    "name": "20261013110000_integrated_portal_services",
+    "sha256": "b3694ab9284ee615fbb792cbffbf8c8d31286210162c55ca1aa44973ed253cdd",
+    "bytes": 8215
+  },
+  {
+    "name": "20261013193000_statement_original_file",
+    "sha256": "fb3e84991ee9a3140be57ba7109c840718e74f4f15f456cdd12042ca5f34c980",
+    "bytes": 238
+  },
+  {
+    "name": "20261013200000_municipal_cost_ledger",
+    "sha256": "2383fd10dd74b92045462a89eaed7b621028f9037d32d497630f4811c5245d1c",
+    "bytes": 10847
+  },
+  {
+    "name": "20261013210000_fiscal_index_definitions",
+    "sha256": "f74e664ce11b86a602562b9c3befd4b5783687448d32926fa3bbc39d32f296f4",
+    "bytes": 1472
+  },
+  {
+    "name": "20261013220000_control_audit_event_integrity",
+    "sha256": "f551302e829548e33647d72c44e576d61eb50e42304eb2ab9ec100649a824fd6",
+    "bytes": 5293
+  },
+  {
+    "name": "20261013230000_material_consumption_costs",
+    "sha256": "62c79482db9941ab801f1a0558e1cc59d1aac7b66e7379c27382b7978aa572b9",
+    "bytes": 3980
+  },
+  {
+    "name": "20261014010000_complete_fleet_checklist",
+    "sha256": "9a13076cd50450696e9e43ae4bc9d9a0a50730e7c8e72eeae379855215f0b9a8",
+    "bytes": 15780
+  },
+  {
+    "name": "20261014100000_control_final_reports",
+    "sha256": "bd837113811b1e09d3653f19321c562d4a04b5f9eaf37f63c79bc33ff7be1023",
+    "bytes": 5832
+  },
+  {
+    "name": "20261014110000_tax_annual_batches",
+    "sha256": "8e616c46136e4fdb6ca8a6a368554e9ce3a5a1092eb0b86ea9b58c8a5023e9fd",
+    "bytes": 6794
+  },
+  {
+    "name": "20261014120000_hr_role_legal_history",
+    "sha256": "8183651fb9ae3891313d5cb276f88261cb85f65bb01ce4fd9fcccad900b46b92",
+    "bytes": 3574
+  },
+  {
+    "name": "20261014130000_material_subcategories",
+    "sha256": "e624197207c0d9a766552b3e0e9f0735b31cc9025a781f156cc1c3c51264d4fb",
+    "bytes": 951
+  },
+  {
+    "name": "20261014140000_process_judicial_cases",
+    "sha256": "b48e88616b75491280b40417cb6fcc55f36bbf3b523f2e6a234a9ab3cc41c976",
+    "bytes": 4065
+  },
+  {
+    "name": "20261014150000_personnel_fiscal_definitions",
+    "sha256": "7742ec8502a9f116c412742ea08a4e45c4a14b77664ebd275683713e50e36056",
+    "bytes": 1426
+  },
+  {
+    "name": "20261014160000_stock_valuation",
+    "sha256": "6444f4366c0ffbc214a4672f0fb67adf76fc094dab9f91949c25dcc22afb2877",
+    "bytes": 6929
+  },
+  {
+    "name": "20261014170000_account_classification_snapshot",
+    "sha256": "488e05f5fba17776758dbd23297fc8ab66c832eaae3118027ce8fd435871a2cf",
+    "bytes": 862
+  },
+  {
+    "name": "20261014180000_material_request_origin",
+    "sha256": "80ae903c0239431d9b5cf1c5c9f04e743cac16cdc4a6cd2ab1e239966a488ec0",
+    "bytes": 373
+  },
+  {
+    "name": "20261014180000_municipal_activity_relation_integrity",
+    "sha256": "fb4cc15444cb06028fedb6ddab84f137f042da397e27ec1db00b74fbc01433ce",
+    "bytes": 629
+  },
+  {
+    "name": "20261014181000_equipment_identification_custody",
+    "sha256": "8b130ee32056e16c5876a78fa415d8d9d0158a54ad6ec4a76e535a985e15017d",
+    "bytes": 1612
+  },
+  {
+    "name": "20261014220000_msc_versioned_references",
+    "sha256": "3967df6549caaab56f8c396ad8336677bfc9fd9f12af045bc5a7af6c3f179636",
+    "bytes": 623
+  },
+  {
+    "name": "20261015010000_composite_accounting_postings",
+    "sha256": "8838bc883b54676ffd8dec831314fdafbfb492c74f6f7838664f20837084dd9a",
+    "bytes": 1182
+  },
+  {
+    "name": "20261015010000_health_internal_receipt_observation",
+    "sha256": "fe0a7aeca2d6c77060cb448f40c0e8624c5a85db7adb8fe2eed48b40766f6a40",
+    "bytes": 640
+  },
+  {
+    "name": "20261015020000_health_registration_identity",
+    "sha256": "472e845072a766d678de578dc4524017aea201014b2cc52502b9d0de263f6c38",
+    "bytes": 2342
+  },
+  {
+    "name": "20261015020000_native_processed_carry_forward_payments",
+    "sha256": "754a57a05117f4c9ef639744342ed08264cd2dc6f5b9551d0f0e628ccd456c0e",
+    "bytes": 978
+  },
+  {
+    "name": "20261015030000_bank_resource_source_permissions",
+    "sha256": "ada95a3c04b43afcb9a274b93d6d2227fd3d48058a6d3e44574ba9b31df17008",
+    "bytes": 1756
+  },
+  {
+    "name": "20261015030000_health_network_coverage",
+    "sha256": "5a81e51944295d52e56fdd3b776aa679c93a0077f1e508a79ce4395ef57670dd",
+    "bytes": 1956
+  },
+  {
+    "name": "20261015040000_health_professional_working_hours",
+    "sha256": "0d3cc7df60a0a1c39af6afbdda2ac43a47431834a57797cd04f0c5436da2d831",
+    "bytes": 694
+  },
+  {
+    "name": "20261015040000_native_unprocessed_carry_forward_settlements",
+    "sha256": "0c36fb888cb70a6586cca0bb6cf29c5a94bd9ca6680f249acf53ab05e6f11674",
+    "bytes": 1292
+  },
+  {
+    "name": "20261015050000_carry_forward_settlement_transport",
+    "sha256": "dbc5aa546357043f30da2a40cdcc9a8f675460b415e0331947b2451070d18c6c",
+    "bytes": 2289
+  },
+  {
+    "name": "20261015050000_health_patient_phone_calls",
+    "sha256": "3cecc1d9e8ca7e6c9f18e70214e75350cca102c55d9c6f38ee890265008bbb62",
+    "bytes": 550
+  },
+  {
+    "name": "20261015060000_health_primary_care_workflows",
+    "sha256": "c74775a13129961ad5cd5ff0a3c842b9819665075e52c3f1a4608c16650b71e4",
+    "bytes": 3897
+  },
+  {
+    "name": "20261015070000_health_regulation_agenda_chain",
+    "sha256": "fae93f752af8bebd40c270ca43c6f425606795d2320b03d72f6e932778234382",
+    "bytes": 2968
+  },
+  {
+    "name": "20261015080000_health_quota_distribution",
+    "sha256": "886b21466371cc7e80df3b3b42744e9161411f970c402833d84960daafb0a0a1",
+    "bytes": 499
+  },
+  {
+    "name": "20261015090000_health_clinical_extension",
+    "sha256": "a566354992851cf70a98ca72c5065c979df004a37b29958065f6a2c4a37e0b29",
+    "bytes": 5337
+  },
+  {
+    "name": "20261015100000_health_care_lines",
+    "sha256": "c0f4ffd67c7c6d8c72db74acbf4f1c0c59b46f8243647f9f36389194f62906c7",
+    "bytes": 4761
+  },
+  {
+    "name": "20261015100000_tax_property_cadastral_history",
+    "sha256": "2ab74e455a221f49fcaaa42b92cb0fffc428dc8ba2206260d1d657a648a5adda",
+    "bytes": 1015
+  },
+  {
+    "name": "20261015110000_health_condition_revisions",
+    "sha256": "5bfb8c0c5448e529f21498d0ae73143392e9915d0a5649049b0c53801d98e060",
+    "bytes": 500
+  },
+  {
+    "name": "20261015110000_real_estate_cadastral_history",
+    "sha256": "b351c12e302885e9ee09e8e1aa6e54505d00616c7e17f77b3fccad5ee3b7891a",
+    "bytes": 2637
+  },
+  {
+    "name": "20261015120000_configured_fiscal_records",
+    "sha256": "64cb205c66116a9992d3c1c55a77785fa6ff7f84e5455241eee4f9478fbadeb7",
+    "bytes": 900
+  },
+  {
+    "name": "20261015120000_health_pharmacy_catalog",
+    "sha256": "e4fb39db4209d4a7b11021d2eb99c0e71e9a299e538e99724741ef8f7876209b",
+    "bytes": 1558
+  },
+  {
+    "name": "20261015130000_economic_profile_history",
+    "sha256": "3894b27bb8c60cb3f24e2e8ebe8cf065f57e0ef7d6d3e6d00b43099d49ad9a7f",
+    "bytes": 852
+  },
+  {
+    "name": "20261015130000_health_dispensation_history",
+    "sha256": "bfb36a1516621c5a0138ccc3efcb63979926ea012c8cb7e359424e4341c97aa1",
+    "bytes": 1484
+  },
+  {
+    "name": "20261015140000_health_pharmacy_judicial",
+    "sha256": "a57cfad34953a90d720ab8076d2bb3284f57a5c9e5f5cdd8fefcdafcaf22abc7",
+    "bytes": 3125
+  },
+  {
+    "name": "20261015140000_property_edit_restrictions",
+    "sha256": "a5bd8055ea6be4aabff42a3667d044b3ffa7d6a4c89770c8f5beb5f18fc822dc",
+    "bytes": 2726
+  },
+  {
+    "name": "20261015150000_health_pharmacy_kits",
+    "sha256": "13465d9ead469bac2ae8c0aa0cd5b48356dcc13591bb5cbf560b555961bf862c",
+    "bytes": 2994
+  },
+  {
+    "name": "20261015150000_property_profiles_and_registration",
+    "sha256": "0ef98e18d50001a5478558b7666d201b96fcf7ca1529b4395c349125a47702f6",
+    "bytes": 7370
+  },
+  {
+    "name": "20261015160000_accountant_versions",
+    "sha256": "8fb2fd51d50a7609fa9992da27dae2a625b98d7584ac7c30330be87e25ce1ed2",
+    "bytes": 1165
+  },
+  {
+    "name": "20261015160000_health_care_program_enrollment",
+    "sha256": "6fd768d829671cb1a12fa94f6525ceb0753109b00d6c310635b6220c9f3b8616",
+    "bytes": 908
+  },
+  {
+    "name": "20261015170000_economic_activity_registry",
+    "sha256": "c8e10c082dadeebd7aa671213c2cfe49165bb17ea7d74d34a532bfb8bf397434",
+    "bytes": 943
+  },
+  {
+    "name": "20261015170000_health_pharmacy_request_chain",
+    "sha256": "d73dbf10adf79ba18edeeef37397712cbbebabda4dbe8998ec4f89a0bc19dd93",
+    "bytes": 1430
+  },
+  {
+    "name": "20261015180000_configured_license_policy",
+    "sha256": "f98e634b74e78e58c7f6d3c9046c5beecbd991e65cb6a4f0d6a82cf758164361",
+    "bytes": 2025
+  },
+  {
+    "name": "20261015180000_health_vaccination_workflows",
+    "sha256": "459f9f2306813381ec5bcfa6766542318c43917afdd431aaaeaebc80ad0ef871",
+    "bytes": 6849
+  },
+  {
+    "name": "20261015190000_health_vaccine_transfer_metadata",
+    "sha256": "abcdd36ade361437269dcb205513e4e1ec58f15478b7951c0d9e92a4c55ef6de",
+    "bytes": 165
+  },
+  {
+    "name": "20261015190000_property_simulation_memory",
+    "sha256": "2ea67e4f8468da6286f87eac962ba9cbf13704d6531488bf9f6e7eafcf946975",
+    "bytes": 678
+  },
+  {
+    "name": "20261015200000_health_tfd_clinical_workflow",
+    "sha256": "9e28c3b40703142f2820401b8fe9cd37be69eeaace6c5b4c6a131df82a3bb1a4",
+    "bytes": 3718
+  },
+  {
+    "name": "20261015200000_itbi_process_evidence",
+    "sha256": "ac46a39f92c9d8d1576b7de670473bc9d8eb4436806748da799069ebbd335c53",
+    "bytes": 721
+  },
+  {
+    "name": "20261015210000_economic_events_vehicles",
+    "sha256": "0653fe1adfce85ddf973341bf2a8cc2acfae1e445cf3a20f6ae6220711309b09",
+    "bytes": 903
+  },
+  {
+    "name": "20261015210000_health_tfd_fleet_boarding",
+    "sha256": "ea110e898457f069a31177f34622eb2c4f7e6efda319c4d2a1d55c0ca19e0c24",
+    "bytes": 1299
+  },
+  {
+    "name": "20261015220000_health_aih_apac_workflows",
+    "sha256": "29ed10d25d4e9adb9fde6ece5a9cfadf1c3b9f79ba70f002dcd02b55d60aea18",
+    "bytes": 5118
+  },
+  {
+    "name": "20261015220000_tax_channel_document_integrity",
+    "sha256": "2f7c18a23a44ef544a94e6352443b7756f1e3eabe21319cbd0f0bcd8b630fac9",
+    "bytes": 3620
+  },
+  {
+    "name": "20261015230000_health_billing_prices",
+    "sha256": "9397b453a328c1c191bd59c151b81bf8de19463877daa31803652bb3b78b84fd",
+    "bytes": 1868
+  },
+  {
+    "name": "20261015230000_itbi_field_history",
+    "sha256": "12ede6da9a67e5c0e20de1fcdb749baa49ec433cc5f8eaedc07b3bfc8a3aad0c",
+    "bytes": 5522
+  },
+  {
+    "name": "20261015233000_health_followup_exchange",
+    "sha256": "3890199f23bbfec725298e7ff94246c5ba039d1bba68f4b00c08ba4b041fafe6",
+    "bytes": 7220
+  },
+  {
+    "name": "20261016010000_health_indicator_context",
+    "sha256": "1b3d99e33b4c47e98e20e5a851d7a339ce2dbfffca2fc90487ffea1633987381",
+    "bytes": 778
+  },
+  {
+    "name": "20261019010000_transparency_page_feedback",
+    "sha256": "483a689e69a44bb9b884d5c3fb5531e42e054155b9213f53f83a07199b77e4ff",
+    "bytes": 968
+  },
+  {
+    "name": "20261021160000_complete_fleet_debt_control",
+    "sha256": "c436704054d6570c6e43f6661c2ac914a9072995d86fa80f4cff855e690ca995",
+    "bytes": 1618
+  },
+  {
+    "name": "20261027100000_sanitation_structured_address",
+    "sha256": "e7271d52788f999495717b531ba0cf991de2dc8630ade9d54c0673638b8c60cc",
+    "bytes": 898
+  },
+  {
+    "name": "20261027110000_sanitation_unit_identifier",
+    "sha256": "af961dfa14f3da8039bf30e2bf1ef4aa619120db13648881e5ec93e702fe5985",
+    "bytes": 981
+  },
+  {
+    "name": "20261027200000_secretariat_employee_manager",
+    "sha256": "5e28fce18e003bbfde25a186253eac1e9bdcba5e99bbb86860337fe4b0011a4e",
+    "bytes": 847
+  }
+]

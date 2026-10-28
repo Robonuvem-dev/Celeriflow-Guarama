@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { Combobox } from "@base-ui/react/combobox";
-import { consumerUnitPeriod } from "@/lib/saneamento/unit-identifier";
+import { consumerUnitPeriod } from "@/lib/saneamento/unit-code";
 
 export function CompetencePicker() {
   const id = useId();

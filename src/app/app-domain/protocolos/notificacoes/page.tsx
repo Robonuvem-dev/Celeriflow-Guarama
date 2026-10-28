@@ -5,12 +5,13 @@ import { resolveNotificationEntities } from "@/lib/notifications/process-entity-
 import NotificationsClient from "@/app/app-domain/notificacoes/NotificationsClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProtocolNotificationsPage() {
-  const { prisma, user } = await getProtocolContext();
-  const notifications = await listInternalNotifications(prisma, user.id, { sourceModule: "PROCESSOS" });
+  const context = await getProtocolContext();
+  const notifications = await listInternalNotifications(context.database ?? db, context.user.id, { sourceModule: "PROCESSOS" });
   const entities = await resolveNotificationEntities(notifications);
   const items = notifications.map((notification) => ({ ...notification, entity: entities.get(notification.id) ?? null }));
 

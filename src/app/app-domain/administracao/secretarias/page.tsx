@@ -4,16 +4,15 @@ import { Building2 } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import SecretariasClient from "./SecretariasClient";
+import { db } from "@/db/client";
+import { listManagerOptions, listSecretariatDetails } from "@/db/repositories/administration/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function SecretariasPage() {
-  const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
-  const secretariats = await prisma.secretariat.findMany({
-    orderBy: { name: 'asc' },
-    include: { manager: { select: { id: true, name: true, registration: true, isActive: true, role: { select: { name: true } } } }, _count: { select: { departments: true } } }
-  });
-  const employees = await prisma.employee.findMany({ where: { isActive: true, role: { isActive: true } }, select: { id: true, name: true, registration: true, secretariatId: true, role: { select: { name: true } } }, orderBy: { name: "asc" } });
+  const context = await getTenantContextForModule("ADMINISTRACAO");
+  const secretariats = await listSecretariatDetails(context.database ?? db);
+  const employees = await listManagerOptions(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

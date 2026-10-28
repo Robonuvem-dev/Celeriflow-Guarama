@@ -3,24 +3,18 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { FileText, Search } from "lucide-react";
 import { QuickFilters } from "../components/QuickFilters";
 import { Pencil, CheckCircle, XCircle } from "lucide-react";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { listRequests } from "@/db/repositories/environment/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { environmentPageHref, filterAndPaginate } from "../list-utils";
 
 export default async function SolicitacoesPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> | { [key: string]: string | undefined } }) {
-  const { prisma } = await getTenantContextForModule("MEIO_AMBIENTE");
+  const context = await getTenantContextForModule("MEIO_AMBIENTE");
   const searchParams = await Promise.resolve(props.searchParams || {});
 
-  const where: Prisma.EnvRequestWhereInput = {};
-  if (searchParams.tipo) where.requestType = { contains: searchParams.tipo, mode: 'insensitive' };
-  if (searchParams.status) where.status = searchParams.status;
-
-  const requests = await prisma.envRequest.findMany({
-    where,
-    orderBy: { createdAt: 'desc' }
-  });
+  const requests = await listRequests(context.database ?? db, searchParams);
 
   const list = filterAndPaginate(requests, searchParams);
 

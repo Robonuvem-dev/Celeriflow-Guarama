@@ -4,7 +4,8 @@ import { FolderOpen, Search, Download } from "lucide-react";
 import { NewDocumentSheet } from "../components/NewDocumentSheet";
 import { QuickFilters } from "../components/QuickFilters";
 import { DocumentRowActions } from "../components/DocumentRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { listDocuments, listEnterpriseOptions } from "@/db/repositories/environment/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -13,13 +14,10 @@ import { environmentPageHref, filterAndPaginate } from "../list-utils";
 export const dynamic = "force-dynamic";
 
 export default async function DocumentosAmbientaisPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> | { [key: string]: string | undefined } }) {
-  const { prisma } = await getTenantContextForModule("MEIO_AMBIENTE");
+  const context = await getTenantContextForModule("MEIO_AMBIENTE");
   const searchParams = await Promise.resolve(props.searchParams || {});
-  const where: Prisma.EnvDocumentWhereInput = {};
-  if (searchParams.tipo) where.docType = searchParams.tipo;
-
-  const documents = await prisma.envDocument.findMany({ where, include: { enterprise: true }, orderBy: { createdAt: "desc" } });
-  const enterprises = await prisma.envEnterprise.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
+  const documents = await listDocuments(context.database ?? db, searchParams);
+  const enterprises = await listEnterpriseOptions(context.database ?? db);
 
   const list = filterAndPaginate(documents, searchParams);
 

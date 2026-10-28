@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { AccessError, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { getSupplierReportRows, parseSupplierFilters } from "../supplier-query";
 import { buildSupplierCertificationCsv } from "../supplier-report";
+import { db } from "@/db/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     const context = await getTenantContextForModuleOperation("CADASTROS", "issueReports");
     const filters = parseSupplierFilters(Object.fromEntries(new URL(request.url).searchParams.entries()));
     const referenceDate = new Date();
-    const suppliers = await getSupplierReportRows(context.prisma, filters, referenceDate);
+    const suppliers = await getSupplierReportRows(context.database ?? db, filters, referenceDate);
     return new Response(`\uFEFF${buildSupplierCertificationCsv(suppliers, referenceDate)}`, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

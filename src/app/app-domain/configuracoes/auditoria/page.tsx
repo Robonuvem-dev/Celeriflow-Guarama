@@ -1,12 +1,14 @@
 import { Activity } from "lucide-react";
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
-import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
 import { createAuditEventSearchParams, parseAuditEventQuery } from "@/lib/platform/audit-query";
 import { getAuditEventPage } from "@/lib/platform/audit-query-service";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpTableContainer, ErpTableTd, ErpTableTh, ErpTableThead, ErpTableTr } from "@/components/app-ui/erp/ErpTable";
+import { db } from "@/db/client";
+import { loadAuditUsageSummary } from "@/db/repositories/platform/audit-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +34,12 @@ function getLast24Hours() {
 }
 
 export default async function AuditUsagePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { prisma } = await getTenantContextForSystemAdministration();
+  const context = await getTenantContextForSystemAdministration();
   const auditQuery = parseAuditEventQuery(await searchParams);
   const last24Hours = getLast24Hours();
-  const [eventPage, totalEvents, eventsLast24Hours, activeUsers] = await Promise.all([
-    getAuditEventPage(prisma, auditQuery), prisma.auditEvent.count(),
-    prisma.auditEvent.count({ where: { createdAt: { gte: last24Hours } } }),
-    prisma.auditEvent.groupBy({ by: ["actorUsuarioId"], where: { createdAt: { gte: last24Hours } } }),
+  const database = context.database ?? db;
+  const [eventPage, { totalEvents, eventsLast24Hours, activeUsers }] = await Promise.all([
+    getAuditEventPage(database, auditQuery), loadAuditUsageSummary(database, last24Hours),
   ]);
   const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" });
   const controlClass = "h-7 min-w-0 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:border-amber-600";

@@ -4,18 +4,14 @@ import { File, Plus, Upload, Download } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import DocumentosClient from "./DocumentosClient";
+import { db } from "@/db/client";
+import { listDocuments } from "@/db/repositories/registry/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DocumentosPage() {
-  const { prisma } = await getTenantContextForModule("CADASTROS");
-  const documents = await prisma.document.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      person: true,
-      company: true,
-    }
-  });
+  const context = await getTenantContextForModule("CADASTROS");
+  const documents = await listDocuments(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

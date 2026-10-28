@@ -1,4 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { insertIssuedLicense } from "@/db/repositories/environment/operations";
 import crypto from "crypto";
 
 export interface EnvironmentalLicenseInput {
@@ -23,7 +24,7 @@ export interface EnvironmentalLicenseResult {
 }
 
 export async function generateEnvironmentalLicense(
-  prisma: PrismaClient,
+  db: DatabaseExecutor,
   input: EnvironmentalLicenseInput
 ): Promise<EnvironmentalLicenseResult> {
   const year = new Date().getFullYear();
@@ -37,8 +38,7 @@ export async function generateEnvironmentalLicense(
   const hashSHA256 = crypto.createHash("sha256").update(payload).digest("hex");
   const qrCodeValidationUrl = `https://celeriflow.gov.br/validar-licenca?hash=${hashSHA256}&licenca=${numeroLicenca}`;
 
-  const record = await prisma.environmentalLicense.create({
-    data: {
+  const record = await insertIssuedLicense(db, {
       numeroProcesso: input.numeroProcesso,
       numeroLicenca,
       tipoLicenca: input.tipoLicenca,
@@ -50,7 +50,6 @@ export async function generateEnvironmentalLicense(
       status: "EMITIDA",
       hashSHA256,
       qrCodeValidationUrl,
-    },
   });
 
   return {

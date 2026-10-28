@@ -3,36 +3,14 @@ import { Receipt } from "lucide-react";
 import { FaturasClient } from "../components/FaturasClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
-import type { Prisma } from "@prisma/client";
-import { clampSanitationPage, parseSanitationQuery, type SanitationSearchParams } from "@/lib/saneamento/list-query";
+import { parseSanitationQuery, type SanitationSearchParams } from "@/lib/saneamento/list-query";
+import { db } from "@/db/client";
+import { listInvoices } from "@/db/repositories/sanitation/queries";
 
 export default async function FaturasPage({ searchParams }: { searchParams: Promise<SanitationSearchParams> }) {
-  const { prisma } = await getTenantContextForModule("SANEAMENTO");
+  const context = await getTenantContextForModule("SANEAMENTO");
   const requested = parseSanitationQuery(await searchParams);
-  const where: Prisma.SanInvoiceWhereInput = {
-    ...(requested.status ? { status: requested.status } : {}),
-    ...(requested.q ? { OR: [
-      { unit: { code: { contains: requested.q, mode: "insensitive" } } },
-      { invoiceNumber: { contains: requested.q, mode: "insensitive" } },
-      { competence: { contains: requested.q, mode: "insensitive" } },
-    ] } : {}),
-  };
-  const total = await prisma.sanInvoice.count({ where });
-  const query = clampSanitationPage(requested, total);
-  const invoices = await prisma.sanInvoice.findMany({
-    where,
-    select: {
-      id: true,
-      invoiceNumber: true,
-      competence: true,
-      totalAmount: true,
-      dueDate: true,
-      status: true,
-      unit: { select: { code: true } },
-    },
-    orderBy: [{ dueDate: "desc" }, { id: "asc" }],
-    skip: (query.page - 1) * query.pageSize, take: query.pageSize,
-  });
+  const { records: invoices, total, query } = await listInvoices(context.database ?? db, requested);
 
   const serialized = invoices.map((inv) => ({
     ...inv,

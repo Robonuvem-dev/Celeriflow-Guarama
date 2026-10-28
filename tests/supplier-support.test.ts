@@ -5,6 +5,7 @@ import { buildSupplierWhere, parseSupplierFilters } from "../src/app/app-domain/
 import { buildSupplierCertificationCsv } from "../src/app/app-domain/cadastros/fornecedores/supplier-report";
 import { certificationStatus } from "../src/app/app-domain/cadastros/fornecedores/supplier-utils";
 import type { SupplierListItem } from "../src/app/app-domain/cadastros/fornecedores/supplier-types";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 test("supplier form keeps PF and PJ identities mutually exclusive and validates the selected document", () => {
   const person = parseSupplierIdentity({ supplierType: "PF", personId: "person-1", companyId: "" });
@@ -38,13 +39,19 @@ test("supplier query combines canonical document search, ME/EPP, status, and cer
     certification: "VENCE_EM_BREVE",
     page: "3",
   });
-  const where = JSON.stringify(buildSupplierWhere(filters, new Date("2026-09-01T12:00:00.000Z")));
+  const where = buildSupplierWhere(filters, new Date("2026-09-01T12:00:00.000Z"));
+  assert.ok(where);
+  const query = new PgDialect().sqlToQuery(where);
 
   assert.equal(filters.page, 3);
-  assert.match(where, /12345678000190/);
-  assert.match(where, /"companyType":{"in":\["ME","EPP"\]\}/);
-  assert.match(where, /"status":"Ativo"/);
-  assert.match(where, /"certificationsValidUntil"/);
+  assert.ok(query.params.includes("%12345678000190%"));
+  assert.match(query.sql, /"Company"\."companyType" in \(\$\d+, \$\d+\)/);
+  assert.ok(query.params.includes("ME"));
+  assert.ok(query.params.includes("EPP"));
+  assert.ok(query.params.includes("Ativo"));
+  assert.ok(query.params.includes("2026-09-01T00:00:00.000Z"));
+  assert.ok(query.params.includes("2026-10-01T23:59:59.999Z"));
+  assert.match(query.sql, /"certificationsValidUntil"/);
 });
 
 test("supplier certificate report derives validity without declaring regularity and protects CSV formulas", () => {

@@ -6,6 +6,8 @@ import { ShieldCheck } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listProfilesWithLegacyUsers } from "@/db/repositories/platform/system-administration";
 
 export const dynamic = "force-dynamic";
 
@@ -22,22 +24,10 @@ export default async function PerfisPage() {
       <Link href="/dashboard" className="inline-flex rounded-md border px-3 py-2 text-sm">Voltar ao painel</Link>
     </PageFrame>;
   }
-  const { prisma, user } = access.context;
+  const { user } = access.context;
 
   // Fetch profiles ordered by name
-  const allPerfis = await prisma.configuracaoPerfil.findMany({
-    where: { codigo: { not: SYSTEM_ADMIN_PROFILE_CODE } },
-    orderBy: { createdAt: "asc" },
-    include: {
-      usuarios: {
-        select: {
-          permissoesModulo: {
-            include: { modulo: { select: { codigo: true } } },
-          },
-        },
-      },
-    },
-  });
+  const allPerfis = await listProfilesWithLegacyUsers(access.context.database ?? db, SYSTEM_ADMIN_PROFILE_CODE);
 
   // Display duplicates without mutating authorization configuration during a page read.
   const seenNames = new Map<string, typeof allPerfis[0]>();

@@ -4,7 +4,8 @@ import { Trash2, Search } from "lucide-react";
 import { NewWasteSheet } from "../components/NewWasteSheet";
 import { QuickFilters } from "../components/QuickFilters";
 import { WasteRowActions } from "../components/WasteRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { listEnterpriseOptions, listWastes } from "@/db/repositories/environment/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -13,13 +14,10 @@ import { environmentPageHref, filterAndPaginate } from "../list-utils";
 export const dynamic = "force-dynamic";
 
 export default async function ResiduosPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> | { [key: string]: string | undefined } }) {
-  const { prisma } = await getTenantContextForModule("MEIO_AMBIENTE");
+  const context = await getTenantContextForModule("MEIO_AMBIENTE");
   const searchParams = await Promise.resolve(props.searchParams || {});
-  const where: Prisma.EnvWasteWhereInput = {};
-  if (searchParams.tipo) where.wasteType = { contains: searchParams.tipo, mode: "insensitive" };
-
-  const wastes = await prisma.envWaste.findMany({ where, include: { enterprise: true }, orderBy: { date: "desc" } });
-  const enterprises = await prisma.envEnterprise.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
+  const wastes = await listWastes(context.database ?? db, searchParams);
+  const enterprises = await listEnterpriseOptions(context.database ?? db);
 
   const list = filterAndPaginate(wastes, searchParams);
 

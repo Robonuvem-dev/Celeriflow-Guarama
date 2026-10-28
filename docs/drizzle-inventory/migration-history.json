@@ -1,0 +1,1107 @@
+{
+  "generatedAt": "2026-10-28T11:58:01.599Z",
+  "mode": "OFFLINE LEDGER PROVENANCE CHECK",
+  "snapshotCapturedAt": "2026-10-28T01:28:43.995Z",
+  "result": "HISTORICAL_DIFFERENCES_REQUIRE_RECONCILIATION",
+  "migrations": 156,
+  "counts": {
+    "LINE_ENDINGS_ONLY": 29,
+    "EXACT": 125,
+    "UNRESOLVED_HISTORICAL_DIFFERENCE": 2
+  },
+  "records": [
+    {
+      "name": "20261009232000_baseline",
+      "installedChecksum": "20a08cebffd8aa094e1a2486a7e400fe2b1d99b7f34ac22e936e4f3054c301c7",
+      "localChecksum": "a6ad6ecabb6124fd512cbaf934f3546c1574099a6c2c56f4b0c096a1670514d4",
+      "lfChecksum": "20a08cebffd8aa094e1a2486a7e400fe2b1d99b7f34ac22e936e4f3054c301c7",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261009232100_database_guards",
+      "installedChecksum": "53f8879f58cbafb3a0389a8daabfc69e224196b59f16ada1cf66add747970654",
+      "localChecksum": "96058acf9363a6fbb445e43b5a8eace44ebb57b13f58dc21ab4d4c1ac56b6bb2",
+      "lfChecksum": "53f8879f58cbafb3a0389a8daabfc69e224196b59f16ada1cf66add747970654",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261009232200_reference_data",
+      "installedChecksum": "07146a219387b16fa436c9270449efcd7096cb081425f9a608bbfcdb369b84a3",
+      "localChecksum": "cd641185a2c05a0e7d23441006625c81b4c126889f46e0318ab8eae3b798b047",
+      "lfChecksum": "07146a219387b16fa436c9270449efcd7096cb081425f9a608bbfcdb369b84a3",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261009232300_remove_siafic",
+      "installedChecksum": "00e02c845d77daa5de98ec6bc0478c92eede43b9325a47c47a1ddd074775d72f",
+      "localChecksum": "a5fea1917d345310c2861128cb42e8b34d3c0984fe8025b1271b444489699ff7",
+      "lfChecksum": "00e02c845d77daa5de98ec6bc0478c92eede43b9325a47c47a1ddd074775d72f",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010000000_align_ibema_modules",
+      "installedChecksum": "43000c149138e424d7e0c73c9f05d8159c9592fd701ddd3f40f8ad15e2497d5e",
+      "localChecksum": "f814ffacc2973886203cc2ddf6ab1f36d5701aa4b0e6590fc596ddfebbd572ca",
+      "lfChecksum": "43000c149138e424d7e0c73c9f05d8159c9592fd701ddd3f40f8ad15e2497d5e",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010010000_standardize_module_catalog",
+      "installedChecksum": "6eafb1611ce1da6f17c9ab684313fa6e2075910992f5e1756fada1d2dfc43ee8",
+      "localChecksum": "aa991cf84d33980f7ecbb72897d94ef8534c0e38a36567c1d4dab8b25c4a53ad",
+      "lfChecksum": "6eafb1611ce1da6f17c9ab684313fa6e2075910992f5e1756fada1d2dfc43ee8",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010020000_default_access_profiles",
+      "installedChecksum": "20443d1185d29d207c930ddaa986a8746af5fb632eeb4dea977339eb1de67796",
+      "localChecksum": "6f6a2bdf54a9b11ac4ed55ad6c3e7b7663cfbba30c2299116107699ea58ee9f9",
+      "lfChecksum": "20443d1185d29d207c930ddaa986a8746af5fb632eeb4dea977339eb1de67796",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010030000_add_cemiterios_auditoria_suporte_tecnico_modules",
+      "installedChecksum": "f0fc208715d39276420c4120458ea2cb1b30ee4d93361fdd54aa7676eb1d0d3e",
+      "localChecksum": "1190b173cc59b9049016a48cce881e26a145d6e56d98cdab3d358017f9b7f313",
+      "lfChecksum": "f0fc208715d39276420c4120458ea2cb1b30ee4d93361fdd54aa7676eb1d0d3e",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010040000_canonical_module_display_names",
+      "installedChecksum": "ac08333e012356c275aad40f711c4181547b545ca5dd27c9114c97009f02e435",
+      "localChecksum": "ac08333e012356c275aad40f711c4181547b545ca5dd27c9114c97009f02e435",
+      "lfChecksum": "11d3365399b1a5b0a2e038ba46c9a6a62bad729174957b6c17e8bfcad092017b",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010050000_social_suas_catalogs",
+      "installedChecksum": "8908ada94f5dee03dae818360a0be531b58b3b9c0a67cf0c83e44d37bc99f61f",
+      "localChecksum": "8908ada94f5dee03dae818360a0be531b58b3b9c0a67cf0c83e44d37bc99f61f",
+      "lfChecksum": "40d3c5efdfc601a1883b15e7cfe2d3136425de9b57c4a8e09e8b53c003139412",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010060000_social_unit_identification",
+      "installedChecksum": "9c8fb78ae0eb2a000d62b0bfe09bf90d37627ce1b0a1f85f3a94f173d5608371",
+      "localChecksum": "9c8fb78ae0eb2a000d62b0bfe09bf90d37627ce1b0a1f85f3a94f173d5608371",
+      "lfChecksum": "000b850dd175489babb452df5a02196f5ba62928abe53622bed0af14c8112a71",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010070000_social_professional_access",
+      "installedChecksum": "f407f421f7f9919a4f02465afc6a4fba60c6c5c905fdc3900dff8dc914b71476",
+      "localChecksum": "f407f421f7f9919a4f02465afc6a4fba60c6c5c905fdc3900dff8dc914b71476",
+      "lfChecksum": "da532c1e604e3ff7ce9d9b9a4bd8df4352acccc3b38fafa35972edc8705f0d3e",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010080000_social_person_history",
+      "installedChecksum": "7a2896b0c21c326792b534076449ef2ea06434251b449daf9c874580b3e6838d",
+      "localChecksum": "7a2896b0c21c326792b534076449ef2ea06434251b449daf9c874580b3e6838d",
+      "lfChecksum": "026229a543691cffd94e32131ce29952643034101983878ca05115cb44743758",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010090000_social_benefit_workflow",
+      "installedChecksum": "42508c3e05068e05ca95f857e1f46454637d13c5856f0fc95838679d891367b8",
+      "localChecksum": "42508c3e05068e05ca95f857e1f46454637d13c5856f0fc95838679d891367b8",
+      "lfChecksum": "9023a44817160cc59cc4a6d2fb05466340505132d3258995c13445c8963b21c8",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010100000_complete_cemetery_domain",
+      "installedChecksum": "093e86881877d9f4bb204fa8eff46651be640f89cdc49ce3ff48bdd2e5deaa68",
+      "localChecksum": "02fea0147d0b111882c7579d93d409457d51c4f830458a834f9bc903219ccfb9",
+      "lfChecksum": "093e86881877d9f4bb204fa8eff46651be640f89cdc49ce3ff48bdd2e5deaa68",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010100000_social_network_referrals",
+      "installedChecksum": "d90ea3259dd7fcf61fc72a029838b88d45367c01e9982789cfa016771ea85c5d",
+      "localChecksum": "d90ea3259dd7fcf61fc72a029838b88d45367c01e9982789cfa016771ea85c5d",
+      "lfChecksum": "246c6600bfa6ec9bd4dcf3c55b605f357b962a00e70ac400400e1f0b7472f60e",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010110000_add_a1_certificate_evidence",
+      "installedChecksum": "04d737d8ade0bc8116a5bd7cb7b0d2f2524486650b3607ccb0e63ff7d7d8b01e",
+      "localChecksum": "35c70dc77eda17d803acc9488efec85ad31159d37cc39f5a13c75b94ed25b11d",
+      "lfChecksum": "04d737d8ade0bc8116a5bd7cb7b0d2f2524486650b3607ccb0e63ff7d7d8b01e",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010120000_add_stock_return_reversal",
+      "installedChecksum": "636636d2fa572358f1830275adfc757aa9f8937d96fdb4a72378e73965dbdbf9",
+      "localChecksum": "8f17346e87cdaf88875251861499f5e235b7fd64f9367aaa846d70d4890ce0ba",
+      "lfChecksum": "636636d2fa572358f1830275adfc757aa9f8937d96fdb4a72378e73965dbdbf9",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010130000_add_master_data_foundation",
+      "installedChecksum": "af7ecb30705e88e2ef31f48c2a7285fdc86032f09e72341f521c38b2aa3c1ce3",
+      "localChecksum": "1b1bfd04980e8c8b8fb79667ce700d0b84af6db1027ce7ee93165a9a14a04337",
+      "lfChecksum": "af7ecb30705e88e2ef31f48c2a7285fdc86032f09e72341f521c38b2aa3c1ce3",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010140000_add_planning_sst_modules",
+      "installedChecksum": "92b538ba7b1ef8e0eb0b5628f47c1db24d6e21a1a2c916056d3cfb845b31b57a",
+      "localChecksum": "bacb8c925c3fabb35a3a41cd3ffe589a0548af1a8675015e3b9fe8224bf6f51c",
+      "lfChecksum": "92b538ba7b1ef8e0eb0b5628f47c1db24d6e21a1a2c916056d3cfb845b31b57a",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261010150000_add_sst_certificates",
+      "installedChecksum": "a402d341d70cf8a87fb1d13615a7419712b22d1ce079fd376cb55495016a1a64",
+      "localChecksum": "a402d341d70cf8a87fb1d13615a7419712b22d1ce079fd376cb55495016a1a64",
+      "lfChecksum": "355c43fc8c521720765bcf8f795f54a6ded103cb2c1257108f2e18d6f4e8cdc0",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010160000_add_sst_agenda_boards",
+      "installedChecksum": "23c65399753af7f3057a690612f99296deee5f75bfd753ac2f31c85d558363e5",
+      "localChecksum": "23c65399753af7f3057a690612f99296deee5f75bfd753ac2f31c85d558363e5",
+      "lfChecksum": "d9707dc4b5ca2fadbccf813c881c75757282bf4ab0130be4f4a5a42a23d077e6",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010160000_construction_foundation",
+      "installedChecksum": "646edbe51ed4084836fefdcc6c3fbca4c412925e8bde578ed7a1ce4b341aaea7",
+      "localChecksum": "646edbe51ed4084836fefdcc6c3fbca4c412925e8bde578ed7a1ce4b341aaea7",
+      "lfChecksum": "8cca4d8d20a85f99d5b06ae81db87cc58f1d2370125f1dfe9b4c7694a55c70f0",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010170000_add_sst_exposure_groups",
+      "installedChecksum": "a2e2b016936ba99d774b380d2336c0e5c0b0cf67ad55321c6eb7589bc9002160",
+      "localChecksum": "a2e2b016936ba99d774b380d2336c0e5c0b0cf67ad55321c6eb7589bc9002160",
+      "lfChecksum": "2cbdeaa6a98266d8208388bf8c390b5312dd4be6282d7b5de7e14c556312821e",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010170000_construction_rules_profiles",
+      "installedChecksum": "0475fed249bc9c4f61e65c53340ef8066789e07ea539535ca194a85841ca9f89",
+      "localChecksum": "0475fed249bc9c4f61e65c53340ef8066789e07ea539535ca194a85841ca9f89",
+      "lfChecksum": "13d1628cc98adee45e98a4adf26b0c7b746620bdf0eb0aa1f61787d7b1c39868",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010180000_add_sst_programs",
+      "installedChecksum": "f0b7d18bb5740f935fe0e38e616461eac896c24253fa0d8300559b6fdc94887d",
+      "localChecksum": "f0b7d18bb5740f935fe0e38e616461eac896c24253fa0d8300559b6fdc94887d",
+      "lfChecksum": "76e2f0d8b9737a7cf17a48a090d9476ea1c90303cff607a35aa32358217d471c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010180000_construction_project_reviews",
+      "installedChecksum": "ebea53b55ae6c73d41499a8f8e7da49f8e23b9116129c0b2dd0a095aedd923cd",
+      "localChecksum": "ebea53b55ae6c73d41499a8f8e7da49f8e23b9116129c0b2dd0a095aedd923cd",
+      "lfChecksum": "e10fb1b0b7deb5d182d552225d61596660969b40826488300f7f3a1f050de1f7",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010190000_add_sst_aso",
+      "installedChecksum": "def0cf4ef30ad410f80b33b0f9705337379344ea045c1c60ecaed7cb4aab3efb",
+      "localChecksum": "def0cf4ef30ad410f80b33b0f9705337379344ea045c1c60ecaed7cb4aab3efb",
+      "lfChecksum": "13ca1b04ae44eda30f11356df6dd94c364aae1e86119d1efcf53a52ef3f1bb60",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010190000_construction_analyst_replacement",
+      "installedChecksum": "b34eeed430d31b232a361816e40014fc82de536b80058a64e4b1745cb98bc46e",
+      "localChecksum": "b34eeed430d31b232a361816e40014fc82de536b80058a64e4b1745cb98bc46e",
+      "lfChecksum": "ccab1e56b3dc25dd4f8839bca5946e9825b3b41b3aaf0d61fca628f5e679aa74",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010200000_construction_portal_participation",
+      "installedChecksum": "5e6a10284ba82815e6ba01a33202e565f1d2c93d0cb5d34e6437e9a0a954ae40",
+      "localChecksum": "5e6a10284ba82815e6ba01a33202e565f1d2c93d0cb5d34e6437e9a0a954ae40",
+      "lfChecksum": "94af5e0c29612e39b88268ca086fa732cdb62508ccece6b2024bcc9abb69c4c7",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010210000_add_sst_questionnaires",
+      "installedChecksum": "acc508a4e0a1970aa67109954a49ffad270ea9b7c0aa34edfeedf3d3f73df2f6",
+      "localChecksum": "acc508a4e0a1970aa67109954a49ffad270ea9b7c0aa34edfeedf3d3f73df2f6",
+      "lfChecksum": "7321282ce40e631cb51c8424bcb9a0f997338fcbc1e8c59603df0cf31da107fd",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010210000_construction_external_requests",
+      "installedChecksum": "b3206cc6a61828b3ac7908039c880f1b5d5bd1bc4734783be4d898eb35380626",
+      "localChecksum": "b3206cc6a61828b3ac7908039c880f1b5d5bd1bc4734783be4d898eb35380626",
+      "lfChecksum": "cde3690ada3ce43b9d63a11e50deecd5071f66df2c4bca4f4ea22920602f22a9",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010220000_construction_taxation",
+      "installedChecksum": "abc20c41485dc9b6af152426c44b46a0eceb7d49edcfd963091037a6354953c8",
+      "localChecksum": "abc20c41485dc9b6af152426c44b46a0eceb7d49edcfd963091037a6354953c8",
+      "lfChecksum": "bf03255522638979fc57775385bf25584fba997d5b5851ab40338fcfa4227c76",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010230000_construction_documents",
+      "installedChecksum": "254edbeff36c2d17bda39386d8d554a8c4907abdc00605ac1bda130b7bfa2a04",
+      "localChecksum": "254edbeff36c2d17bda39386d8d554a8c4907abdc00605ac1bda130b7bfa2a04",
+      "lfChecksum": "28b5ad63a377dfadaaa325c6834de49d4cc13a5614fb0bc2d2865360deeb0b6e",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010240000_construction_lifecycle",
+      "installedChecksum": "c361cb3c73f1b0c484bae99f7b56b8a9965773236826a8e5607206f7bcbb2671",
+      "localChecksum": "c361cb3c73f1b0c484bae99f7b56b8a9965773236826a8e5607206f7bcbb2671",
+      "lfChecksum": "5a5a6e47a9e142946bd8be2279546a1dea45f5f2a0ca21c79c3fed9de9f7f794",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010250000_construction_enforcement",
+      "installedChecksum": "d2b6912431da656cb200977b027e60ad5148cdf773404583ee440f1cfa19a5c2",
+      "localChecksum": "d2b6912431da656cb200977b027e60ad5148cdf773404583ee440f1cfa19a5c2",
+      "lfChecksum": "0f16b8ca42f5d77b031d618e55809e6040910fba7bda74c6f506418ec2f4e0a2",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010260000_construction_export_extraction",
+      "installedChecksum": "be5da2493ce34afe7e86780d764c2a37b673f7a663f20c04f778f692ab542151",
+      "localChecksum": "be5da2493ce34afe7e86780d764c2a37b673f7a663f20c04f778f692ab542151",
+      "lfChecksum": "a4b1b42f8cb279fd0455d448f5159298c9c666035b27e4e8f6ea934d7c2eb3e6",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010270000_construction_company_validity",
+      "installedChecksum": "99c059dd2a764f7f9b259ecee72b782102a9d3145762427b0761cf2cc69b40af",
+      "localChecksum": "99c059dd2a764f7f9b259ecee72b782102a9d3145762427b0761cf2cc69b40af",
+      "lfChecksum": "5422717c6cde4f80a114ecc83887890a0a49468c9b1163d8b5a458dbd95bccd8",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010280000_construction_consultations",
+      "installedChecksum": "cd673038d8340c43a3fb627cf8aba93b001e4129beac4b2257fab5e0ca5ab85b",
+      "localChecksum": "cd673038d8340c43a3fb627cf8aba93b001e4129beac4b2257fab5e0ca5ab85b",
+      "lfChecksum": "42929582df0b5af32cc0480523b39a2917130947d27fcde04ba8303bce0874f9",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010290000_construction_automatic_viability",
+      "installedChecksum": "c3ff88e78ada58a198e151d3d9236bd80d2dbf769cf87e4a67183b4c2b6e8167",
+      "localChecksum": "c3ff88e78ada58a198e151d3d9236bd80d2dbf769cf87e4a67183b4c2b6e8167",
+      "lfChecksum": "78752bf29ae1afaae5a1fa19e289193a8f292b9e00ea74b1a6d791cc9eaf93e0",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010300000_construction_internal_documents",
+      "installedChecksum": "3cbe20e9d8674fe0be1add9a2bebf2d3daa32cb4ada667a059878fe1e5dede83",
+      "localChecksum": "3cbe20e9d8674fe0be1add9a2bebf2d3daa32cb4ada667a059878fe1e5dede83",
+      "lfChecksum": "55cf0f9ae77ef13901b5cf55acbfc2053101803e14d8c8ca713b0e5c6941998d",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010330000_construction_inspection_deadlines",
+      "installedChecksum": "07c6b55c6e5e6bfd8b1998bead0d3bb549b01a780269680f92bbd241280b76c1",
+      "localChecksum": "07c6b55c6e5e6bfd8b1998bead0d3bb549b01a780269680f92bbd241280b76c1",
+      "lfChecksum": "e558be989d01e16e25654a81bb5ea177842a3e679254f30954798722c994e5f4",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261010340000_construction_project_stamp",
+      "installedChecksum": "964dbd8284b17c92434612f5992a0946bf7d3e2dbd0a798dd751ef8d13a77635",
+      "localChecksum": "964dbd8284b17c92434612f5992a0946bf7d3e2dbd0a798dd751ef8d13a77635",
+      "lfChecksum": "b795eb6899b36a3d2578ec42492afd6f309571f599af4ec5517e630f288f65d9",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011010000_add_sst_clinical_services",
+      "installedChecksum": "56942636553fc17917a3e70970ac21b9d9bad907c4289960170333f6fd3f5a80",
+      "localChecksum": "d8822bb147ec2e24a48ec2c74ed02d5808809d5d48dacde896850b8b5a5d6fbb",
+      "lfChecksum": "e4590cc6c6426625afe58396ebfd7a5f07f75ed2dfdfb32eb319586a82c1ea2a",
+      "classification": "UNRESOLVED_HISTORICAL_DIFFERENCE"
+    },
+    {
+      "name": "20261011010000_cemetery_integrity",
+      "installedChecksum": "a6287b47534be7e746e154258675d92adb458b72575536115e940e21570e8b6f",
+      "localChecksum": "a6287b47534be7e746e154258675d92adb458b72575536115e940e21570e8b6f",
+      "lfChecksum": "d7d5c96c21d47394cc0b979a5dda28865e834c2e628beecbf7c5f67d1d65b1ae",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011020000_add_sst_equipment",
+      "installedChecksum": "fbe23c52ee7711a03d1026aac43e0389ad34e587cae6e95b34b883c0f6426db8",
+      "localChecksum": "fbe23c52ee7711a03d1026aac43e0389ad34e587cae6e95b34b883c0f6426db8",
+      "lfChecksum": "6f1d903ea1640ffe96cbe1898fc5fdd77bf601b6aedd2148e13706ea27a6254c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011020000_cemetery_automatic_fees",
+      "installedChecksum": "8730ecbb92d5bbf317c74eb4c1eebeed54bbf68687642ce59e75cafc9cee84c5",
+      "localChecksum": "8730ecbb92d5bbf317c74eb4c1eebeed54bbf68687642ce59e75cafc9cee84c5",
+      "lfChecksum": "d36fb32186740315f756e4bf7716e7a75d45c151ad14ce624349cb215052fc1b",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011030000_add_sst_accidents",
+      "installedChecksum": "76a295a85036d43a4d3f3f66abea11889bfacaa1139a099e472887a3de7fb755",
+      "localChecksum": "76a295a85036d43a4d3f3f66abea11889bfacaa1139a099e472887a3de7fb755",
+      "lfChecksum": "1e9d04745e6dda5688c75fa68ae4985d3dbb349948e7a9faddb31bddf3356f0f",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011030000_hr_workforce_foundation",
+      "installedChecksum": "b0da3ace2e59d743cd4584c983729dbc87d0b0ba26156e86b8f0226d99ffd1f2",
+      "localChecksum": "b0da3ace2e59d743cd4584c983729dbc87d0b0ba26156e86b8f0226d99ffd1f2",
+      "lfChecksum": "eb830c0f4fe72f9b0bee6269c5ab141089d0a12db3af52596db7fe970e72f402",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011040000_add_sst_prevention",
+      "installedChecksum": "79e6b76d49584cb327f191ef11bbd0d3a8484f32e70095987803af9bc93246b3",
+      "localChecksum": "79e6b76d49584cb327f191ef11bbd0d3a8484f32e70095987803af9bc93246b3",
+      "lfChecksum": "7e38b223ef78ef185cef4a5fa74185b036a0bbba272e3aa28de61705b6fad662",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011050000_add_sst_health_benefits",
+      "installedChecksum": "2ec78701a750f8626a88244725bc79183251929c172b86d3e4be135bc0bdff54",
+      "localChecksum": "2ec78701a750f8626a88244725bc79183251929c172b86d3e4be135bc0bdff54",
+      "lfChecksum": "026c9372b6359378b1c0427a14213157639c3ec0d4a0310ccc57be8e53aa859d",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011060000_add_sst_integrations",
+      "installedChecksum": "fd9ae1c42b29b5dd23428f86db9eb15b52712b8b99be0d8102c02fc9e04b6640",
+      "localChecksum": "fd9ae1c42b29b5dd23428f86db9eb15b52712b8b99be0d8102c02fc9e04b6640",
+      "lfChecksum": "45b1d44478c14c1818605fcf3dbb1b71fe2706da5970d5edd205d6bd8134c44b",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011070000_add_sst_functional_history",
+      "installedChecksum": "4c5539b09e8644d419f778a953df046d4114e16f0f1bacb64a35519331e0a9f0",
+      "localChecksum": "4c5539b09e8644d419f778a953df046d4114e16f0f1bacb64a35519331e0a9f0",
+      "lfChecksum": "2588a0de6f45991cb8bb430888c343cc95de9dceee033cbbb01d2318c2cb2509",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011080000_complete_sst_aso_workflow",
+      "installedChecksum": "a945c715f1f0f9619f245445c07d044b4dca86a047992b3f295e59422a230ee8",
+      "localChecksum": "a945c715f1f0f9619f245445c07d044b4dca86a047992b3f295e59422a230ee8",
+      "lfChecksum": "cd1e99b0ddf4688015d36a15a56123ac0c921eb2dcb911e9ec11cf5aa5274d49",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011090000_add_sst_payroll_origins",
+      "installedChecksum": "b81e9f944e42a91502a6885345d96f30fdf1e44498e2193c2785a57ebe64a4a3",
+      "localChecksum": "b81e9f944e42a91502a6885345d96f30fdf1e44498e2193c2785a57ebe64a4a3",
+      "lfChecksum": "ed3cdd9eecbdb5a7c6350af2b805f57175b4f94ee2ef8b82dd1933a1031da557",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011100000_complete_sst_cat_layout",
+      "installedChecksum": "1d73f25db1b77ed63553916a963088e05f462b83bbe2d40f3c12be8b0d69c356",
+      "localChecksum": "1d73f25db1b77ed63553916a963088e05f462b83bbe2d40f3c12be8b0d69c356",
+      "lfChecksum": "8755245d93c02726f18155eacc3de4bf1e1c8012bad80a1f952370b814df1adc",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011110000_add_sst_leave_payroll_origins",
+      "installedChecksum": "574ce354528aa33fffe46175a578f109ebf53344852b27b613dfc6d4fa95de89",
+      "localChecksum": "574ce354528aa33fffe46175a578f109ebf53344852b27b613dfc6d4fa95de89",
+      "lfChecksum": "970f802bd4e643324b7feaa4c8a2e1fda5be2a7413b9358709b593428f9a99f6",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011120000_harden_sst_clinical_integrity",
+      "installedChecksum": "e63b1e921ed668f9bf86612b6bd13b2e620527974daf78dec90186b37d8cba90",
+      "localChecksum": "cf401dae90c2ccc80c739a4277c49bbcac3daebe2b7f6627fd7594047bc55265",
+      "lfChecksum": "e63b1e921ed668f9bf86612b6bd13b2e620527974daf78dec90186b37d8cba90",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011130000_hr_contract_temporal_revisions",
+      "installedChecksum": "3f5d8a57c8ba0c693da4868bb6088e6474defe2392bfa52b6f22130583a70d6c",
+      "localChecksum": "3f5d8a57c8ba0c693da4868bb6088e6474defe2392bfa52b6f22130583a70d6c",
+      "lfChecksum": "3f5d8a57c8ba0c693da4868bb6088e6474defe2392bfa52b6f22130583a70d6c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011150000_add_planning_scoped_instruments",
+      "installedChecksum": "47400b7850e7c2d55f0c9d2495308a63fd47e65f4594332592b48ebc52e391f2",
+      "localChecksum": "71d93ca582b42e8adb046c48147b04136032403fe721d8d25da5d06cc722b341",
+      "lfChecksum": "47400b7850e7c2d55f0c9d2495308a63fd47e65f4594332592b48ebc52e391f2",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011160000_add_planning_import_batches",
+      "installedChecksum": "abcc60f6ba00b0fa68f28613cd477a92b445ea3584d021c3238d2ec0332fb3f7",
+      "localChecksum": "e360aa98cc59d6b6e777ef345a8eea2de34f6d307e9332134165abadf46fc02f",
+      "lfChecksum": "abcc60f6ba00b0fa68f28613cd477a92b445ea3584d021c3238d2ec0332fb3f7",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011160000_hr_consignment_schedule",
+      "installedChecksum": "71ac51cab3db791b284de006763091011147581b94d4dda253d8cd77e73697fe",
+      "localChecksum": "71ac51cab3db791b284de006763091011147581b94d4dda253d8cd77e73697fe",
+      "lfChecksum": "71ac51cab3db791b284de006763091011147581b94d4dda253d8cd77e73697fe",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261011170000_planning_immutable_movements",
+      "installedChecksum": "1d87356a918993a0afb83de5e116892355abb7a358498117594f19956bc540dc",
+      "localChecksum": "c748d29d562300938b19d82f25e7c5d4571559ba10e5d29342ac6cb9e9bc7bc2",
+      "lfChecksum": "1d87356a918993a0afb83de5e116892355abb7a358498117594f19956bc540dc",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011180000_planning_legal_operations",
+      "installedChecksum": "0323be37258736d3327d13e2779de8676bdc756b4a4e19d5a590700cdc4356a0",
+      "localChecksum": "4dfd922fc1f20de850532b10afc8057b0f164c25cc9462b5a334e23d895d4688",
+      "lfChecksum": "0323be37258736d3327d13e2779de8676bdc756b4a4e19d5a590700cdc4356a0",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011190000_planning_internal_connections",
+      "installedChecksum": "2acfe037661d391680163e80efe80ff4b38d2dbbff5f7abc7d2a59ad699721a9",
+      "localChecksum": "9cd815ff5b1a6d4e2e21c49e054e3ca529757c9eed2837d2424b9845358796e7",
+      "lfChecksum": "2acfe037661d391680163e80efe80ff4b38d2dbbff5f7abc7d2a59ad699721a9",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011200000_planning_accounting_command_integrity",
+      "installedChecksum": "b2704261df54bbc560472f9fd3418609c2bdee46b2b399610acd14524fc8ef8f",
+      "localChecksum": "762a2ccedf8fd3fe932dbc9d920d388a1ff07f8dd9161fb3c862e8cd3899ec96",
+      "lfChecksum": "b2704261df54bbc560472f9fd3418609c2bdee46b2b399610acd14524fc8ef8f",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011210000_planning_catalog_maintenance",
+      "installedChecksum": "4622e5daa64255faee1b9f755f393b661f1900d0f79b9e0e3c2031164aa11a12",
+      "localChecksum": "3d2ecc93dde0b5e87811454248c8218f995ec7f07278a032ae92aa62ee3ca97e",
+      "lfChecksum": "4622e5daa64255faee1b9f755f393b661f1900d0f79b9e0e3c2031164aa11a12",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261011220000_planning_publication",
+      "installedChecksum": "5e8267d9b8464a5696dc5f35e88020f38c9a2423cac78eac4d17db9d5c0696d6",
+      "localChecksum": "d2f6e264f67f0b62d6ad5ee8acf027e0c61f64d7325e2f2acd96911e2314f52f",
+      "lfChecksum": "5e8267d9b8464a5696dc5f35e88020f38c9a2423cac78eac4d17db9d5c0696d6",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261012100000_accounting_entity_unit_scope",
+      "installedChecksum": "c8bd95332bbca222c4e07a30fe588c244788be022974293168d8da9fa1e7cdc5",
+      "localChecksum": "c8bd95332bbca222c4e07a30fe588c244788be022974293168d8da9fa1e7cdc5",
+      "lfChecksum": "bb0b6e9fede05ca75a5745ee323a50c458266b842699cedb79a570cc5a63f5ba",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012110000_entity_scoped_financial_years",
+      "installedChecksum": "2de39c1bbadbe3a38e0eb97a222460dc78aef6e584323e80ea673c7383bbdde3",
+      "localChecksum": "2de39c1bbadbe3a38e0eb97a222460dc78aef6e584323e80ea673c7383bbdde3",
+      "lfChecksum": "c0b693e62b158d58555f980e26ef4e7717bd51364ca7675ccca0901c81e49e0f",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012120000_accounting_year_entity_guard",
+      "installedChecksum": "811a8bc43d93a5b9e72d64ab17f1e887ed99ddb9af33346db70660b50ade24a3",
+      "localChecksum": "811a8bc43d93a5b9e72d64ab17f1e887ed99ddb9af33346db70660b50ade24a3",
+      "lfChecksum": "a27acd9d4f929916d5fea704ce6935e0c57e43184c37383c7ecc8d3b80a1ef95",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012130000_scoped_year_requires_accounting_scope",
+      "installedChecksum": "3f44da4627f926ed858aa832bbc7c0564f25aa55f1d54449e269eb44432b6da9",
+      "localChecksum": "3f44da4627f926ed858aa832bbc7c0564f25aa55f1d54449e269eb44432b6da9",
+      "lfChecksum": "692b598df489c7601a3a016881e40258571595963a83ac6be41790db02478bfd",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012140000_revenue_budget_unit_scope",
+      "installedChecksum": "bc1009de7c936a817dc81114c7a00ddf1fe559f40589994ea5dadf401541cf6e",
+      "localChecksum": "bc1009de7c936a817dc81114c7a00ddf1fe559f40589994ea5dadf401541cf6e",
+      "lfChecksum": "6a1c5e61ac0f9c435cb57d06c7dc82bf78ac42f3d002d7a53a5503e4b517df88",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012150000_accounting_year_scope_update_guard",
+      "installedChecksum": "4bb599e1e9b39f44481e96cd7dcd6174bccb3a877957fceb97855dad4679944c",
+      "localChecksum": "4bb599e1e9b39f44481e96cd7dcd6174bccb3a877957fceb97855dad4679944c",
+      "lfChecksum": "61cf6779b0b149e2fe7b128d7e30d4e5560407bdf134d84d46c9eba11f6d80a1",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012160000_internal_control_budget_scope",
+      "installedChecksum": "c4af29dc79c0e1e1006430351ea2ea8211410d282096ec32b270d884d9d3300f",
+      "localChecksum": "c4af29dc79c0e1e1006430351ea2ea8211410d282096ec32b270d884d9d3300f",
+      "lfChecksum": "f934b0fa50d9bd63db400ee15ad5f1fbeb5c4a769d173aad8d278f9b839c85f5",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012170000_shared_official_catalog_accounts",
+      "installedChecksum": "1c950e242d65aa8ddd5ec74ab1e2ab0ff9addf5785e36fe02751cd57e51f98cd",
+      "localChecksum": "1c950e242d65aa8ddd5ec74ab1e2ab0ff9addf5785e36fe02751cd57e51f98cd",
+      "lfChecksum": "b7c4d51432c5a6a23f3962b3b863aa8a8f7f94f1f7a94c2ceb1feef232f49e05",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012210000_bank_reconciliation_allocations",
+      "installedChecksum": "6b75b40c9142e45858fbcf78c16de50a6f8fda1c71df4caba8d48d27f04a3419",
+      "localChecksum": "6b75b40c9142e45858fbcf78c16de50a6f8fda1c71df4caba8d48d27f04a3419",
+      "lfChecksum": "e33da068c8a0f8f2046b929c4f1cfe74094defeac253b13c0a9a5830caee0d1b",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261012220000_functional_portal_bindings_recruitment",
+      "installedChecksum": "c0e474d610aac46ed88e8b9ac7d12a7fdcc88049c487c6ee5b158545efd6d5df",
+      "localChecksum": "c0e474d610aac46ed88e8b9ac7d12a7fdcc88049c487c6ee5b158545efd6d5df",
+      "lfChecksum": "4a8417b0eeef285b5057b32f1e7226001bd3b79f8f5869edebd9cc992d69e8de",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013010000_asset_valuation_scope_decimal",
+      "installedChecksum": "126ede345a0102c5c80d1c8cc139f639e4f60869359b62ec6c89a1cacbbb13b9",
+      "localChecksum": "126ede345a0102c5c80d1c8cc139f639e4f60869359b62ec6c89a1cacbbb13b9",
+      "lfChecksum": "ed08d198e9c963722396c9ed32c4a5e7f871c677acc0576c214b4e60c967343d",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013010000_transparency_publications",
+      "installedChecksum": "69b2f1372f4cbb0e7c3fb6c4df2903a650ea507c28b7fb5102347a31c10e5fa1",
+      "localChecksum": "69b2f1372f4cbb0e7c3fb6c4df2903a650ea507c28b7fb5102347a31c10e5fa1",
+      "lfChecksum": "9ff1a998a46f1ad6fa39c7a857dd30a0a301c75bc336856a51cd42ac87711837",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013020000_active_debt_municipal_origin",
+      "installedChecksum": "27c15ab5401334d9fecd75ecd86c9ef9c30f7a6ff879fbb43c6e924b58c4e0f5",
+      "localChecksum": "27c15ab5401334d9fecd75ecd86c9ef9c30f7a6ff879fbb43c6e924b58c4e0f5",
+      "lfChecksum": "18ddccf50ffc50ec6af5b33caf570bde6671a3746e0941d7d931385b7f76516c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013020000_transparency_citizen_access",
+      "installedChecksum": "ca67e58b82b3d3cdb5279f2d92ca490cd5ce6120ebed032b828f49109aa5baaf",
+      "localChecksum": "ca67e58b82b3d3cdb5279f2d92ca490cd5ce6120ebed032b828f49109aa5baaf",
+      "lfChecksum": "7682d4fbe5e89389fc0339a0421427df499af6d855bf9a01b05f3bd4ddc62a04",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013030000_transparency_file_preservation",
+      "installedChecksum": "4dc1e746687b943a58663022f75a37f3bf88a8723010bf8c22710648ada15d05",
+      "localChecksum": "4dc1e746687b943a58663022f75a37f3bf88a8723010bf8c22710648ada15d05",
+      "lfChecksum": "3ea95d137f84cab67be6a6df9541ab0da37bab8690936b54b53ba6c930673e2c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013040000_transparency_native_compliance_lai",
+      "installedChecksum": "95f560cdc2b2b1b77cbb933c52ff4d3fc7dcecb0e6cc4fa1fcd257b70a5a67d7",
+      "localChecksum": "95f560cdc2b2b1b77cbb933c52ff4d3fc7dcecb0e6cc4fa1fcd257b70a5a67d7",
+      "lfChecksum": "287b01d4e47f3cfe869e0343ee632dc00cf1e7c286d875cb3b6f039245394345",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013050000_transparency_attendance_satisfaction",
+      "installedChecksum": "22a789c63c99e938f06e94d554010fe7ce3ffed346ffc6be05a7057b9d0c87d6",
+      "localChecksum": "22a789c63c99e938f06e94d554010fe7ce3ffed346ffc6be05a7057b9d0c87d6",
+      "lfChecksum": "65ab8793d29353762fea2472d94c4f317328d289a88753eb197cc020c1307d49",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013060000_transparency_document_classification",
+      "installedChecksum": "ef9a52f3cb38cda28b7c14a750f1ce77298cdd4c396ebf32903a2a88757dd06a",
+      "localChecksum": "ef9a52f3cb38cda28b7c14a750f1ce77298cdd4c396ebf32903a2a88757dd06a",
+      "lfChecksum": "1c6e9283dc8cbc1c49a98c2c29a7c7ab5f39a3d3324d9c41d0573327eb512ea4",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013070000_citizen_process_tracking",
+      "installedChecksum": "251f91e0cfe6293e80ea7e536753d9447595bc65c9f9a796e3d7695aa281e515",
+      "localChecksum": "251f91e0cfe6293e80ea7e536753d9447595bc65c9f9a796e3d7695aa281e515",
+      "lfChecksum": "943b12d200fd83e6bbe90198b352275a06a590d5bb740f4315069c26d27995cf",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013100000_internal_control_decision_history",
+      "installedChecksum": "d22838a7c08970f5fd0fc9e42d5a30a4f83391ff5fb5a756f8f55a422eae1181",
+      "localChecksum": "d22838a7c08970f5fd0fc9e42d5a30a4f83391ff5fb5a756f8f55a422eae1181",
+      "lfChecksum": "38650276cb64548151cb4acf496e48e22a7e91633e2fcc8c6203e87d71897442",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013110000_integrated_portal_services",
+      "installedChecksum": "b3694ab9284ee615fbb792cbffbf8c8d31286210162c55ca1aa44973ed253cdd",
+      "localChecksum": "b3694ab9284ee615fbb792cbffbf8c8d31286210162c55ca1aa44973ed253cdd",
+      "lfChecksum": "c953bce138c1beadb569417bc21e9442b04fa5ba2e8fa638ca5ae7986d4c9f13",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013193000_statement_original_file",
+      "installedChecksum": "fb3e84991ee9a3140be57ba7109c840718e74f4f15f456cdd12042ca5f34c980",
+      "localChecksum": "fb3e84991ee9a3140be57ba7109c840718e74f4f15f456cdd12042ca5f34c980",
+      "lfChecksum": "2793298f8b5cd0fd95e1ce60d845685cbde95b47a2f0b9a078c761f976d46b00",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013200000_municipal_cost_ledger",
+      "installedChecksum": "2383fd10dd74b92045462a89eaed7b621028f9037d32d497630f4811c5245d1c",
+      "localChecksum": "2383fd10dd74b92045462a89eaed7b621028f9037d32d497630f4811c5245d1c",
+      "lfChecksum": "3b1a7fbc5c2be5592939d457a43439692b43d0a0e55e3bbe4878f22775f6a894",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013210000_fiscal_index_definitions",
+      "installedChecksum": "f74e664ce11b86a602562b9c3befd4b5783687448d32926fa3bbc39d32f296f4",
+      "localChecksum": "f74e664ce11b86a602562b9c3befd4b5783687448d32926fa3bbc39d32f296f4",
+      "lfChecksum": "100439acfb7c201913028b0eac09654226f1c833ffbd049bcdda32ff4bc0ff6d",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013220000_control_audit_event_integrity",
+      "installedChecksum": "f551302e829548e33647d72c44e576d61eb50e42304eb2ab9ec100649a824fd6",
+      "localChecksum": "f551302e829548e33647d72c44e576d61eb50e42304eb2ab9ec100649a824fd6",
+      "lfChecksum": "ee74aed54eddc74b1c8581d4437d24e3d94364a50d02468194dc989d241cdc3c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261013230000_material_consumption_costs",
+      "installedChecksum": "62c79482db9941ab801f1a0558e1cc59d1aac7b66e7379c27382b7978aa572b9",
+      "localChecksum": "62c79482db9941ab801f1a0558e1cc59d1aac7b66e7379c27382b7978aa572b9",
+      "lfChecksum": "db6e6d81acdec6d7cb7369697b2f1369ff0392dd0d1df52b25b469bed16309b3",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014010000_complete_fleet_checklist",
+      "installedChecksum": "9a13076cd50450696e9e43ae4bc9d9a0a50730e7c8e72eeae379855215f0b9a8",
+      "localChecksum": "9a13076cd50450696e9e43ae4bc9d9a0a50730e7c8e72eeae379855215f0b9a8",
+      "lfChecksum": "ac1bf9e8ef1d42c6f0277b176fd63e04241498774d729616fdbc4dc611c5f234",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014100000_control_final_reports",
+      "installedChecksum": "bd837113811b1e09d3653f19321c562d4a04b5f9eaf37f63c79bc33ff7be1023",
+      "localChecksum": "bd837113811b1e09d3653f19321c562d4a04b5f9eaf37f63c79bc33ff7be1023",
+      "lfChecksum": "0cde036aa02a681493e962ca8a9e3275031786b6ca9cfdd69337910b8d26b694",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014110000_tax_annual_batches",
+      "installedChecksum": "8e616c46136e4fdb6ca8a6a368554e9ce3a5a1092eb0b86ea9b58c8a5023e9fd",
+      "localChecksum": "8e616c46136e4fdb6ca8a6a368554e9ce3a5a1092eb0b86ea9b58c8a5023e9fd",
+      "lfChecksum": "df7bf3847123a8b17c6838f7896f25e0e40681cd0af243b4a117ae24f4e633b8",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014120000_hr_role_legal_history",
+      "installedChecksum": "8183651fb9ae3891313d5cb276f88261cb85f65bb01ce4fd9fcccad900b46b92",
+      "localChecksum": "8183651fb9ae3891313d5cb276f88261cb85f65bb01ce4fd9fcccad900b46b92",
+      "lfChecksum": "9543c6f48c234f2346db7bb86b7d710032a3b7aa23627b16957a8cce7b4b994d",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014130000_material_subcategories",
+      "installedChecksum": "e624197207c0d9a766552b3e0e9f0735b31cc9025a781f156cc1c3c51264d4fb",
+      "localChecksum": "e624197207c0d9a766552b3e0e9f0735b31cc9025a781f156cc1c3c51264d4fb",
+      "lfChecksum": "b1831c22f5e880459a254ed0f180beb477af98382a67e713542df27a2394a537",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014140000_process_judicial_cases",
+      "installedChecksum": "b48e88616b75491280b40417cb6fcc55f36bbf3b523f2e6a234a9ab3cc41c976",
+      "localChecksum": "b48e88616b75491280b40417cb6fcc55f36bbf3b523f2e6a234a9ab3cc41c976",
+      "lfChecksum": "c3c19176d6aa42fcec25d790452b529a4e65ef6d24f4a6638bbe1de7c9c0f838",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014150000_personnel_fiscal_definitions",
+      "installedChecksum": "7742ec8502a9f116c412742ea08a4e45c4a14b77664ebd275683713e50e36056",
+      "localChecksum": "7742ec8502a9f116c412742ea08a4e45c4a14b77664ebd275683713e50e36056",
+      "lfChecksum": "82eb099bc26390cc9af62860b09c0885b15b554d85c71e25a437744b94a69f4d",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014160000_stock_valuation",
+      "installedChecksum": "6444f4366c0ffbc214a4672f0fb67adf76fc094dab9f91949c25dcc22afb2877",
+      "localChecksum": "6444f4366c0ffbc214a4672f0fb67adf76fc094dab9f91949c25dcc22afb2877",
+      "lfChecksum": "c9e8881faa420a687b8d6fecc501996da9272824221f9bf9973db1547b5b6e78",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014170000_account_classification_snapshot",
+      "installedChecksum": "488e05f5fba17776758dbd23297fc8ab66c832eaae3118027ce8fd435871a2cf",
+      "localChecksum": "488e05f5fba17776758dbd23297fc8ab66c832eaae3118027ce8fd435871a2cf",
+      "lfChecksum": "dd29961078a6c1f86018a2f62ff2eb3a186c7883115abe6cdb0c54689b4b570c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014180000_material_request_origin",
+      "installedChecksum": "f1fee8ed659a63fbd6ac29f5f1b92baf441a2c9fe0bfff13fda42923ecd0881b",
+      "localChecksum": "80ae903c0239431d9b5cf1c5c9f04e743cac16cdc4a6cd2ab1e239966a488ec0",
+      "lfChecksum": "f1fee8ed659a63fbd6ac29f5f1b92baf441a2c9fe0bfff13fda42923ecd0881b",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261014180000_municipal_activity_relation_integrity",
+      "installedChecksum": "fb4cc15444cb06028fedb6ddab84f137f042da397e27ec1db00b74fbc01433ce",
+      "localChecksum": "fb4cc15444cb06028fedb6ddab84f137f042da397e27ec1db00b74fbc01433ce",
+      "lfChecksum": "7d087e7f7bcb261aa055e10db3d26ef842d9933c3c042d90386ff7b88f831bd8",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261014181000_equipment_identification_custody",
+      "installedChecksum": "495ce8332e3a4bf1c51de9b3ad9c71decaf3f771a12d09b65a7339bd16c5df09",
+      "localChecksum": "8b130ee32056e16c5876a78fa415d8d9d0158a54ad6ec4a76e535a985e15017d",
+      "lfChecksum": "495ce8332e3a4bf1c51de9b3ad9c71decaf3f771a12d09b65a7339bd16c5df09",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261014220000_msc_versioned_references",
+      "installedChecksum": "3967df6549caaab56f8c396ad8336677bfc9fd9f12af045bc5a7af6c3f179636",
+      "localChecksum": "3967df6549caaab56f8c396ad8336677bfc9fd9f12af045bc5a7af6c3f179636",
+      "lfChecksum": "5a2afcec0ffe4a6abf0c15bb1e884dbdf96eeea0eb43f5911355346a5f258fa4",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015010000_composite_accounting_postings",
+      "installedChecksum": "8838bc883b54676ffd8dec831314fdafbfb492c74f6f7838664f20837084dd9a",
+      "localChecksum": "8838bc883b54676ffd8dec831314fdafbfb492c74f6f7838664f20837084dd9a",
+      "lfChecksum": "8ca67696110e5bc65e5322379880f95dd1300b151d98ccd821a78cb88b6f4446",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015010000_health_internal_receipt_observation",
+      "installedChecksum": "fe0a7aeca2d6c77060cb448f40c0e8624c5a85db7adb8fe2eed48b40766f6a40",
+      "localChecksum": "fe0a7aeca2d6c77060cb448f40c0e8624c5a85db7adb8fe2eed48b40766f6a40",
+      "lfChecksum": "eca251dd877b95b42e78a5ba26b2c3da95f74751aa74301446da9bebf1b17297",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015020000_health_registration_identity",
+      "installedChecksum": "472e845072a766d678de578dc4524017aea201014b2cc52502b9d0de263f6c38",
+      "localChecksum": "472e845072a766d678de578dc4524017aea201014b2cc52502b9d0de263f6c38",
+      "lfChecksum": "0b61343af88b1a00b121f754a1f2fef71d7836c26b27ddba622fafd99db35fd5",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015020000_native_processed_carry_forward_payments",
+      "installedChecksum": "754a57a05117f4c9ef639744342ed08264cd2dc6f5b9551d0f0e628ccd456c0e",
+      "localChecksum": "754a57a05117f4c9ef639744342ed08264cd2dc6f5b9551d0f0e628ccd456c0e",
+      "lfChecksum": "ac29067d2fac269639226bb1595b17ae3a424fdda18e8fc42296b862531a27d8",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015030000_bank_resource_source_permissions",
+      "installedChecksum": "ada95a3c04b43afcb9a274b93d6d2227fd3d48058a6d3e44574ba9b31df17008",
+      "localChecksum": "ada95a3c04b43afcb9a274b93d6d2227fd3d48058a6d3e44574ba9b31df17008",
+      "lfChecksum": "48e0c38c7b302eacb0e2a8f510056932641b593e5cf0206da715705bfad2fdaf",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015030000_health_network_coverage",
+      "installedChecksum": "5a81e51944295d52e56fdd3b776aa679c93a0077f1e508a79ce4395ef57670dd",
+      "localChecksum": "5a81e51944295d52e56fdd3b776aa679c93a0077f1e508a79ce4395ef57670dd",
+      "lfChecksum": "308e845d128d084ff5bffe49fc737b2ea680eeb4cb950e89c4b75b922d500c02",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015040000_health_professional_working_hours",
+      "installedChecksum": "0d3cc7df60a0a1c39af6afbdda2ac43a47431834a57797cd04f0c5436da2d831",
+      "localChecksum": "0d3cc7df60a0a1c39af6afbdda2ac43a47431834a57797cd04f0c5436da2d831",
+      "lfChecksum": "64f8ae81993d4726147ee983efc6cd385cb816c96fd1bf41b02f09dfe56f49f6",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015040000_native_unprocessed_carry_forward_settlements",
+      "installedChecksum": "0c36fb888cb70a6586cca0bb6cf29c5a94bd9ca6680f249acf53ab05e6f11674",
+      "localChecksum": "0c36fb888cb70a6586cca0bb6cf29c5a94bd9ca6680f249acf53ab05e6f11674",
+      "lfChecksum": "2242db277cf3f98ad4b8f1ddcb0e3d5363d618e973a37312ffc01789c78e757a",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015050000_carry_forward_settlement_transport",
+      "installedChecksum": "dbc5aa546357043f30da2a40cdcc9a8f675460b415e0331947b2451070d18c6c",
+      "localChecksum": "dbc5aa546357043f30da2a40cdcc9a8f675460b415e0331947b2451070d18c6c",
+      "lfChecksum": "8f3e50776e944ba75dccb3a36f1a23232bb277ba4ce184e1e68e21f4afc4071a",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015050000_health_patient_phone_calls",
+      "installedChecksum": "3cecc1d9e8ca7e6c9f18e70214e75350cca102c55d9c6f38ee890265008bbb62",
+      "localChecksum": "3cecc1d9e8ca7e6c9f18e70214e75350cca102c55d9c6f38ee890265008bbb62",
+      "lfChecksum": "8b1de12c67e8b6974b84174ad0c754ee611952a853cbe554e253d0b2a4bede55",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015060000_health_primary_care_workflows",
+      "installedChecksum": "c74775a13129961ad5cd5ff0a3c842b9819665075e52c3f1a4608c16650b71e4",
+      "localChecksum": "c74775a13129961ad5cd5ff0a3c842b9819665075e52c3f1a4608c16650b71e4",
+      "lfChecksum": "71d0398a5bfa80efb150910f31727c4efc59f08e6cdd4bfa06dbe772cdf765b6",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015070000_health_regulation_agenda_chain",
+      "installedChecksum": "fae93f752af8bebd40c270ca43c6f425606795d2320b03d72f6e932778234382",
+      "localChecksum": "fae93f752af8bebd40c270ca43c6f425606795d2320b03d72f6e932778234382",
+      "lfChecksum": "8cee7aebf27c01240e1ef0c7b9c8ebef61b236f5fd1dbcba36d825ed9988ffac",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015080000_health_quota_distribution",
+      "installedChecksum": "886b21466371cc7e80df3b3b42744e9161411f970c402833d84960daafb0a0a1",
+      "localChecksum": "886b21466371cc7e80df3b3b42744e9161411f970c402833d84960daafb0a0a1",
+      "lfChecksum": "e55b9a47d25026be47b27722c439e5f0566d56848be26b650296f1af4cd889b6",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015090000_health_clinical_extension",
+      "installedChecksum": "a566354992851cf70a98ca72c5065c979df004a37b29958065f6a2c4a37e0b29",
+      "localChecksum": "a566354992851cf70a98ca72c5065c979df004a37b29958065f6a2c4a37e0b29",
+      "lfChecksum": "f488eee21c4920a9598a6696158d7ff9c43f0f70b620c675f24c2d48678977c3",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015100000_health_care_lines",
+      "installedChecksum": "c0f4ffd67c7c6d8c72db74acbf4f1c0c59b46f8243647f9f36389194f62906c7",
+      "localChecksum": "c0f4ffd67c7c6d8c72db74acbf4f1c0c59b46f8243647f9f36389194f62906c7",
+      "lfChecksum": "75d7cfab729c4be7c218ec19819b082f1d816b261e1fce833be507b16fb0b18b",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015100000_tax_property_cadastral_history",
+      "installedChecksum": "2ab74e455a221f49fcaaa42b92cb0fffc428dc8ba2206260d1d657a648a5adda",
+      "localChecksum": "2ab74e455a221f49fcaaa42b92cb0fffc428dc8ba2206260d1d657a648a5adda",
+      "lfChecksum": "43557ea616279e8f0fa606559256886edce455c3e0920833be93dbfb7af77917",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015110000_health_condition_revisions",
+      "installedChecksum": "5bfb8c0c5448e529f21498d0ae73143392e9915d0a5649049b0c53801d98e060",
+      "localChecksum": "5bfb8c0c5448e529f21498d0ae73143392e9915d0a5649049b0c53801d98e060",
+      "lfChecksum": "d21a8f57c3bd29c7c29a8573eb6094ac1430365ffae13374580f27c35e5e7545",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015110000_real_estate_cadastral_history",
+      "installedChecksum": "b351c12e302885e9ee09e8e1aa6e54505d00616c7e17f77b3fccad5ee3b7891a",
+      "localChecksum": "b351c12e302885e9ee09e8e1aa6e54505d00616c7e17f77b3fccad5ee3b7891a",
+      "lfChecksum": "159dfa365f678e3669ddf3c109728eb0d8bab73a5c245bd802eebece90ed2011",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015120000_configured_fiscal_records",
+      "installedChecksum": "64cb205c66116a9992d3c1c55a77785fa6ff7f84e5455241eee4f9478fbadeb7",
+      "localChecksum": "64cb205c66116a9992d3c1c55a77785fa6ff7f84e5455241eee4f9478fbadeb7",
+      "lfChecksum": "28e543e6cd40796797fa14170b88ff83ac1200f3ca8b601fb904f7919e2116d4",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015120000_health_pharmacy_catalog",
+      "installedChecksum": "e4fb39db4209d4a7b11021d2eb99c0e71e9a299e538e99724741ef8f7876209b",
+      "localChecksum": "e4fb39db4209d4a7b11021d2eb99c0e71e9a299e538e99724741ef8f7876209b",
+      "lfChecksum": "1e251cbbcce1051036679184e9925baa4944a2f144cd6c7d13bcc2e0ae2f0bcc",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015130000_economic_profile_history",
+      "installedChecksum": "3894b27bb8c60cb3f24e2e8ebe8cf065f57e0ef7d6d3e6d00b43099d49ad9a7f",
+      "localChecksum": "3894b27bb8c60cb3f24e2e8ebe8cf065f57e0ef7d6d3e6d00b43099d49ad9a7f",
+      "lfChecksum": "363fb743c8c8ab813b81864676941c3e6fab4b245c656a6df2311d35d4135518",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015130000_health_dispensation_history",
+      "installedChecksum": "bfb36a1516621c5a0138ccc3efcb63979926ea012c8cb7e359424e4341c97aa1",
+      "localChecksum": "bfb36a1516621c5a0138ccc3efcb63979926ea012c8cb7e359424e4341c97aa1",
+      "lfChecksum": "bc529020293778acb6182322dc25590f1dbc0d005e3f882b400a084aeb167f78",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015140000_health_pharmacy_judicial",
+      "installedChecksum": "a57cfad34953a90d720ab8076d2bb3284f57a5c9e5f5cdd8fefcdafcaf22abc7",
+      "localChecksum": "a57cfad34953a90d720ab8076d2bb3284f57a5c9e5f5cdd8fefcdafcaf22abc7",
+      "lfChecksum": "17f309f4785c93b6ea6da1fb4f18a6d2fc6a185270d323aeb9493eed8d971f62",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015140000_property_edit_restrictions",
+      "installedChecksum": "a5bd8055ea6be4aabff42a3667d044b3ffa7d6a4c89770c8f5beb5f18fc822dc",
+      "localChecksum": "a5bd8055ea6be4aabff42a3667d044b3ffa7d6a4c89770c8f5beb5f18fc822dc",
+      "lfChecksum": "87a8c330235ad52d2f7092c7fb2cd55ebcf35aef8edd8d61b6f35b7ca5325bdd",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015150000_health_pharmacy_kits",
+      "installedChecksum": "13465d9ead469bac2ae8c0aa0cd5b48356dcc13591bb5cbf560b555961bf862c",
+      "localChecksum": "13465d9ead469bac2ae8c0aa0cd5b48356dcc13591bb5cbf560b555961bf862c",
+      "lfChecksum": "a30167b0a773811b86445fdbd2512174e566f740d8c2221beeefab0c3defabcf",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015150000_property_profiles_and_registration",
+      "installedChecksum": "0ef98e18d50001a5478558b7666d201b96fcf7ca1529b4395c349125a47702f6",
+      "localChecksum": "0ef98e18d50001a5478558b7666d201b96fcf7ca1529b4395c349125a47702f6",
+      "lfChecksum": "24e5b1770074fa8f066bd88523b9c726f3ec2fb24d08bfeb71c9fc041c20a49c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015160000_accountant_versions",
+      "installedChecksum": "8fb2fd51d50a7609fa9992da27dae2a625b98d7584ac7c30330be87e25ce1ed2",
+      "localChecksum": "8fb2fd51d50a7609fa9992da27dae2a625b98d7584ac7c30330be87e25ce1ed2",
+      "lfChecksum": "fa69cbd74088ba467d71bc4d574071cdbdb02769c6d48482b21307d6f0dfcd45",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015160000_health_care_program_enrollment",
+      "installedChecksum": "6fd768d829671cb1a12fa94f6525ceb0753109b00d6c310635b6220c9f3b8616",
+      "localChecksum": "6fd768d829671cb1a12fa94f6525ceb0753109b00d6c310635b6220c9f3b8616",
+      "lfChecksum": "163880b0d112a86486cd7a5a36b3887bdc8f6a91f49e17c4ee9d0d911762499e",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015170000_economic_activity_registry",
+      "installedChecksum": "c8e10c082dadeebd7aa671213c2cfe49165bb17ea7d74d34a532bfb8bf397434",
+      "localChecksum": "c8e10c082dadeebd7aa671213c2cfe49165bb17ea7d74d34a532bfb8bf397434",
+      "lfChecksum": "3cb474c11562a1f2d1c8f083fea45595fa62b27ecc55105bd603cff8449c0371",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015170000_health_pharmacy_request_chain",
+      "installedChecksum": "d73dbf10adf79ba18edeeef37397712cbbebabda4dbe8998ec4f89a0bc19dd93",
+      "localChecksum": "d73dbf10adf79ba18edeeef37397712cbbebabda4dbe8998ec4f89a0bc19dd93",
+      "lfChecksum": "fd7af9b064336708c0541b8c867e4eb2580bc827fec487754412cc8ee4a53863",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015180000_configured_license_policy",
+      "installedChecksum": "f98e634b74e78e58c7f6d3c9046c5beecbd991e65cb6a4f0d6a82cf758164361",
+      "localChecksum": "f98e634b74e78e58c7f6d3c9046c5beecbd991e65cb6a4f0d6a82cf758164361",
+      "lfChecksum": "8fb11a3683f49beb53157ac04146644ec504111f0bb292ce7bd19569494b5ea2",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015180000_health_vaccination_workflows",
+      "installedChecksum": "459f9f2306813381ec5bcfa6766542318c43917afdd431aaaeaebc80ad0ef871",
+      "localChecksum": "459f9f2306813381ec5bcfa6766542318c43917afdd431aaaeaebc80ad0ef871",
+      "lfChecksum": "f8af1be32af35d2386c4c66be60389227b26e9f3cdb28d27c1ddcc35991d12e6",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015190000_health_vaccine_transfer_metadata",
+      "installedChecksum": "abcdd36ade361437269dcb205513e4e1ec58f15478b7951c0d9e92a4c55ef6de",
+      "localChecksum": "abcdd36ade361437269dcb205513e4e1ec58f15478b7951c0d9e92a4c55ef6de",
+      "lfChecksum": "bf69adf874cec47a3948f5b311e616a1002d8922700a4b02db46ae9728734e33",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015190000_property_simulation_memory",
+      "installedChecksum": "2ea67e4f8468da6286f87eac962ba9cbf13704d6531488bf9f6e7eafcf946975",
+      "localChecksum": "2ea67e4f8468da6286f87eac962ba9cbf13704d6531488bf9f6e7eafcf946975",
+      "lfChecksum": "d1e8856a5bfbf69daaf632597e7f54a4b72fabf54658ea5f35f96f263166ed99",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015200000_health_tfd_clinical_workflow",
+      "installedChecksum": "9e28c3b40703142f2820401b8fe9cd37be69eeaace6c5b4c6a131df82a3bb1a4",
+      "localChecksum": "9e28c3b40703142f2820401b8fe9cd37be69eeaace6c5b4c6a131df82a3bb1a4",
+      "lfChecksum": "9dcdc3dd41357becccf17a29fe262e39c81cd4108ba1b28efd697181d720989d",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015200000_itbi_process_evidence",
+      "installedChecksum": "ac46a39f92c9d8d1576b7de670473bc9d8eb4436806748da799069ebbd335c53",
+      "localChecksum": "ac46a39f92c9d8d1576b7de670473bc9d8eb4436806748da799069ebbd335c53",
+      "lfChecksum": "1cc03aaaa12bc6e2ef5ab5004ce5dc89c8aba487bed2b9dc2b9b94248b59350c",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015210000_economic_events_vehicles",
+      "installedChecksum": "0653fe1adfce85ddf973341bf2a8cc2acfae1e445cf3a20f6ae6220711309b09",
+      "localChecksum": "0653fe1adfce85ddf973341bf2a8cc2acfae1e445cf3a20f6ae6220711309b09",
+      "lfChecksum": "51cd448786aa540ce3af1b1cf3d1f14f737553677d968c5f9f94cded85d96e30",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015210000_health_tfd_fleet_boarding",
+      "installedChecksum": "ea110e898457f069a31177f34622eb2c4f7e6efda319c4d2a1d55c0ca19e0c24",
+      "localChecksum": "ea110e898457f069a31177f34622eb2c4f7e6efda319c4d2a1d55c0ca19e0c24",
+      "lfChecksum": "a99536c3ab19564f3c0f43f8dac49daaa375ae0c5381f42b588a870adfe4d9e9",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015220000_health_aih_apac_workflows",
+      "installedChecksum": "5fdfa81973db5e6bab704e102550a52eac2dbd9773151eae576923e509194cbd",
+      "localChecksum": "29ed10d25d4e9adb9fde6ece5a9cfadf1c3b9f79ba70f002dcd02b55d60aea18",
+      "lfChecksum": "d5d9b045afaff9d3c0b38eefb14a347d375b2742c9e131f8e61c9133472f2a55",
+      "classification": "UNRESOLVED_HISTORICAL_DIFFERENCE"
+    },
+    {
+      "name": "20261015220000_tax_channel_document_integrity",
+      "installedChecksum": "2f7c18a23a44ef544a94e6352443b7756f1e3eabe21319cbd0f0bcd8b630fac9",
+      "localChecksum": "2f7c18a23a44ef544a94e6352443b7756f1e3eabe21319cbd0f0bcd8b630fac9",
+      "lfChecksum": "a06d07a5bfa1900a3c19e2a06e98a8b67105d84bb93c72493d1267fd8c7a9b7b",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015230000_health_billing_prices",
+      "installedChecksum": "5d8605969b32fcbc34ec46e32d7e96851115490740226d6fa8d3089dd0a63755",
+      "localChecksum": "9397b453a328c1c191bd59c151b81bf8de19463877daa31803652bb3b78b84fd",
+      "lfChecksum": "5d8605969b32fcbc34ec46e32d7e96851115490740226d6fa8d3089dd0a63755",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261015230000_itbi_field_history",
+      "installedChecksum": "12ede6da9a67e5c0e20de1fcdb749baa49ec433cc5f8eaedc07b3bfc8a3aad0c",
+      "localChecksum": "12ede6da9a67e5c0e20de1fcdb749baa49ec433cc5f8eaedc07b3bfc8a3aad0c",
+      "lfChecksum": "8260c816d05e2dfc093fffee836a6dfb5a7949842c49d8e70e9c648985b3108f",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261015233000_health_followup_exchange",
+      "installedChecksum": "946802da2bf3143e8d3c2ab3a9e973908a3a68a2cc771fc016229745af7ae078",
+      "localChecksum": "3890199f23bbfec725298e7ff94246c5ba039d1bba68f4b00c08ba4b041fafe6",
+      "lfChecksum": "946802da2bf3143e8d3c2ab3a9e973908a3a68a2cc771fc016229745af7ae078",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261016010000_health_indicator_context",
+      "installedChecksum": "9fcac5a8e4d8c7405fbf2eb92d6c4cefcbc9888eb45e77cb7d003ee830c40eae",
+      "localChecksum": "1b3d99e33b4c47e98e20e5a851d7a339ce2dbfffca2fc90487ffea1633987381",
+      "lfChecksum": "9fcac5a8e4d8c7405fbf2eb92d6c4cefcbc9888eb45e77cb7d003ee830c40eae",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261019010000_transparency_page_feedback",
+      "installedChecksum": "483a689e69a44bb9b884d5c3fb5531e42e054155b9213f53f83a07199b77e4ff",
+      "localChecksum": "483a689e69a44bb9b884d5c3fb5531e42e054155b9213f53f83a07199b77e4ff",
+      "lfChecksum": "483a689e69a44bb9b884d5c3fb5531e42e054155b9213f53f83a07199b77e4ff",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261021160000_complete_fleet_debt_control",
+      "installedChecksum": "c436704054d6570c6e43f6661c2ac914a9072995d86fa80f4cff855e690ca995",
+      "localChecksum": "c436704054d6570c6e43f6661c2ac914a9072995d86fa80f4cff855e690ca995",
+      "lfChecksum": "c436704054d6570c6e43f6661c2ac914a9072995d86fa80f4cff855e690ca995",
+      "classification": "EXACT"
+    },
+    {
+      "name": "20261027100000_sanitation_structured_address",
+      "installedChecksum": "16d83aad5803daa1881e6234db8151c4fadc6b3677c651ee5f1cac70e2b6f7a8",
+      "localChecksum": "e7271d52788f999495717b531ba0cf991de2dc8630ade9d54c0673638b8c60cc",
+      "lfChecksum": "16d83aad5803daa1881e6234db8151c4fadc6b3677c651ee5f1cac70e2b6f7a8",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261027110000_sanitation_unit_identifier",
+      "installedChecksum": "83cf7c9f5224767970a9c85a5daafdf744e8eb1c417bc17322393223d4e32078",
+      "localChecksum": "af961dfa14f3da8039bf30e2bf1ef4aa619120db13648881e5ec93e702fe5985",
+      "lfChecksum": "83cf7c9f5224767970a9c85a5daafdf744e8eb1c417bc17322393223d4e32078",
+      "classification": "LINE_ENDINGS_ONLY"
+    },
+    {
+      "name": "20261027200000_secretariat_employee_manager",
+      "installedChecksum": "5e28fce18e003bbfde25a186253eac1e9bdcba5e99bbb86860337fe4b0011a4e",
+      "localChecksum": "5e28fce18e003bbfde25a186253eac1e9bdcba5e99bbb86860337fe4b0011a4e",
+      "lfChecksum": "5e28fce18e003bbfde25a186253eac1e9bdcba5e99bbb86860337fe4b0011a4e",
+      "classification": "EXACT"
+    }
+  ],
+  "note": "Installed ledger is preserved. Final catalog replay equality alone does not prove byte identity of every historical SQL source."
+}

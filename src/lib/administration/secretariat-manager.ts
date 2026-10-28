@@ -1,11 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { z } from "zod";
-
-export const secretariatInputSchema = z.object({
-  name: z.string().trim().min(1, "Nome é obrigatório.").max(200),
-  acronym: z.string().trim().max(30),
-  managerId: z.string().trim().nullable(),
-});
+export { secretariatInputSchema } from "./secretariat-input";
 
 export async function resolveSecretariatManager(tx: Prisma.TransactionClient, secretariatId: string, managerId: string | null) {
   if (!managerId) return { managerId: null, managerName: null };

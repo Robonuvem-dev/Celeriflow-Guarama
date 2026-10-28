@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import type { ConstructionAccess } from "@/lib/contracts/construction";
+export type { ConstructionAccess } from "@/lib/contracts/construction";
 
 export const constructionCatalogs = { PERMIT_TYPE: "Tipos de alvará", PURPOSE: "Finalidades", CONSTRUCTION_TYPE: "Tipos construtivos", SUBDIVISION_TYPE: "Parcelamentos", INSPECTION_TYPE: "Tipos de vistoria" } as const;
 export const constructionRoles = { ANALYST: "Analista", INSPECTOR: "Fiscal", MANAGER: "Gestor" } as const;
@@ -23,7 +25,6 @@ export function calculateConstructionArea(input: unknown, rule: unknown) {
   return { total: total.toFixed(4), memory: { areas: values, weights, total: total.toFixed(4), unit: "m²", formula: "Soma dos componentes multiplicados pelos coeficientes publicados" } };
 }
 
-export type ConstructionAccess = { administrator: boolean; employeeId: string | null; departmentId: string | null; roles: string[] };
 export function constructionCaseWhere(access: ConstructionAccess): Prisma.ConstructionCaseWhereInput {
   if (access.administrator) return {};
   if (!access.departmentId || !access.roles.length) return { id: { in: [] } };

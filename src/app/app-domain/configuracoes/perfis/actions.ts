@@ -4,7 +4,9 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { AccessError, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { normalizeRestrictiveProfilePermissions, SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { countProfileUsers, deleteAccessProfile, findAccessProfile, findDuplicateProfileName, saveAccessProfile, setAccessProfileStatus } from "@/db/repositories/platform/system-administration";
 
 const MODULE_CODES = new Set([
   "ADMINISTRACAO", "CADASTROS", "PROCESSOS", "ATENDIMENTO", "TRANSPARENCIA", "TRIBUTACAO", "FINANCEIRO", "COMPRAS", "RH",
@@ -29,7 +31,7 @@ export async function upsertPerfil(data: {
 }) {
   try {
     const context = await getTenantContextForModuleOperation("CONFIGURACOES", data.id ? "update" : "create");
-    const { prisma } = context;
+    const database = context.database ?? db;
     const nome = data.nome.trim();
     if (!nome) return { error: "Informe o nome do perfil." };
 
@@ -40,17 +42,11 @@ export async function upsertPerfil(data: {
       return { error: "A matriz de permissões é inválida." };
     }
 
-    const duplicate = await prisma.configuracaoPerfil.findFirst({
-      where: {
-        nome: { equals: nome, mode: "insensitive" },
-        ...(data.id ? { NOT: { id: data.id } } : {}),
-      },
-      select: { id: true },
-    });
+    const duplicate = await findDuplicateProfileName(database, nome, data.id);
     if (duplicate) return { error: "Já existe um perfil com este nome." };
 
     if (data.id) {
-      const existing = await prisma.configuracaoPerfil.findUnique({ where: { id: data.id } });
+      const existing = await findAccessProfile(database, data.id);
       if (!existing) return { error: "Perfil não encontrado." };
       if (existing.codigo === SYSTEM_ADMIN_PROFILE_CODE) {
         return { error: "O perfil técnico do administrador do sistema é gerenciado automaticamente." };
@@ -65,15 +61,9 @@ export async function upsertPerfil(data: {
         jsonPermissoes = JSON.stringify(next);
       }
       
-      await prisma.$transaction(async (tx) => {
-        const profile = await tx.configuracaoPerfil.update({ where: { id: data.id }, data: { nome, descricao: data.descricao, permissoes: jsonPermissoes, ativo: data.ativo } });
-        await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PROFILE", targetId: profile.id });
-      });
+      await withDatabaseTransaction(databaseConnection, tx => saveAccessProfile(tx, { nome, descricao: data.descricao, permissoes: jsonPermissoes, ativo: data.ativo }, context.user.id, data.id));
     } else {
-      await prisma.$transaction(async (tx) => {
-        const profile = await tx.configuracaoPerfil.create({ data: { codigo: createCustomProfileCode(), nome, descricao: data.descricao, permissoes: jsonPermissoes, ativo: data.ativo } });
-        await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PROFILE", targetId: profile.id });
-      });
+      await withDatabaseTransaction(databaseConnection, tx => saveAccessProfile(tx, { codigo: createCustomProfileCode(), nome, descricao: data.descricao, permissoes: jsonPermissoes, ativo: data.ativo }, context.user.id));
     }
     revalidatePermissionConsumers();
     return { error: null };
@@ -86,16 +76,12 @@ export async function upsertPerfil(data: {
 export async function togglePerfilStatus(id: string, ativo: boolean) {
   try {
     const context = await getTenantContextForModuleOperation("CONFIGURACOES", "update");
-    const { prisma } = context;
-    const perfil = await prisma.configuracaoPerfil.findUnique({ where: { id } });
+    const perfil = await findAccessProfile(context.database ?? db, id);
     if (!perfil) return { error: "Perfil não encontrado." };
     if (perfil.codigo === SYSTEM_ADMIN_PROFILE_CODE) {
       return { error: "O perfil técnico do administrador do sistema é gerenciado automaticamente." };
     }
-    await prisma.$transaction(async (tx) => {
-      await tx.configuracaoPerfil.update({ where: { id }, data: { ativo } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PROFILE", targetId: id });
-    });
+    await withDatabaseTransaction(databaseConnection, tx => setAccessProfileStatus(tx, id, ativo, context.user.id));
     revalidatePermissionConsumers();
     return { error: null };
   } catch (error) {
@@ -107,22 +93,19 @@ export async function togglePerfilStatus(id: string, ativo: boolean) {
 export async function deletePerfil(id: string) {
   try {
     const context = await getTenantContextForModuleOperation("CONFIGURACOES", "delete");
-    const { prisma } = context;
-    const perfil = await prisma.configuracaoPerfil.findUnique({ where: { id }, select: { id: true, codigo: true } });
+    const database = context.database ?? db;
+    const perfil = await findAccessProfile(database, id);
     if (!perfil) return { error: "Perfil não encontrado." };
     if (perfil.codigo === SYSTEM_ADMIN_PROFILE_CODE) {
       return { error: "O perfil do administrador do sistema é protegido e não pode ser excluído." };
     }
 
-    const linkedUsers = await prisma.usuario.count({ where: { perfilId: id } });
+    const linkedUsers = await countProfileUsers(database, id);
     if (linkedUsers > 0) {
       return { error: `Não é possível excluir este perfil porque há ${linkedUsers} usuário(s) vinculado(s). Reatribua ou exclua os usuários antes.` };
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.configuracaoPerfil.delete({ where: { id } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PROFILE", targetId: id });
-    });
+    await withDatabaseTransaction(databaseConnection, tx => deleteAccessProfile(tx, id, context.user.id));
     revalidatePermissionConsumers();
     return { error: null };
   } catch (error) {

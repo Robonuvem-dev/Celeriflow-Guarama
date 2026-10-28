@@ -5,6 +5,7 @@ import { constructionCaseWhere } from "@/lib/obras/construction-policy";
 import ApplyPropertyUpdateButton from "./ApplyPropertyUpdateButton";
 import { ConstructionLifecycleFilters, ConstructionLifecyclePagination } from "@/components/construction/ConstructionLifecycleListControls";
 import { lifecycleFilter, lifecyclePage, lifecycleSearch, listConstructionPropertyUpdates, type LifecycleListQuery } from "@/lib/obras/construction-lifecycle-list";
+import { db } from "@/db/client";
 
 export default async function ConstructionInspectionsPage({ searchParams }: { searchParams: Promise<LifecycleListQuery> }) {
   const query = await searchParams;
@@ -15,7 +16,7 @@ export default async function ConstructionInspectionsPage({ searchParams }: { se
   const where = { case: constructionCaseWhere(access), status, ...(search ? { OR: [{ requestNotes: { contains: search, mode: "insensitive" as const } }, { case: { process: { protocolNumber: { contains: search, mode: "insensitive" as const } } } }] } : {}) };
   const [inspectionTotal, cadastral] = await Promise.all([
     context.prisma.constructionInspection.count({ where }),
-    listConstructionPropertyUpdates(context.prisma, access, query, { page: "updatePage", search: "updateQ", status: "updateStatus" }),
+    listConstructionPropertyUpdates(context.database ?? db, access, query, { page: "updatePage", search: "updateQ", status: "updateStatus" }),
   ]);
   const inspectionPage = lifecyclePage(query.inspectionPage, inspectionTotal);
   const inspections = await context.prisma.constructionInspection.findMany({ where, include: { case: { select: { id: true, process: { select: { protocolNumber: true } } } } }, orderBy: [{ requestedAt: "desc" }, { id: "asc" }], skip: (inspectionPage - 1) * 20, take: 20 });

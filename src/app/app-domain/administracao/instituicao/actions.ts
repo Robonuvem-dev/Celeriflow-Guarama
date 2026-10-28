@@ -2,14 +2,17 @@
 
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
-import type { Prisma } from "@prisma/client";
+import type { InstitutionInput } from "@/lib/contracts/administration";
 import { normalizeOptionalInstitutionIdentifiers } from "@/lib/administration/c3-policy";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { findFirstInstitutionId, persistInstitution } from "@/db/repositories/administration/creation";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
 
 export async function saveInstitution(formData: FormData) {
   try {
     const context = await getTenantContextForSystemAdministration();
-    const { prisma } = context;
     let logoUrl: string | null = null;
     const logoFile = formData.get("logoFile") as File | null;
 
@@ -34,7 +37,7 @@ export async function saveInstitution(formData: FormData) {
       cnpj: formData.get("cnpj") as string,
       zipCode: formData.get("zipCode") as string,
     });
-    const data: Prisma.InstitutionCreateInput = {
+    const data: InstitutionInput = {
       name: (formData.get("name") as string).trim(),
       cnpj: identifiers.cnpj,
       legalName: (formData.get("legalName") as string).trim() || null,
@@ -57,17 +60,15 @@ export async function saveInstitution(formData: FormData) {
       return { error: "O nome da prefeitura é obrigatório." };
     }
 
-    const existing = await prisma.institution.findFirst();
+    const existing = await findFirstInstitutionId(context.database ?? db);
 
-    await prisma.$transaction(async (tx) => {
-      const institution = existing
-        ? await tx.institution.update({ where: { id: existing.id }, data })
-        : await tx.institution.create({ data });
-      await writeAuditEvent(tx, {
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const id = await persistInstitution(tx, existing, data);
+      await insertAuditEvent(tx, {
         actorUsuarioId: context.user.id,
         eventType: auditEventTypes.administrativeMutation,
         targetType: "INSTITUTION",
-        targetId: institution.id,
+        targetId: id,
       });
     });
 

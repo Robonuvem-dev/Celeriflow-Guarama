@@ -2,7 +2,11 @@
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { insertRole } from "@/db/repositories/administration/creation";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
 
 export async function createRole(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -14,11 +18,9 @@ export async function createRole(formData: FormData) {
 
   try {
     const context = await getTenantContextForSystemAdministration();
-    await context.prisma.$transaction(async (tx) => {
-      const duplicate = await tx.role.findFirst({ where: { name: { equals: name, mode: "insensitive" } }, select: { id: true } });
-      if (duplicate) throw new Error("Já existe um cargo ou função com este nome. Edite ou reative o registro existente.");
-      const role = await tx.role.create({ data: { name, level, description, canSign } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "ROLE", targetId: role.id });
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const id = await insertRole(tx, { name, level, description, canSign });
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "ROLE", targetId: id });
     });
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Erro ao criar cargo" };

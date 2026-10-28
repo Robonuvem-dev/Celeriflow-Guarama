@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": ".next/cache/database.tsbuildinfo",
+    "plugins": []
+  },
+  "include": [
+    "src/db/**/*.ts",
+    "src/lib/contracts/**/*.ts",
+    "src/lib/cadastros/identity-integrity.ts",
+    "src/lib/cadastros/person-merge-service.ts",
+    "scripts/inspect-canonical-identities.ts",
+    "scripts/municipal-system-dataset.ts",
+    "scripts/sanitation-city-dataset.ts",
+    "scripts/seed-municipal-system.ts",
+    "scripts/seed-sanitation-city.ts",
+    "scripts/verify-municipal-system-data.ts",
+    "scripts/drizzle-verify-schema.ts",
+    "tests/drizzle-*.test.ts",
+    "tests/identity-integrity-postgres.test.ts",
+    "tests/internal-notifications.test.ts",
+    "tests/municipal-system-dataset.test.ts",
+    "tests/construction-lifecycle-list.test.ts",
+    "tests/supplier-support.test.ts",
+    "tests/c2-pf-duplicate-merge.test.ts"
+  ],
+  "exclude": ["node_modules"]
+}

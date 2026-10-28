@@ -2,14 +2,17 @@
 
 import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
+import { databaseConnection } from "@/db/client";
+import { getPostgresError } from "@/db/errors";
+import { withDatabaseTransaction } from "@/db/transaction";
+import * as sanitation from "@/db/repositories/sanitation/operations";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { getUnitAddress } from "@/lib/saneamento/unit-address";
-import { formatConsumerUnitIdentifier, reserveConsumerUnitIdentifiers } from "@/lib/saneamento/unit-identifier";
 
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("SANEAMENTO", operation)).prisma;
+async function getTenantDatabase(operation: ModuleOperation) {
+  await getTenantContextForModuleOperation("SANEAMENTO", operation);
+  return databaseConnection;
 }
 
 type ActionResult = { error?: string };
@@ -28,7 +31,7 @@ const meterValue = z.number().finite().min(0, "A leitura deve ser maior ou igual
 const inputDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida.").transform((value) => new Date(`${value}T12:00:00.000Z`));
 
 function databaseErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+  if (getPostgresError(error)?.code === "23505") {
     return "Já existe um registro com esses dados.";
   }
 
@@ -50,7 +53,7 @@ export async function createConsumerUnit(data: {
   ownerName: string;
   ownerDocument: string;
 }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("create");
+  const connection = await getTenantDatabase("create");
   const parsed = z.object({
     address: requiredText,
     streetAddress: requiredText.optional(),
@@ -65,13 +68,7 @@ export async function createConsumerUnit(data: {
 
   try {
     const createdAt = new Date();
-    await prisma.$transaction(async (tx) => {
-      const { period, start } = await reserveConsumerUnitIdentifiers(tx, createdAt);
-      await tx.sanConsumerUnit.create({ data: {
-        ...parsed.data, ...getUnitAddress(parsed.data),
-        code: formatConsumerUnitIdentifier(period, start), createdAt, status: "Ativa",
-      } });
-    });
+    await withDatabaseTransaction(connection, tx => sanitation.insertConsumerUnit(tx, { ...parsed.data, ...getUnitAddress(parsed.data) }, createdAt));
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível cadastrar a unidade consumidora.") };
   }
@@ -93,7 +90,7 @@ export async function updateConsumerUnit(
     status: string;
   }
 ): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   const parsed = z.object({
     id: requiredText,
     address: requiredText,
@@ -109,16 +106,13 @@ export async function updateConsumerUnit(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
-    await prisma.sanConsumerUnit.update({
-      where: { id: parsed.data.id },
-      data: {
-        address: parsed.data.address,
-        ...getUnitAddress(parsed.data),
-        category: parsed.data.category,
-        ownerName: parsed.data.ownerName,
-        status: parsed.data.status,
-        ...(parsed.data.ownerDocument ? { ownerDocument: parsed.data.ownerDocument } : {}),
-      },
+    await sanitation.updateConsumerUnit(connection.db, parsed.data.id, {
+      address: parsed.data.address,
+      ...getUnitAddress(parsed.data),
+      category: parsed.data.category,
+      ownerName: parsed.data.ownerName,
+      status: parsed.data.status,
+      ...(parsed.data.ownerDocument ? { ownerDocument: parsed.data.ownerDocument } : {}),
     });
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível atualizar a unidade consumidora.") };
@@ -129,11 +123,11 @@ export async function updateConsumerUnit(
 }
 
 export async function inactivateConsumerUnit(id: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   if (!requiredText.safeParse(id).success) return { error: "Unidade inválida." };
 
   try {
-    await prisma.sanConsumerUnit.update({ where: { id }, data: { status: "Inativa" } });
+    await sanitation.setConsumerUnitStatus(connection.db, id, "Inativa");
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível inativar a unidade consumidora.") };
   }
@@ -150,7 +144,7 @@ export async function createMeterReading(data: {
   currentValue: number;
   readerName: string;
 }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("create");
+  const connection = await getTenantDatabase("create");
   const parsed = z.object({
     unitId: requiredText,
     competence,
@@ -164,21 +158,12 @@ export async function createMeterReading(data: {
     return { error: "A leitura atual não pode ser menor que a leitura anterior." };
   }
 
-  const unit = await prisma.sanConsumerUnit.findUnique({
-    where: { id: parsed.data.unitId },
-    select: { status: true },
-  });
+  const unit = await sanitation.findConsumerUnitStatus(connection.db, parsed.data.unitId);
   if (!unit) return { error: "Unidade consumidora não encontrada." };
   if (unit.status !== "Ativa") return { error: "Só é possível registrar leituras para unidades ativas." };
 
   try {
-    await prisma.sanMeterReading.create({
-      data: {
-        ...parsed.data,
-        consumption: parsed.data.currentValue - parsed.data.previousValue,
-        status: "Registrada",
-      },
-    });
+    await sanitation.insertMeterReading(connection.db, parsed.data);
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível registrar a leitura.") };
   }
@@ -191,7 +176,7 @@ export async function updateMeterReading(
   id: string,
   data: { currentValue?: number; status?: string; readerName?: string }
 ): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   const parsed = z.object({
     id: requiredText,
     currentValue: meterValue,
@@ -201,24 +186,18 @@ export async function updateMeterReading(
 
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const reading = await prisma.sanMeterReading.findUnique({
-    where: { id: parsed.data.id },
-    select: { previousValue: true },
-  });
+  const reading = await sanitation.findMeterReading(connection.db, parsed.data.id);
   if (!reading) return { error: "Leitura não encontrada." };
   if (parsed.data.currentValue < reading.previousValue) {
     return { error: "A leitura atual não pode ser menor que a leitura anterior." };
   }
 
   try {
-    await prisma.sanMeterReading.update({
-      where: { id: parsed.data.id },
-      data: {
-        currentValue: parsed.data.currentValue,
-        consumption: parsed.data.currentValue - reading.previousValue,
-        status: parsed.data.status,
-        readerName: parsed.data.readerName,
-      },
+    await sanitation.updateMeterReading(connection.db, parsed.data.id, {
+      currentValue: parsed.data.currentValue,
+      consumption: parsed.data.currentValue - reading.previousValue,
+      status: parsed.data.status,
+      readerName: parsed.data.readerName,
     });
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível atualizar a leitura.") };
@@ -236,7 +215,7 @@ export async function createServiceOrder(data: {
   unitId?: string;
   technician?: string;
 }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("create");
+  const connection = await getTenantDatabase("create");
   const parsed = z.object({
     orderType: z.enum(orderTypes),
     description: requiredText,
@@ -251,14 +230,13 @@ export async function createServiceOrder(data: {
   if (["Corte", "Religação"].includes(parsed.data.orderType) && !unitId) {
     return { error: "Corte e religação exigem uma unidade consumidora." };
   }
-  if (unitId && !(await prisma.sanConsumerUnit.findUnique({ where: { id: unitId }, select: { id: true } }))) {
+  if (unitId && !(await sanitation.findConsumerUnitStatus(connection.db, unitId))) {
     return { error: "Unidade consumidora não encontrada." };
   }
 
   const orderNumber = `OS-${new Date().getFullYear()}-${Date.now()}-${randomUUID().slice(0, 6).toUpperCase()}`;
   try {
-    await prisma.sanServiceOrder.create({
-      data: {
+    await sanitation.insertServiceOrder(connection.db, {
         orderNumber,
         orderType: parsed.data.orderType,
         description: parsed.data.description,
@@ -266,7 +244,6 @@ export async function createServiceOrder(data: {
         unitId,
         technician: parsed.data.technician || null,
         status: "Aberta",
-      },
     });
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível abrir a ordem de serviço.") };
@@ -286,7 +263,7 @@ export async function updateServiceOrder(
     technician?: string;
   }
 ): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   const parsed = z.object({
     id: requiredText,
     orderType: z.enum(orderTypes),
@@ -298,10 +275,7 @@ export async function updateServiceOrder(
 
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const order = await prisma.sanServiceOrder.findUnique({
-    where: { id: parsed.data.id },
-    select: { status: true, orderType: true, unitId: true },
-  });
+  const order = await sanitation.findServiceOrder(connection.db, parsed.data.id);
   if (!order) return { error: "Ordem de serviço não encontrada." };
   if (["Concluída", "Cancelada"].includes(order.status)) {
     return { error: "Ordens concluídas ou canceladas não podem ser reabertas ou alteradas." };
@@ -319,27 +293,10 @@ export async function updateServiceOrder(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.sanServiceOrder.update({
-        where: { id: parsed.data.id },
-        data: {
-          orderType: parsed.data.orderType,
-          description: parsed.data.description,
-          priority: parsed.data.priority,
-          status: parsed.data.status,
-          technician: parsed.data.technician || null,
-        },
-      });
-
-      if (parsed.data.status === "Concluída" && order.unitId) {
-        const unitStatus = parsed.data.orderType === "Corte"
-          ? "Cortada"
-          : parsed.data.orderType === "Religação"
-            ? "Ativa"
-            : null;
-        if (unitStatus) await tx.sanConsumerUnit.update({ where: { id: order.unitId }, data: { status: unitStatus } });
-      }
-    });
+    await withDatabaseTransaction(connection, tx => sanitation.updateServiceOrder(tx, parsed.data.id, {
+      orderType: parsed.data.orderType, description: parsed.data.description, priority: parsed.data.priority,
+      status: parsed.data.status, technician: parsed.data.technician || null,
+    }, order.unitId));
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível atualizar a ordem de serviço.") };
   }
@@ -354,12 +311,12 @@ export async function updateWaterQualityAnalysis(
   id: string,
   data: { collectionPoint: string; collectedAt: string; parameter: string; result: string; limit: string; compliance: string }
 ): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   const parsed = z.object({ id: requiredText, collectionPoint: requiredText, collectedAt: inputDate, parameter: requiredText, result: requiredText, limit: requiredText, compliance: z.enum(complianceStatuses) }).safeParse({ id, ...data });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
-    await prisma.sanWaterQualityAnalysis.update({ where: { id: parsed.data.id }, data: { collectionPoint: parsed.data.collectionPoint, collectedAt: parsed.data.collectedAt, parameter: parsed.data.parameter, result: parsed.data.result, limit: parsed.data.limit, compliance: parsed.data.compliance } });
+    await sanitation.updateWaterQualityAnalysis(connection.db, parsed.data.id, { collectionPoint: parsed.data.collectionPoint, collectedAt: parsed.data.collectedAt, parameter: parsed.data.parameter, result: parsed.data.result, limit: parsed.data.limit, compliance: parsed.data.compliance });
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível atualizar a análise.") };
   }
@@ -369,10 +326,10 @@ export async function updateWaterQualityAnalysis(
 }
 
 export async function inactivateWaterQualityAnalysis(id: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   if (!requiredText.safeParse(id).success) return { error: "Análise inválida." };
   try {
-    await prisma.sanWaterQualityAnalysis.update({ where: { id }, data: { active: false } });
+    await sanitation.inactivateWaterQualityAnalysis(connection.db, id);
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível inativar a análise.") };
   }
@@ -384,12 +341,12 @@ export async function updatePortalRequest(
   id: string,
   data: { requestType: string; requesterName: string; requestedAt: string; source: string; status: string }
 ): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   const parsed = z.object({ id: requiredText, requestType: requiredText, requesterName: requiredText, requestedAt: inputDate, source: requiredText, status: requiredText }).safeParse({ id, ...data });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
-    await prisma.sanPortalRequest.update({ where: { id: parsed.data.id }, data: { requestType: parsed.data.requestType, requesterName: parsed.data.requesterName, requestedAt: parsed.data.requestedAt, source: parsed.data.source, status: parsed.data.status } });
+    await sanitation.updatePortalRequest(connection.db, parsed.data.id, { requestType: parsed.data.requestType, requesterName: parsed.data.requesterName, requestedAt: parsed.data.requestedAt, source: parsed.data.source, status: parsed.data.status });
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível atualizar a solicitação.") };
   }
@@ -399,10 +356,10 @@ export async function updatePortalRequest(
 }
 
 export async function inactivatePortalRequest(id: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   if (!requiredText.safeParse(id).success) return { error: "Solicitação inválida." };
   try {
-    await prisma.sanPortalRequest.update({ where: { id }, data: { active: false } });
+    await sanitation.inactivatePortalRequest(connection.db, id);
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível inativar a solicitação.") };
   }
@@ -414,12 +371,12 @@ export async function updateSavedReport(
   id: string,
   data: { name: string; type: string; period: string; format: string }
 ): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   const parsed = z.object({ id: requiredText, name: requiredText, type: requiredText, period: requiredText, format: requiredText }).safeParse({ id, ...data });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
-    await prisma.sanSavedReport.update({ where: { id: parsed.data.id }, data: { name: parsed.data.name, type: parsed.data.type, period: parsed.data.period, format: parsed.data.format } });
+    await sanitation.updateSavedReport(connection.db, parsed.data.id, { name: parsed.data.name, type: parsed.data.type, period: parsed.data.period, format: parsed.data.format });
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível atualizar o relatório.") };
   }
@@ -429,10 +386,10 @@ export async function updateSavedReport(
 }
 
 export async function inactivateSavedReport(id: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  const connection = await getTenantDatabase("update");
   if (!requiredText.safeParse(id).success) return { error: "Relatório inválido." };
   try {
-    await prisma.sanSavedReport.update({ where: { id }, data: { active: false } });
+    await sanitation.inactivateSavedReport(connection.db, id);
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível inativar o relatório.") };
   }

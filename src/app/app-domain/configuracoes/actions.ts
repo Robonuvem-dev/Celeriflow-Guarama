@@ -3,9 +3,13 @@
 import { randomUUID } from "node:crypto";
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
+import { and, eq, inArray, ne } from "drizzle-orm";
+import { db } from "@/db/client";
+import { accessProfiles, modules } from "@/db/schema/identity";
+import { systemInstances } from "@/db/schema/instance-configuration";
 
-async function getTenantPrisma() {
-  return (await getTenantContextForSystemAdministration()).prisma;
+async function getTenantDatabase() {
+  return (await getTenantContextForSystemAdministration()).database ?? db;
 }
 
 // --- Instância da Prefeitura ---
@@ -16,17 +20,15 @@ export async function updateInstancia(id: string, data: {
   uf: string;
   dominio?: string;
 }) {
-  const prisma = await getTenantPrisma();
-  await prisma.configuracaoInstancia.update({
-    where: { id },
-    data: {
+  const database = await getTenantDatabase();
+  const updated = await database.update(systemInstances).set({
       nomePrefeitura: data.nomePrefeitura,
       cnpj: data.cnpj || null,
       municipio: data.municipio,
       uf: data.uf,
       dominio: data.dominio || null,
-    },
-  });
+  }).where(eq(systemInstances.id, id)).returning({ id: systemInstances.id });
+  if (!updated.length) throw new Error("Instância não encontrada.");
   revalidatePath("/configuracoes/instancia");
   revalidatePath("/configuracoes");
 }
@@ -38,16 +40,14 @@ export async function createInstancia(data: {
   uf: string;
   dominio?: string;
 }) {
-  const prisma = await getTenantPrisma();
-  await prisma.configuracaoInstancia.create({
-    data: {
+  const database = await getTenantDatabase();
+  await database.insert(systemInstances).values({
       nomePrefeitura: data.nomePrefeitura,
       cnpj: data.cnpj || null,
       municipio: data.municipio,
       uf: data.uf,
       dominio: data.dominio || null,
       status: "Ativa",
-    },
   });
   revalidatePath("/configuracoes/instancia");
   revalidatePath("/configuracoes");
@@ -55,17 +55,15 @@ export async function createInstancia(data: {
 
 // --- Módulos Contratados ---
 export async function toggleModulo(id: string, ativo: boolean) {
-  const prisma = await getTenantPrisma();
-  const modulo = await prisma.configuracaoModulo.findUnique({ where: { id }, select: { codigo: true } });
+  const database = await getTenantDatabase();
+  const [modulo] = await database.select({ codigo: modules.codigo }).from(modules).where(eq(modules.id, id)).limit(1);
   if (!modulo) throw new Error("Módulo não encontrado.");
   if (modulo.codigo === "CONFIGURACOES" && !ativo) throw new Error("O módulo Configurações não pode ser inativado.");
-  await prisma.configuracaoModulo.update({
-    where: { id },
-    data: {
+  const updated = await database.update(modules).set({
       ativo,
       dataAtivacao: ativo ? new Date() : null,
-    },
-  });
+  }).where(eq(modules.id, id)).returning({ id: modules.id });
+  if (!updated.length) throw new Error("Módulo não encontrado.");
   revalidatePath("/configuracoes/modulos");
   revalidatePath("/configuracoes");
   revalidatePath("/dashboard");
@@ -77,14 +75,12 @@ export async function createModulo(data: {
   codigo: string;
   ativo?: boolean;
 }) {
-  const prisma = await getTenantPrisma();
-  await prisma.configuracaoModulo.create({
-    data: {
+  const database = await getTenantDatabase();
+  await database.insert(modules).values({
       nome: data.nome,
       codigo: data.codigo,
       ativo: data.ativo ?? true,
       dataAtivacao: data.ativo === false ? null : new Date(),
-    },
   });
   revalidatePath("/configuracoes/modulos");
   revalidatePath("/configuracoes");
@@ -93,8 +89,8 @@ export async function createModulo(data: {
 }
 
 export async function ensureDefaultModulos() {
-  const prisma = await getTenantPrisma();
-  const existing = await prisma.configuracaoModulo.findMany({ select: { codigo: true } });
+  const database = await getTenantDatabase();
+  const existing = await database.select({ codigo: modules.codigo }).from(modules);
   const existingCodes = new Set(existing.map((m) => m.codigo.toUpperCase()));
   const inactiveByDefault = new Set(["EDUCACAO", "SANEAMENTO", "CULTURA", "SEGURANCA", "MEIO_AMBIENTE"]);
 
@@ -131,37 +127,24 @@ export async function ensureDefaultModulos() {
 
   for (const mod of defaultModules) {
     if (!existingCodes.has(mod.codigo)) {
-      await prisma.configuracaoModulo.create({
-        data: {
+      await database.insert(modules).values({
           codigo: mod.codigo,
           nome: mod.nome,
           ativo: !inactiveByDefault.has(mod.codigo),
           dataAtivacao: inactiveByDefault.has(mod.codigo) ? null : new Date(),
-        },
       });
     }
   }
 
   for (const mod of defaultModules) {
-    await prisma.configuracaoModulo.updateMany({
-      where: { codigo: mod.codigo, nome: { not: mod.nome } },
-      data: { nome: mod.nome },
-    });
+    await database.update(modules).set({ nome: mod.nome }).where(and(eq(modules.codigo, mod.codigo), ne(modules.nome, mod.nome)));
   }
 
-  await prisma.configuracaoModulo.updateMany({
-    where: {
-      codigo: "PATRIMONIO",
-      nome: {
-        in: [
+  await database.update(modules).set({ nome: "Almoxarifado e Patrimônio" }).where(and(eq(modules.codigo, "PATRIMONIO"), inArray(modules.nome, [
           "Patrimônio e Almoxarifado",
           "Patrimônio, Almoxarifado & Estoque",
           "Patrimônio, Almoxarifado e Estoque",
-        ],
-      },
-    },
-    data: { nome: "Almoxarifado e Patrimônio" },
-  });
+  ])));
 }
 
 // --- Perfis de Acesso ---
@@ -170,26 +153,22 @@ export async function createPerfil(data: {
   descricao?: string;
   permissoes: string;
 }) {
-  const prisma = await getTenantPrisma();
-  await prisma.configuracaoPerfil.create({
-    data: {
+  const database = await getTenantDatabase();
+  await database.insert(accessProfiles).values({
       codigo: `CUSTOM_${randomUUID().replaceAll("-", "")}`,
       nome: data.nome,
       descricao: data.descricao || null,
       permissoes: data.permissoes,
       ativo: true,
-    },
   });
   revalidatePath("/configuracoes/perfis");
   revalidatePath("/configuracoes");
 }
 
 export async function togglePerfil(id: string, ativo: boolean) {
-  const prisma = await getTenantPrisma();
-  await prisma.configuracaoPerfil.update({
-    where: { id },
-    data: { ativo },
-  });
+  const database = await getTenantDatabase();
+  const updated = await database.update(accessProfiles).set({ ativo }).where(eq(accessProfiles.id, id)).returning({ id: accessProfiles.id });
+  if (!updated.length) throw new Error("Perfil não encontrado.");
   revalidatePath("/configuracoes/perfis");
   revalidatePath("/configuracoes");
 }

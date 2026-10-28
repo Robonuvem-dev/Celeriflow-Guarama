@@ -1,6 +1,8 @@
 import { Users, Building2, Home, FileBox, ShieldAlert, AlertTriangle, Lock } from "lucide-react";
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { getPostgresError } from "@/db/errors";
+import { loadRegistryDashboard } from "@/db/repositories/registry/overview";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { AccessError, getTenantContextForModule } from "@/lib/platform/tenant-context";
@@ -38,27 +40,13 @@ export default async function CadastrosDashboardPage() {
   let masterCounts = { geral: 0, estrutura: 0, referencias: 0, qualidade: 0 };
 
   try {
-    const { prisma } = await getTenantContextForModule("CADASTROS");
-    const [persons, companies, suppliers, realEstates] = await Promise.all([
-      prisma.person.count(),
-      prisma.company.count(),
-      prisma.supplier.count(),
-      prisma.realEstate.count(),
-    ]);
-    personsCount = persons;
-    companiesCount = companies;
-    suppliersCount = suppliers;
-    realEstatesCount = realEstates;
-    const [families, entities, costCenters, cities, legalTexts, banks, currencies, catalogItems, latestConsistencyRun] = await Promise.all([
-      prisma.family.count(), prisma.governmentEntity.count(), prisma.costCenter.count(), prisma.city.count(),
-      prisma.legalText.count(), prisma.bank.count(), prisma.currency.count(), prisma.catalogItem.count(),
-      prisma.masterDataConsistencyRun.findFirst({
-        where: { area: "CADASTROS", status: "CONCLUIDA" },
-        orderBy: { startedAt: "desc" },
-        select: { _count: { select: { issues: { where: { status: "ABERTA" } } } } },
-      }),
-    ]);
-    masterCounts = { geral: families + entities, estrutura: costCenters + cities, referencias: legalTexts + banks + currencies + catalogItems, qualidade: latestConsistencyRun?._count.issues || 0 };
+    const context = await getTenantContextForModule("CADASTROS");
+    const data = await loadRegistryDashboard(context.database ?? db);
+    personsCount = data.persons;
+    companiesCount = data.companies;
+    suppliersCount = data.suppliers;
+    realEstatesCount = data.realEstates;
+    masterCounts = { geral: data.geral, estrutura: data.estrutura, referencias: data.referencias, qualidade: data.qualidade };
   } catch (error) {
     if (error instanceof AccessError) {
       if (error.status === 401) {
@@ -66,7 +54,7 @@ export default async function CadastrosDashboardPage() {
       }
       return <CadastrosUnavailable title="Acesso a Cadastros indisponível" message={error.message} />;
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2021", "P2022"].includes(error.code)) {
+    if (["42P01", "42703"].includes(getPostgresError(error)?.code ?? "")) {
       return <CadastrosUnavailable title="Cadastros aguarda atualização do banco" message="A estrutura necessária para Cadastros ainda não está disponível no banco desta instância. O administrador precisa concluir a atualização do banco para liberar o módulo." />;
     }
     console.error("[cadastros/page] unexpected error:", error);

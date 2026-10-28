@@ -4,14 +4,12 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { getSanitationTotals } from "@/db/repositories/sanitation/queries";
 
 export default async function SaneamentoDashboard() {
-  const { prisma } = await getTenantContextForModule("SANEAMENTO");
-  const [totalUnits, totalReadings, totalOS] = await Promise.all([
-    prisma.sanConsumerUnit.count(),
-    prisma.sanMeterReading.count(),
-    prisma.sanServiceOrder.count()
-  ]);
+  const context = await getTenantContextForModule("SANEAMENTO");
+  const { totalUnits, totalReadings, totalOS } = await getSanitationTotals(context.database ?? db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

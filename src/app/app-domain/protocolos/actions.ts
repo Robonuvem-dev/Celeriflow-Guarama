@@ -6,6 +6,8 @@ import { notifyProtocolDepartment, notifyProtocolUsers } from "@/lib/protocols/n
 import { createValidatedProcess } from "@/lib/protocols/service";
 import { approveGenericWorkflowProcess, concludeGenericWorkflowProcess, isGenericWorkflowProcess, recordGenericWorkflowReceipt, rejectGenericWorkflowProcess, returnGenericWorkflowProcess } from "@/lib/protocols/generic-workflow-runtime";
 import { markInternalNotificationRead } from "@/lib/notifications/internal-notifications";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
 import { getCurrentTenantContext, getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { requestProcessDocumentSignatures } from "@/lib/documents/document-flow-service";
 import { registerInternalDocumentSignature } from "@/lib/signatures/internal-signature";
@@ -672,8 +674,8 @@ export async function reopenProcess(processId: string, reason: string): Promise<
 
 export async function markProtocolNotificationRead(notificationId: string): Promise<{ error: string | null }> {
   try {
-    const { prisma, user } = await getCurrentTenantContext();
-    const marked = await prisma.$transaction((tx) => markInternalNotificationRead(tx, notificationId, user.id));
+    const { user } = await getCurrentTenantContext();
+    const marked = await withDatabaseTransaction(databaseConnection, tx => markInternalNotificationRead(tx, notificationId, user.id));
     if (!marked) throw new Error("Notificacao nao encontrada ou ja lida.");
     revalidatePath("/protocolos/notificacoes");
     revalidatePath("/notificacoes");

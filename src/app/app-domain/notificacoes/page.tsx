@@ -5,14 +5,17 @@ import { getCurrentTenantContext } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import NotificationsClient from "./NotificationsClient";
+import { db } from "@/db/client";
 
 export const dynamic = "force-dynamic";
 
 export default async function InternalNotificationsPage() {
-  const { prisma, user } = await getCurrentTenantContext();
+  const context = await getCurrentTenantContext();
+  const { user } = context;
+  const database = context.database ?? db;
   const [notifications, unread] = await Promise.all([
-    listInternalNotifications(prisma, user.id),
-    countUnreadInternalNotifications(prisma, user.id),
+    listInternalNotifications(database, user.id),
+    countUnreadInternalNotifications(database, user.id),
   ]);
   const entities = await resolveNotificationEntities(notifications);
   const items = notifications.map((notification) => ({ ...notification, entity: entities.get(notification.id) ?? null }));

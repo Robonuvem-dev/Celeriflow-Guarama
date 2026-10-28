@@ -5,6 +5,8 @@ import { getInstanceConfigurationDefaults, type InstanceConfigurationValues } fr
 import { InstanceConfigurationForm } from "./InstanceConfigurationForm";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { findOperationalInstance } from "@/db/repositories/platform/instance-configuration";
 
 export const dynamic = "force-dynamic";
 
@@ -21,15 +23,9 @@ function getInitialValues(parameters: { chave: string; valor: unknown }[]): Inst
 }
 
 export default async function InstanciaPage() {
-  const { prisma, user } = await getTenantContextForModule("CONFIGURACOES");
-  const instance = await prisma.configuracaoInstancia.findFirst({
-    orderBy: { createdAt: "asc" },
-    include: {
-      parametros: {
-        select: { chave: true, valor: true },
-      },
-    },
-  });
+  const context = await getTenantContextForModule("CONFIGURACOES");
+  const { user } = context;
+  const instance = await findOperationalInstance(context.database ?? db);
 
   return (
     <PageFrame className="space-y-3 px-1 py-1 md:px-2">

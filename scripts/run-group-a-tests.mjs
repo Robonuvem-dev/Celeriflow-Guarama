@@ -4,6 +4,7 @@ import { config } from "dotenv";
 import { findCommittedGroupATests } from "./group-a-tests.mjs";
 
 config({ path: ".env.local", quiet: true });
+config({ quiet: true });
 
 const tests = findCommittedGroupATests();
 if (!tests.length) {

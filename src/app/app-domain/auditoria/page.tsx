@@ -1,7 +1,6 @@
-import type { AuditEventType } from "@/lib/platform/audit-evidence";
-import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import type { AuditEventType } from "@/lib/contracts/audit";
+import { auditEventTypes } from "@/lib/contracts/audit";
 import {
-  buildAuditEventWhere,
   createAuditEventSearchParams,
   parseAuditEventQuery,
 } from "@/lib/platform/audit-query";
@@ -20,6 +19,8 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Activity, BarChart3, Clock3, Database, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { db } from "@/db/client";
+import { loadAuditEventSummary } from "@/db/repositories/platform/audit-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -120,17 +121,14 @@ export default async function AuditoriaPage({
 }: {
   searchParams: Promise<AuditSearchParams>;
 }) {
-  const { prisma } = await getTenantContextForModule("AUDITORIA");
+  const context = await getTenantContextForModule("AUDITORIA");
   const query = parseAuditEventQuery(await searchParams);
-  const where = buildAuditEventWhere(query.filters);
   const last24Hours = getLast24Hours();
 
-  const [eventPage, total, recent, eventGroups, targetGroups] = await Promise.all([
-    getAuditEventPage(prisma, query),
-    prisma.auditEvent.count({ where }),
-    prisma.auditEvent.count({ where: { AND: [where, { createdAt: { gte: last24Hours } }] } }),
-    prisma.auditEvent.groupBy({ by: ["eventType"], where, _count: { _all: true } }),
-    prisma.auditEvent.groupBy({ by: ["targetType"], where, _count: { _all: true } }),
+  const database = context.database ?? db;
+  const [eventPage, { total, recent, eventGroups, targetGroups }] = await Promise.all([
+    getAuditEventPage(database, query),
+    loadAuditEventSummary(database, query.filters, last24Hours),
   ]);
 
   const events = distributionRows(eventGroups);

@@ -1,23 +1,13 @@
 import "server-only";
 import { canViewModule, type AppContext } from "@/lib/platform/tenant-context";
 import { isCompletedDemand, type AdministrationBiData, type AdministrationBiRow } from "./bi-model";
+import { db } from "@/db/client";
+import { loadAdministrationBiSource } from "@/db/repositories/administration/bi";
 
 export async function getAdministrationBi(context: AppContext, selection = ""): Promise<AdministrationBiData> {
   if (!canViewModule(context.user, "ADMINISTRACAO")) throw new Error("Acesso negado aos indicadores administrativos.");
-  const { prisma } = context;
   const now = new Date();
-  const [institution, secretariats, departments, roles, demands, unassignedEmployees] = await Promise.all([
-    prisma.institution.findFirst({ select: { name: true } }),
-    prisma.secretariat.findMany({ orderBy: { name: "asc" }, select: {
-      id: true, name: true, acronym: true, isActive: true,
-      manager: { select: { name: true, isActive: true, secretariatId: true, role: { select: { name: true, isActive: true } } } },
-      _count: { select: { employees: { where: { isActive: true } }, departments: { where: { isActive: true } }, units: { where: { isActive: true } } } },
-    } }),
-    prisma.department.findMany({ where: { isActive: true, ...(selection ? { secretariatId: selection } : {}) }, select: { id: true, name: true, _count: { select: { employees: { where: { isActive: true } } } } }, orderBy: { name: "asc" } }),
-    prisma.$queryRaw<{ name: string; employees: number }[]>`SELECT COALESCE(r.name, 'Sem cargo informado') AS name, count(*)::int AS employees FROM "Employee" e LEFT JOIN "Role" r ON r.id=e."roleId" WHERE e."isActive"=true AND (${selection}='' OR e."secretariatId"=${selection}) GROUP BY r.name ORDER BY count(*) DESC, r.name`,
-    prisma.internalDemand.findMany({ select: { secretariatId: true, department: { select: { secretariatId: true } }, status: true, deadline: true, createdAt: true } }),
-    prisma.employee.groupBy({ by: ["secretariatId", "isActive"], _count: { _all: true } }),
-  ]);
+  const { institution, secretariats, departments, roles, demands, unassignedEmployees } = await loadAdministrationBiSource(context.database ?? db, selection);
   if (selection && !secretariats.some(s => s.id === selection)) throw new Error("Secretaria não encontrada. Selecione uma secretaria cadastrada.");
   const scopeDemands = demands.filter(d => !selection || (d.secretariatId || d.department?.secretariatId) === selection);
   const rows: AdministrationBiRow[] = secretariats.filter(s => !selection || s.id === selection).map(s => {

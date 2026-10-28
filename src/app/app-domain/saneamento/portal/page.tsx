@@ -3,21 +3,12 @@ import { Globe } from "lucide-react";
 import { PortalClient } from "../components/PortalClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listPortalRequests } from "@/db/repositories/sanitation/queries";
 
 export default async function PortalPage() {
-  const { prisma } = await getTenantContextForModule("SANEAMENTO");
-  const requests = await prisma.sanPortalRequest.findMany({
-    select: {
-      id: true,
-      requestType: true,
-      requesterName: true,
-      requestedAt: true,
-      source: true,
-      status: true,
-      active: true,
-    },
-    orderBy: { requestedAt: "desc" },
-  });
+  const context = await getTenantContextForModule("SANEAMENTO");
+  const requests = await listPortalRequests(context.database ?? db);
 
   const serializedRequests = requests.map((request) => ({
     ...request,
