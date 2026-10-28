@@ -1,11 +1,15 @@
 "use client";
 
-import { PowerOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Filter, PowerOff, RotateCcw, Search, X } from "lucide-react";
 import { NewUnitSheet } from "./NewUnitSheet";
 import { EditUnitSheet } from "./EditUnitSheet";
 import { inactivateConsumerUnit } from "../actions";
-import { SanitationTable, SanitationPagination } from "./SanitationTable";
-import { SanitationFilters } from "./SanitationFilters";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OperationalPagination, OperationalTable, type OperationalRow } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalHeaderActions, useOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { unitColumns } from "../unidades/columns";
 import { useSanitationList } from "./useSanitationList";
 import { getUnitAddress } from "@/lib/saneamento/unit-address";
 import type { SanitationPagination as Pagination } from "@/lib/saneamento/list-query";
@@ -22,16 +26,21 @@ type Unit = {
   ownerName: string | null;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  Ativa: "bg-green-100 text-green-700",
-  Cortada: "bg-red-100 text-red-700",
-  Suspensa: "bg-yellow-100 text-yellow-700",
-  Inativa: "bg-gray-100 text-gray-500",
-};
-
 export function UnidadesClient({ units, pagination }: { units: Unit[]; pagination: Pagination }) {
   const list = useSanitationList(pagination);
   const { query, total } = pagination;
+  const { device } = useOperationalWorkspace();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [resetVersion, setResetVersion] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
+  const search = useRef<HTMLInputElement>(null);
+  const committedSearch = useRef(query.q);
+  const activeFilters = Number(Boolean(query.status)) + Number(Boolean(query.category));
+
+  useEffect(() => {
+    if (search.current && (search.current.value === committedSearch.current || document.activeElement !== search.current)) search.current.value = query.q;
+    committedSearch.current = query.q;
+  }, [query.q]);
 
   async function handleInactivate(id: string, code: string) {
     if (!confirm(`Inativar a unidade ${code}? Esta ação pode ser revertida editando o status.`)) return;
@@ -43,60 +52,57 @@ export function UnidadesClient({ units, pagination }: { units: Unit[]; paginatio
     }
   }
 
-  return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="Lista de unidades consumidoras" aria-busy={list.pending}>
-      <SanitationFilters query={query} onFilter={list.filter} placeholder="Buscar unidade, titular, bairro ou CEP..." filters={[
-        { name: "status", label: "Todos os status", options: ["Ativa", "Cortada", "Suspensa", "Inativa"] },
-        { name: "category", label: "Todas as categorias", options: ["Residencial", "Comercial", "Industrial", "Pública", "Rural"] },
-      ]}><NewUnitSheet /></SanitationFilters>
+  const rows: OperationalRow[] = units.map((unit) => {
+    const address = getUnitAddress(unit);
+    return {
+      id: unit.id, label: unit.code,
+      values: { identifier: unit.code, street: address.streetAddress, neighborhood: address.neighborhood || "—", postalCode: address.postalCode || "—", owner: unit.ownerName || "—", category: unit.category, status: unit.status },
+      actions: <div className={styles.rowActions}>
+        <EditUnitSheet unit={unit} />
+        <button type="button" className={styles.iconButton} onClick={() => void handleInactivate(unit.id, unit.code)} title="Inativar" aria-label={`Inativar unidade ${unit.code}`} disabled={unit.status === "Inativa"}><PowerOff aria-hidden="true" /></button>
+      </div>,
+    };
+  });
 
-      {/* Table */}
-      {units.length === 0 ? (
-        <div className="min-h-0 flex-1 p-10 text-center text-gray-400 text-sm">
-          Nenhuma unidade consumidora encontrada.
-        </div>
-      ) : (
-        <SanitationTable columns={[
-          { label: "Identificador", width: 13 }, { label: "Rua e número", width: 20 },
-          { label: "Bairro", width: 13 }, { label: "CEP", width: 9 },
-          { label: "Titular", width: 18 }, { label: "Categoria", width: 10 },
-          { label: "Status", width: 9 }, { label: "Ações", width: 8, align: "right" },
-        ]}>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {units.map((unit) => {
-                const address = getUnitAddress(unit);
-                return <tr key={unit.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                  <td className="px-3 py-2 text-xs font-mono font-medium text-gray-900 dark:text-white">{unit.code}</td>
-                  <td title={address.streetAddress} className="text-gray-500">{address.streetAddress}</td>
-                  <td title={address.neighborhood} className="text-gray-500">{address.neighborhood || "—"}</td>
-                  <td className="text-gray-500">{address.postalCode || "—"}</td>
-                  <td title={unit.ownerName ?? ""} className="px-3 py-2 text-xs text-gray-500">{unit.ownerName || "-"}</td>
-                  <td className="px-3 py-2 text-xs text-gray-500">{unit.category}</td>
-                  <td className="px-3 py-2">
-                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[unit.status] ?? "bg-gray-100 text-gray-500"}`}>
-                      {unit.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <EditUnitSheet unit={unit} />
-                      <button
-                        onClick={() => handleInactivate(unit.id, unit.code)}
-                        className="p-1.5 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded transition-colors"
-                        title="Inativar"
-                        disabled={unit.status === "Inativa"}
-                      >
-                        <PowerOff className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>;
-              })}
-            </tbody>
-        </SanitationTable>
-      )}
+  return <section className={styles.list} aria-label="Lista de unidades consumidoras" aria-busy={list.pending} data-operational-list>
+    <OperationalHeaderActions>
+      <NewUnitSheet compact />
+      <button type="button" className={styles.iconButton} aria-label="Restaurar larguras padrão" title="Restaurar larguras padrão" onClick={() => { setResetVersion((version) => version + 1); setAnnouncement("Larguras padrão restauradas."); }}><RotateCcw /></button>
+    </OperationalHeaderActions>
 
-      <SanitationPagination page={query.page} total={total} pageSize={20} onPageChange={list.setPage} />
-</section>
-  );
+    <div className={styles.toolbar} data-operational-filters>
+      <form className={styles.searchForm} onSubmit={(event) => { event.preventDefault(); list.filter({ q: search.current?.value.trim() ?? "" }); }}>
+        <label htmlFor="unit-query" className={styles.srOnly}>Buscar unidade, titular, bairro ou CEP</label>
+        <input ref={search} id="unit-query" name="q" type="search" defaultValue={query.q} placeholder="Buscar unidade, titular, bairro ou CEP…" className={styles.searchInput} />
+        <button type="submit" className={styles.iconButton} disabled={list.pending} aria-label="Pesquisar unidades" title="Pesquisar unidades"><Search /></button>
+      </form>
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <button type="button" className={styles.filterButton} disabled={list.pending} onClick={() => setFiltersOpen(true)} aria-label={`Filtros de unidades${activeFilters ? `, ${activeFilters} ativos` : ""}`} aria-expanded={filtersOpen}>
+          <Filter aria-hidden="true" />Filtros{activeFilters > 0 && <span className={styles.count}>{activeFilters}</span>}
+        </button>
+        <DialogContent className={styles.dialog} data-device={device}>
+          <DialogHeader><DialogTitle>Filtros de unidades consumidoras</DialogTitle><DialogDescription>A busca será combinada com os filtros selecionados.</DialogDescription></DialogHeader>
+          <form className="grid gap-4" onSubmit={(event) => {
+            event.preventDefault(); const data = new FormData(event.currentTarget);
+            list.filter({ q: search.current?.value.trim() ?? "", status: String(data.get("status") ?? ""), category: String(data.get("category") ?? "") });
+            setFiltersOpen(false);
+          }}>
+            <div className={styles.filterFields}>
+              <label htmlFor="unit-status">Status<select id="unit-status" name="status" defaultValue={query.status}><option value="">Todos os status</option>{["Ativa", "Cortada", "Suspensa", "Inativa"].map((value) => <option key={value}>{value}</option>)}</select></label>
+              <label htmlFor="unit-category">Categoria<select id="unit-category" name="category" defaultValue={query.category}><option value="">Todas as categorias</option>{["Residencial", "Comercial", "Industrial", "Pública", "Rural"].map((value) => <option key={value}>{value}</option>)}</select></label>
+            </div>
+            <div className={styles.dialogFooter}>
+              <button type="button" className={styles.dialogButton} onClick={() => { list.filter({ q: search.current?.value.trim() ?? "", status: "", category: "" }); setFiltersOpen(false); }}>Limpar filtros</button>
+              <div className={styles.dialogButtons}><button type="button" className={styles.dialogButton} onClick={() => setFiltersOpen(false)}>Cancelar</button><button type="submit" className={`${styles.dialogButton} ${styles.primaryButton}`}>Aplicar filtros</button></div>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {(query.q || activeFilters > 0) && <button type="button" className={styles.iconButton} disabled={list.pending} aria-label="Limpar busca e filtros" title="Limpar busca e filtros" onClick={() => { if (search.current) search.current.value = ""; list.filter({ q: "", status: "", category: "" }); }}><X /></button>}
+    </div>
+
+    <OperationalTable columns={unitColumns} rows={rows} preferenceId="sanitation-units" resetVersion={resetVersion} />
+    <OperationalPagination page={query.page} total={total} pending={list.pending} onPageChange={list.setPage} />
+    <span className={styles.srOnly} role="status">{announcement}</span>
+  </section>;
 }

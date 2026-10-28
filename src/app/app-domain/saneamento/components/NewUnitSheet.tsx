@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/sheet";
 import { createConsumerUnit } from "../actions";
 import styles from "./sanitation.module.css";
+import operationalStyles from "@/components/app-ui/operational/operational.module.css";
 
-export function NewUnitSheet() {
+export function NewUnitSheet({ compact = false }: { compact?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -46,9 +47,9 @@ export function NewUnitSheet() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="flex h-8 items-center gap-2 rounded-md bg-[#0284C7] px-3 text-sm font-medium text-white transition-colors hover:bg-[#0369A1]" />}>
-        <Droplets className="h-5 w-5" />
-        Nova Unidade Consumidora
+      <SheetTrigger render={<button className={compact ? operationalStyles.newButton : "flex h-8 items-center gap-2 rounded-md bg-[#0284C7] px-3 text-sm font-medium text-white transition-colors hover:bg-[#0369A1]"} aria-label="Nova Unidade Consumidora" title="Nova Unidade Consumidora" />}>
+        <Droplets className="h-5 w-5" aria-hidden="true" />
+        <span className={compact ? operationalStyles.newLabel : undefined}>{compact ? "Nova unidade" : "Nova Unidade Consumidora"}</span>
       </SheetTrigger>
       <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>

@@ -60,8 +60,8 @@ export function EditUnitSheet({ unit }: { unit: Unit }) {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="p-1.5 text-slate-400 hover:text-[#0284C7] hover:bg-blue-50 rounded transition-colors" title="Editar" />}>
-        <Pencil className="h-3.5 w-3.5" />
+      <SheetTrigger render={<button className="p-1.5 text-slate-400 hover:text-[#0284C7] hover:bg-blue-50 rounded transition-colors" title="Editar" aria-label={`Editar unidade ${unit.code}`} />}>
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
       </SheetTrigger>
       <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>
