@@ -14,7 +14,7 @@ const config = ts.readConfigFile(configPath, ts.sys.readFile);
 if (config.error) throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, "\n"));
 const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root);
 if (parsed.errors.length) throw new Error(ts.formatDiagnosticsWithColorAndContext(parsed.errors, { getCanonicalFileName: file => file, getCurrentDirectory: () => root, getNewLine: () => "\n" }));
-const count = 4;
+const count = 8;
 const cold = process.argv.includes("--cold");
 const partition = file => {
   const parts = relative(root, file).replaceAll("\\", "/").split("/");
