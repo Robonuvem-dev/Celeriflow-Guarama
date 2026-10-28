@@ -7,6 +7,7 @@ const navigation: ModuleNavGroup[] = [{
     { title: "Gestão Cultural", href: "/cultura/gestao-cultural", icon: "palette" },
     { title: "Fomento e Projetos", href: "/cultura/fomento-projetos", icon: "sparkles" },
     { title: "Esporte e Lazer", href: "/cultura/esporte-lazer", icon: "trophy" },
+    { title: "AcessaFlow", href: "https://www.acessaflow.com.br", icon: "globe" },
     { title: "Espaços e Reservas", href: "/cultura/espacos-reservas", icon: "mapPin" },
     { title: "Eventos", href: "/cultura/eventos", icon: "calendar" },
     { title: "Conselhos e Fundos", href: "/cultura/conselhos-fundos", icon: "shieldAlert" },
