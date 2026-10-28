@@ -3,7 +3,7 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { tfdRequestForActor } from "@/lib/saude/tfd-clinical-service";
 import { authorizeTfdReportAction, requestTfdBenefitAction, saveTfdReportAction, supplementTfdReportAction, transitionTfdBenefitAction, transitionTfdReportAction } from "../actions";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { databaseConnection } from "@/db/client";
+import { db as defaultDatabase, databaseConnection } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { healthTfdRequestEvents, healthTfdBenefits, healthTfdReportRevisions, healthTfdReportSupplements } from "@/db/schema/health-tfd";
 import { healthProfessionals } from "@/db/schema/health-workforce";
@@ -17,7 +17,7 @@ export default async function TfdReportPage({ params }: { params: Promise<{ id: 
   const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
   const request = await withDatabaseTransaction(databaseConnection, tx => tfdRequestForActor(tx, context, id));
   const report = request.clinicalReport;
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const [events, benefits, revisions, supplements, professionalRows, records, procedures] = await Promise.all([
     db.select().from(healthTfdRequestEvents).where(eq(healthTfdRequestEvents.requestId, id)).orderBy(asc(healthTfdRequestEvents.createdAt)),
     db.select().from(healthTfdBenefits).where(eq(healthTfdBenefits.requestId, id)).orderBy(desc(healthTfdBenefits.createdAt)),

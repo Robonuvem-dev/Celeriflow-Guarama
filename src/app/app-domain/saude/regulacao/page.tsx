@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { addAttachmentAction, createRegulationRequestAction, grantProviderAccessAction, reclassifyAction, saveRegulationQuotaAction, saveSectorAction, transferAuthorizationAction, transitionRegulationAction } from "./actions";
 import { validateGuideCode } from "@/lib/saude/regulation-service";
-import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthRegulationRequests, healthRegulationQuotas, healthRegulationSectors } from "@/db/schema/health-regulation";
 import { healthUnits } from "@/db/schema/health-workforce";
@@ -31,7 +31,7 @@ export default async function RegulacaoPage({ searchParams }: { searchParams: Pr
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
   const guideCode = (first(params.guideCode) || "").trim().slice(0, 16);
-  const where = and(unitIds ? inArray(healthRegulationRequests.requestUnitId, unitIds) : undefined, filter ? eq(healthRegulationRequests.status, filter) : undefined, q ? or(sql`strpos(lower(${people.fullName}), lower(${q})) > 0`, sql`strpos(lower(${healthRegulationRequests.description}), lower(${q})) > 0`) : undefined);
+  const where = and(unitIds ? inArray(healthRegulationRequests.requestUnitId, unitIds) : undefined, filter ? eq(healthRegulationRequests.status, filter) : undefined, q ? or(ilike(people.fullName, `%${q}%`), ilike(healthRegulationRequests.description, `%${q}%`)) : undefined);
   const [{ total }] = await database.select({ total: count() }).from(healthRegulationRequests).innerJoin(patientTable, eq(patientTable.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
   const [requestRows, quotaRows, patients, units, specialties, services, suppliers, procedures, sectors, cids, covenants, usuarios] = await Promise.all([

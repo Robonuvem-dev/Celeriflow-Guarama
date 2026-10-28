@@ -13,6 +13,7 @@ function files(directory = root): string[] {
     const file = join(directory, entry.name);
     return entry.isDirectory() ? files(file) : entry.name.endsWith(".tsx") ? [file.slice(root.length + 1).replaceAll("\\", "/")] : [];
   });
+}
 test("Health pages retain every original JSX AST outside the separately owned pharmacy", () => {
   assert.deepEqual(files().sort(), Object.keys(baseline.files).sort());
   for (const [file, fingerprint] of Object.entries(baseline.files)) {

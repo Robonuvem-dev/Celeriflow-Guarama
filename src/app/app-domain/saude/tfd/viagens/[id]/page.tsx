@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db as defaultDatabase } from "@/db/client";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { activeTfdPassengerWhere, tfdTripAccessWhere } from "@/lib/saude/tfd-service";
 import { updateTripStatusAction } from "../../actions";
@@ -15,7 +16,7 @@ const field = "w-full rounded border p-2";
 export default async function TfdTripPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ requestId?: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
   const query = await searchParams, selectedRequestId = typeof query.requestId === "string" ? query.requestId.slice(0, 200) : "";
-  const db = context.database, assistant = alias(employees, "tfd_assistant"), responsible = alias(employees, "tfd_responsible");
+  const db = context.database ?? defaultDatabase, assistant = alias(employees, "tfd_assistant"), responsible = alias(employees, "tfd_responsible");
   const [row] = await db.select({ trip: healthTfdTrips, fleetUnit: fleetUnits, fleetBooking: fleetBookings, driverEmployee: employees, assistantEmployee: assistant, responsibleEmployee: responsible }).from(healthTfdTrips).innerJoin(fleetUnits, eq(fleetUnits.id, healthTfdTrips.fleetUnitId)).leftJoin(fleetBookings, eq(fleetBookings.id, healthTfdTrips.fleetBookingId)).leftJoin(employees, eq(employees.id, healthTfdTrips.driverEmployeeId)).leftJoin(assistant, eq(assistant.id, healthTfdTrips.assistantEmployeeId)).leftJoin(responsible, eq(responsible.id, healthTfdTrips.responsibleEmployeeId)).where(and(eq(healthTfdTrips.id, id), tfdTripAccessWhere(context.user))).limit(1);
   if (!row) throw new Error("Viagem TFD não encontrada.");
   const [passengerRows, events, requestRows] = await Promise.all([

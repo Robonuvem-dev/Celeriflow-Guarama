@@ -5,7 +5,7 @@ import { activeTfdPassengerWhere, tfdTripAccessWhere } from "@/lib/saude/tfd-ser
 import { createBookedTfdTripAction } from "./actions";
 import { tfdRequestForActor } from "@/lib/saude/tfd-clinical-service";
 import { and, asc, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
-import { databaseConnection } from "@/db/client";
+import { db as defaultDatabase, databaseConnection } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { fleetRoutes, fleetUnits, fleetBookings } from "@/db/schema/fleet";
 import { employees as employeeTable } from "@/db/schema/administration";
@@ -17,7 +17,7 @@ export default async function TfdTripsPage({ searchParams }: { searchParams: Pro
   const selectedRequest = requestId ? await withDatabaseTransaction(databaseConnection, tx => tfdRequestForActor(tx, context, requestId)) : null;
   if (selectedRequest && selectedRequest.status !== "AUTORIZADA") throw new Error("A seleção contextual de transporte exige tratamento autorizado.");
   const destination = typeof params.destination === "string" ? params.destination.slice(0, 200) : selectedRequest?.destination || "";
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const [routes, units, employees, tripRows] = await Promise.all([
     db.select().from(fleetRoutes).where(and(eq(fleetRoutes.active, true), scope.administrator ? undefined : eq(fleetRoutes.departmentId, scope.departmentId!))).orderBy(asc(fleetRoutes.destination)),
     db.select({ id: fleetUnits.id, name: fleetUnits.name, plate: fleetUnits.plate }).from(fleetUnits).where(and(eq(fleetUnits.category, "VEICULO"), eq(fleetUnits.status, "ATIVO"), scope.administrator ? undefined : eq(fleetUnits.departmentId, scope.departmentId!))),

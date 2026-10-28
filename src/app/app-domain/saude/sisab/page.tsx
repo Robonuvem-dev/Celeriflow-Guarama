@@ -1,4 +1,5 @@
 import { Send } from "lucide-react";
+import { db as defaultDatabase } from "@/db/client";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -24,7 +25,7 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function SisabPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
@@ -39,7 +40,7 @@ export default async function SisabPage({ searchParams }: { searchParams: Promis
     pharmacyPatients(db, unitIds, undefined, 300),
     db.select().from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
     db.select().from(healthTeams).where(and(eq(healthTeams.isActive, true), unitIds ? inArray(healthTeams.unitId, unitIds) : undefined)).orderBy(asc(healthTeams.name)),
-    db.select().from(healthProfessionals).where(eq(healthProfessionals.isActive, true)).orderBy(asc(healthProfessionals.id)).limit(200),
+    db.select().from(healthProfessionals).where(eq(healthProfessionals.isActive, true)).limit(200),
     db.select().from(healthHouseholds).orderBy(desc(healthHouseholds.createdAt)).limit(200),
     db.select().from(healthFamilies).orderBy(desc(healthFamilies.createdAt)).limit(200),
     db.select({ record: medicalRecords, patient: patientTable, person: people }).from(medicalRecords).innerJoin(patientTable, eq(patientTable.id, medicalRecords.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(unitIds ? inArray(medicalRecords.unitId, unitIds) : undefined).orderBy(desc(medicalRecords.date)).limit(200),

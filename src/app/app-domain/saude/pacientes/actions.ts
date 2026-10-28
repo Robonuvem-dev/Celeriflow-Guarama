@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { DatabaseTransaction } from "@/db/transaction";
 import { getPostgresError } from "@/db/errors";
 import { people } from "@/db/schema/people";

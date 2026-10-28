@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthSusProcedures, healthSusImportBatches } from "@/db/schema/health-catalogs";
 import Link from "next/link";
@@ -27,7 +27,7 @@ export default async function HealthProceduresPage({ searchParams }: { searchPar
   const competence = /^\d{4}-(0[1-9]|1[0-2])$/.test(first(params.competence) || "") ? first(params.competence)! : "";
   const status = ["ativo", "inativo"].includes(first(params.status) || "") ? first(params.status)! : "";
   const group = (first(params.group) || "").trim().slice(0, 40), subgroup = (first(params.subgroup) || "").trim().slice(0, 40);
-  const where = and(eq(healthSusProcedures.isCurrent, true), query ? or(sql`strpos(lower(${healthSusProcedures.code}), lower(${query})) > 0`, sql`strpos(lower(${healthSusProcedures.description}), lower(${query})) > 0`) : undefined, source ? eq(healthSusProcedures.source, source) : undefined, competence ? eq(healthSusProcedures.competence, competence) : undefined, status ? eq(healthSusProcedures.isActive, status === "ativo") : undefined, group ? eq(healthSusProcedures.groupCode, group) : undefined, subgroup ? eq(healthSusProcedures.subgroupCode, subgroup) : undefined);
+  const where = and(eq(healthSusProcedures.isCurrent, true), query ? or(ilike(healthSusProcedures.code, `%${query}%`), ilike(healthSusProcedures.description, `%${query}%`)) : undefined, source ? eq(healthSusProcedures.source, source) : undefined, competence ? eq(healthSusProcedures.competence, competence) : undefined, status ? eq(healthSusProcedures.isActive, status === "ativo") : undefined, group ? eq(healthSusProcedures.groupCode, group) : undefined, subgroup ? eq(healthSusProcedures.subgroupCode, subgroup) : undefined);
   const [{ total }] = await database.select({ total: count() }).from(healthSusProcedures).where(where);
   const requestedPage = pageNumber(first(params.page));
   const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / PAGE_SIZE)));

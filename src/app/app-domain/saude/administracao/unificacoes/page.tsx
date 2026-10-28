@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, ilike, isNull, like, ne, or, sql } from "drizzle-orm";
+import { db as defaultDatabase } from "@/db/client";
 import { addresses, companies } from "@/db/schema/registry";
 import { people } from "@/db/schema/people";
 import { patients } from "@/db/schema/health-registration";
@@ -20,7 +21,7 @@ function href(page: number, kind: string, q: string) { const query = new URLSear
 
 export default async function UnificationsPage({ searchParams }: { searchParams: Promise<{ tipo?: string | string[]; q?: string | string[]; page?: string | string[] }> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const params = await searchParams;
   const rawKind = first(params.tipo);
   const kind: MergeKind = rawKind === "ADDRESS" || rawKind === "PROFESSIONAL" ? rawKind : "PATIENT";

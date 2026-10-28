@@ -1,4 +1,5 @@
 import { Accessibility } from "lucide-react";
+import { db as defaultDatabase } from "@/db/client";
 import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { diagnosticSpecializedPlans as planTable, diagnosticSpecializedEntries, diagnosticSpecializedQuotas } from "@/db/schema/health-diagnostics";
 import { patients as patientTable } from "@/db/schema/health-registration";
@@ -23,7 +24,7 @@ const positivePage = (value: string | undefined) => value && /^\d+$/.test(value)
 
 export default async function SpecializedCenterPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);

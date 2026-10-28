@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db as defaultDatabase } from "@/db/client";
 import { randomUUID } from "node:crypto";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { recordVaccineLossAction } from "../actions";
@@ -15,7 +16,7 @@ type Option = { id: string; name: string };
 const Select = ({ name, label, options, required = false, value }: { name: string; label: string; options: Option[]; required?: boolean; value?: string | null }) => <label className="grid gap-1 text-sm">{label}<select name={name} required={required} defaultValue={value || ""} className={field}><option value="">Selecione</option>{options.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>;
 const Input = ({ name, label, type = "text", required = false, value }: { name: string; label: string; type?: string; required?: boolean; value?: string | number | null }) => <label className="grid gap-1 text-sm">{label}<input name={name} type={type} step={type === "number" ? "any" : undefined} required={required} defaultValue={value ?? ""} className={field} /></label>;
 export default async function VaccinationManagementPage({ searchParams }: { searchParams: Promise<{ stockId?: string; allVials?: string }> }) {
-  const params = await searchParams, context = await getTenantContextForModule("SAUDE"), db = context.database;
+  const params = await searchParams, context = await getTenantContextForModule("SAUDE"), db = context.database ?? defaultDatabase;
   const units = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const warehouseScope = units ? inArray(warehouseTable.healthUnitId, units) : isNotNull(warehouseTable.healthUnitId);
   const secondVaccine = alias(vaccineTable, "management_second_vaccine");

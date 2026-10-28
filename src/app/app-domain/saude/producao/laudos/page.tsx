@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthTreatmentReports, healthTreatmentAuthorizations, healthAuthorizationIssuers, healthAuthorizationNumberRanges } from "@/db/schema/health-treatment";
 import { patients } from "@/db/schema/health-registration";
@@ -15,7 +15,7 @@ export default async function TreatmentReportsPage({ searchParams }: { searchPar
   const context = await getTenantContextForModule("SAUDE"), params = await searchParams;
   const kind = params.kind === "APAC" ? "APAC" : "AIH", status = typeof params.status === "string" ? params.status.slice(0, 30) : "", q = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const database = context.database ?? db;
-  const where = and(eq(healthTreatmentReports.kind, kind), status ? eq(healthTreatmentReports.status, status) : undefined, context.user.hasHealthAccessScope ? inArray(healthTreatmentReports.unitId, context.user.allowedHealthUnitIds || []) : undefined, q ? sql`strpos(lower(${people.fullName}), lower(${q})) > 0` : undefined);
+  const where = and(eq(healthTreatmentReports.kind, kind), status ? eq(healthTreatmentReports.status, status) : undefined, context.user.hasHealthAccessScope ? inArray(healthTreatmentReports.unitId, context.user.allowedHealthUnitIds || []) : undefined, q ? ilike(people.fullName, `%${q}%`) : undefined);
   const [{ total }] = await database.select({ total: sql<number>`count(*)::int` }).from(healthTreatmentReports).innerJoin(patients, eq(patients.id, healthTreatmentReports.patientId)).innerJoin(people, eq(people.id, patients.personId)).where(where);
   const page = Math.min(typeof params.page === "string" && /^\d+$/.test(params.page) ? Math.max(1, Number(params.page)) : 1, Math.max(1, Math.ceil(total / 30)));
   const [reportRows, issuers, rangeRows, units] = await Promise.all([

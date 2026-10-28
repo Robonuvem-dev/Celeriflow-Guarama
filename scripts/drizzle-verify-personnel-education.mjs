@@ -5,7 +5,7 @@ import ts from "typescript";
 // Read-only verification of the domain handoff. No source transformations.
 const git = args => execFileSync("git", ["-c", "core.safecrlf=false", ...args], { encoding: "utf8" });
 const changed = [...new Set([...git(["diff", "--name-only"]).trim().split(/\r?\n/), ...git(["ls-files", "--others", "--exclude-standard"]).trim().split(/\r?\n/)])];
-const owned = path => /^(?:src\/(?:lib\/(?:rh|educacao)\/|app\/(?:app-domain\/(?:rh|educacao)\/|api\/(?:rh|educacao)\/)|db\/(?:repositories\/(?:education|personnel)\/|schema\/(?:education-|personnel-))|lib\/contracts\/(?:education-|personnel))|scripts\/(?:seed-education-|drizzle-(?:personnel|inventory-personnel|verify-personnel))|tests\/(?:drizzle-(?:personnel|education)|hr-role-legal-history|helpers\/personnel-education))/u.test(path);
+const owned = path => /^(?:src\/(?:lib\/(?:rh|educacao)\/|app\/(?:app-domain\/(?:rh|educacao)\/|api\/(?:rh|educacao)\/)|db\/(?:repositories\/(?:education|personnel)\/|schema\/(?:education-|personnel-))|lib\/contracts\/(?:education-|personnel))|scripts\/(?:seed-education-|drizzle-(?:personnel|inventory-personnel|verify-personnel))|tests\/(?:drizzle-(?:personnel|education)|hr-(?:role-legal-history|workforce-service|documentary-reports|service-rights)|helpers\/personnel-(?:education|documentary|financial-regression)))/u.test(path);
 const files = changed.filter(path => /\.[cm]?[jt]sx?$/.test(path) && owned(path));
 const errors = [], jsxFiles = [];
 function parse(path, content) { return ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true); }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db } from "@/db/client";
 import { randomUUID } from "node:crypto";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { followupContractLabels, followupContractNames, followupSchemaVersion } from "@/lib/saude/followup-contract";
@@ -12,16 +13,17 @@ import { integrationConnections } from "@/db/schema/integrations";
 const field = "w-full rounded border bg-white p-2 text-sm";
 export default async function FollowupPage({ searchParams }: { searchParams: Promise<{ binding?: string; page?: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), query = await searchParams;
+  const database = context.database ?? db;
   const units = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const bindingId = typeof query.binding === "string" ? query.binding.slice(0, 200) : "";
   const scope = units ? inArray(links.unitId, units) : undefined;
   const where = and(scope, bindingId ? eq(links.id, bindingId) : undefined);
-  const [{ total }] = await context.database.select({ total: count() }).from(remittances).innerJoin(links, eq(links.id, remittances.bindingId)).where(where);
+  const [{ total }] = await database.select({ total: count() }).from(remittances).innerJoin(links, eq(links.id, remittances.bindingId)).where(where);
   const page = Math.min(Math.max(1, /^\d+$/.test(query.page || "") ? Number(query.page) : 1), Math.max(1, Math.ceil(total / 30)));
   const [bindings, batchRows, healthUnits] = await Promise.all([
-    context.database.select({ ...getTableColumns(links), unit: { name: unitTable.name }, connection: { code: integrationConnections.code, status: integrationConnections.status }, receiver: { id: receivers.id, name: receivers.name, code: receivers.code } }).from(links).innerJoin(unitTable, eq(unitTable.id, links.unitId)).innerJoin(integrationConnections, eq(integrationConnections.id, links.connectionId)).innerJoin(receivers, eq(receivers.id, links.receiverId)).where(scope).orderBy(asc(links.unitId), asc(links.contractName)),
-    context.database.select({ batch: remittances, unitName: unitTable.name, receiverName: receivers.name, receipt: { protocol: receipts.protocol, accepted: receipts.accepted, rejected: receipts.rejected, unchanged: receipts.unchanged }, itemCount: sql<number>`(SELECT count(*)::integer FROM ${items} WHERE ${items.batchId}=${remittances.id})`.mapWith(Number) }).from(remittances).innerJoin(links, eq(links.id, remittances.bindingId)).innerJoin(unitTable, eq(unitTable.id, links.unitId)).innerJoin(receivers, eq(receivers.id, links.receiverId)).leftJoin(receipts, eq(receipts.batchId, remittances.id)).where(where).orderBy(desc(remittances.createdAt), desc(remittances.id)).offset((page - 1) * 30).limit(30),
-    context.database.select({ id: unitTable.id, name: unitTable.name }).from(unitTable).where(and(eq(unitTable.isActive, true), units ? inArray(unitTable.id, units) : undefined)).orderBy(asc(unitTable.name)),
+    database.select({ ...getTableColumns(links), unit: { name: unitTable.name }, connection: { code: integrationConnections.code, status: integrationConnections.status }, receiver: { id: receivers.id, name: receivers.name, code: receivers.code } }).from(links).innerJoin(unitTable, eq(unitTable.id, links.unitId)).innerJoin(integrationConnections, eq(integrationConnections.id, links.connectionId)).innerJoin(receivers, eq(receivers.id, links.receiverId)).where(scope).orderBy(asc(links.unitId), asc(links.contractName)),
+    database.select({ batch: remittances, unitName: unitTable.name, receiverName: receivers.name, receipt: { protocol: receipts.protocol, accepted: receipts.accepted, rejected: receipts.rejected, unchanged: receipts.unchanged }, itemCount: sql<number>`(SELECT count(*)::integer FROM ${items} WHERE ${items.batchId}=${remittances.id})`.mapWith(Number) }).from(remittances).innerJoin(links, eq(links.id, remittances.bindingId)).innerJoin(unitTable, eq(unitTable.id, links.unitId)).innerJoin(receivers, eq(receivers.id, links.receiverId)).leftJoin(receipts, eq(receipts.batchId, remittances.id)).where(where).orderBy(desc(remittances.createdAt), desc(remittances.id)).offset((page - 1) * 30).limit(30),
+    database.select({ id: unitTable.id, name: unitTable.name }).from(unitTable).where(and(eq(unitTable.isActive, true), units ? inArray(unitTable.id, units) : undefined)).orderBy(asc(unitTable.name)),
   ]);
   const batches = batchRows.map(row => ({ ...row.batch, binding: { unit: { name: row.unitName }, receiver: { name: row.receiverName } }, receipt: row.receipt, _count: { items: row.itemCount } }));
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });

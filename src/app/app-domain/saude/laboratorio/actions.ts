@@ -14,7 +14,7 @@ const text = (data: FormData, name: string) => String(data.get(name) || "").trim
 const refresh = () => revalidatePath("/saude/laboratorio");
 
 export async function saveExamModelAction(data: FormData): Promise<void> {
-  const context = await getTenantContextForModuleOperation("SAUDE", "create");
+  await getTenantContextForModuleOperation("SAUDE", "create");
   const code = text(data, "code"); const name = text(data, "name");
   if (!code || !name) throw new Error("Informe código e nome do exame.");
   await withDatabaseTransaction(databaseConnection, async tx => {

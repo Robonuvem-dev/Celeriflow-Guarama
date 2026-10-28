@@ -10,6 +10,7 @@ import { employees } from "@/db/schema/administration";
 import { healthSusProcedures } from "@/db/schema/health-catalogs";
 import { healthPregnancies } from "@/db/schema/health-care-lines";
 import { documents } from "@/db/schema/registry";
+import { diagnosticLabOrders, diagnosticLabReports } from "@/db/schema/health-diagnostics";
 import { documentSignatures } from "@/db/schema/document-workflow";
 import { materials as materialTable, warehouses as warehouseTable } from "@/db/schema/assets-stock";
 import { instanceParameters } from "@/db/schema/instance-configuration";
@@ -65,15 +66,19 @@ export default async function ClinicalExtensionPage({ params }: { params: Promis
     database.select({ id: healthPregnancies.id }).from(healthPregnancies).where(and(eq(healthPregnancies.patientId, base.patientId), eq(healthPregnancies.status, "ACTIVE"))).limit(1),
   ]);
   const familyRow = familyResult.rows[0];
-  const [conditionRevisions, signatures, labReports, members] = await Promise.all([
+  const [conditionRevisions, signatures, labOrders, members] = await Promise.all([
     database.select().from(healthPatientConditionRevisions).where(inArray(healthPatientConditionRevisions.conditionId, conditionRows.map(row => row.id))).orderBy(desc(healthPatientConditionRevisions.createdAt)),
     database.select({ documentId: documentSignatures.documentId, status: documentSignatures.status }).from(documentSignatures).where(inArray(documentSignatures.documentId, documentRows.map(row => row.link.documentId))),
-    database.execute<{ id: string; examRequestId: string; documentId: string; title: string; fileUrl: string }>(sql`SELECT r.id, o."examRequestId", d.id AS "documentId", d.title, d."fileUrl" FROM "HealthLabReport" r JOIN "HealthLabOrder" o ON o.id=r."orderId" JOIN "Document" d ON d.id=r."documentId" WHERE ${inArray(sql`o."examRequestId"`, examRows.map(row => row.id))}`),
+    database.select({ id: diagnosticLabOrders.id, examRequestId: diagnosticLabOrders.examRequestId, report: { id: diagnosticLabReports.id }, document: { id: documents.id, title: documents.title, fileUrl: documents.fileUrl } }).from(diagnosticLabOrders).leftJoin(diagnosticLabReports, eq(diagnosticLabReports.orderId, diagnosticLabOrders.id)).leftJoin(documents, eq(documents.id, diagnosticLabReports.documentId)).where(inArray(diagnosticLabOrders.examRequestId, examRows.map(row => row.id))),
     familyRow ? database.select({ id: familyMembers.id, kinship: familyMembers.kinship, person: { fullName: people.fullName } }).from(familyMembers).innerJoin(people, eq(people.id, familyMembers.personId)).where(and(eq(familyMembers.familyId, familyRow.familyId), eq(familyMembers.status, "ATIVO"))) : [],
   ]);
   const record = { ...base, prescriptions: prescriptionRows.map(row => ({ ...row, items: itemRows.filter(item => item.item.prescriptionId === row.id).map(item => item.item) })), clinicalDocuments: documentRows.map(row => ({ ...row.link, document: { ...row.document, signatures: signatures.filter(signature => signature.documentId === row.link.documentId) } })), questionnaireResponses, medicationAdministrations, revisions, examReviews, counterreferences, internalReferrals };
-  const conditions = conditionRows.map(row => ({ ...row, revisions: conditionRevisions.filter(revision => revision.conditionId === row.id) })), exams = examRows.map(row => ({ ...row, labOrder: { reports: labReports.rows.filter(report => report.examRequestId === row.id).map(report => ({ id: report.id, document: { id: report.documentId, title: report.title, fileUrl: report.fileUrl } })) } }));
-  const family = familyRow ? { family: { responsiblePerson: familyRow.responsibleName ? { fullName: familyRow.responsibleName } : null, members, healthProfile: familyRow.healthId ? { household: familyRow.householdId ? { address: familyRow.addressId ? { streetName: familyRow.streetName } : null } : null } : null } } : null;
+  const conditions = conditionRows.map(row => ({ ...row, revisions: conditionRevisions.filter(revision => revision.conditionId === row.id) }));
+  const exams = examRows.map(row => {
+    const order = labOrders.find(order => order.examRequestId === row.id);
+    return { ...row, labOrder: order ? { reports: labOrders.filter(link => link.id === order.id).flatMap(link => link.report && link.document ? [{ id: link.report.id, document: link.document }] : []) } : null };
+  });
+  const family = familyRow ? { family: { responsiblePerson: familyRow.responsibleName === null ? null : { fullName: familyRow.responsibleName }, members, healthProfile: familyRow.healthId ? { household: familyRow.householdId ? { address: familyRow.addressId ? { streetName: familyRow.streetName } : null } : null } : null } } : null;
   const origin = <input type="hidden" name="medicalRecordId" value={id} />;
   const active = conditions.filter(condition => !condition.endedAt), biometry = parameters.find(parameter => parameter.chave.startsWith("HEALTH_BIOMETRY"))?.valor === true;
   const conditionKeys = clinicalConditionQuestionnaireKeys(active, activePregnancies.length > 0);

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db } from "@/db/client";
 import { randomUUID } from "node:crypto";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { followupBatchForActor } from "@/lib/saude/followup-exchange-service";
@@ -11,8 +12,9 @@ const stamp = (value: string | null) => value && Number.isFinite(Date.parse(valu
 
 export default async function FollowupBatchPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
-  const batch = await followupBatchForActor(context.database, context, id), receipt = batch.receipt;
-  const runs = await context.database.select({ id: integrationRuns.id, status: integrationRuns.status, message: integrationRuns.message, createdAt: integrationRuns.createdAt }).from(integrationRuns).where(and(eq(integrationRuns.connectionId, batch.binding.connectionId), sql`${integrationRuns.payload}->'batchId' = ${JSON.stringify(batch.id)}::jsonb`)).orderBy(desc(integrationRuns.createdAt)).limit(30);
+  const database = context.database ?? db;
+  const batch = await followupBatchForActor(database, context, id), receipt = batch.receipt;
+  const runs = await database.select({ id: integrationRuns.id, status: integrationRuns.status, message: integrationRuns.message, createdAt: integrationRuns.createdAt }).from(integrationRuns).where(and(eq(integrationRuns.connectionId, batch.binding.connectionId), sql`${integrationRuns.payload}->'batchId' = ${JSON.stringify(batch.id)}::jsonb`)).orderBy(desc(integrationRuns.createdAt)).limit(30);
   const download = `/api/saude/acompanhamento/remessas/${encodeURIComponent(batch.id)}`;
   return <main className="space-y-4 p-4"><header className="space-y-1"><Link href={`/saude/acompanhamento?binding=${encodeURIComponent(batch.bindingId)}`} className="text-sm underline">Histórico do acompanhamento</Link><h1 className="text-xl font-semibold">Remessa de {batch.binding.receiver.name}</h1><p className="text-sm">{batch.contractName} · versão {batch.schemaVersion} · {followupStatusNames[batch.status] || batch.status}</p><p className="break-all text-xs">Remessa {batch.id} · conexão {batch.binding.connection.code} · SHA-256 {batch.hashSha256}</p><p className="text-sm">Gerada em {batch.createdAt.toLocaleString("pt-BR")} por {batch.createdByUsuarioId} · {batch.items.length} origens</p>{batch.reprocessOfId && <Link href={`/saude/acompanhamento/remessas/${encodeURIComponent(batch.reprocessOfId)}`} className="inline-block text-sm underline">Remessa anterior deste reprocessamento</Link>}</header>
     <nav className="flex flex-wrap gap-4 text-sm"><a className="underline" href={download}>Baixar remessa JSON</a><a className="underline" href={`${download}?formato=csv`}>CSV de conferência</a><a className="underline" href={`/api/saude/acompanhamento/esquemas/${batch.contractName}`} target="_blank" rel="noreferrer">Esquema do contrato</a><Link className="underline" href={`/saude/acompanhamento/receptores/${encodeURIComponent(batch.binding.receiverId)}`}>Abrir registros recebidos</Link>{receipt && <a className="underline" href={`${download}/retorno`}>Baixar retorno do receptor</a>}</nav>

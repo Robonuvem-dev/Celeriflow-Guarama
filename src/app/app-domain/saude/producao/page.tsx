@@ -6,7 +6,7 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { captureFactsAction, captureManualFactAction, closeCompetenceAction, generateFileAction, importProductionFileAction, openCompetenceAction, processCompetenceAction, processFileAction, reopenCompetenceAction, resolveCriticismAction, saveProductionTargetAction, saveUnitCeilingAction } from "./actions";
-import { and, asc, desc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthProductionFacts, healthProductionCompetences, healthProductionCriticisms, healthSusFiles } from "@/db/schema/health-production";
 import { healthSusProcedures, healthSusReferences } from "@/db/schema/health-catalogs";
@@ -42,9 +42,9 @@ export default async function ProducaoPage({ searchParams }: { searchParams: Pro
     professionalFilter ? eq(healthProductionFacts.professionalId, professionalFilter) : undefined,
     procedureFilter ? eq(healthProductionFacts.procedureId, procedureFilter) : undefined,
     cidFilter ? eq(healthProductionFacts.cidReferenceId, cidFilter) : undefined,
-    municipalityFilter ? sql`strpos(lower(${healthProductionFacts.municipality}), lower(${municipalityFilter})) > 0` : undefined,
+    municipalityFilter ? ilike(healthProductionFacts.municipality, `%${municipalityFilter}%`) : undefined,
     stateFilter ? eq(healthProductionFacts.state, stateFilter) : undefined,
-    q ? or(sql`strpos(lower(${healthProductionFacts.originType}), lower(${q})) > 0`, sql`strpos(lower(${healthSusProcedures.code}), lower(${q})) > 0`, sql`strpos(lower(${healthSusProcedures.description}), lower(${q})) > 0`, sql`strpos(lower(${healthSusReferences.code}), lower(${q})) > 0`, sql`strpos(lower(${healthProductionFacts.municipality}), lower(${q})) > 0`) : undefined,
+    q ? or(ilike(healthProductionFacts.originType, `%${q}%`), ilike(healthSusProcedures.code, `%${q}%`), ilike(healthSusProcedures.description, `%${q}%`), ilike(healthSusReferences.code, `%${q}%`), ilike(healthProductionFacts.municipality, `%${q}%`)) : undefined,
   );
   const [{ total }] = await database.select({ total: sql<number>`count(*)::int` }).from(healthProductionFacts).leftJoin(healthSusProcedures, eq(healthSusProcedures.id, healthProductionFacts.procedureId)).leftJoin(healthSusReferences, eq(healthSusReferences.id, healthProductionFacts.cidReferenceId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));

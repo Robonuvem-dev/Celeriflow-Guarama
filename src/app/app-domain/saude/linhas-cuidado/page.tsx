@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { patients as patientTable, healthPatientRegistrations } from "@/db/schema/health-registration";
 import { people } from "@/db/schema/people";
@@ -15,7 +15,7 @@ export default async function CareLinesManager({ searchParams }: { searchParams:
   const { q = "", kind = "PREGNANCY" } = await searchParams;
   const context = await getTenantContextForModule("SAUDE");
   const database = context.database ?? db;
-  const filter = and(notInArray(patientTable.status, ["Unificado", "Falecido"]), context.user.hasHealthAccessScope ? inArray(patientTable.referenceUnitId, context.user.allowedHealthUnitIds || []) : undefined, q.trim() ? sql`strpos(lower(${people.fullName}), lower(${q.trim()})) > 0` : undefined,
+  const filter = and(notInArray(patientTable.status, ["Unificado", "Falecido"]), context.user.hasHealthAccessScope ? inArray(patientTable.referenceUnitId, context.user.allowedHealthUnitIds || []) : undefined, q.trim() ? ilike(people.fullName, `%${q.trim()}%`) : undefined,
     kind === "PREGNANCY" ? sql`EXISTS (SELECT 1 FROM "HealthPregnancy" p WHERE p."patientId"=${patientTable.id})` : kind === "HYPERTENSION" || kind === "DIABETES" ? sql`EXISTS (SELECT 1 FROM "HealthChronicAssessment" a WHERE a."patientId"=${patientTable.id} AND a."conditionKind"=${kind})` : kind === "CYTOLOGY" || kind === "MAMMOGRAPHY" ? sql`EXISTS (SELECT 1 FROM "HealthClinicalScreening" s WHERE s."patientId"=${patientTable.id} AND s.kind=${kind})` : undefined);
   const rows = await database.select({ patient: patientTable, person: people, registrationProfile: healthPatientRegistrations, referenceUnit: { name: healthUnits.name } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).leftJoin(healthPatientRegistrations, eq(healthPatientRegistrations.patientId, patientTable.id)).leftJoin(healthUnits, eq(healthUnits.id, patientTable.referenceUnitId)).where(filter).orderBy(asc(people.fullName)).limit(200);
   const ids = rows.map(row => row.patient.id);

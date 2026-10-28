@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db as defaultDatabase } from "@/db/client";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { healthTfdRequests, healthTfdClinicalReports } from "@/db/schema/health-tfd";
@@ -12,7 +13,7 @@ export default async function TfdReportsPage({ searchParams }: { searchParams: P
   const context = await getTenantContextForModule("SAUDE"), params = await searchParams;
   const q = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const status = typeof params.status === "string" ? params.status.slice(0, 30) : "";
-  const db = context.database, unitsScope = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
+  const db = context.database ?? defaultDatabase, unitsScope = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const scope = unitsScope ? inArray(healthTfdRequests.originUnitId, unitsScope) : undefined;
   const where = and(scope, status ? eq(healthTfdRequests.status, status) : undefined, q ? or(ilike(healthTfdRequests.destination, `%${q}%`), ilike(people.fullName, `%${q}%`)) : undefined);
   const [{ total }] = await db.select({ total: count() }).from(healthTfdRequests).innerJoin(patients, eq(patients.id, healthTfdRequests.patientId)).innerJoin(people, eq(people.id, patients.personId)).where(where);

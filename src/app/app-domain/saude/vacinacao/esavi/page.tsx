@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db as defaultDatabase } from "@/db/client";
 import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { healthVaccineAdverseEvents as adverseEvents, healthVaccineAdverseFollowups as followups, vaccines, vaccinationRecords } from "@/db/schema/health-vaccination";
 import { patients as patientTable } from "@/db/schema/health-registration";
@@ -9,7 +10,7 @@ const severityNames: Record<string, string> = { MILD: "Leve", MODERATE: "Moderad
 export default async function VaccineAdverseEventsPage({ searchParams }: { searchParams: Promise<{ q?: string; severity?: string; page?: string }> }) {
   const { q = "", severity = "", page: rawPage } = await searchParams, context = await getTenantContextForModule("SAUDE");
   const units = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const where = and(units ? inArray(adverseEvents.unitId, units) : undefined, severityNames[severity] ? eq(adverseEvents.severity, severity) : undefined, q ? or(ilike(people.fullName, `%${q}%`), ilike(vaccines.name, `%${q}%`), ilike(adverseEvents.eventType, `%${q}%`), ilike(adverseEvents.lesionType, `%${q}%`)) : undefined);
   const [{ total }] = await db.select({ total: count() }).from(adverseEvents).innerJoin(patientTable, eq(patientTable.id, adverseEvents.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(vaccines, eq(vaccines.id, adverseEvents.vaccineId)).where(where);
   const page = Math.min(Math.max(1, Number.parseInt(rawPage || "1") || 1), Math.max(1, Math.ceil(total / 20)));

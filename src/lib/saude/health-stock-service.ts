@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { databaseConnection } from "@/db/client";
 import type { DatabaseConnection } from "@/db/connection";
 import { withDatabaseTransaction, type DatabaseTransaction as Tx } from "@/db/transaction";
@@ -284,7 +284,7 @@ export async function importHealthProducts(context: AppContext, content: string,
         await tx.insert(healthMaterialProfiles).values({ materialId, productKind: "MEDICINE", packaging, dcbCode: dcb });
         created += 1;
       }
-      const [linked] = await tx.select({ id: medicines.id }).from(medicines).where(and(ilike(medicines.name, name), isNull(medicines.materialId))).limit(1);
+      const [linked] = await tx.select({ id: medicines.id }).from(medicines).where(and(sql`lower(${medicines.name}) = lower(${name})`, isNull(medicines.materialId))).limit(1);
       if (linked) await tx.update(medicines).set({ materialId, presentation: packaging, activePrinciple, concentration }).where(eq(medicines.id, linked.id));
       else if (!(await tx.select({ id: medicines.id }).from(medicines).where(eq(medicines.materialId, materialId)).limit(1)).length) await tx.insert(medicines).values({ name, materialId, presentation: packaging, activePrinciple, concentration });
     }, { timeoutMs: 5_000 });

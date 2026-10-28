@@ -1,4 +1,5 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db as defaultDatabase } from "@/db/client";
 import { and, asc, count, desc, eq, ilike, inArray, isNotNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { vaccinationRecords as records, vaccines as vaccineTable } from "@/db/schema/health-vaccination";
@@ -26,7 +27,7 @@ const positivePage = (value: string | undefined) => value && /^\d+$/.test(value)
 
 export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   if (first(params.patientId)) {

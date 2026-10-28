@@ -1,4 +1,5 @@
 import { ShieldCheck } from "lucide-react";
+import { db as defaultDatabase } from "@/db/client";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -18,7 +19,7 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function VigilanciaPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);

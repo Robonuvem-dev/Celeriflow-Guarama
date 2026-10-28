@@ -1,4 +1,5 @@
 import { FlaskConical } from "lucide-react";
+import { db as defaultDatabase } from "@/db/client";
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { diagnosticLabOrders as ordersTable, diagnosticLabReports, diagnosticLabResults } from "@/db/schema/health-diagnostics";
@@ -24,7 +25,7 @@ const positivePage = (value: string | undefined) => value && /^\d+$/.test(value)
 
 export default async function LaboratoryPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const db = context.database;
+  const db = context.database ?? defaultDatabase;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const orderScope = unitIds ? or(inArray(ordersTable.collectionUnitId, unitIds), and(isNull(ordersTable.collectionUnitId), inArray(ordersTable.requestUnitId, unitIds))) : undefined;
   const requestUnit = alias(healthUnits, "laboratory_request_unit"), collectionUnit = alias(healthUnits, "laboratory_collection_unit");

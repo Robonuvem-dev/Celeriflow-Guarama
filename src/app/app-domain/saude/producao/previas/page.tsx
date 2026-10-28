@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { asc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
 import { employees } from "@/db/schema/administration";

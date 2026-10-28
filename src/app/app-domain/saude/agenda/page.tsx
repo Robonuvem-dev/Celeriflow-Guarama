@@ -1,5 +1,5 @@
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthAppointments, healthCareSchedules, healthWaitlists } from "@/db/schema/health-agenda";
 import { patients as patientTable } from "@/db/schema/health-registration";
@@ -24,7 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
   const birthMatch = /^\d{4}-\d{2}-\d{2}$/.test(term) ? new Date(`${term}T12:00:00`) : null;
   const database = context.database ?? db;
   const appointmentWhere = and(unitIds ? inArray(healthAppointments.unitId, unitIds) : undefined, term ? or(
-    sql`strpos(lower(${people.fullName}), lower(${term})) > 0`, sql`strpos(${people.cpf}, ${term}) > 0`, sql`strpos(${patientTable.cns}, ${term}) > 0`, sql`strpos(lower(${people.motherName}), lower(${term})) > 0`, birthMatch && !Number.isNaN(birthMatch.getTime()) ? eq(people.birthDate, birthMatch) : undefined, sql`strpos(lower(${employees.name}), lower(${term})) > 0`, sql`strpos(lower(${healthAppointments.status}), lower(${term})) > 0`) : undefined);
+    ilike(people.fullName, `%${term}%`), like(people.cpf, `%${term}%`), like(patientTable.cns, `%${term}%`), ilike(people.motherName, `%${term}%`), birthMatch && !Number.isNaN(birthMatch.getTime()) ? eq(people.birthDate, birthMatch) : undefined, ilike(employees.name, `%${term}%`), ilike(healthAppointments.status, `%${term}%`)) : undefined);
   const [itemRows, patients, units, professionals, schedulingGroups, specialtyRows, serviceRows, specialtyList, scheduleRows, waitlistRows, boardRows] = await Promise.all([
     database.select({ id: healthAppointments.id, date: healthAppointments.date, specialty: healthAppointments.specialty, specialtyRef: { name: healthSpecialties.name }, priority: healthAppointments.priority, status: healthAppointments.status, patientId: patientTable.id, person: { fullName: people.fullName }, unit: { name: healthUnits.name }, employee: { name: employees.name } }).from(healthAppointments).innerJoin(patientTable, eq(patientTable.id, healthAppointments.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(healthUnits, eq(healthUnits.id, healthAppointments.unitId)).leftJoin(healthSpecialties, eq(healthSpecialties.id, healthAppointments.specialtyId)).leftJoin(healthProfessionals, eq(healthProfessionals.id, healthAppointments.professionalId)).leftJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(appointmentWhere).orderBy(desc(healthAppointments.date), desc(healthAppointments.id)).limit(500),
     database.select({ id: patientTable.id, cns: patientTable.cns, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(eq(patientTable.status, "Ativo")).orderBy(asc(people.fullName)),

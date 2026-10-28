@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, ilike, isNotNull, lte, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, isNotNull, like, lte, ne, sql, type SQL } from "drizzle-orm";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { databaseTimestamp } from "@/db/temporal";
 import { employees } from "@/db/schema/administration";
@@ -30,7 +30,8 @@ export async function healthAdministrationPageData(db: DatabaseExecutor, input: 
   const { tab, situation, query, requestedPage } = input;
   const out: Data = { total: 0, page: 1, unitRows: [], professionalRows: [], specialtyRows: [], groupRows: [], serviceRows: [], cboRows: [], schedulingGroupRows: [], holidayRows: [], personRows: [], companyRows: [], accessRows: [], usageRows: [] };
   const active = situation ? sql`x."isActive"=${situation === "ativo"}` : sql`true`;
-  const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+  // Preserve the original PostgreSQL contains pattern, including wildcards.
+  const pattern = `%${query}%`;
   const search = (...columns: SQL[]) => query ? sql`(${sql.join(columns.map(column => sql`${column} ILIKE ${pattern}`), sql` OR `)})` : sql`true`;
   const paginate = async (from: SQL, where: SQL) => {
     const result = await db.execute<{ total: number }>(sql`SELECT count(*)::integer AS total FROM ${from} WHERE ${where}`);
@@ -102,7 +103,7 @@ export async function healthAdministrationPageData(db: DatabaseExecutor, input: 
       COALESCE((SELECT m."canEdit" FROM "UsuarioModulo" m JOIN "ConfiguracaoModulo" c ON c.id=m."moduloId" WHERE m."usuarioId"=x.id AND c.codigo='SAUDE' LIMIT 1),false) AS "canEdit",
       COALESCE((SELECT json_agg(json_build_object('unitId',s."unitId",'unitName',u.name,'validFrom',s."validFrom",'validUntil',s."validUntil",'weekdays',s.weekdays,'startTime',s."startTime",'endTime',s."endTime",'isActive',s."isActive") ORDER BY u.name) FROM "HealthUserAccessScope" s JOIN "HealthUnit" u ON u.id=s."unitId" WHERE s."usuarioId"=x.id),'[]') AS scopes
       FROM ${from} WHERE ${where} ORDER BY x.nome,x.id ${limit}`)).rows;
-    const events = await db.select({ createdAt: auditEvents.createdAt }).from(auditEvents).where(and(ilike(auditEvents.targetType, "HEALTH\\_%"), gte(auditEvents.createdAt, new Date(`${input.usageFrom}T00:00:00.000Z`)), lte(auditEvents.createdAt, new Date(`${input.usageUntil}T23:59:59.999Z`)))).orderBy(asc(auditEvents.createdAt));
+    const events = await db.select({ createdAt: auditEvents.createdAt }).from(auditEvents).where(and(like(auditEvents.targetType, "HEALTH_%"), gte(auditEvents.createdAt, new Date(`${input.usageFrom}T00:00:00.000Z`)), lte(auditEvents.createdAt, new Date(`${input.usageUntil}T23:59:59.999Z`)))).orderBy(asc(auditEvents.createdAt));
     const byDate = new Map<string, number>();
     for (const event of events) { const date = event.createdAt.toISOString().slice(0, 10); byDate.set(date, (byDate.get(date) || 0) + 1); }
     out.usageRows = [...byDate].map(([date, count]) => ({ date, count }));

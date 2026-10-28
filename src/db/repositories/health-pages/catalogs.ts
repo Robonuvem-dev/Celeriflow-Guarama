@@ -51,7 +51,14 @@ export async function healthLaboratoryConfigurationPage(db: DatabaseExecutor, un
   const [{ total }] = await db.select({ total: sql<number>`count(*)::integer` }).from(pageLaboratoryConfigurations).where(where);
   const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / 20)));
   const [rows, units] = await Promise.all([
-    db.select({ configuration: pageLaboratoryConfigurations, unit: { name: healthUnits.name }, createdByUsuario: { nome: users.nome } }).from(pageLaboratoryConfigurations).innerJoin(healthUnits, eq(healthUnits.id, pageLaboratoryConfigurations.unitId)).innerJoin(users, eq(users.id, pageLaboratoryConfigurations.createdByUsuarioId)).where(where).orderBy(desc(pageLaboratoryConfigurations.isActive), desc(pageLaboratoryConfigurations.createdAt)).limit(20).offset((page - 1) * 20),
+    db.select({ configuration: {
+      id: pageLaboratoryConfigurations.id, unitId: pageLaboratoryConfigurations.unitId, laboratoryName: pageLaboratoryConfigurations.laboratoryName,
+      collectionStartTime: pageLaboratoryConfigurations.collectionStartTime, collectionEndTime: pageLaboratoryConfigurations.collectionEndTime, resultReleaseDays: pageLaboratoryConfigurations.resultReleaseDays,
+      allowsExternalProcessing: pageLaboratoryConfigurations.allowsExternalProcessing, requiresTechnicalReview: pageLaboratoryConfigurations.requiresTechnicalReview,
+      usesDigitalSignature: pageLaboratoryConfigurations.usesDigitalSignature, publishesPatientPortal: pageLaboratoryConfigurations.publishesPatientPortal,
+      resultFooterMessage: pageLaboratoryConfigurations.resultFooterMessage, effectiveFrom: pageLaboratoryConfigurations.effectiveFrom, effectiveUntil: pageLaboratoryConfigurations.effectiveUntil,
+      isActive: pageLaboratoryConfigurations.isActive, createdAt: pageLaboratoryConfigurations.createdAt,
+    }, unit: { name: healthUnits.name }, createdByUsuario: { nome: users.nome } }).from(pageLaboratoryConfigurations).innerJoin(healthUnits, eq(healthUnits.id, pageLaboratoryConfigurations.unitId)).innerJoin(users, eq(users.id, pageLaboratoryConfigurations.createdByUsuarioId)).where(where).orderBy(desc(pageLaboratoryConfigurations.isActive), desc(pageLaboratoryConfigurations.createdAt)).limit(20).offset((page - 1) * 20),
     healthPageUnits(db),
   ]);
   return { total, page, units, configurations: rows.map(row => ({ ...row.configuration, unit: row.unit, createdByUsuario: row.createdByUsuario })) };

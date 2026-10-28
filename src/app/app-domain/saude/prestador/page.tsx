@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { providerHistory, resolveProviderSupplier } from "@/lib/saude/provider-service";
 import { executeGuideAction } from "./actions";
-import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthRegulationRequests, healthRegulationQuotas } from "@/db/schema/health-regulation";
 import { patients } from "@/db/schema/health-registration";
@@ -32,7 +32,7 @@ export default async function PrestadorPage({ searchParams }: { searchParams: Pr
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
   const database = context.database ?? db;
-  const where = and(eq(healthRegulationQuotas.providerSupplierId, supplier.id), filter ? eq(healthRegulationRequests.status, filter) : inArray(healthRegulationRequests.status, ["AUTORIZADA", "AGENDADA", "EXECUTADA", "CONCLUIDA"]), q ? or(sql`strpos(lower(${people.fullName}), lower(${q})) > 0`, sql`strpos(lower(${healthRegulationRequests.guideNumber}), lower(${q})) > 0`) : undefined);
+  const where = and(eq(healthRegulationQuotas.providerSupplierId, supplier.id), filter ? eq(healthRegulationRequests.status, filter) : inArray(healthRegulationRequests.status, ["AUTORIZADA", "AGENDADA", "EXECUTADA", "CONCLUIDA"]), q ? or(ilike(people.fullName, `%${q}%`), ilike(healthRegulationRequests.guideNumber, `%${q}%`)) : undefined);
   const [{ total }] = await database.select({ total: count() }).from(healthRegulationRequests).innerJoin(healthRegulationQuotas, eq(healthRegulationQuotas.id, healthRegulationRequests.quotaId)).innerJoin(patients, eq(patients.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patients.personId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
   const [guideRows, history] = await Promise.all([

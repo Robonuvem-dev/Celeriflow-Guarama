@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { ensureRiskProtocols } from "@/lib/saude/reception-service";
 import { admitBedAction, createObservationAction, createReceptionAction, dischargeBedAction, linkReceptionAction, saveBedAction, saveDestinationAction, saveProtocolAction, saveRoomAction, transitionBedAction, transitionObservationAction, transitionReceptionAction } from "./actions";
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthReceptions, healthRooms, healthDestinations, healthRiskProtocols, healthBeds, healthBedOccupancies } from "@/db/schema/health-reception";
 import { healthObservations } from "@/db/schema/health-care";
@@ -27,7 +27,7 @@ export default async function ProntoAtendimentoPage({ searchParams }: { searchPa
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   await ensureRiskProtocols(context);
-  const where = and(unitIds ? inArray(healthReceptions.unitId, unitIds) : undefined, q ? or(sql`strpos(lower(${people.fullName}), lower(${q})) > 0`, sql`strpos(lower(${healthReceptions.unidentifiedName}), lower(${q})) > 0`, sql`strpos(lower(${healthReceptions.companionName}), lower(${q})) > 0`) : undefined);
+  const where = and(unitIds ? inArray(healthReceptions.unitId, unitIds) : undefined, q ? or(ilike(people.fullName, `%${q}%`), ilike(healthReceptions.unidentifiedName, `%${q}%`), ilike(healthReceptions.companionName, `%${q}%`)) : undefined);
   const [{ total }] = await database.select({ total: sql<number>`count(*)::int` }).from(healthReceptions).leftJoin(patientTable, eq(patientTable.id, healthReceptions.patientId)).leftJoin(people, eq(people.id, patientTable.personId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
   const [receptionRows, patients, units, rooms, destinations, protocols, bedRows, occupancyRows, observationRows] = await Promise.all([

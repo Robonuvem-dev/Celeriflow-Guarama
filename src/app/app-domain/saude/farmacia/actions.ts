@@ -9,7 +9,7 @@ import { createPharmacyStockRequest } from "@/lib/saude/pharmacy-request-service
 import { executeConfiguredHealthHttp } from "@/lib/integrations/runtime";
 import type { IntegrationOperation } from "@/lib/integrations/registry";
 import { db, databaseConnection } from "@/db/client";
-import { and, eq, gt, ilike, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { createId } from "@/db/ids";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { materials, materialStocks, warehouses } from "@/db/schema/assets-stock";
@@ -45,7 +45,7 @@ export async function approveHealthReceiptAction(data: FormData): Promise<void> 
 }
 
 export async function createHealthProductAction(data: FormData): Promise<void> {
-  const context = await getTenantContextForModuleOperation("SAUDE", "create");
+  await getTenantContextForModuleOperation("SAUDE", "create");
   const kind = text(data, "productKind");
   const name = text(data, "name");
   if (!name || !["MEDICINE", "CONTROLLED", "MANIPULATED", "CORRELATE", "IMMUNOBIOLOGICAL", "SPECIALIZED", "DILUENT"].includes(kind)) throw new Error("Informe nome e tipo válidos.");
@@ -53,13 +53,13 @@ export async function createHealthProductAction(data: FormData): Promise<void> {
     const [material] = await tx.insert(materials).values({ code: text(data, "code"), name, categoryId: text(data, "categoryId"), unitOfMeasure: text(data, "unitOfMeasure") || "UN", isPerishable: true }).returning({ id: materials.id });
     await tx.insert(healthMaterialProfiles).values({ materialId: material.id, productKind: kind, subgroup: text(data, "subgroup") || null, packaging: text(data, "packaging") || null, dcbCode: text(data, "dcbCode") || null, classification: text(data, "classification") || null, barcode: text(data, "barcode") || null });
     if (["MEDICINE", "CONTROLLED", "MANIPULATED"].includes(kind)) {
-      const [existing] = await tx.select({ id: medicines.id }).from(medicines).where(and(ilike(medicines.name, name), isNull(medicines.materialId))).limit(1);
+      const [existing] = await tx.select({ id: medicines.id }).from(medicines).where(and(sql`lower(${medicines.name}) = lower(${name})`, isNull(medicines.materialId))).limit(1);
       const values = { materialId: material.id, isControlled: kind === "CONTROLLED", presentation: text(data, "packaging") || null, activePrinciple: text(data, "activePrinciple") || null, concentration: text(data, "concentration") || null };
       if (existing) await tx.update(medicines).set(values).where(eq(medicines.id, existing.id));
       else await tx.insert(medicines).values({ name, ...values });
     }
     if (kind === "IMMUNOBIOLOGICAL") {
-      const [existing] = await tx.select({ id: vaccines.id }).from(vaccines).where(and(ilike(vaccines.name, name), isNull(vaccines.materialId))).limit(1);
+      const [existing] = await tx.select({ id: vaccines.id }).from(vaccines).where(and(sql`lower(${vaccines.name}) = lower(${name})`, isNull(vaccines.materialId))).limit(1);
       if (existing) await tx.update(vaccines).set({ materialId: material.id }).where(eq(vaccines.id, existing.id));
       else await tx.insert(vaccines).values({ name, materialId: material.id });
     }

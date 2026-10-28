@@ -4,7 +4,7 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { addFamilyMemberAction, addVisitParticipantAction, createVisitAction, saveAreaAction, saveFamilyAction, saveHouseholdAction, saveMicroareaAction } from "./actions";
-import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthHomeVisits, healthHomeVisitParticipants, healthTerritoryAreas, healthMicroareas, healthHouseholds, healthFamilies, healthFamilyMembers } from "@/db/schema/health-territory";
 import { healthUnits, healthTeams, healthProfessionals } from "@/db/schema/health-workforce";
@@ -23,7 +23,7 @@ export default async function TerritorioPage({ searchParams }: { searchParams: P
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
-  const visitWhere = q ? or(sql`strpos(lower(${healthHomeVisits.actions}), lower(${q})) > 0`, sql`strpos(lower(${healthFamilies.familyCode}), lower(${q})) > 0`) : undefined;
+  const visitWhere = q ? or(ilike(healthHomeVisits.actions, `%${q}%`), ilike(healthFamilies.familyCode, `%${q}%`)) : undefined;
   const [{ total }] = await database.select({ total: count() }).from(healthHomeVisits).leftJoin(healthFamilies, eq(healthFamilies.id, healthHomeVisits.familyId)).where(visitWhere);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
   const [visitRows, areas, microareas, households, familyRows, units, teams, professionals, patients] = await Promise.all([

@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-28T15:33:09.964Z",
+  "generatedAt": "2026-10-28T22:48:43.281Z",
   "scope": "RH + Educação; SST e Portal do Servidor transferidos a frentes exclusivas",
   "summary": [
     {
       "root": "src/lib/rh",
       "files": 69,
-      "legacyFiles": 39,
+      "legacyFiles": 0,
       "metadataFiles": 0
     },
     {
@@ -17,7 +17,7 @@
     {
       "root": "src/app/app-domain/rh",
       "files": 119,
-      "legacyFiles": 82,
+      "legacyFiles": 0,
       "metadataFiles": 0
     },
     {
@@ -29,7 +29,7 @@
     {
       "root": "src/app/api/rh",
       "files": 9,
-      "legacyFiles": 7,
+      "legacyFiles": 0,
       "metadataFiles": 0
     },
     {
@@ -48,21 +48,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/api/rh/demonstrativos/[id]/route.ts",
-      "lines": 14,
+      "lines": 19,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        9,
-        11
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -75,119 +74,85 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/api/rh/integracoes/[id]/route.ts",
-      "lines": 17,
+      "lines": 23,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        7,
-        8,
-        11,
-        14
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/api/rh/obrigacoes/arquivos/[id]/route.ts",
-      "lines": 12,
+      "lines": 13,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        9
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/api/rh/obrigacoes/exportar/route.ts",
-      "lines": 16,
+      "lines": 17,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        10
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/api/rh/obrigacoes/historico/route.ts",
-      "lines": 13,
+      "lines": 14,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        10
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/api/rh/referencias/route.ts",
-      "lines": 44,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 50,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        3,
-        8,
-        14,
-        15,
-        16,
-        18,
-        19,
-        20,
-        22,
-        23,
-        24,
-        27,
-        28,
-        31,
-        32,
-        34,
-        35,
-        36,
-        38,
-        39,
-        40
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/api/rh/relatorios/route.ts",
-      "lines": 16,
+      "lines": 17,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        12
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -200,6 +165,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -212,6 +178,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -224,6 +191,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -236,6 +204,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -248,6 +217,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -260,6 +230,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -272,6 +243,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -284,6 +256,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -296,6 +269,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -308,6 +282,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -320,6 +295,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -332,6 +308,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -344,6 +321,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -356,6 +334,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -368,6 +347,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -380,6 +360,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -392,6 +373,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -404,6 +386,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -416,6 +399,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -428,6 +412,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -440,6 +425,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -452,6 +438,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -464,6 +451,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -476,6 +464,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -488,6 +477,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -500,6 +490,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -512,6 +503,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -524,6 +516,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -536,6 +529,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -548,6 +542,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -560,6 +555,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -572,6 +568,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -584,6 +581,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -596,6 +594,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -608,6 +607,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -620,6 +620,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -632,32 +633,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/adiantamentos/page.tsx",
-      "lines": 42,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 38,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        3,
-        11,
-        12,
-        13,
-        15,
-        16,
-        17
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -670,6 +659,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -682,23 +672,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/atividades-funcionais/page.tsx",
-      "lines": 39,
+      "lines": 41,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        17,
-        20,
-        21,
-        24
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -707,14 +694,11 @@
       "path": "src/app/app-domain/rh/atos/[id]/editar/page.tsx",
       "lines": 22,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8,
-        16
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -723,17 +707,11 @@
       "path": "src/app/app-domain/rh/atos/actions.ts",
       "lines": 66,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        8,
-        13,
-        34,
-        39,
-        53,
-        55
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -741,17 +719,12 @@
     {
       "path": "src/app/app-domain/rh/atos/AtoForm.tsx",
       "lines": 134,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 14,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -759,17 +732,12 @@
     {
       "path": "src/app/app-domain/rh/atos/AtoRowActions.tsx",
       "lines": 37,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 7,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -782,83 +750,59 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/atos/novo/page.tsx",
-      "lines": 12,
+      "lines": 14,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        5,
-        6
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/atos/page.tsx",
-      "lines": 150,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 138,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 6,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        6,
-        30,
-        33,
-        37,
-        39
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/beneficios/[id]/editar/page.tsx",
-      "lines": 25,
+      "lines": 22,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8,
-        16
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/beneficios/actions.ts",
-      "lines": 85,
+      "lines": 82,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        7,
-        12,
-        33,
-        38,
-        52,
-        54,
-        67,
-        70,
-        75
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -866,17 +810,12 @@
     {
       "path": "src/app/app-domain/rh/beneficios/BeneficioForm.tsx",
       "lines": 149,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 15,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -884,56 +823,38 @@
     {
       "path": "src/app/app-domain/rh/beneficios/BeneficioRowActions.tsx",
       "lines": 66,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 8,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/beneficios/novo/page.tsx",
-      "lines": 15,
+      "lines": 14,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        5,
-        6
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/beneficios/page.tsx",
-      "lines": 126,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 113,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 5,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        5,
-        22,
-        26,
-        29,
-        31
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -946,21 +867,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/concursos/page.tsx",
-      "lines": 22,
+      "lines": 25,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        12,
-        15
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -973,30 +893,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/consignacoes/page.tsx",
-      "lines": 42,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 39,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        2,
-        12,
-        13,
-        14,
-        16
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1005,31 +915,24 @@
       "path": "src/app/app-domain/rh/dependentes/[id]/editar/page.tsx",
       "lines": 22,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8,
-        16
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/dependentes/actions.ts",
-      "lines": 38,
+      "lines": 36,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        8,
-        15,
-        26,
-        28
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1042,6 +945,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1049,17 +953,12 @@
     {
       "path": "src/app/app-domain/rh/dependentes/DependenteForm.tsx",
       "lines": 127,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 14,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1067,87 +966,51 @@
     {
       "path": "src/app/app-domain/rh/dependentes/DependenteRowActions.tsx",
       "lines": 43,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 8,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/dependentes/novo/page.tsx",
-      "lines": 13,
+      "lines": 15,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        5,
-        7
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/dependentes/page.tsx",
-      "lines": 113,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 97,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 6,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        6,
-        22,
-        26,
-        34,
-        36
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/diarias/page.tsx",
-      "lines": 66,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 57,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 4,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        4,
-        11,
-        12,
-        13,
-        15,
-        16,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1160,21 +1023,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/emissoes-funcionais/page.tsx",
-      "lines": 16,
+      "lines": 15,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        11,
-        13
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1187,21 +1049,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/esocial/actions.ts",
-      "lines": 15,
+      "lines": 16,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        8,
-        10
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1214,23 +1075,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/esocial/page.tsx",
-      "lines": 43,
+      "lines": 42,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        10,
-        11,
-        13,
-        15
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1239,34 +1097,24 @@
       "path": "src/app/app-domain/rh/ferias/[id]/editar/page.tsx",
       "lines": 22,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8,
-        16
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/ferias/actions.ts",
-      "lines": 74,
+      "lines": 78,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        8,
-        13,
-        37,
-        38,
-        59,
-        61,
-        63
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -1279,6 +1127,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1286,17 +1135,12 @@
     {
       "path": "src/app/app-domain/rh/ferias/FeriasForm.tsx",
       "lines": 148,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 13,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1304,56 +1148,38 @@
     {
       "path": "src/app/app-domain/rh/ferias/FeriasRowActions.tsx",
       "lines": 37,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 7,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/ferias/novo/page.tsx",
-      "lines": 12,
+      "lines": 14,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        5,
-        6
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/ferias/page.tsx",
-      "lines": 145,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 133,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 6,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        6,
-        29,
-        32,
-        36,
-        38
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1362,69 +1188,50 @@
       "path": "src/app/app-domain/rh/folha/[id]/editar/page.tsx",
       "lines": 20,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/folha/actions.ts",
-      "lines": 69,
+      "lines": 80,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        11,
-        17,
-        19,
-        20,
-        37,
-        39,
-        40,
-        41
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
-      "rawTables": [
-        "Payroll"
-      ]
+      "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/folha/eventos/[id]/editar/page.tsx",
       "lines": 20,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/folha/eventos/actions.ts",
-      "lines": 59,
+      "lines": 56,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        7,
-        12,
-        25,
-        42,
-        47
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1432,17 +1239,12 @@
     {
       "path": "src/app/app-domain/rh/folha/eventos/EventForm.tsx",
       "lines": 118,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 14,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1455,30 +1257,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/folha/eventos/page.tsx",
-      "lines": 121,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 109,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 4,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        4,
-        27,
-        29,
-        34,
-        36
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1486,17 +1278,12 @@
     {
       "path": "src/app/app-domain/rh/folha/FolhaForm.tsx",
       "lines": 111,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 14,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1504,17 +1291,12 @@
     {
       "path": "src/app/app-domain/rh/folha/FolhaRowActions.tsx",
       "lines": 37,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 7,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1527,30 +1309,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/folha/page.tsx",
-      "lines": 112,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 100,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 5,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        5,
-        28,
-        30,
-        35,
-        37
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1563,6 +1335,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1575,6 +1348,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1583,57 +1357,40 @@
       "path": "src/app/app-domain/rh/licencas/[id]/editar/page.tsx",
       "lines": 22,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8,
-        16
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/licencas/actions.ts",
-      "lines": 83,
+      "lines": 87,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        8,
-        13,
-        35,
-        36,
-        38,
-        61,
-        63,
-        65,
-        67,
-        68
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
-        "Leave"
+        "Leave",
+        "SstMedicalCertificate"
       ]
     },
     {
       "path": "src/app/app-domain/rh/licencas/LicencaForm.tsx",
       "lines": 150,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 14,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1641,17 +1398,12 @@
     {
       "path": "src/app/app-domain/rh/licencas/LicencaRowActions.tsx",
       "lines": 37,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 7,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1664,129 +1416,59 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/licencas/novo/page.tsx",
-      "lines": 12,
+      "lines": 14,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        5,
-        6
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/licencas/page.tsx",
-      "lines": 139,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 127,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 6,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        6,
-        29,
-        32,
-        36,
-        38
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/ocorrencias/page.tsx",
-      "lines": 31,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 28,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        11,
-        12,
-        13,
-        15,
-        16
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/operacoes/actions.ts",
-      "lines": 371,
+      "lines": 385,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        49,
-        51,
-        100,
-        102,
-        110,
-        150,
-        152,
-        159,
-        163,
-        168,
-        171,
-        183,
-        188,
-        189,
-        197,
-        203,
-        206,
-        207,
-        210,
-        215,
-        219,
-        221,
-        227,
-        233,
-        238,
-        240,
-        242,
-        248,
-        252,
-        256,
-        257,
-        269,
-        270,
-        281,
-        282,
-        283,
-        284,
-        286,
-        290,
-        294,
-        297,
-        300,
-        333,
-        339,
-        347,
-        348
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro/allowance-expense-refunds",
@@ -1798,62 +1480,50 @@
       "path": "src/app/app-domain/rh/operacoes/calculos/[id]/page.tsx",
       "lines": 38,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        11,
-        13,
-        15,
-        17
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/operacoes/contratos/[id]/page.tsx",
-      "lines": 21,
+      "lines": 20,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        8,
-        9,
-        10,
-        12
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/operacoes/demonstrativos/[id]/page.tsx",
-      "lines": 31,
+      "lines": 35,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        10,
-        12
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/operacoes/medias/page.tsx",
-      "lines": 23,
+      "lines": 24,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        10,
-        13
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1866,42 +1536,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/operacoes/page.tsx",
-      "lines": 137,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 119,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        19,
-        22,
-        30,
-        35,
-        36,
-        37,
-        38,
-        39,
-        43,
-        44,
-        45,
-        46,
-        47,
-        48,
-        49,
-        60
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -1914,56 +1562,33 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/page.tsx",
-      "lines": 174,
+      "lines": 169,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        17,
-        18,
-        19,
-        20,
-        21,
-        23,
-        24,
-        25
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/parametrizacoes/actions.ts",
-      "lines": 888,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 797,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 20,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        20,
-        152,
-        268,
-        415,
-        512,
-        588,
-        654,
-        684,
-        748,
-        811
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -1976,57 +1601,33 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/parametrizacoes/page.tsx",
-      "lines": 132,
+      "lines": 108,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        37,
-        39,
-        40,
-        66
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/pasta-funcional/[id]/page.tsx",
-      "lines": 41,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 30,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        9,
-        10,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        20,
-        21,
-        22,
-        23,
-        24,
-        26
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2035,33 +1636,24 @@
       "path": "src/app/app-domain/rh/pensoes/page.tsx",
       "lines": 28,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        9,
-        10,
-        11,
-        12
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/poc/page.tsx",
-      "lines": 48,
+      "lines": 45,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        14,
-        15,
-        16,
-        17,
-        18
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2070,77 +1662,50 @@
       "path": "src/app/app-domain/rh/ponto/[id]/editar/page.tsx",
       "lines": 22,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8,
-        16
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/ponto/actions.ts",
-      "lines": 104,
+      "lines": 110,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        7,
-        12,
-        68,
-        69,
-        71,
-        88,
-        90,
-        92,
-        93
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
-      "rawTables": [
-        "AttendanceRecord"
-      ]
+      "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/ponto/novo/page.tsx",
-      "lines": 12,
+      "lines": 14,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        5,
-        6
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/ponto/page.tsx",
-      "lines": 150,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 133,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 7,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        7,
-        30,
-        33,
-        42,
-        44
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2153,6 +1718,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2160,17 +1726,12 @@
     {
       "path": "src/app/app-domain/rh/ponto/PontoForm.tsx",
       "lines": 157,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 13,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2178,17 +1739,12 @@
     {
       "path": "src/app/app-domain/rh/ponto/PontoRowActions.tsx",
       "lines": 37,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 7,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2201,18 +1757,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/portal-funcional/actions.ts",
-      "lines": 24,
+      "lines": 25,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2225,23 +1783,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/portal-funcional/page.tsx",
-      "lines": 31,
+      "lines": 34,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        11,
-        12,
-        13,
-        16
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2254,24 +1809,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/publicacao-funcional/page.tsx",
-      "lines": 31,
+      "lines": 28,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        15,
-        18,
-        19,
-        21,
-        23
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2284,6 +1835,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2296,6 +1848,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [
         "@/lib/financeiro/cost-ledger"
@@ -2304,20 +1857,13 @@
     },
     {
       "path": "src/app/app-domain/rh/quadro-cargos/historico-legal/page.tsx",
-      "lines": 24,
+      "lines": 18,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        9,
-        15,
-        16,
-        17,
-        18,
-        19
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2330,30 +1876,33 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/quadro-cargos/page.tsx",
-      "lines": 36,
+      "lines": 35,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/recadastramento/actions.ts",
-      "lines": 24,
+      "lines": 25,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2366,24 +1915,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/recadastramento/configurar/page.tsx",
-      "lines": 17,
+      "lines": 15,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        8,
-        9,
-        10,
-        11,
-        12
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2396,40 +1941,33 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/recadastramento/page.tsx",
-      "lines": 25,
+      "lines": 26,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        9,
-        10,
-        11,
-        12
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/requerimentos-funcionais/page.tsx",
-      "lines": 26,
+      "lines": 25,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        14,
-        16,
-        18,
-        19
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2442,6 +1980,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2454,22 +1993,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/servicos-funcionais/page.tsx",
-      "lines": 21,
+      "lines": 24,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        10,
-        12,
-        13
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2482,25 +2019,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/servidores/[id]/editar/page.tsx",
-      "lines": 37,
+      "lines": 28,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        6,
-        8,
-        22,
-        23,
-        24,
-        25
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2513,24 +2045,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/servidores/benefitActions.ts",
-      "lines": 52,
+      "lines": 54,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        7,
-        11,
-        23,
-        40,
-        42
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2538,17 +2066,12 @@
     {
       "path": "src/app/app-domain/rh/servidores/EmployeeBenefitsCard.tsx",
       "lines": 129,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 12,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2556,60 +2079,38 @@
     {
       "path": "src/app/app-domain/rh/servidores/EmployeeFilters.tsx",
       "lines": 96,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 9,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/servidores/novo/page.tsx",
-      "lines": 20,
+      "lines": 19,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        5,
-        6,
-        7,
-        8,
-        9
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/servidores/page.tsx",
-      "lines": 179,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 153,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 5,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        5,
-        29,
-        35,
-        50,
-        53,
-        60
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2617,17 +2118,12 @@
     {
       "path": "src/app/app-domain/rh/servidores/ServidorForm.tsx",
       "lines": 292,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 16,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2635,36 +2131,25 @@
     {
       "path": "src/app/app-domain/rh/servidores/ServidorRowActions.tsx",
       "lines": 41,
-      "legacyImport": true,
+      "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 7,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
+      "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/app/app-domain/rh/solicitacoes/page.tsx",
-      "lines": 38,
+      "lines": 34,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        10,
-        12,
-        13,
-        15,
-        17,
-        18
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2677,6 +2162,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -2689,6 +2175,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2701,6 +2188,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -2713,6 +2201,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -2725,6 +2214,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2737,6 +2227,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro/legacy-expense"
@@ -2747,21 +2238,13 @@
     },
     {
       "path": "src/lib/rh/absence-conflicts.ts",
-      "lines": 9,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 11,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        1,
-        3
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2774,6 +2257,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": [
@@ -2784,28 +2268,13 @@
     },
     {
       "path": "src/lib/rh/attendance-payroll.ts",
-      "lines": 47,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 56,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        10,
-        13,
-        15,
-        16,
-        22,
-        30,
-        33,
-        36
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -2814,57 +2283,26 @@
     },
     {
       "path": "src/lib/rh/attendance-reconciliation.ts",
-      "lines": 58,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 63,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        6,
-        14,
-        26,
-        27,
-        40,
-        47,
-        48,
-        50
-      ],
-      "transactional": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/benefit-calculation.ts",
-      "lines": 66,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 72,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        17,
-        20,
-        28,
-        34,
-        38,
-        41,
-        43,
-        44,
-        58
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -2877,6 +2315,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2889,6 +2328,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2901,6 +2341,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2913,6 +2354,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -2925,6 +2367,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -2937,37 +2380,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/credit-requests.ts",
-      "lines": 76,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 87,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        8,
-        10,
-        13,
-        15,
-        17,
-        18,
-        24,
-        41,
-        48,
-        50,
-        51
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -2982,30 +2408,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/dependent-service.ts",
-      "lines": 28,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 36,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        1,
-        7,
-        9,
-        10,
-        14
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -3014,120 +2430,52 @@
     },
     {
       "path": "src/lib/rh/employee-person.ts",
-      "lines": 11,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 2,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        1,
-        4
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/employment-lifecycle.ts",
-      "lines": 48,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 56,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        7,
-        9,
-        11,
-        30,
-        40
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/external-configuration.ts",
-      "lines": 34,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 37,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        17,
-        21,
-        25
-      ],
-      "transactional": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/finance-bridge.ts",
-      "lines": 355,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 378,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        16,
-        21,
-        24,
-        28,
-        34,
-        61,
-        90,
-        117,
-        120,
-        121,
-        175,
-        178,
-        179,
-        221,
-        224,
-        225,
-        239,
-        244,
-        245,
-        246,
-        253,
-        266,
-        267,
-        284,
-        286,
-        287,
-        291,
-        319,
-        322,
-        323,
-        344
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro"
@@ -3141,36 +2489,20 @@
     },
     {
       "path": "src/lib/rh/functional-occurrences.ts",
-      "lines": 61,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 75,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        8,
-        9,
-        16,
-        21,
-        22,
-        23,
-        31,
-        32,
-        36,
-        46,
-        48,
-        49
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
-        "PersonnelAct"
+        "HealthClinicalDocument",
+        "HealthStandardDocument",
+        "PersonnelAct",
+        "SstCertificateDocument"
       ]
     },
     {
@@ -3181,6 +2513,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -3193,6 +2526,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -3205,32 +2539,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/movement-import.ts",
-      "lines": 82,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 86,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        50,
-        54,
-        55,
-        56,
-        60,
-        74
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -3243,6 +2565,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro"
@@ -3255,100 +2578,52 @@
     },
     {
       "path": "src/lib/rh/obligation-export.ts",
-      "lines": 85,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 92,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        37,
-        55,
-        65,
-        66,
-        74
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/obligation-history.ts",
-      "lines": 51,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 56,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        26,
-        29,
-        30,
-        34,
-        49
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/partner-discounts.ts",
-      "lines": 54,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 68,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        11,
-        13,
-        14,
-        20,
-        39,
-        40,
-        48,
-        50,
-        52
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/payroll-access.ts",
-      "lines": 15,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 16,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        2,
-        6
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": [
@@ -3357,43 +2632,20 @@
     },
     {
       "path": "src/lib/rh/payroll-configuration.ts",
-      "lines": 581,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 506,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        4,
-        211,
-        214,
-        215,
-        218,
-        250,
-        279,
-        280,
-        286,
-        315,
-        333,
-        357,
-        373,
-        392,
-        393,
-        403,
-        404,
-        405,
-        442,
-        533
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
-      "rawTables": []
+      "rawTables": [
+        "ConfiguracaoInstancia",
+        "HrPayrollRule",
+        "HrPayrollRuleSet"
+      ]
     },
     {
       "path": "src/lib/rh/payroll-labels.ts",
@@ -3403,34 +2655,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/payroll-payment-allocation.ts",
-      "lines": 54,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 66,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        13,
-        15,
-        16,
-        28,
-        29,
-        38,
-        43,
-        45
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -3445,6 +2683,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -3457,6 +2696,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro"
@@ -3465,80 +2705,39 @@
     },
     {
       "path": "src/lib/rh/pension-configuration.ts",
-      "lines": 38,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 48,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        6,
-        9,
-        10,
-        33
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/poc-bootstrap.ts",
-      "lines": 128,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 130,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        9,
-        12,
-        13,
-        14,
-        85,
-        89,
-        90,
-        113,
-        114
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/poc-payment.ts",
-      "lines": 47,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 55,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        7,
-        9,
-        12,
-        23,
-        30,
-        35,
-        37
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -3551,32 +2750,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/portal-requests.ts",
-      "lines": 43,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 51,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        7,
-        9,
-        10,
-        22,
-        24,
-        25
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -3591,6 +2778,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -3603,6 +2791,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -3615,6 +2804,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro"
@@ -3629,6 +2819,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -3644,22 +2835,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/recertification-canonicalization.ts",
-      "lines": 35,
+      "lines": 43,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        12,
-        13,
-        21
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -3668,26 +2857,14 @@
     },
     {
       "path": "src/lib/rh/recertification-details.ts",
-      "lines": 68,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 78,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        26,
-        34,
-        39,
-        42,
-        43
-      ],
-      "transactional": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
       "financialDependencies": [],
       "rawTables": [
         "Address",
@@ -3696,141 +2873,61 @@
     },
     {
       "path": "src/lib/rh/recertification.ts",
-      "lines": 143,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 157,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        1,
-        19,
-        33,
-        36,
-        37,
-        44,
-        45,
-        55,
-        73,
-        75,
-        76,
-        109,
-        111,
-        112,
-        120,
-        123
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
+        "BudgetUnit",
         "HrPortalRequest",
         "Person"
       ]
     },
     {
       "path": "src/lib/rh/recruitment-service.ts",
-      "lines": 105,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 119,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        15,
-        18,
-        30,
-        31,
-        37,
-        41,
-        44,
-        55,
-        56,
-        59,
-        66,
-        68,
-        75,
-        80,
-        81,
-        83,
-        90,
-        91,
-        100
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
-      "rawTables": [
-        "HrRecruitmentApplication"
-      ]
+      "rawTables": []
     },
     {
       "path": "src/lib/rh/remuneration-average.ts",
-      "lines": 56,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 61,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        5,
-        7,
-        11,
-        12,
-        23,
-        31,
-        36,
-        43,
-        49,
-        50,
-        51,
-        53
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/report-service.ts",
-      "lines": 179,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 193,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        26,
-        31,
-        113,
-        122,
-        132,
-        141,
-        146
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
-      "rawTables": []
+      "rawTables": [
+        "HrEmploymentContract"
+      ]
     },
     {
       "path": "src/lib/rh/role-legal-history.ts",
@@ -3840,6 +2937,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro/cost-ledger",
@@ -3853,59 +2951,26 @@
     },
     {
       "path": "src/lib/rh/service-right-query.ts",
-      "lines": 18,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 21,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        1,
-        5,
-        9
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/service-rights.ts",
-      "lines": 155,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 162,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        14,
-        51,
-        65,
-        69,
-        71,
-        72,
-        93,
-        98,
-        100,
-        101,
-        110,
-        113,
-        128,
-        130,
-        135,
-        136,
-        145
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -3920,6 +2985,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -3928,15 +2994,13 @@
     },
     {
       "path": "src/lib/rh/special-payroll-finality.ts",
-      "lines": 22,
+      "lines": 32,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        9,
-        13
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -3949,128 +3013,59 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/special-simulation.ts",
-      "lines": 50,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 65,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        9,
-        11,
-        15,
-        16,
-        32,
-        35,
-        45
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/statement-service.ts",
-      "lines": 79,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 84,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        1,
-        24
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/time-bank-expiration.ts",
-      "lines": 110,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 118,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        8,
-        9,
-        20,
-        31,
-        34,
-        44,
-        53,
-        54,
-        55,
-        56,
-        61,
-        66,
-        70,
-        71,
-        84,
-        95,
-        102
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/time-bank-payment.ts",
-      "lines": 94,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 101,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        8,
-        11,
-        13,
-        14,
-        15,
-        17,
-        18,
-        25,
-        26,
-        28,
-        29,
-        52,
-        54,
-        57,
-        67,
-        69,
-        70
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -4079,74 +3074,26 @@
     },
     {
       "path": "src/lib/rh/time-bank-transfer.ts",
-      "lines": 110,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 115,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        7,
-        14,
-        16,
-        20,
-        21,
-        25,
-        32,
-        34,
-        37,
-        38,
-        54,
-        81,
-        83,
-        84
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/time-bank.ts",
-      "lines": 106,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 116,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        13,
-        14,
-        16,
-        18,
-        20,
-        22,
-        31,
-        34,
-        36,
-        37,
-        45,
-        49,
-        51,
-        53,
-        68,
-        69,
-        81,
-        83,
-        86,
-        87
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -4155,12 +3102,13 @@
     },
     {
       "path": "src/lib/rh/travel-allowance.ts",
-      "lines": 224,
+      "lines": 227,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -4176,6 +3124,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro"
@@ -4192,6 +3141,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "@/lib/financeiro"
@@ -4209,39 +3159,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/vacation-multiple-periods.ts",
-      "lines": 112,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 120,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        19,
-        23,
-        27,
-        28,
-        36,
-        37,
-        55,
-        76,
-        78,
-        79,
-        92,
-        93,
-        95
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -4256,41 +3187,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/lib/rh/vacation-rights.ts",
-      "lines": 138,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 155,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        20,
-        22,
-        23,
-        60,
-        61,
-        64,
-        70,
-        71,
-        87,
-        91,
-        106,
-        108,
-        114,
-        115,
-        123
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -4305,6 +3215,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -4322,6 +3233,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4334,6 +3246,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4346,6 +3259,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": [
@@ -4362,6 +3276,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4374,18 +3289,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/db/repositories/personnel/finance.ts",
-      "lines": 100,
+      "lines": 111,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": [
@@ -4401,21 +3318,25 @@
         "Expense",
         "FinancialYear",
         "Payment",
+        "PaymentRetention",
         "PlanningEntityUnit",
         "Revenue",
         "Settlement",
-        "TreasuryMovement"
+        "SettlementRetention",
+        "TreasuryMovement",
+        "WithholdingPayable"
       ]
     },
     {
       "path": "src/db/repositories/personnel/integration.ts",
-      "lines": 36,
+      "lines": 46,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
-      "transactional": true,
+      "delegateLines": [],
+      "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
@@ -4427,6 +3348,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4439,6 +3361,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4453,6 +3376,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4465,6 +3389,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4477,6 +3402,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4489,6 +3415,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4501,6 +3428,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4513,18 +3441,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/db/schema/personnel-configuration.ts",
-      "lines": 40,
+      "lines": 46,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4537,6 +3467,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-external-operations.ts",
+      "lines": 32,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4549,6 +3493,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4561,18 +3506,33 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "src/db/schema/personnel-records.ts",
-      "lines": 14,
+      "lines": 20,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/db/schema/personnel-recruitment.ts",
+      "lines": 42,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4585,6 +3545,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4599,6 +3560,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4611,6 +3573,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4623,6 +3586,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4635,6 +3599,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4647,6 +3612,46 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/personnel-external-operations.ts",
+      "lines": 29,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/personnel-pages.ts",
+      "lines": 59,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "src/lib/contracts/personnel-recruitment.ts",
+      "lines": 29,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4659,6 +3664,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4667,63 +3673,26 @@
   "tools": [
     {
       "path": "scripts/adopt-aurora-advance-accounting.ts",
-      "lines": 58,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 65,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 21,
-          "specifier": "../src/lib/prisma",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        21,
-        23,
-        24,
-        31,
-        47,
-        55
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "scripts/adopt-aurora-payroll-accounts.ts",
-      "lines": 61,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 65,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 23,
-          "specifier": "../src/lib/prisma",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        23,
-        25,
-        26,
-        33,
-        42,
-        46,
-        57
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "../src/lib/financeiro/account-catalog"
@@ -4732,65 +3701,52 @@
     },
     {
       "path": "scripts/adopt-aurora-travel-policy.ts",
-      "lines": 45,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 55,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 12,
-          "specifier": "../src/lib/prisma",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        12,
-        14,
-        15,
-        34,
-        42
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "scripts/adopt-aurora-travel-workflows.ts",
-      "lines": 40,
-      "legacyImport": true,
-      "legacyReference": true,
-      "metadata": false,
-      "clientImports": [
-        {
-          "line": 11,
-          "specifier": "../src/lib/prisma",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        11,
-        13,
-        14,
-        37
-      ],
-      "transactional": true,
-      "financialDependencies": [],
-      "rawTables": []
-    },
-    {
-      "path": "scripts/drizzle-inventory-personnel-education.mjs",
-      "lines": 57,
+      "lines": 49,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/audit-table-pattern.mjs",
+      "lines": 329,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/drizzle-inventory-personnel-education.mjs",
+      "lines": 68,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -4803,7 +3759,21 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "scripts/lib/municipal-setup-poc.ts",
+      "lines": 149,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
@@ -4815,6 +3785,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": [
@@ -4842,6 +3813,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4854,6 +3826,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4866,6 +3839,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
@@ -4878,6 +3852,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -4890,6 +3865,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -4906,154 +3882,72 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "scripts/seed-hr-documentary-poc.ts",
-      "lines": 35,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 39,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 3,
-          "specifier": "@prisma/adapter-neon",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        14,
-        22
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "scripts/seed-hr-engine-demo.ts",
-      "lines": 52,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 59,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 3,
-          "specifier": "@prisma/adapter-neon",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        10,
-        19,
-        20,
-        40
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "scripts/seed-hr-poc-linked-workflows.ts",
-      "lines": 57,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 64,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 2,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 3,
-          "specifier": "@prisma/adapter-neon",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        2,
-        12,
-        20
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "scripts/seed-rh.ts",
-      "lines": 229,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 56,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 1,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 2,
-          "specifier": "@prisma/adapter-neon",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        1,
-        13,
-        19,
-        21,
-        26,
-        28,
-        33,
-        35,
-        42,
-        44,
-        59,
-        61,
-        76,
-        78,
-        95,
-        104,
-        115,
-        127,
-        140,
-        153,
-        166,
-        177,
-        179,
-        188,
-        199,
-        208,
-        227
-      ],
-      "transactional": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "tests/advance-prior-year-refund.test.ts",
-      "lines": 119,
+      "lines": 142,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        29
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "../src/lib/financeiro",
@@ -5069,6 +3963,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -5081,6 +3976,21 @@
       ]
     },
     {
+      "path": "tests/drizzle-municipal-setup-tools.test.ts",
+      "lines": 252,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "GenericProcessWorkflowDefinition"
+      ]
+    },
+    {
       "path": "tests/drizzle-personnel-calculations.test.ts",
       "lines": 66,
       "legacyImport": false,
@@ -5088,6 +3998,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -5100,9 +4011,105 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": []
+    },
+    {
+      "path": "tests/drizzle-personnel-external-operations-ast.test.ts",
+      "lines": 131,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/drizzle-personnel-external-operations.test.ts",
+      "lines": 271,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "HrIntegrationEvent",
+        "HrMovement"
+      ]
+    },
+    {
+      "path": "tests/drizzle-personnel-pages-ast.test.ts",
+      "lines": 42,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/drizzle-personnel-pages.test.ts",
+      "lines": 237,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "GenericProcessWorkflowDefinition",
+        "GenericProcessWorkflowStage",
+        "HrBudgetUnitEntityMapping",
+        "HrRecruitmentApplication",
+        "SstBenefitPayrollScope",
+        "Supplier"
+      ]
+    },
+    {
+      "path": "tests/drizzle-personnel-poc-bootstrap.test.ts",
+      "lines": 255,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "ConfiguracaoInstancia",
+        "Employee",
+        "HrCalculationPolicy",
+        "HrEmploymentContract",
+        "HrEmploymentRegime",
+        "HrEmploymentRevision",
+        "HrIntegrationEvent",
+        "HrPayrollRubric",
+        "HrPayrollRubricIncidence",
+        "HrPayrollRule",
+        "HrPayrollRuleSet",
+        "HrPortalRequest",
+        "HrSocialSecurityBand",
+        "HrSocialSecurityScheme",
+        "HrVacationPolicy",
+        "Payroll",
+        "PayrollEvent",
+        "Person",
+        "Role"
+      ]
     },
     {
       "path": "tests/education-s1.test.ts",
@@ -5112,6 +4119,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -5124,6 +4132,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -5142,6 +4151,7 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": [
@@ -5160,6 +4170,32 @@
       ]
     },
     {
+      "path": "tests/helpers/health-checklist-drizzle-tables.ts",
+      "lines": 31,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/helpers/personnel-documentary-fixture.ts",
+      "lines": 19,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
       "path": "tests/helpers/personnel-education-fixture.ts",
       "lines": 35,
       "legacyImport": false,
@@ -5167,6 +4203,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
+      "transactional": false,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/helpers/personnel-financial-regression-queries.ts",
+      "lines": 29,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -5174,55 +4224,25 @@
     {
       "path": "tests/hr-calculation.test.ts",
       "lines": 138,
-      "legacyImport": true,
-      "legacyReference": true,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        15,
-        27,
-        29,
-        30,
-        31,
-        33,
-        34,
-        52,
-        57,
-        61,
-        62,
-        66,
-        130,
-        134
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "tests/hr-documentary-reports.test.ts",
-      "lines": 48,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 68,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        15,
-        28
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
@@ -5235,48 +4255,33 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "tests/hr-poc-calculation.test.ts",
-      "lines": 115,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 118,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 13,
-          "specifier": "@prisma/client",
-          "typeOnly": true
-        }
-      ],
-      "legacyLines": [
-        3,
-        17,
-        18,
-        97,
-        99,
-        105
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "tests/hr-role-legal-history.test.ts",
-      "lines": 59,
+      "lines": 55,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": [
@@ -5291,50 +4296,20 @@
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [],
       "rawTables": []
     },
     {
       "path": "tests/hr-workforce-service.test.ts",
-      "lines": 976,
-      "legacyImport": true,
-      "legacyReference": true,
-      "metadata": true,
-      "clientImports": [
-        {
-          "line": 4,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        },
-        {
-          "line": 7,
-          "specifier": "@prisma/adapter-pg",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        4,
-        51,
-        54,
-        91,
-        93,
-        94,
-        168,
-        220,
-        229,
-        329,
-        331,
-        367,
-        534,
-        651,
-        740,
-        855,
-        858,
-        914,
-        937,
-        964
-      ],
+      "lines": 956,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [],
       "rawTables": [
@@ -5342,50 +4317,30 @@
         "BudgetAppropriation",
         "BudgetUnit",
         "Dependent",
-        "Employee",
         "ExpenseNature",
         "FinancialYear",
-        "HrCalculationPolicy",
+        "HealthClinicalDocument",
         "HrConsignmentAgreement",
         "HrConsignmentEntry",
-        "HrEmploymentRegime",
         "HrEmploymentRevision",
-        "HrPayrollRubric",
         "HrPayrollRubricIncidence",
         "HrPayrollRule",
-        "HrPayrollRuleSet",
         "HrPayrollRun",
         "HrRightEntry",
-        "HrSocialSecurityBand",
-        "HrSocialSecurityScheme",
-        "HrVacationPolicy",
         "Payroll",
         "PayrollBenefit",
-        "PayrollEvent",
-        "Person",
-        "Role",
         "Supplier"
       ]
     },
     {
       "path": "tests/municipal-travel-allowance.test.ts",
-      "lines": 250,
+      "lines": 275,
       "legacyImport": false,
-      "legacyReference": true,
+      "legacyReference": false,
       "metadata": false,
       "clientImports": [],
-      "legacyLines": [
-        77,
-        79,
-        80,
-        90,
-        105,
-        110,
-        126,
-        129,
-        190,
-        192
-      ],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": true,
       "financialDependencies": [
         "../src/lib/financeiro"
@@ -5394,12 +4349,13 @@
     },
     {
       "path": "tests/payroll-financial-cycle.test.ts",
-      "lines": 95,
+      "lines": 106,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [
         "../src/lib/financeiro"
@@ -5408,29 +4364,13 @@
     },
     {
       "path": "tests/payroll-municipal-costs.test.ts",
-      "lines": 149,
-      "legacyImport": true,
-      "legacyReference": true,
+      "lines": 156,
+      "legacyImport": false,
+      "legacyReference": false,
       "metadata": false,
-      "clientImports": [
-        {
-          "line": 3,
-          "specifier": "@prisma/client",
-          "typeOnly": false
-        }
-      ],
-      "legacyLines": [
-        3,
-        58,
-        59,
-        88,
-        89,
-        106,
-        117,
-        118,
-        119,
-        138
-      ],
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [
         "../src/lib/financeiro",
@@ -5442,12 +4382,13 @@
     },
     {
       "path": "tests/payroll-provision-accounting.test.ts",
-      "lines": 136,
+      "lines": 149,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [
         "../src/lib/financeiro"
@@ -5455,13 +4396,59 @@
       "rawTables": []
     },
     {
-      "path": "tests/travel-refunds.test.ts",
-      "lines": 88,
+      "path": "tests/recruitment-drizzle-ast.test.ts",
+      "lines": 105,
       "legacyImport": false,
       "legacyReference": false,
       "metadata": false,
       "clientImports": [],
       "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/recruitment-drizzle.test.ts",
+      "lines": 305,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": [
+        "AuditEvent",
+        "Document",
+        "HrRecruitmentApplication",
+        "Usuario",
+        "decidedAt"
+      ]
+    },
+    {
+      "path": "tests/tfd-drizzle.test.ts",
+      "lines": 277,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
+      "transactional": true,
+      "financialDependencies": [],
+      "rawTables": []
+    },
+    {
+      "path": "tests/travel-refunds.test.ts",
+      "lines": 100,
+      "legacyImport": false,
+      "legacyReference": false,
+      "metadata": false,
+      "clientImports": [],
+      "legacyLines": [],
+      "delegateLines": [],
       "transactional": false,
       "financialDependencies": [
         "../src/lib/financeiro",
@@ -5672,6 +4659,56 @@
       ]
     },
     {
+      "path": "src/db/repositories/personnel-pages/catalog.ts",
+      "imports": [
+        "@/lib/rh/external-configuration"
+      ]
+    },
+    {
+      "path": "src/db/repositories/personnel-pages/records.ts",
+      "imports": [
+        "@/lib/rh/list-pagination"
+      ]
+    },
+    {
+      "path": "src/db/repositories/personnel-pages/workforce.ts",
+      "imports": [
+        "@/lib/rh/payroll-access"
+      ]
+    },
+    {
+      "path": "src/db/repositories/sst/benefits.ts",
+      "imports": [
+        "@/db/schema/personnel-records",
+        "@/db/schema/personnel-configuration"
+      ]
+    },
+    {
+      "path": "src/db/repositories/sst-pages/administration.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration"
+      ]
+    },
+    {
+      "path": "src/db/repositories/sst-pages/benefits.ts",
+      "imports": [
+        "@/db/schema/personnel-records",
+        "@/db/schema/personnel-configuration"
+      ]
+    },
+    {
+      "path": "src/db/repositories/sst-pages/certificates.ts",
+      "imports": [
+        "@/db/schema/personnel-records"
+      ]
+    },
+    {
+      "path": "src/db/repositories/sst-pages/functional-options.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration"
+      ]
+    },
+    {
       "path": "src/lib/c7/workforce-statistics.ts",
       "imports": [
         "@/lib/rh/contract-timeline"
@@ -5681,7 +4718,9 @@
       "path": "src/lib/financeiro/allowance-expense-refunds.ts",
       "imports": [
         "@/lib/rh/travel-allowance",
-        "@/lib/rh/workforce-service"
+        "@/lib/rh/workforce-service",
+        "@/db/repositories/personnel/workforce",
+        "@/db/repositories/personnel/integration"
       ]
     },
     {
@@ -5782,7 +4821,53 @@
     {
       "path": "src/lib/saude/tfd-transport-service.ts",
       "imports": [
-        "@/lib/rh/travel-allowance"
+        "@/db/schema/personnel-workforce"
+      ]
+    },
+    {
+      "path": "src/lib/sst/aso-flow-service.ts",
+      "imports": [
+        "@/db/schema/personnel-records"
+      ]
+    },
+    {
+      "path": "src/lib/sst/benefit-posting.ts",
+      "imports": [
+        "@/db/schema/personnel-workforce",
+        "@/db/schema/personnel-configuration"
+      ]
+    },
+    {
+      "path": "src/lib/sst/benefit-query.ts",
+      "imports": [
+        "@/db/schema/personnel-records"
+      ]
+    },
+    {
+      "path": "src/lib/sst/benefit-service.ts",
+      "imports": [
+        "@/db/schema/personnel-records",
+        "@/db/schema/personnel-configuration",
+        "@/db/schema/personnel-workforce"
+      ]
+    },
+    {
+      "path": "src/lib/sst/certificate-service.ts",
+      "imports": [
+        "@/db/schema/personnel-records"
+      ]
+    },
+    {
+      "path": "src/lib/sst/functional-certificate-service.ts",
+      "imports": [
+        "@/db/schema/personnel-records"
+      ]
+    },
+    {
+      "path": "src/lib/sst/functional-payroll-origin.ts",
+      "imports": [
+        "@/db/schema/personnel-configuration",
+        "@/db/schema/personnel-workforce"
       ]
     },
     {
@@ -5794,6 +4879,7 @@
     {
       "path": "src/lib/sst/ppp-final-service.ts",
       "imports": [
+        "@/db/schema/personnel-workforce",
         "@/lib/rh/workforce-service"
       ]
     },
@@ -5826,16 +4912,5 @@
       ]
     }
   ],
-  "globalMetadataConsumers": [
-    "tests/cemetery-fees-service.test.ts",
-    "tests/cemetery-workflow-service.test.ts",
-    "tests/construction-automatic-viability-service.test.ts",
-    "tests/construction-external-full-opening.test.ts",
-    "tests/construction-migration-upgrade.test.ts",
-    "tests/health-checklist-internal-flows.test.ts",
-    "tests/helpers/planning-accounting-fixture.ts",
-    "tests/helpers/planning-execution-fixture.ts",
-    "tests/hr-workforce-service.test.ts",
-    "tests/planning-postgres.test.ts"
-  ]
+  "globalMetadataConsumers": []
 }

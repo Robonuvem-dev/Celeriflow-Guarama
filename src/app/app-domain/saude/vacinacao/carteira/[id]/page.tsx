@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db as defaultDatabase } from "@/db/client";
 import { randomUUID } from "node:crypto";
 import { assertHealthUnitAccess, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { getVaccinationCard } from "@/lib/saude/vaccination-registry-service";
@@ -15,7 +16,7 @@ import { healthVaccineAdverseEvents, healthVaccineAdverseFollowups, vaccines } f
 const field = "min-w-0 rounded border bg-white p-2 text-sm", grid = "mt-3 grid gap-3 sm:grid-cols-2";
 const Input = ({ name, label, type = "text", value, required = false }: { name: string; label: string; type?: string; value?: string; required?: boolean }) => <label className="grid gap-1 text-sm">{label}<input name={name} type={type} defaultValue={value} required={required} className={field} /></label>;
 export default async function VaccinationCardPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ appointmentId?: string; medicalRecordId?: string }> }) {
-  const id = decodeURIComponent((await params).id), origin = await searchParams, context = await getTenantContextForModule("SAUDE"), db = context.database;
+  const id = decodeURIComponent((await params).id), origin = await searchParams, context = await getTenantContextForModule("SAUDE"), db = context.database ?? defaultDatabase;
   const card = await getVaccinationCard(context, id);
   if (origin.appointmentId) { const [appointment] = await db.select({ unitId: healthAppointments.unitId }).from(healthAppointments).where(and(eq(healthAppointments.id, origin.appointmentId), eq(healthAppointments.patientId, id))).limit(1); if (!appointment) throw new Error("Agendamento não encontrado."); assertHealthUnitAccess(context.user, appointment.unitId); }
   if (origin.medicalRecordId) { const [record] = await db.select({ unitId: medicalRecords.unitId }).from(medicalRecords).where(and(eq(medicalRecords.id, origin.medicalRecordId), eq(medicalRecords.patientId, id), origin.appointmentId ? eq(medicalRecords.appointmentId, origin.appointmentId) : undefined)).limit(1); if (!record) throw new Error("Atendimento não encontrado."); assertHealthUnitAccess(context.user, record.unitId); }
@@ -25,8 +26,8 @@ export default async function VaccinationCardPage({ params, searchParams }: { pa
     db.select({ id: unitTable.id, name: unitTable.name }).from(unitTable).where(and(eq(unitTable.isActive, true), units ? inArray(unitTable.id, units) : undefined)),
     db.select({ event: healthVaccineAdverseEvents, vaccine: vaccines }).from(healthVaccineAdverseEvents).innerJoin(vaccines, eq(vaccines.id, healthVaccineAdverseEvents.vaccineId)).where(and(eq(healthVaccineAdverseEvents.patientId, id), units ? inArray(healthVaccineAdverseEvents.unitId, units) : undefined)).orderBy(desc(healthVaccineAdverseEvents.occurredAt)),
   ]);
-  const followups = await db.select({ followup: healthVaccineAdverseFollowups, professional: healthProfessionals, employee: employees }).from(healthVaccineAdverseFollowups).leftJoin(healthProfessionals, eq(healthProfessionals.id, healthVaccineAdverseFollowups.professionalId)).leftJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(inArray(healthVaccineAdverseFollowups.eventId, adverseRows.map(row => row.event.id))).orderBy(asc(healthVaccineAdverseFollowups.occurredAt));
-  const adverseEvents = adverseRows.map(row => ({ ...row.event, vaccine: row.vaccine, followups: followups.filter(item => item.followup.eventId === row.event.id).map(item => ({ ...item.followup, professional: item.professional && item.employee ? { ...item.professional, employee: item.employee } : null })) }));
+  const followups = await db.select({ followup: healthVaccineAdverseFollowups, professional: healthProfessionals, employee: employees }).from(healthVaccineAdverseFollowups).innerJoin(healthProfessionals, eq(healthProfessionals.id, healthVaccineAdverseFollowups.professionalId)).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(inArray(healthVaccineAdverseFollowups.eventId, adverseRows.map(row => row.event.id))).orderBy(asc(healthVaccineAdverseFollowups.occurredAt));
+  const adverseEvents = adverseRows.map(row => ({ ...row.event, vaccine: row.vaccine, followups: followups.filter(item => item.followup.eventId === row.event.id).map(item => ({ ...item.followup, professional: { ...item.professional, employee: item.employee } })) }));
   const patientField = <input type="hidden" name="patientId" value={id} />;
   const vaccineOptions = [...new Map([...options.vaccines, ...card.records.map(record => record.vaccine)].map(vaccine => [vaccine.id, { id: vaccine.id, name: vaccine.name }])).values()];
   const vaccineSelect = <label className="grid gap-1 text-sm">Imunobiológico<select name="vaccineId" required className={field}><option value="">Selecione</option>{vaccineOptions.map(vaccine => <option key={vaccine.id} value={vaccine.id}>{vaccine.name}</option>)}</select></label>;
