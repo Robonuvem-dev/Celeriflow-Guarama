@@ -3,6 +3,8 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle as PageHeader } from "@/components/app-ui/erp/ErpPageTitle";
 import { HrPayrollSettingsClient, type HrPayrollSettingsView } from "./HrPayrollSettingsClient";
+import { db } from "@/db/client";
+import { readInstanceRuleSets, readPayrollSettingsRuleSet } from "@/db/repositories/personnel-pages/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -34,25 +36,9 @@ function ruleSetPriority(ruleSet: RuleSetSummary, referenceDate: Date) {
 }
 
 export default async function RhParametrizacoesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const params = await searchParams;
-  const instance = await prisma.configuracaoInstancia.findFirst({ orderBy: { createdAt: "asc" }, select: { id: true } });
-  const ruleSets = instance ? await prisma.hrPayrollRuleSet.findMany({
-    where: { configuracaoInstanciaId: instance.id },
-    orderBy: [{ status: "asc" }, { effectiveFrom: "desc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      code: true,
-      name: true,
-      status: true,
-      scope: true,
-      effectiveFrom: true,
-      effectiveUntil: true,
-      legalReference: true,
-      notes: true,
-      isDemo: true,
-    },
-  }) : [];
+  const { instance, ruleSets } = await readInstanceRuleSets(database);
   const referenceDate = new Date();
   const orderedRuleSets = [...ruleSets].sort((left, right) => {
     const priorityDifference = ruleSetPriority(left, referenceDate) - ruleSetPriority(right, referenceDate);
@@ -63,17 +49,7 @@ export default async function RhParametrizacoesPage({ searchParams }: { searchPa
   const selectedRuleSet = ruleSets.find((ruleSet) => ruleSet.id === requestedRuleSetId) ?? orderedRuleSets[0] ?? null;
 
   const settings: HrPayrollSettingsView | null = selectedRuleSet
-    ? await prisma.hrPayrollRuleSet.findFirst({
-      where: { id: selectedRuleSet.id, configuracaoInstanciaId: instance?.id },
-      include: {
-        rules: { orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { code: "asc" }] },
-        rubrics: { orderBy: [{ priority: "asc" }, { code: "asc" }], include: { incidences: { orderBy: { incidenceType: "asc" } } } },
-        vacationPolicies: { orderBy: [{ employmentNature: "asc" }, { code: "asc" }] },
-        socialSecuritySchemes: { orderBy: [{ regime: "asc" }, { code: "asc" }], include: { bands: { orderBy: { sequence: "asc" } } } },
-        calculationPolicy: true,
-        employmentRegimes: { orderBy: [{ employmentNature: "asc" }, { code: "asc" }] },
-      },
-    }).then((ruleSet) => {
+    ? await readPayrollSettingsRuleSet(database, selectedRuleSet.id, instance?.id).then((ruleSet) => {
       if (!ruleSet) return null;
       return {
         ruleSet: {

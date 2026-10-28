@@ -8,19 +8,22 @@ import { RepeatableSstForm as SstForm } from "../RepeatableSstForm";
 import { saveLedger } from "../actions";
 import { readLatestCatLayout, catLayoutCanonicalDefaults } from "@/lib/sst/accident-layout-service";
 import { CatLayoutForm } from "../CatLayoutForm";
+import { searchSstPeople } from "@/db/repositories/sst/references";
+import { readSstAccidentClinicalOptions } from "@/db/repositories/sst-pages/accidents";
+import { sstDatabase } from "@/lib/sst/database";
 export default async function CatPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string; person?: string }> }) {
   const context = await getTenantContextForModule("SST"), { id } = await params, cat = await readCat(context, id);
   let clinical = false;
   try { await assertDisciplineAccess(context, cat.budgetUnitId, "MEDICINE"); clinical = true; } catch (e) { if (!(e instanceof AccessError)) throw e; }
   const search = await searchParams;
   const [history, ledger] = await Promise.all([listAccidentEvidence(context, id, Number(search.page || 1), clinical), readAccidentLedger(context, id)]);
-  const people = (search.person || "").trim().length >= 3 ? await context.prisma.person.findMany({ where: { fullName: { contains: search.person!.trim(), mode: "insensitive" } }, select: { id: true, fullName: true }, orderBy: [{ fullName: "asc" }, { id: "asc" }], take: 20 }) : [];
-  const doctors = clinical ? await context.prisma.$queryRaw<{ id: string; fullName: string; council: string }[]>`SELECT r."id",p."fullName",r."council" FROM "SstProfessionalRole" r JOIN "Person" p ON p."id"=r."personId" WHERE r."budgetUnitId"=${cat.budgetUnitId} AND r."discipline"='MEDICINE' AND r."isActive" ORDER BY p."fullName",r."id"` : [];
+  const database = sstDatabase(context);
+  const people = (search.person || "").trim().length >= 3 ? await searchSstPeople(database, search.person!.trim()) : [];
+  const {doctors,attendances} = clinical ? await readSstAccidentClinicalOptions(database,id,cat.budgetUnitId) : {doctors:[],attendances:[]};
   const evidence = history.rows;
   const state = await readAccidentState(context, id), closed = state.homologated;
   const layout = cat.kind !== "INCIDENT" ? await readLatestCatLayout(context,id,clinical) : null;
   const canonical = cat.kind !== "INCIDENT" ? await catLayoutCanonicalDefaults(context,id) : null;
-  const attendances = clinical ? await context.prisma.$queryRaw<{ id: string; createdAt: Date }[]>`SELECT "id","createdAt" FROM "SstCatEvidence" WHERE "catId"=${id} AND "kind"='ATTENDANCE' ORDER BY "createdAt" DESC,"id" DESC LIMIT 20` : [];
   return <main className="space-y-4 p-4"><h1 className="text-xl font-semibold">CAT / incidente — {cat.snapshot.employeeName}</h1><p>{closed ? "Homologada" : "Em investigação"} · {cat.kind} · {cat.source}</p>
     <Link href={`/sst/acidentes/${id}/imprimir`}>Relatório conjunto / impressão</Link>
     {cat.kind !== "INCIDENT" && <section className="space-y-3"><h2 className="font-semibold">CAT no formulário oficial INSS</h2>{layout && <a className="underline" href={`/sst/acidentes/${id}/imprimir/inss`} target="_blank" rel="noreferrer">Abrir PDF INSS preenchido — revisão {layout.layout.version}</a>}<details><summary>Preencher / revisar os campos INSS</summary><CatLayoutForm key={layout?.layout.id || "initial"} catId={id} version={layout?.layout.version || 0} fields={{ ...canonical?.fields, ...layout?.layout.fields }} medicalFields={layout?.medical?.fields || {}} medicalEvidenceId={layout?.medical?.medicalEvidenceId || ""} clinical={clinical} attendances={attendances.map(a => ({ id:a.id,label:`Atendimento ${a.createdAt.toLocaleString("pt-BR")} · ${a.id}` }))} /></details></section>}

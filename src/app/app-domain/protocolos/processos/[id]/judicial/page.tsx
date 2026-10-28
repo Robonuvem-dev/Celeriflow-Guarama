@@ -2,18 +2,17 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { getProtocolContext, getProtocolContextForOperation, protocolScope } from "@/lib/protocols/access";
+import { getProtocolContext, getProtocolContextForOperation, protocolScopeCondition } from "@/lib/protocols/access";
 import { judicialCaseInput, recordProcessJudicialCase } from "@/lib/protocols/judicial-cases";
+import { db } from "@/db/client";
+import { readProcessJudicialRegistration, readJudicialRegistrationOptions } from "@/db/repositories/processes/judicial";
 
 export default async function ProcessJudicialPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const context = await getProtocolContext();
-  const process = await context.prisma.process.findFirst({ where: { AND: [{ id }, protocolScope(context)] }, include: { currentDepartment: { select: { secretariatId: true } }, judicialCase: { include: { events: { orderBy: { version: "desc" } } } } } });
+  const process = await readProcessJudicialRegistration(db, id, protocolScopeCondition(context));
   if (!process) notFound();
-  const [units, documents] = await Promise.all([
-    context.prisma.budgetUnit.findMany({ where: { secretariatId: process.currentDepartment?.secretariatId ?? "__no_department__", planningEntityUnit: { isNot: null }, ...(!context.protocolAccess.isAdmin ? { id: { in: context.user.allowedBudgetUnitIds } } : {}) }, include: { planningEntityUnit: { include: { governmentEntity: { select: { name: true } } } } }, orderBy: { name: "asc" } }),
-    context.prisma.documentVersion.findMany({ where: { status: { in: ["FINAL", "SIGNED"] }, document: { status: "Válido", processDocuments: { some: { processId: id } } } }, include: { document: { select: { title: true } } }, orderBy: [{ documentId: "asc" }, { versionNumber: "desc" }] }),
-  ]);
+  const { units, documents } = await readJudicialRegistrationOptions(db, id, process.currentDepartment?.secretariatId ?? "__no_department__", context.protocolAccess.isAdmin ? undefined : context.user.allowedBudgetUnitIds);
   const current = process.judicialCase;
   const canOperate = context.protocolAccess.canUpdate && !["Arquivado", "Concluído", "Aguardando Recebimento"].includes(process.status) && (context.protocolAccess.isAdmin || context.user.departmentId === process.currentDepartmentId);
   async function save(form: FormData): Promise<void> {

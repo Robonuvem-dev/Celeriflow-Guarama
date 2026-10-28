@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { db } from "@/db/client";
 import { AccessError, getCurrentTenantContext } from "@/lib/platform/tenant-context";
 
 const bodySchema = z.object({
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
     const event = bodySchema.parse(await request.json());
     const context = await getCurrentTenantContext();
 
-    await writeAuditEvent(context.prisma, {
+    await insertAuditEvent(context.database ?? db, {
       actorUsuarioId: context.user.id,
       ...event,
     });

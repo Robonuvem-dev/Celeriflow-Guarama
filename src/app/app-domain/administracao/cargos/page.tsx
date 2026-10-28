@@ -3,15 +3,14 @@ import Link from "next/link";
 import CargosClient from "./CargosClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listRoleDetails } from "@/db/repositories/administration/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function CargosPage() {
-  const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
-  const roles = await prisma.role.findMany({
-    orderBy: { name: 'asc' },
-    include: { _count: { select: { employees: true } } }
-  });
+  const context = await getTenantContextForModule("ADMINISTRACAO");
+  const roles = await listRoleDetails(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

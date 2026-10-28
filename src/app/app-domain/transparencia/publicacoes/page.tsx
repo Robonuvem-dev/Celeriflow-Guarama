@@ -7,18 +7,23 @@ import { saveTransparencySettings, changePublicationStatus, editPublicationMetad
 import { publicTransparencyPath } from "@/lib/transparencia/publication-policy";
 import { getBlobDocumentPrefix } from "@/lib/platform/blob";
 import {publishedTransparencyCatalog} from "@/lib/transparencia/consultation-service";
+import { db } from "@/db/client";
+import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
+import { transparencyPublications } from "@/db/schema/transparency";
+import { supportChannels } from "@/db/schema/attendance-portals";
+import { departments as departmentTable } from "@/db/schema/administration";
 
 export const dynamic = "force-dynamic";
 export default async function TransparencyManagementPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const context = await getTenantContextForModule("TRANSPARENCIA"), db = context.prisma;
+  const context = await getTenantContextForModule("TRANSPARENCIA");
   const settings = await getTransparencySettings(db), raw = await searchParams;
   const collections=publishedTransparencyCatalog(settings);
-  const [channels,departments]=await Promise.all([db.supportChannel.findMany({where:{isActive:true},select:{id:true,name:true}}),db.department.findMany({where:{isActive:true},select:{id:true,name:true}})]);
+  const [channels,departments]=await Promise.all([db.select({id:supportChannels.id,name:supportChannels.name}).from(supportChannels).where(eq(supportChannels.isActive,true)),db.select({id:departmentTable.id,name:departmentTable.name}).from(departmentTable).where(eq(departmentTable.isActive,true))]);
   const transparencyCatalog=[...standardTransparencyCatalog,...settings.customQueries.map(query=>({...getTransparencyCollection("publicacoes")!,...query}))];
   const requestedPage = Number(raw.page);
   const page = Number.isInteger(requestedPage) && requestedPage > 0 && requestedPage <= 1000000 ? requestedPage : 1, search = typeof raw.search === "string" ? raw.search.slice(0, 200) : "";
-  const where = { ...(search ? { title: { contains: search, mode: "insensitive" as const } } : {}), ...(typeof raw.status==="string"&&["DRAFT","PUBLISHED","WITHDRAWN"].includes(raw.status)?{status:raw.status}:{}) };
-  const [entries, total] = await Promise.all([db.transparencyPublication.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 30, take: 30 }), db.transparencyPublication.count({ where })]);
+  const where = and(search?ilike(transparencyPublications.title,`%${search.replace(/[\\%_]/g,"\\$&")}%`):undefined,typeof raw.status==="string"&&["DRAFT","PUBLISHED","WITHDRAWN"].includes(raw.status)?eq(transparencyPublications.status,raw.status):undefined);
+  const [entries, [{ total }]] = await Promise.all([db.select().from(transparencyPublications).where(where).orderBy(desc(transparencyPublications.createdAt),asc(transparencyPublications.id)).offset((page-1)*30).limit(30),db.select({total:count()}).from(transparencyPublications).where(where)]);
   const canCreate = canPerformModuleOperation(context.user, "TRANSPARENCIA", "create"), canUpdate = canPerformModuleOperation(context.user, "TRANSPARENCIA", "update");
   return <main className="mx-auto max-w-7xl space-y-5 p-5 text-sm">
     <header><Link href="/transparencia" className="underline">← Portal e Transparência</Link><h1 className="mt-2 text-2xl font-bold">Gestão do Portal da Transparência</h1><p>Configure as consultas, envie documentos, publique e confira o acesso externo.</p><Link href={publicTransparencyPath} target="_blank" className="mt-2 inline-block rounded border px-4 py-2 font-semibold">Abrir portal público ↗</Link></header>

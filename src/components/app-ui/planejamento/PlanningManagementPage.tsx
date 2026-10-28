@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
-import { getPlanningContext, planningInstrumentWhere, planningLineWhere, planningUnitWhere } from "@/lib/planejamento/access";
+import { getPlanningContext } from "@/lib/planejamento/access";
+import { pageDatabase, pageDocumentClasses, pageInstrument } from "@/db/repositories/planning-pages/shared";
+import { pageAmendmentList, pageCouncilors, pageCredits, pageDocuments, pageLegacy, pageLegislativeLinks, pageManagementLines, pagePeers, pagePredecessors, pageQuotaList, pageSigners, pageVersions, pageWaiverOptions } from "@/db/repositories/planning-pages/management";
 import { planningBasePath, type PlanningJurisdiction } from "@/lib/planejamento/policy";
 import { planningCompatibility, planningConsistency } from "@/lib/planejamento/versions";
 import { PlanningForm, type PlanningField } from "./PlanningForm";
@@ -27,15 +29,12 @@ export async function PlanningManagementPage({ jurisdiction, kind, id, section, 
   if (!Object.hasOwn(planningManagementSections, section)) notFound();
   if (section === "manutencao") return <PlanningMaintenancePage jurisdiction={jurisdiction} kind={kind} id={id} filters={filters} />;
   const context = await getPlanningContext(jurisdiction);
-  const piece = await context.prisma.planningInstrument.findFirstOrThrow({ where: { id, ...planningInstrumentWhere(context) }, include: { multiYearPlan: true, budgetGuideline: true, annualBudgetLaw: true } });
+  const database = pageDatabase(context);
+  const piece = await pageInstrument(database, context, id);
   if (piece.kind.toLowerCase() !== kind) notFound();
   const base = `${planningBasePath(jurisdiction)}/${kind}/${id}`; const pathname = `${base}/gestao/${section}`;
-  const where = { instrumentId: id, ...planningLineWhere(context) };
-  const lineTotal = await context.prisma.planningBudgetLine.count({ where });
   const requested = Number(filters.page ?? "1"); let page = Number.isSafeInteger(requested) && requested > 0 ? requested : 1;
-  const requestedLine = Number(filters.linePage ?? "1");
-  const linePage = Math.min(Number.isSafeInteger(requestedLine) && requestedLine > 0 ? requestedLine : 1, Math.max(1, Math.ceil(lineTotal / 20)));
-  const lines = await context.prisma.planningBudgetLine.findMany({ where, include: { budgetUnit: true, resourceSource: true }, take: 20, skip: (linePage - 1) * 20, orderBy: [{ year: "asc" }, { code: "asc" }, { id: "asc" }] });
+  const { lineTotal, linePage, lines } = await pageManagementLines(database, context, id, filters.linePage);
   const lineOptions = lines.map((line) => ({ id: line.id, name: `${line.code} · ${line.description}` }));
   const lineField = field("lineId", "Previsão da página atual", { type: "select", options: lineOptions });
   const itemField = (forAmendment: boolean) => field("items", "Dotações da proposta", { type: "budgetItems", options: lines.filter((line) => line.kind === "EXPENSE" && (!forAmendment || !line.amendmentBlocked)).map((line) => ({ id: line.code, name: `${line.code} · ${line.description}` })) });
@@ -49,24 +48,20 @@ export async function PlanningManagementPage({ jurisdiction, kind, id, section, 
   }
   if (section === "documentos") {
     if (canPerformModuleOperation(context.user, "DOCUMENTOS", "create")) {
-      const classes = await context.prisma.documentClass.findMany({ where: { isActive: true, OR: [{ code: { startsWith: "PLANEJAMENTO" } }, { code: { startsWith: "PLANNING" } }] }, select: { code: true, label: true }, orderBy: { code: "asc" } });
+      const classes = await pageDocumentClasses(database);
       blocks.push(<Card key="upload"><CardHeader><CardTitle>Ingresso de arquivo no GED</CardTitle></CardHeader><CardContent><PlanningDocumentUpload jurisdiction={jurisdiction} instrumentId={id} classes={classes} /></CardContent></Card>);
     }
-    const total = await context.prisma.planningDocumentLink.count({ where: { instrumentId: id } });
-    page = Math.min(page, Math.max(1, Math.ceil(total / 20)));
-    const links = await context.prisma.planningDocumentLink.findMany({ where: { instrumentId: id }, include: { document: true, hearing: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
-    const documents = await context.prisma.document.findMany({ where: { documentType: { startsWith: "PLANEJAMENTO:" }, status: "Válido", personId: null, companyId: null, planningDocumentLinks: { none: { instrument: { governmentEntityId: { not: piece.governmentEntityId } } } } }, select: { id: true, title: true }, orderBy: [{ title: "asc" }, { id: "asc" }], take: 20 });
-    const hearings = await context.prisma.planningHearing.findMany({ where: { instrumentId: id }, select: { id: true, title: true }, orderBy: [{ heldAt: "desc" }, { id: "asc" }], take: 20 });
+    const result = await pageDocuments(database, id, piece.governmentEntityId, page);
+    const { total, links, documents, hearings } = result; page = result.page;
     blocks.push(<Card key="documents"><CardContent className="pt-3"><Table><TableHeader><TableRow><TableHead>Documento</TableHead><TableHead>Finalidade</TableHead><TableHead>Audiência</TableHead><TableHead>Ação</TableHead></TableRow></TableHeader><TableBody>{links.map((link) => <TableRow key={link.id}><TableCell>{link.document.title}</TableCell><TableCell>{link.purpose}</TableCell><TableCell>{link.hearing?.title ?? "Peça orçamentária"}</TableCell><TableCell><Link className="underline" href={`${planningBasePath(jurisdiction)}/documentos/${link.id}`}>Baixar versão final</Link></TableCell></TableRow>)}</TableBody></Table><ErpPagination page={page} total={total} previousHref={`${pathname}?page=${page - 1}`} nextHref={`${pathname}?page=${page + 1}`} /></CardContent></Card>);
     blocks.push(form("Vincular documento cadastrado no GED", "documentLink", [field("documentId", "Documento de Planejamento (primeiros 20 por título)", { type: "select", options: documents.map((document) => ({ id: document.id, name: document.title })) }), field("purpose", "Finalidade", { type: "select", options: options([["ANNEX", "Anexo da peça"], ["LEGAL_ACT", "Ato legal final"], ["HEARING_MINUTES", "Ata de audiência"]]) }), field("hearingId", "Audiência (na vinculação da ata)", { type: "select", required: false, options: hearings.map((hearing) => ({ id: hearing.id, name: hearing.title })) })]));
     if (canPerformModuleOperation(context.user, "DOCUMENTOS", "update")) {
-      const signers = await context.prisma.usuario.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: [{ nome: "asc" }, { id: "asc" }], take: 100 });
+      const signers = await pageSigners(database);
       blocks.push(form("Encaminhar documento aos assinantes", "documentSignatures", [field("linkId", "Documento vinculado", { type: "select", options: links.map((link) => ({ id: link.id, name: link.document.title })) }), field("signerIds", "Assinantes", { type: "multiSelect", options: signers.map((signer) => ({ id: signer.id, name: signer.nome })) })]));
     }
   }
   if (section === "versoes") {
-    const total = await context.prisma.planningVersion.count({ where: { instrumentId: id } }); const current = Math.min(page, Math.max(1, Math.ceil(total / 20)));
-    const versions = await context.prisma.planningVersion.findMany({ where: { instrumentId: id }, orderBy: { number: "desc" }, take: 20, skip: (current - 1) * 20 });
+    const { total, current, versions } = await pageVersions(database, id, page);
     blocks.push(<Card key="versions"><CardContent className="pt-3"><Table><TableHeader><TableRow><TableHead>Versão</TableHead><TableHead>Vigência</TableHead><TableHead>Ato</TableHead><TableHead>Motivo</TableHead><TableHead>Ações</TableHead></TableRow></TableHeader><TableBody>{versions.map((version) => <TableRow key={version.id}><TableCell>{version.number}</TableCell><TableCell>{version.effectiveAt.toISOString().slice(0, 10)}</TableCell><TableCell>{version.legalActNumber}</TableCell><TableCell>{version.reason}</TableCell><TableCell><Link href={`${base}?version=${version.number}`} className="underline">Consultar versão</Link></TableCell></TableRow>)}</TableBody></Table><ErpPagination page={current} total={total} previousHref={`${pathname}?page=${current - 1}`} nextHref={`${pathname}?page=${current + 1}`} jumpTo={{ pathname }} /></CardContent></Card>);
   }
   if (section === "consistencias") {
@@ -75,7 +70,7 @@ export async function PlanningManagementPage({ jurisdiction, kind, id, section, 
     blocks.push(form("Atualizar meta e realizado físico", "physical", [lineField, field("effectiveAt", "Data do realizado", { type: "date" }), field("target", "Meta física", { type: "number", step: "0.0001" }), field("actual", "Realizado físico", { type: "number", step: "0.0001" }), field("legalActNumber", "Ato legal (alteração de meta fechada)", { required: false }), field("reason", "Justificativa", { type: "textarea" })]));
   }
   if (section === "compatibilizacao") {
-    const peers = await context.prisma.planningInstrument.findMany({ where: { governmentEntityId: piece.governmentEntityId, id: { not: id }, ...planningInstrumentWhere(context) }, select: { id: true, title: true, revision: true }, orderBy: { id: "asc" } });
+    const peers = await pagePeers(database, context, id, piece.governmentEntityId);
     blocks.push(<Card key="preview"><CardHeader><CardTitle>Prévia por exercício e classificação</CardTitle></CardHeader><CardContent><form method="get" className="flex flex-wrap gap-2"><select name="targetId" defaultValue={filters.targetId} required className="rounded border bg-background p-2"><option value="">Peça de destino</option>{peers.map((peer) => <option key={peer.id} value={peer.id}>{peer.title}</option>)}</select><input name="year" type="number" min={piece.startYear} max={piece.endYear} defaultValue={filters.year ?? piece.startYear} required className="w-24 rounded border bg-background p-2" /><button className="rounded border p-2 text-sm">Consultar diferenças</button></form></CardContent></Card>);
     if (filters.targetId) {
       const preview = await planningCompatibility(context, id, filters.targetId, Number(filters.year ?? piece.startYear));
@@ -87,25 +82,15 @@ export async function PlanningManagementPage({ jurisdiction, kind, id, section, 
     blocks.push(form("Propagar a parcela anual para as peças selecionadas", "compatibilityBatch", [field("targetIds", "Destinos da mesma cadeia (seleção múltipla)", { type: "multiSelect", options: peers.map((peer) => ({ id: peer.id, name: peer.title })) }), field("year", "Exercício correspondente", { type: "number", value: filters.year ?? String(piece.startYear) }), ...dateFields, field("legalText", "Texto jurídico", { type: "textarea" })], { sourceId: id, expectedRevisions: JSON.stringify(Object.fromEntries([{ id: piece.id, revision: piece.revision }, ...peers].map((peer) => [peer.id, peer.revision]))) }));
   }
   if (section === "emendas") {
-    const councilors = await context.prisma.camVereador.findMany({ where: { active: true }, select: { id: true, nomeCompleto: true }, orderBy: [{ nomeCompleto: "asc" }, { id: "asc" }] });
-    const amendmentWhere = { instrumentId: id, items: { every: { line: planningLineWhere(context) } } };
-    const total = await context.prisma.planningLegislativeAmendment.count({ where: amendmentWhere });
-    page = Math.min(page, Math.max(1, Math.ceil(total / 20)));
-    const records = await context.prisma.planningLegislativeAmendment.findMany({ where: amendmentWhere, include: { councilor: true, items: { include: { line: true } } }, orderBy: [{ date: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+    const councilors = await pageCouncilors(database);
+    const result = await pageAmendmentList(database, context, id, page);
+    const { total, records } = result; page = result.page;
     blocks.push(<Card key="amendments"><CardContent className="pt-3"><Table><TableHeader><TableRow><TableHead>Número / autor</TableHead><TableHead>Objetivo</TableHead><TableHead>Itens</TableHead><TableHead>Situação</TableHead><TableHead>Decisão</TableHead></TableRow></TableHeader><TableBody>{records.map((row) => <TableRow key={row.id}><TableCell>{row.number}<p className="text-xs">{row.councilor.nomeCompleto}</p></TableCell><TableCell>{row.objective}</TableCell><TableCell>{row.items.map((item) => <p key={item.id} className="text-xs">{item.line.code}: {amount(item.value)} · {item.sanctioned === null ? "Proposto" : item.sanctioned ? "Sancionado" : "Não sancionado"}</p>)}</TableCell><TableCell>{row.status}</TableCell><TableCell>{row.status === "DRAFT" && writable && <details><summary className="cursor-pointer underline">Analisar</summary><PlanningForm jurisdiction={jurisdiction} operation="amendmentDecision" hidden={{ instrumentId: id, amendmentId: row.id }} fields={[field("decision", "Decisão", { type: "select", options: options([["APPROVED", "Aprovação integral"], ["REJECTED", "Reprovação integral"], ["PARTIAL", "Sanção parcial"]]) }), field("selectedCodes", "Códigos sancionados (na decisão parcial)", { required: false }), ...dateFields]} /></details>}</TableCell></TableRow>)}</TableBody></Table><ErpPagination page={page} total={total} previousHref={`${pathname}?page=${page - 1}`} nextHref={`${pathname}?page=${page + 1}`} /></CardContent></Card>);
     blocks.push(form("Propor emenda", "amendment", [field("number", "Número"), field("date", "Data", { type: "date" }), field("objective", "Objetivo"), field("justification", "Justificativa", { type: "textarea" }), field("councilorId", "Vereador", { type: "select", options: councilors.map((row) => ({ id: row.id, name: row.nomeCompleto })) }), field("legalText", "Texto jurídico", { type: "textarea" }), itemField(true)], {}, creatable));
     blocks.push(form("Elegibilidade para emendas", "amendmentBlock", [field("lineId", "Dotação", { type: "select", options: lineOptions.filter((option) => lines.find((line) => line.id === option.id)?.kind === "EXPENSE") }), field("blocked", "Operação", { type: "select", options: options([["true", "Bloquear"], ["false", "Desbloquear"]]) }), field("reason", "Motivo", { type: "textarea" })]));
   }
   if (section === "programacao") {
-    const quotaWhere = { line: { ...where, ...(filters.lineId ? { id: filters.lineId } : {}) } };
-    const total = await context.prisma.planningQuota.count({ where: quotaWhere });
-    const requestedQuota = Number(filters.quotaPage ?? "1");
-    const quotaPage = Math.min(Number.isSafeInteger(requestedQuota) && requestedQuota > 0 ? requestedQuota : 1, Math.max(1, Math.ceil(total / 20)));
-    const quotas = await context.prisma.planningQuota.findMany({
-      where: quotaWhere,
-      include: { line: { include: { resourceSource: true } }, events: { where: { type: { in: ["BLOCK", "CONSUME", "PAY"] } }, orderBy: { createdAt: "asc" } } },
-      orderBy: [{ lineId: "asc" }, { month: "asc" }], take: 20, skip: (quotaPage - 1) * 20,
-    });
+    const { total, quotaPage, quotas } = await pageQuotaList(database, context, id, filters.lineId, filters.quotaPage);
     blocks.push(form("Gerar programação mensal", "schedule", [lineField, field("method", "Método", { type: "select", options: options([["TWELFTHS", "Divisão por doze"], ["PERCENTAGES", "Percentuais mensais"], ["PREVIOUS_YEAR", "Realizado no ano anterior"], ["THREE_YEARS", "Realizado nos últimos três anos"]]) }), field("periodMonths", "Período das cotas", { type: "select", options: options([["2", "Bimestral"], ["3", "Trimestral"], ["6", "Semestral"]]) }), field("percentages", "Doze percentuais separados por ponto e vírgula", { required: false }), field("reason", "Memória / fundamento", { type: "textarea" })]));
     blocks.push(<Card key="quotas"><CardHeader><CardTitle>Programação mensal</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Previsão / fonte</TableHead><TableHead>Mês</TableHead><TableHead>Cota / realizado</TableHead><TableHead>Desembolso / pago</TableHead><TableHead>Contingenciado</TableHead><TableHead>Ações</TableHead></TableRow></TableHeader><TableBody>{quotas.map((quota) => <TableRow key={quota.id}>
       <TableCell>{quota.line.code}<p className="text-xs">{quota.line.resourceSource.name}</p></TableCell><TableCell>{quota.month} · {quota.closedAt ? "Fechado" : "Aberto"}</TableCell><TableCell>{amount(quota.planned)} / {amount(quota.consumed)}</TableCell><TableCell>{amount(quota.disbursementPlanned)} / {amount(quota.disbursementPaid)}</TableCell><TableCell>{amount(quota.blocked)}</TableCell>
@@ -115,16 +100,14 @@ export async function PlanningManagementPage({ jurisdiction, kind, id, section, 
     blocks.push(form("Redistribuir cota não utilizada de meses fechados", "redistribute", [lineField, field("reason", "Motivo", { type: "textarea" })]));
   }
   if (section === "creditos") {
-    const creditWhere = { instrumentId: id, items: { every: { line: planningLineWhere(context) } } };
-    const total = await context.prisma.planningCreditBatch.count({ where: creditWhere });
-    page = Math.min(page, Math.max(1, Math.ceil(total / 20)));
-    const records = await context.prisma.planningCreditBatch.findMany({ where: creditWhere, include: { creditRequest: true, items: { include: { line: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+    const result = await pageCredits(database, context, id, page);
+    const { total, records } = result; page = result.page;
     blocks.push(<Card key="credits"><CardContent className="pt-3"><Table><TableHeader><TableRow><TableHead>Lote</TableHead><TableHead>Origem</TableHead><TableHead>Itens / reservas</TableHead><TableHead>Situação</TableHead><TableHead>Ações</TableHead></TableRow></TableHeader><TableBody>{records.map((row) => <TableRow key={row.id}><TableCell>{row.creditRequest.number}<p className="text-xs">{row.creditRequest.type}</p></TableCell><TableCell>{row.origin}<p className="text-xs">{row.originEvidence}</p></TableCell><TableCell>{row.items.map((item) => <p key={item.id} className="text-xs">{item.line.code}: {amount(item.value)} · Reservado {amount(item.reserved)}</p>)}</TableCell><TableCell>{row.status}</TableCell><TableCell>{writable && !["EXECUTED", "CANCELLED"].includes(row.status) && <details><summary className="cursor-pointer underline">Tramitar</summary><PlanningForm jurisdiction={jurisdiction} operation="creditTransition" hidden={{ instrumentId: id, batchId: row.id }} fields={[field("stage", "Etapa", { type: "select", options: options([["APPROVE", "Aprovar prévia"], ["SANCTION", "Sancionar"], ["PUBLISH", "Registrar publicação"], ["EXECUTE", "Efetivar"], ["CANCEL", "Cancelar e liberar reservas"]]) }), ...dateFields, field("legalText", "Texto jurídico / publicação", { type: "textarea" })]} /></details>}<Link href={`${base}/gestao/relatorios?creditId=${row.id}`} className="block text-xs underline">Emitir minuta</Link></TableCell></TableRow>)}</TableBody></Table><ErpPagination page={page} total={total} previousHref={`${pathname}?page=${page - 1}`} nextHref={`${pathname}?page=${page + 1}`} /></CardContent></Card>);
     blocks.push(form("Cadastrar prévia com reserva de anulação", "credit", [field("number", "Número do lote"), field("type", "Modalidade", { type: "select", options: ["Suplementar", "Especial", "Extraordinário", "Remanejamento", "Transposição", "Transferência"].map((name) => ({ id: name, name })) }), field("origin", "Origem dos recursos", { type: "select", options: options([["CANCELLATION", "Anulação de dotações"], ["SURPLUS", "Superávit financeiro"], ["EXCESS", "Excesso de arrecadação"], ["LOAN", "Operação de crédito"]]) }), field("originEvidence", "Documento / memória da origem", { type: "textarea" }), field("originLimit", "Limite documentado da origem (R$)", { type: "money" }), field("justification", "Justificativa", { type: "textarea" }), itemField(false)], {}, creatable));
   }
   if (section === "workflow") {
     if (canPerformModuleOperation(context.user, "CAMARA", "update")) {
-      const links = await context.prisma.planningLegislativeLink.findMany({ where: { instrumentId: id }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20 });
+      const links = await pageLegislativeLinks(database, id);
       blocks.push(form("Vincular projeto/lei da Câmara", "legislativeLink", [field("reference", "Referência do processo legislativo"), field("propositionId", "Proposição", { type: "select", options: [], required: false }), field("lawId", "Lei / ato vigente", { type: "select", options: [], required: false })]));
       for (const link of links) blocks.push(form(`Tramitar ${link.reference}`, "legislativeTransition", [field("stage", "Etapa legislativa", { type: "select", options: options([["ANALYZE", "Encaminhar à análise"], ["AGENDA", "Incluir em pauta"], ["APPROVE", "Registrar aprovação"], ["REJECT", "Registrar rejeição"], ["SANCTION", "Registrar sanção / lei"], ["PUBLISH", "Registrar publicação do ato"]]) }), field("date", "Data da etapa", { type: "date" }), field("reason", "Fundamento / referência da decisão", { type: "textarea" }), field("lawNumber", "Número da lei (sanção)", { required: false }), field("lawType", "Tipo do ato", { type: "select", options: ["Lei Ordinária", "Lei Complementar", "Decreto Legislativo", "Resolução"].map((name) => ({ id: name, name })) }), field("legalText", "Texto final (sanção)", { type: "textarea", required: false })], { linkId: link.id }));
     }
@@ -133,16 +116,12 @@ export async function PlanningManagementPage({ jurisdiction, kind, id, section, 
       blocks.push(form("Contabilizar comandos pendentes desta LOA", "accountingSynchronize", []));
       blocks.push(form("Conectar reservas, empenhamento e pagamentos internos", "executionConfigure", [field("enabled", "Controle integrado de execução", { type: "select", options: options([["true", "Conectar cotas ao Financeiro/Compras"], ["false", "Manter em preparação"]]) }), field("reason", "Fundamento e conferência dos saldos", { type: "textarea" })]));
     }
-    const predecessors = await context.prisma.planningInstrument.findMany({ where: { ...planningInstrumentWhere(context), governmentEntityId: piece.governmentEntityId, kind: "LOA", startYear: piece.startYear - 1, annualBudgetLaw: { is: { status: "PUBLISHED" } } }, select: { id: true, title: true }, orderBy: { id: "asc" } });
+    const predecessors = await pagePredecessors(database, context, piece);
     blocks.push(form("Tramitar peça orçamentária", "workflow", [field("stage", "Etapa", { type: "select", options: options([["SUBMIT", "Encaminhar"], ["APPROVE", "Aprovar"], ["SANCTION", "Sancionar"], ["PUBLISH", "Registrar publicação"], ["IMPLANT", "Implantar orçamento aprovado"]]) }), field("date", "Data", { type: "date" }), field("previousInstrumentId", "Origem das configurações do exercício anterior", { type: "select", options: predecessors.map((row) => ({ id: row.id, name: row.title })), required: false }), field("legalActNumber", "Ato legal", { required: false }), field("legalText", "Texto jurídico", { type: "textarea", required: false }), field("publicationReference", "Referência da publicação", { required: false })]));
     blocks.push(form("Gerenciar código reduzido", "reducedCode", [lineField, field("reducedCode", "Código reduzido") ]));
     blocks.push(form("Reordenar códigos reduzidos das despesas antes da execução", "reorderCodes", [field("prefix", "Prefixo", { value: "D" }), field("orderedCodes", "Todos os códigos de dotação na ordem desejada", { type: "textarea" })]));
     if (piece.annualBudgetLaw && !piece.implantedAt) {
-      const legacyWhere = { financialYearId: piece.annualBudgetLaw.financialYearId, planningLine: { is: null }, budgetUnit: { ...planningUnitWhere(context), planningEntityUnit: { is: { governmentEntityId: piece.governmentEntityId } } } };
-      const legacyTotal = await context.prisma.budgetAppropriation.count({ where: legacyWhere });
-      const requestedLegacy = Number(filters.legacyPage ?? "1");
-      const legacyPage = Math.min(Number.isSafeInteger(requestedLegacy) && requestedLegacy > 0 ? requestedLegacy : 1, Math.max(1, Math.ceil(legacyTotal / 20)));
-      const legacy = await context.prisma.budgetAppropriation.findMany({ where: legacyWhere, select: { id: true, code: true, budgetUnit: { select: { name: true } } }, orderBy: [{ code: "asc" }, { id: "asc" }], take: 20, skip: (legacyPage - 1) * 20 });
+      const { legacyTotal, legacyPage, legacy } = await pageLegacy(database, context, piece.annualBudgetLaw.financialYearId, piece.governmentEntityId, filters.legacyPage);
       blocks.push(<Card key="legacy-status"><CardContent className="pt-3"><p className="text-sm">{legacyTotal} dotações legadas autorizadas aguardam reconciliação. A vinculação preserva os saldos e exige correspondência exata; a confirmação contábil é uma etapa distinta.</p><ErpPagination page={legacyPage} total={legacyTotal} previousHref={`${pathname}?legacyPage=${legacyPage - 1}&linePage=${linePage}`} nextHref={`${pathname}?legacyPage=${legacyPage + 1}&linePage=${linePage}`} /></CardContent></Card>);
       blocks.push(form("Vincular dotação legada antes da implantação", "legacyBind", [lineField, field("appropriationId", "Dotação legada", { type: "select", options: legacy.map((row) => ({ id: row.id, name: `${row.code} · ${row.budgetUnit.name}` })) }), field("reason", "Fundamento da reconciliação", { type: "textarea" }), field("accountingEvidence", "Referência dos registros contábeis de origem", { type: "textarea" })]));
     }
@@ -151,7 +130,7 @@ export async function PlanningManagementPage({ jurisdiction, kind, id, section, 
     blocks.push(<PlanningReportForm key="reports" context={context} instrumentId={id} creditId={filters.creditId} />);
     blocks.push(form("Referenciar modelo normativo GED da saída", "reportLayout", [field("type", "Relatório", { type: "select", options: planningReportCatalog.map((report) => ({ id: report.type, name: report.title })) }), field("linkId", "Modelo/documento normativo vinculado", { type: "select", options: [] }), field("title", "Título da edição"), field("normativeReference", "Norma e edição aplicáveis"), field("footnotes", "Notas e premissas do modelo", { type: "textarea", required: false })]));
     blocks.push(form("Projetar os exercícios com memória reproduzível", "annualProjection", [field("kind", "Projeção", { type: "select", options: options([["REVENUE", "Receita"], ["EXPENSE", "Despesa"]]) }), field("sourceInstrumentId", "LOA histórica de origem (ou base informada)", { type: "select", options: [], required: false }), field("baseValue", "Base informada de implantação (R$)", { type: "money", required: false }), field("rates", "Uma taxa por ano, separadas por ponto e vírgula"), field("normativeReference", "Norma / fonte / edição"), field("methodology", "Metodologia e premissas", { type: "textarea" })], {}, creatable));
-    const waivers = await context.prisma.planningRevenueWaiver.findMany({ where: { instrumentId: id }, select: { id: true, description: true }, orderBy: [{ year: "asc" }, { id: "asc" }], take: 20 });
+    const waivers = await pageWaiverOptions(database, id);
     if (canPerformModuleOperation(context.user, "TRIBUTACAO", "issueReports")) blocks.push(form("Conferir realizado de renúncias na Tributação", "waiverSync", [field("waiverId", "Renúncia cadastrada", { type: "select", options: waivers.map((waiver) => ({ id: waiver.id, name: waiver.description })) }), field("asOf", "Data de corte", { type: "date" })]));
     blocks.push(form("Composição dos demonstrativos fiscais (na elaboração)", "fiscalRule", [field("type", "Demonstrativo", { type: "select", options: options([["MDE", "Ensino"], ["HEALTH", "Saúde"], ["PERSONNEL", "Pessoal"], ["RCL", "Receita corrente líquida projetada"]]) }), field("normativeReference", "Referência legal e memória"), field("revenueCodes", "Códigos das receitas da base, separados por vírgula"), field("expenseCodes", "Códigos das despesas da aplicação", { required: false }), field("excludedRevenueCodes", "Receitas excluídas da base", { required: false }), field("excludedExpenseCodes", "Despesas excluídas da aplicação", { required: false }), field("threshold", "Parâmetro percentual aprovado", { type: "number", step: "0.000001", required: false }), field("comparison", "Verificação do parâmetro", { type: "select", options: options([["MINIMUM", "Aplicação mínima"], ["MAXIMUM", "Limite máximo"]]) })]));
     blocks.push(form("Programar obra ou conservação", "work", [field("title", "Obra / serviço"), field("type", "Tipo", { type: "select", options: options([["WORK", "Obra"], ["CONSERVATION", "Conservação do patrimônio"]]) }), field("location", "Local"), field("legalReference", "Referência"), field("year", "Exercício", { type: "number", value: String(piece.startYear) }), field("value", "Valor previsto (R$)", { type: "money" })], {}, creatable));

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { C7OperationError } from "@/lib/c7/operations-service";
 import { scheduleControlAudit, sendControlAudit, respondControlAudit, reviewControlAudit, transitionControlAudit } from "@/lib/c7/control-audits";
+import { databaseConnection } from "@/db/client";
 
 type Result = { error?: string };
 type Schedule = Parameters<typeof scheduleControlAudit>[2];
@@ -17,7 +18,7 @@ const date = (value: string) => {
 export async function scheduleControlAuditAction(input: Omit<Schedule, "startAt" | "endAt" | "responseDueAt"> & { startAt: string; endAt: string; responseDueAt: string }): Promise<Result> {
   try {
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "create");
-    await scheduleControlAudit(context.prisma, { usuarioId: context.user.id, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, { ...input, startAt: date(input.startAt), endAt: date(input.endAt), responseDueAt: date(input.responseDueAt) });
+    await scheduleControlAudit(databaseConnection, { usuarioId: context.user.id, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, { ...input, startAt: date(input.startAt), endAt: date(input.endAt), responseDueAt: date(input.responseDueAt) });
     revalidatePath("/controle-interno"); return {};
   } catch (error) { return { error: error instanceof C7OperationError ? error.message : "Não foi possível agendar a auditoria." }; }
 }
@@ -27,10 +28,10 @@ export async function controlAuditCommandAction(command: Command): Promise<Resul
     const context = await getTenantContextForModuleOperation("ADMINISTRACAO", "update");
     const actor = { usuarioId: context.user.id, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
     switch (command.type) {
-      case "SEND": await sendControlAudit(context.prisma, actor, command.input); break;
-      case "RESPOND": await respondControlAudit(context.prisma, actor, command.input); break;
-      case "REVIEW": await reviewControlAudit(context.prisma, actor, command.input); break;
-      case "TRANSITION": await transitionControlAudit(context.prisma, actor, command.input); break;
+      case "SEND": await sendControlAudit(databaseConnection, actor, command.input); break;
+      case "RESPOND": await respondControlAudit(databaseConnection, actor, command.input); break;
+      case "REVIEW": await reviewControlAudit(databaseConnection, actor, command.input); break;
+      case "TRANSITION": await transitionControlAudit(databaseConnection, actor, command.input); break;
       default: throw new C7OperationError("Comando da auditoria inválido.");
     }
     revalidatePath("/controle-interno"); return {};

@@ -1,16 +1,11 @@
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { readFiscalInspectionPage } from "@/db/repositories/taxation/fiscal-inspection";
 import FiscalizacaoClient from "./FiscalizacaoClient";
 export const dynamic="force-dynamic";
 export default async function FiscalizacaoPage(){
- const {prisma,user}=await getTenantContextForModule("TRIBUTACAO"); const canManage=canPerformModuleOperation(user,"TRIBUTACAO","update");
- const [rawTaxpayers,properties,employees,plans,orders,findings,periods,templates,rules]=await Promise.all([
-  prisma.taxpayer.findMany({where:{status:"Ativo"},include:{person:{include:{addresses:{include:{neighborhood:true}}}},company:{include:{addresses:{include:{neighborhood:true}}}},economicRegistrations:true},orderBy:{createdAt:"asc"},take:300}),
-  prisma.realEstate.findMany({include:{neighborhood:true},orderBy:{createdAt:"asc"},take:300}),prisma.employee.findMany({where:{isActive:true},orderBy:{name:"asc"},take:200}),
-  prisma.fiscalAuditPlan.findMany({include:{selections:true,inspectors:true,events:{orderBy:{createdAt:"desc"},take:5},_count:{select:{orders:true}}},orderBy:{createdAt:"desc"},take:100}),
-  prisma.fiscalServiceOrder.findMany({include:{events:{orderBy:{createdAt:"desc"},take:8},documents:{orderBy:{issuedAt:"desc"}},requests:{orderBy:{createdAt:"asc"}},assessmentMaps:{orderBy:{version:"desc"}}},orderBy:{issuedAt:"desc"},take:200}),
-  prisma.fiscalMeshFinding.findMany({include:{orderLinks:true},orderBy:[{differenceDecimal:"desc"},{updatedAt:"desc"}],take:200}),
-  prisma.fiscalProductivityPeriod.findMany({where:canManage?{}:{employeeId:user.employeeId??"SEM_VINCULO"},include:{ledger:{orderBy:{createdAt:"asc"}}},orderBy:{createdAt:"desc"},take:100}),
-  prisma.fiscalDocumentTemplate.findMany({orderBy:[{code:"asc"},{version:"desc"}],take:100}),prisma.fiscalPenaltyRule.findMany({orderBy:{effectiveFrom:"desc"},take:100})]);
+ const context=await getTenantContextForModule("TRIBUTACAO"); const {user}=context; const canManage=canPerformModuleOperation(user,"TRIBUTACAO","update");
+ const {rawTaxpayers,properties,employees,plans,orders,findings,periods,templates,rules}=await readFiscalInspectionPage(context.database??db,{canManage,employeeId:user.employeeId??null});
  const taxpayers=rawTaxpayers.map(row=>{const address=row.company?.addresses[0]??row.person?.addresses[0];return{id:row.id,name:row.company?.corporateName??row.person?.fullName??row.id,document:row.company?.cnpj??row.person?.cpf??"",cnae:row.economicRegistrations[0]?.primaryCnae??"",serviceItem:row.economicActivities??"",neighborhood:address?.neighborhood?.name??"",street:address?.streetName??""}});const taxpayerNames=new Map(taxpayers.map(row=>[row.id,row.name]));const employeeNames=new Map(employees.map(row=>[row.id,row.name]));const propertyNames=new Map(properties.map(row=>[row.id,`Imóvel ${row.municipalInsc??row.registration??row.id}`]));
  return <FiscalizacaoClient data={{taxpayers,properties:properties.map(row=>({id:row.id,name:propertyNames.get(row.id)!,taxpayerId:row.taxpayerId,propertyType:row.propertyType??"",street:row.streetName??"",neighborhood:row.neighborhood?.name??"",fiscalZone:row.fiscalZone??"",fiscalSector:row.block??""})),employees:employees.map(row=>({id:row.id,name:row.name,registration:row.registration??"",salaryBase:row.salaryBase})),
  plans:plans.map(row=>({id:row.id,year:row.year,name:row.name,type:row.planType,status:row.status,selections:row.selections.length,inspectors:row.inspectors.map(item=>employeeNames.get(item.employeeId)??item.employeeId),orders:row._count.orders,filters:row.filterSnapshot,events:row.events.map(event=>`${event.eventType}: ${event.description}`)})),

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { OfxImportError, type OfxStatement } from "./ofx-parser";
 
 // OFC 1.0.6: ACCTSTMT/ACCTFROM, tipos numéricos e CHKNUM.
@@ -64,7 +64,7 @@ export function parseOfcStatement(bytes: Uint8Array): OfxStatement & { currencyB
       if (!/^(?:[0-9]|1[0-2])$/.test(rawType)) throw new OfxImportError(`TRNTYPE OFC não suportado: ${rawType}.`);
       const rawAmount = field(block, "TRNAMT");
       if (!/^[+-]?\d{1,16}[.,]\d{2}$/.test(rawAmount)) throw new OfxImportError("TRNAMT OFC deve ter duas casas decimais, sem separador de milhar.");
-      const amount = new Prisma.Decimal(rawAmount.replace(",", "."));
+      const amount = new Decimal(rawAmount.replace(",", "."));
       if (amount.isZero()) throw new OfxImportError("Transação com valor zero.");
       const posted = date(field(block, "DTPOSTED"), "DTPOSTED");
       if (posted < start || posted > end) throw new OfxImportError("Transação fora do período declarado.");

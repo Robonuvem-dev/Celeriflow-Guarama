@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Prisma } from "@prisma/client";
-import { PGlite } from "@electric-sql/pglite";
-import type { AppContext } from "../src/lib/platform/tenant-context";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { sstTestContext } from "./helpers/sst-drizzle-context";
 import { getAuthorizedCertificateLeaveOrigin } from "../src/lib/sst/functional-payroll-origin";
 
 test("canonical Leave candidate binds explicit regime/rules and exact planned hours without inferring deductions", async () => {
-  const db = new PGlite();
+  const local = await createLocalDrizzleDatabase(), db = local.database;
   try {
     await db.exec(`CREATE TABLE "SstMedicalCertificate" (id TEXT PRIMARY KEY,"employeeId" TEXT,"budgetUnitId" TEXT,"leaveId" TEXT,status TEXT,"startsAt" TIMESTAMP,"endsAt" TIMESTAMP);
       CREATE TABLE "Leave" (id TEXT PRIMARY KEY,"employeeId" TEXT,type TEXT,status TEXT);
@@ -28,21 +27,12 @@ test("canonical Leave candidate binds explicit regime/rules and exact planned ho
       INSERT INTO "HrPayrollRuleSet" VALUES ('rules','ATIVA','PRODUCAO',false,'2026-09-01','2026-01-01','2027-01-01');
       INSERT INTO "HrPayrollRule" VALUES ('rule','rules','CALCULO','JSON','{"originKind":"SST_CERTIFICATE_LEAVE","employmentRegimeIds":["regime"],"leaveTypes":["Licença médica"],"effect":"NO_FINANCIAL_EFFECT"}',true);
       INSERT INTO "SstPlannedShift" VALUES ('e','ug','2026-10-10 08:00','2026-10-10 12:00'),('e','ug','2026-10-10 10:00','2026-10-10 13:00'),('e','foreign','2026-10-10 08:00','2026-10-10 22:00');`);
-    const audits: unknown[] = [];
-    let closed = false;
-    const raw = async (sql: TemplateStringsArray, ...values: unknown[]) => { const q = Prisma.sql(sql, ...values); return (await db.query(q.text, q.values)).rows; };
-    const tx = {
-      $queryRaw: raw, $executeRaw: raw,
-      payroll: { findMany: async () => closed ? [{ id: "payroll", status: "Fechada" }] : [] },
-      hrPayrollRule: { findUnique: async () => {
-        const [rule] = (await db.query<Record<string, unknown>>('SELECT * FROM "HrPayrollRule" WHERE id=\'rule\'')).rows;
-        const [ruleSet] = (await db.query<Record<string, unknown>>('SELECT * FROM "HrPayrollRuleSet" WHERE id=\'rules\'')).rows;
-        return { ...rule, ruleSet };
-      } },
-      sstPlannedShift: { findMany: async () => (await db.query('SELECT "startsAt","endsAt" FROM "SstPlannedShift" WHERE "employeeId"=\'e\' AND "budgetUnitId"=\'ug\'')).rows },
-      auditEvent: { create: async ({ data }: { data: unknown }) => { audits.push(data); return {}; } },
-    };
-    const context = { user: { id: "u", profileCode: "OPERADOR", allowedBudgetUnitIds: ["ug"], modulePermissions: [], permissions: JSON.stringify({ modules: { SST: { blocked: false }, RH: { blocked: false, update: true } } }) }, prisma: { ...tx, $transaction: async (callback: (value: typeof tx) => Promise<unknown>) => { await db.exec("BEGIN"); try { const result = await callback(tx); await db.exec("COMMIT"); return result; } catch (error) { await db.exec("ROLLBACK"); throw error; } } } } as unknown as AppContext;
+    await db.exec(`ALTER TABLE "HrPayrollRuleSet" ADD "configuracaoInstanciaId" TEXT, ADD code TEXT, ADD name TEXT, ADD "legalReference" TEXT, ADD notes TEXT, ADD "archivedAt" TIMESTAMP, ADD "createdAt" TIMESTAMP DEFAULT now(), ADD "updatedAt" TIMESTAMP DEFAULT now();
+      ALTER TABLE "HrPayrollRule" ADD code TEXT, ADD name TEXT, ADD description TEXT, ADD unit TEXT, ADD "sortOrder" INT DEFAULT 100, ADD "legalReference" TEXT, ADD "isRequired" BOOLEAN DEFAULT false, ADD "createdAt" TIMESTAMP DEFAULT now(), ADD "updatedAt" TIMESTAMP DEFAULT now();
+      CREATE TABLE "Payroll" (id TEXT PRIMARY KEY,competence TEXT,status TEXT);
+      CREATE TABLE "PayrollItem" (id TEXT PRIMARY KEY,"payrollId" TEXT,"employeeId" TEXT);
+      CREATE TABLE "AuditEvent" (id TEXT PRIMARY KEY,"actorUsuarioId" TEXT,"eventType" TEXT,"targetType" TEXT,"targetId" TEXT,"createdAt" TIMESTAMP DEFAULT now());`);
+    const context = sstTestContext(local.connection.db, { id: "u", permissions: JSON.stringify({ modules: { SST: { blocked: false }, RH: { blocked: false, update: true } } }) });
     const rawInput = { certificateId: "cert", competence: "10/2026", ruleId: "rule" };
     const candidate = await getAuthorizedCertificateLeaveOrigin(context, rawInput);
     assert.deepEqual(candidate.blockers, []);
@@ -55,12 +45,14 @@ test("canonical Leave candidate binds explicit regime/rules and exact planned ho
     assert.equal(candidate.status, "CANDIDATE_ONLY");
     assert.ok(candidate.configuration?.ruleValueHash);
     assert.equal((await getAuthorizedCertificateLeaveOrigin(context, { ...rawInput, ruleId: undefined })).blockers.includes("REGIME_LEAVE_RULE_NOT_CONFIGURED"), true);
-    closed = true;
+    await db.exec(`INSERT INTO "Payroll" VALUES ('payroll','10/2026','Fechada'); INSERT INTO "PayrollItem" VALUES ('item','payroll','e')`);
     assert.equal((await getAuthorizedCertificateLeaveOrigin(context, rawInput)).blockers.includes("CLOSED_COMPETENCE_RECONCILIATION_REQUIRED"), true);
     await db.exec(`UPDATE "HrPayrollRule" SET value=jsonb_set(value,'{employmentRegimeIds}','["other-regime"]'); UPDATE "HrPayrollRuleSet" SET scope='DEMONSTRACAO',"isDemo"=true`);
     const invalid = await getAuthorizedCertificateLeaveOrigin(context, rawInput);
     assert.ok(invalid.blockers.includes("REGIME_LEAVE_RULE_SCOPE_MISMATCH"));
     assert.ok(invalid.blockers.includes("PRODUCTION_RULE_SET_NOT_APPROVED"));
+    const audits = (await db.query('SELECT * FROM "AuditEvent"')).rows;
+    assert.equal(audits.length, 4);
     assert.doesNotMatch(JSON.stringify(audits), /Licença médica|employmentRegime|financialAmount/);
-  } finally { await db.close(); }
+  } finally { await local.close(); }
 });

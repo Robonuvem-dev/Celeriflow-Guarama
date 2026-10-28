@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { findReportTemplate, saveReportTemplateVersion } from "@/db/repositories/platform/report-template";
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { createReportTemplateFingerprint, reportTemplateScope, reportTemplateValuesSchema } from "@/lib/reports/report-template";
 
@@ -18,7 +20,7 @@ export async function saveReportTemplate(rawInput: unknown): Promise<ActionResul
     const input = saveReportTemplateSchema.parse(rawInput);
     const values = reportTemplateValuesSchema.parse(input.values);
     const context = await getTenantContextForSystemAdministration();
-    const current = await context.prisma.reportTemplate.findUnique({ where: { scope: reportTemplateScope } });
+    const current = await findReportTemplate(context.database ?? db, reportTemplateScope);
     if (current && input.version !== current.version) return { error: "O modelo foi alterado por outro administrador. Atualize a página e tente novamente." };
     if (current && current.header === values.header && current.footer === values.footer && current.orientation === values.orientation && current.includeEmissionMetadata === values.includeEmissionMetadata) {
       return { message: "Nenhuma configuração foi alterada." };
@@ -26,19 +28,7 @@ export async function saveReportTemplate(rawInput: unknown): Promise<ActionResul
 
     const version = (current?.version ?? 0) + 1;
     const fingerprint = createReportTemplateFingerprint({ version, ...values });
-    await context.prisma.$transaction(async (tx) => {
-      await tx.reportTemplate.upsert({
-        where: { scope: reportTemplateScope },
-        create: { scope: reportTemplateScope, version, fingerprint, ...values },
-        update: { version, fingerprint, ...values },
-      });
-      await writeAuditEvent(tx, {
-        actorUsuarioId: context.user.id,
-        eventType: auditEventTypes.instanceConfigurationChanged,
-        targetType: "REPORT_TEMPLATE",
-        targetId: reportTemplateScope,
-      });
-    });
+    await withDatabaseTransaction(databaseConnection, tx => saveReportTemplateVersion(tx, reportTemplateScope, { version, fingerprint, ...values }, context.user.id));
 
     revalidatePath("/configuracoes/relatorios");
     revalidatePath("/financeiro/relatorios");

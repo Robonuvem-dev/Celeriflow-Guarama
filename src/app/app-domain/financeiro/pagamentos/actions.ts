@@ -1,5 +1,11 @@
 "use server";
 
+import { sql } from "drizzle-orm";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { findFinanceCommitment, findFinanceSupplier } from "@/db/repositories/finance/budget-execution";
+import { findFinancePayment, readFinancePayment, readPaymentExecution, readWithholdingExecution, updateFinancePayment } from "@/db/repositories/finance/payments";
+import { findFinanceBankAccount } from "@/db/repositories/finance/treasury";
 import { FinanceError, assertFinancialYearOpen, createPayment as createOfficialPayment, updatePaymentStatus as updateOfficialPaymentStatus } from "@/lib/financeiro";
 import { lockPaymentBankCorrelation } from "@/lib/financeiro/annual-payment-program-transport";
 import { assertBudgetUnitAccess, getTenantContextForModuleOperation, isSystemAdministrator, type AppContext, type ModuleOperation } from "@/lib/platform/tenant-context";
@@ -10,10 +16,7 @@ const paymentActor = (context: AppContext) => ({ usuarioId: context.user.id, emp
 const message = (error: unknown) => error instanceof Error ? error.message : "Não foi possível concluir o pagamento.";
 
 async function assertCommitmentAccess(context: AppContext, commitmentId: string) {
-  const commitment = await context.prisma.commitment.findUnique({
-    where: { id: commitmentId },
-    select: { contractId: true, appropriation: { select: { budgetUnitId: true } } },
-  });
+  const commitment = await findFinanceCommitment(db, commitmentId);
   if (!commitment) throw new FinanceError("Empenho não encontrado.");
   assertBudgetUnitAccess(context.user, commitment.appropriation.budgetUnitId);
   return commitment;
@@ -26,10 +29,7 @@ function revalidateContractExecution(contractId?: string | null) {
 }
 
 async function assertBankAccountAccess(context: AppContext, bankAccountId: string) {
-  const account = await context.prisma.bankAccount.findUnique({
-    where: { id: bankAccountId },
-    select: { budgetUnitId: true },
-  });
+  const account = await findFinanceBankAccount(db, bankAccountId);
   if (!account?.budgetUnitId) throw new FinanceError("A conta bancária deve estar vinculada a uma Unidade Gestora.");
   assertBudgetUnitAccess(context.user, account.budgetUnitId);
 }
@@ -52,7 +52,7 @@ export async function createPayment(data: {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
     const commitment = await assertCommitmentAccess(context, data.commitmentId);
     await assertBankAccountAccess(context, data.bankAccountId);
-    const payment = await createOfficialPayment(context.prisma, paymentActor(context), data);
+    const payment = await createOfficialPayment(databaseConnection, paymentActor(context), data);
     try { await submitIssuedPayment(context, payment.id); }
     catch (bankError) { console.error("Ordem criada, mas não foi possível enviá-la ao banco:", bankError); }
     revalidatePath("/financeiro/pagamentos");
@@ -67,24 +67,26 @@ export async function createPayment(data: {
 }
 
 async function submitIssuedPayment(context: AppContext, paymentId: string) {
-  return context.prisma.$transaction(async tx => {
-    const initial = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+  return withDatabaseTransaction(databaseConnection, async tx => {
+    const initial = await readFinancePayment(tx, paymentId);
     if (!initial.bankAccountExternalId) return;
     if (!initial.paymentOrderExternalId) throw new FinanceError("Ordem sem correlação bancária ativa.");
     await lockPaymentBankCorrelation(tx, initial.paymentOrderExternalId);
-    await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${paymentId} FOR UPDATE`;
-    const bankOrder = await tx.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { commitment: { include: { appropriation: true } }, supplier: { include: { company: true, person: true } } } });
+    await tx.execute(sql`SELECT id FROM "Payment" WHERE id = ${paymentId} FOR UPDATE`);
+    const bankOrder = await readPaymentExecution(tx, paymentId);
+    if (!bankOrder) throw new FinanceError("Pagamento não encontrado.");
     assertBudgetUnitAccess(context.user, bankOrder.commitment.appropriation.budgetUnitId);
     if (bankOrder.status !== "Emitida" || bankOrder.paymentOrderExternalId !== initial.paymentOrderExternalId || !bankOrder.integrationEventId || !bankOrder.netValueDecimal?.isFinite()) throw new FinanceError("Somente a ordem emitida vigente pode ser remetida ao banco.");
     if (["RECEIVED", "PENDING"].includes(bankOrder.bankStatus ?? "")) return;
     if (bankOrder.bankStatus !== "PENDING_SUBMISSION") throw new FinanceError("A ordem não está disponível para envio bancário.");
     await assertFinancialYearOpen(tx, bankOrder.executionFinancialYearId ?? bankOrder.commitment.appropriation.financialYearId, bankOrder.date);
     const { bankIntegrationClient } = await import("@/lib/financeiro/bank-integration-client");
-    const beneficiaryName = bankOrder.supplier.company?.corporateName ?? bankOrder.supplier.person?.fullName;
+    const supplier = await findFinanceSupplier(tx, bankOrder.supplierId);
+    const beneficiaryName = supplier?.company?.corporateName ?? supplier?.person?.fullName;
     if (!beneficiaryName) throw new FinanceError("Favorecido sem nome documental para a remessa.");
-    await bankIntegrationClient.submitPaymentOrder({ paymentOrderExternalId: bankOrder.paymentOrderExternalId!, integrationEventId: bankOrder.integrationEventId, bankAccountExternalId: bankOrder.bankAccountExternalId!, clientReference: bankOrder.orderNumber, beneficiary: { name: beneficiaryName, document: bankOrder.supplier.company?.cnpj ?? bankOrder.supplier.person?.cpf ?? undefined }, amount: Number(bankOrder.netValueDecimal), scheduledDate: bankOrder.date, paymentMethod: bankOrder.paymentMethod, purposeText: `Pagamento líquido da ${bankOrder.paymentOrderExternalId}`, idempotencyKey: `celeriflow:payment:${bankOrder.paymentOrderExternalId}:v1` });
-    await tx.payment.update({ where: { id: paymentId }, data: { bankStatus: "RECEIVED", bankSubmittedAt: new Date() } });
-  }, { timeout: 120000 });
+    await bankIntegrationClient.submitPaymentOrder({ paymentOrderExternalId: bankOrder.paymentOrderExternalId!, integrationEventId: bankOrder.integrationEventId, bankAccountExternalId: bankOrder.bankAccountExternalId!, clientReference: bankOrder.orderNumber, beneficiary: { name: beneficiaryName, document: supplier?.company?.cnpj ?? supplier?.person?.cpf ?? undefined }, amount: Number(bankOrder.netValueDecimal), scheduledDate: bankOrder.date, paymentMethod: bankOrder.paymentMethod, purposeText: `Pagamento líquido da ${bankOrder.paymentOrderExternalId}`, idempotencyKey: `celeriflow:payment:${bankOrder.paymentOrderExternalId}:v1` });
+    await updateFinancePayment(tx, paymentId, { bankStatus: "RECEIVED", bankSubmittedAt: new Date() });
+  }, { timeoutMs: 120000 });
 }
 
 export async function submitPaymentToBank(paymentId: string): Promise<ActionResult> {
@@ -106,10 +108,10 @@ export async function updatePaymentStatus(id: string, status: string): Promise<A
     if (status === "Paga") throw new FinanceError("A baixa do pagamento ocorre exclusivamente após a confirmação do Banco Virtual.");
     const operation: ModuleOperation = status === "Cancelada" ? "delete" : "update";
     const context = await getTenantContextForModuleOperation("FINANCEIRO", operation);
-    const payment = await context.prisma.payment.findUnique({ where: { id }, select: { commitmentId: true } });
+    const payment = await findFinancePayment(db, id);
     if (!payment) throw new FinanceError("Pagamento não encontrado.");
     const commitment = await assertCommitmentAccess(context, payment.commitmentId);
-    await updateOfficialPaymentStatus(context.prisma, paymentActor(context), id, status);
+    await updateOfficialPaymentStatus(databaseConnection, paymentActor(context), id, status);
     revalidatePath("/financeiro/restos-a-pagar");
     revalidatePath("/financeiro/pagamentos");
     revalidatePath("/financeiro/liquidacoes");
@@ -124,11 +126,11 @@ export async function updatePaymentStatus(id: string, status: string): Promise<A
 export async function reversePaymentAction(paymentId: string, justification: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "delete");
-    const payment = await context.prisma.payment.findUnique({ where: { id: paymentId }, select: { commitmentId: true } });
+    const payment = await findFinancePayment(db, paymentId);
     if (!payment) throw new FinanceError("Pagamento não encontrado.");
     const commitment = await assertCommitmentAccess(context, payment.commitmentId);
     const { reversePayment: reverseOfficialPayment } = await import("@/lib/financeiro");
-    await reverseOfficialPayment(context.prisma, paymentActor(context), paymentId, justification);
+    await reverseOfficialPayment(databaseConnection, paymentActor(context), paymentId, justification);
     revalidatePath("/financeiro/restos-a-pagar");
     revalidatePath("/financeiro/pagamentos");
     revalidatePath("/financeiro/liquidacoes");
@@ -143,17 +145,14 @@ export async function reversePaymentAction(paymentId: string, justification: str
 export async function settleWithholdingPayableAction(withholdingPayableId: string, bankAccountId: string, receiptDocumentId: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const payable = await context.prisma.withholdingPayable.findUnique({
-      where: { id: withholdingPayableId },
-      select: { retention: { select: { payment: { select: { commitmentId: true } } } } },
-    });
+    const payable = await readWithholdingExecution(db, withholdingPayableId);
     if (!payable?.retention?.payment?.commitmentId) throw new FinanceError("Consignação/retenção não encontrada.");
     const commitment = await assertCommitmentAccess(context, payable.retention.payment.commitmentId);
 
     await assertBankAccountAccess(context, bankAccountId);
 
     const { settleWithholdingPayable: settleOfficialWithholding } = await import("@/lib/financeiro");
-    await settleOfficialWithholding(context.prisma, paymentActor(context), { withholdingPayableId, bankAccountId, receiptDocumentId, paymentDate: new Date() });
+    await settleOfficialWithholding(databaseConnection, paymentActor(context), { withholdingPayableId, bankAccountId, receiptDocumentId, paymentDate: new Date() });
     revalidatePath("/financeiro/pagamentos");
     revalidateContractExecution(commitment.contractId);
     return {};

@@ -1,4 +1,7 @@
 "use server";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthTfdBenefits } from "@/db/schema/health-tfd";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -47,6 +50,7 @@ export async function requestTfdBenefitAction(data: FormData): Promise<void> {
 
 export async function transitionTfdBenefitAction(data: FormData): Promise<void> {
   const context = await getTenantContextForModuleOperation("SAUDE", "update");
-  const result = await context.prisma.healthTfdBenefit.findUniqueOrThrow({ where: { id: text(data, "benefitId") }, select: { requestId: true } });
+  const [result] = await (context.database ?? db).select({ requestId: healthTfdBenefits.requestId }).from(healthTfdBenefits).where(eq(healthTfdBenefits.id, text(data, "benefitId"))).limit(1);
+  if (!result) throw new Error("Benefício TFD não encontrado.");
   await transitionTfdBenefit(context, { benefitId: text(data, "benefitId"), status: text(data, "status"), reason: text(data, "reason"), receivedByPersonId: text(data, "receivedByPersonId") || null, deliveryReceipt: text(data, "deliveryReceipt") || null }); refresh(result.requestId);
 }

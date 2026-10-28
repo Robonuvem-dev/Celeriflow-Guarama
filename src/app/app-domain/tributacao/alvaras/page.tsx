@@ -1,20 +1,16 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import AlvarasClient from "./AlvarasClient";
+import { db } from "@/db/client";
+import { listLicensePageRows } from "@/db/repositories/taxation-pages/overview";
+import { listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlvarasPage() {
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const licenses = await prisma.license.findMany({
-    include: {
-      taxpayer: { include: { person: true, company: true } }
-    },
-    orderBy: { createdAt: "desc" }
-  });
-
-  const rawTaxpayers = await prisma.taxpayer.findMany({
-    include: { person: true, company: true }
-  });
+  const context = await getTenantContextForModule("TRIBUTACAO");
+  const database = context.database ?? db;
+  const licenses = await listLicensePageRows(database);
+  const rawTaxpayers = await listPageTaxpayers(database);
 
   const taxpayers = rawTaxpayers.map(tp => ({
     id: tp.id,

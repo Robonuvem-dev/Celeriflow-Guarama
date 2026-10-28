@@ -1,29 +1,34 @@
 import 'dotenv/config';
-import type { Prisma } from '@prisma/client';
-import { prisma } from '../src/lib/prisma';
+import { eq } from 'drizzle-orm';
+import { createDatabaseConnection } from '../src/db/connection';
+import { people } from '../src/db/schema/people';
+import { supportChannels, tickets as ticketTable, ombudsmans } from '../src/db/schema/attendance-portals';
+
+const connection = createDatabaseConnection(process.env.DATABASE_URL!);
+const db = connection.db;
 
 async function upsertChannel(name: string, description: string) {
-  const existing = await prisma.supportChannel.findFirst({ where: { name } });
+  const [existing] = await db.select().from(supportChannels).where(eq(supportChannels.name, name)).limit(1);
   if (existing) return existing;
-  return prisma.supportChannel.create({ data: { name, description } });
+  return (await db.insert(supportChannels).values({ name, description }).returning())[0];
 }
 
 async function upsertPerson(cpf: string, fullName: string) {
-  const existing = await prisma.person.findFirst({ where: { cpf } });
+  const [existing] = await db.select().from(people).where(eq(people.cpf, cpf)).limit(1);
   if (existing) return existing;
-  return prisma.person.create({ data: { cpf, fullName, status: 'Ativo' } });
+  return (await db.insert(people).values({ cpf, fullName, status: 'Ativo' }).returning())[0];
 }
 
-async function upsertTicket(ticketNumber: string, data: Omit<Prisma.TicketUncheckedCreateInput, "ticketNumber">) {
-  const existing = await prisma.ticket.findUnique({ where: { ticketNumber } });
+async function upsertTicket(ticketNumber: string, data: Omit<typeof ticketTable.$inferInsert, "ticketNumber">) {
+  const [existing] = await db.select().from(ticketTable).where(eq(ticketTable.ticketNumber, ticketNumber)).limit(1);
   if (existing) return existing;
-  return prisma.ticket.create({ data: { ticketNumber, ...data } });
+  return (await db.insert(ticketTable).values({ ticketNumber, ...data }).returning())[0];
 }
 
-async function upsertOmbudsman(protocolNumber: string, data: Omit<Prisma.OmbudsmanUncheckedCreateInput, "protocolNumber">) {
-  const existing = await prisma.ombudsman.findUnique({ where: { protocolNumber } });
+async function upsertOmbudsman(protocolNumber: string, data: Omit<typeof ombudsmans.$inferInsert, "protocolNumber">) {
+  const [existing] = await db.select().from(ombudsmans).where(eq(ombudsmans.protocolNumber, protocolNumber)).limit(1);
   if (existing) return existing;
-  return prisma.ombudsman.create({ data: { protocolNumber, ...data } });
+  return (await db.insert(ombudsmans).values({ protocolNumber, ...data }).returning())[0];
 }
 
 async function main() {
@@ -127,5 +132,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await connection.pool.end();
   });

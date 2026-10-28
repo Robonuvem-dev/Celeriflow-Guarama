@@ -1,12 +1,14 @@
 import { HardHat } from "lucide-react";
 import { ModuleFoundationPanel } from "@/components/app-ui/erp/ModuleFoundationPanel";
 import { canViewModule, getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { findModuleActivation } from "@/db/repositories/platform/identity";
+import { sstDatabase } from "@/lib/sst/database";
 
 export const dynamic = "force-dynamic";
 
 export default async function SstDashboardPage() {
-  const { user, prisma } = await getTenantContextForModule("SST");
-  const rh = await prisma.configuracaoModulo.findUnique({ where: { codigo: "RH" }, select: { ativo: true } });
+  const context = await getTenantContextForModule("SST"), { user } = context;
+  const rh = await findModuleActivation(sstDatabase(context), "RH");
   const available = rh?.ativo !== false && canViewModule(user, "RH");
   return <ModuleFoundationPanel
     title="Segurança e Medicina do Trabalho"

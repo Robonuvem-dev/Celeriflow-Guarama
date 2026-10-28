@@ -5,15 +5,14 @@ import { ImportExportDropdown } from "@/components/ui/ImportExportDropdown";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import PessoasFisicasClient from "./PessoasFisicasClient";
+import { db } from "@/db/client";
+import { listPeople } from "@/db/repositories/registry/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function PessoasFisicasPage() {
-  const { prisma } = await getTenantContextForModule("CADASTROS");
-  const persons = await prisma.person.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { taxpayerInfo: true }
-  });
+  const context = await getTenantContextForModule("CADASTROS");
+  const persons = await listPeople(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

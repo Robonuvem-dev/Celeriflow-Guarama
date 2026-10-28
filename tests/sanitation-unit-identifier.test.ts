@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { consumerUnitPeriod, formatConsumerUnitIdentifier } from "../src/lib/saneamento/unit-identifier";
+import { consumerUnitPeriod, formatConsumerUnitIdentifier } from "../src/lib/saneamento/unit-code";
 import { clampSanitationPage, parseSanitationQuery } from "../src/lib/saneamento/list-query";
 import { getUnitAddress } from "../src/lib/saneamento/unit-address";
 

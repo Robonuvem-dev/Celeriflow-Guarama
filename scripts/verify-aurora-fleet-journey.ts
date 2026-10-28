@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { config } from "dotenv";
-import { Prisma } from "@prisma/client";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+import { databaseConnection } from "../src/db/client";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { countFleetRecords, requiredFleetRecord as one } from "../src/db/repositories/fleet/records";
+import { readFleetOperator } from "../src/db/repositories/fleet/operators";
+import { financialAuditLogs } from "../src/db/schema/finance-identity";
+import * as f from "../src/db/schema/fleet";
 import { createFleetBooking, departFleetTrip, arriveFleetTrip } from "../src/lib/frotas/control-motion";
 import type { FleetScope } from "../src/lib/frotas/service";
 
@@ -9,19 +16,19 @@ config({ quiet: true });
 const rollback = new Error("ROLLBACK_FLEET_REHEARSAL");
 
 async function main() {
-  const { prisma } = await import("../src/lib/prisma");
+  const connection = databaseConnection, db = connection.db;
   let evidence: unknown;
-  const counts = async () => ({ bookings: await prisma.fleetBooking.count(), trips: await prisma.fleetTrip.count(), gateEvents: await prisma.fleetGateEvent.count(), usages: await prisma.fleetUsage.count() });
+  const counts = async () => ({ bookings: await countFleetRecords(db, f.fleetBookings), trips: await countFleetRecords(db, f.fleetTrips), gateEvents: await countFleetRecords(db, f.fleetGateEvents), usages: await countFleetRecords(db, f.fleetUsages) });
   try {
     const before = await counts();
-    const audit = await prisma.financialAuditLog.findFirstOrThrow({ where: { action: "PREPARE_FLEET_CATALOGS", entityId: "aurora-fleet-catalogs-2026-v1" } });
-    const payload = audit.payload as Prisma.JsonObject;
-    const unitId = String(payload.fleetUnitId), driverId = String(payload.driverId), routeId = String(payload.routeId);
-    const controlBefore = await prisma.fleetUnitControl.findUniqueOrThrow({ where: { unitId } });
+    const audit = one(await db.select().from(financialAuditLogs).where(and(eq(financialAuditLogs.action, "PREPARE_FLEET_CATALOGS"), eq(financialAuditLogs.entityId, "aurora-fleet-catalogs-2026-v1"))).limit(1));
+    const payload = z.object({ fleetUnitId: z.string(), driverId: z.string(), routeId: z.string(), departmentId: z.string() }).parse(audit.payload);
+    const { fleetUnitId: unitId, driverId, routeId } = payload;
+    const controlBefore = one(await db.select().from(f.fleetUnitControls).where(eq(f.fleetUnitControls.unitId, unitId)).limit(1));
     try {
-      await prisma.$transaction(async tx => {
-        const user = await tx.usuario.findUniqueOrThrow({ where: { email: "admin@email.com" }, include: { perfil: true } });
-        assert.ok(user.ativo && user.perfil.codigo === "SYSTEM_ADMINISTRATOR");
+      await withDatabaseTransaction(connection, async tx => {
+        const { context: { user }, active } = await readFleetOperator(tx, "admin@email.com");
+        assert.ok(active && user.profileCode === "SYSTEM_ADMINISTRATOR");
         const scope: FleetScope = { actorId: user.id, employeeId: user.employeeId, departmentId: String(payload.departmentId), administrator: true, canReadAssets: true, canIssueStock: true };
         const now = Date.now();
         const input = { unitId, driverId, routeId, kind: "VIAGEM", purpose: "Deslocamento administrativo para atendimento municipal", startsAt: new Date(now - 60000).toISOString(), endsAt: new Date(now + 3600000).toISOString() };
@@ -32,20 +39,20 @@ async function main() {
         await assert.rejects(departFleetTrip(tx, scope, { unitId, driverId, destination: "Unidade municipal", purpose: input.purpose, reading: startReading.toFixed(0) }), /agenda de outro uso|ainda não retornou/);
         await assert.rejects(arriveFleetTrip(tx, scope, { tripId: trip.id, reading: startReading.minus(1).toFixed(0), reason: "Retorno administrativo" }), /regressiva|inferior/);
         await arriveFleetTrip(tx, scope, { tripId: trip.id, reading: startReading.plus(12).toFixed(0), reason: "Retorno após atendimento administrativo" });
-        const usage = await tx.fleetUsage.findUniqueOrThrow({ where: { tripId: trip.id } });
+        const usage = one(await tx.select().from(f.fleetUsages).where(eq(f.fleetUsages.tripId, trip.id)).limit(1));
         assert.equal(usage.finalReading!.minus(usage.initialReading!).toFixed(0), "12");
-        assert.equal((await tx.fleetBooking.findUniqueOrThrow({ where: { id: booking.id } })).status, "CONCLUIDO");
-        assert.equal(await tx.fleetGateEvent.count({ where: { tripId: trip.id } }), 2);
+        assert.equal(one(await tx.select().from(f.fleetBookings).where(eq(f.fleetBookings.id, booking.id)).limit(1)).status, "CONCLUIDO");
+        assert.equal(await countFleetRecords(tx, f.fleetGateEvents, eq(f.fleetGateEvents.tripId, trip.id)), 2);
         await assert.rejects(arriveFleetTrip(tx, scope, { tripId: trip.id, reading: startReading.plus(12).toFixed(0), reason: "Repetição de retorno" }), /já registrado/);
         evidence = { unitId, driverId, bookingCompleted: true, traveledKm: "12", gateEvents: 2, overlappingBookingRejected: true, duplicateDepartureRejected: true, regressiveReadingRejected: true, duplicateArrivalRejected: true };
         throw rollback;
-      }, { timeout: 120000, isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      }, { timeoutMs: 120000, isolationLevel: "serializable" });
     } catch (error) { if (error !== rollback) throw error; }
     const after = await counts();
     assert.deepEqual(after, before);
-    assert.equal((await prisma.fleetUnitControl.findUniqueOrThrow({ where: { unitId } })).currentReading!.toString(), controlBefore.currentReading!.toString());
+    assert.equal(one(await db.select().from(f.fleetUnitControls).where(eq(f.fleetUnitControls.unitId, unitId)).limit(1)).currentReading!.toString(), controlBefore.currentReading!.toString());
     console.log(JSON.stringify({ evidence, rollbackVerified: true, before, after }, null, 2));
-  } finally { await prisma.$disconnect(); }
+  } finally { await connection.pool.end(); }
 }
 
 main().catch(error => { console.error(error instanceof Error ? error.message : "Falha na conferência da frota."); process.exitCode = 1; });

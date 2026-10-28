@@ -1,6 +1,7 @@
-import type { Prisma } from "@prisma/client";
+import { and, asc, desc, eq, gt, gte, lt, lte, or, type SQL } from "drizzle-orm";
+import { auditEvents } from "@/db/schema/audit";
 import { z } from "zod";
-import { auditEventTypes, type AuditEventType } from "./audit-evidence";
+import { auditEventTypes, type AuditEventType } from "@/lib/contracts/audit";
 
 export const auditEventPageSize = 20;
 
@@ -107,40 +108,29 @@ export function parseAuditEventQuery(searchParams: AuditSearchParams): AuditEven
   };
 }
 
-export function buildAuditEventWhere(filters: AuditEventFilters): Prisma.AuditEventWhereInput {
-  const where: Prisma.AuditEventWhereInput = {};
-  if (filters.actorUsuarioId) where.actorUsuarioId = filters.actorUsuarioId;
-  if (filters.eventType) where.eventType = filters.eventType;
-  if (filters.targetType) where.targetType = filters.targetType;
-  if (filters.targetId) where.targetId = filters.targetId;
-  if (filters.from || filters.to) {
-    where.createdAt = {
-      ...(filters.from ? { gte: parseDate(filters.from, "from") } : {}),
-      ...(filters.to ? { lte: new Date(parseDate(filters.to, "to").getTime() + 24 * 60 * 60 * 1000 - 1) } : {}),
-    };
-  }
-  return where;
+export function buildAuditEventWhere(filters: AuditEventFilters): SQL | undefined {
+  return and(
+    filters.actorUsuarioId ? eq(auditEvents.actorUsuarioId, filters.actorUsuarioId) : undefined,
+    filters.eventType ? eq(auditEvents.eventType, filters.eventType) : undefined,
+    filters.targetType ? eq(auditEvents.targetType, filters.targetType) : undefined,
+    filters.targetId ? eq(auditEvents.targetId, filters.targetId) : undefined,
+    filters.from ? gte(auditEvents.createdAt, parseDate(filters.from, "from")) : undefined,
+    filters.to ? lte(auditEvents.createdAt, new Date(parseDate(filters.to, "to").getTime() + 24 * 60 * 60 * 1000 - 1)) : undefined,
+  );
 }
 
-export function buildAuditEventPageQuery(query: AuditEventQuery): Prisma.AuditEventFindManyArgs {
+export function buildAuditEventPageQuery(query: AuditEventQuery): { where: SQL | undefined; orderBy: SQL[]; take: number } {
   const baseWhere = buildAuditEventWhere(query.filters);
-  const cursorWhere = query.cursor && {
-    OR: query.direction === "previous"
-      ? [
-          { createdAt: { gt: query.cursor.createdAt } },
-          { createdAt: query.cursor.createdAt, id: { gt: query.cursor.id } },
-        ]
-      : [
-          { createdAt: { lt: query.cursor.createdAt } },
-          { createdAt: query.cursor.createdAt, id: { lt: query.cursor.id } },
-        ],
-  };
+  const cursorWhere = query.cursor ? query.direction === "previous"
+    ? or(gt(auditEvents.createdAt, query.cursor.createdAt), and(eq(auditEvents.createdAt, query.cursor.createdAt), gt(auditEvents.id, query.cursor.id)))
+    : or(lt(auditEvents.createdAt, query.cursor.createdAt), and(eq(auditEvents.createdAt, query.cursor.createdAt), lt(auditEvents.id, query.cursor.id)))
+    : undefined;
 
   return {
-    where: cursorWhere ? { AND: [baseWhere, cursorWhere] } : baseWhere,
+    where: and(baseWhere, cursorWhere),
     orderBy: query.direction === "previous"
-      ? [{ createdAt: "asc" }, { id: "asc" }]
-      : [{ createdAt: "desc" }, { id: "desc" }],
+      ? [asc(auditEvents.createdAt), asc(auditEvents.id)]
+      : [desc(auditEvents.createdAt), desc(auditEvents.id)],
     take: auditEventPageSize + 1,
   };
 }

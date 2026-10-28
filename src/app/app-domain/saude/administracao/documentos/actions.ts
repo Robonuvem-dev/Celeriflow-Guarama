@@ -6,6 +6,12 @@ import { z } from "zod";
 import { getIdTokenPrincipal } from "@/lib/platform/session";
 import { AccessError, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { ingestGedDocument, registerRequestedInternalDocumentSignature, requestInternalDocumentSignatures } from "@/lib/documents/document-flow-service";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { modules } from "@/db/schema/identity";
+import { healthStandardDocuments } from "@/db/schema/health-documents";
+import { documentSignatures } from "@/db/schema/document-workflow";
+import { healthDatabaseConnection } from "@/lib/saude/health-transaction";
 
 type Result = { success: true; documentId: string } | { error: string };
 
@@ -39,9 +45,9 @@ export async function saveHealthStandardDocument(data: unknown): Promise<Result>
   try {
     const input = documentSchema.parse(data);
     const context = await getTenantContextForModuleOperation("SAUDE", "create");
-    const activeModule = await context.prisma.configuracaoModulo.findFirst({ where: { codigo: input.moduleCode, ativo: true }, select: { id: true } });
+    const [activeModule] = await (context.database ?? db).select({ id: modules.id }).from(modules).where(and(eq(modules.codigo, input.moduleCode), eq(modules.ativo, true))).limit(1);
     if (!activeModule) throw new Error("Selecione um módulo ativo.");
-    const saved = await ingestGedDocument(context.prisma, {
+    const saved = await ingestGedDocument(healthDatabaseConnection(context), {
       title: input.title,
       documentType: "Documento padrão",
       documentClassCode: "SAUDE_DOCUMENTO_PADRAO",
@@ -49,7 +55,7 @@ export async function saveHealthStandardDocument(data: unknown): Promise<Result>
       fileUrl: input.fileUrl,
       actorUsuarioId: context.user.id,
       afterCreate: async (tx, documentId) => {
-        await tx.healthStandardDocument.create({ data: { documentId, category: input.category, moduleCode: input.moduleCode, addedByUsuarioId: context.user.id } });
+        await tx.insert(healthStandardDocuments).values({ documentId, category: input.category, moduleCode: input.moduleCode, addedByUsuarioId: context.user.id });
       },
     });
     revalidateDocuments();
@@ -63,12 +69,13 @@ export async function signHealthStandardDocument(data: unknown): Promise<Result>
   try {
     const input = signatureSchema.parse(data);
     const context = await getTenantContextForModuleOperation("SAUDE", "update");
-    const link = await context.prisma.healthStandardDocument.findFirst({ where: { documentId: input.documentId, isActive: true }, select: { documentId: true } });
+    const database = context.database ?? db;
+    const [link] = await database.select({ documentId: healthStandardDocuments.documentId }).from(healthStandardDocuments).where(and(eq(healthStandardDocuments.documentId, input.documentId), eq(healthStandardDocuments.isActive, true))).limit(1);
     if (!link) throw new Error("Documento padrão não encontrado.");
     const reauthenticatedUser = await getIdTokenPrincipal(input.reauthenticationToken);
     if (!reauthenticatedUser || reauthenticatedUser.firebaseUid !== context.user.firebaseUid) throw new Error("A confirmação de identidade não corresponde ao usuário atual.");
     if (Date.now() - reauthenticatedUser.authTime * 1000 > 5 * 60 * 1000) throw new Error("A confirmação de identidade expirou.");
-    const pending = await context.prisma.documentSignature.findFirst({ where: { documentId: input.documentId, signerUsuarioId: context.user.id, status: "PENDING" }, select: { id: true } });
+    const [pending] = await database.select({ id: documentSignatures.id }).from(documentSignatures).where(and(eq(documentSignatures.documentId, input.documentId), eq(documentSignatures.signerUsuarioId, context.user.id), eq(documentSignatures.status, "PENDING"))).limit(1);
     if (!pending) {
       await requestInternalDocumentSignatures(context, input.documentId, [context.user.id], {
         page: input.page,

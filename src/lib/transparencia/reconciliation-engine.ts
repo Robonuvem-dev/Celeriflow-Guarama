@@ -6,8 +6,23 @@
  * antes e depois da publicação de demonstrativos orçamentários e fiscais.
  */
 
-import type { PrismaClient } from "@prisma/client";
-import { generateRREO } from "@/lib/financeiro/relatorios-legais";
+import { and, eq, inArray } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { financialYears } from "@/db/schema/finance-years";
+import { publicAppropriations, publicCommitments, publicPayments, publicRevenues, publicSettlements } from "@/db/schema/transparency-financial";
+
+type ReconciliationValue = ConstructorParameters<typeof Decimal>[0];
+
+/** The financial report owner supplies its canonical reader. The reader must
+ * use this executor so a transactional caller keeps a single database snapshot. */
+export type ReadReconciliationRreo = (
+  db: DatabaseExecutor,
+  filter: { financialYearId: string },
+) => Promise<{
+  expenseSummary: { committedValue: ReconciliationValue; settledValue: ReconciliationValue; paidValue: ReconciliationValue }[];
+  revenueSummary: { realizedValue: ReconciliationValue }[];
+}>;
 
 export type ReconciliationResult = {
   financialYearId: string;
@@ -25,101 +40,84 @@ export type ReconciliationResult = {
 };
 
 export async function reconcilePublicAndInternalData(
-  db: PrismaClient,
+  db: DatabaseExecutor,
   financialYearId: string,
+  readInternalRreo: ReadReconciliationRreo,
 ): Promise<ReconciliationResult> {
-  const financialYear = await db.financialYear.findUnique({
-    where: { id: financialYearId },
-    select: { id: true, year: true },
-  });
+  const [financialYear] = await db.select({ id: financialYears.id, year: financialYears.year }).from(financialYears).where(eq(financialYears.id, financialYearId)).limit(1);
 
   if (!financialYear) {
     throw new Error("Exercício financeiro não encontrado para reconciliação.");
   }
 
   // 1. Apuração Contábil Interna
-  const internalRREO = await generateRREO(db, { financialYearId });
-  const internalTotalCommitted = internalRREO.expenseSummary.reduce((s, e) => s + e.committedValue, 0);
-  const internalTotalSettled = internalRREO.expenseSummary.reduce((s, e) => s + e.settledValue, 0);
-  const internalTotalPaid = internalRREO.expenseSummary.reduce((s, e) => s + e.paidValue, 0);
-  const internalTotalRevenueCollected = internalRREO.revenueSummary.reduce((s, r) => s + r.realizedValue, 0);
+  const internalRREO = await readInternalRreo(db, { financialYearId });
+  const internalTotalCommitted = internalRREO.expenseSummary.reduce((s, e) => s.add(e.committedValue), new Decimal(0));
+  const internalTotalSettled = internalRREO.expenseSummary.reduce((s, e) => s.add(e.settledValue), new Decimal(0));
+  const internalTotalPaid = internalRREO.expenseSummary.reduce((s, e) => s.add(e.paidValue), new Decimal(0));
+  const internalTotalRevenueCollected = internalRREO.revenueSummary.reduce((s, r) => s.add(r.realizedValue), new Decimal(0));
 
   // 2. Apuração Portal Público (soma dos fatos expostos publicamente)
-  const [publicCommitments, publicSettlements, publicPayments, publicRevenues] = await Promise.all([
-    db.commitment.findMany({
-      where: {
-        appropriation: { financialYearId },
-        status: { in: ["Emitido", "Liquidado", "Pago"] },
-      },
-      select: { valueDecimal: true, value: true },
-    }),
-    db.settlement.findMany({
-      where: {
-        commitment: { appropriation: { financialYearId } },
-        status: "Liquidado",
-      },
-      select: { valueDecimal: true, value: true },
-    }),
-    db.payment.findMany({
-      where: {
-        commitment: { appropriation: { financialYearId } },
-        status: { in: ["Pago", "Paga"] },
-      },
-      select: { valueDecimal: true, value: true },
-    }),
-    db.revenue.findMany({
-      where: {
-        financialYearId,
-        stage: "ARRECADADA",
-      },
-      select: { valueDecimal: true, value: true, classification: true },
-    }),
+  const [commitments, settlements, payments, revenues] = await Promise.all([
+    db.select({ valueDecimal: publicCommitments.valueDecimal, value: publicCommitments.value }).from(publicCommitments)
+      .innerJoin(publicAppropriations, eq(publicAppropriations.id, publicCommitments.appropriationId))
+      .where(and(eq(publicAppropriations.financialYearId, financialYearId), inArray(publicCommitments.status, ["Emitido", "Liquidado", "Pago"]))),
+    db.select({ valueDecimal: publicSettlements.valueDecimal, value: publicSettlements.value }).from(publicSettlements)
+      .innerJoin(publicCommitments, eq(publicCommitments.id, publicSettlements.commitmentId))
+      .innerJoin(publicAppropriations, eq(publicAppropriations.id, publicCommitments.appropriationId))
+      .where(and(eq(publicAppropriations.financialYearId, financialYearId), eq(publicSettlements.status, "Liquidado"))),
+    db.select({ valueDecimal: publicPayments.valueDecimal, value: publicPayments.value }).from(publicPayments)
+      .innerJoin(publicCommitments, eq(publicCommitments.id, publicPayments.commitmentId))
+      .innerJoin(publicAppropriations, eq(publicAppropriations.id, publicCommitments.appropriationId))
+      .where(and(eq(publicAppropriations.financialYearId, financialYearId), inArray(publicPayments.status, ["Pago", "Paga"]))),
+    db.select({ valueDecimal: publicRevenues.valueDecimal, value: publicRevenues.value, classification: publicRevenues.classification }).from(publicRevenues)
+      .where(and(eq(publicRevenues.financialYearId, financialYearId), eq(publicRevenues.stage, "ARRECADADA"))),
   ]);
 
-  const publicTotalCommitted = publicCommitments.reduce((s, c) => s + Number(c.valueDecimal ?? c.value), 0);
-  const publicTotalSettled = publicSettlements.reduce((s, st) => s + Number(st.valueDecimal ?? st.value), 0);
-  const publicTotalPaid = publicPayments.reduce((s, p) => s + Number(p.valueDecimal ?? p.value), 0);
-  const publicTotalRevenueCollected = publicRevenues.reduce(
-    (s, r) => s + Number(r.valueDecimal ?? r.value) * (r.classification === "REDUTORA" ? -1 : 1),
-    0,
+  const publicTotalCommitted = commitments.reduce((s, c) => s.add(c.valueDecimal ?? c.value), new Decimal(0));
+  const publicTotalSettled = settlements.reduce((s, st) => s.add(st.valueDecimal ?? st.value), new Decimal(0));
+  const publicTotalPaid = payments.reduce((s, p) => s.add(p.valueDecimal ?? p.value), new Decimal(0));
+  const publicTotalRevenueCollected = revenues.reduce(
+    (s, r) => s.add(new Decimal(r.valueDecimal ?? r.value).mul(r.classification === "REDUTORA" ? -1 : 1)),
+    new Decimal(0),
   );
 
-  const diffCommitted = Math.abs(internalTotalCommitted - publicTotalCommitted);
-  const diffSettled = Math.abs(internalTotalSettled - publicTotalSettled);
-  const diffPaid = Math.abs(internalTotalPaid - publicTotalPaid);
-  const diffRevenue = Math.abs(internalTotalRevenueCollected - publicTotalRevenueCollected);
+  const diffCommitted = internalTotalCommitted.sub(publicTotalCommitted).abs();
+  const diffSettled = internalTotalSettled.sub(publicTotalSettled).abs();
+  const diffPaid = internalTotalPaid.sub(publicTotalPaid).abs();
+  const diffRevenue = internalTotalRevenueCollected.sub(publicTotalRevenueCollected).abs();
 
-  const totalDivergence = diffCommitted + diffSettled + diffPaid + diffRevenue;
-  const isReconciled = totalDivergence < 0.01;
+  const totalDivergence = diffCommitted.add(diffSettled).add(diffPaid).add(diffRevenue);
+  const isReconciled = totalDivergence.lt("0.01");
 
   const checks: ReconciliationResult["checks"] = [
     {
       name: "Total de Despesa Empenhada",
-      internalValue: internalTotalCommitted,
-      publicValue: publicTotalCommitted,
-      difference: diffCommitted,
-      status: diffCommitted < 0.01 ? "MATCH" : "DIVERGENCE",
+      internalValue: internalTotalCommitted.toNumber(),
+      publicValue: publicTotalCommitted.toNumber(),
+      difference: diffCommitted.toNumber(),
+      status: diffCommitted.lt("0.01") ? "MATCH" : "DIVERGENCE",
     },
     {
       name: "Total de Despesa Liquidada",
-      internalValue: internalTotalSettled,
-      publicValue: publicTotalSettled,
-      difference: diffSettled,
-      status: diffSettled < 0.01 ? "MATCH" : "DIVERGENCE",
+      internalValue: internalTotalSettled.toNumber(),
+      publicValue: publicTotalSettled.toNumber(),
+      difference: diffSettled.toNumber(),
+      status: diffSettled.lt("0.01") ? "MATCH" : "DIVERGENCE",
     },
     {
       name: "Total de Despesa Paga",
-      internalValue: internalTotalPaid,
-      publicValue: publicTotalPaid,
-      difference: diffPaid,
-      status: diffPaid < 0.01 ? "MATCH" : "DIVERGENCE",
+      internalValue: internalTotalPaid.toNumber(),
+      publicValue: publicTotalPaid.toNumber(),
+      difference: diffPaid.toNumber(),
+      status: diffPaid.lt("0.01") ? "MATCH" : "DIVERGENCE",
     },
     {
       name: "Total de Receita Arrecadada",
-      internalValue: internalTotalRevenueCollected,
-      publicValue: publicTotalRevenueCollected,
-      difference: diffRevenue,
-      status: diffRevenue < 0.01 ? "MATCH" : "DIVERGENCE",
+      internalValue: internalTotalRevenueCollected.toNumber(),
+      publicValue: publicTotalRevenueCollected.toNumber(),
+      difference: diffRevenue.toNumber(),
+      status: diffRevenue.lt("0.01") ? "MATCH" : "DIVERGENCE",
     },
   ];
 
@@ -128,7 +126,7 @@ export async function reconcilePublicAndInternalData(
     year: financialYear.year,
     reconciledAt: new Date().toISOString(),
     isReconciled,
-    divergenceTotal: totalDivergence,
+    divergenceTotal: totalDivergence.toNumber(),
     checks,
   };
 }

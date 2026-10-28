@@ -1,61 +1,11 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { CulturaEventosClient } from "../components/CulturaEventosClient";
+import { db } from "@/db/client";
+import { listCulturalEvents } from "@/db/repositories/culture/queries";
 
 export default async function EventosPage() {
-  const { prisma } = await getTenantContextForModule("CULTURA");
-  const eventos = await prisma.culturaEvento.findMany({
-    orderBy: { data: "asc" },
-    include: {
-      space: {
-        select: {
-          id: true,
-          nome: true,
-          tipo: true,
-          endereco: true,
-          capacidade: true,
-          realEstate: {
-            select: {
-              id: true,
-              municipalInsc: true,
-              registration: true,
-              propertyType: true,
-              streetName: true,
-              number: true,
-              complement: true,
-            },
-          },
-        },
-      },
-      responsibleEmployee: { select: { id: true, name: true, registration: true } },
-      project: {
-        select: {
-          id: true,
-          numero: true,
-          nome: true,
-          categoria: true,
-          status: true,
-          agente: { select: { id: true, nome: true, tipo: true } },
-        },
-      },
-      reservas: {
-        select: {
-          id: true,
-          startsAt: true,
-          endsAt: true,
-          purpose: true,
-          status: true,
-          space: { select: { id: true, nome: true } },
-        },
-      },
-      documentos: {
-        select: {
-          id: true,
-          purpose: true,
-          document: { select: { id: true, title: true, documentType: true, fileUrl: true, status: true } },
-        },
-      },
-    },
-  });
+  await getTenantContextForModule("CULTURA");
+  const eventos = await listCulturalEvents(db);
 
   return <CulturaEventosClient eventos={eventos.map((evento) => ({
     ...evento,

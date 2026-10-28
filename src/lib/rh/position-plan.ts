@@ -1,4 +1,12 @@
-import { Prisma, type PrismaClient, type HrEmploymentContract, type HrEmploymentRevision } from "@prisma/client";
+import { and, eq, inArray } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor, DatabaseTransaction } from "@/db/transaction";
+import type { EmploymentContract, EmploymentRevision } from "@/lib/contracts/personnel";
+import { hrEmploymentRegimes, hrPayrollRules } from "@/db/schema/personnel-configuration";
+import { roles as roleTable } from "@/db/schema/administration";
+import { documents as documentTable } from "@/db/schema/registry";
+import { listEmploymentContracts, requireEmploymentRegime, requirePayrollRule } from "@/db/repositories/personnel/workforce";
+import { lockPersonnel } from "@/db/repositories/personnel/integration";
 import { z } from "zod";
 
 const civil = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
@@ -30,12 +38,12 @@ export const positionPlanSchema = z.object({ origin: z.literal("QUADRO_CARGOS"),
 });
 
 export type PositionPlan = z.infer<typeof positionPlanSchema>;
-type Segment = { contractId: string; regimeId: string; roleId: string; salaryLevel: string | null; salary: Prisma.Decimal; monthlyHours: number; start: number; end: number };
+type Segment = { contractId: string; regimeId: string; roleId: string; salaryLevel: string | null; salary: Decimal; monthlyHours: number; start: number; end: number };
 const day = 86400000;
 const at = (date: string) => new Date(`${date}T00:00:00.000Z`).getTime();
 const stateSchema = z.object({ regimeId: z.string(), roleId: z.string(), salaryLevel: z.string().nullable(), salary: z.string(), monthlyHours: z.number().int(), admittedAt: z.string().datetime(), endsAt: z.string().datetime().nullable(), status: z.string() });
 
-export function positionContractSegments(contract: HrEmploymentContract, revisions: HrEmploymentRevision[]): Segment[] {
+export function positionContractSegments(contract: EmploymentContract, revisions: EmploymentRevision[]): Segment[] {
   const ordered = [...revisions].sort((a, b) => a.effectiveFrom.getTime() - b.effectiveFrom.getTime() || a.version - b.version);
   const result: Segment[] = [];
   if (!ordered.length) {
@@ -46,7 +54,7 @@ export function positionContractSegments(contract: HrEmploymentContract, revisio
     const state = stateSchema.parse(revision.snapshot);
     const start = Math.max(revision.effectiveFrom.getTime(), new Date(state.admittedAt).getTime());
     const end = Math.min(ordered[index + 1]?.effectiveFrom.getTime() ?? Infinity, state.endsAt ? new Date(state.endsAt).getTime() + day : Infinity);
-    if (start < end && state.status === "ATIVO") result.push({ contractId: contract.id, regimeId: state.regimeId, roleId: state.roleId, salaryLevel: state.salaryLevel, salary: new Prisma.Decimal(state.salary), monthlyHours: state.monthlyHours, start, end });
+    if (start < end && state.status === "ATIVO") result.push({ contractId: contract.id, regimeId: state.regimeId, roleId: state.roleId, salaryLevel: state.salaryLevel, salary: new Decimal(state.salary), monthlyHours: state.monthlyHours, start, end });
   });
   return result;
 }
@@ -85,21 +93,21 @@ export function assessPositionPlan(rawPlan: unknown, segments: Segment[], regime
   return rows;
 }
 
-export async function assertPositionPlanForContract(tx: Prisma.TransactionClient, contract: HrEmploymentContract, effectiveFrom: Date) {
-  const regime = await tx.hrEmploymentRegime.findUniqueOrThrow({ where: { id: contract.regimeId }, include: { ruleSet: true } });
+export async function assertPositionPlanForContract(tx: DatabaseTransaction, contract: EmploymentContract, effectiveFrom: Date) {
+  const regime = await requireEmploymentRegime(tx, contract.regimeId);
   // Same lock across all regimes sharing this plan prevents two admissions
   // from observing the last authorized vacancy as available simultaneously.
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:POSITION_PLAN:${regime.ruleSetId}`}))`;
-  const rule = await tx.hrPayrollRule.findFirst({ where: { ruleSetId: regime.ruleSetId, code: "QUADRO_CARGOS", isActive: true } });
+  await lockPersonnel(tx, `POSITION_PLAN:${regime.ruleSetId}`);
+  const [rule] = await tx.select().from(hrPayrollRules).where(and(eq(hrPayrollRules.ruleSetId, regime.ruleSetId), eq(hrPayrollRules.code, "QUADRO_CARGOS"), eq(hrPayrollRules.isActive, true))).limit(1);
   if (!rule) return;
   const plan = positionPlanSchema.parse(rule.value);
   if (regime.ruleSet.status !== "ATIVA" || regime.ruleSet.effectiveFrom > effectiveFrom || (regime.ruleSet.effectiveUntil && regime.ruleSet.effectiveUntil < effectiveFrom)) throw new Error("Quadro de cargos não está ativo na vigência contratual.");
   if (regime.ruleSet.scope === "PRODUCAO" && (regime.ruleSet.isDemo || !regime.ruleSet.approvedAt || regime.ruleSet.approvedAt > new Date() || !regime.ruleSet.legalReference)) throw new Error("Quadro de produção exige conjunto oficial aprovado.");
   const roles = [...new Set(plan.periods.flatMap(period => period.roles.map(role => role.roleId)))];
-  const available = await tx.role.count({ where: { id: { in: roles }, isActive: true } });
-  if (available !== roles.length) throw new Error("Quadro referencia cargo inexistente/inativo no cadastro central.");
+  const available = await tx.select({ id: roleTable.id }).from(roleTable).where(and(inArray(roleTable.id, roles), eq(roleTable.isActive, true)));
+  if (available.length !== roles.length) throw new Error("Quadro referencia cargo inexistente/inativo no cadastro central.");
   const documents = [...new Set(plan.periods.flatMap(period => period.roles.flatMap(role => role.documentIds)))];
-  if (documents.length && await tx.document.count({ where: { id: { in: documents } } }) !== documents.length) throw new Error("Documento GED referenciado no quadro não encontrado.");
+  if (documents.length && (await tx.select({ id: documentTable.id }).from(documentTable).where(inArray(documentTable.id, documents))).length !== documents.length) throw new Error("Documento GED referenciado no quadro não encontrado.");
   const periods = [...plan.periods].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   let covered = effectiveFrom.getTime();
   const requiredEnd = contract.endsAt ? contract.endsAt.getTime() + day : Infinity;
@@ -112,19 +120,19 @@ export async function assertPositionPlanForContract(tx: Prisma.TransactionClient
     if (covered >= requiredEnd) break;
   }
   if (covered < requiredEnd || !periods.some(period => at(period.startsAt) <= effectiveFrom.getTime() && (!period.endsAt || at(period.endsAt) + day > effectiveFrom.getTime()))) throw new Error("Quadro de cargos não cobre todo o período contratual; complete as vigências.");
-  const regimes = await tx.hrEmploymentRegime.findMany({ where: { ruleSetId: regime.ruleSetId }, select: { id: true } });
-  const contracts = await tx.hrEmploymentContract.findMany({ include: { revisions: true } });
+  const regimes = await tx.select({ id: hrEmploymentRegimes.id }).from(hrEmploymentRegimes).where(eq(hrEmploymentRegimes.ruleSetId, regime.ruleSetId));
+  const contracts = await listEmploymentContracts(tx);
   assessPositionPlan(plan, contracts.flatMap(row => positionContractSegments(row, row.revisions)), regimes.map(row => row.id), { start: effectiveFrom, end: regime.ruleSet.effectiveUntil });
 }
 
-export async function inspectPositionPlan(db: PrismaClient, ruleId: string) {
-  const rule = await db.hrPayrollRule.findUniqueOrThrow({ where: { id: ruleId }, include: { ruleSet: true } });
+export async function inspectPositionPlan(db: DatabaseExecutor, ruleId: string) {
+  const rule = await requirePayrollRule(db, ruleId);
   if (rule.code !== "QUADRO_CARGOS") throw new Error("Selecione uma regra QUADRO_CARGOS.");
   const plan = positionPlanSchema.parse(rule.value);
   const [regimes, contracts, roles] = await Promise.all([
-    db.hrEmploymentRegime.findMany({ where: { ruleSetId: rule.ruleSetId }, select: { id: true } }),
-    db.hrEmploymentContract.findMany({ include: { revisions: true } }),
-    db.role.findMany({ where: { id: { in: [...new Set(plan.periods.flatMap(period => period.roles.map(role => role.roleId)))] } }, select: { id: true, name: true } }),
+    db.select({ id: hrEmploymentRegimes.id }).from(hrEmploymentRegimes).where(eq(hrEmploymentRegimes.ruleSetId, rule.ruleSetId)),
+    listEmploymentContracts(db),
+    db.select({ id: roleTable.id, name: roleTable.name }).from(roleTable).where(inArray(roleTable.id, [...new Set(plan.periods.flatMap(period => period.roles.map(role => role.roleId)))])),
   ]);
   return { rule, plan, roles, rows: assessPositionPlan(plan, contracts.flatMap(row => positionContractSegments(row, row.revisions)), regimes.map(row => row.id), { start: rule.ruleSet.effectiveFrom, end: rule.ruleSet.effectiveUntil }) };
 }

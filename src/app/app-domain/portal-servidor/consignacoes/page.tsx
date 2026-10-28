@@ -1,5 +1,8 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { arePortalPayrollStatementsEnabled } from "@/lib/rh/payroll-configuration";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
@@ -10,12 +13,16 @@ export default async function MyConsignments({ searchParams }: { searchParams: P
   const access = await getEmployeePortalAccess();
   if (access.status !== "AVAILABLE") return <p className="p-4">Cadastro funcional indisponível.</p>;
   const { context, employee } = access;
-  if (!await arePortalPayrollStatementsEnabled(context.prisma)) return <p className="p-4">Demonstrativos desabilitados pelo RH.</p>;
+  const executor = context.database ?? db;
+  if (!await arePortalPayrollStatementsEnabled(executor)) return <p className="p-4">Demonstrativos desabilitados pelo RH.</p>;
   const params = await searchParams; const q = (params.q || "").trim();
-  const where: Prisma.HrConsignmentAgreementWhereInput = { contract: { employeeId: employee.id }, number: { contains: q, mode: "insensitive" }, sourceRun: { mode: "OFICIAL", status: "FECHADA", statements: { some: { contract: { employeeId: employee.id }, releaseAt: { lte: new Date() }, revokedAt: null } } } };
-  const total = await context.prisma.hrConsignmentAgreement.count({ where });
+  const where = sql`c."employeeId"=${employee.id} AND strpos(lower(a.number),lower(${q}))>0 AND r.mode='OFICIAL' AND r.status='FECHADA' AND EXISTS(SELECT 1 FROM "HrPayrollStatement" s JOIN "HrEmploymentContract" sc ON sc.id=s."contractId" WHERE s."runId"=r.id AND sc."employeeId"=${employee.id} AND s."releaseAt"<=${new Date()} AND s."revokedAt" IS NULL)`;
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "HrConsignmentAgreement" a JOIN "HrEmploymentContract" c ON c.id=a."contractId" JOIN "HrPayrollRun" r ON r.id=a."sourceRunId" WHERE ${where}`);
   const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const rows = await context.prisma.hrConsignmentAgreement.findMany({ where, select: { id: true, number: true, scope: true, rubricCode: true, supplierId: true, contract: { select: { registration: true } }, installments: { orderBy: { sequence: "asc" }, select: { id: true, sequence: true, competenceAt: true, amount: true, entries: { select: { kind: true, reason: true } } } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+  const agreements = await portalRows<{ id: string; number: string; scope: string; rubricCode: string; supplierId: string; registration: string }>(executor, sql`SELECT a.id,a.number,a.scope,a."rubricCode",a."supplierId",c.registration FROM "HrConsignmentAgreement" a JOIN "HrEmploymentContract" c ON c.id=a."contractId" JOIN "HrPayrollRun" r ON r.id=a."sourceRunId" WHERE ${where} ORDER BY a."createdAt" DESC,a.id LIMIT 20 OFFSET ${(page - 1) * 20}`);
+  const installments = await portalRows<{ id: string; agreementId: string; sequence: number; competenceAt: Date; amount: string }>(executor, sql`SELECT * FROM "HrConsignmentInstallment" WHERE "agreementId"=ANY(${sql.param(agreements.map(row => row.id))}::text[]) ORDER BY sequence`);
+  const entries = await portalRows<{ installmentId: string; kind: string; reason: string }>(executor, sql`SELECT "installmentId",kind,reason FROM "HrConsignmentEntry" WHERE "installmentId"=ANY(${sql.param(installments.map(row => row.id))}::text[])`);
+  const rows = agreements.map(({ registration, ...row }) => ({ ...row, contract: { registration }, installments: installments.filter(item => item.agreementId === row.id).map(item => ({ ...item, amount: new Decimal(item.amount), entries: entries.filter(entry => entry.installmentId === item.id).map(({ kind, reason }) => ({ kind, reason })) })) }));
   const href = (value: number) => `?${new URLSearchParams({ page: String(value), q })}`;
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3"><ErpPageTitle title="Minhas consignações" description="Contratos registrados pelo RH, reservas e parcelas por competência." action={<Link href="/portal-servidor/margem">Margem calculada</Link>} />
     <Link href="/portal-servidor/credito" className="text-xs underline">Solicitar crédito consignado</Link>

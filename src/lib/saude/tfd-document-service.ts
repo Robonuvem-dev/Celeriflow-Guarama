@@ -1,6 +1,11 @@
 import PDFDocument from "pdfkit";
 import { z } from "zod";
-import type { AppContext } from "@/lib/platform/tenant-context";
+import type { HealthTfdContext as AppContext } from "@/lib/contracts/health-tfd";
+import { databaseConnection } from "@/db/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { institutions } from "@/db/schema/administration";
+import { readTfdDocumentHistory } from "@/db/repositories/health-tfd/records";
 import { tfdRequestForActor } from "./tfd-clinical-service";
 
 const snapshotSchema = z.object({
@@ -12,23 +17,17 @@ const snapshotSchema = z.object({
   professionalSnapshot: z.object({ name: z.string(), councilName: z.string().nullable(), councilNumber: z.string().nullable() }),
 });
 
-export async function tfdPatientDocument(context: AppContext, requestId: string, kind: "LAUDO" | "PEDIDO", version?: number) {
-  const data = await context.prisma.$transaction(async tx => {
+export async function tfdPatientDocument(context: AppContext, requestId: string, kind: "LAUDO" | "PEDIDO", version?: number, connection: DatabaseConnection = databaseConnection) {
+  const data = await withDatabaseTransaction(connection, async tx => {
     const request = await tfdRequestForActor(tx, context, requestId);
     if (!request.clinicalReport) throw new Error("Laudo TFD ainda não incluído.");
     if (kind === "PEDIDO" && request.status !== "AUTORIZADA") throw new Error("A impressão do pedido exige tratamento autorizado e não cancelado.");
     const selectedVersion = version || request.clinicalReport.version;
     if (kind === "PEDIDO" && selectedVersion !== request.clinicalReport.version) throw new Error("O pedido deve corresponder à versão autorizada atual.");
-    const revision = await tx.healthTfdReportRevision.findUniqueOrThrow({ where: { reportId_version: { reportId: request.clinicalReport.id, version: selectedVersion } } });
-    const [supplements, events, benefits] = await Promise.all([
-      tx.healthTfdReportSupplement.findMany({ where: { reportId: request.clinicalReport.id, reportVersion: selectedVersion }, orderBy: { createdAt: "asc" } }),
-      tx.healthTfdRequestEvent.findMany({ where: { requestId }, orderBy: { createdAt: "asc" } }),
-      tx.healthTfdBenefit.findMany({ where: { requestId }, orderBy: { createdAt: "asc" } }),
-    ]);
-    return { request, revision, supplements, events, benefits };
+    return { request, ...await readTfdDocumentHistory(tx, requestId, request.clinicalReport.id, selectedVersion) };
   });
   const snapshot = snapshotSchema.parse(data.revision.snapshot);
-  const institution = await context.prisma.institution.findFirst();
+  const [institution] = await connection.db.select().from(institutions).limit(1);
   const title = kind === "LAUDO" ? "Laudo de Tratamento Fora do Domicílio" : "Pedido autorizado de Tratamento Fora do Domicílio";
   const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: title, Subject: `${requestId} · versão ${snapshot.version}` } });
   const chunks: Buffer[] = [];

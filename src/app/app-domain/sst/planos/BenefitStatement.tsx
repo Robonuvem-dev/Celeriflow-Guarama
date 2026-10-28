@@ -3,14 +3,15 @@ import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import type { readBenefitStatement } from "@/lib/sst/benefit-query";
 import { benefitFiscalReadiness } from "@/lib/sst/benefit-fiscal";
 import { ExactDecimal } from "@/lib/sst/benefit-policy";
-import type { Prisma } from "@prisma/client";
+import type { JsonValue } from "@/db/json";
+import type { Decimal } from "@/db/decimal";
 
 type Statement = NonNullable<Awaited<ReturnType<typeof readBenefitStatement>>>;
-const text = (snapshot: Prisma.JsonValue, key: string) => snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) && typeof snapshot[key] === "string" ? String(snapshot[key]) : "—";
-const pending = (snapshot: Prisma.JsonValue) => snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) && Array.isArray(snapshot.blockers) ? snapshot.blockers.filter((value) => typeof value === "string").join(" · ") : "Configuração não disponível";
+const text = (snapshot: JsonValue, key: string) => snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) && typeof snapshot[key] === "string" ? String(snapshot[key]) : "—";
+const pending = (snapshot: JsonValue) => snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) && Array.isArray(snapshot.blockers) ? snapshot.blockers.filter((value) => typeof value === "string").join(" · ") : "Configuração não disponível";
 export function BenefitStatement({ data, base }: { data: Statement; base: string }) {
   const fiscal = benefitFiscalReadiness(Number(data.to.split("/")[1]));
-  const annual = new Map<string, { beneficiaryId: string; year: string; monthly: Prisma.Decimal; extraordinary: Prisma.Decimal; refunds: Prisma.Decimal }>();
+  const annual = new Map<string, { beneficiaryId: string; year: string; monthly: Decimal; extraordinary: Decimal; refunds: Decimal }>();
   for (const row of data.summary) {
     const year = row.competence.split("/")[1];
     const key = `${row.beneficiaryId}:${year}`;

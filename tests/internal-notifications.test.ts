@@ -1,37 +1,31 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import { sql } from "drizzle-orm";
+import type { DatabaseExecutor, DatabaseTransaction } from "../src/db/transaction";
+import { getPostgresError } from "../src/db/errors";
 import {
   assertInternalNotificationPriority,
   buildInternalNotificationDedupeKey,
-  countUnreadInternalNotifications,
-  createInternalNotifications,
-  listInternalNotifications,
-  markInternalNotificationRead,
-} from "../src/lib/notifications/internal-notifications.ts";
+} from "../src/lib/notifications/notification-policy";
+import { countUnreadInternalNotifications, insertInternalNotifications as createInternalNotifications, listInternalNotifications, listVisibleNotificationProcessTargets, markInternalNotificationRead } from "../src/db/repositories/platform/notifications";
 
-function memoryTransaction() {
-  const notifications: Array<Record<string, unknown>> = [];
-  const auditEvents: Array<Record<string, unknown>> = [];
-  const tx = {
-    protocolNotification: {
-      findFirst: async ({ where }: { where: Record<string, unknown> }) => notifications.find((notification) => Object.entries(where).every(([key, value]) => notification[key] === value)) ?? null,
-      create: async ({ data }: { data: Record<string, unknown> }) => {
-        const notification = { ...data, id: `notification-${notifications.length + 1}`, createdAt: new Date(), readAt: null };
-        notifications.push(notification);
-        return { id: notification.id };
-      },
-      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
-        const matches = notifications.filter((notification) => Object.entries(where).every(([key, value]) => notification[key] === value));
-        matches.forEach((notification) => Object.assign(notification, data));
-        return { count: matches.length };
-      },
-      findMany: async ({ where }: { where: Record<string, unknown> }) => notifications.filter((notification) => Object.entries(where).every(([key, value]) => notification[key] === value)),
-      count: async ({ where }: { where: Record<string, unknown> }) => notifications.filter((notification) => Object.entries(where).every(([key, value]) => notification[key] === value)).length,
-    },
-    auditEvent: { create: async ({ data }: { data: Record<string, unknown> }) => { auditEvents.push(data); } },
-  };
-  return { tx: tx as never, notifications, auditEvents };
+async function databaseFixture() {
+  const pg = new PGlite();
+  await pg.exec(`CREATE TABLE "Usuario" (id TEXT PRIMARY KEY);
+    INSERT INTO "Usuario" VALUES ('author-1'),('recipient-1'),('recipient-2');
+    CREATE TABLE "Process" (id TEXT PRIMARY KEY,"protocolNumber" TEXT,"currentDepartmentId" TEXT);
+    INSERT INTO "Process" VALUES ('process-1','PROC-1','sector');
+    CREATE TABLE "ProcessMovement" ("processId" TEXT,"fromDepartmentId" TEXT,"toDepartmentId" TEXT);
+    CREATE TABLE "ProtocolNotification" (id TEXT PRIMARY KEY,"userId" TEXT NOT NULL REFERENCES "Usuario"(id),"processId" TEXT REFERENCES "Process"(id),
+      "sourceModule" TEXT NOT NULL DEFAULT 'PROCESSOS',"entityType" TEXT NOT NULL DEFAULT 'PROCESS',"entityId" TEXT NOT NULL,type TEXT NOT NULL,title TEXT NOT NULL,message TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('BAIXA','NORMAL','ALTA','URGENTE')),"dedupeKey" TEXT,"readAt" TIMESTAMP(3),"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+    CREATE UNIQUE INDEX "ProtocolNotification_userId_dedupeKey_unique" ON "ProtocolNotification"("userId","dedupeKey") WHERE "dedupeKey" IS NOT NULL;
+    CREATE TABLE "AuditEvent" (id TEXT PRIMARY KEY,"actorUsuarioId" TEXT NOT NULL REFERENCES "Usuario"(id),"eventType" TEXT NOT NULL,"targetType" TEXT NOT NULL,"targetId" TEXT NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
+  const db = drizzle(pg);
+  return { pg, db, executor: db as unknown as DatabaseExecutor };
 }
 
 const notification = {
@@ -62,31 +56,65 @@ test("builds stable dedupe keys from the typed source and entity", () => {
 });
 
 test("creates one notification per recipient and keeps recipient histories isolated", async () => {
-  const { tx, notifications, auditEvents } = memoryTransaction();
-  const result = await createInternalNotifications(tx, notification);
-  const repeated = await createInternalNotifications(tx, notification);
-  assert.equal(result.created, 2);
-  assert.equal(repeated.created, 0);
-  assert.equal((await listInternalNotifications(tx, "recipient-1")).length, 1);
-  assert.equal((await listInternalNotifications(tx, "recipient-2")).length, 1);
-  assert.equal(notifications.length, 2);
-  assert.equal(auditEvents.length, 2);
+  const f = await databaseFixture();
+  try {
+    await f.db.transaction(async transaction => {
+      const tx = transaction as unknown as DatabaseTransaction;
+      const result = await createInternalNotifications(tx, notification);
+      const repeated = await createInternalNotifications(tx, notification);
+      assert.equal(result.created, 2); assert.equal(repeated.created, 0);
+      assert.equal((await listInternalNotifications(tx, "recipient-1")).length, 1);
+      assert.equal((await listInternalNotifications(tx, "recipient-2")).length, 1);
+      assert.equal((await transaction.execute(sql`SELECT * FROM "ProtocolNotification"`)).rows.length, 2);
+      assert.equal((await transaction.execute(sql`SELECT * FROM "AuditEvent"`)).rows.length, 2);
+    });
+  } finally { await f.pg.close(); }
 });
 
 test("allows only the notification owner to acknowledge a read and audits it", async () => {
-  const { tx, auditEvents } = memoryTransaction();
-  await createInternalNotifications(tx, notification);
-  assert.equal(await markInternalNotificationRead(tx, "notification-1", "recipient-2"), false);
-  assert.equal(await markInternalNotificationRead(tx, "notification-1", "recipient-1"), true);
-  assert.equal(await countUnreadInternalNotifications(tx, "recipient-1"), 0);
-  assert.equal(auditEvents.at(-1)?.eventType, "INTERNAL_NOTIFICATION_READ");
+  const f = await databaseFixture();
+  try {
+    await f.db.transaction(async transaction => {
+      const tx = transaction as unknown as DatabaseTransaction;
+      await createInternalNotifications(tx, notification);
+      const [row] = await listInternalNotifications(tx, "recipient-1");
+      assert.equal(await markInternalNotificationRead(tx, row.id, "recipient-2"), false);
+      assert.equal(await markInternalNotificationRead(tx, row.id, "recipient-1"), true);
+      assert.equal(await markInternalNotificationRead(tx, row.id, "recipient-1"), false);
+      assert.equal(await countUnreadInternalNotifications(tx, "recipient-1"), 0);
+      assert.equal((await transaction.execute(sql`SELECT * FROM "AuditEvent" WHERE "eventType"='INTERNAL_NOTIFICATION_READ'`)).rows.length, 1);
+    });
+  } finally { await f.pg.close(); }
 });
 
 test("requires typed entities and preserves a nullable process compatibility relation", async () => {
-  const { tx, notifications } = memoryTransaction();
-  await createInternalNotifications(tx, { ...notification, sourceModule: "ATENDIMENTO", entityType: "TICKET", entityId: "ticket-1", processId: null, dedupeDiscriminator: "ticket-event" });
-  assert.equal(notifications[0].processId, null);
-  await assert.rejects(createInternalNotifications(tx, { ...notification, sourceModule: "processos" }), /Origem ou entidade/);
+  const f = await databaseFixture();
+  try {
+    await f.db.transaction(async transaction => {
+      const tx = transaction as unknown as DatabaseTransaction;
+      await createInternalNotifications(tx, { ...notification, sourceModule: "ATENDIMENTO", entityType: "TICKET", entityId: "ticket-1", processId: null, dedupeDiscriminator: "ticket-event" });
+      assert.equal((await listInternalNotifications(tx, "recipient-1", { sourceModule: "ATENDIMENTO", take: 1 }))[0].processId, null);
+      assert.equal((await listInternalNotifications(tx, "recipient-1", { sourceModule: "PROCESSOS" })).length, 0);
+      await assert.rejects(createInternalNotifications(tx, { ...notification, sourceModule: "processos" }), /Origem ou entidade/);
+      await assert.rejects(createInternalNotifications(tx, { ...notification, processId: "other-process" }), /Relacao de processo/);
+    });
+  } finally { await f.pg.close(); }
+});
+
+test("notification audit failure rolls back delivery and process links require current or historical sector access", async () => {
+  const f = await databaseFixture();
+  try {
+    await assert.rejects(f.db.transaction(tx => createInternalNotifications(tx as unknown as DatabaseTransaction, { ...notification, actorUsuarioId: "absent-actor" })), error => getPostgresError(error)?.code === "23503");
+    assert.deepEqual(await listInternalNotifications(f.executor, "recipient-1"), []);
+    await f.pg.exec(`INSERT INTO "Process" VALUES ('sent','PROC-SENT','other'),('received','PROC-RECEIVED','other'),('foreign','PROC-FOREIGN','other');
+      INSERT INTO "ProcessMovement" VALUES ('sent','sector','other'),('received','other','sector');`);
+    const ids = ["process-1", "sent", "received", "foreign"];
+    const local = await listVisibleNotificationProcessTargets(f.executor, ids, { administrator: false, departmentId: "sector" });
+    assert.deepEqual(local.map(row => row.id).sort(), ["process-1", "received", "sent"]);
+    assert.equal((await listVisibleNotificationProcessTargets(f.executor, ids, { administrator: true, departmentId: null })).length, 4);
+    assert.deepEqual(await listVisibleNotificationProcessTargets(f.executor, ids, { administrator: false, departmentId: null }), []);
+    assert.deepEqual(await listVisibleNotificationProcessTargets(f.executor, [], { administrator: true, departmentId: null }), []);
+  } finally { await f.pg.close(); }
 });
 
 test("migration backfills protocol entities and enforces per-recipient dedupe", async () => {

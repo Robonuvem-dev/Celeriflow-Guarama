@@ -3,23 +3,12 @@ import { ObrasProjetosClient } from "../components/ObrasProjetosClient";
 import { Building2 } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listWorksProjects } from "@/db/repositories/works-pages/infrastructure";
 
 export default async function ObrasProjetosPage() {
-  const { prisma } = await getTenantContextForModule("OBRAS");
-  const obras = await prisma.obrasObra.findMany({
-    select: {
-      id: true,
-      numero: true,
-      nome: true,
-      descricao: true,
-      local: true,
-      tipo: true,
-      valorEstimado: true,
-      status: true,
-      active: true,
-    },
-    orderBy: [{ numero: "asc" }, { id: "asc" }],
-  });
+  const context = await getTenantContextForModule("OBRAS");
+  const obras = await listWorksProjects(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2 sm:p-3">

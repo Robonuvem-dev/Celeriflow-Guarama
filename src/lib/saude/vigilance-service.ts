@@ -1,5 +1,12 @@
 import { z } from "zod";
-import type { AppContext } from "@/lib/platform/tenant-context";
+import { eq } from "drizzle-orm";
+import type { HealthManagementContext as AppContext } from "@/lib/contracts/health-management-operations";
+import type { DatabaseTransaction } from "@/db/transaction";
+import { people } from "@/db/schema/people";
+import { companies } from "@/db/schema/registry";
+import { managementVigilanceEstablishments as establishments, managementVigilanceComplaints as complaints, managementVigilanceInspections as inspections, managementVigilanceInspectionItems as inspectionItems, managementVigilanceLicenses as licenses } from "@/db/schema/health-management-operations";
+import { runManagementTransaction } from "@/db/repositories/health-management-operations/transaction";
+import { managementRequired } from "@/db/repositories/health-management-operations/common";
 
 export class VigilanceError extends Error {}
 
@@ -13,15 +20,16 @@ const establishmentSchema = z.object({
   riskLevel: z.string().trim().max(60).nullable().optional(),
 }).strict();
 
-export async function saveEstablishment(context: AppContext, raw: unknown) {
+export async function saveEstablishment(context: AppContext, raw: unknown, transaction?: DatabaseTransaction) {
   const input = establishmentSchema.parse(raw);
-  if (input.companyId && !await context.prisma.company.findUnique({ where: { id: input.companyId }, select: { id: true } })) throw new VigilanceError("Empresa não encontrada.");
-  if (input.personId && !await context.prisma.person.findUnique({ where: { id: input.personId }, select: { id: true } })) throw new VigilanceError("Pessoa não encontrada.");
-  const existing = input.document ? await context.prisma.healthVigilanceEstablishment.findFirst({ where: { document: input.document }, select: { id: true } }) : null;
-  if (existing) {
-    return context.prisma.healthVigilanceEstablishment.update({ where: { id: existing.id }, data: { name: input.name, companyId: input.companyId || null, personId: input.personId || null, cnae: input.cnae || null, activity: input.activity || null, riskLevel: input.riskLevel || null, status: "Ativo" }, select: { id: true } });
-  }
-  return context.prisma.healthVigilanceEstablishment.create({ data: { name: input.name, document: input.document || null, companyId: input.companyId || null, personId: input.personId || null, cnae: input.cnae || null, activity: input.activity || null, riskLevel: input.riskLevel || null }, select: { id: true } });
+  return runManagementTransaction(context, transaction, async tx => {
+    if (input.companyId && !(await tx.select({ id: companies.id }).from(companies).where(eq(companies.id, input.companyId)).limit(1))[0]) throw new VigilanceError("Empresa não encontrada.");
+    if (input.personId && !(await tx.select({ id: people.id }).from(people).where(eq(people.id, input.personId)).limit(1))[0]) throw new VigilanceError("Pessoa não encontrada.");
+    const [existing] = input.document ? await tx.select({ id: establishments.id }).from(establishments).where(eq(establishments.document, input.document)).limit(1) : [];
+    const data = { name: input.name, companyId: input.companyId || null, personId: input.personId || null, cnae: input.cnae || null, activity: input.activity || null, riskLevel: input.riskLevel || null };
+    if (existing) return managementRequired((await tx.update(establishments).set({ ...data, status: "Ativo" }).where(eq(establishments.id, existing.id)).returning({ id: establishments.id }))[0]);
+    return managementRequired((await tx.insert(establishments).values({ ...data, document: input.document || null }).returning({ id: establishments.id }))[0]);
+  });
 }
 
 const complaintSchema = z.object({
@@ -32,24 +40,25 @@ const complaintSchema = z.object({
   reporterPersonId: z.string().min(1).nullable().optional(),
 }).strict();
 
-export async function saveComplaint(context: AppContext, raw: unknown) {
+export async function saveComplaint(context: AppContext, raw: unknown, transaction?: DatabaseTransaction) {
   const input = complaintSchema.parse(raw);
   if (!input.establishmentId && !input.place?.trim()) throw new VigilanceError("Informe o estabelecimento ou o local da denúncia.");
-  if (input.establishmentId && !await context.prisma.healthVigilanceEstablishment.findUnique({ where: { id: input.establishmentId }, select: { id: true } })) throw new VigilanceError("Estabelecimento não encontrado.");
-  if (input.isAnonymous && input.reporterPersonId) throw new VigilanceError("Denúncia anônima não identifica o denunciante.");
-  if (!input.isAnonymous && !input.reporterPersonId) throw new VigilanceError("Denúncia identificada exige o denunciante.");
-  return context.prisma.healthVigilanceComplaint.create({
-    data: { establishmentId: input.establishmentId || null, place: input.place?.trim() || null, description: input.description, isAnonymous: input.isAnonymous, reporterPersonId: input.isAnonymous ? null : input.reporterPersonId },
-    select: { id: true },
+  return runManagementTransaction(context, transaction, async tx => {
+    if (input.establishmentId && !(await tx.select({ id: establishments.id }).from(establishments).where(eq(establishments.id, input.establishmentId)).limit(1))[0]) throw new VigilanceError("Estabelecimento não encontrado.");
+    if (input.isAnonymous && input.reporterPersonId) throw new VigilanceError("Denúncia anônima não identifica o denunciante.");
+    if (!input.isAnonymous && !input.reporterPersonId) throw new VigilanceError("Denúncia identificada exige o denunciante.");
+    return managementRequired((await tx.insert(complaints).values({ establishmentId: input.establishmentId || null, place: input.place?.trim() || null, description: input.description, isAnonymous: input.isAnonymous, reporterPersonId: input.isAnonymous ? null : input.reporterPersonId }).returning({ id: complaints.id }))[0]);
   });
 }
 
-export async function transitionComplaint(context: AppContext, complaintId: string, status: string) {
+export async function transitionComplaint(context: AppContext, complaintId: string, status: string, transaction?: DatabaseTransaction) {
   const target = status.trim();
   if (!["Recebida", "Em apuração", "Encerrada"].includes(target)) throw new VigilanceError("Situação inválida.");
-  const complaint = await context.prisma.healthVigilanceComplaint.findUnique({ where: { id: complaintId }, select: { id: true } });
-  if (!complaint) throw new VigilanceError("Denúncia não encontrada.");
-  return context.prisma.healthVigilanceComplaint.update({ where: { id: complaintId }, data: { status: target }, select: { id: true } });
+  return runManagementTransaction(context, transaction, async tx => {
+    const [complaint] = await tx.update(complaints).set({ status: target }).where(eq(complaints.id, complaintId)).returning({ id: complaints.id });
+    if (!complaint) throw new VigilanceError("Denúncia não encontrada.");
+    return complaint;
+  });
 }
 
 const inspectionSchema = z.object({
@@ -62,27 +71,29 @@ const inspectionSchema = z.object({
   items: z.array(z.object({ description: z.string().trim().min(2).max(500), result: z.enum(["Conforme", "Não conforme", "Não avaliado"]).default("Não avaliado"), notes: z.string().trim().max(1000).nullable().optional() })).max(100).default([]),
 }).strict();
 
-export async function saveInspection(context: AppContext, raw: unknown) {
+export async function saveInspection(context: AppContext, raw: unknown, transaction?: DatabaseTransaction) {
   const input = inspectionSchema.parse(raw);
-  if (!await context.prisma.healthVigilanceEstablishment.findUnique({ where: { id: input.establishmentId }, select: { id: true } })) throw new VigilanceError("Estabelecimento não encontrado.");
-  // Nova inspeção registra constatação própria; nunca herda conclusão anterior.
-  return context.prisma.healthVigilanceInspection.create({
-    data: {
+  return runManagementTransaction(context, transaction, async tx => {
+    if (!(await tx.select({ id: establishments.id }).from(establishments).where(eq(establishments.id, input.establishmentId)).limit(1))[0]) throw new VigilanceError("Estabelecimento não encontrado.");
+    // Nova inspeção registra constatação própria; nunca herda conclusão anterior.
+    const inspection = managementRequired((await tx.insert(inspections).values({
       establishmentId: input.establishmentId, complaintId: input.complaintId || null, professionalId: input.professionalId || null,
       inspectedAt: input.inspectedAt, reason: input.reason || null, findings: input.findings || null, status: "Realizada",
       createdByUsuarioId: context.user.id,
-      items: { create: input.items.map(item => ({ description: item.description, result: item.result, notes: item.notes || null })) },
-    },
-    select: { id: true },
+    }).returning({ id: inspections.id }))[0]);
+    if (input.items.length) await tx.insert(inspectionItems).values(input.items.map(item => ({ inspectionId: inspection.id, description: item.description, result: item.result, notes: item.notes || null })));
+    return inspection;
   });
 }
 
-export async function transitionInspection(context: AppContext, inspectionId: string, status: string) {
+export async function transitionInspection(context: AppContext, inspectionId: string, status: string, transaction?: DatabaseTransaction) {
   const target = status.trim();
   if (!["Agendada", "Realizada", "Com pendências", "Encerrada"].includes(target)) throw new VigilanceError("Situação inválida.");
-  const inspection = await context.prisma.healthVigilanceInspection.findUnique({ where: { id: inspectionId }, select: { id: true } });
-  if (!inspection) throw new VigilanceError("Inspeção não encontrada.");
-  return context.prisma.healthVigilanceInspection.update({ where: { id: inspectionId }, data: { status: target }, select: { id: true } });
+  return runManagementTransaction(context, transaction, async tx => {
+    const [inspection] = await tx.update(inspections).set({ status: target }).where(eq(inspections.id, inspectionId)).returning({ id: inspections.id });
+    if (!inspection) throw new VigilanceError("Inspeção não encontrada.");
+    return inspection;
+  });
 }
 
 const licenseSchema = z.object({
@@ -94,23 +105,24 @@ const licenseSchema = z.object({
 
 // Alvará é ato explícito de emissão. Atualizar o cadastro do
 // estabelecimento nunca gera alvará automaticamente.
-export async function issueLicense(context: AppContext, raw: unknown) {
+export async function issueLicense(context: AppContext, raw: unknown, transaction?: DatabaseTransaction) {
   const input = licenseSchema.parse(raw);
   if (input.validUntil < input.validFrom) throw new VigilanceError("Vigência final anterior à inicial.");
-  if (!await context.prisma.healthVigilanceEstablishment.findUnique({ where: { id: input.establishmentId }, select: { id: true } })) throw new VigilanceError("Estabelecimento não encontrado.");
-  const number = input.licenseNumber.trim().toUpperCase();
-  const existing = await context.prisma.healthVigilanceLicense.findUnique({ where: { licenseNumber: number }, select: { id: true } });
-  if (existing) throw new VigilanceError("Número de alvará já utilizado.");
-  return context.prisma.healthVigilanceLicense.create({
-    data: { establishmentId: input.establishmentId, licenseNumber: number, validFrom: new Date(`${input.validFrom}T12:00:00`), validUntil: new Date(`${input.validUntil}T12:00:00`), status: "Válido", issuedByUsuarioId: context.user.id },
-    select: { id: true },
+  return runManagementTransaction(context, transaction, async tx => {
+    if (!(await tx.select({ id: establishments.id }).from(establishments).where(eq(establishments.id, input.establishmentId)).limit(1))[0]) throw new VigilanceError("Estabelecimento não encontrado.");
+    const number = input.licenseNumber.trim().toUpperCase();
+    const [existing] = await tx.select({ id: licenses.id }).from(licenses).where(eq(licenses.licenseNumber, number)).limit(1);
+    if (existing) throw new VigilanceError("Número de alvará já utilizado.");
+    return managementRequired((await tx.insert(licenses).values({ establishmentId: input.establishmentId, licenseNumber: number, validFrom: new Date(`${input.validFrom}T12:00:00Z`), validUntil: new Date(`${input.validUntil}T12:00:00Z`), status: "Válido", issuedByUsuarioId: context.user.id }).returning({ id: licenses.id }))[0]);
   });
 }
 
-export async function transitionLicense(context: AppContext, licenseId: string, status: string) {
+export async function transitionLicense(context: AppContext, licenseId: string, status: string, transaction?: DatabaseTransaction) {
   const target = status.trim();
   if (!["Válido", "Vencido", "Suspenso", "Cancelado"].includes(target)) throw new VigilanceError("Situação inválida.");
-  const license = await context.prisma.healthVigilanceLicense.findUnique({ where: { id: licenseId }, select: { id: true } });
-  if (!license) throw new VigilanceError("Alvará não encontrado.");
-  return context.prisma.healthVigilanceLicense.update({ where: { id: licenseId }, data: { status: target }, select: { id: true } });
+  return runManagementTransaction(context, transaction, async tx => {
+    const [license] = await tx.update(licenses).set({ status: target }).where(eq(licenses.id, licenseId)).returning({ id: licenses.id });
+    if (!license) throw new VigilanceError("Alvará não encontrado.");
+    return license;
+  });
 }

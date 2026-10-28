@@ -1,7 +1,11 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction } from "@/db/transaction";
+import type { PayrollMovementImportResult } from "@/lib/contracts/personnel-external-operations";
+import { createExternalMovement, findExternalMovement, findImportedMovementFile, lockExternalOperation, readImportContracts, readImportRegimes, readImportRubrics } from "@/db/repositories/personnel-external-operations/movements";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { enqueueHrIntegration } from "./workforce-service";
+import { enqueueHrIntegration } from "@/db/repositories/personnel/integration";
 
 /** Quoted semicolon CSV, including escaped quotes and embedded line breaks. */
 function parseCsv(text: string) {
@@ -47,35 +51,35 @@ export function parsePayrollMovementImport(text: string) {
   });
 }
 
-export async function importPayrollMovements(db: PrismaClient, actorId: string, raw: unknown) {
+export async function importPayrollMovements(db: DatabaseConnection, actorId: string, raw: unknown): Promise<PayrollMovementImportResult> {
   const input = z.object({ batchKey: z.string().trim().min(1).max(100), csv: z.string().min(1), mode: z.enum(["PREVIA", "APLICAR"]) }).strict().parse(raw);
   const rows = parsePayrollMovementImport(input.csv);
   const hash = createHash("sha256").update(input.csv).digest("hex");
-  return db.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:import:${input.batchKey}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:import-hash:${hash}`}))`;
-    const importedFile = await tx.hrIntegrationEvent.findFirst({ where: { domain: "AUDITORIA", eventType: "IMPORTACAO_MOVIMENTOS", payload: { path: ["hash"], equals: hash } } });
+  return withDatabaseTransaction(db, async tx => {
+    await lockExternalOperation(tx, `RH:import:${input.batchKey}`);
+    await lockExternalOperation(tx, `RH:import-hash:${hash}`);
+    const importedFile = await findImportedMovementFile(tx, hash);
     if (importedFile && importedFile.sourceKey !== `IMPORTACAO:${input.batchKey}`) throw new Error("Este arquivo já foi importado com outra chave de lote. Reutilize a origem original para evitar duplicação.");
-    const contracts = await tx.hrEmploymentContract.findMany({ where: { registration: { in: [...new Set(rows.map(row => row.registration))] }, status: "ATIVO" }, orderBy: { id: "asc" } });
-    for (const contract of contracts) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:contract:${contract.id}`}))`;
-    const regimes = await tx.hrEmploymentRegime.findMany({ where: { id: { in: [...new Set(contracts.map(contract => contract.regimeId))] }, isActive: true } });
-    const rubrics = await tx.hrPayrollRubric.findMany({ where: { ruleSetId: { in: [...new Set(regimes.map(regime => regime.ruleSetId))] }, isActive: true } });
+    const contracts = await readImportContracts(tx, [...new Set(rows.map(row => row.registration))]);
+    for (const contract of contracts) await lockExternalOperation(tx, `RH:contract:${contract.id}`);
+    const regimes = await readImportRegimes(tx, [...new Set(contracts.map(contract => contract.regimeId))]);
+    const rubrics = await readImportRubrics(tx, [...new Set(regimes.map(regime => regime.ruleSetId))]);
     let created = 0; let reused = 0;
     for (const [index, row] of rows.entries()) {
       const contract = contracts.find(contract => contract.registration === row.registration);
       const regime = regimes.find(regime => regime.id === contract?.regimeId);
       if (!contract || !regime || !rubrics.some(rubric => rubric.ruleSetId === regime.ruleSetId && rubric.code === row.rubricCode)) throw new Error(`Linha ${row.line}: contrato/regime/rubrica ativo não encontrado.`);
       const sourceKey = `IMPORT:${input.batchKey}:${index + 1}`;
-      const previous = await tx.hrMovement.findUnique({ where: { sourceKey } });
+      const previous = await findExternalMovement(tx, sourceKey);
       if (previous) {
         if (previous.contractId !== contract.id || previous.rubricCode !== row.rubricCode || !previous.amount.eq(row.amount) || previous.startsAt.getTime() !== row.startsAt.getTime() || previous.endsAt?.getTime() !== row.endsAt?.getTime() || previous.notes !== row.notes || previous.reference !== row.reference) throw new Error(`Linha ${row.line}: lote repetido com conteúdo diferente.`);
         reused++;
       } else {
-        if (input.mode === "APLICAR") await tx.hrMovement.create({ data: { contractId: contract.id, sourceKey, rubricCode: row.rubricCode, startsAt: row.startsAt, endsAt: row.endsAt, amount: new Prisma.Decimal(row.amount), reference: row.reference, notes: row.notes, actorId } });
+        if (input.mode === "APLICAR") await createExternalMovement(tx, { contractId: contract.id, sourceKey, rubricCode: row.rubricCode, startsAt: row.startsAt, endsAt: row.endsAt, amount: new Decimal(row.amount), reference: row.reference, notes: row.notes, actorId });
         created++;
       }
     }
     if (input.mode === "APLICAR" && !importedFile) await enqueueHrIntegration(tx, { sourceKey: `IMPORTACAO:${input.batchKey}`, domain: "AUDITORIA", environment: "INTERNO", eventType: "IMPORTACAO_MOVIMENTOS", payload: { batchKey: input.batchKey, hash, csv: input.csv, actorId, rows: rows.length } });
     return { lines: rows.length, created, reused, mode: input.mode, hash };
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
-import type { AttendanceRecord, Employee } from "@prisma/client";
+import type { AttendanceRecord, Employee } from "@/lib/contracts/personnel-pages";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle as PageHeader } from "@/components/app-ui/erp/ErpPageTitle";
 

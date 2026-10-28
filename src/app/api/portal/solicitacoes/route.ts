@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db, databaseConnection } from "@/db/client";
 import { getCitizenApiAccount, portalApiError } from "@/lib/portal-cidadao/api-access";
 import { submitPortalService, operatePortalRequest, ratePortalRequest } from "@/lib/portal-cidadao/requests";
 import { getProtocolContextForOperation } from "@/lib/protocols/access";
@@ -15,14 +15,14 @@ export async function POST(request: Request) {
     if (body.action === "operar") {
       const operation = body.input?.operation;
       const context = ["COMPLEMENTAR", "CANCELAR"].includes(operation) ? undefined : await getProtocolContextForOperation("update");
-      const result = await operatePortalRequest(prisma, account.id, body.input, context);
+      const result = await operatePortalRequest(databaseConnection, account.id, body.input, context);
       return Response.json({ id: result.id }, { headers: { "Cache-Control": "private, no-store" } });
     }
     if (body.action === "avaliar") {
-      await ratePortalRequest(prisma, account.id, String(body.requestId || ""), body.input);
+      await ratePortalRequest(db, account.id, String(body.requestId || ""), body.input);
       return Response.json({ recorded: true });
     }
-    const result = await submitPortalService(prisma, account.id, body);
+    const result = await submitPortalService(databaseConnection, account.id, body);
     return Response.json(result, { status: 201, headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return portalApiError(error); }
 }

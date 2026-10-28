@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import type { JsonObject } from "@/db/json";
+import { listControlPlans } from "@/db/repositories/internal-control/records";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
 import { C7OperationError } from "./operations-service";
@@ -9,9 +12,12 @@ import { readControlAudit } from "./control-audits";
 type Actor = { usuarioId: string; allowedBudgetUnitIds?: string[] };
 type Report = { title: string; headers: string[]; rows: string[][]; hash: string };
 
-export async function buildControlReport(db: PrismaClient, actor: Actor, input: { planId: string; noticeId?: string; auditId?: string }): Promise<Report> {
-  return db.$transaction(async tx => {
-    const plan = await tx.internalControlPlan.findUnique({ where: { id: input.planId }, include: { budgetUnit: { include: { planningEntityUnit: { include: { governmentEntity: true } } } }, findings: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] }, events: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } } });
+export async function buildControlReport(db: DatabaseConnection, actor: Actor, input: { planId: string; noticeId?: string; auditId?: string }): Promise<Report> {
+  return withDatabaseTransaction(db, tx => buildControlReportInTransaction(tx, actor, input), { isolationLevel: "repeatable read" });
+}
+
+export async function buildControlReportInTransaction(tx: DatabaseTransaction, actor: Actor, input: { planId: string; noticeId?: string; auditId?: string }): Promise<Report> {
+    const [plan] = await listControlPlans(tx, { planId: input.planId });
     if (!plan || (actor.allowedBudgetUnitIds && (!plan.budgetUnitId || !actor.allowedBudgetUnitIds.includes(plan.budgetUnitId)))) throw new C7OperationError("Plano fora das unidades gestoras autorizadas.");
     if (input.noticeId && input.auditId) throw new C7OperationError("Selecione uma notificação ou auditoria para impressão.");
     const visibleAuditIds = new Set(plan.events.filter(event => event.eventType === "AUDIT_SCHEDULED").flatMap(event => {
@@ -35,7 +41,7 @@ export async function buildControlReport(db: PrismaClient, actor: Actor, input: 
     }
     for (const event of plan.events) {
       if (event.eventType.startsWith("CONTROL_REPORT_") && plan.ownerId !== actor.usuarioId) continue;
-      const snapshot = event.snapshot as Prisma.JsonObject;
+      const snapshot = event.snapshot as JsonObject;
       if (typeof snapshot.auditId === "string" && !visibleAuditIds.has(snapshot.auditId)) continue;
       if (event.eventType.startsWith("AUDIT_") && !visibleAuditIds.has(event.eventType === "AUDIT_SCHEDULED" ? event.id : String(snapshot.auditId))) continue;
       if (input.auditId && event.id !== input.auditId && snapshot.auditId !== input.auditId) continue;
@@ -47,7 +53,6 @@ export async function buildControlReport(db: PrismaClient, actor: Actor, input: 
     const headers = ["Tipo", "Identificador", "Referência", "Conteúdo / evidências"];
     const hash = createHash("sha256").update(JSON.stringify({ title, headers, rows })).digest("hex");
     return { title, headers, rows, hash };
-  }, { isolationLevel: "RepeatableRead" });
 }
 
 export async function renderControlReport(report: Report, format: "PDF" | "CSV" | "XLSX") {

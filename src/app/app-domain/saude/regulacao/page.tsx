@@ -5,7 +5,17 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { addAttachmentAction, createRegulationRequestAction, grantProviderAccessAction, reclassifyAction, saveRegulationQuotaAction, saveSectorAction, transferAuthorizationAction, transitionRegulationAction } from "./actions";
 import { validateGuideCode } from "@/lib/saude/regulation-service";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthRegulationRequests, healthRegulationQuotas, healthRegulationSectors } from "@/db/schema/health-regulation";
+import { healthUnits } from "@/db/schema/health-workforce";
+import { healthSpecialties, healthServices } from "@/db/schema/health-administration";
+import { healthSusProcedures, healthSusReferences } from "@/db/schema/health-catalogs";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { suppliers as supplierTable, companies } from "@/db/schema/registry";
+import { procurementCovenants } from "@/db/schema/procurement-instruments";
+import { users } from "@/db/schema/identity";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
 const PAGE_SIZE = 20;
@@ -15,33 +25,30 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function RegulacaoPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const database = context.database ?? db;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
   const guideCode = (first(params.guideCode) || "").trim().slice(0, 16);
-  const where: Prisma.HealthRegulationRequestWhereInput = {
-    ...(unitIds ? { requestUnitId: { in: unitIds } } : {}),
-    ...(filter ? { status: filter } : {}),
-    ...(q ? { OR: [{ patient: { person: { fullName: { contains: q, mode: "insensitive" } } } }, { description: { contains: q, mode: "insensitive" } }] } : {}),
-  };
-  const total = await prisma.healthRegulationRequest.count({ where });
+  const where = and(unitIds ? inArray(healthRegulationRequests.requestUnitId, unitIds) : undefined, filter ? eq(healthRegulationRequests.status, filter) : undefined, q ? or(sql`strpos(lower(${people.fullName}), lower(${q})) > 0`, sql`strpos(lower(${healthRegulationRequests.description}), lower(${q})) > 0`) : undefined);
+  const [{ total }] = await database.select({ total: count() }).from(healthRegulationRequests).innerJoin(patientTable, eq(patientTable.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [requests, quotas, patients, units, specialties, services, suppliers, procedures, sectors, cids, covenants, usuarios] = await Promise.all([
-    prisma.healthRegulationRequest.findMany({ where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { createdAt: "desc" }, include: { patient: { include: { person: true } }, requestUnit: true, specialty: true, service: true, quota: true, sector: true, cidReference: { select: { code: true } } } }),
-    prisma.healthRegulationQuota.findMany({ where: unitIds ? { unitId: { in: unitIds } } : {}, orderBy: { period: "desc" }, include: { provider: { select: { id: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } } } }, unit: true, specialty: true, service: true, convenio: { select: { number: true } } } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, take: 500, orderBy: { person: { fullName: "asc" } }, include: { person: true } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthSpecialty.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.healthService.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.supplier.findMany({ where: { status: "Ativo" }, take: 200, select: { id: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } } } }),
-    prisma.healthSusProcedure.findMany({ where: { isActive: true, isCurrent: true }, take: 300, orderBy: { description: "asc" } }),
-    prisma.healthRegulationSector.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.healthSusReference.findMany({ where: { kind: "CID", isActive: true, isCurrent: true }, take: 300, orderBy: { code: "asc" }, select: { id: true, code: true } }),
-    prisma.covenant.findMany({ take: 200, orderBy: { number: "asc" }, select: { id: true, number: true } }),
-    prisma.usuario.findMany({ where: { ativo: true }, take: 200, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+  const [requestRows, quotaRows, patients, units, specialties, services, suppliers, procedures, sectors, cids, covenants, usuarios] = await Promise.all([
+    database.select({ request: healthRegulationRequests, person: { fullName: people.fullName }, requestUnit: { name: healthUnits.name }, specialty: { name: healthSpecialties.name }, service: { name: healthServices.name }, quota: { reservedQuantity: healthRegulationQuotas.reservedQuantity, realizedQuantity: healthRegulationQuotas.realizedQuantity, totalQuantity: healthRegulationQuotas.totalQuantity } }).from(healthRegulationRequests).innerJoin(patientTable, eq(patientTable.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).leftJoin(healthUnits, eq(healthUnits.id, healthRegulationRequests.requestUnitId)).leftJoin(healthSpecialties, eq(healthSpecialties.id, healthRegulationRequests.specialtyId)).leftJoin(healthServices, eq(healthServices.id, healthRegulationRequests.serviceId)).leftJoin(healthRegulationQuotas, eq(healthRegulationQuotas.id, healthRegulationRequests.quotaId)).where(where).orderBy(desc(healthRegulationRequests.createdAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    database.select({ quota: healthRegulationQuotas, provider: { id: supplierTable.id }, person: { fullName: people.fullName }, company: { corporateName: companies.corporateName }, unit: { name: healthUnits.name }, convenio: { number: procurementCovenants.number } }).from(healthRegulationQuotas).innerJoin(supplierTable, eq(supplierTable.id, healthRegulationQuotas.providerSupplierId)).leftJoin(people, eq(people.id, supplierTable.personId)).leftJoin(companies, eq(companies.id, supplierTable.companyId)).leftJoin(healthUnits, eq(healthUnits.id, healthRegulationQuotas.unitId)).leftJoin(procurementCovenants, eq(procurementCovenants.id, healthRegulationQuotas.convenioId)).where(unitIds ? inArray(healthRegulationQuotas.unitId, unitIds) : undefined).orderBy(desc(healthRegulationQuotas.period)),
+    database.select({ id: patientTable.id, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(and(eq(patientTable.status, "Ativo"), unitIds ? inArray(patientTable.referenceUnitId, unitIds) : undefined)).orderBy(asc(people.fullName)).limit(500),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    database.select({ id: healthSpecialties.id, name: healthSpecialties.name }).from(healthSpecialties).where(eq(healthSpecialties.isActive, true)).orderBy(asc(healthSpecialties.name)),
+    database.select({ id: healthServices.id, name: healthServices.name }).from(healthServices).where(eq(healthServices.isActive, true)).orderBy(asc(healthServices.name)),
+    database.select({ id: supplierTable.id, person: { fullName: people.fullName }, company: { corporateName: companies.corporateName } }).from(supplierTable).leftJoin(people, eq(people.id, supplierTable.personId)).leftJoin(companies, eq(companies.id, supplierTable.companyId)).where(eq(supplierTable.status, "Ativo")).limit(200),
+    database.select({ id: healthSusProcedures.id, code: healthSusProcedures.code, description: healthSusProcedures.description }).from(healthSusProcedures).where(and(eq(healthSusProcedures.isActive, true), eq(healthSusProcedures.isCurrent, true))).orderBy(asc(healthSusProcedures.description)).limit(300),
+    database.select({ id: healthRegulationSectors.id, name: healthRegulationSectors.name }).from(healthRegulationSectors).where(eq(healthRegulationSectors.isActive, true)).orderBy(asc(healthRegulationSectors.name)),
+    database.select({ id: healthSusReferences.id, code: healthSusReferences.code }).from(healthSusReferences).where(and(eq(healthSusReferences.kind, "CID"), eq(healthSusReferences.isActive, true), eq(healthSusReferences.isCurrent, true))).orderBy(asc(healthSusReferences.code)).limit(300),
+    database.select({ id: procurementCovenants.id, number: procurementCovenants.number }).from(procurementCovenants).orderBy(asc(procurementCovenants.number)).limit(200),
+    database.select({ id: users.id, nome: users.nome }).from(users).where(eq(users.ativo, true)).orderBy(asc(users.nome)).limit(200),
   ]);
+  const requests = requestRows.map(row => ({ ...row.request, patient: { person: row.person }, requestUnit: row.requestUnit, specialty: row.specialty, service: row.service, quota: row.quota })), quotas = quotaRows.map(row => ({ ...row.quota, provider: { ...row.provider, person: row.person, company: row.company }, unit: row.unit, convenio: row.convenio }));
   let guideResult: Awaited<ReturnType<typeof validateGuideCode>> | null = null;
   let guideError = "";
   if (guideCode) {

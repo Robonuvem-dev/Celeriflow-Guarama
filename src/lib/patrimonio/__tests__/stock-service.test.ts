@@ -1,252 +1,105 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Prisma } from "@prisma/client";
+import { eq, sql } from "drizzle-orm";
 import { recordStockMovement, returnStockMovement, reverseStockMovement, StockServiceError, normalizeStockMovement } from "../stock-service";
+import { materialStocks, materialMovements } from "@/db/schema/assets-stock";
+import { createAssetsFixture } from "./drizzle-fixture";
 
 const actor = { usuarioId: "user-1", employeeId: "employee-1" };
+const input = { warehouseId: "warehouse-1", materialId: "material-1", actor };
 
-test("normalizes an omitted batch to the single non-batch stock key", () => {
-  const movement = normalizeStockMovement({ kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", warehouseId: "warehouse-1", materialId: "material-1", quantity: 3, actor });
-  assert.equal(movement.batchNumber, "");
-  assert.equal(movement.quantity, 3);
+test("normalizes batch, signed adjustments, costs and settlement eligibility before writing", () => {
+  assert.equal(normalizeStockMovement({ ...input, kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", quantity: 3 }).batchNumber, "");
+  assert.equal(normalizeStockMovement({ ...input, kind: "ADJUSTMENT", quantity: -2 }).quantity, -2);
+  for (const kind of ["ENTRY", "EXIT"] as const) assert.throws(() => normalizeStockMovement({ ...input, kind, quantity: -2 }), StockServiceError);
+  assert.throws(() => normalizeStockMovement({ ...input, kind: "ENTRY", quantity: 0 }), StockServiceError);
+  assert.throws(() => normalizeStockMovement({ ...input, kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", quantity: 1, unitCost: -1 }), StockServiceError);
+  assert.equal(normalizeStockMovement({ ...input, kind: "EXIT", quantity: 1, settlementId: "settlement-1" }).settlementId, "settlement-1");
+  assert.throws(() => normalizeStockMovement({ ...input, kind: "ENTRY", quantity: 1, settlementId: "settlement-1" }), StockServiceError);
 });
 
-test("allows signed adjustments but rejects signed entries and exits", () => {
-  assert.equal(normalizeStockMovement({ kind: "ADJUSTMENT", warehouseId: "warehouse-1", materialId: "material-1", quantity: -2, actor }).quantity, -2);
-  assert.throws(
-    () => normalizeStockMovement({ kind: "EXIT", warehouseId: "warehouse-1", materialId: "material-1", quantity: -2, actor }),
-    StockServiceError,
-  );
+test("Drizzle stock entry preserves Decimal memory, actor, original IDs and atomic balance", async () => {
+  const f = await createAssetsFixture();
+  try {
+    const result = await recordStockMovement(f.connection, { ...input, kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", quantity: 3, unitCost: 12, reason: "Nota fiscal 123" });
+    assert.equal(result.movement.quantityDecimal?.toFixed(6), "3.000000");
+    assert.equal(result.movement.unitValueDecimal?.toFixed(6), "12.000000");
+    assert.equal(result.movement.totalValueDecimal?.toFixed(2), "36.00");
+    assert.equal(result.movement.actorUsuarioId, actor.usuarioId);
+    assert.equal(result.movement.actorEmployeeId, actor.employeeId);
+    assert.ok(result.movement.date instanceof Date);
+    assert.match(result.movement.id, /^c/);
+    const second = await recordStockMovement(f.connection, { ...input, kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", quantity: 2 });
+    assert.equal(second.stock.id, result.stock.id);
+    assert.equal((await f.connection.db.select().from(materialStocks))[0].quantity, 5);
+    assert.equal(second.stock.unitCost, 12);
+    await assert.rejects(recordStockMovement(f.connection, { ...input, kind: "EXIT", quantity: 6 }), /insuficiente/);
+    assert.equal((await f.connection.db.select().from(materialStocks))[0].quantity, 5);
+    assert.equal((await f.connection.db.select().from(materialMovements)).length, 2);
+  } finally { await f.close(); }
 });
 
-test("rejects invalid stock quantities and costs before writing", () => {
-  assert.throws(
-    () => normalizeStockMovement({ kind: "ENTRY", warehouseId: "warehouse-1", materialId: "material-1", quantity: 0, actor }),
-    StockServiceError,
-  );
-  assert.throws(
-    () => normalizeStockMovement({ kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", warehouseId: "warehouse-1", materialId: "material-1", quantity: 1, unitCost: -1, actor }),
-    StockServiceError,
-  );
+test("Drizzle locks inventory for every regular movement and rolls back balance when audit fails", async () => {
+  const f = await createAssetsFixture();
+  try {
+    await f.pg.exec(`INSERT INTO "InventorySession" (id,"warehouseId","createdByUsuarioId","updatedAt") VALUES ('inventory-1','warehouse-1','user-1',CURRENT_TIMESTAMP)`);
+    for (const kind of ["ENTRY", "EXIT", "ADJUSTMENT"] as const) {
+      await assert.rejects(recordStockMovement(f.connection, { ...input, kind, ...(kind === "ENTRY" ? { sourceType: "APPROVED_PURCHASE_RECEIPT" as const } : {}), quantity: 1 }), /Movimentações estão bloqueadas/);
+    }
+    await f.pg.exec(`UPDATE "InventorySession" SET status='CLOSED', "lockMovements"=false;
+      CREATE FUNCTION fail_stock_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit unavailable'; END $$;
+      CREATE TRIGGER fail_stock_audit BEFORE INSERT ON "AuditEvent" FOR EACH ROW EXECUTE FUNCTION fail_stock_audit();`);
+    await assert.rejects(recordStockMovement(f.connection, { ...input, kind: "ADJUSTMENT", quantity: 2, unitCost: 10 }), error => error instanceof Error && error.cause instanceof Error && /audit unavailable/.test(error.cause.message));
+    assert.equal((await f.connection.db.select().from(materialStocks)).length, 0);
+    assert.equal((await f.connection.db.select().from(materialMovements)).length, 0);
+  } finally { await f.close(); }
 });
 
-test("allows a settlement only on stock exits", () => {
-  assert.equal(normalizeStockMovement({ kind: "EXIT", warehouseId: "warehouse-1", materialId: "material-1", quantity: 1, settlementId: "settlement-1", actor }).settlementId, "settlement-1");
-  assert.throws(
-    () => normalizeStockMovement({ kind: "ENTRY", warehouseId: "warehouse-1", materialId: "material-1", quantity: 1, settlementId: "settlement-1", actor }),
-    StockServiceError,
-  );
+test("Drizzle settlement link is validated and persisted on a regular exit", async () => {
+  const f = await createAssetsFixture();
+  try {
+    await recordStockMovement(f.connection, { ...input, kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", quantity: 2, unitCost: 12 });
+    await assert.rejects(recordStockMovement(f.connection, { ...input, kind: "EXIT", quantity: 1, settlementId: "settlement-1" }), /Liquidação não encontrada/);
+    await f.pg.exec(`INSERT INTO "Settlement" VALUES ('settlement-1','Liquidado')`);
+    const result = await recordStockMovement(f.connection, { ...input, kind: "EXIT", quantity: 1, settlementId: "settlement-1" });
+    assert.equal(result.movement.settlementId, "settlement-1");
+  } finally { await f.close(); }
 });
 
-test("records the stock row and audit evidence in one transaction", async () => {
-  const movements: Array<Record<string, unknown>> = [];
-  const transaction = {
-    $executeRaw: async () => 1,
-    warehouse: { findFirst: async () => ({ id: "warehouse-1" }) },
-    material: { findUnique: async () => ({ id: "material-1" }) },
-    inventorySession: { findFirst: async () => null },
-    materialStock: { findUnique: async () => null, upsert: async () => ({ id: "stock-1", unitCost: 12 }) },
-    materialMovement: { create: async ({ data }: { data: Record<string, unknown> }) => { movements.push(data); return { id: "movement-1" }; } },
-  };
-  const database = {
-    $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction),
-  };
-
-  await recordStockMovement(database as never, {
-    kind: "ENTRY",
-    sourceType: "APPROVED_PURCHASE_RECEIPT",
-    warehouseId: "warehouse-1",
-    materialId: "material-1",
-    quantity: 3,
-    unitCost: 12,
-    reason: "Nota fiscal 123",
-    actor,
-  });
-
-  assert.deepEqual(movements[0], {
-    type: "Entrada",
-    quantity: 3,
-    unitValue: 12,
-    quantityDecimal: new Prisma.Decimal(3),
-    unitValueDecimal: new Prisma.Decimal(12),
-    totalValueDecimal: new Prisma.Decimal(36),
-    reason: "Nota fiscal 123",
-    warehouseId: "warehouse-1",
-    materialId: "material-1",
-    stockId: "stock-1",
-    supplierId: null,
-    departmentId: null,
-    obrasServicoId: null,
-    settlementId: null,
-    inventorySessionId: null,
-    materialRequestItemId: null,
-    operation: "REGULAR",
-    idempotencyKey: null,
-    returnedMovementId: null,
-    reversedMovementId: null,
-    actorUsuarioId: "user-1",
-    actorEmployeeId: "employee-1",
-  });
+test("Drizzle returns retain source cost/batch, enforce cumulative quantity and replay identity", async () => {
+  const f = await createAssetsFixture();
+  try {
+    await recordStockMovement(f.connection, { ...input, kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", quantity: 4, unitCost: 12, batchNumber: "LOT-2026-01" });
+    const { movement: original } = await recordStockMovement(f.connection, { ...input, kind: "EXIT", quantity: 4, batchNumber: "LOT-2026-01" });
+    const request = { movementId: original.id, quantity: 2, reason: "Material não utilizado pela unidade requisitante", idempotencyKey: "stock-return-1", actor };
+    const returned = await returnStockMovement(f.connection, request);
+    assert.equal(returned.operation, "RETURN");
+    assert.equal(returned.returnedMovementId, original.id);
+    assert.equal(returned.unitValue, 12);
+    assert.equal((await returnStockMovement(f.connection, request)).id, returned.id);
+    await assert.rejects(returnStockMovement(f.connection, { ...request, quantity: 1 }), /Chave já utilizada/);
+    await assert.rejects(returnStockMovement(f.connection, { ...request, quantity: 3, idempotencyKey: "over-limit" }), /excede a quantidade/);
+    const [stock] = await f.connection.db.select().from(materialStocks).where(eq(materialStocks.id, returned.stockId!));
+    assert.equal(stock.batchNumber, "LOT-2026-01");
+    assert.equal(stock.quantity, 2);
+    await assert.rejects(reverseStockMovement(f.connection, { movementId: original.id, reason: "Estorno solicitado", idempotencyKey: "cannot-reverse-returned", actor }), /com devolução/);
+  } finally { await f.close(); }
 });
 
-test("persists an active settlement reference with a stock exit", async () => {
-  const movements: Array<Record<string, unknown>> = [];
-  const transaction = {
-    $executeRaw: async () => 1,
-    warehouse: { findFirst: async () => ({ id: "warehouse-1" }) },
-    material: { findUnique: async () => ({ id: "material-1" }) },
-    settlement: { findFirst: async () => ({ id: "settlement-1" }) },
-    inventorySession: { findFirst: async () => null },
-    materialStock: {
-      findUnique: async () => ({ id: "stock-1", unitCost: 12 }),
-      updateMany: async () => ({ count: 1 }),
-    },
-    materialMovement: { create: async ({ data }: { data: Record<string, unknown> }) => { movements.push(data); return { id: "movement-1" }; } },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
-
-  await recordStockMovement(database as never, {
-    kind: "EXIT", warehouseId: "warehouse-1", materialId: "material-1", quantity: 1, settlementId: "settlement-1", actor,
-  });
-
-  assert.equal(movements[0].settlementId, "settlement-1");
-});
-
-test("blocks every regular stock movement while the warehouse inventory is locked", async () => {
-  const transaction = {
-    $executeRaw: async () => 1,
-    warehouse: { findFirst: async () => ({ id: "warehouse-1" }) },
-    material: { findUnique: async () => ({ id: "material-1" }) },
-    inventorySession: { findFirst: async () => ({ id: "inventory-1" }) },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
-
-  for (const kind of ["ENTRY", "EXIT", "ADJUSTMENT"] as const) {
-    await assert.rejects(
-      recordStockMovement(database as never, { kind, ...(kind === "ENTRY" ? { sourceType: "APPROVED_PURCHASE_RECEIPT" as const } : {}), warehouseId: "warehouse-1", materialId: "material-1", quantity: 1, actor }),
-      /Movimentações estão bloqueadas enquanto o inventário/,
-    );
-  }
-});
-
-test("records a partial return against the original exit and its original cost", async () => {
-  const movements: Array<Record<string, unknown>> = [];
-  const original = {
-    id: "movement-exit-1",
-    type: "Saída",
-    operation: "REGULAR",
-    quantity: 4,
-    unitValue: 12,
-    warehouseId: "warehouse-1",
-    materialId: "material-1",
-    departmentId: "department-1",
-    stock: { batchNumber: "LOT-2026-01" },
-    reversalMovement: null,
-  };
-  const transaction = {
-    $executeRaw: async () => 1,
-    warehouse: { findFirst: async () => ({ id: "warehouse-1" }) },
-    material: { findUnique: async () => ({ id: "material-1", isActive: true }) },
-    inventorySession: { findFirst: async () => null },
-    materialStock: { findUnique: async () => null, upsert: async () => ({ id: "stock-1", unitCost: 12 }) },
-    materialMovement: {
-      findUnique: async ({ where }: { where: { id?: string; idempotencyKey?: string } }) => where.id ? original : null,
-      aggregate: async () => ({ _sum: { quantity: 1 } }),
-      create: async ({ data }: { data: Record<string, unknown> }) => { movements.push(data); return { id: "movement-return-1", ...data }; },
-    },
-    auditEvent: { create: async () => ({ id: "audit-1" }) },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
-
-  await returnStockMovement(database as never, {
-    movementId: original.id,
-    quantity: 2,
-    reason: "Material não utilizado pela unidade requisitante",
-    idempotencyKey: "stock-return-1",
-    actor,
-  });
-
-  assert.equal(movements[0].type, "Entrada");
-  assert.equal(movements[0].operation, "RETURN");
-  assert.equal(movements[0].returnedMovementId, original.id);
-  assert.equal(movements[0].quantity, 2);
-  assert.equal(movements[0].unitValue, 12);
-  assert.equal(movements[0].batchNumber, undefined);
-});
-
-test("rejects returns above the remaining quantity of the original exit", async () => {
-  const original = {
-    id: "movement-exit-1",
-    type: "Saída",
-    operation: "REGULAR",
-    quantity: 4,
-    unitValue: 12,
-    warehouseId: "warehouse-1",
-    materialId: "material-1",
-    departmentId: null,
-    stock: { batchNumber: "" },
-    reversalMovement: null,
-  };
-  const transaction = {
-    $executeRaw: async () => 1,
-    materialMovement: {
-      findUnique: async ({ where }: { where: { id?: string } }) => where.id ? original : null,
-      aggregate: async () => ({ _sum: { quantity: 3 } }),
-    },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
-
-  await assert.rejects(
-    returnStockMovement(database as never, {
-      movementId: original.id,
-      quantity: 2,
-      reason: "Material não utilizado pela unidade requisitante",
-      idempotencyKey: "stock-return-over-limit",
-      actor,
-    }),
-    /excede a quantidade da saída original/,
-  );
-});
-
-test("reverses an exit with one compensating entry", async () => {
-  const movements: Array<Record<string, unknown>> = [];
-  const original = {
-    id: "movement-exit-1",
-    type: "Saída",
-    operation: "REGULAR",
-    quantity: 2,
-    unitValue: 8.5,
-    warehouseId: "warehouse-1",
-    materialId: "material-1",
-    departmentId: "department-1",
-    stock: { batchNumber: "" },
-    reversalMovement: null,
-    returnMovements: [],
-  };
-  const transaction = {
-    $executeRaw: async () => 1,
-    warehouse: { findFirst: async () => ({ id: "warehouse-1" }) },
-    material: { findUnique: async () => ({ id: "material-1", isActive: true }) },
-    inventorySession: { findFirst: async () => null },
-    materialStock: { findUnique: async () => null, upsert: async () => ({ id: "stock-1", unitCost: 8.5 }) },
-    materialMovement: {
-      findUnique: async ({ where }: { where: { id?: string; idempotencyKey?: string } }) => where.id ? original : null,
-      create: async ({ data }: { data: Record<string, unknown> }) => { movements.push(data); return { id: "movement-reversal-1", ...data }; },
-    },
-    auditEvent: { create: async () => ({ id: "audit-1" }) },
-  };
-  const database = { $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
-
-  await reverseStockMovement(database as never, {
-    movementId: original.id,
-    reason: "Saída registrada para o lote incorreto",
-    idempotencyKey: "stock-reversal-1",
-    actor,
-  });
-
-  assert.equal(movements[0].type, "Entrada");
-  assert.equal(movements[0].operation, "REVERSAL");
-  assert.equal(movements[0].reversedMovementId, original.id);
-  assert.equal(movements[0].quantity, 2);
-  assert.equal(movements[0].unitValue, 8.5);
+test("Drizzle reversal creates one compensating entry and audit; replay does not duplicate", async () => {
+  const f = await createAssetsFixture();
+  try {
+    await recordStockMovement(f.connection, { ...input, kind: "ENTRY", sourceType: "APPROVED_PURCHASE_RECEIPT", quantity: 2, unitCost: 8.5 });
+    const { movement: original } = await recordStockMovement(f.connection, { ...input, kind: "EXIT", quantity: 2 });
+    const request = { movementId: original.id, reason: "Saída registrada para o lote incorreto", idempotencyKey: "stock-reversal-1", actor };
+    const reversal = await reverseStockMovement(f.connection, request);
+    assert.equal(reversal.type, "Entrada");
+    assert.equal(reversal.operation, "REVERSAL");
+    assert.equal(reversal.reversedMovementId, original.id);
+    assert.equal(reversal.quantity, 2);
+    assert.equal(reversal.unitValue, 8.5);
+    assert.equal((await reverseStockMovement(f.connection, request)).id, reversal.id);
+    assert.equal((await f.connection.db.select().from(materialStocks))[0].quantity, 2);
+    assert.equal((await f.connection.db.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM "AuditEvent"`)).rows[0].count, 1);
+  } finally { await f.close(); }
 });

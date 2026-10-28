@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readOccurrencesPage } from "@/db/repositories/personnel-pages/requests";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -8,12 +9,8 @@ import { OperationForm } from "../operacoes/OperationForm";
 
 export const dynamic = "force-dynamic";
 export default async function FunctionalOccurrencesPage({ searchParams }: { searchParams: Promise<{ page?: string; contractId?: string; type?: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH"); const params = await searchParams;
-  const where: Prisma.HrIntegrationEventWhereInput = { eventType: "OCORRENCIA_FUNCIONAL_REGISTRADA", AND: [...(params.contractId ? [{ payload: { path: ["input", "contractId"], equals: params.contractId } }] : []), ...(params.type ? [{ payload: { path: ["input", "type"], equals: params.type } }] : [])] };
-  const total = await prisma.hrIntegrationEvent.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const rows = await prisma.hrIntegrationEvent.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 });
-  const cancellations = await prisma.hrIntegrationEvent.findMany({ where: { sourceKey: { in: rows.map(row => `OCORRENCIA:CANCELAMENTO:${row.id}`) } }, select: { sourceKey: true, payload: true } });
+  const context = await getTenantContextForModule("RH"); const params = await searchParams;
+  const { total, page, rows, cancellations } = await readOccurrencesPage(context.database ?? db, params);
   const canceled = new Map(cancellations.map(row => [row.sourceKey, row.payload as { reason: string }]));
   const href = (value: number) => `?${new URLSearchParams({ page: String(value), contractId: params.contractId || "", type: params.type || "" })}`;
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3"><ErpPageTitle title="Ocorrências funcionais" description="Advertências, elogios, multas e outras ocorrências, com ato e referências GED preservados." action={<Link href="/rh/atos">Atos de pessoal</Link>} />

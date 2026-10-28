@@ -1,7 +1,7 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 
 export class OfxImportError extends Error {}
-export type OfxTransaction = { id: string; date: Date; amount: Prisma.Decimal; description: string; reference?: string; type: string };
+export type OfxTransaction = { id: string; date: Date; amount: Decimal; description: string; reference?: string; type: string };
 export type OfxStatement = { bankId: string; agency?: string; accountNumber: string; currency: string; start: Date; end: Date; transactions: OfxTransaction[]; encoding: string };
 
 function field(block: string, name: string, required = true) {
@@ -58,7 +58,7 @@ export function parseOfxStatement(bytes: Uint8Array): OfxStatement {
       if (/<CORRECTFITID\s*>/i.test(block)) throw new OfxImportError("Correção de transação bancária exige tratamento explícito; o lote não foi importado.");
       const rawAmount = field(block, "TRNAMT");
       if (!/^[+-]?\d{1,16}(?:\.\d{1,2})?$/.test(rawAmount)) throw new OfxImportError("TRNAMT deve ter até duas casas decimais, sem separador de milhar.");
-      const amount = new Prisma.Decimal(rawAmount);
+      const amount = new Decimal(rawAmount);
       if (amount.isZero()) throw new OfxImportError("Transação com valor zero.");
       const type = field(block, "TRNTYPE").toUpperCase();
       if (!["CREDIT", "DEBIT", "INT", "DIV", "FEE", "SRVCHG", "DEP", "ATM", "POS", "XFER", "CHECK", "PAYMENT", "CASH", "DIRECTDEP", "DIRECTDEBIT", "REPEATPMT", "OTHER"].includes(type)) throw new OfxImportError(`TRNTYPE não suportado: ${type}.`);

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Prisma } from "@prisma/client";
+import { Decimal } from "../src/db/decimal";
+import type { JsonValue } from "../src/db/json";
+import type { hrEmploymentContracts, hrEmploymentRevisions } from "../src/db/schema/personnel-workforce";
 import { calculateIncomeTax, INCOME_TAX_2026_BANDS, INCOME_TAX_2026_REDUCTION } from "../src/lib/rh/income-tax";
 import { calculateContribution, calculateContractRubrics, HR_PAYROLL_TYPES } from "../src/lib/rh/calculation-engine";
 import { countThirteenthAvos, pocSpecialParametersSchema, preparePocSpecialRubrics } from "../src/lib/rh/poc-special-payroll";
@@ -10,12 +12,13 @@ import { calculateServiceTimeAllowance } from "../src/lib/rh/service-time-allowa
 import { vacationDaysForAbsences } from "../src/lib/rh/vacation-entitlement";
 import { calculatePayrollPensions, payrollPensionPolicySchema } from "../src/lib/rh/payroll-pensions";
 import { resolveMonthlyContractSegments, calculateProratedMonthlyRubrics } from "../src/lib/rh/monthly-proration";
-import type { HrEmploymentContract, HrEmploymentRevision } from "@prisma/client";
+type EmploymentContract = typeof hrEmploymentContracts.$inferSelect;
+type EmploymentRevision = typeof hrEmploymentRevisions.$inferSelect;
 
 test("casos ouro T11–T15: RGPS e IRRF 2026, redução pela renda antes de deduções", () => {
   const bands = [{ lowerLimit: "0", upperLimit: "1621", employeeRate: "7.5" }, { lowerLimit: "1621", upperLimit: "2902.84", employeeRate: "9" }, { lowerLimit: "2902.84", upperLimit: "4354.27", employeeRate: "12" }, { lowerLimit: "4354.27", upperLimit: null, employeeRate: "14" }];
-  assert.equal(calculateContribution(new Prisma.Decimal(4400), bands, "PROGRESSIVA", "8475.55").toFixed(2), "417.51");
-  assert.equal(calculateContribution(new Prisma.Decimal(1621), bands, "PROGRESSIVA", "8475.55").toFixed(2), "121.58");
+  assert.equal(calculateContribution(new Decimal(4400), bands, "PROGRESSIVA", "8475.55").toFixed(2), "417.51");
+  assert.equal(calculateContribution(new Decimal(1621), bands, "PROGRESSIVA", "8475.55").toFixed(2), "121.58");
   const tax = (income: string, legal = "509.60", referenceDate = "2026-10-31") => calculateIncomeTax({ income, legalDeductions: legal, simplifiedDeduction: "607.20", bands: INCOME_TAX_2026_BANDS, referenceDate, reductionPolicy: INCOME_TAX_2026_REDUCTION });
   const gold = tax("5000");
   assert.equal(gold.base, "4392.80"); assert.equal(gold.preliminary, "312.89"); assert.equal(gold.reduction, "312.89"); assert.equal(gold.tax, "0.00");
@@ -94,15 +97,15 @@ test("pensão seleciona base, tipo de folha, vigência e dedução fiscal sem ci
 });
 
 test("rateio civil concilia revisões, admissão parcial, jornada, lotação e centavos", () => {
-  const contract = { id: "c", employeeId: "e", registration: "POC", regimeId: "r", roleId: "role", departmentId: null, costCenterId: null, workLocation: "A", salaryLevel: null, admittedAt: new Date("2020-01-01"), appointedAt: null, swornAt: null, endsAt: null, monthlyHours: 200, salary: new Prisma.Decimal(3000), status: "ATIVO", version: 1, details: {}, createdAt: new Date(), updatedAt: new Date() } as HrEmploymentContract;
-  const snapshot = (value: HrEmploymentContract) => JSON.parse(JSON.stringify(value));
-  const revisions = [{ id: "v1", contractId: "c", version: 1, effectiveFrom: new Date("2020-01-01"), snapshot: snapshot(contract) }, { id: "v2", contractId: "c", version: 2, effectiveFrom: new Date("2026-11-16"), snapshot: snapshot({ ...contract, version: 2, salary: new Prisma.Decimal(6000), monthlyHours: 100, workLocation: "B" }) }] as HrEmploymentRevision[];
+  const contract: EmploymentContract = { id: "c", employeeId: "e", registration: "POC", regimeId: "r", roleId: "role", departmentId: null, costCenterId: null, workLocation: "A", salaryLevel: null, admittedAt: new Date("2020-01-01"), appointedAt: null, swornAt: null, endsAt: null, monthlyHours: 200, salary: new Decimal(3000), status: "ATIVO", version: 1, details: {}, createdAt: new Date(), updatedAt: new Date() };
+  const snapshot = (value: EmploymentContract): JsonValue => JSON.parse(JSON.stringify(value));
+  const revisions: EmploymentRevision[] = [{ id: "v1", contractId: "c", version: 1, effectiveFrom: new Date("2020-01-01"), snapshot: snapshot(contract), actorId: "actor", reason: "Vigência inicial do caso ouro", createdAt: new Date() }, { id: "v2", contractId: "c", version: 2, effectiveFrom: new Date("2026-11-16"), snapshot: snapshot({ ...contract, version: 2, salary: new Decimal(6000), monthlyHours: 100, workLocation: "B" }), actorId: "actor", reason: "Revisão intramês do caso ouro", createdAt: new Date() }];
   const period = { start: new Date("2026-11-01"), end: new Date("2026-11-30T23:59:59.999Z") };
   const segments = resolveMonthlyContractSegments(contract, revisions, period);
   assert.deepEqual(segments.map(segment => segment.calendarDays), [15, 15]);
   const policy = { origin: "RATEIO_MENSAL_CIVIL", divisor: "DIAS_CIVIS_MES", manualMovements: "VALOR_INTEGRAL_RATEADO", legalReference: "Modelo civil POC", estimated: true };
   const rubrics = [{ code: "SALARIO", name: "Salário", type: "PROVENTO", calculationMethod: "FORMULA_CONTROLADA", formulaExpression: "SALARIO_BASE * DIAS / 30", calculationBaseCode: null, percentageRate: null, fixedValue: null, incidences: [{ incidenceType: "IRRF", isIncluded: true }] }, { code: "MANUAL", name: "Manual", type: "PROVENTO", calculationMethod: "MANUAL", formulaExpression: null, calculationBaseCode: null, percentageRate: null, fixedValue: null, incidences: [] }];
-  const result = calculateProratedMonthlyRubrics({ segments, period, policy, rubrics, movements: { MANUAL: new Prisma.Decimal("0.01") } });
+  const result = calculateProratedMonthlyRubrics({ segments, period, policy, rubrics, movements: { MANUAL: new Decimal("0.01") } });
   assert.equal(result.result.gross.toFixed(2), "4500.01");
   assert.equal(result.result.bases.IRRF.toFixed(2), "4500.00");
   assert.deepEqual(result.memory.segments.map(segment => [segment.workLocation, segment.monthlyHours]), [["A", 200], ["B", 100]]);

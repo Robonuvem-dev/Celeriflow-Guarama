@@ -1,9 +1,20 @@
 import "server-only";
 import { currentPresentationEntries } from "./catalog-presentation";
-import { Prisma } from "@prisma/client";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import type { JsonObject, JsonValue } from "@/db/json";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import { planningCatalogEntries, planningCatalogVersions, planningExpenseNatures, planningResourceSources, planningRevenueNatures } from "@/db/schema/planning-legal";
+import { planningBudgetUnits, planningEntityUnits } from "@/db/schema/planning-budget";
+import { financialAuditLogs } from "@/db/schema/finance-identity";
+import { accountingPlans } from "@/db/schema/finance-accounting";
+import { governmentEntities, healthCbos } from "@/db/schema/master-data";
+import { taxRegistryEntries } from "@/db/schema/taxation-registry";
+import { catalogServiceTargets } from "@/db/schema/planning-catalog-operations";
+import { planningEntityScope, planningUnitScope } from "@/db/repositories/planning/scope";
+import { planningConnection } from "./database";
 import { z } from "zod";
-import { assertPlanningLegalAuthority, planningEntityWhere, planningUnitWhere, type PlanningContext } from "./access";
-import { contentHash } from "./operations-core";
+import { assertPlanningLegalAuthority, type PlanningContext } from "./access";
+import { contentHash, jsonValue } from "./operations-core";
 import { AccessError, canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { createHash } from "node:crypto";
 
@@ -17,19 +28,19 @@ const mappingSchema = z.array(z.object({
   redistributionDebitSource: z.enum(["ORIGIN", "DESTINATION"]).optional(),
 })).min(1).max(500);
 
-function object(value: Prisma.JsonValue): Prisma.JsonObject {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Prisma.JsonObject : {};
+function object(value: JsonValue): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
-async function assertCanonicalTarget(tx: Prisma.TransactionClient, kind: string, id: string) {
-  const exists = kind === "ACCOUNT" ? await tx.accountingPlan.findUnique({ where: { id }, select: { id: true } })
-    : kind === "SOURCE" ? await tx.resourceSource.findUnique({ where: { id }, select: { id: true } })
-      : kind === "REVENUE" ? await tx.revenueNature.findUnique({ where: { id }, select: { id: true } })
-        : kind === "EXPENSE" ? await tx.expenseNature.findUnique({ where: { id }, select: { id: true } })
-          : kind === "CBO" ? await tx.healthCbo.findUnique({ where: { id }, select: { id: true } })
-            : kind === "SERVICE" ? await tx.taxServiceActivity.findUnique({ where: { id }, select: { id: true } })
-              : kind === "CNAE" ? await tx.taxRegistryEntry.findFirst({ where: { id, category: "CNAE_CATALOG", status: "ATIVO" }, select: { id: true } }) : null;
-  if (!exists) throw new Error(`Destino canônico inexistente ou tipo não suportado: ${kind}.`);
+async function assertCanonicalTarget(tx: DatabaseTransaction, kind: string, id: string) {
+  const rows = kind === "ACCOUNT" ? await tx.select({ id: accountingPlans.id }).from(accountingPlans).where(eq(accountingPlans.id, id)).limit(1)
+    : kind === "SOURCE" ? await tx.select({ id: planningResourceSources.id }).from(planningResourceSources).where(eq(planningResourceSources.id, id)).limit(1)
+      : kind === "REVENUE" ? await tx.select({ id: planningRevenueNatures.id }).from(planningRevenueNatures).where(eq(planningRevenueNatures.id, id)).limit(1)
+        : kind === "EXPENSE" ? await tx.select({ id: planningExpenseNatures.id }).from(planningExpenseNatures).where(eq(planningExpenseNatures.id, id)).limit(1)
+          : kind === "CBO" ? await tx.select({ id: healthCbos.id }).from(healthCbos).where(eq(healthCbos.id, id)).limit(1)
+            : kind === "SERVICE" ? await tx.select({ id: catalogServiceTargets.id }).from(catalogServiceTargets).where(eq(catalogServiceTargets.id, id)).limit(1)
+              : kind === "CNAE" ? await tx.select({ id: taxRegistryEntries.id }).from(taxRegistryEntries).where(and(eq(taxRegistryEntries.id, id), eq(taxRegistryEntries.category, "CNAE_CATALOG"), eq(taxRegistryEntries.status, "ATIVO"))).limit(1) : [];
+  if (!rows.length) throw new Error(`Destino canônico inexistente ou tipo não suportado: ${kind}.`);
 }
 
 /** Preserve a supplied table as a captured reference, including services and account metadata. */
@@ -47,18 +58,18 @@ export async function importSharedReferenceCatalog(context: PlanningContext, raw
     if (!parent || parent.degree >= row.degree) throw new Error("Hierarquia incompleta ou grau do pai incompatível.");
   }
   const sourceHash = createHash("sha256").update(input.sourceContents).digest("hex");
-  return context.prisma.$transaction(async tx => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`SHARED_REFERENCE:${input.year}:${sourceHash}`}, 0))::text`;
-    const prior = await tx.planningCatalogVersion.findUnique({ where: { year_sourceHash: { year: input.year, sourceHash } } });
+  return withDatabaseTransaction(planningConnection(context), async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`SHARED_REFERENCE:${input.year}:${sourceHash}`}, 0))::text`);
+    const [prior] = await tx.select().from(planningCatalogVersions).where(and(eq(planningCatalogVersions.year, input.year), eq(planningCatalogVersions.sourceHash, sourceHash))).limit(1);
     if (prior) {
       if (prior.label !== input.label || prior.normativeReference !== input.normativeReference) throw new Error("Arquivo já capturado com outra identificação ou referência.");
       return prior.id;
     }
-    const version = await tx.planningCatalogVersion.create({ data: { year: input.year, label: input.label, normativeReference: input.normativeReference, sourceHash, createdById: context.user.id } });
-    for (let offset = 0; offset < rows.length; offset += 300) await tx.planningCatalogEntry.createMany({ data: rows.slice(offset, offset + 300).map(row => ({ versionId: version.id, kind: row.kind, code: row.code, name: row.name, degree: row.degree, parentCode: row.parentCode, canonicalId: `UNMAPPED:${row.kind}:${row.code}`, attributes: { ...(row.attributes as Prisma.InputJsonObject), sourceHash, externalCode: row.code, operational: false, mapped: false, homologated: false, sourceOrigin: "SUPPLIED_REFERENCE" } })) });
-    await tx.financialAuditLog.create({ data: { action: "SHARED_REFERENCE_CAPTURE", entityType: "PlanningCatalogVersion", entityId: version.id, authorUsuarioId: context.user.id, payload: { year: input.year, sourceHash, sourceContents: input.sourceContents, sourceEncoding: "UTF-8", normativeReference: input.normativeReference, rows: rows.length, status: "DRAFT" } } });
+    const [version] = await tx.insert(planningCatalogVersions).values({ year: input.year, label: input.label, normativeReference: input.normativeReference, sourceHash, createdById: context.user.id }).returning();
+    for (let offset = 0; offset < rows.length; offset += 300) await tx.insert(planningCatalogEntries).values(rows.slice(offset, offset + 300).map(row => ({ versionId: version.id, kind: row.kind, code: row.code, name: row.name, degree: row.degree, parentCode: row.parentCode, canonicalId: `UNMAPPED:${row.kind}:${row.code}`, attributes: jsonValue({ ...row.attributes, sourceHash, externalCode: row.code, operational: false, mapped: false, homologated: false, sourceOrigin: "SUPPLIED_REFERENCE" }) })));
+    await tx.insert(financialAuditLogs).values({ action: "SHARED_REFERENCE_CAPTURE", entityType: "PlanningCatalogVersion", entityId: version.id, authorUsuarioId: context.user.id, payload: { year: input.year, sourceHash, sourceContents: input.sourceContents, sourceEncoding: "UTF-8", normativeReference: input.normativeReference, rows: rows.length, status: "DRAFT" } });
     return version.id;
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }
 
 /** Creates only the shared canonical reference; operational adoption remains a distinct edition. */
@@ -66,27 +77,29 @@ export async function createCanonicalActivityReference(context: PlanningContext,
   assertPlanningLegalAuthority(context);
   if (!canPerformModuleOperation(context.user, "CADASTROS", "create")) throw new AccessError("Cadastrar referências exige autorização em Cadastros.", 403);
   const input = z.object({ sourceEntryId: z.string().trim().min(1) }).parse(raw);
-  return context.prisma.$transaction(async tx => {
-    const entry = await tx.planningCatalogEntry.findUniqueOrThrow({ where: { id: input.sourceEntryId }, include: { version: true } });
+  return withDatabaseTransaction(planningConnection(context), async tx => {
+    const [row] = await tx.select({ entry: planningCatalogEntries, version: planningCatalogVersions }).from(planningCatalogEntries).innerJoin(planningCatalogVersions, eq(planningCatalogVersions.id, planningCatalogEntries.versionId)).where(eq(planningCatalogEntries.id, input.sourceEntryId)).limit(1);
+    if (!row) throw new Error("Referência de catálogo não encontrada.");
+    const entry = { ...row.entry, version: row.version };
     if (!["CNAE", "CBO"].includes(entry.kind) || !/^[a-f0-9]{64}$/i.test(entry.version.sourceHash)) throw new Error("Selecione uma referência CNAE/CBO com origem capturada e hash preservado.");
     const code = entry.code.replace(/\D/g, "");
     if (code.length !== (entry.kind === "CNAE" ? 7 : 6)) throw new Error("Código externo de CNAE/CBO inválido.");
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`CANONICAL_REFERENCE:${entry.kind}:${code}`}, 0))::text`;
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`CANONICAL_REFERENCE:${entry.kind}:${code}`}, 0))::text`);
     if (entry.kind === "CBO") {
-      const existing = await tx.healthCbo.findUnique({ where: { code } });
+      const [existing] = await tx.select().from(healthCbos).where(eq(healthCbos.code, code)).limit(1);
       if (existing) return existing.id;
-      const reference = await tx.healthCbo.create({ data: { code, description: entry.name } });
-      await tx.financialAuditLog.create({ data: { action: "CANONICAL_ACTIVITY_REFERENCE", entityType: "HealthCbo", entityId: reference.id, authorUsuarioId: context.user.id, payload: { sourceEntryId: entry.id, sourceVersionId: entry.versionId, sourceHash: entry.version.sourceHash, externalCode: code } } });
+      const [reference] = await tx.insert(healthCbos).values({ code, description: entry.name }).returning();
+      await tx.insert(financialAuditLogs).values({ action: "CANONICAL_ACTIVITY_REFERENCE", entityType: "HealthCbo", entityId: reference.id, authorUsuarioId: context.user.id, payload: { sourceEntryId: entry.id, sourceVersionId: entry.versionId, sourceHash: entry.version.sourceHash, externalCode: code } });
       return reference.id;
     }
     const referenceId = `CNAE_REFERENCE:${code}`;
-    const existing = await tx.taxRegistryEntry.findUnique({ where: { id: referenceId } });
+    const [existing] = await tx.select().from(taxRegistryEntries).where(eq(taxRegistryEntries.id, referenceId)).limit(1);
     if (existing) {
       if (existing.category !== "CNAE_CATALOG" || existing.entityType !== "CNAE_REFERENCE" || existing.entityId !== code) throw new Error("Identificador de referência já utilizado com outro conteúdo.");
       return existing.id;
     }
-    await tx.taxRegistryEntry.create({ data: { id: referenceId, entityType: "CNAE_REFERENCE", entityId: code, category: "CNAE_CATALOG", title: entry.name, source: "OFFICIAL_CAPTURE", actorUsuarioId: context.user.id, data: { externalCode: code, sourceEntryId: entry.id, sourceVersionId: entry.versionId, sourceHash: entry.version.sourceHash, effectiveDatesVerified: false } } });
-    await tx.financialAuditLog.create({ data: { action: "CANONICAL_ACTIVITY_REFERENCE", entityType: "TaxRegistryEntry", entityId: referenceId, authorUsuarioId: context.user.id, payload: { sourceEntryId: entry.id, sourceVersionId: entry.versionId, sourceHash: entry.version.sourceHash, externalCode: code } } });
+    await tx.insert(taxRegistryEntries).values({ id: referenceId, entityType: "CNAE_REFERENCE", entityId: code, category: "CNAE_CATALOG", title: entry.name, source: "OFFICIAL_CAPTURE", actorUsuarioId: context.user.id, data: { externalCode: code, sourceEntryId: entry.id, sourceVersionId: entry.versionId, sourceHash: entry.version.sourceHash, effectiveDatesVerified: false } });
+    await tx.insert(financialAuditLogs).values({ action: "CANONICAL_ACTIVITY_REFERENCE", entityType: "TaxRegistryEntry", entityId: referenceId, authorUsuarioId: context.user.id, payload: { sourceEntryId: entry.id, sourceVersionId: entry.versionId, sourceHash: entry.version.sourceHash, externalCode: code } });
     return referenceId;
   });
 }
@@ -100,27 +113,33 @@ export async function adoptMunicipalCatalog(context: PlanningContext, raw: unkno
   try { decoded = JSON.parse(input.mappings); } catch { throw new Error("De-para deve ser um array JSON de sourceEntryId e canonicalId."); }
   const mappings = mappingSchema.parse(decoded).sort((a, b) => a.sourceEntryId.localeCompare(b.sourceEntryId));
   if (new Set(mappings.map(row => row.sourceEntryId)).size !== mappings.length) throw new Error("Entrada de origem repetida no de-para.");
-  return context.prisma.$transaction(async tx => {
-    await tx.governmentEntity.findFirstOrThrow({ where: { AND: [planningEntityWhere(context), { id: input.governmentEntityId }] } });
-    if (input.budgetUnitId) await tx.budgetUnit.findFirstOrThrow({ where: { AND: [planningUnitWhere(context), { id: input.budgetUnitId, planningEntityUnit: { is: { governmentEntityId: input.governmentEntityId } } }] } });
+  return withDatabaseTransaction(planningConnection(context), async tx => {
+    const [entity] = await tx.select({ id: governmentEntities.id }).from(governmentEntities).where(and(eq(governmentEntities.id, input.governmentEntityId), planningEntityScope(context, governmentEntities.id))).limit(1);
+    if (!entity) throw new AccessError("Entidade não autorizada para esta adoção.", 403);
+    if (input.budgetUnitId) {
+      const [unit] = await tx.select({ id: planningBudgetUnits.id }).from(planningBudgetUnits).innerJoin(planningEntityUnits, eq(planningEntityUnits.budgetUnitId, planningBudgetUnits.id)).where(and(planningUnitScope(context, planningBudgetUnits.id), eq(planningBudgetUnits.id, input.budgetUnitId), eq(planningEntityUnits.governmentEntityId, input.governmentEntityId))).limit(1);
+      if (!unit) throw new AccessError("Unidade não autorizada nesta entidade.", 403);
+    }
     const year = Number(input.effectiveFrom.slice(0, 4));
     // Entity-wide lock also serializes UG editions against entity-wide editions.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`MUNICIPAL_CATALOG:${input.governmentEntityId}:${year}`}, 0))::text`;
-    const source = await tx.planningCatalogVersion.findUniqueOrThrow({ where: { id: input.sourceVersionId } });
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`MUNICIPAL_CATALOG:${input.governmentEntityId}:${year}`}, 0))::text`);
+    const [source] = await tx.select().from(planningCatalogVersions).where(eq(planningCatalogVersions.id, input.sourceVersionId)).limit(1);
+    if (!source) throw new Error("Versão de origem não encontrada.");
     if (source.year !== year || !/^[a-f0-9]{64}$/i.test(source.sourceHash)) throw new Error("Origem sem hash verificável ou pertencente a outro exercício.");
-    const entries = await tx.planningCatalogEntry.findMany({ where: { versionId: source.id, id: { in: mappings.map(row => row.sourceEntryId) } } });
+    const entries = await tx.select().from(planningCatalogEntries).where(and(eq(planningCatalogEntries.versionId, source.id), inArray(planningCatalogEntries.id, mappings.map(row => row.sourceEntryId))));
     if (entries.length !== mappings.length) throw new Error("O de-para contém entrada de outra origem ou inexistente.");
     const { mappings: serializedMappings, ...decision } = input;
     void serializedMappings;
     const hash = contentHash({ ...decision, mappings, sourceHash: source.sourceHash });
     const versionId = `municipal-catalog:${hash}`;
-    const prior = await tx.planningCatalogVersion.findUnique({ where: { id: versionId }, include: { entries: true } });
+    const [prior] = await tx.select().from(planningCatalogVersions).where(eq(planningCatalogVersions.id, versionId)).limit(1);
     if (prior) {
-      if (prior.sourceHash !== hash || prior.status !== "PUBLISHED" || prior.entries.length !== mappings.length) throw new Error("Adoção persistida divergente; concilie sua edição.");
+      const priorEntries = await tx.select({ id: planningCatalogEntries.id }).from(planningCatalogEntries).where(eq(planningCatalogEntries.versionId, prior.id));
+      if (prior.sourceHash !== hash || prior.status !== "PUBLISHED" || priorEntries.length !== mappings.length) throw new Error("Adoção persistida divergente; concilie sua edição.");
       return prior.id;
     }
     const canonicalKeys = new Set<string>();
-    const adopted: Prisma.PlanningCatalogEntryCreateWithoutVersionInput[] = [];
+    const adopted: (typeof planningCatalogEntries.$inferInsert)[] = [];
     for (const mapping of mappings) {
       const entry = entries.find(row => row.id === mapping.sourceEntryId)!;
       const key = `${entry.kind}:${mapping.canonicalId}`;
@@ -132,7 +151,8 @@ export async function adoptMunicipalCatalog(context: PlanningContext, raw: unkno
       if (attributes.synthetic === true || attributes.pocOnly === true) throw new Error("Uma referência sintética não pode ser promovida a catálogo municipal.");
       if (typeof attributes.effectiveFrom === "string" && input.effectiveFrom < attributes.effectiveFrom || typeof attributes.effectiveUntil === "string" && input.effectiveUntil > attributes.effectiveUntil) throw new Error("Vigência municipal excede a vigência documentada da origem.");
       if (entry.kind === "ACCOUNT" && (attributes.postingAllowed !== true || !["D", "C", "X", "DC", "D/C"].includes(String(attributes.balanceNature)))) throw new Error("Conta de origem sintética ou sem natureza D/C documentada.");
-      const overlaps = await tx.planningCatalogEntry.findMany({ where: { kind: entry.kind, canonicalId: mapping.canonicalId, version: { year, status: "PUBLISHED" } }, include: { version: { select: { year: true } } } });
+      const overlapRows = await tx.select({ entry: planningCatalogEntries, year: planningCatalogVersions.year }).from(planningCatalogEntries).innerJoin(planningCatalogVersions, eq(planningCatalogVersions.id, planningCatalogEntries.versionId)).where(and(eq(planningCatalogEntries.kind, entry.kind), eq(planningCatalogEntries.canonicalId, mapping.canonicalId), eq(planningCatalogVersions.year, year), eq(planningCatalogVersions.status, "PUBLISHED")));
+      const overlaps = overlapRows.map(row => ({ ...row.entry, version: { year: row.year } }));
       const applicable = overlaps.filter(row => {
         const attrs = object(row.attributes);
         return (!attrs.governmentEntityId || attrs.governmentEntityId === input.governmentEntityId)
@@ -148,14 +168,15 @@ export async function adoptMunicipalCatalog(context: PlanningContext, raw: unkno
         if ((previous.governmentEntityId ?? null) !== input.governmentEntityId || (previous.budgetUnitId ?? null) !== (input.budgetUnitId ?? null)) throw new Error("Uma sucessão deve preservar o ente e o alcance de UG da edição anterior.");
         if (input.effectiveFrom <= String(previous.effectiveFrom) || input.effectiveUntil > String(previous.effectiveUntil)) throw new Error("Sucessão exige data posterior e vigência contida na edição anterior.");
       } else if (current.length) throw new Error("Classificação publicada sobreposta; informe predecessorEntryId no de-para ou ajuste a vigência.");
-      adopted.push({ kind: entry.kind, code: entry.code, name: entry.name, degree: entry.degree, canonicalId: mapping.canonicalId,
+      adopted.push({ versionId, kind: entry.kind, code: entry.code, name: entry.name, degree: entry.degree, canonicalId: mapping.canonicalId,
         // A subset is not a fabricated full official hierarchy; preserve its source parent in the snapshot.
         parentCode: entries.some(row => row.kind === entry.kind && row.code === entry.parentCode) ? entry.parentCode : null,
-        attributes: { ...attributes, ...(mapping.redistributionDebitSource ? { redistributionDebitSource: mapping.redistributionDebitSource } : {}), sourceParentCode: entry.parentCode, sourceEntryId: entry.id, sourceVersionId: source.id, sourceHash: source.sourceHash, externalCode: entry.code, governmentEntityId: input.governmentEntityId, budgetUnitId: input.budgetUnitId ?? null, predecessorEntryId: mapping.predecessorEntryId ?? null, effectiveFrom: input.effectiveFrom, effectiveUntil: input.effectiveUntil, operational: true, mapped: true, pocOnly: false, homologated: false, parameterOrigin: "MUNICIPAL_CONFIGURATION", decision: input.reason } as Prisma.InputJsonObject });
+        attributes: { ...attributes, ...(mapping.redistributionDebitSource ? { redistributionDebitSource: mapping.redistributionDebitSource } : {}), sourceParentCode: entry.parentCode, sourceEntryId: entry.id, sourceVersionId: source.id, sourceHash: source.sourceHash, externalCode: entry.code, governmentEntityId: input.governmentEntityId, budgetUnitId: input.budgetUnitId ?? null, predecessorEntryId: mapping.predecessorEntryId ?? null, effectiveFrom: input.effectiveFrom, effectiveUntil: input.effectiveUntil, operational: true, mapped: true, pocOnly: false, homologated: false, parameterOrigin: "MUNICIPAL_CONFIGURATION", decision: input.reason } });
     }
-    await tx.planningCatalogVersion.create({ data: { id: versionId, year, label: input.label, normativeReference: input.reason, sourceHash: hash, status: "DRAFT", createdById: context.user.id, entries: { create: adopted } } });
-    await tx.planningCatalogVersion.update({ where: { id: versionId }, data: { status: "PUBLISHED" } });
-    await tx.financialAuditLog.create({ data: { action: "MUNICIPAL_CATALOG_ADOPTION", entityType: "PlanningCatalogVersion", entityId: versionId, authorUsuarioId: context.user.id, payload: { governmentEntityId: input.governmentEntityId, budgetUnitId: input.budgetUnitId ?? null, sourceVersionId: source.id, sourceHash: source.sourceHash, adoptionHash: hash, effectiveFrom: input.effectiveFrom, effectiveUntil: input.effectiveUntil, mappings, reason: input.reason, homologated: false } } });
+    await tx.insert(planningCatalogVersions).values({ id: versionId, year, label: input.label, normativeReference: input.reason, sourceHash: hash, status: "DRAFT", createdById: context.user.id });
+    await tx.insert(planningCatalogEntries).values(adopted);
+    await tx.update(planningCatalogVersions).set({ status: "PUBLISHED" }).where(eq(planningCatalogVersions.id, versionId));
+    await tx.insert(financialAuditLogs).values({ action: "MUNICIPAL_CATALOG_ADOPTION", entityType: "PlanningCatalogVersion", entityId: versionId, authorUsuarioId: context.user.id, payload: { governmentEntityId: input.governmentEntityId, budgetUnitId: input.budgetUnitId ?? null, sourceVersionId: source.id, sourceHash: source.sourceHash, adoptionHash: hash, effectiveFrom: input.effectiveFrom, effectiveUntil: input.effectiveUntil, mappings, reason: input.reason, homologated: false } });
     return versionId;
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }

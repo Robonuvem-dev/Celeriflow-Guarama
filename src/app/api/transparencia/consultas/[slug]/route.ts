@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { parseTransparencyQuery } from "@/lib/transparencia/query-contract";
 import { runTransparencyConsultation,publishedTransparencyCatalog } from "@/lib/transparencia/consultation-service";
 import {getTransparencySettings} from "@/lib/transparencia/presentation-settings";
@@ -23,11 +23,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   try { query = parseTransparencyQuery(search); } catch { return Response.json({ error: "Filtros inválidos." }, { status: 400 }); }
   try {
     if(requestedFormat==="schema"){
-      const settings=await getTransparencySettings(prisma),definition=publishedTransparencyCatalog(settings).find(collection=>collection.slug===slug);if(!definition)return new Response(null,{status:404});
+      const settings=await getTransparencySettings(db),definition=publishedTransparencyCatalog(settings).find(collection=>collection.slug===slug);if(!definition)return new Response(null,{status:404});
       const collection=query.source==="DOCUMENTOS"?{...getTransparencyCollection("publicacoes")!,slug,title:definition.title}:definition;
       return Response.json({title:collection.title,source:query.source,columns:collection.columns.map(column=>({...column,type:column.kind==="money"?"decimal textual com duas casas":column.kind==="date"?"data ISO YYYY-MM-DD":column.kind==="number"?"número":"texto"})),filters:collection.filters,periodField:collection.periodField||"date",pagination:"Página começa em 1; CSV/PDF/XLSX/TXT/DOCX/JSON/JPEG exportam o conjunto completo filtrado. JPEG é um ZIP de páginas, limitado a 1.000 registros.",missingData:"null = campo não informado; total financeiro com campo ausente não vira zero.",provenance:"API de Ibema, dados nativos, documentos e exemplos fictícios são fontes separadas."});
     }
-    const result = await runTransparencyConsultation(prisma, slug, query);
+    const result = await runTransparencyConsultation(db, slug, query);
     if(result.status==="NOT_ADOPTED")return Response.json({status:result.status,source:result.source,message:result.message,declarationLinks:result.declarationLinks,records:[],totals:result.totals},{headers:{"Cache-Control":"no-store"}});
     if (result.status !== "AVAILABLE" || !result.complete) return Response.json({ status: result.status, error: result.message || "Fonte indisponível.", source: result.source }, { status: 503 });
     const format=search.get("format");

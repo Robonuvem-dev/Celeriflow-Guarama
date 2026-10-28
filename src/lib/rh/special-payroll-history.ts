@@ -1,4 +1,6 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { requirePayrollRunWithStatements } from "@/db/repositories/personnel/workforce";
 import { z } from "zod";
 import { payrollPeriod } from "./calculation-engine";
 
@@ -14,8 +16,8 @@ export type SpecialPayrollHistory = {
   bases: Record<string, string>; employer: string; schemeCode: string | null; pensionIncomeTaxDeduction: string;
 };
 
-export async function loadSpecialPayrollHistory(tx: Prisma.TransactionClient, input: { sourceRunId: string; payrollId: string; payrollType: string; competence: string; contractIds: string[]; ruleSetId: string; scope: string }) {
-  const source = await tx.hrPayrollRun.findUniqueOrThrow({ where: { id: input.sourceRunId }, include: { payroll: true, statements: true } });
+export async function loadSpecialPayrollHistory(tx: DatabaseExecutor, input: { sourceRunId: string; payrollId: string; payrollType: string; competence: string; contractIds: string[]; ruleSetId: string; scope: string }) {
+  const source = await requirePayrollRunWithStatements(tx, input.sourceRunId);
   if (source.payrollId === input.payrollId || source.mode !== "OFICIAL" || source.status !== "FECHADA" || source.scope !== input.scope || source.ruleSetId !== input.ruleSetId) throw new Error("Origem especial exige outra execução fechada do mesmo conjunto e escopo.");
   const expected = input.payrollType === "13º" ? "1ª parcela 13º" : input.payrollType === "Diferença 13º" ? "13º" : null;
   const original = payrollPeriod(source.payroll.competence).start, target = payrollPeriod(input.competence).start;
@@ -24,9 +26,9 @@ export async function loadSpecialPayrollHistory(tx: Prisma.TransactionClient, in
   const result = new Map<string, SpecialPayrollHistory>();
   for (const statement of source.statements) {
     const snapshot = snapshotSchema.parse(statement.snapshot);
-    const sum = (code: string) => snapshot.items.filter(item => item.code === code).reduce((value, item) => value.add(item.value), new Prisma.Decimal(0)).toFixed(2);
+    const sum = (code: string) => snapshot.items.filter(item => item.code === code).reduce((value, item) => value.add(item.value), new Decimal(0)).toFixed(2);
     const schemeCode = snapshot.regime.socialSecurityScheme?.code ?? null;
-    result.set(statement.contractId, { runId: source.id, statementId: statement.id, payrollId: source.payrollId, competence: source.payroll.competence, payrollType: source.payroll.type, gross: statement.gross.toFixed(2), advance: sum("POC_ADIANTAMENTO_13"), incomeTax: sum("IRRF"), socialContribution: schemeCode ? sum(`PREVIDENCIA_${schemeCode}`) : "0.00", bases: snapshot.bases, employer: statement.employer.sub(sum("FGTS")).toFixed(2), schemeCode, pensionIncomeTaxDeduction: snapshot.pensions.filter(pension => pension.deductFromIncomeTax).reduce((value, pension) => value.add(pension.amount), new Prisma.Decimal(0)).toFixed(2) });
+    result.set(statement.contractId, { runId: source.id, statementId: statement.id, payrollId: source.payrollId, competence: source.payroll.competence, payrollType: source.payroll.type, gross: statement.gross.toFixed(2), advance: sum("POC_ADIANTAMENTO_13"), incomeTax: sum("IRRF"), socialContribution: schemeCode ? sum(`PREVIDENCIA_${schemeCode}`) : "0.00", bases: snapshot.bases, employer: statement.employer.sub(sum("FGTS")).toFixed(2), schemeCode, pensionIncomeTaxDeduction: snapshot.pensions.filter(pension => pension.deductFromIncomeTax).reduce((value, pension) => value.add(pension.amount), new Decimal(0)).toFixed(2) });
   }
   return result;
 }

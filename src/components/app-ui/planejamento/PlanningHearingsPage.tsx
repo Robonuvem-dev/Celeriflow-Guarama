@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { PlanningForm } from "./PlanningForm";
-import { getPlanningContext, planningInstrumentWhere, planningUnitWhere } from "@/lib/planejamento/access";
+import { getPlanningContext } from "@/lib/planejamento/access";
+import { pageHearings } from "@/db/repositories/planning-pages/hearings";
+import { pageDatabase, pageDocumentClasses } from "@/db/repositories/planning-pages/shared";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { planningBasePath, type PlanningJurisdiction } from "@/lib/planejamento/policy";
 import { PlanningDocumentUpload } from "./PlanningDocumentUpload";
@@ -13,21 +15,13 @@ import { PlanningDocumentUpload } from "./PlanningDocumentUpload";
 export async function PlanningHearingsPage({ jurisdiction, filters }: { jurisdiction: PlanningJurisdiction; filters: { hearingId?: string; page?: string } }) {
   const context = await getPlanningContext(jurisdiction);
   const base = `${planningBasePath(jurisdiction)}/audiencias`;
-  const where = { hearing: { instrument: planningInstrumentWhere(context) }, responsibleUnit: planningUnitWhere(context), ...(filters.hearingId ? { hearingId: filters.hearingId } : {}) };
-  const total = await context.prisma.planningCommunityDemand.count({ where });
-  const requested = Number(filters.page ?? 1);
-  const page = Math.min(Number.isSafeInteger(requested) && requested > 0 ? requested : 1, Math.max(1, Math.ceil(total / 20)));
-  const [hearings, instruments, units, demands] = await Promise.all([
-    context.prisma.planningHearing.findMany({ where: { instrument: planningInstrumentWhere(context) }, select: { id: true, instrumentId: true, title: true, heldAt: true, location: true, minutes: true, documentLinks: { select: { id: true, purpose: true, document: { select: { title: true } } }, orderBy: { createdAt: "desc" } } }, orderBy: [{ heldAt: "desc" }, { id: "asc" }] }),
-    context.prisma.planningInstrument.findMany({ where: planningInstrumentWhere(context), select: { id: true, title: true }, orderBy: [{ startYear: "desc" }, { id: "asc" }] }),
-    context.prisma.budgetUnit.findMany({ where: planningUnitWhere(context), select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    context.prisma.planningCommunityDemand.findMany({ where, include: { hearing: { select: { title: true } }, responsibleUnit: { select: { name: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 }),
-  ]);
+  const database = pageDatabase(context);
+  const { total, page, hearings, instruments, units, demands } = await pageHearings(database, context, filters);
   const hearingOptions = hearings.map((row) => ({ id: row.id, name: `${row.title} · ${row.heldAt.toLocaleDateString("pt-BR", { timeZone: "UTC" })}` }));
   const href = (value: number) => `${base}?${new URLSearchParams({ hearingId: filters.hearingId ?? "", page: String(value) })}`;
   const selected = hearings.find((hearing) => hearing.id === filters.hearingId);
   const canUpload = canPerformModuleOperation(context.user, "PLANEJAMENTO", "update") && canPerformModuleOperation(context.user, "DOCUMENTOS", "create");
-  const classes = selected && canUpload ? await context.prisma.documentClass.findMany({ where: { isActive: true, OR: [{ code: { startsWith: "PLANEJAMENTO" } }, { code: { startsWith: "PLANNING" } }] }, select: { code: true, label: true }, orderBy: { code: "asc" } }) : [];
+  const classes = selected && canUpload ? await pageDocumentClasses(database) : [];
   return <PageFrame className="space-y-3 p-3"><PageHeader title="Audiências e participação comunitária" />
     <form className="flex flex-wrap gap-2"><select aria-label="Audiência" name="hearingId" defaultValue={filters.hearingId} className="rounded border bg-background p-2 text-sm"><option value="">Todas autorizadas</option>{hearingOptions.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select><button className="rounded border px-3 text-sm">Consultar</button></form>
     {selected && <Card><CardHeader><CardTitle>{selected.title}</CardTitle></CardHeader><CardContent className="space-y-4"><div><p className="text-xs">{selected.location} · {selected.heldAt.toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>{selected.minutes && <p className="whitespace-pre-wrap pt-2 text-sm">{selected.minutes}</p>}</div><section aria-label="Documentos da audiência" className="space-y-2 border-t pt-3"><h2 className="text-sm font-semibold">Documentos e atas</h2>{selected.documentLinks.length ? <ul className="space-y-1">{selected.documentLinks.map((link) => <li key={link.id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{link.document.title} <span className="text-xs text-muted-foreground">· {link.purpose === "HEARING_MINUTES" ? "Ata" : "Anexo"}</span></span><Link className="rounded border px-3 py-1 text-xs underline" href={`${planningBasePath(jurisdiction)}/documentos/${link.id}`}>Baixar / visualizar</Link></li>)}</ul> : <p className="text-sm text-muted-foreground">Nenhum arquivo anexado a esta audiência.</p>}{canUpload && classes.length > 0 && <details className="rounded border p-3"><summary className="cursor-pointer text-sm font-medium">Anexar documento ou ata</summary><div className="pt-3"><PlanningDocumentUpload jurisdiction={jurisdiction} instrumentId={selected.instrumentId} hearingId={selected.id} classes={classes} /></div></details>}{canUpload && classes.length === 0 && <p className="text-xs text-muted-foreground">Para anexar, é necessário configurar uma classe documental ativa de Planejamento no GED.</p>}</section></CardContent></Card>}

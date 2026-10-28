@@ -1,6 +1,7 @@
 import "server-only";
 
-import { Prisma, type PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { completeIntegrationRun, findIntegrationConnection, listActiveIntegrationRuns, startIntegrationRun } from "@/db/repositories/platform/integrations";
 import { bankIntegrationClient } from "@/lib/financeiro/bank-integration-client";
 import type { BankAccountConfig, BankStatementResponse, DateRange } from "@/lib/financeiro/bank-integration-client";
 import { buildRunCompletionEnvelope, buildRunStartEnvelope } from "./contract";
@@ -70,11 +71,11 @@ const statementDownloadAdapter: IntegrationAdapter<BankStatementResponse> = {
 };
 
 export async function executeConfiguredIntegration<T>(
-  prisma: PrismaClient,
+  db: DatabaseExecutor,
   input: ExecutionInput,
   adapter: IntegrationAdapter<T>,
 ): Promise<AdapterResult<T>> {
-  const connection = await prisma.integrationConnection.findUnique({ where: { code: input.code } });
+  const connection = await findIntegrationConnection(db, "code", input.code);
   if (!connection) throw new IntegrationExecutionError(`A integração ${input.code} não está configurada nesta instalação.`);
 
   const environment = connection.environment as IntegrationEnvironment;
@@ -88,27 +89,15 @@ export async function executeConfiguredIntegration<T>(
   if (activeExecutionKeys.has(executionKey)) {
     throw new IntegrationExecutionError("Uma execução idêntica já está em andamento para esta conexão.");
   }
-  const inFlight = await prisma.integrationRun.findMany({
-    where: { connectionId: connection.id, status: "EXECUTANDO" },
-    select: { payload: true },
-  });
+  const inFlight = await listActiveIntegrationRuns(db, connection.id);
   if (inFlight.some((run) => (run.payload as { idempotencyKey?: unknown } | null)?.idempotencyKey === started.idempotencyKey)) {
     throw new IntegrationExecutionError("Uma execução idêntica já está em andamento para esta conexão.");
   }
 
   activeExecutionKeys.add(executionKey);
-  const run = await prisma.integrationRun.create({
-    data: {
-      connectionId: connection.id,
-      operation: input.operation,
-      environment,
-      status: "EXECUTANDO",
-      message: "Execução iniciada pelo contrato C1-005.",
-      payload: started as Prisma.InputJsonValue,
-    },
-  });
-
+  let run: { id: string } | undefined;
   try {
+    run = await startIntegrationRun(db, { connectionId: connection.id, operation: input.operation, environment, payload: started });
     if (!input.allowUnverifiedConnection && connection.status !== "ATIVA") {
       throw new IntegrationExecutionError(`A integração ${input.code} não está ativa nesta instalação.`);
     }
@@ -125,36 +114,21 @@ export async function executeConfiguredIntegration<T>(
       ? { ...input.payload as Record<string, unknown>, code: input.code }
       : { code: input.code };
     const result = await adapter.execute({ environment, mockScenario: connection.mockScenario, input: adapterInput, connection });
-    await prisma.integrationRun.update({
-      where: { id: run.id },
-      data: {
-        status: result.status,
-        message: result.message,
-        externalId: result.externalId,
-        payload: buildRunCompletionEnvelope(started, result) as Prisma.InputJsonValue,
-      },
-    });
+    await completeIntegrationRun(db, run.id, { status: result.status, message: result.message, externalId: result.externalId, payload: buildRunCompletionEnvelope(started, result) });
     return result;
   } catch (error) {
     const message = error instanceof IntegrationExecutionError
       ? error.message
       : "Falha na execução da integração. Consulte o ambiente configurado e a evidência sanitizada.";
-    await prisma.integrationRun.update({
-      where: { id: run.id },
-      data: {
-        status: "FALHA",
-        message,
-        payload: buildRunCompletionEnvelope(started, { status: "FALHA" }) as Prisma.InputJsonValue,
-      },
-    });
+    if (run) await completeIntegrationRun(db, run.id, { status: "FALHA", message, payload: buildRunCompletionEnvelope(started, { status: "FALHA" }) });
     throw error;
   } finally {
     activeExecutionKeys.delete(executionKey);
   }
 }
 
-export function executeConfiguredHealthCheck(prisma: PrismaClient, code: string, allowUnverifiedConnection = false) {
-  return executeConfiguredIntegration(prisma, {
+export function executeConfiguredHealthCheck(db: DatabaseExecutor, code: string, allowUnverifiedConnection = false) {
+  return executeConfiguredIntegration(db, {
     code,
     operation: "HEALTH_CHECK",
     payload: { code },
@@ -162,15 +136,15 @@ export function executeConfiguredHealthCheck(prisma: PrismaClient, code: string,
   }, healthCheckAdapter);
 }
 
-export function executeConfiguredStatementDownload(prisma: PrismaClient, account: BankAccountConfig, range: DateRange) {
-  return executeConfiguredIntegration(prisma, {
+export function executeConfiguredStatementDownload(db: DatabaseExecutor, account: BankAccountConfig, range: DateRange) {
+  return executeConfiguredIntegration(db, {
     code: "BANCO_API",
     operation: "DOWNLOAD_STATEMENT",
     payload: { account, range },
   }, statementDownloadAdapter);
 }
 
-export function executeConfiguredHealthHttp<T>(prisma: PrismaClient, input: { code: string; operation: IntegrationOperation; payload: unknown }) {
+export function executeConfiguredHealthHttp<T>(db: DatabaseExecutor, input: { code: string; operation: IntegrationOperation; payload: unknown }) {
   const adapter: IntegrationAdapter<T> = {
     operation: input.operation,
     async execute({ connection, input: adapterInput }) {
@@ -210,5 +184,5 @@ export function executeConfiguredHealthHttp<T>(prisma: PrismaClient, input: { co
       throw lastError instanceof Error ? lastError : new IntegrationExecutionError("Falha no despacho ao endpoint controlado.");
     },
   };
-  return executeConfiguredIntegration<T>(prisma, input, adapter);
+  return executeConfiguredIntegration<T>(db, input, adapter);
 }

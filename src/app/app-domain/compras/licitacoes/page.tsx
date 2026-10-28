@@ -5,6 +5,8 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { biddingStatusLabel } from "@/lib/compras/bidding-workflow";
 import { LicitacaoRowActions } from "./LicitacaoRowActions";
 import { DispensaRowActions } from "../dispensas/DispensaRowActions";
+import { db } from "@/db/client";
+import { loadProcurementCompetitionRows } from "@/db/repositories/procurement/direct-contracting";
 
 const dateTime = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
@@ -46,16 +48,7 @@ export default async function LicitacoesPage({ searchParams }: { searchParams: P
   const statusFilter = valueOf(filters.status).trim();
   const requestedPage = Number(valueOf(filters.page));
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const [biddings, directContractings] = await Promise.all([
-    context.prisma.bidding.findMany({
-      include: { process: { select: { number: true, object: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    context.prisma.directContracting.findMany({
-      include: { process: { select: { number: true, object: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  const { biddings, directContractings } = await loadProcurementCompetitionRows(context.database ?? db);
   const rows: Array<BiddingRow | DirectContractingRow> = [
     ...biddings.map((bidding) => ({
       kind: "BIDDING" as const,

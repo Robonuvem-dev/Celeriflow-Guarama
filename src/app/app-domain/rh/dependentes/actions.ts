@@ -3,16 +3,15 @@
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { saveCanonicalDependent } from "@/lib/rh/dependent-service";
-
-async function getTenantPrisma(operation: "create" | "update" | "delete") {
-  return (await getTenantContextForModuleOperation("RH", operation)).prisma;
-}
+import { eq } from "drizzle-orm";
+import { db, databaseConnection } from "@/db/client";
+import { dependents } from "@/db/schema/personnel-records";
 
 export async function saveDependente(formData: FormData) {
   const id = formData.get("id") as string | null;
   const context = await getTenantContextForModuleOperation("RH", id ? "update" : "create");
   try {
-    await saveCanonicalDependent(context.prisma, context.user.id, { id: id || undefined, employeeId: String(formData.get("employeeId") || ""), personId: String(formData.get("personId") || ""), relationship: String(formData.get("relationship") || ""), irrfDependent: formData.get("irrfDependent") === "on", familyWage: formData.get("familyWage") === "on" });
+    await saveCanonicalDependent(databaseConnection, context.user.id, { id: id || undefined, employeeId: String(formData.get("employeeId") || ""), personId: String(formData.get("personId") || ""), relationship: String(formData.get("relationship") || ""), irrfDependent: formData.get("irrfDependent") === "on", familyWage: formData.get("familyWage") === "on" });
 
     revalidatePath("/rh/dependentes");
     return { success: true };
@@ -23,11 +22,10 @@ export async function saveDependente(formData: FormData) {
 }
 
 export async function deleteDependente(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  const context = await getTenantContextForModuleOperation("RH", "delete");
   try {
-    await prisma.dependent.delete({
-      where: { id },
-    });
+    const [removed] = await (context.database ?? db).delete(dependents).where(eq(dependents.id, id)).returning({ id: dependents.id });
+    if (!removed) throw new Error("Dependente não encontrado.");
     revalidatePath("/rh/dependentes");
     return { success: true };
   } catch (error) {

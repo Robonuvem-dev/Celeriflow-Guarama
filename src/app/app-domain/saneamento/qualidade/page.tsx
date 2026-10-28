@@ -3,22 +3,12 @@ import { Droplet } from "lucide-react";
 import { QualityClient } from "../components/QualityClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listWaterQualityAnalyses } from "@/db/repositories/sanitation/queries";
 
 export default async function QualidadePage() {
-  const { prisma } = await getTenantContextForModule("SANEAMENTO");
-  const analyses = await prisma.sanWaterQualityAnalysis.findMany({
-    select: {
-      id: true,
-      collectionPoint: true,
-      collectedAt: true,
-      parameter: true,
-      result: true,
-      limit: true,
-      compliance: true,
-      active: true,
-    },
-    orderBy: { collectedAt: "desc" },
-  });
+  const context = await getTenantContextForModule("SANEAMENTO");
+  const analyses = await listWaterQualityAnalyses(context.database ?? db);
 
   const serializedAnalyses = analyses.map((analysis) => ({
     ...analysis,

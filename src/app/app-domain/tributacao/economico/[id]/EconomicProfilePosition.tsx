@@ -1,16 +1,18 @@
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import { listFiscalActorNames } from "@/db/repositories/taxation-pages/lookups";
 import { economicProfileSchema } from "@/lib/tributacao/economic-profile";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 
-export default async function EconomicProfilePosition({ prisma, id, at }: { prisma: PrismaClient; id: string; at?: string }) {
+export default async function EconomicProfilePosition({ database, id, at }: { database: DatabaseExecutor; id: string; at?: string }) {
   const { user } = await getTenantContextForModule("TRIBUTACAO");
   const allowedBudgetUnitIds = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const date = at ? new Date(at) : new Date(); if (!Number.isFinite(date.valueOf())) return null;
-  const entries = await prisma.taxRegistryEntry.findMany({ where: { entityType: "ECONOMIC_REGISTRATION", entityId: id, category: "ECONOMIC_PROFILE", createdAt: { lte: date }, ...(allowedBudgetUnitIds ? { OR: allowedBudgetUnitIds.map(budgetUnitId => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {}) }, orderBy: { version: "desc" } });
+  const entries = await listFiscalEntries(database, { entityType: "ECONOMIC_REGISTRATION", entityIds: [id], categories: ["ECONOMIC_PROFILE"], recordedBy: date, allowedBudgetUnitIds });
   const entry = entries[0];
   if (!entry) return null;
-  const users = await prisma.usuario.findMany({ where: { id: { in: entries.flatMap(item => item.actorUsuarioId ? [item.actorUsuarioId] : []) } }, select: { id: true, nome: true } });
+  const users = await listFiscalActorNames(database, entries.flatMap(item => item.actorUsuarioId ? [item.actorUsuarioId] : []));
   const actors = new Map(users.map(user => [user.id, user.nome]));
   const profile = economicProfileSchema.parse(entry.data);
   const names = new Map<string, string>(profile.partners.map(partner => [partner.taxpayerId, partner.taxpayerId]));

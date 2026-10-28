@@ -4,26 +4,38 @@ import { assertBudgetUnitAccess, getTenantContextForModuleOperation } from "@/li
 import { revalidatePath } from "next/cache";
 import { HR_PAYROLL_TYPES, payrollPeriod } from "@/lib/rh/calculation-engine";
 import { postBenefitPayrollBatch } from "@/lib/sst/benefit-posting";
+import { count, eq, sql } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import { payrolls, payrollItems, hrPayrollRuns } from "@/db/schema/personnel-workforce";
+import { externalPayrollScopes } from "@/db/schema/personnel-external-operations";
+import { requirePayroll } from "@/db/repositories/personnel/workforce";
+
+async function payrollHistory(tx: DatabaseExecutor, id: string) {
+  const current = await requirePayroll(tx, id);
+  const [items] = await tx.select({ count: count() }).from(payrollItems).where(eq(payrollItems.payrollId, id));
+  const [runs] = await tx.select({ count: count() }).from(hrPayrollRuns).where(eq(hrPayrollRuns.payrollId, id));
+  return { ...current, itemCount: items.count, runCount: runs.count };
+}
 
 export async function saveFolha(formData: FormData) {
   const id = String(formData.get("id") || "");
   const context = await getTenantContextForModuleOperation("RH", id ? "update" : "create");
-  const { prisma } = context;
   try {
     const competence = String(formData.get("competence") || "").trim();
     payrollPeriod(competence);
     const type = String(formData.get("type") || "Mensal");
     if (!(HR_PAYROLL_TYPES as readonly string[]).includes(type)) throw new Error("Tipo de folha inválido.");
-    await prisma.$transaction(async tx => {
+    await withDatabaseTransaction(databaseConnection, async tx => {
       if (id) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:payroll:${id}`}))`;
-        await tx.$queryRaw`SELECT id FROM "Payroll" WHERE id=${id} FOR UPDATE`;
-        const scope = await tx.sstBenefitPayrollScope.findUnique({ where: { payrollId: id } });
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:payroll:${id}`}))`);
+        await tx.select({ id: payrolls.id }).from(payrolls).where(eq(payrolls.id, id)).for("update");
+        const [scope] = await tx.select().from(externalPayrollScopes).where(eq(externalPayrollScopes.payrollId, id)).limit(1);
         if (scope) assertBudgetUnitAccess(context.user, scope.budgetUnitId);
-        const current = await tx.payroll.findUniqueOrThrow({ where: { id }, include: { _count: { select: { items: true, hrRuns: true } } } });
-        if (current.status !== "Aberta" || current._count.items || current._count.hrRuns) throw new Error("Folha com cálculo/histórico não pode ter sua competência ou tipo alterados.");
-        await tx.payroll.update({ where: { id }, data: { competence, type } });
-      } else await tx.payroll.create({ data: { competence, type, status: "Aberta" } });
+        const current = await payrollHistory(tx, id);
+        if (current.status !== "Aberta" || current.itemCount || current.runCount) throw new Error("Folha com cálculo/histórico não pode ter sua competência ou tipo alterados.");
+        await tx.update(payrolls).set({ competence, type }).where(eq(payrolls.id, id));
+      } else await tx.insert(payrolls).values({ competence, type, status: "Aberta" });
     });
     revalidatePath("/rh/folha");
     return { success: true };
@@ -34,16 +46,15 @@ export async function saveFolha(formData: FormData) {
 
 export async function deleteFolha(id: string) {
   const context = await getTenantContextForModuleOperation("RH", "delete");
-  const { prisma } = context;
   try {
-    await prisma.$transaction(async tx => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:payroll:${id}`}))`;
-      await tx.$queryRaw`SELECT id FROM "Payroll" WHERE id=${id} FOR UPDATE`;
-      const scope = await tx.sstBenefitPayrollScope.findUnique({ where: { payrollId: id } });
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:payroll:${id}`}))`);
+      await tx.select({ id: payrolls.id }).from(payrolls).where(eq(payrolls.id, id)).for("update");
+      const [scope] = await tx.select().from(externalPayrollScopes).where(eq(externalPayrollScopes.payrollId, id)).limit(1);
       if (scope) assertBudgetUnitAccess(context.user, scope.budgetUnitId);
-      const current = await tx.payroll.findUniqueOrThrow({ where: { id }, include: { _count: { select: { items: true, hrRuns: true } } } });
-      if (current.status !== "Aberta" || current._count.items || current._count.hrRuns) throw new Error("Folha com histórico não pode ser excluída.");
-      await tx.payroll.delete({ where: { id } });
+      const current = await payrollHistory(tx, id);
+      if (current.status !== "Aberta" || current.itemCount || current.runCount) throw new Error("Folha com histórico não pode ser excluída.");
+      await tx.delete(payrolls).where(eq(payrolls.id, id));
     });
     revalidatePath("/rh/folha");
     return { success: true };

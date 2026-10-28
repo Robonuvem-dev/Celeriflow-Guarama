@@ -1,7 +1,15 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { z } from "zod";
+import { and, asc, eq, sql } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor, type DatabaseTransaction } from "@/db/transaction";
+import type { JsonValue } from "@/db/json";
+import { personnelJson } from "@/db/repositories/personnel/integration";
+import { institutions } from "@/db/schema/administration";
+import { systemInstances } from "@/db/schema/instance-configuration";
+import { hrCalculationPolicies, hrEmploymentRegimes, hrPayrollConfigurationChanges, hrPayrollRubricIncidences, hrPayrollRubrics, hrPayrollRules, hrPayrollRuleSets, hrSocialSecurityBands, hrSocialSecuritySchemes, hrVacationPolicies } from "@/db/schema/personnel-configuration";
 
-export type HrPayrollConfigurationDb = PrismaClient | Prisma.TransactionClient;
+export type HrPayrollConfigurationDb = DatabaseExecutor;
 
 export const HR_RULE_SET_STATUSES = ["RASCUNHO", "ATIVA", "ARQUIVADA"] as const;
 export const HR_RULE_SET_SCOPES = ["DEMONSTRACAO", "HOMOLOGACAO", "PRODUCAO"] as const;
@@ -208,14 +216,14 @@ export const hrRuleSetInputSchema = z.object({
 });
 
 function decimal(value: number | null) {
-  return value === null ? null : new Prisma.Decimal(value);
+  return value === null ? null : new Decimal(value);
 }
 
-function asInputJson(value: unknown): Prisma.InputJsonValue {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+function asInputJson(value: unknown): JsonValue {
+  return personnelJson(value);
 }
 
-export function parseRuleValue(valueType: z.infer<typeof hrPayrollRuleInputSchema>["valueType"], rawValue: unknown): Prisma.InputJsonValue {
+export function parseRuleValue(valueType: z.infer<typeof hrPayrollRuleInputSchema>["valueType"], rawValue: unknown): JsonValue {
   const raw = typeof rawValue === "string" ? rawValue.trim() : rawValue;
 
   if (valueType === "TEXT") {
@@ -247,58 +255,47 @@ export function parseRuleValue(valueType: z.infer<typeof hrPayrollRuleInputSchem
   return asInputJson(parsed);
 }
 
-export function serializeHrConfigurationSnapshot(value: unknown): Prisma.InputJsonValue {
+export function serializeHrConfigurationSnapshot(value: unknown): JsonValue {
   return asInputJson(value);
 }
 
 export async function getOrCreateHrConfigurationInstance(db: HrPayrollConfigurationDb) {
-  const existing = await db.configuracaoInstancia.findFirst({ orderBy: { createdAt: "asc" } });
+  const [existing] = await db.select().from(systemInstances).orderBy(asc(systemInstances.createdAt)).limit(1);
   if (existing) return existing;
 
-  const institution = await db.institution.findFirst({
-    orderBy: { createdAt: "asc" },
-    select: { name: true, cnpj: true, city: true, state: true, website: true },
-  });
+  const [institution] = await db.select({ name: institutions.name, cnpj: institutions.cnpj, city: institutions.city, state: institutions.state, website: institutions.website }).from(institutions).orderBy(asc(institutions.createdAt)).limit(1);
 
   if (!institution?.name?.trim() || !institution.city?.trim() || !institution.state?.trim()) {
     throw new Error("Cadastre o nome, município e UF em Administração > Dados da Prefeitura antes de iniciar as parametrizações de RH.");
   }
 
-  return db.configuracaoInstancia.create({
-    data: {
+  const [instance] = await db.insert(systemInstances).values({
       nomePrefeitura: institution.name.trim(),
       cnpj: institution.cnpj?.trim() || null,
       municipio: institution.city.trim(),
       uf: institution.state.trim().toUpperCase(),
       dominio: institution.website?.trim() || null,
       status: "Ativa",
-    },
-  });
+  }).returning();
+  return instance;
 }
 
-function isPrismaClient(db: HrPayrollConfigurationDb): db is PrismaClient {
-  return "$transaction" in db && typeof db.$transaction === "function";
-}
-
-async function lockHrConfigurationBootstrap(db: HrPayrollConfigurationDb) {
+async function lockHrConfigurationBootstrap(db: DatabaseTransaction) {
   // Serializa o bootstrap por transação no PostgreSQL/Neon e evita duas
   // requisições criarem conjuntos demonstrativos simultâneos.
-  await db.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(1921002026)`);
+  await db.execute(sql`SELECT pg_advisory_xact_lock(1921002026)`);
 }
 
-async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfigurationDb, actorUsuarioId?: string) {
+async function ensureHrPayrollDemoRuleSetInTransaction(db: DatabaseTransaction, actorUsuarioId?: string) {
   await lockHrConfigurationBootstrap(db);
   const instance = await getOrCreateHrConfigurationInstance(db);
   const effectiveFrom = new Date("2026-01-01T00:00:00.000Z");
   let createdRuleSet = false;
-  let ruleSet = await db.hrPayrollRuleSet.findFirst({
-    where: { configuracaoInstanciaId: instance.id, code: "MUNICIPAL_DEMO_2026", effectiveFrom },
-  });
+  const condition = and(eq(hrPayrollRuleSets.configuracaoInstanciaId, instance.id), eq(hrPayrollRuleSets.code, "MUNICIPAL_DEMO_2026"), eq(hrPayrollRuleSets.effectiveFrom, effectiveFrom));
+  let [ruleSet] = await db.select().from(hrPayrollRuleSets).where(condition).limit(1);
 
   if (!ruleSet) {
-    try {
-      ruleSet = await db.hrPayrollRuleSet.create({
-        data: {
+    const [created] = await db.insert(hrPayrollRuleSets).values({
           configuracaoInstanciaId: instance.id,
           code: "MUNICIPAL_DEMO_2026",
           name: "Regras municipais — demonstração 2026",
@@ -308,21 +305,13 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
           legalReference: "Configuração didática. Substituir por estatuto, plano de cargos, normas previdenciárias e atos municipais vigentes.",
           notes: "Não representa folha oficial, remessa bancária, eSocial ou cálculo homologado.",
           isDemo: true,
-        },
-      });
-      createdRuleSet = true;
-    } catch (error) {
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
-      ruleSet = await db.hrPayrollRuleSet.findFirst({
-        where: { configuracaoInstanciaId: instance.id, code: "MUNICIPAL_DEMO_2026", effectiveFrom },
-      });
-      if (!ruleSet) throw error;
-    }
+    }).onConflictDoNothing({ target: [hrPayrollRuleSets.configuracaoInstanciaId, hrPayrollRuleSets.code, hrPayrollRuleSets.effectiveFrom] }).returning();
+    createdRuleSet = Boolean(created);
+    ruleSet = created ?? (await db.select().from(hrPayrollRuleSets).where(condition).limit(1))[0];
+    if (!ruleSet) throw new Error("Conjunto demonstrativo indisponível após o bootstrap.");
   }
 
-  await db.hrCalculationPolicy.upsert({
-    where: { ruleSetId: ruleSet.id },
-    create: {
+  await db.insert(hrCalculationPolicies).values({
       ruleSetId: ruleSet.id,
       currency: "BRL",
       roundingMode: "HALF_UP",
@@ -330,16 +319,13 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
       movementCutoffDay: 20,
       paymentDay: 30,
       negativeNetPayPolicy: "BLOQUEAR",
-      maxConsignmentMarginRate: new Prisma.Decimal(30),
+      maxConsignmentMarginRate: new Decimal(30),
       freezeOnClose: true,
       legalReference: "Valores de demonstração para conferência. Validar calendário, margem e teto com RH, Contabilidade e Jurídico.",
       notes: "A política deverá ser copiada para o snapshot imutável da competência no futuro motor de folha.",
-    },
-    update: {},
-  });
+  }).onConflictDoNothing({ target: hrCalculationPolicies.ruleSetId });
 
-  await db.hrPayrollRule.createMany({
-    data: [
+  await db.insert(hrPayrollRules).values([
       { ruleSetId: ruleSet.id, category: "CALCULO", code: "COMPETENCIA_PADRAO", name: "Tipo padrão de competência", description: "Referência usada na demonstração de cálculo.", valueType: "TEXT", value: "MENSAL", sortOrder: 10, isRequired: true },
       { ruleSetId: ruleSet.id, category: "CALCULO", code: "ORDEM_RUBRICAS", name: "Ordem das rubricas", description: "A folha futura deve avaliar rubricas em prioridade crescente.", valueType: "TEXT", value: "PRIORIDADE_CRESCENTE", sortOrder: 20, isRequired: true },
       { ruleSetId: ruleSet.id, category: "CALCULO", code: "CONGELAR_CONFIGURACAO_NO_FECHAMENTO", name: "Congelar regras ao fechar", description: "Impede que alteração de parâmetro reescreva competência fechada.", valueType: "BOOLEAN", value: true, sortOrder: 30, isRequired: true },
@@ -348,18 +334,11 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
       { ruleSetId: ruleSet.id, category: "PORTAL", code: "PUBLICAR_SOMENTE_FOLHA_FECHADA", name: "Publicar somente após fechamento", description: "O Portal do Servidor só pode receber demonstrativos autorizados.", valueType: "BOOLEAN", value: true, sortOrder: 60, isRequired: true },
       { ruleSetId: ruleSet.id, category: "PORTAL", code: "PORTAL_DEMONSTRATIVOS_HABILITADOS", name: "Disponibilizar demonstrativos no Portal", description: "Controla a consulta de demonstrativos pelo próprio servidor no Portal do Servidor.", valueType: "BOOLEAN", value: true, sortOrder: 65, legalReference: "Demonstração. Não altera o filtro de folhas fechadas ou pagas.", isRequired: true },
       { ruleSetId: ruleSet.id, category: "PREVIDENCIA", code: "VALIDAR_PREVIDENCIA_ANTES_PRODUCAO", name: "Validação de previdência obrigatória", description: "As alíquotas e faixas abaixo são exclusivamente demonstrativas.", valueType: "BOOLEAN", value: true, sortOrder: 70, legalReference: "Não utilizar para recolhimento sem homologação municipal.", isRequired: true },
-    ],
-    skipDuplicates: true,
-  });
+  ]).onConflictDoNothing();
 
-  const statutoryVacation = await db.hrVacationPolicy.upsert({
-    where: { ruleSetId_code: { ruleSetId: ruleSet.id, code: "ESTATUTARIO_DEMO" } },
-    create: { ruleSetId: ruleSet.id, code: "ESTATUTARIO_DEMO", name: "Férias estatutárias — demonstração", employmentNature: "ESTATUTARIO", acquisitionMonths: 12, concessionMonths: 12, entitlementDays: 30, maxSplits: 3, minFirstSplitDays: 14, minOtherSplitDays: 5, additionalPayRate: new Prisma.Decimal("33.333333"), allowsCashAbono: false, maxCashAbonoDays: 0, allowsAdvanceThirteenth: false, requiresApproval: true, legalReference: "Demonstração. O estatuto municipal e atos vigentes devem substituir estes valores antes de produção.", notes: "Abono e antecipação ficam desativados até validação normativa." },
-    update: {},
-  });
-  const cltVacation = await db.hrVacationPolicy.upsert({
-    where: { ruleSetId_code: { ruleSetId: ruleSet.id, code: "CLT_PADRAO" } },
-    create: {
+  await db.insert(hrVacationPolicies).values({ ruleSetId: ruleSet.id, code: "ESTATUTARIO_DEMO", name: "Férias estatutárias — demonstração", employmentNature: "ESTATUTARIO", acquisitionMonths: 12, concessionMonths: 12, entitlementDays: 30, maxSplits: 3, minFirstSplitDays: 14, minOtherSplitDays: 5, additionalPayRate: new Decimal("33.333333"), allowsCashAbono: false, maxCashAbonoDays: 0, allowsAdvanceThirteenth: false, requiresApproval: true, legalReference: "Demonstração. O estatuto municipal e atos vigentes devem substituir estes valores antes de produção.", notes: "Abono e antecipação ficam desativados até validação normativa." }).onConflictDoNothing({ target: [hrVacationPolicies.ruleSetId, hrVacationPolicies.code] });
+  const [statutoryVacation] = await db.select().from(hrVacationPolicies).where(and(eq(hrVacationPolicies.ruleSetId, ruleSet.id), eq(hrVacationPolicies.code, "ESTATUTARIO_DEMO"))).limit(1);
+  await db.insert(hrVacationPolicies).values({
       ruleSetId: ruleSet.id,
       code: "CLT_PADRAO",
       name: "Férias CLT — referência parametrizável",
@@ -370,46 +349,37 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
       maxSplits: 3,
       minFirstSplitDays: 14,
       minOtherSplitDays: 5,
-      additionalPayRate: new Prisma.Decimal("33.333333"),
+      additionalPayRate: new Decimal("33.333333"),
       allowsCashAbono: true,
       maxCashAbonoDays: 10,
       allowsAdvanceThirteenth: true,
       requiresApproval: true,
       legalReference: "Referência demonstrativa da CLT. Confirmar regras aplicáveis, convenções e atos municipais antes de produção.",
       notes: "Abono e antecipação do décimo terceiro exigem validação do RH antes do uso em folha oficial.",
-    },
-    update: {},
-  });
+  }).onConflictDoNothing({ target: [hrVacationPolicies.ruleSetId, hrVacationPolicies.code] });
+  const [cltVacation] = await db.select().from(hrVacationPolicies).where(and(eq(hrVacationPolicies.ruleSetId, ruleSet.id), eq(hrVacationPolicies.code, "CLT_PADRAO"))).limit(1);
 
-  const rppsScheme = await db.hrSocialSecurityScheme.upsert({
-    where: { ruleSetId_code: { ruleSetId: ruleSet.id, code: "RPPS_MUNICIPAL_DEMO" } },
-    create: {
+  await db.insert(hrSocialSecuritySchemes).values({
       ruleSetId: ruleSet.id,
       code: "RPPS_MUNICIPAL_DEMO",
       name: "RPPS municipal — demonstração",
       regime: "RPPS",
       employeeCalculationMethod: "PROGRESSIVA",
-      ceilingValue: new Prisma.Decimal(4_000),
-      employerContributionRate: new Prisma.Decimal(20),
+      ceilingValue: new Decimal(4_000),
+      employerContributionRate: new Decimal(20),
       actuarialContributionRate: null,
       legalReference: "Faixas sintéticas de demonstração. Substituir pela legislação e avaliação atuarial vigentes do ente.",
       notes: "Não utilizar estas alíquotas para retenção ou recolhimento oficial.",
-    },
-    update: {},
-  });
+  }).onConflictDoNothing({ target: [hrSocialSecuritySchemes.ruleSetId, hrSocialSecuritySchemes.code] });
+  const [rppsScheme] = await db.select().from(hrSocialSecuritySchemes).where(and(eq(hrSocialSecuritySchemes.ruleSetId, ruleSet.id), eq(hrSocialSecuritySchemes.code, "RPPS_MUNICIPAL_DEMO"))).limit(1);
 
-  await db.hrSocialSecurityBand.createMany({
-    data: [
-      { socialSecuritySchemeId: rppsScheme.id, sequence: 1, lowerLimit: new Prisma.Decimal(0), upperLimit: new Prisma.Decimal(1_000), employeeRate: new Prisma.Decimal(5), employerRate: new Prisma.Decimal(20) },
-      { socialSecuritySchemeId: rppsScheme.id, sequence: 2, lowerLimit: new Prisma.Decimal("1000.01"), upperLimit: new Prisma.Decimal(3_000), employeeRate: new Prisma.Decimal(10), employerRate: new Prisma.Decimal(20) },
-      { socialSecuritySchemeId: rppsScheme.id, sequence: 3, lowerLimit: new Prisma.Decimal("3000.01"), upperLimit: new Prisma.Decimal(4_000), employeeRate: new Prisma.Decimal(15), employerRate: new Prisma.Decimal(20) },
-    ],
-    skipDuplicates: true,
-  });
+  await db.insert(hrSocialSecurityBands).values([
+      { socialSecuritySchemeId: rppsScheme.id, sequence: 1, lowerLimit: new Decimal(0), upperLimit: new Decimal(1_000), employeeRate: new Decimal(5), employerRate: new Decimal(20) },
+      { socialSecuritySchemeId: rppsScheme.id, sequence: 2, lowerLimit: new Decimal("1000.01"), upperLimit: new Decimal(3_000), employeeRate: new Decimal(10), employerRate: new Decimal(20) },
+      { socialSecuritySchemeId: rppsScheme.id, sequence: 3, lowerLimit: new Decimal("3000.01"), upperLimit: new Decimal(4_000), employeeRate: new Decimal(15), employerRate: new Decimal(20) },
+  ]).onConflictDoNothing();
 
-  const baseSalaryRubric = await db.hrPayrollRubric.upsert({
-    where: { ruleSetId_code: { ruleSetId: ruleSet.id, code: "VENCIMENTO_BASE_DEMO" } },
-    create: {
+  await db.insert(hrPayrollRubrics).values({
       ruleSetId: ruleSet.id,
       code: "VENCIMENTO_BASE_DEMO",
       name: "Vencimento-base — demonstração",
@@ -418,20 +388,15 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
       priority: 10,
       legalReference: "Rubrica demonstrativa. Validar natureza, incidências e mapeamento eSocial antes de produção.",
       notes: "Base ilustrativa para testar a configuração versionada; não integra o motor de folha legado.",
-    },
-    update: {},
-  });
+  }).onConflictDoNothing({ target: [hrPayrollRubrics.ruleSetId, hrPayrollRubrics.code] });
+  const [baseSalaryRubric] = await db.select().from(hrPayrollRubrics).where(and(eq(hrPayrollRubrics.ruleSetId, ruleSet.id), eq(hrPayrollRubrics.code, "VENCIMENTO_BASE_DEMO"))).limit(1);
 
-  await db.hrPayrollRubricIncidence.createMany({
-    data: ["RPPS", "IRRF", "FERIAS", "DECIMO_TERCEIRO", "TETO_REMUNERATORIO"].map((incidenceType) => ({
+  await db.insert(hrPayrollRubricIncidences).values(["RPPS", "IRRF", "FERIAS", "DECIMO_TERCEIRO", "TETO_REMUNERATORIO"].map((incidenceType) => ({
       rubricId: baseSalaryRubric.id,
       incidenceType,
-    })),
-    skipDuplicates: true,
-  });
+  }))).onConflictDoNothing();
 
-  await db.hrPayrollRubric.createMany({
-    data: [
+  await db.insert(hrPayrollRubrics).values([
       {
         ruleSetId: ruleSet.id,
         code: "ADICIONAL_FERIAS_DEMO",
@@ -439,7 +404,7 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
         type: "PROVENTO",
         calculationMethod: "PERCENTUAL",
         calculationBaseCode: "VENCIMENTO_BASE_DEMO",
-        percentageRate: new Prisma.Decimal("33.333333"),
+        percentageRate: new Decimal("33.333333"),
         priority: 20,
         legalReference: "Demonstração de um terço. Confirmar incidências e critérios do vínculo antes de produção.",
         notes: "A política de férias mantém a fonte de verdade deste percentual.",
@@ -478,13 +443,9 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
         legalReference: "Demonstração. Convênio, margem e autorização do servidor devem ser validados antes de produção.",
         notes: "A política de cálculo contém a margem máxima demonstrativa.",
       },
-    ],
-    skipDuplicates: true,
-  });
+  ]).onConflictDoNothing();
 
-  await db.hrEmploymentRegime.upsert({
-    where: { ruleSetId_code: { ruleSetId: ruleSet.id, code: "ESTATUTARIO_DEMO" } },
-    create: {
+  await db.insert(hrEmploymentRegimes).values({
       ruleSetId: ruleSet.id,
       code: "ESTATUTARIO_DEMO",
       name: "Vínculo estatutário — demonstração",
@@ -493,13 +454,9 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
       socialSecuritySchemeId: rppsScheme.id,
       vacationPolicyId: statutoryVacation.id,
       legalReference: "Demonstração. A vinculação efetiva depende do estatuto e do enquadramento previdenciário municipal.",
-    },
-    update: {},
-  });
+  }).onConflictDoNothing({ target: [hrEmploymentRegimes.ruleSetId, hrEmploymentRegimes.code] });
 
-  await db.hrEmploymentRegime.upsert({
-    where: { ruleSetId_code: { ruleSetId: ruleSet.id, code: "CLT_DEMO" } },
-    create: {
+  await db.insert(hrEmploymentRegimes).values({
       ruleSetId: ruleSet.id,
       code: "CLT_DEMO",
       name: "Vínculo CLT — demonstração",
@@ -508,73 +465,41 @@ async function ensureHrPayrollDemoRuleSetInTransaction(db: HrPayrollConfiguratio
       socialSecuritySchemeId: null,
       vacationPolicyId: cltVacation.id,
       legalReference: "Demonstração. O enquadramento RGPS, jornada e categoria eSocial devem ser validados antes de produção.",
-    },
-    update: {},
-  });
+  }).onConflictDoNothing({ target: [hrEmploymentRegimes.ruleSetId, hrEmploymentRegimes.code] });
 
   if (createdRuleSet && actorUsuarioId) {
-    await db.hrPayrollConfigurationChange.create({
-      data: {
+    await db.insert(hrPayrollConfigurationChanges).values({
         ruleSetId: ruleSet.id,
         entityType: "HR_PAYROLL_RULE_SET",
         entityId: ruleSet.id,
         operation: "CRIADA",
         afterValue: serializeHrConfigurationSnapshot(ruleSet),
         actorUsuarioId,
-      },
     });
   }
 
   return ruleSet;
 }
 
-export async function ensureHrPayrollDemoRuleSet(db: HrPayrollConfigurationDb, actorUsuarioId?: string) {
-  if (isPrismaClient(db)) {
-    return db.$transaction((tx) => ensureHrPayrollDemoRuleSetInTransaction(tx, actorUsuarioId));
-  }
-  return ensureHrPayrollDemoRuleSetInTransaction(db, actorUsuarioId);
+export async function ensureHrPayrollDemoRuleSet(db: DatabaseConnection, actorUsuarioId?: string) {
+  return withDatabaseTransaction(db, tx => ensureHrPayrollDemoRuleSetInTransaction(tx, actorUsuarioId));
 }
 
 export function toDecimal(value: number | null) {
   return decimal(value);
 }
 
-export async function arePortalPayrollStatementsEnabled(db: HrPayrollConfigurationDb) {
-  const instance = await db.configuracaoInstancia.findFirst({
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  });
+export async function arePortalPayrollStatementsEnabled(db: DatabaseExecutor) {
+  const { rows: [instance] } = await db.execute<{ id: string }>(sql`SELECT id FROM "ConfiguracaoInstancia" ORDER BY "createdAt" ASC LIMIT 1`);
   if (!instance) return true;
 
   const now = new Date();
-  const ruleSet = await db.hrPayrollRuleSet.findFirst({
-    where: {
-      configuracaoInstanciaId: instance.id,
-      status: "ATIVA",
-      effectiveFrom: { lte: now },
-      OR: [{ effectiveUntil: null }, { effectiveUntil: { gte: now } }],
-      rules: {
-        some: {
-          category: "PORTAL",
-          code: "PORTAL_DEMONSTRATIVOS_HABILITADOS",
-          isActive: true,
-        },
-      },
-    },
-    orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
-    select: {
-      rules: {
-        where: {
-          category: "PORTAL",
-          code: "PORTAL_DEMONSTRATIVOS_HABILITADOS",
-          isActive: true,
-        },
-        select: { value: true },
-      },
-    },
-  });
+  const { rows: [rule] } = await db.execute<{ value: JsonValue }>(sql`SELECT r.value FROM "HrPayrollRuleSet" s JOIN "HrPayrollRule" r ON r."ruleSetId"=s.id
+    WHERE s."configuracaoInstanciaId"=${instance.id} AND s.status='ATIVA' AND s."effectiveFrom"<=${now} AND (s."effectiveUntil" IS NULL OR s."effectiveUntil">=${now})
+      AND r.category='PORTAL' AND r.code='PORTAL_DEMONSTRATIVOS_HABILITADOS' AND r."isActive"=true
+    ORDER BY s."effectiveFrom" DESC,s."createdAt" DESC LIMIT 1`);
 
   // Preserve existing Portal access until a current RH rule explicitly disables it.
-  const value = ruleSet?.rules[0]?.value;
+  const value = rule?.value;
   return value !== false && value !== "false";
 }

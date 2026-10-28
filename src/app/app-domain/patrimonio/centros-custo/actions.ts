@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { and, eq, ne, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { costCenters } from "@/db/schema/master-data";
 
 const costCenterInput = z.object({
   code: z.string().trim().min(1, "Informe o código do centro de custo.").max(60),
@@ -26,10 +29,10 @@ function revalidateCostCenters() {
 export async function createCostCenterAction(formData: FormData): Promise<void> {
   const parsed = parse(formData);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || "Dados do centro de custo inválidos.");
-  const context = await getTenantContextForModuleOperation("PATRIMONIO", "create");
-  const existing = await context.prisma.costCenter.findUnique({ where: { code: parsed.data.code }, select: { id: true } });
+  await getTenantContextForModuleOperation("PATRIMONIO", "create");
+  const [existing] = await db.select({ id: costCenters.id }).from(costCenters).where(eq(costCenters.code, parsed.data.code)).limit(1);
   if (existing) throw new Error("Já existe um centro de custo com este código.");
-  await context.prisma.costCenter.create({ data: { code: parsed.data.code, name: parsed.data.name, description: parsed.data.description || null } });
+  await db.insert(costCenters).values({ code: parsed.data.code, name: parsed.data.name, description: parsed.data.description || null });
   revalidateCostCenters();
   redirect("/patrimonio/centros-custo");
 }
@@ -37,22 +40,22 @@ export async function createCostCenterAction(formData: FormData): Promise<void> 
 export async function updateCostCenterAction(id: string, formData: FormData): Promise<void> {
   const parsed = parse(formData);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || "Dados do centro de custo inválidos.");
-  const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
-  const existing = await context.prisma.costCenter.findUnique({ where: { id }, select: { id: true } });
-  const duplicate = await context.prisma.costCenter.findFirst({ where: { code: parsed.data.code, id: { not: id } }, select: { id: true } });
+  await getTenantContextForModuleOperation("PATRIMONIO", "update");
+  const [existing] = await db.select({ id: costCenters.id }).from(costCenters).where(eq(costCenters.id, id)).limit(1);
+  const [duplicate] = await db.select({ id: costCenters.id }).from(costCenters).where(and(eq(costCenters.code, parsed.data.code), ne(costCenters.id, id))).limit(1);
   if (!existing) throw new Error("Centro de custo não encontrado.");
   if (duplicate) throw new Error("Já existe um centro de custo com este código.");
-  await context.prisma.costCenter.update({ where: { id }, data: { code: parsed.data.code, name: parsed.data.name, description: parsed.data.description || null } });
+  await db.update(costCenters).set({ code: parsed.data.code, name: parsed.data.name, description: parsed.data.description || null }).where(eq(costCenters.id, id));
   revalidateCostCenters();
   redirect("/patrimonio/centros-custo");
 }
 
 export async function setCostCenterActiveAction(id: string, active: boolean): Promise<CostCenterActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
-    const costCenter = await context.prisma.costCenter.findUnique({ where: { id }, select: { id: true } });
+    await getTenantContextForModuleOperation("PATRIMONIO", "update");
+    const [costCenter] = await db.select({ id: costCenters.id }).from(costCenters).where(eq(costCenters.id, id)).limit(1);
     if (!costCenter) throw new Error("Centro de custo não encontrado.");
-    await context.prisma.costCenter.update({ where: { id }, data: { isActive: active } });
+    await db.update(costCenters).set({ isActive: active }).where(eq(costCenters.id, id));
     revalidateCostCenters();
     return {};
   } catch (error) {
@@ -62,11 +65,11 @@ export async function setCostCenterActiveAction(id: string, active: boolean): Pr
 
 export async function deleteCostCenterAction(id: string): Promise<CostCenterActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("PATRIMONIO", "delete");
-    const costCenter = await context.prisma.costCenter.findUnique({ where: { id }, select: { id: true, _count: { select: { warehouses: true } } } });
+    await getTenantContextForModuleOperation("PATRIMONIO", "delete");
+    const [costCenter] = await db.select({ id: costCenters.id, warehouseCount: sql<number>`(SELECT count(*)::int FROM "Warehouse" WHERE "costCenterId"=${costCenters.id})` }).from(costCenters).where(eq(costCenters.id, id)).limit(1);
     if (!costCenter) throw new Error("Centro de custo não encontrado.");
-    if (costCenter._count.warehouses > 0) throw new Error("Este centro de custo está vinculado a almoxarifados. Inative-o ou remova os vínculos antes de excluir.");
-    await context.prisma.costCenter.delete({ where: { id } });
+    if (costCenter.warehouseCount > 0) throw new Error("Este centro de custo está vinculado a almoxarifados. Inative-o ou remova os vínculos antes de excluir.");
+    await db.delete(costCenters).where(eq(costCenters.id, id));
     revalidateCostCenters();
     return {};
   } catch (error) {

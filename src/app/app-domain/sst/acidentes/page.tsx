@@ -5,13 +5,15 @@ import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { SstForm } from "../SstForm";
 import { AccidentFields } from "./AccidentFields";
 import { saveAccident } from "./actions";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
+import { searchSstAccidentEmployees } from "@/db/repositories/sst-pages/accidents";
 export const dynamic = "force-dynamic";
 export default async function AccidentsPage({ searchParams }: { searchParams: Promise<{ page?: string; kind?: string; employee?: string }> }) {
   const context = await getTenantContextForModule("SST"), params = await searchParams;
   const { rows, page, total } = await listAccidents(context, Number(params.page || 1), params.kind || "");
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), select: { id: true, name: true, secretariatId: true } });
-  const employees = (params.employee || "").trim().length >= 3 ? await context.prisma.employee.findMany({ where: { isActive: true, name: { contains: params.employee!.trim(), mode: "insensitive" }, secretariatId: { in: units.flatMap(u => u.secretariatId ? [u.secretariatId] : []) } }, select: { id: true, name: true, registration: true }, orderBy: [{ name: "asc" }, { id: "asc" }], take: 20 }) : [];
+  const database = sstDatabase(context), units = await listSstUnits(database, context);
+  const employees = (params.employee || "").trim().length >= 3 ? await searchSstAccidentEmployees(database,units.map(u=>u.secretariatId),params.employee!) : [];
   const href = (p: number) => `/sst/acidentes?page=${p}&kind=${encodeURIComponent(params.kind || "")}`;
   return <main className="space-y-5 p-4"><h1 className="text-xl font-semibold">Acidentes, CAT e incidentes</h1>
     <form className="flex gap-2"><select name="kind" defaultValue={params.kind || ""}><option value="">Todos</option><option value="INCIDENT">Incidentes</option><option value="TYPICAL">Típicos</option><option value="COMMUTE">Trajeto</option><option value="DISEASE">Doença</option></select><button>Filtrar</button></form>

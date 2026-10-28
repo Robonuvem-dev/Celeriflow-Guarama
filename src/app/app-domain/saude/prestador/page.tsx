@@ -6,7 +6,13 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { providerHistory, resolveProviderSupplier } from "@/lib/saude/provider-service";
 import { executeGuideAction } from "./actions";
-import type { Prisma } from "@prisma/client";
+import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthRegulationRequests, healthRegulationQuotas } from "@/db/schema/health-regulation";
+import { patients } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthSpecialties, healthServices } from "@/db/schema/health-administration";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
 const PAGE_SIZE = 20;
@@ -25,18 +31,15 @@ export default async function PrestadorPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
-  const where: Prisma.HealthRegulationRequestWhereInput = {
-    quota: { providerSupplierId: supplier.id },
-    status: { in: ["AUTORIZADA", "AGENDADA", "EXECUTADA", "CONCLUIDA"] },
-    ...(filter ? { status: filter as never } : {}),
-    ...(q ? { OR: [{ patient: { person: { fullName: { contains: q, mode: "insensitive" } } } }, { guideNumber: { contains: q, mode: "insensitive" } }] } : {}),
-  };
-  const total = await context.prisma.healthRegulationRequest.count({ where });
+  const database = context.database ?? db;
+  const where = and(eq(healthRegulationQuotas.providerSupplierId, supplier.id), filter ? eq(healthRegulationRequests.status, filter) : inArray(healthRegulationRequests.status, ["AUTORIZADA", "AGENDADA", "EXECUTADA", "CONCLUIDA"]), q ? or(sql`strpos(lower(${people.fullName}), lower(${q})) > 0`, sql`strpos(lower(${healthRegulationRequests.guideNumber}), lower(${q})) > 0`) : undefined);
+  const [{ total }] = await database.select({ total: count() }).from(healthRegulationRequests).innerJoin(healthRegulationQuotas, eq(healthRegulationQuotas.id, healthRegulationRequests.quotaId)).innerJoin(patients, eq(patients.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patients.personId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [guides, history] = await Promise.all([
-    context.prisma.healthRegulationRequest.findMany({ where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { createdAt: "desc" }, include: { patient: { include: { person: { select: { fullName: true } } } }, specialty: true, service: true, procedure: { select: { code: true } } } }),
+  const [guideRows, history] = await Promise.all([
+    database.select({ id: healthRegulationRequests.id, guideNumber: healthRegulationRequests.guideNumber, status: healthRegulationRequests.status, person: { fullName: people.fullName }, specialty: { name: healthSpecialties.name }, service: { name: healthServices.name }, procedure: { code: healthSusProcedures.code } }).from(healthRegulationRequests).innerJoin(healthRegulationQuotas, eq(healthRegulationQuotas.id, healthRegulationRequests.quotaId)).innerJoin(patients, eq(patients.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patients.personId)).leftJoin(healthSpecialties, eq(healthSpecialties.id, healthRegulationRequests.specialtyId)).leftJoin(healthServices, eq(healthServices.id, healthRegulationRequests.serviceId)).leftJoin(healthSusProcedures, eq(healthSusProcedures.id, healthRegulationRequests.procedureId)).where(where).orderBy(desc(healthRegulationRequests.createdAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
     providerHistory(context, supplier.id),
   ]);
+  const guides = guideRows.map(({ person, ...row }) => ({ ...row, patient: { person } }));
   const pending = guides.filter(g => ["AUTORIZADA", "AGENDADA"].includes(g.status));
   const supplierName = supplier.company?.corporateName || supplier.person?.fullName || "Prestador";
 

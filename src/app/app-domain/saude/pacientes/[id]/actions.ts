@@ -7,6 +7,10 @@ import { registrationDetailsSchema } from "@/lib/saude/patient-registration-serv
 import { uploadProcessFile, deleteUploadedDocument } from "@/lib/platform/blob";
 import { ingestGedDocument } from "@/lib/documents/document-flow-service";
 import { savePatientAddress } from "@/lib/saude/patient-address-service";
+import { db, databaseConnection } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { documents } from "@/db/schema/registry";
+import { healthPatientDocuments, healthPatientRegistrations } from "@/db/schema/health-registration";
 
 function refresh(id: string) { revalidatePath(`/saude/pacientes/${id}`); revalidatePath("/saude/pacientes"); revalidatePath("/cadastros/pessoas-fisicas"); }
 const text = (data: FormData, key: string) => String(data.get(key) || "").trim();
@@ -42,16 +46,17 @@ export async function uploadPatientDocumentAction(patientId: string, data: FormD
   let uploaded: { url: string; pathname: string } | null = null;
   try {
     const context = await getTenantContextForModuleOperation("SAUDE", "update");
-    const patient = await scopedPatient(context.prisma, context, patientId);
+    const patient = await scopedPatient(context.database ?? db, context, patientId);
     const file = data.get("file"), kind = text(data, "kind");
     if (!(file instanceof File) || !["PHOTO", "SCANNED_RECORD", "OTHER"].includes(kind)) throw new Error("Selecione arquivo e tipo válidos.");
     if (kind === "PHOTO" && !["image/jpeg", "image/png"].includes(file.type)) throw new Error("A foto deve ser JPG ou PNG.");
     uploaded = await uploadProcessFile(file);
     const blob = uploaded;
-    await ingestGedDocument(context.prisma, { title: text(data, "title") || file.name, documentType: kind === "PHOTO" ? "Foto do paciente" : "Documento do paciente", documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content: new Uint8Array(await file.arrayBuffer()), actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => {
-      await tx.document.update({ where: { id: documentId }, data: { personId: patient.personId } });
-      await tx.healthPatientDocument.create({ data: { patientId, documentId, kind, actorUsuarioId: context.user.id } });
-      if (kind === "PHOTO") await tx.healthPatientRegistration.upsert({ where: { patientId }, create: { patientId, photoDocumentId: documentId }, update: { photoDocumentId: documentId } });
+    await ingestGedDocument(databaseConnection, { title: text(data, "title") || file.name, documentType: kind === "PHOTO" ? "Foto do paciente" : "Documento do paciente", documentClassCode: "SAUDE_DOCUMENTO_PADRAO", fileUrl: blob.url, content: new Uint8Array(await file.arrayBuffer()), actorUsuarioId: context.user.id, afterCreate: async (tx, documentId) => {
+      await scopedPatient(tx, context, patientId);
+      await tx.update(documents).set({ personId: patient.personId }).where(eq(documents.id, documentId));
+      await tx.insert(healthPatientDocuments).values({ patientId, documentId, kind, actorUsuarioId: context.user.id });
+      if (kind === "PHOTO") await tx.insert(healthPatientRegistrations).values({ patientId, photoDocumentId: documentId }).onConflictDoUpdate({ target: healthPatientRegistrations.patientId, set: { photoDocumentId: documentId } });
     } });
     uploaded = null; refresh(patientId); return {};
   } catch (error) { if (uploaded) await deleteUploadedDocument(uploaded).catch(() => {}); return failure(error); }

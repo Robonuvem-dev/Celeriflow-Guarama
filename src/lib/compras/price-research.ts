@@ -1,8 +1,13 @@
 import crypto from "crypto";
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor, type DatabaseTransaction } from "@/db/transaction";
+import { priceQuotes, priceResearches, purchaseProcesses, purchaseProcessItems } from "@/db/schema/procurement-core";
+import { procurementLifecycleEvents } from "@/db/schema/procurement-requests";
+import { loadPriceInvitation, loadPriceResearchProcess, loadPriceResearchSupplier } from "@/db/repositories/procurement/price-research";
 
-type Db = PrismaClient;
-type Tx = Prisma.TransactionClient;
+type Db = DatabaseConnection;
+type Tx = DatabaseTransaction;
 
 export class PriceResearchError extends Error {}
 
@@ -168,8 +173,7 @@ async function writePriceResearchLifecycleEvent(
   tx: Tx,
   input: { eventType: string; quoteId: string; researchId: string; actorUsuarioId: string; idempotencyKey: string },
 ) {
-  await tx.procurementLifecycleEvent.create({
-    data: {
+  await tx.insert(procurementLifecycleEvents).values({
       eventType: input.eventType,
       entityType: "PRICE_QUOTE",
       entityId: input.quoteId,
@@ -177,7 +181,6 @@ async function writePriceResearchLifecycleEvent(
       sourceId: input.researchId,
       actorUsuarioId: required(input.actorUsuarioId, "Usuário responsável"),
       idempotencyKey: input.idempotencyKey,
-    },
   });
 }
 
@@ -204,22 +207,19 @@ export async function createPriceResearch(db: Db, input: { processId: string; de
   const now = input.now ?? new Date();
   assertFutureDeadline(input.deadlineAt, now);
 
-  return db.$transaction(async (tx) => {
-    const process = await tx.purchaseProcess.findUnique({
-      where: { id: processId },
-      select: { id: true, purchaseRequestId: true, items: { select: { id: true } } },
-    });
+  return withDatabaseTransaction(db, async (tx) => {
+    const [record] = await tx.select({ id: purchaseProcesses.id, purchaseRequestId: purchaseProcesses.purchaseRequestId }).from(purchaseProcesses).where(eq(purchaseProcesses.id, processId)).limit(1);
+    const process = record ? { ...record, items: await tx.select({ id: purchaseProcessItems.id }).from(purchaseProcessItems).where(eq(purchaseProcessItems.purchaseProcessId, processId)) } : null;
     if (!process) throw new PriceResearchError("Processo de compra não encontrado.");
     if (!process.purchaseRequestId) throw new PriceResearchError("A pesquisa de preços exige um processo vinculado a uma solicitação de compra.");
     if (!process.items.length) throw new PriceResearchError("O processo precisa possuir itens antes da pesquisa de preços.");
 
-    return tx.priceResearch.create({
-      data: {
+    const [research] = await tx.insert(priceResearches).values({
         processId: process.id,
         date: input.deadlineAt,
         status: priceResearchStatuses.inProgress,
-      },
-    });
+    }).returning();
+    return research;
   });
 }
 
@@ -228,37 +228,36 @@ export async function updatePriceResearchDeadline(db: Db, input: { researchId: s
   const now = input.now ?? new Date();
   assertFutureDeadline(input.deadlineAt, now);
 
-  return db.$transaction(async (tx) => {
-    const research = await tx.priceResearch.findUnique({ where: { id: researchId }, select: { id: true, status: true } });
+  return withDatabaseTransaction(db, async (tx) => {
+    const [research] = await tx.select({ id: priceResearches.id, status: priceResearches.status }).from(priceResearches).where(eq(priceResearches.id, researchId)).limit(1);
     if (!research) throw new PriceResearchError("Pesquisa de preços não encontrada.");
     if (research.status !== priceResearchStatuses.inProgress) throw new PriceResearchError("Somente pesquisas em andamento podem ter o prazo alterado.");
 
-    return tx.priceResearch.update({ where: { id: research.id }, data: { date: input.deadlineAt } });
+    const [updated] = await tx.update(priceResearches).set({ date: input.deadlineAt }).where(eq(priceResearches.id, research.id)).returning();
+    return updated;
   });
 }
 
 export async function closePriceResearch(db: Db, researchId: string) {
   const id = required(researchId, "Pesquisa de preços");
-  return db.$transaction(async (tx) => {
-    const research = await tx.priceResearch.findUnique({ where: { id }, select: { id: true, status: true } });
+  return withDatabaseTransaction(db, async (tx) => {
+    const [research] = await tx.select({ id: priceResearches.id, status: priceResearches.status }).from(priceResearches).where(eq(priceResearches.id, id)).limit(1);
     if (!research) throw new PriceResearchError("Pesquisa de preços não encontrada.");
     if (research.status === priceResearchStatuses.completed) return research;
 
-    return tx.priceResearch.update({ where: { id: research.id }, data: { status: priceResearchStatuses.completed } });
+    const [updated] = await tx.update(priceResearches).set({ status: priceResearchStatuses.completed }).where(eq(priceResearches.id, research.id)).returning();
+    return updated;
   });
 }
 
 export async function deletePriceResearch(db: Db, researchId: string) {
   const id = required(researchId, "Pesquisa de preços");
-  return db.$transaction(async (tx) => {
-    const research = await tx.priceResearch.findUnique({
-      where: { id },
-      select: { id: true, _count: { select: { quotes: true } } },
-    });
+  return withDatabaseTransaction(db, async (tx) => {
+    const [research] = await tx.select({ id: priceResearches.id }).from(priceResearches).where(eq(priceResearches.id, id)).limit(1);
     if (!research) throw new PriceResearchError("Pesquisa de preços não encontrada.");
-    if (research._count.quotes) throw new PriceResearchError("Pesquisas com convites ou cotações não podem ser excluídas; encerre a pesquisa para preservar o histórico.");
+    if ((await tx.select({ id: priceQuotes.id }).from(priceQuotes).where(eq(priceQuotes.researchId, id)).limit(1)).length) throw new PriceResearchError("Pesquisas com convites ou cotações não podem ser excluídas; encerre a pesquisa para preservar o histórico.");
 
-    await tx.priceResearch.delete({ where: { id: research.id } });
+    await tx.delete(priceResearches).where(eq(priceResearches.id, research.id));
   });
 }
 
@@ -267,18 +266,10 @@ export async function inviteSupplierToPriceResearch(db: Db, input: { researchId:
   const supplierId = required(input.supplierId, "Fornecedor");
   const now = input.now ?? new Date();
 
-  return db.$transaction(async (tx) => {
-    const [research, supplier] = await Promise.all([
-      tx.priceResearch.findUnique({ where: { id: researchId }, select: { id: true, status: true, date: true, createdAt: true } }),
-      tx.supplier.findUnique({
-        where: { id: supplierId },
-        select: {
-          id: true,
-          status: true,
-          person: { select: { fullName: true, email: true } },
-          company: { select: { tradeName: true, corporateName: true, emailPrimary: true } },
-        },
-      }),
+  return withDatabaseTransaction(db, async (tx) => {
+    const [[research], supplier] = await Promise.all([
+      tx.select().from(priceResearches).where(eq(priceResearches.id, researchId)).limit(1),
+      loadPriceResearchSupplier(tx, supplierId),
     ]);
     if (!research) throw new PriceResearchError("Pesquisa de preços não encontrada.");
     assertPriceResearchResponseOpen(research, now);
@@ -287,27 +278,18 @@ export async function inviteSupplierToPriceResearch(db: Db, input: { researchId:
     }
     if (!supplierContactEmail(supplier)) throw new PriceResearchError("O fornecedor precisa possuir e-mail cadastrado para vincular o acesso autenticado ao convite.");
 
-    const existing = await tx.priceQuote.findFirst({
-      where: {
-        researchId: research.id,
-        supplierId: supplier.id,
-        status: { in: [priceQuoteStatuses.invitationPending, priceQuoteStatuses.draft, priceQuoteStatuses.submitted, priceQuoteStatuses.legacyActive] },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const [existing] = await tx.select().from(priceQuotes).where(and(eq(priceQuotes.researchId, research.id), eq(priceQuotes.supplierId, supplier.id), inArray(priceQuotes.status, [priceQuoteStatuses.invitationPending, priceQuoteStatuses.draft, priceQuoteStatuses.submitted, priceQuoteStatuses.legacyActive]))).orderBy(desc(priceQuotes.createdAt)).limit(1);
     if (existing) {
       if (isSubmittedPriceQuote(existing.status)) throw new PriceResearchError("Este fornecedor já apresentou uma cotação para a pesquisa.");
       return { invitation: existing, created: false, supplierName: supplierName(supplier) };
     }
 
-    const invitation = await tx.priceQuote.create({
-      data: {
+    const [invitation] = await tx.insert(priceQuotes).values({
         researchId: research.id,
         supplierId: supplier.id,
         value: 0,
         status: priceQuoteStatuses.invitationPending,
-      },
-    });
+    }).returning();
     await writePriceResearchLifecycleEvent(tx, {
       eventType: "PRICE_RESEARCH_INVITATION_PENDING_DELIVERY",
       quoteId: invitation.id,
@@ -320,13 +302,7 @@ export async function inviteSupplierToPriceResearch(db: Db, input: { researchId:
 }
 
 async function loadInvitationForMutation(tx: Tx, input: { invitationId: string; researchId: string; supplierId: string }) {
-  const invitation = await tx.priceQuote.findFirst({
-    where: { id: input.invitationId, researchId: input.researchId, supplierId: input.supplierId },
-    include: {
-      research: { select: { id: true, status: true, date: true, createdAt: true } },
-      supplier: { select: { id: true, status: true } },
-    },
-  });
+  const invitation = await loadPriceInvitation(tx, input);
   if (!invitation) throw new PriceResearchError("Convite de cotação não encontrado.");
   return invitation;
 }
@@ -338,7 +314,7 @@ export async function saveSupplierPriceQuoteDraft(
   const now = input.now ?? new Date();
   const value = normalizeMoney(input.value);
 
-  return db.$transaction(async (tx) => {
+  return withDatabaseTransaction(db, async (tx) => {
     const invitation = await loadInvitationForMutation(tx, input);
     if (isSubmittedPriceQuote(invitation.status)) throw new PriceResearchError("A cotação já foi apresentada e não pode ser alterada.");
     if (invitation.status === priceQuoteStatuses.cancelled) throw new PriceResearchError("O convite de cotação foi cancelado.");
@@ -347,17 +323,14 @@ export async function saveSupplierPriceQuoteDraft(
       throw new PriceResearchError("Fornecedor inativo ou bloqueado não pode responder pesquisas de preços.");
     }
 
-    const updated = await tx.priceQuote.updateMany({
-      where: { id: invitation.id, status: { in: mutableQuoteStatuses } },
-      data: { value, status: priceQuoteStatuses.draft },
-    });
-    if (!updated.count) {
-      const current = await tx.priceQuote.findUnique({ where: { id: invitation.id } });
+    const updated = await tx.update(priceQuotes).set({ value, status: priceQuoteStatuses.draft }).where(and(eq(priceQuotes.id, invitation.id), inArray(priceQuotes.status, mutableQuoteStatuses))).returning();
+    if (!updated.length) {
+      const [current] = await tx.select().from(priceQuotes).where(eq(priceQuotes.id, invitation.id)).limit(1);
       if (current && isSubmittedPriceQuote(current.status)) throw new PriceResearchError("A cotação já foi apresentada e não pode ser alterada.");
       throw new PriceResearchError("O estado do convite mudou; atualize a página antes de salvar o rascunho.");
     }
 
-    const quote = await tx.priceQuote.findUnique({ where: { id: invitation.id } });
+    const [quote] = updated;
     if (!quote) throw new PriceResearchError("Convite de cotação não encontrado.");
     return quote;
   });
@@ -370,7 +343,9 @@ export async function submitSupplierPriceQuote(
   const now = input.now ?? new Date();
   const value = normalizeMoney(input.value);
 
-  return db.$transaction(async (tx) => {
+  return withDatabaseTransaction(db, async (tx) => {
+    // All reference-value recalculations for a research share its row lock.
+    await tx.execute(sql`SELECT id FROM "PriceResearch" WHERE id = ${input.researchId} FOR UPDATE`);
     const invitation = await loadInvitationForMutation(tx, input);
     if (isSubmittedPriceQuote(invitation.status)) {
       if (toCents(invitation.value) !== toCents(value)) {
@@ -384,26 +359,20 @@ export async function submitSupplierPriceQuote(
       throw new PriceResearchError("Fornecedor inativo ou bloqueado não pode responder pesquisas de preços.");
     }
 
-    const updated = await tx.priceQuote.updateMany({
-      where: { id: invitation.id, status: { in: mutableQuoteStatuses } },
-      data: { value, status: priceQuoteStatuses.submitted, date: now },
-    });
-    if (!updated.count) {
-      const current = await tx.priceQuote.findUnique({ where: { id: invitation.id } });
+    const updated = await tx.update(priceQuotes).set({ value, status: priceQuoteStatuses.submitted, date: now }).where(and(eq(priceQuotes.id, invitation.id), inArray(priceQuotes.status, mutableQuoteStatuses))).returning();
+    if (!updated.length) {
+      const [current] = await tx.select().from(priceQuotes).where(eq(priceQuotes.id, invitation.id)).limit(1);
       if (current && isSubmittedPriceQuote(current.status) && toCents(current.value) === toCents(value)) {
         return { quote: current, alreadySubmitted: true };
       }
       throw new PriceResearchError("A cotação já foi apresentada e não pode ser alterada.");
     }
 
-    const quote = await tx.priceQuote.findUnique({ where: { id: invitation.id } });
+    const [quote] = updated;
     if (!quote) throw new PriceResearchError("Convite de cotação não encontrado.");
-    const submittedQuotes = await tx.priceQuote.findMany({
-      where: { researchId: invitation.research.id, status: { in: [priceQuoteStatuses.submitted, priceQuoteStatuses.legacyActive] } },
-      select: { id: true, supplierId: true, value: true },
-    });
+    const submittedQuotes = await tx.select({ id: priceQuotes.id, supplierId: priceQuotes.supplierId, value: priceQuotes.value }).from(priceQuotes).where(and(eq(priceQuotes.researchId, invitation.research.id), inArray(priceQuotes.status, [priceQuoteStatuses.submitted, priceQuoteStatuses.legacyActive])));
     const comparison = calculatePriceComparison(submittedQuotes);
-    await tx.priceResearch.update({ where: { id: invitation.research.id }, data: { estimatedValue: comparison.referenceValue } });
+    await tx.update(priceResearches).set({ estimatedValue: comparison.referenceValue }).where(eq(priceResearches.id, invitation.research.id));
     await writePriceResearchLifecycleEvent(tx, {
       eventType: "PRICE_QUOTE_PRESENTED",
       quoteId: quote.id,
@@ -436,44 +405,18 @@ export type SupplierPriceResearchPortalAccess = {
 };
 
 export async function getSupplierPriceResearchPortalAccess(
-  db: Db,
+  db: DatabaseExecutor,
   input: { accessKey: string; authenticatedEmail: string; now?: Date },
 ): Promise<SupplierPriceResearchPortalAccess> {
   const claims = verifySupplierInvitationAccessKey(input.accessKey);
-  const invitation = await db.priceQuote.findUnique({
-    where: { id: claims.i },
-    include: {
-      supplier: {
-        select: {
-          id: true,
-          status: true,
-          person: { select: { fullName: true, email: true } },
-          company: { select: { tradeName: true, corporateName: true, emailPrimary: true } },
-        },
-      },
-      research: {
-        include: {
-          process: {
-            include: {
-              purchaseRequest: { select: { number: true } },
-              items: {
-                orderBy: { createdAt: "asc" },
-                include: {
-                  catalogItem: { select: { name: true, unit: true } },
-                  material: { select: { name: true, unitOfMeasure: true } },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+  const invitation = await loadPriceInvitation(db, { invitationId: claims.i });
   if (!invitation || invitation.researchId !== claims.r || invitation.supplierId !== claims.s || invitation.status === priceQuoteStatuses.cancelled) {
     throw new PriceResearchError("Acesso à cotação não autorizado.");
   }
 
   assertSupplierIdentity(invitation.supplier, input.authenticatedEmail);
+  const process = await loadPriceResearchProcess(db, invitation.research.processId);
+  if (!process) throw new PriceResearchError("Acesso à cotação não autorizado.");
   const now = input.now ?? new Date();
   const submitted = isSubmittedPriceQuote(invitation.status);
   const supplierActive = isSupplierActiveForPriceResearch(invitation.supplier.status);
@@ -498,10 +441,10 @@ export async function getSupplierPriceResearchPortalAccess(
     canRespond: unavailableReason === null,
     unavailableReason,
     process: {
-      number: invitation.research.process.number,
-      object: invitation.research.process.object,
-      purchaseRequestNumber: invitation.research.process.purchaseRequest?.number ?? null,
-      items: invitation.research.process.items.map((item) => ({
+      number: process.number,
+      object: process.object,
+      purchaseRequestNumber: process.purchaseRequest?.number ?? null,
+      items: process.items.map((item) => ({
         id: item.id,
         name: item.catalogItem?.name || item.material?.name || item.customName || "Item sem descrição",
         unit: item.catalogItem?.unit || item.material?.unitOfMeasure || "UN",
@@ -512,7 +455,7 @@ export async function getSupplierPriceResearchPortalAccess(
 }
 
 export async function getSupplierPriceQuoteReportAccess(
-  db: Db,
+  db: DatabaseExecutor,
   input: { accessKey: string; authenticatedEmail: string; now?: Date },
 ) {
   const access = await getSupplierPriceResearchPortalAccess(db, input);

@@ -3,33 +3,14 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import AtividadesEsporteLazerClient from "../components/AtividadesEsporteLazerClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listCulturalActivities } from "@/db/repositories/culture/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function EsporteLazerPage() {
-  const { prisma } = await getTenantContextForModule("CULTURA");
-  const activities = await prisma.culturaAtividade.findMany({
-    include: {
-      space: {
-        include: {
-          asset: {
-            include: {
-              realEstate: true,
-            },
-          },
-          realEstate: true,
-        },
-      },
-      instructorEmployee: true,
-      agent: {
-        include: {
-          person: true,
-          company: true,
-        },
-      },
-    },
-    orderBy: [{ active: "desc" }, { startsAt: "desc" }],
-  });
+  await getTenantContextForModule("CULTURA");
+  const activities = await listCulturalActivities(db);
 
   const activeActivities = activities.filter((activity) => activity.active);
   const activeModalities = new Set(

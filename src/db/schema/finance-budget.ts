@@ -1,0 +1,22 @@
+import { doublePrecision, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { exactNumeric } from "../decimal";
+import { createId } from "../ids";
+
+const timestamps = () => ({ createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(), updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()) });
+const amount = (name: string) => exactNumeric(name, { precision: 18, scale: 2 });
+export const budgetAppropriations = pgTable("BudgetAppropriation", {
+  id: text("id").primaryKey().$defaultFn(createId), code: text("code").notNull(), financialYearId: text("financialYearId").notNull(), budgetUnitId: text("budgetUnitId").notNull(), expenseNatureId: text("expenseNatureId").notNull(), resourceSourceId: text("resourceSourceId").notNull(), annualBudgetExpenseFixationId: text("annualBudgetExpenseFixationId"), programPPAId: text("programPPAId"), actionPPAId: text("actionPPAId"),
+  initialValue: doublePrecision("initialValue").notNull().default(0), initialValueDecimal: amount("initialValueDecimal"), updatedValue: doublePrecision("updatedValue").notNull().default(0), updatedValueDecimal: amount("updatedValueDecimal"), committedValue: doublePrecision("committedValue").notNull().default(0), committedValueDecimal: amount("committedValueDecimal"), ...timestamps(),
+}, table => [uniqueIndex("BudgetAppropriation_code_key").on(table.code)]);
+export const budgetReservations = pgTable("BudgetReservation", {
+  id: text("id").primaryKey().$defaultFn(createId), number: text("number").notNull(), date: timestamp("date", { precision: 3 }).notNull().defaultNow(), value: doublePrecision("value").notNull(), valueDecimal: amount("valueDecimal"), appropriationId: text("appropriationId").notNull(), expenseId: text("expenseId"), justification: text("justification"), status: text("status").notNull().default("Ativa"), ...timestamps(),
+}, table => [uniqueIndex("BudgetReservation_number_key").on(table.number)]);
+export const budgetMovements = pgTable("BudgetMovement", {
+  id: text("id").primaryKey().$defaultFn(createId), date: timestamp("date", { precision: 3 }).notNull().defaultNow(), type: text("type").notNull(), valueDecimal: amount("valueDecimal").notNull(), justification: text("justification").notNull(), appropriationId: text("appropriationId").notNull(), sourceModule: text("sourceModule").notNull().default("MANUAL"), sourceType: text("sourceType").notNull().default("BUDGET_MOVEMENT"), sourceId: text("sourceId"), eventType: text("eventType").notNull().default("BUDGET_MOVEMENT"), idempotencyKey: text("idempotencyKey"), createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, table => [uniqueIndex("BudgetMovement_idempotencyKey_key").on(table.idempotencyKey)]);
+export const commitments = pgTable("Commitment", {
+  id: text("id").primaryKey().$defaultFn(createId), number: text("number").notNull(), date: timestamp("date", { precision: 3 }).notNull().defaultNow(), value: doublePrecision("value").notNull(), valueDecimal: amount("valueDecimal"), type: text("type").notNull().default("Ordinário"), history: text("history").notNull(), appropriationId: text("appropriationId").notNull(), supplierId: text("supplierId").notNull(), creditorId: text("creditorId"), processId: text("processId"), contractId: text("contractId"), purchaseProcessId: text("purchaseProcessId"), purchaseReceiptId: text("purchaseReceiptId"), covenantId: text("covenantId"), publicityCampaignId: text("publicityCampaignId"), fundedDebtId: text("fundedDebtId"), covenantNumber: text("covenantNumber"), publicityCampaignName: text("publicityCampaignName"), fundedDebtName: text("fundedDebtName"), reservationId: text("reservationId"), status: text("status").notNull().default("Emitido"), ...timestamps(),
+}, table => [uniqueIndex("Commitment_number_key").on(table.number), uniqueIndex("Commitment_reservationId_key").on(table.reservationId), uniqueIndex("Commitment_purchaseReceiptId_key").on(table.purchaseReceiptId)]);
+export const commitmentMovements = pgTable("CommitmentMovement", {
+  id: text("id").primaryKey().$defaultFn(createId), date: timestamp("date", { precision: 3 }).notNull().defaultNow(), type: text("type").notNull(), valueDecimal: amount("valueDecimal").notNull(), justification: text("justification").notNull(), commitmentId: text("commitmentId").notNull(), createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+});

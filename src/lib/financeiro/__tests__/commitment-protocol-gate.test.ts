@@ -1,7 +1,16 @@
-import "dotenv/config";
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import { prisma } from "../../prisma";
+import { after, before, test } from "node:test";
+import { and, eq, inArray, ne } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import { createFinanceLegacyStoriesFixture } from "../../../../tests/helpers/finance-legacy-stories-fixture";
+import { users } from "@/db/schema/identity";
+import { employees, secretariats } from "@/db/schema/administration";
+import { budgetAppropriations, budgetReservations, commitments } from "@/db/schema/finance-budget";
+import { expenses } from "@/db/schema/finance-expenses";
+import { financialDocuments } from "@/db/schema/finance-documents";
+import { accountingEntries, accountingTransactions } from "@/db/schema/finance-accounting";
+import { processEvents, processes, processSubjects, processTypes } from "@/db/schema/processes";
 import {
   approveExpenseRequest,
   createBudgetReservation,
@@ -10,29 +19,28 @@ import {
   type FinanceActor,
 } from "../index";
 
-test("releases a protocol awaiting accounting when its commitment is issued", async (t) => {
-  const [actorUser, actorEmployee, appropriation, secretariat] = await Promise.all([
-    prisma.usuario.findFirst({ select: { id: true } }),
-    prisma.employee.findFirst({ select: { id: true } }),
-    prisma.budgetAppropriation.findFirst({
-      where: { code: "0101.04.122.0001.2002.3.3.90.30.00" },
-      select: { id: true },
-    }),
-    prisma.secretariat.findFirst({ select: { id: true } }),
-  ]);
-  if (!actorUser || !actorEmployee || !appropriation || !secretariat) {
-    t.skip("A base POC financeira não está disponível.");
-    return;
-  }
+let fixture: Awaited<ReturnType<typeof createFinanceLegacyStoriesFixture>> | undefined;
+let db: DatabaseExecutor;
+let databaseConnection: DatabaseConnection;
 
-  const secondApprover = await prisma.usuario.findFirst({
-    where: { ativo: true, id: { not: actorUser.id } },
-    select: { id: true, employeeId: true },
-  });
-  if (!secondApprover) {
-    t.skip("A base POC deve possuir um aprovador diferente do solicitante.");
-    return;
-  }
+before(async () => {
+  fixture = await createFinanceLegacyStoriesFixture();
+  databaseConnection = fixture.connection;
+  db = fixture.connection.db;
+});
+after(async () => { await fixture?.close(); });
+
+test("releases a protocol awaiting accounting when its commitment is issued", async () => {
+  const [[actorUser], [actorEmployee], [appropriation], [secretariat]] = await Promise.all([
+    db.select({ id: users.id }).from(users).limit(1),
+    db.select({ id: employees.id }).from(employees).limit(1),
+    db.select({ id: budgetAppropriations.id }).from(budgetAppropriations).where(eq(budgetAppropriations.code, "0101.04.122.0001.2002.3.3.90.30.00")).limit(1),
+    db.select({ id: secretariats.id }).from(secretariats).limit(1),
+  ]);
+  assert.ok(actorUser && actorEmployee && appropriation && secretariat, "A fixture deve fornecer os atores, a dotação e a secretaria.");
+
+  const [secondApprover] = await db.select({ id: users.id, employeeId: users.employeeId }).from(users).where(and(eq(users.ativo, true), ne(users.id, actorUser.id))).limit(1);
+  assert.ok(secondApprover, "A fixture deve fornecer um aprovador diferente do solicitante.");
 
   const actor: FinanceActor = { usuarioId: actorUser.id, employeeId: actorEmployee.id };
   const suffix = Date.now().toString();
@@ -46,25 +54,21 @@ test("releases a protocol awaiting accounting when its commitment is issued", as
 
   process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
   try {
-    const processType = await prisma.processType.create({
-      data: {
-        name: `Teste de liberação contábil ${suffix}`,
-        subjects: { create: { name: `Empenho ${suffix}` } },
-      },
-      include: { subjects: true },
+    const { processType, subject } = await withDatabaseTransaction(databaseConnection, async tx => {
+      const [processType] = await tx.insert(processTypes).values({ name: `Teste de liberação contábil ${suffix}` }).returning();
+      const [subject] = await tx.insert(processSubjects).values({ processTypeId: processType.id, name: `Empenho ${suffix}` }).returning();
+      return { processType, subject };
     });
     processTypeId = processType.id;
-    const process = await prisma.process.create({
-      data: {
+    const [process] = await db.insert(processes).values({
         protocolNumber: `TESTE-CONTABIL-${suffix}`,
         status: "Aguardando Contabilidade",
         processTypeId: processType.id,
-        subjectId: processType.subjects[0].id,
-      },
-    });
+        subjectId: subject.id,
+    }).returning();
     processId = process.id;
 
-    const expense = await createExpenseRequest(prisma, actor, {
+    const expense = await createExpenseRequest(databaseConnection, actor, {
       date,
       description: `Despesa para liberação de protocolo ${suffix}`,
       value: "100.00",
@@ -76,8 +80,8 @@ test("releases a protocol awaiting accounting when its commitment is issued", as
       eventType: "TEST",
     });
     expenseId = expense.id;
-    await approveExpenseRequest(prisma, { usuarioId: secondApprover.id, employeeId: secondApprover.employeeId }, expense.id);
-    const reservation = await createBudgetReservation(prisma, actor, {
+    await approveExpenseRequest(databaseConnection, { usuarioId: secondApprover.id, employeeId: secondApprover.employeeId }, expense.id);
+    const reservation = await createBudgetReservation(databaseConnection, actor, {
       number: `RES-PROTOCOLO-${suffix}`,
       date,
       value: "100.00",
@@ -85,7 +89,7 @@ test("releases a protocol awaiting accounting when its commitment is issued", as
       expenseId: expense.id,
     });
     reservationId = reservation.id;
-    const commitment = await createCommitment(prisma, actor, {
+    const commitment = await createCommitment(databaseConnection, actor, {
       number: `EMP-PROTOCOLO-${suffix}`,
       date,
       value: "100.00",
@@ -98,13 +102,11 @@ test("releases a protocol awaiting accounting when its commitment is issued", as
     });
     commitmentId = commitment.id;
 
-    const [updatedProcess, event] = await Promise.all([
-      prisma.process.findUniqueOrThrow({ where: { id: process.id }, select: { status: true } }),
-      prisma.processEvent.findFirstOrThrow({
-        where: { processId: process.id, eventType: "ACCOUNTING_RELEASED" },
-        select: { previousStatus: true, newStatus: true, metadata: true },
-      }),
+    const [[updatedProcess], [event]] = await Promise.all([
+      db.select({ status: processes.status }).from(processes).where(eq(processes.id, process.id)),
+      db.select({ previousStatus: processEvents.previousStatus, newStatus: processEvents.newStatus, metadata: processEvents.metadata }).from(processEvents).where(and(eq(processEvents.processId, process.id), eq(processEvents.eventType, "ACCOUNTING_RELEASED"))).limit(1),
     ]);
+    assert.ok(updatedProcess && event);
     assert.equal(updatedProcess.status, "Recebido");
     assert.equal(event.previousStatus, "Aguardando Contabilidade");
     assert.equal(event.newStatus, "Recebido");
@@ -115,18 +117,18 @@ test("releases a protocol awaiting accounting when its commitment is issued", as
     });
   } finally {
     const transactions = commitmentId
-      ? await prisma.accountingTransaction.findMany({ where: { sourceId: commitmentId }, select: { id: true } })
+      ? await db.select({ id: accountingTransactions.id }).from(accountingTransactions).where(eq(accountingTransactions.sourceId, commitmentId))
       : [];
     if (transactions.length) {
-      await prisma.accountingEntry.deleteMany({ where: { transactionId: { in: transactions.map((transaction) => transaction.id) } } });
-      await prisma.accountingTransaction.deleteMany({ where: { id: { in: transactions.map((transaction) => transaction.id) } } });
+      await db.delete(accountingEntries).where(inArray(accountingEntries.transactionId, transactions.map(transaction => transaction.id)));
+      await db.delete(accountingTransactions).where(inArray(accountingTransactions.id, transactions.map(transaction => transaction.id)));
     }
-    if (commitmentId) await prisma.financialDocument.deleteMany({ where: { commitmentId } });
-    if (commitmentId) await prisma.commitment.deleteMany({ where: { id: commitmentId } });
-    if (reservationId) await prisma.budgetReservation.deleteMany({ where: { id: reservationId } });
-    if (expenseId) await prisma.expense.deleteMany({ where: { id: expenseId } });
-    if (processId) await prisma.process.deleteMany({ where: { id: processId } });
-    if (processTypeId) await prisma.processType.deleteMany({ where: { id: processTypeId } });
+    if (commitmentId) await db.delete(financialDocuments).where(eq(financialDocuments.commitmentId, commitmentId));
+    if (commitmentId) await db.delete(commitments).where(eq(commitments.id, commitmentId));
+    if (reservationId) await db.delete(budgetReservations).where(eq(budgetReservations.id, reservationId));
+    if (expenseId) await db.delete(expenses).where(eq(expenses.id, expenseId));
+    if (processId) await db.delete(processes).where(eq(processes.id, processId));
+    if (processTypeId) await db.delete(processTypes).where(eq(processTypes.id, processTypeId));
     if (previousAccountingMode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE;
     else process.env.CELERIFLOW_ACCOUNTING_MODE = previousAccountingMode;
   }

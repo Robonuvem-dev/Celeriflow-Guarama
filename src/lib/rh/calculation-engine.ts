@@ -1,8 +1,9 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { Decimal as DecimalJs } from "decimal.js";
 
-type Money = Prisma.Decimal;
-const D = (value: Prisma.Decimal.Value) => new Prisma.Decimal(value);
-const round = (value: Money) => value.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+type Money = Decimal;
+const D = (value: DecimalJs.Value) => new Decimal(value);
+const round = (value: Money) => value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
 export const HR_PAYROLL_TYPES = ["Mensal", "Complementar", "Rescisão", "RRA", "Férias", "1ª parcela 13º", "13º", "Diferença 13º", "Adiantamento salarial"] as const;
 
@@ -57,14 +58,14 @@ export function evaluatePayrollFormula(expression: string, resolve: (code: strin
 export type PayrollRubricInput = {
   code: string; name: string; type: string; calculationMethod: string;
   formulaExpression: string | null; calculationBaseCode: string | null;
-  fixedValue: Prisma.Decimal.Value | null; percentageRate: Prisma.Decimal.Value | null;
+  fixedValue: DecimalJs.Value | null; percentageRate: DecimalJs.Value | null;
   incidences: { incidenceType: string; isIncluded: boolean }[];
 };
-export type PayrollBand = { lowerLimit: Prisma.Decimal.Value; upperLimit: Prisma.Decimal.Value | null; employeeRate: Prisma.Decimal.Value };
+export type PayrollBand = { lowerLimit: DecimalJs.Value; upperLimit: DecimalJs.Value | null; employeeRate: DecimalJs.Value };
 
-export function calculateContribution(base: Money, bands: PayrollBand[], method: string, ceiling: Prisma.Decimal.Value | null) {
+export function calculateContribution(base: Money, bands: PayrollBand[], method: string, ceiling: DecimalJs.Value | null) {
   if (base.isNegative()) throw new Error("Base previdenciária negativa.");
-  const taxable = ceiling === null ? base : Prisma.Decimal.min(base, D(ceiling));
+  const taxable = ceiling === null ? base : Decimal.min(base, D(ceiling));
   const ordered = [...bands].sort((a, b) => D(a.lowerLimit).cmp(D(b.lowerLimit)));
   let previous = D(0);
   for (const [index, band] of ordered.entries()) {
@@ -82,8 +83,8 @@ export function calculateContribution(base: Money, bands: PayrollBand[], method:
   }
   if (method !== "PROGRESSIVA") throw new Error("Método previdenciário inválido.");
   return round(ordered.reduce((total, band) => {
-    const limit = band.upperLimit === null ? taxable : Prisma.Decimal.min(taxable, D(band.upperLimit));
-    const width = Prisma.Decimal.max(D(0), limit.sub(D(band.lowerLimit)));
+    const limit = band.upperLimit === null ? taxable : Decimal.min(taxable, D(band.upperLimit));
+    const width = Decimal.max(D(0), limit.sub(D(band.lowerLimit)));
     return total.add(width.mul(D(band.employeeRate)).div(100));
   }, D(0)));
 }
@@ -105,7 +106,7 @@ export function allocatePayrollAmount(total: Money, bases: Money[]): Money[] {
   return shares.map(share => share.whole.div(100));
 }
 
-export function calculateContractRubrics(input: { salary: Prisma.Decimal.Value; days: number; monthlyHours: number; rubrics: PayrollRubricInput[]; movements: Record<string, Prisma.Decimal.Value>; parameters?: Record<string, Prisma.Decimal.Value> }) {
+export function calculateContractRubrics(input: { salary: DecimalJs.Value; days: number; monthlyHours: number; rubrics: PayrollRubricInput[]; movements: Record<string, DecimalJs.Value>; parameters?: Record<string, DecimalJs.Value> }) {
   const values = new Map<string, Money>();
   const visiting = new Set<string>();
   const builtins: Record<string, Money> = { SALARIO_BASE: D(input.salary), DIAS: D(input.days), JORNADA: D(input.monthlyHours) };

@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { getDiscoverySettings, publicPortalOrigin } from "@/lib/transparencia/discovery-settings";
 
 export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const origin = publicPortalOrigin(await getDiscoverySettings(prisma));
+  const origin = publicPortalOrigin(await getDiscoverySettings(db));
   return [
     ...(["celeriflow.com.br", "www.celeriflow.com.br"].includes(new URL(origin).hostname) ? [
       { url: origin, changeFrequency: "weekly" as const, priority: 1 },

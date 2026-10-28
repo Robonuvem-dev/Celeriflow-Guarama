@@ -2,6 +2,8 @@ import SegMobCrudClient from "../components/SegMobCrudClient";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { getRegistrosByCategorias, mapInfracao } from "../data";
 import type { SegMobItem, SegMobPageConfig } from "../types";
+import { db } from "@/db/client";
+import { listSecurityInfractions } from "@/db/repositories/security-mobility/queries";
 
 const categories = ["Sinalizacao", "Transito"];
 
@@ -28,9 +30,9 @@ const config: SegMobPageConfig = {
 };
 
 export default async function TransitoPage() {
-  const { prisma } = await getTenantContextForModule("SEGURANCA");
+  await getTenantContextForModule("SEGURANCA");
   const [infracoes, registros] = await Promise.all([
-    prisma.segurancaInfracao.findMany({ orderBy: { createdAt: "desc" } }),
+    listSecurityInfractions(db),
     getRegistrosByCategorias(categories),
   ]);
 

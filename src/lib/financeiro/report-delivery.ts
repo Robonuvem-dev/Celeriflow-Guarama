@@ -1,13 +1,19 @@
 import { createHash } from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
-import { financialUnitFilter, resolveFinancialReportScope } from "./report-scope";
+import { sql } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import { resolveFinancialReportScope } from "./report-scope";
+import { listFinanceGuidelineDocuments, listFinanceLawDocuments, listFinancePlanDocuments, listFinanceReportCredits, listFinanceReportUnits } from "@/db/repositories/finance/report-planning-data";
+import { insertPublicFinanceDocumentVersion, listReportMonthlyCloses, listReportOriginPayables, listReportReconciliations, listReportTreasuryMovements } from "@/db/repositories/finance/report-delivery";
+import { findAnnualAccountingClose } from "@/db/repositories/finance/accounting-closes";
 import {
   generateBalancoOrcamentario,
   generateBalancoPatrimonial,
   generateBalanceteContabil,
   generateDiarioContabil,
   generateRazaoContabil,
-  generateRGF,
+  generateRGFInTransaction,
   generateRREO,
 } from "@/lib/financeiro/relatorios-legais";
 import { createDefaultReportTemplate } from "@/lib/reports/report-template";
@@ -159,7 +165,18 @@ function ppaRows(plan: {
 }
 
 export async function generateInternalReportDataset(
-  db: PrismaClient,
+  connection: DatabaseConnection,
+  reportType: InternalReportType,
+  financialYearId: string,
+  year: number,
+  options: { month?: number } = {},
+  scope: { governmentEntityId?: string; budgetUnitIds?: string[] } = {},
+): Promise<InternalReportDataset> {
+  return withDatabaseTransaction(connection, tx => generateInternalReportDatasetInTransaction(tx, reportType, financialYearId, year, options, scope), { isolationLevel: "repeatable read", timeoutMs: 60000 });
+}
+
+export async function generateInternalReportDatasetInTransaction(
+  db: DatabaseTransaction,
   reportType: InternalReportType,
   financialYearId: string,
   year: number,
@@ -169,7 +186,6 @@ export async function generateInternalReportDataset(
   const resolvedScope = await resolveFinancialReportScope(db, financialYearId, scope);
   if (resolvedScope.year !== year) throw new Error("O ano do relatório diverge do exercício financeiro.");
   const filter = { financialYearId, ...resolvedScope };
-  const bankScope = financialUnitFilter(resolvedScope);
   const entityReports = ["PPA", "LDO", "LOA", "MBA", "PPA_ANEXO_METAS", "LDO_ANEXO_PRIORIDADES_RISCOS", "LOA_ANEXO_PROGRAMACAO"];
   if (entityReports.includes(reportType) && !resolvedScope.fullEntity) throw new Error("Este demonstrativo contém totais da entidade e exige acesso a todas as suas unidades gestoras.");
 
@@ -193,11 +209,7 @@ export async function generateInternalReportDataset(
       const endDate = new Date(Date.UTC(year, reportMonth, 0, 23, 59, 59, 999));
       const [report, closes] = await Promise.all([
         generateBalanceteContabil(db, { ...filter, startDate, endDate }),
-        db.monthlyAccountingClose.findMany({
-          where: { financialYearId, competence: { gte: startDate, lte: endDate } },
-          select: { competence: true, status: true, closedAt: true, pendingSummary: true },
-          orderBy: { competence: "asc" },
-        }),
+        listReportMonthlyCloses(db, financialYearId, startDate, endDate),
       ]);
       const month = monthNames[reportMonth - 1];
       return accountingDataset("Balancete Contábil Mensal", reportType, year, [
@@ -214,7 +226,7 @@ export async function generateInternalReportDataset(
       ]);
     }
     case "RGF": {
-      const report = await generateRGF(db, filter);
+      const report = await generateRGFInTransaction(db, filter);
       return accountingDataset("RGF", reportType, year, [{ title: "Despesa com pessoal — 12 competências", rows: [{ receitaCorrenteLiquida: report.receitaCorrenteLiquida ?? "Não apurada", despesaTotalPessoal: report.despesaTotalPessoal ?? "Não apurada", percentualAtingido: report.percentualAtingido ?? "Não apurado", limiteLegal: report.limiteLegal ?? "Não configurado", limitePrudencial: report.limitePrudencial ?? "Não configurado", limiteAlerta: report.limiteAlerta ?? "Não configurado", situacao: report.situacao, inicio: report.memoriaFiscal.from, corte: report.memoriaFiscal.through, composicaoId: report.memoriaFiscal.definitionId ?? "", fundamento: report.memoriaFiscal.legalReference ?? "", pendencias: report.memoriaFiscal.issues.join(" "), hash: report.memoriaFiscal.sourceHash ?? "" }] }, { title: "Composição e origens contábeis", rows: report.memoriaFiscal.rows.map(row => ({ secao: row.section, componente: row.label, valor: row.amount, partidas: row.entryIds.join(", ") })) }]);
     }
     case "BALANCO_ORCAMENTARIO": {
@@ -235,23 +247,11 @@ export async function generateInternalReportDataset(
       ]);
     }
     case "PPA": {
-      const plans = await db.multiYearPlan.findMany({
-        where: { startYear: { lte: year }, endYear: { gte: year }, ...(filter.governmentEntityId ? { planningInstrument: { is: { governmentEntityId: filter.governmentEntityId } } } : {}) },
-        include: {
-          programs: {
-            orderBy: { code: "asc" },
-            include: {
-              objectives: { orderBy: { code: "asc" }, include: { indicators: { orderBy: { name: "asc" } } } },
-              actions: { orderBy: { code: "asc" }, include: { goals: { orderBy: { year: "asc" } } } },
-            },
-          },
-        },
-        orderBy: { code: "asc" },
-      });
+      const plans = await listFinancePlanDocuments(db, { year, governmentEntityId: filter.governmentEntityId });
       return { title: "PPA", year, warnings: [internalReportWarning, partialReportWarning], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Planejamento plurianual" }), sections: plans.flatMap(ppaRows) };
     }
     case "LDO": {
-      const guidelines = await db.budgetGuideline.findMany({ where: { financialYearId }, include: { multiYearPlan: { select: { code: true, name: true } }, priorities: true, risks: true }, orderBy: { createdAt: "asc" } });
+      const guidelines = await listFinanceGuidelineDocuments(db, { financialYearId });
       return { title: "LDO", year, warnings: [internalReportWarning, partialReportWarning], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Diretrizes do exercício" }), sections: [
         { title: "Diretrizes", rows: guidelines.map((guideline) => ({ ppaCodigo: guideline.multiYearPlan?.code ?? "", ppa: guideline.multiYearPlan?.name ?? "", situacao: guideline.status })) },
         { title: "Prioridades", rows: guidelines.flatMap((guideline) => guideline.priorities.map((priority) => ({ diretriz: guideline.multiYearPlan?.code ?? "Sem PPA vinculado", descricao: priority.description, meta: priority.targetValue === null ? "" : Number(priority.targetValue) }))) },
@@ -259,7 +259,7 @@ export async function generateInternalReportDataset(
       ] };
     }
     case "LOA": {
-      const laws = await db.annualBudgetLaw.findMany({ where: { financialYearId }, include: { revenueForecasts: true, expenseFixations: true }, orderBy: { publicationDate: "asc" } });
+      const laws = await listFinanceLawDocuments(db, { financialYearId });
       return { title: "LOA", year, warnings: [internalReportWarning, partialReportWarning], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Orçamento anual" }), sections: [
         { title: "Leis orçamentárias", rows: laws.map((law) => ({ numeroLei: law.lawNumber, publicacao: law.publicationDate ? isoDate(law.publicationDate) : "PENDENTE", situacao: law.status, receitaTotal: Number(law.totalRevenue), despesaTotal: Number(law.totalExpense) })) },
         { title: "Previsão de receitas", rows: laws.flatMap((law) => law.revenueForecasts.map((forecast) => ({ numeroLei: law.lawNumber, codigo: forecast.code, descricao: forecast.name, valorPrevisto: Number(forecast.estimatedValue) }))) },
@@ -267,9 +267,9 @@ export async function generateInternalReportDataset(
       ] };
     }
     case "CMD": {
-      const laws = await db.annualBudgetLaw.findMany({ where: { financialYearId }, include: { cmdSchedules: { where: filter.budgetUnitIds ? { budgetUnitId: { in: filter.budgetUnitIds } } : {}, orderBy: [{ budgetUnitId: "asc" }, { month: "asc" }] } }, orderBy: { publicationDate: "asc" } });
+      const laws = await listFinanceLawDocuments(db, { financialYearId, cmdUnitIds: filter.budgetUnitIds, cmdUnitOrder: true });
       const unitIds = [...new Set(laws.flatMap((law) => law.cmdSchedules.map((schedule) => schedule.budgetUnitId)))];
-      const units = await db.budgetUnit.findMany({ where: { id: { in: unitIds } }, select: { id: true, code: true, name: true } });
+      const units = await listFinanceReportUnits(db, unitIds);
       const unitsById = new Map(units.map((unit) => [unit.id, unit]));
       return { title: "CMD - Cronograma Mensal de Desembolso", year, warnings: [internalReportWarning, partialReportWarning], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Programação mensal" }), sections: [{ title: "Limites mensais", rows: laws.flatMap((law) => law.cmdSchedules.map((schedule) => {
         const unit = unitsById.get(schedule.budgetUnitId);
@@ -277,35 +277,23 @@ export async function generateInternalReportDataset(
       })) }] };
     }
     case "MBA": {
-      const laws = await db.annualBudgetLaw.findMany({ where: { financialYearId }, include: { mbaTargets: { orderBy: { bimonth: "asc" } } }, orderBy: { publicationDate: "asc" } });
+      const laws = await listFinanceLawDocuments(db, { financialYearId });
       return { title: "MBA - Meta Bimestral de Arrecadação", year, warnings: [internalReportWarning, partialReportWarning], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Programação bimestral" }), sections: [{ title: "Metas bimestrais", rows: laws.flatMap((law) => law.mbaTargets.map((target) => ({ numeroLei: law.lawNumber, bimestre: target.bimonth, metaArrecadacao: Number(target.targetValue) }))) }] };
     }
     case "PPA_ANEXO_METAS": {
-      const plans = await db.multiYearPlan.findMany({
-        where: { startYear: { lte: year }, endYear: { gte: year }, ...(filter.governmentEntityId ? { planningInstrument: { is: { governmentEntityId: filter.governmentEntityId } } } : {}) },
-        include: {
-          programs: {
-            orderBy: { code: "asc" },
-            include: {
-              objectives: { orderBy: { code: "asc" }, include: { indicators: { orderBy: { name: "asc" } } } },
-              actions: { orderBy: { code: "asc" }, include: { goals: { where: { year }, orderBy: { year: "asc" } } } },
-            },
-          },
-        },
-        orderBy: { code: "asc" },
-      });
+      const plans = await listFinancePlanDocuments(db, { year, governmentEntityId: filter.governmentEntityId, goalYear: year });
       return { title: "PPA - Anexo de Programas, Ações e Metas", year, warnings: [internalReportWarning, partialReportWarning, "Anexo interno: não substitui os anexos obrigatórios definidos pela legislação aplicável."], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Anexo de planejamento PPA" }), sections: plans.flatMap(ppaRows) };
     }
     case "LDO_ANEXO_PRIORIDADES_RISCOS": {
-      const guidelines = await db.budgetGuideline.findMany({ where: { financialYearId }, include: { multiYearPlan: { select: { code: true, name: true } }, priorities: true, risks: true }, orderBy: { createdAt: "asc" } });
+      const guidelines = await listFinanceGuidelineDocuments(db, { financialYearId });
       return { title: "LDO - Anexo de Prioridades e Riscos", year, warnings: [internalReportWarning, partialReportWarning, "Anexo interno: não substitui os anexos obrigatórios definidos pela legislação aplicável."], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Anexo de planejamento LDO" }), sections: [
         { title: "Prioridades e metas", rows: guidelines.flatMap((guideline) => guideline.priorities.map((priority) => ({ ppaCodigo: guideline.multiYearPlan?.code ?? "", ppa: guideline.multiYearPlan?.name ?? "", descricao: priority.description, meta: priority.targetValue === null ? "" : Number(priority.targetValue) }))) },
         { title: "Riscos fiscais", rows: guidelines.flatMap((guideline) => guideline.risks.map((risk) => ({ ppaCodigo: guideline.multiYearPlan?.code ?? "", ppa: guideline.multiYearPlan?.name ?? "", descricao: risk.description, impactoEstimado: Number(risk.estimatedImpact), mitigacao: risk.mitigation }))) },
       ] };
     }
     case "LOA_ANEXO_PROGRAMACAO": {
-      const laws = await db.annualBudgetLaw.findMany({ where: { financialYearId }, include: { revenueForecasts: true, expenseFixations: true, cmdSchedules: { orderBy: { month: "asc" } }, mbaTargets: { orderBy: { bimonth: "asc" } } }, orderBy: { publicationDate: "asc" } });
-      const credits = await db.creditRequest.findMany({ where: { financialYearId }, include: { items: { include: { appropriation: { select: { code: true } } } } }, orderBy: { createdAt: "asc" } });
+      const laws = await listFinanceLawDocuments(db, { financialYearId });
+      const credits = await listFinanceReportCredits(db, financialYearId);
       return { title: "LOA - Anexo de Programação Orçamentária", year, warnings: [internalReportWarning, partialReportWarning, "Anexo interno: não substitui os anexos obrigatórios definidos pela legislação aplicável."], metadata: reportMetadata(reportType, year, { status: "INTERNAL_PARTIAL", scope: "Anexo de planejamento LOA" }), sections: [
         { title: "Previsão de receitas", rows: laws.flatMap((law) => law.revenueForecasts.map((forecast) => ({ numeroLei: law.lawNumber, codigo: forecast.code, descricao: forecast.name, valorPrevisto: Number(forecast.estimatedValue) }))) },
         { title: "Fixação de despesas", rows: laws.flatMap((law) => law.expenseFixations.map((fixation) => ({ numeroLei: law.lawNumber, codigo: fixation.code, descricao: fixation.name, valorFixado: Number(fixation.fixedValue) }))) },
@@ -318,8 +306,8 @@ export async function generateInternalReportDataset(
       const [budget, patrimonial, annualClose, payables] = await Promise.all([
         generateBalancoOrcamentario(db, filter),
         generateBalancoPatrimonial(db, filter),
-        db.annualAccountingClose.findUnique({ where: { financialYearId }, select: { status: true, preparedAt: true, closedAt: true } }),
-        db.payableCarryForward.findMany({ where: { originFinancialYearId: financialYearId, ...(filter.budgetUnitIds ? { commitment: { appropriation: { budgetUnitId: { in: filter.budgetUnitIds } } } } : {}) }, select: { type: true, status: true, valueDecimal: true }, orderBy: { type: "asc" } }),
+        findAnnualAccountingClose(db, financialYearId),
+        listReportOriginPayables(db, financialYearId, filter.budgetUnitIds),
       ]);
       return {
         title: "PCA - Prestação de Contas Anual interna",
@@ -339,11 +327,7 @@ export async function generateInternalReportDataset(
       };
     }
     case "CONCILIACAO_TESOURARIA": {
-      const reconciliations = await db.bankReconciliation.findMany({
-        where: { bankAccount: bankScope, date: { gte: new Date(Date.UTC(year, 0, 1)), lte: new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999)) } },
-        include: { bankAccount: { select: { bankName: true, agency: true, accountNumber: true, accountType: true, budgetUnit: { select: { code: true, name: true } }, resourceSource: { select: { code: true, name: true } } } } },
-        orderBy: [{ date: "asc" }, { periodEnd: "asc" }],
-      });
+      const reconciliations = await listReportReconciliations(db, year, resolvedScope);
       const statusCounts = reconciliations.reduce<Record<string, number>>((counts, reconciliation) => ({ ...counts, [reconciliation.status]: (counts[reconciliation.status] ?? 0) + 1 }), {});
       return {
         title: "Relatório de Conciliações Bancárias",
@@ -358,25 +342,21 @@ export async function generateInternalReportDataset(
     }
     case "BALANCO_FINANCEIRO":
     case "FLUXO_CAIXA_ANUAL": {
-      const movements = await db.treasuryMovement.findMany({
-        where: { financialYearId, status: "Confirmado", bankAccount: bankScope },
-        include: { bankAccount: { select: { bankName: true, agency: true, accountNumber: true, budgetUnit: { select: { code: true, name: true } }, resourceSource: { select: { code: true, name: true } } } } },
-        orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-      });
-      const byType = new Map<string, { type: string; entries: Prisma.Decimal; exits: Prisma.Decimal }>();
-      const byAccount = new Map<string, { bank: string; agency: string; account: string; unit: string; source: string; balance: Prisma.Decimal }>();
+      const movements = await listReportTreasuryMovements(db, financialYearId, resolvedScope);
+      const byType = new Map<string, { type: string; entries: Decimal; exits: Decimal }>();
+      const byAccount = new Map<string, { bank: string; agency: string; account: string; unit: string; source: string; balance: Decimal }>();
       for (const movement of movements) {
         const value = movement.valueDecimal;
-        const type = byType.get(movement.type) ?? { type: movement.type, entries: new Prisma.Decimal(0), exits: new Prisma.Decimal(0) };
+        const type = byType.get(movement.type) ?? { type: movement.type, entries: new Decimal(0), exits: new Decimal(0) };
         if (movement.direction === "Entrada") type.entries = type.entries.plus(value);
         if (movement.direction === "Saída") type.exits = type.exits.plus(value);
         byType.set(movement.type, type);
-        const account = byAccount.get(movement.bankAccountId) ?? { bank: movement.bankAccount.bankName, agency: movement.bankAccount.agency, account: movement.bankAccount.accountNumber, unit: movement.bankAccount.budgetUnit ? `${movement.bankAccount.budgetUnit.code} - ${movement.bankAccount.budgetUnit.name}` : "", source: movement.bankAccount.resourceSource ? `${movement.bankAccount.resourceSource.code} - ${movement.bankAccount.resourceSource.name}` : "", balance: new Prisma.Decimal(0) };
+        const account = byAccount.get(movement.bankAccountId) ?? { bank: movement.bankAccount.bankName, agency: movement.bankAccount.agency, account: movement.bankAccount.accountNumber, unit: movement.bankAccount.budgetUnit ? `${movement.bankAccount.budgetUnit.code} - ${movement.bankAccount.budgetUnit.name}` : "", source: movement.bankAccount.resourceSource ? `${movement.bankAccount.resourceSource.code} - ${movement.bankAccount.resourceSource.name}` : "", balance: new Decimal(0) };
         account.balance = movement.direction === "Entrada" ? account.balance.plus(value) : account.balance.minus(value);
         byAccount.set(movement.bankAccountId, account);
       }
-      const totalEntries = [...byType.values()].reduce((sum, item) => sum.plus(item.entries), new Prisma.Decimal(0));
-      const totalExits = [...byType.values()].reduce((sum, item) => sum.plus(item.exits), new Prisma.Decimal(0));
+      const totalEntries = [...byType.values()].reduce((sum, item) => sum.plus(item.entries), new Decimal(0));
+      const totalExits = [...byType.values()].reduce((sum, item) => sum.plus(item.exits), new Decimal(0));
       const isBalance = reportType === "BALANCO_FINANCEIRO";
       return {
         title: isBalance ? "Balanço Financeiro - Síntese de Tesouraria" : "Fluxo de Caixa Anual - Síntese de Tesouraria",
@@ -398,9 +378,9 @@ export function reportDatasetCsv(dataset: InternalReportDataset) {
   return { csv: renderTabularCsv(dataset, presentation), rowCount: 1 + dataset.sections.reduce((count, section) => count + section.rows.length, 0) };
 }
 
-export async function generateFinancialReportCsv(db: PrismaClient, reportType: InternalReportType, financialYearId: string) {
+export async function generateFinancialReportCsv(db: DatabaseConnection, reportType: InternalReportType, financialYearId: string) {
   // This compatibility API predates the explicit year parameter used by the route.
-  const scope = await resolveFinancialReportScope(db, financialYearId);
+  const scope = await resolveFinancialReportScope(db.db, financialYearId);
   const dataset = await generateInternalReportDataset(db, reportType, financialYearId, scope.year);
   return reportDatasetCsv(dataset);
 }
@@ -408,15 +388,12 @@ export async function generateFinancialReportCsv(db: PrismaClient, reportType: I
 const annualPublicReportTypes = new Set<PublicFinancialReportType>(["BALANCO_ORCAMENTARIO", "BALANCO_PATRIMONIAL"]);
 
 export async function savePublicFinancialReportSnapshot(
-  db: PrismaClient,
+  db: DatabaseConnection,
   input: { reportType: InternalReportType; financialYearId: string; year: number; csv: string },
 ) {
   if (!isPublicFinancialReportType(input.reportType)) return null;
   if (annualPublicReportTypes.has(input.reportType)) {
-    const annualClose = await db.annualAccountingClose.findUnique({
-      where: { financialYearId: input.financialYearId },
-      select: { status: true },
-    });
+    const annualClose = await findAnnualAccountingClose(db.db, input.financialYearId);
     if (annualClose?.status !== "ENCERRADO") return null;
   }
 
@@ -426,21 +403,9 @@ export async function savePublicFinancialReportSnapshot(
   const hashSha256 = createHash("sha256").update(input.csv, "utf8").digest("hex");
   const documentType = publicFinancialReportDocumentType(input.financialYearId, reportType);
 
-  return db.$transaction(async (tx) => {
+  return withDatabaseTransaction(db, async (tx) => {
     // One version sequence per public report, even under simultaneous administrative exports.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${documentType}))`;
-    const existing = await tx.document.findFirst({ where: { documentType }, select: { id: true } });
-    const document = existing
-      ? await tx.document.update({ where: { id: existing.id }, data: { fileUrl: blob.url, status: "Publicado" } })
-      : await tx.document.create({ data: { title: `Relatório público ${reportType} ${input.year}`, documentType, fileUrl: blob.url, status: "Publicado" } });
-    const latest = await tx.documentVersion.findFirst({
-      where: { documentId: document.id },
-      orderBy: { versionNumber: "desc" },
-      select: { versionNumber: true },
-    });
-    const version = await tx.documentVersion.create({
-      data: { documentId: document.id, versionNumber: (latest?.versionNumber ?? 0) + 1, fileUrl: blob.url, hashSha256, status: "FINAL" },
-    });
-    return { documentId: document.id, version: version.versionNumber };
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${documentType}))`);
+    return insertPublicFinanceDocumentVersion(tx, { documentType, title: `Relatório público ${reportType} ${input.year}`, url: blob.url, hashSha256 });
   });
 }

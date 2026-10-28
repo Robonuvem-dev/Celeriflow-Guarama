@@ -1,85 +1,20 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { collectionDashboard } from "@/lib/tributacao/s8-service";
 import CobrancaClient from "./CobrancaClient";
+import { db } from "@/db/client";
+import { listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
+import { readCollectionPage } from "@/db/repositories/taxation-pages/collection";
 export const dynamic = "force-dynamic";
 export default async function CobrancaPage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
   const [
     taxpayers,
-    profiles,
-    portfolios,
-    agreements,
-    rules,
-    benefitRules,
-    benefitGrants,
-    draws,
-    guides,
+    { profiles, portfolios, agreements, rules, benefitRules, benefitGrants, draws, guides, accesses },
     ranking,
-    accesses,
   ] = await Promise.all([
-    prisma.taxpayer.findMany({
-      where: { status: "Ativo" },
-      include: { person: true, company: true },
-      orderBy: { createdAt: "asc" },
-      take: 200,
-    }),
-    prisma.taxCollectionProfile.findMany({
-      where: { active: true },
-      orderBy: { priority: "desc" },
-    }),
-    prisma.taxCollectionPortfolio.findMany({
-      include: {
-        items: true,
-        actions: {
-          include: { events: { orderBy: { createdAt: "desc" }, take: 5 } },
-          orderBy: { scheduledAt: "desc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.taxInstallmentAgreement.findMany({
-      include: {
-        rule: true,
-        debts: true,
-        quotas: { orderBy: { quotaNumber: "asc" } },
-        events: { orderBy: { createdAt: "desc" }, take: 8 },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.taxInstallmentRule.findMany({
-      where: { active: true },
-      orderBy: { effectiveFrom: "desc" },
-    }),
-    prisma.taxBenefitRule.findMany({
-      include: { grants: true },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.taxBenefitGrant.findMany({
-      include: { rule: true },
-      orderBy: { grantedAt: "desc" },
-      take: 100,
-    }),
-    prisma.taxPrizeDraw.findMany({
-      include: {
-        coupons: true,
-        executions: { include: { winners: { include: { coupon: true } } } },
-      },
-      orderBy: { scheduledAt: "desc" },
-      take: 100,
-    }),
-    prisma.taxGuide.findMany({
-      where: { status: { not: "Cancelada" } },
-      include: { assessment: true },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    collectionDashboard(prisma),
-    prisma.taxpayerPortalAccess.findMany({
-      where: { usuarioId: user.id, status: "ATIVO" },
-    }),
+    listPageTaxpayers(database, { active: true, order: "created-asc", limit: 200 }),
+    readCollectionPage(database, user.id),
+    collectionDashboard(database),
   ]);
   const names = new Map(
     taxpayers.map((row) => [

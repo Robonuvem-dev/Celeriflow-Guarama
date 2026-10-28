@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { listProcurementNotificationRecipients } from "@/db/repositories/procurement/invitations";
 import { notifyPendingPriceResearchInvitations } from "@/lib/integrations/procurement-invitation-notifications";
 import {
   ProcurementExportError,
@@ -73,7 +76,7 @@ export async function queueProcurementExportAction(rawInput: unknown): Promise<A
   try {
     const input = queueSchema.parse(rawInput);
     const context = await getTenantContextForModuleOperation("COMPRAS", "issueReports");
-    const result = await queueProcurementExport(context.prisma, { ...input, actorUsuarioId: context.user.id });
+    const result = await queueProcurementExport(databaseConnection, { ...input, actorUsuarioId: context.user.id });
     paths();
     return {
       data: {
@@ -91,7 +94,7 @@ export async function recordProcurementExportOutcomeAction(rawInput: unknown): P
   try {
     const input = outcomeSchema.parse(rawInput);
     const context = await getTenantContextForModuleOperation("COMPRAS", "update");
-    const result = await recordProcurementExportOutcome(context.prisma, { ...input, actorUsuarioId: context.user.id });
+    const result = await recordProcurementExportOutcome(databaseConnection, { ...input, actorUsuarioId: context.user.id });
     paths();
     return {
       data: {
@@ -108,14 +111,8 @@ export async function recordProcurementExportOutcomeAction(rawInput: unknown): P
 export async function notifyPendingPriceResearchInvitationsAction(): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("COMPRAS", "create");
-    const result = await context.prisma.$transaction(async (tx) => {
-      const recipients = await tx.usuario.findMany({
-        where: { ativo: true },
-        include: {
-          perfil: { select: { codigo: true, permissoes: true, ativo: true, nome: true } },
-          permissoesModulo: { include: { modulo: { select: { codigo: true } } } },
-        },
-      });
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const recipients = await listProcurementNotificationRecipients(tx);
       return notifyPendingPriceResearchInvitations(tx, {
         actorUsuarioId: context.user.id,
         recipientUserIds: recipients.filter(hasProcurementModuleAccess).map((recipient) => recipient.id),

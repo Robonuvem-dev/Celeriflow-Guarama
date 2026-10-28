@@ -1,15 +1,19 @@
-import { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import type { DatabaseTransaction } from "@/db/transaction";
+import type { JsonObject, JsonValue } from "@/db/json";
+import { listMscPublishedEntries } from "@/db/repositories/finance/msc-configuration";
+import { countMscInformationReferences } from "@/db/repositories/finance/msc-export";
 
 type Scope = { governmentEntityId: string; budgetUnitId: string; date: Date };
-const object = (value: Prisma.JsonValue | Prisma.InputJsonValue | null | undefined): Prisma.JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value as Prisma.JsonObject : {};
-const string = (value: Prisma.JsonValue | undefined) => typeof value === "string" ? value : null;
+const object = (value: JsonValue | undefined): JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const string = (value: JsonValue | undefined) => typeof value === "string" ? value : null;
 
-async function currentMapping(tx: Prisma.TransactionClient, scope: Scope, kind: string, canonicalId: string) {
+async function currentMapping(tx: DatabaseTransaction, scope: Scope, kind: string, canonicalId: string) {
   const day = scope.date.toISOString().slice(0, 10);
   const lockKey = `MSC_MAPPING:${scope.governmentEntityId}:${scope.budgetUnitId}:${scope.date.getUTCFullYear()}:MSC_MAPPING_${kind}:${canonicalId}`;
   // Share the publisher's key so all lines of one posting keep a stable source edition until commit.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${lockKey}, 0))::text`;
-  const candidates = await tx.planningCatalogEntry.findMany({ where: { kind: `MSC_MAPPING_${kind}`, canonicalId, version: { status: "PUBLISHED", year: scope.date.getUTCFullYear() }, AND: [{ attributes: { path: ["governmentEntityId"], equals: scope.governmentEntityId } }, { attributes: { path: ["budgetUnitId"], equals: scope.budgetUnitId } }] }, select: { id: true, versionId: true, code: true, attributes: true } });
+  await tx.execute(sql`SELECT pg_advisory_xact_lock_shared(hashtextextended(${lockKey}, 0))::text`);
+  const candidates = await listMscPublishedEntries(tx, { kind: `MSC_MAPPING_${kind}`, canonicalId, year: scope.date.getUTCFullYear(), governmentEntityId: scope.governmentEntityId, budgetUnitId: scope.budgetUnitId });
   const applicable = candidates.filter(entry => { const attrs = object(entry.attributes); return attrs.operational === true && typeof attrs.effectiveFrom === "string" && typeof attrs.effectiveUntil === "string" && attrs.effectiveFrom <= day && attrs.effectiveUntil >= day; });
   const replaced = new Set(applicable.map(entry => object(entry.attributes).predecessorEntryId));
   const current = applicable.filter(entry => !replaced.has(entry.id));
@@ -18,13 +22,13 @@ async function currentMapping(tx: Prisma.TransactionClient, scope: Scope, kind: 
 }
 
 /** Composes documented IC on the posting date, and copies original IC on reversals. */
-export async function composeMscLineDimensions(tx: Prisma.TransactionClient, scope: Scope, accountId: string, dimensions: Prisma.InputJsonObject | null): Promise<Prisma.InputJsonObject | null> {
+export async function composeMscLineDimensions(tx: DatabaseTransaction, scope: Scope, accountId: string, dimensions: JsonObject | null): Promise<JsonObject | null> {
   const origin = object(dimensions);
   if (Array.isArray(origin.originalClassificationSnapshots)) {
     const memories = origin.originalClassificationSnapshots.map(snapshot => object(object(object(snapshot).dimensions).msc));
     if (memories.some(memory => Object.keys(memory).length)) {
       if (new Set(memories.map(memory => JSON.stringify(memory))).size !== 1) throw new Error("Contrapartes de estorno possuem composições MSC distintas; identifique a linha original.");
-      return memories[0] as Prisma.InputJsonObject;
+      return memories[0];
     }
     return null;
   }
@@ -47,7 +51,7 @@ export async function composeMscLineDimensions(tx: Prisma.TransactionClient, sco
   if (expected.includes("FS")) {
     const functionCode = string(budget.functionCode), subfunctionCode = string(budget.subfunctionCode);
     if (functionCode && subfunctionCode) {
-      const references = await tx.planningCatalogEntry.count({ where: { versionId: string(config.referenceVersionId) ?? "", OR: [{ kind: "MSC_FUNCTION", code: functionCode }, { kind: "MSC_SUBFUNCTION", code: subfunctionCode }] } });
+      const references = await countMscInformationReferences(tx, string(config.referenceVersionId) ?? "", "FS", functionCode + subfunctionCode);
       if (references === 2) information.FS = functionCode + subfunctionCode;
     }
   }

@@ -1,4 +1,13 @@
-import { Prisma, type PrismaClient, type AttendanceRecord } from "@prisma/client";
+import { and, asc, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { Decimal as DecimalJs } from "decimal.js";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction } from "@/db/transaction";
+import type { AttendanceRecord } from "@/lib/contracts/personnel";
+import { attendanceRecords } from "@/db/schema/personnel-records";
+import { hrRightEntries } from "@/db/schema/personnel-workforce";
+import { lockPersonnel, personnelJson } from "@/db/repositories/personnel/integration";
+import { requireEmploymentContract, requireEmploymentHistory, requireEmploymentRegime, requirePayrollRule, requireRightEntry } from "@/db/repositories/personnel/workforce";
 import { z } from "zod";
 import { payrollPeriod } from "./calculation-engine";
 import { resolveContractRevision } from "./contract-timeline";
@@ -10,16 +19,16 @@ export const timeBankPolicySchema = policySchema;
 
 /** Grouping by civil day allows distinct origins on the same approved day,
  * while a later credit can never finance a deficit on an earlier day. */
-export function validateTimeBankBalances(entries: { date: Date; quantity: Prisma.Decimal.Value }[], maximum: Prisma.Decimal.Value, limitFrom?: Date) {
-  const cap = new Prisma.Decimal(maximum);
+export function validateTimeBankBalances(entries: { date: Date; quantity: DecimalJs.Value }[], maximum: DecimalJs.Value, limitFrom?: Date) {
+  const cap = new Decimal(maximum);
   if (!cap.isFinite() || cap.lt(0)) throw new Error("Limite de banco de horas inválido.");
-  const grouped = new Map<string, Prisma.Decimal>();
+  const grouped = new Map<string, Decimal>();
   for (const entry of entries) {
-    const day = entry.date.toISOString().slice(0, 10); const value = new Prisma.Decimal(entry.quantity);
+    const day = entry.date.toISOString().slice(0, 10); const value = new Decimal(entry.quantity);
     if (!value.isFinite()) throw new Error("Quantidade de horas inválida.");
-    grouped.set(day, (grouped.get(day) || new Prisma.Decimal(0)).add(value));
+    grouped.set(day, (grouped.get(day) || new Decimal(0)).add(value));
   }
-  let balance = new Prisma.Decimal(0);
+  let balance = new Decimal(0);
   for (const [day, quantity] of [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     balance = balance.add(quantity);
     if (balance.lt(0)) throw new Error(`Débito excede saldo de horas em ${day}; créditos futuros não cobrem saldo anterior.`);
@@ -28,77 +37,78 @@ export function validateTimeBankBalances(entries: { date: Date; quantity: Prisma
   return balance;
 }
 
-export async function generateAttendanceTimeBank(db: PrismaClient, actorId: string, raw: unknown) {
+export async function generateAttendanceTimeBank(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ contractId: z.string().min(1), ruleId: z.string().min(1), competence: z.string() }).strict().parse(raw);
   const period = payrollPeriod(input.competence);
-  return db.$transaction(async tx => {
-    const initial = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: input.contractId } });
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${initial.employeeId}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:contract:${initial.id}`}))`;
-    const stored = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: initial.id }, include: { revisions: true } });
+  return withDatabaseTransaction(db, async tx => {
+    const initial = await requireEmploymentContract(tx, input.contractId);
+    await lockPersonnel(tx, `employee:${initial.employeeId}`);
+    await lockPersonnel(tx, `contract:${initial.id}`);
+    const stored = await requireEmploymentHistory(tx, initial.id);
     const contract = resolveContractRevision(stored, stored.revisions, period).contract;
-    const regime = await tx.hrEmploymentRegime.findUniqueOrThrow({ where: { id: contract.regimeId } });
-    const rule = await tx.hrPayrollRule.findUniqueOrThrow({ where: { id: input.ruleId }, include: { ruleSet: true } });
+    const regime = await requireEmploymentRegime(tx, contract.regimeId);
+    const rule = await requirePayrollRule(tx, input.ruleId);
     const policy = policySchema.parse(rule.value);
     if (!rule.isActive || !regime.isActive || contract.status !== "ATIVO" || regime.ruleSetId !== rule.ruleSetId || rule.ruleSet.status !== "ATIVA" || rule.ruleSet.effectiveFrom > period.start || (rule.ruleSet.effectiveUntil && rule.ruleSet.effectiveUntil < period.end)) throw new Error("Política/regime de banco de horas devem cobrir a competência.");
     if (rule.ruleSet.scope === "PRODUCAO" && (rule.ruleSet.isDemo || !rule.ruleSet.approvedAt || rule.ruleSet.approvedAt > new Date() || !rule.ruleSet.legalReference)) throw new Error("Banco de horas de produção exige parâmetros oficiais aprovados.");
-    const creditLimit = new Prisma.Decimal(policy.maxCreditPerDayHours); const debitLimit = new Prisma.Decimal(policy.maxDebitPerDayHours);
+    const creditLimit = new Decimal(policy.maxCreditPerDayHours); const debitLimit = new Decimal(policy.maxDebitPerDayHours);
     if (creditLimit.gt(24) || debitLimit.gt(24)) throw new Error("Limites diários de banco de horas não podem ultrapassar 24h.");
-    const records = await tx.attendanceRecord.findMany({ where: { employeeId: contract.employeeId, date: { gte: period.start, lte: period.end }, bankHours: { not: 0 } }, orderBy: [{ date: "asc" }, { id: "asc" }] });
+    const records = await tx.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, contract.employeeId), gte(attendanceRecords.date, period.start), lte(attendanceRecords.date, period.end), ne(attendanceRecords.bankHours, 0))).orderBy(asc(attendanceRecords.date), asc(attendanceRecords.id));
     const ids: string[] = [];
-    const pending: { record: AttendanceRecord; quantity: Prisma.Decimal; sourceKey: string }[] = [];
+    const pending: { record: AttendanceRecord; quantity: Decimal; sourceKey: string }[] = [];
     for (const record of records) {
-      await tx.$queryRaw`SELECT id FROM "AttendanceRecord" WHERE id=${record.id} FOR UPDATE`;
-      const current = await tx.attendanceRecord.findUniqueOrThrow({ where: { id: record.id } });
-      const quantity = new Prisma.Decimal(String(current.bankHours));
+      await tx.execute(sql`SELECT id FROM "AttendanceRecord" WHERE id=${record.id} FOR UPDATE`);
+      const [current] = await tx.select().from(attendanceRecords).where(eq(attendanceRecords.id, record.id)).limit(1);
+      if (!current) throw new Error("Registro de ponto não encontrado.");
+      const quantity = new Decimal(String(current.bankHours));
       if (!quantity.isFinite() || !quantity.eq(quantity.toDecimalPlaces(4)) || quantity.gt(creditLimit) || quantity.negated().gt(debitLimit) || !policy.allowedStatuses.includes(current.status) || current.employeeId !== contract.employeeId || current.date < contract.admittedAt || (contract.endsAt && current.date > contract.endsAt)) throw new Error("Horas/situação/período do ponto incompatíveis com a política do banco.");
       if (quantity.gt(0) && policy.forbidPaidOvertimeForCredit && current.extraHours > 0) throw new Error("Política impede crédito de banco em registro com horas extras remuneradas.");
       const sourceKey = await attendancePostingKey(tx, `PONTO:BANCO_HORAS:${current.id}`, current);
       await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: rule.ruleSet.scope, eventType: "BANCO_HORAS_RECONHECIDO", payload: { contractId: contract.id, contractVersion: contract.version, competence: input.competence, ruleId: rule.id, policy, attendance: current, quantity: quantity.toString() } });
-      const existing = await tx.hrRightEntry.findUnique({ where: { sourceKey } });
+      const [existing] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
       if (existing) { ids.push(existing.id); continue; }
       pending.push({ record: current, quantity, sourceKey });
     }
-    const ledger = await tx.hrRightEntry.findMany({ where: { contractId: contract.id, kind: "BANCO_HORAS", details: { path: ["scope"], equals: rule.ruleSet.scope } }, select: { periodStart: true, quantity: true } });
+    const ledger = await tx.select({ periodStart: hrRightEntries.periodStart, quantity: hrRightEntries.quantity }).from(hrRightEntries).where(and(eq(hrRightEntries.contractId, contract.id), eq(hrRightEntries.kind, "BANCO_HORAS"), sql`${hrRightEntries.details}->>'scope' = ${rule.ruleSet.scope}`));
     const balances = [...ledger.map(entry => ({ date: entry.periodStart, quantity: entry.quantity })), ...pending.map(entry => ({ date: entry.record.date, quantity: entry.quantity }))];
     if (pending.length) {
       validateTimeBankBalances(balances, policy.maxBalanceHours, rule.ruleSet.effectiveFrom);
       for (const day of new Set(pending.map(entry => entry.record.date.toISOString().slice(0, 10)))) {
         const daily = balances.filter(entry => entry.date.toISOString().slice(0, 10) === day);
-        const credit = daily.reduce((sum, entry) => sum.add(Prisma.Decimal.max(0, entry.quantity)), new Prisma.Decimal(0));
-        const debit = daily.reduce((sum, entry) => sum.add(Prisma.Decimal.min(0, entry.quantity)), new Prisma.Decimal(0)).negated();
+        const credit = daily.reduce((sum, entry) => sum.add(Decimal.max(0, entry.quantity)), new Decimal(0));
+        const debit = daily.reduce((sum, entry) => sum.add(Decimal.min(0, entry.quantity)), new Decimal(0)).negated();
         if (credit.gt(creditLimit) || debit.gt(debitLimit)) throw new Error(`Somatório diário do banco de horas excede a política em ${day}.`);
       }
     }
     for (const { record: current, quantity, sourceKey } of pending) {
-      const entry = await tx.hrRightEntry.create({ data: { contractId: contract.id, sourceKey, kind: "BANCO_HORAS", periodStart: current.date, periodEnd: current.date, quantity, amount: 0, actorId, details: JSON.parse(JSON.stringify({ policy, scope: rule.ruleSet.scope, attendanceId: current.id, contractVersion: contract.version, reason: "Horas reconhecidas no ponto" })) } });
+      const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey, kind: "BANCO_HORAS", periodStart: current.date, periodEnd: current.date, quantity, amount: new Decimal(0), actorId, details: personnelJson({ policy, scope: rule.ruleSet.scope, attendanceId: current.id, contractVersion: contract.version, reason: "Horas reconhecidas no ponto" }) }).returning();
       ids.push(entry.id);
     }
     return { ids: ids.sort(), records: records.length };
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
 }
 
-export async function reverseAttendanceTimeBank(db: PrismaClient, actorId: string, raw: unknown) {
+export async function reverseAttendanceTimeBank(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ entryId: z.string().min(1), reason: z.string().trim().min(3).max(2000) }).strict().parse(raw);
-  return db.$transaction(async tx => {
-    const original = await tx.hrRightEntry.findUniqueOrThrow({ where: { id: input.entryId } });
-    const contract = await tx.hrEmploymentContract.findUniqueOrThrow({ where: { id: original.contractId } });
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${contract.employeeId}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:contract:${contract.id}`}))`;
+  return withDatabaseTransaction(db, async tx => {
+    const original = await requireRightEntry(tx, input.entryId);
+    const contract = await requireEmploymentContract(tx, original.contractId);
+    await lockPersonnel(tx, `employee:${contract.employeeId}`);
+    await lockPersonnel(tx, `contract:${contract.id}`);
     if (original.kind !== "BANCO_HORAS" || !original.sourceKey.startsWith("PONTO:BANCO_HORAS:")) throw new Error("Estorno exige entrada original de banco de horas reconhecida no ponto.");
     const details = z.object({ policy: policySchema, scope: z.enum(["PRODUCAO", "HOMOLOGACAO", "DEMONSTRACAO"]), attendanceId: z.string() }).parse(original.details);
     const sourceKey = `ESTORNO:BANCO_HORAS:${original.id}`;
-    const previous = await tx.hrRightEntry.findUnique({ where: { sourceKey } });
+    const [previous] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
     if (previous) {
       if ((previous.details as { reason?: string }).reason !== input.reason) throw new Error("Estorno já registrado com fundamento diferente.");
       return previous;
     }
-    const ledger = await tx.hrRightEntry.findMany({ where: { contractId: contract.id, kind: "BANCO_HORAS", details: { path: ["scope"], equals: details.scope } }, select: { periodStart: true, quantity: true } });
+    const ledger = await tx.select({ periodStart: hrRightEntries.periodStart, quantity: hrRightEntries.quantity }).from(hrRightEntries).where(and(eq(hrRightEntries.contractId, contract.id), eq(hrRightEntries.kind, "BANCO_HORAS"), sql`${hrRightEntries.details}->>'scope' = ${details.scope}`));
     const quantity = original.quantity.negated();
     // An adjustment is effective on the original civil day: all subsequent
     // compensations remain valid, without borrowing credit from the future.
     validateTimeBankBalances([...ledger.map(entry => ({ date: entry.periodStart, quantity: entry.quantity })), { date: original.periodStart, quantity }], details.policy.maxBalanceHours, original.periodStart);
-    const entry = await tx.hrRightEntry.create({ data: { contractId: contract.id, sourceKey, kind: "BANCO_HORAS", periodStart: original.periodStart, periodEnd: original.periodEnd, quantity, amount: 0, actorId, details: { ...details, originalEntryId: original.id, reason: input.reason } } });
+    const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey, kind: "BANCO_HORAS", periodStart: original.periodStart, periodEnd: original.periodEnd, quantity, amount: new Decimal(0), actorId, details: { ...details, originalEntryId: original.id, reason: input.reason } }).returning();
     await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: details.scope, eventType: "BANCO_HORAS_ESTORNADO", payload: { originalEntryId: original.id, entryId: entry.id, actorId, reason: input.reason, quantity: quantity.toString() } });
     return entry;
   });

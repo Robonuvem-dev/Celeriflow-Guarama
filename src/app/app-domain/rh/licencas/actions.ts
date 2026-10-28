@@ -3,14 +3,16 @@
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { assertRhAbsenceDoesNotOverlap } from "@/lib/rh/absence-conflicts";
-
-async function getTenantPrisma(operation: "create" | "update" | "delete") {
-  return (await getTenantContextForModuleOperation("RH", operation)).prisma;
-}
+import { eq, sql } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { leaves } from "@/db/schema/personnel-records";
+import { hrRightEntries } from "@/db/schema/personnel-workforce";
+import { lockPersonnel } from "@/db/repositories/personnel/integration";
 
 export async function saveLicenca(formData: FormData) {
   const id = formData.get("id") as string | null;
-  const prisma = await getTenantPrisma(id ? "update" : "create");
+  await getTenantContextForModuleOperation("RH", id ? "update" : "create");
   try {
     const employeeId = formData.get("employeeId") as string;
     const type = formData.get("type") as string;
@@ -32,19 +34,20 @@ export async function saveLicenca(formData: FormData) {
       status: status || "Ativa",
     };
 
-    await prisma.$transaction(async tx => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${employeeId}`}))`;
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      await lockPersonnel(tx, `employee:${employeeId}`);
       if (id) {
-        await tx.$queryRaw`SELECT id FROM "Leave" WHERE id=${id} FOR UPDATE`;
-        const previous = await tx.leave.findUniqueOrThrow({ where: { id } });
+        await tx.execute(sql`SELECT id FROM "Leave" WHERE id=${id} FOR UPDATE`);
+        const [previous] = await tx.select().from(leaves).where(eq(leaves.id, id)).limit(1);
+        if (!previous) throw new Error("Afastamento não encontrado.");
         if (previous.employeeId !== employeeId) throw new Error("Não é permitido trocar o titular do afastamento.");
-        const occupational = await tx.sstMedicalCertificate.findUnique({ where: { leaveId: id }, select: { id: true } });
+        const { rows: [occupational] } = await tx.execute<{ id: string }>(sql`SELECT id FROM "SstMedicalCertificate" WHERE "leaveId"=${id} LIMIT 1`);
         if (occupational) throw new Error("Este afastamento possui origem em uma perícia SST. A decisão ocupacional e seu vínculo são preservados.");
-        if (await tx.hrRightEntry.findFirst({ where: { details: { path: ["leaveId"], equals: id } } })) throw new Error("Licença integrada a direitos exige cancelamento compensatório; a projeção não pode ser editada.");
+        if ((await tx.select({ id: hrRightEntries.id }).from(hrRightEntries).where(sql`${hrRightEntries.details}->>'leaveId' = ${id}`).limit(1)).length) throw new Error("Licença integrada a direitos exige cancelamento compensatório; a projeção não pode ser editada.");
       }
       if (data.status === "Ativa") await assertRhAbsenceDoesNotOverlap(tx, { employeeId, startsAt: data.startDate, endsAt: data.endDate, kind: "LICENCA", excludeId: id || undefined });
-      if (id) await tx.leave.update({ where: { id }, data });
-      else await tx.leave.create({ data });
+      if (id) await tx.update(leaves).set(data).where(eq(leaves.id, id));
+      else await tx.insert(leaves).values(data);
     });
 
     revalidatePath("/rh/licencas");
@@ -58,17 +61,18 @@ export async function saveLicenca(formData: FormData) {
 }
 
 export async function deleteLicenca(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  const context = await getTenantContextForModuleOperation("RH", "delete");
   try {
-    const occupational = await prisma.sstMedicalCertificate.findUnique({ where: { leaveId: id }, select: { id: true } });
+    const { rows: [occupational] } = await (context.database ?? databaseConnection.db).execute<{ id: string }>(sql`SELECT id FROM "SstMedicalCertificate" WHERE "leaveId"=${id} LIMIT 1`);
     if (occupational) return { success: false, error: "Afastamentos vinculados a uma perícia SST não podem ser excluídos pelo RH." };
-    await prisma.$transaction(async tx => {
-      const initial = await tx.leave.findUniqueOrThrow({ where: { id } });
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${initial.employeeId}`}))`;
-      await tx.$queryRaw`SELECT id FROM "Leave" WHERE id=${id} FOR UPDATE`;
-      if (await tx.hrRightEntry.findFirst({ where: { details: { path: ["leaveId"], equals: id } } })) throw new Error("Licença integrada a direitos não pode ser excluída; use cancelamento compensatório.");
-      if (await tx.sstMedicalCertificate.findUnique({ where: { leaveId: id }, select: { id: true } })) throw new Error("Afastamento possui origem SST protegida.");
-      await tx.leave.delete({ where: { id } });
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const [initial] = await tx.select().from(leaves).where(eq(leaves.id, id)).limit(1);
+      if (!initial) throw new Error("Afastamento não encontrado.");
+      await lockPersonnel(tx, `employee:${initial.employeeId}`);
+      await tx.execute(sql`SELECT id FROM "Leave" WHERE id=${id} FOR UPDATE`);
+      if ((await tx.select({ id: hrRightEntries.id }).from(hrRightEntries).where(sql`${hrRightEntries.details}->>'leaveId' = ${id}`).limit(1)).length) throw new Error("Licença integrada a direitos não pode ser excluída; use cancelamento compensatório.");
+      if ((await tx.execute<{ id: string }>(sql`SELECT id FROM "SstMedicalCertificate" WHERE "leaveId"=${id} LIMIT 1`)).rows.length) throw new Error("Afastamento possui origem SST protegida.");
+      await tx.delete(leaves).where(eq(leaves.id, id));
     });
     revalidatePath("/rh/licencas");
     revalidatePath("/portal-servidor");

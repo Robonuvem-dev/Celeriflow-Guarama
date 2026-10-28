@@ -1,38 +1,45 @@
 import Link from "next/link";
-import { Prisma } from "@prisma/client";
+import { and, asc, eq, or } from "drizzle-orm";
+import { db } from "@/db/client";
+import type { JsonObject, JsonValue } from "@/db/json";
+import { governmentEntities } from "@/db/schema/master-data";
+import { PersistenceError } from "@/db/errors";
+import { findMscCatalogVersion, listMscAuthorizedUnits, listMscEntityYears, listMscPublishedEntries } from "@/db/repositories/finance/msc-configuration";
 import { z } from "zod";
 import { getTenantContextForModule, isSystemAdministrator, canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { importMscReference, saveMscReportingScope } from "./actions";
 import MscMappingForm from "./MscMappingForm";
 
 export const dynamic = "force-dynamic";
-const object = (value: Prisma.JsonValue): Prisma.JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const object = (value: JsonValue): JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 
 export default async function MscConfigurationPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { prisma, user } = await getTenantContextForModule("FINANCEIRO");
+  const { database, user } = await getTenantContextForModule("FINANCEIRO");
+  const executor = database ?? db;
   const params = await searchParams;
   const parsed = z.object({ governmentEntityId: z.string().min(1).optional(), budgetUnitId: z.string().min(1).optional(), financialYearId: z.string().min(1).optional() }).safeParse(Object.fromEntries(Object.entries(params).filter(([, value]) => typeof value === "string" && value !== "")));
   if (!parsed.success) return <p className="p-5">Seleção de ente/exercício/UG inválida.</p>;
-  const units = await prisma.planningEntityUnit.findMany({ where: isSystemAdministrator(user) ? {} : { budgetUnitId: { in: user.allowedBudgetUnitIds } }, select: { governmentEntityId: true, budgetUnitId: true, governmentEntity: { select: { name: true } }, budgetUnit: { select: { code: true, name: true } } }, orderBy: [{ governmentEntityId: "asc" }, { budgetUnitId: "asc" }] });
+  const units = await listMscAuthorizedUnits(executor, isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds);
   const entities = [...new Map(units.map(unit => [unit.governmentEntityId, unit.governmentEntity.name])).entries()];
   const governmentEntityId = parsed.data.governmentEntityId ?? entities[0]?.[0];
   if (!governmentEntityId || !entities.some(([id]) => id === governmentEntityId)) return <p className="p-5">Nenhum ente autorizado para a MSC.</p>;
   const entityUnits = units.filter(unit => unit.governmentEntityId === governmentEntityId);
   const budgetUnitId = parsed.data.budgetUnitId ?? entityUnits[0]?.budgetUnitId;
   if (!budgetUnitId || !entityUnits.some(unit => unit.budgetUnitId === budgetUnitId)) return <p className="p-5">UG fora da seleção autorizada.</p>;
-  const years = await prisma.financialYear.findMany({ where: { governmentEntityId }, select: { id: true, year: true, status: true }, orderBy: { year: "desc" } });
+  const years = await listMscEntityYears(executor, governmentEntityId);
   const financialYearId = parsed.data.financialYearId ?? years.find(year => year.status === "Aberto")?.id ?? years[0]?.id;
   const year = years.find(item => item.id === financialYearId);
   if (!year || !financialYearId) return <p className="p-5">Exercício fora do ente selecionado.</p>;
   const [reference, entries] = await Promise.all([
-    prisma.planningCatalogVersion.findUnique({ where: { id: "msc-reference:stn:2026:20260708" }, select: { label: true, sourceHash: true, _count: { select: { entries: true } } } }),
-    prisma.planningCatalogEntry.findMany({ where: { kind: { startsWith: "MSC_MAPPING_" }, version: { year: year.year, status: "PUBLISHED" }, AND: [{ attributes: { path: ["governmentEntityId"], equals: governmentEntityId } }, { attributes: { path: ["budgetUnitId"], equals: budgetUnitId } }] }, select: { id: true, kind: true, canonicalId: true, code: true, name: true, attributes: true }, orderBy: { id: "asc" } }),
+    findMscCatalogVersion(executor, "msc-reference:stn:2026:20260708"),
+    listMscPublishedEntries(executor, { mappingKinds: true, year: year.year, governmentEntityId, budgetUnitId }),
   ]);
   const editable = canPerformModuleOperation(user, "FINANCEIRO", "update");
-  const entity = await prisma.governmentEntity.findUniqueOrThrow({ where: { id: governmentEntityId }, select: { type: true, parentId: true } });
+  const [entity] = await executor.select({ type: governmentEntities.type, parentId: governmentEntities.parentId }).from(governmentEntities).where(eq(governmentEntities.id, governmentEntityId));
+  if (!entity) throw new PersistenceError("not-found", "Entidade municipal não encontrada.");
   const reportingEntityId = entity.type === "PREFEITURA" ? governmentEntityId : entity.parentId;
-  const reportingScopes = reportingEntityId ? await prisma.planningCatalogEntry.findMany({ where: { kind: "MSC_REPORTING_SCOPE", canonicalId: reportingEntityId, version: { year: year.year, status: "PUBLISHED" } }, select: { id: true, code: true, name: true, attributes: true }, orderBy: { id: "asc" } }) : [];
-  const reportMembers = entity.type === "PREFEITURA" ? await prisma.governmentEntity.findMany({ where: { OR: [{ id: governmentEntityId }, { parentId: governmentEntityId, status: "ATIVA" }] }, select: { id: true, name: true }, orderBy: { id: "asc" } }) : [];
+  const reportingScopes = reportingEntityId ? await listMscPublishedEntries(executor, { kind: "MSC_REPORTING_SCOPE", canonicalId: reportingEntityId, year: year.year }) : [];
+  const reportMembers = entity.type === "PREFEITURA" ? await executor.select({ id: governmentEntities.id, name: governmentEntities.name }).from(governmentEntities).where(or(eq(governmentEntities.id, governmentEntityId), and(eq(governmentEntities.parentId, governmentEntityId), eq(governmentEntities.status, "ATIVA")))).orderBy(asc(governmentEntities.id)) : [];
   const replacedScopes = new Set(reportingScopes.map(scope => object(scope.attributes).predecessorEntryId));
   const currentScopes = reportingScopes.filter(scope => !replacedScopes.has(scope.id));
   const field = "block w-full rounded border p-2 text-sm";

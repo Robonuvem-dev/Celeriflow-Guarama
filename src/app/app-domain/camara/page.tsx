@@ -4,9 +4,11 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { getChamberTotals } from "@/db/repositories/chamber/queries";
 
 export default async function CamaraDashboard() {
-  const { prisma } = await getTenantContextForModule("CAMARA");
+  await getTenantContextForModule("CAMARA");
   const [
     totalVereadores, 
     totalSessoes, 
@@ -14,14 +16,7 @@ export default async function CamaraDashboard() {
     totalComissoes,
     totalLeis,
     totalAudiencias
-  ] = await Promise.all([
-    prisma.camVereador.count({ where: { status: "Em Exercício" } }),
-    prisma.camSessao.count(),
-    prisma.camProposicao.count(),
-    prisma.camComissao.count({ where: { status: "Ativa" } }),
-    prisma.camLei.count(),
-    prisma.camAudiencia.count()
-  ]);
+  ] = await getChamberTotals(db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

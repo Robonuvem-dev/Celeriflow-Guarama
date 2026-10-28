@@ -4,6 +4,8 @@ import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/plat
 import { listCemeteryFeeEvents, listCemeteryFeeRules } from "@/lib/cemeteries/fees-service";
 import { AdditionalFeeEventForm, FeeRuleForm, RetryFeeButton } from "./FeeForms";
 import CemeteryLookup from "@/components/cemeteries/CemeteryLookup";
+import { db } from "@/db/client";
+import { readCemeteryFeeChoices } from "@/db/repositories/cemeteries/workflow-pages";
 
 export const dynamic = "force-dynamic";
 const statuses: Record<string, string> = { AGUARDANDO_CONFIGURACAO: "Aguardando configuração", AGUARDANDO_CONTRIBUINTE: "Aguardando responsável tributário", PENDENTE: "Pendente de emissão", FALHA_EMISSAO: "Falha na emissão", EMITIDA: "Emitida" };
@@ -15,11 +17,10 @@ export default async function CemeteryFeesPage({ searchParams }: { searchParams:
   const filters = parsed.data;
   const status = filters.status in statuses ? filters.status : "";
   const context = await getTenantContextForModule("CEMITERIOS");
-  const { prisma } = context;
-  const [rules, events, cemeteries, taxes] = await Promise.all([
-    listCemeteryFeeRules(prisma, filters.rulesPage, filters), listCemeteryFeeEvents(prisma, filters.eventsPage, status, filters),
-    prisma.taxCemetery.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.tax.findMany({ where: { isActive: true, taxType: "Taxa" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  const database = context.database ?? db;
+  const [rules, events, { cemeteries, taxes }] = await Promise.all([
+    listCemeteryFeeRules(database, filters.rulesPage, filters), listCemeteryFeeEvents(database, filters.eventsPage, status, filters),
+    readCemeteryFeeChoices(database),
   ]);
   const names = new Map(cemeteries.map(r => [r.id, r.name]));
   const href = (rulesPage: number, eventsPage: number) => `/cemiterios/taxas?${new URLSearchParams({ q: filters.q, cemeteryId: filters.cemeteryId, status, rulesPage: String(rulesPage), eventsPage: String(eventsPage) })}`;

@@ -1,28 +1,19 @@
 import { ServidorForm } from "../../ServidorForm";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { notFound } from "next/navigation";
+import { db } from "@/db/client";
+import { readEmployeeFormData, readEmployeeFormOptions } from "@/db/repositories/personnel-pages/records";
 
 export default async function EditarServidorPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  const employee = await prisma.employee.findUnique({
-    where: { id },
-    include: {
-      dependents: true,
-      benefits: {
-        include: { benefitConfig: true }
-      }
-    }
-  });
+  const employee = await readEmployeeFormData(database, id);
 
   if (!employee) {
     notFound();
   }
 
-  const roles = await prisma.role.findMany({ orderBy: { name: 'asc' } });
-  const departments = await prisma.department.findMany({ orderBy: { name: 'asc' } });
-  const secretariats = await prisma.secretariat.findMany({ orderBy: { name: 'asc' } });
-  const benefitConfigs = await prisma.benefitConfig.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+  const { roles, departments, secretariats, benefitConfigs } = await readEmployeeFormOptions(database);
 
   return (
     <ServidorForm 

@@ -5,6 +5,8 @@ import { createBankAccountWithOpeningBalance, createTreasuryTransfer, FinanceErr
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { configureBankResourceSources } from "@/lib/financeiro/bank-resource-sources";
+import { databaseConnection, db } from "@/db/client";
+import { findFinanceBankAccount } from "@/db/repositories/finance/treasury";
 
 type ActionResult = { error?: string };
 
@@ -17,13 +19,13 @@ const transferSchema = z.object({
   history: z.string().trim().max(500, "O histórico deve ter no máximo 500 caracteres.").optional(),
 });
 
-async function getTenantPrisma(operation: ModuleOperation) {
+async function getFinanceContext(operation: ModuleOperation) {
   return getTenantContextForModuleOperation("FINANCEIRO", operation);
 }
-const bankActor = (context: Awaited<ReturnType<typeof getTenantPrisma>>) => ({ usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
+const bankActor = (context: Awaited<ReturnType<typeof getFinanceContext>>) => ({ usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
 
-async function assertAccountAccess(context: Awaited<ReturnType<typeof getTenantPrisma>>, accountId: string, nextBudgetUnitId?: string) {
-  const account = await context.prisma.bankAccount.findUnique({ where: { id: accountId }, select: { budgetUnitId: true } });
+async function assertAccountAccess(context: Awaited<ReturnType<typeof getFinanceContext>>, accountId: string, nextBudgetUnitId?: string) {
+  const account = await findFinanceBankAccount(db, accountId);
   if (!account) throw new FinanceError("Conta bancária não encontrada.");
   if (!isSystemAdministrator(context.user)) {
     if (!account.budgetUnitId) throw new FinanceError("Somente o administrador pode classificar uma conta bancária sem Unidade Gestora.");
@@ -32,11 +34,8 @@ async function assertAccountAccess(context: Awaited<ReturnType<typeof getTenantP
   if (nextBudgetUnitId) assertBudgetUnitAccess(context.user, nextBudgetUnitId);
 }
 
-async function getTransferAccount(context: Awaited<ReturnType<typeof getTenantPrisma>>, accountId: string) {
-  const account = await context.prisma.bankAccount.findUnique({
-    where: { id: accountId },
-    select: { id: true, budgetUnitId: true, resourceSourceId: true },
-  });
+async function getTransferAccount(context: Awaited<ReturnType<typeof getFinanceContext>>, accountId: string) {
+  const account = await findFinanceBankAccount(db, accountId);
   if (!account) throw new FinanceError("Conta bancária não encontrada.");
   if (!account.budgetUnitId) throw new FinanceError("A conta bancária deve estar vinculada a uma Unidade Gestora.");
   assertBudgetUnitAccess(context.user, account.budgetUnitId);
@@ -56,9 +55,9 @@ export async function createBankAccount(data: {
   accountingPlanId: string;
   isActive: boolean;
 }) {
-  const context = await getTenantPrisma("create");
+  const context = await getFinanceContext("create");
   assertBudgetUnitAccess(context.user, data.budgetUnitId);
-  const account = await createBankAccountWithOpeningBalance(context.prisma, bankActor(context), {
+  const account = await createBankAccountWithOpeningBalance(databaseConnection, bankActor(context), {
     ...data,
     openingBalance: data.currentBalance,
   });
@@ -81,9 +80,9 @@ export async function updateBankAccount(id: string, data: {
   accountingPlanId?: string;
   isActive?: boolean;
 }) {
-  const context = await getTenantPrisma("update");
+  const context = await getFinanceContext("update");
   await assertAccountAccess(context, id, data.budgetUnitId);
-  const account = await updateBankAccountDetails(context.prisma, bankActor(context), id, data);
+  const account = await updateBankAccountDetails(databaseConnection, bankActor(context), id, data);
 
   revalidatePath("/app-domain/financeiro/contas-bancarias");
   revalidatePath("/app-domain/cadastros/bancos-agencias");
@@ -91,9 +90,9 @@ export async function updateBankAccount(id: string, data: {
 }
 
 export async function toggleBankAccountStatus(id: string, isActive: boolean) {
-  const context = await getTenantPrisma("update");
+  const context = await getFinanceContext("update");
   await assertAccountAccess(context, id);
-  const account = await updateBankAccountDetails(context.prisma, bankActor(context), id, { isActive });
+  const account = await updateBankAccountDetails(databaseConnection, bankActor(context), id, { isActive });
 
   revalidatePath("/app-domain/financeiro/contas-bancarias");
   return account;
@@ -116,14 +115,14 @@ export async function createTreasuryTransferAction(data: {
   }
 
   try {
-    const context = await getTenantPrisma("create");
+    const context = await getFinanceContext("create");
     const [source, destination] = await Promise.all([
       getTransferAccount(context, parsed.data.sourceBankAccountId),
       getTransferAccount(context, parsed.data.destinationBankAccountId),
     ]);
     if (!parsed.data.resourceSourceId && (!source.resourceSourceId || source.resourceSourceId !== destination.resourceSourceId)) throw new FinanceError("Selecione a fonte comum às contas da transferência.");
 
-    await createTreasuryTransfer(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, {
+    await createTreasuryTransfer(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, {
       ...parsed.data,
       date,
     });
@@ -136,9 +135,9 @@ export async function createTreasuryTransferAction(data: {
 
 export async function saveBankResourceSources(bankAccountId: string, resourceSourceIds: string[]): Promise<ActionResult> {
   try {
-    const context = await getTenantPrisma("update");
+    const context = await getFinanceContext("update");
     await assertAccountAccess(context, bankAccountId);
-    await configureBankResourceSources(context.prisma, bankActor(context), bankAccountId, resourceSourceIds);
+    await configureBankResourceSources(databaseConnection, bankActor(context), bankAccountId, resourceSourceIds);
     revalidatePath("/financeiro/contas-bancarias");
     revalidatePath("/financeiro/pagamentos");
     return {};

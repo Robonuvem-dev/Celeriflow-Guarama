@@ -2,335 +2,301 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
-import { Prisma } from "@prisma/client";
-import type { AppContext } from "../src/lib/platform/tenant-context";
+import { sql } from "drizzle-orm";
+import { databaseTimestamp } from "../src/db/temporal";
+import { createSstDrizzleFixture } from "./helpers/sst-drizzle-fixture";
+import { sstTestContext } from "./helpers/sst-drizzle-context";
+import { sstDatabaseError } from "./helpers/sst-database-error";
+import { getPostgresError } from "../src/db/errors";
 import { assertDisciplineAccess, disciplineUnitWhere } from "../src/lib/sst/clinical-access";
 import { clinicalRecordInput, vaccinationInput } from "../src/lib/sst/clinical-policy";
+import { questionnaireQuestions } from "../src/lib/sst/questionnaire-policy";
 import { registerClinicalRecord, registerOccupationalVaccination, registerProfessionalRole, registerDisciplineGrant, clinicalRecordDocument, listClinicalRecords, listOccupationalVaccinations } from "../src/lib/sst/clinical-service";
 import { SstValidationError } from "../src/lib/sst/errors";
 
-const key = "2d161f17-63ca-4d57-9c87-82c4f74e4d5a";
-const otherKey = "4d161f17-63ca-4d57-9c87-82c4f74e4d5a";
-const user = { id: "actor", name: "Registrador", profileCode: "SST_OPERATOR", modulePermissions: [], allowedBudgetUnitIds: ["ug"], permissions: JSON.stringify({ modules: { SST: { blocked: false, create: true } } }) };
+const key = "2d161f17-63ca-4d57-9c87-82c4f74e4d5a", otherKey = "4d161f17-63ca-4d57-9c87-82c4f74e4d5a";
 const visit = { budgetUnitId: "ug", personId: "worker", professionalRoleId: "role", discipline: "MEDICINE", attendedAt: "2026-10-01T03:00:00Z", occupationalContext: "Exposição ocupacional", narrative: "Atendimento clínico", opinion: "Parecer profissional", submissionKey: key };
 const shot = { budgetUnitId: "ug", personId: "worker", professionalRoleId: "role", vaccineId: "vaccine", administeredAt: "2026-10-01", doseNumber: 1, lotNumber: "LOT-1", source: "EXTERNAL_PROOF", occupationalContext: "Comprovante externo conferido", submissionKey: key };
-
-function fixture() {
-  const clinical: Record<string, unknown>[] = [], vaccinations: Record<string, unknown>[] = [], audits: Record<string, unknown>[] = [], professionalWrites: Record<string, unknown>[] = [];
-  const historyQueries: { sql: string; values: unknown[] }[] = [], roleDates: Date[] = [], locks: string[] = [];
-  const role = { id: "role", budgetUnitId: "ug", discipline: "MEDICINE", usuarioId: "actor", council: "CRM PR 123", isActive: true, startsAt: new Date("2026-10-01"), endsAt: new Date("2026-10-01"), person: { fullName: "Profissional" } };
-  const state = { history: [{ id: "period" }], worker: true, activeUser: true, medicine: true, vaccine: true, vaccineCreateError: null as unknown, disciplineGrant: { isActive: true, canRead: true, canWrite: true }, genericGrant: { isActive: true, canReadClinical: true, canAssess: true } };
-  const questionnaire = { id: "q", budgetUnitId: "ug", discipline: "MEDICINE", title: "Anamnese", code: "MED", version: 1, questions: [{ key: "symptom", label: "Sintoma", kind: "TEXT", required: true }] };
-  const tx = {
-    $executeRaw: async (_sql: TemplateStringsArray, ...values: unknown[]) => { locks.push(String(values[0])); return 1; },
-    $queryRaw: async (sql: TemplateStringsArray, ...values: unknown[]) => {
-      if (sql.join("").includes("HrEmployeeFunctionalPeriod")) { historyQueries.push({ sql: sql.reduce((text, part, i) => text + part + (i < values.length ? `$${i + 1}` : ""), ""), values }); return state.history; }
-      assert.match(sql.join(""), /FOR SHARE/); return [{ id: role.id }];
-    },
-    person: { findUnique: async () => ({ id: "worker", fullName: "Servidor", employee: state.worker ? { id: "employee", secretariatId: "CURRENT_OTHER_SECRETARIAT" } : null }) },
-    usuario: { findFirst: async () => state.activeUser ? { id: "actor" } : null },
-    budgetUnit: { findUnique: async () => ({ id: "ug" }), findUniqueOrThrow: async () => ({ id: "ug", name: "UG histórica", secretariatId: "HISTORICAL_SECRETARIAT" }) },
-    sstProfessionalRole: {
-      findUnique: async () => ({ discipline: role.discipline }),
-      findFirst: async ({ where }: { where: { id?: string; budgetUnitId: string; discipline: string; OR?: { personId?: string; usuarioId?: string }[]; startsAt: { lte: Date }; endsAt: { gte: Date } } }) => {
-        if (!where.id) {
-          const existing = professionalWrites.find((row) => row.budgetUnitId === where.budgetUnitId && row.discipline === where.discipline && (row.startsAt as Date) <= where.startsAt.lte && (row.endsAt as Date) >= where.endsAt.gte && where.OR?.some((link) => link.personId ? row.personId === link.personId : row.usuarioId === link.usuarioId));
-          return existing ? { id: "new-role", ...existing } : null;
-        }
-        roleDates.push(where.startsAt.lte);
-        return role.isActive && role.budgetUnitId === where.budgetUnitId && role.discipline === where.discipline && role.startsAt <= where.startsAt.lte && role.endsAt >= where.endsAt.gte ? role : null;
-      },
-      create: async ({ data }: { data: Record<string, unknown> }) => { professionalWrites.push(data); return { id: "new-role", ...data }; },
-    },
-    sstDisciplineGrant: { upsert: async ({ create }: { create: Record<string, unknown> }) => { state.disciplineGrant = { isActive: Boolean(create.isActive), canRead: Boolean(create.canRead), canWrite: Boolean(create.canWrite) }; return { id: "grant" }; } },
-    sstQuestionnaireVersion: { findUnique: async () => questionnaire },
-    medicine: { findMany: async () => state.medicine ? [{ id: "medicine", name: "Nome canônico" }] : [] },
-    vaccine: { findFirst: async () => state.vaccine ? { id: "vaccine", name: "Vacina canônica" } : null },
-    sstClinicalRecord: {
-      findUnique: async () => clinical[0] || null,
-      findUniqueOrThrow: async () => clinical[0],
-      create: async ({ data }: { data: Record<string, unknown> }) => { const row = { id: "visit", createdAt: new Date("2026-10-01T04:00:00Z"), ...data }; clinical.push(row); return row; },
-    },
-    reportTemplate: { findUnique: async ({ where }: { where: { scope: string } }) => { assert.equal(where.scope, "GLOBAL"); return { version: 7, fingerprint: "configured-template", header: "Cabeçalho configurado", footer: "Rodapé configurado", orientation: "PORTRAIT", includeEmissionMetadata: true }; } },
-    institution: { findFirst: async () => ({ name: "Instituição", legalName: "Instituição canônica", cnpj: null, address: null, city: null, state: null }) },
-    sstVaccination: {
-      findUnique: async ({ where }: { where: { budgetUnitId_submissionKey: { submissionKey: string } } }) => vaccinations.find((row) => row.submissionKey === where.budgetUnitId_submissionKey.submissionKey) || null,
-      findFirst: async ({ where }: { where: { personId: string; vaccineId: string; doseNumber: number; administeredAt: Date } }) => vaccinations.find((row) => row.personId === where.personId && row.vaccineId === where.vaccineId && row.doseNumber === where.doseNumber && (row.administeredAt as Date).getTime() === where.administeredAt.getTime()) || null,
-      create: async ({ data }: { data: Record<string, unknown> }) => { if (state.vaccineCreateError) throw state.vaccineCreateError; const row = { id: vaccinations.length ? `shot-${vaccinations.length + 1}` : "shot", ...data }; vaccinations.push(row); return row; },
-    },
-    auditEvent: { create: async ({ data }: { data: Record<string, unknown> }) => { audits.push(data); return {}; } },
-  };
-  const context = { user: { ...user }, prisma: { ...tx, sstAccessGrant: { findUnique: async () => state.genericGrant }, sstDisciplineGrant: { findUnique: async () => state.disciplineGrant }, $transaction: async (fn: (db: typeof tx) => Promise<unknown>) => fn(tx) } } as unknown as AppContext;
-  return { context, role, state, questionnaire, clinical, vaccinations, audits, professionalWrites, historyQueries, roleDates, locks };
+const professional = { budgetUnitId: "ug", personId: "doctor", usuarioId: "actor", discipline: "MEDICINE", council: "CRM PR 123", startsAt: "2026-10-01", endsAt: "2026-10-01" };
+async function fixture(options: { seedRole?: boolean; roleUser?: string; startsAt?: string; endsAt?: string } = {}) {
+  const local = await createSstDrizzleFixture(["BudgetUnit", "Person", "Employee", "Usuario", "Medicine", "Vaccine", "Institution", "ReportTemplate", "AuditEvent"]), db = local.database;
+  try {
+    // The installed timestamp-without-time-zone defaults store UTC wall time.
+    // Embedded PostgreSQL may initialize its session zone from the host.
+    await db.exec("SET TIME ZONE 'UTC'");
+    await db.exec(`CREATE TABLE "SstAso" (id TEXT PRIMARY KEY);
+    CREATE TABLE "SstAccessGrant" ("usuarioId" TEXT,"budgetUnitId" TEXT,"isActive" BOOLEAN,"canReadClinical" BOOLEAN,"canAssess" BOOLEAN);
+    CREATE TABLE "HrEmployeeFunctionalPeriod" (id TEXT,"employeeId" TEXT,"budgetUnitId" TEXT,"startsAt" TIMESTAMP,"endsAt" TIMESTAMP,voided BOOLEAN DEFAULT false,"supersedesId" TEXT);
+    INSERT INTO "BudgetUnit" (id,code,name,"secretariatId","updatedAt") VALUES ('ug','UG','UG histórica','HISTORICAL_SECRETARIAT',now()),('other','OTHER','Outra','s',now());
+    INSERT INTO "Person" (id,"fullName","updatedAt") VALUES ('worker','Servidor',now()),('doctor','Profissional',now()),('other-professional','Outro profissional',now());
+    INSERT INTO "Employee" (id,name,"personId","secretariatId","updatedAt") VALUES ('employee','Servidor','worker','CURRENT_OTHER_SECRETARIAT',now());
+    INSERT INTO "Usuario" (id,nome,email,"perfilId","updatedAt") VALUES ('actor','Registrador','actor@example.invalid','profile',now()),('other-user','Outro','other@example.invalid','profile',now());
+    INSERT INTO "SstAccessGrant" VALUES ('actor','ug',true,true,true),('other-user','ug',true,true,true);
+    INSERT INTO "HrEmployeeFunctionalPeriod" VALUES ('period','employee','ug','2025-01-01','2027-01-01',false,NULL);
+    INSERT INTO "Vaccine" (id,name,"updatedAt") VALUES ('vaccine','Vacina canônica',now());
+    INSERT INTO "Medicine" (id,name,"updatedAt") VALUES ('medicine','Nome canônico',now());
+    INSERT INTO "Institution" (id,name,"legalName","updatedAt") VALUES ('institution','Instituição','Instituição canônica',now());
+    INSERT INTO "ReportTemplate" (id,scope,fingerprint,header,footer,orientation,"updatedAt") VALUES ('template','GLOBAL','configured-template','Cabeçalho configurado','Rodapé configurado','PORTRAIT',now());`);
+    for (const name of ["20261010210000_add_sst_questionnaires", "20261011010000_add_sst_clinical_services", "20261011120000_harden_sst_clinical_integrity"]) await db.exec(readFileSync(`prisma/migrations-ibema/${name}/migration.sql`, "utf8"));
+    await db.exec(`INSERT INTO "SstDisciplineGrant" (id,"budgetUnitId","usuarioId",discipline,"canRead","canWrite") SELECT u||'-'||d,'ug',u,d,true,true FROM unnest(ARRAY['actor','other-user']) u CROSS JOIN unnest(ARRAY['MEDICINE','NURSING','PSYCHOLOGY','SOCIAL_WORK']) d`);
+    const medicalQuestions = questionnaireQuestions.parse([{ key: "symptom", label: "Sintoma", section: "Geral", kind: "TEXT", required: true, choices: [] }]);
+    const psychologyQuestions = questionnaireQuestions.parse([{ key: "history", label: "Histórico psicológico", section: "Anamnese", kind: "TEXT", required: true, choices: [] }]);
+    await db.query(`INSERT INTO "SstQuestionnaireVersion" (id,"budgetUnitId",code,title,version,questions,"submissionKey","requestHash","createdById",discipline)
+      VALUES ('q','ug','MED','Anamnese',1,$1::jsonb,'q','h','actor','MEDICINE'),
+        ('foreign-q','other','MED','Outra',1,$1::jsonb,'foreign','h','actor','MEDICINE'),
+        ('psy-q','ug','PSY','Psicologia',1,$2::jsonb,'psy','h','actor','PSYCHOLOGY')`, [JSON.stringify(medicalQuestions), JSON.stringify(psychologyQuestions)]);
+    if (options.seedRole !== false) await db.query(`INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId","usuarioId",discipline,council,"startsAt","endsAt","createdById") VALUES ('role','ug','doctor',$1,'MEDICINE','CRM PR 123',$2,$3,'actor')`, [options.roleUser ?? "actor", options.startsAt ?? "2026-10-01", options.endsAt ?? "2026-10-01"]);
+    const context = sstTestContext(local.connection.db, { id: "actor", name: "Registrador", profileCode: "SST_OPERATOR", permissions: JSON.stringify({ modules: { SST: { blocked: false, create: true } } }) });
+    const counts = async () => (await db.query<{ clinical: number; vaccines: number; audits: number }>(`SELECT (SELECT count(*)::int FROM "SstClinicalRecord") clinical,(SELECT count(*)::int FROM "SstVaccination") vaccines,(SELECT count(*)::int FROM "AuditEvent") audits`)).rows[0];
+    return { ...local, db, context, counts };
+  } catch (error) { await local.close(); throw error; }
 }
-
 test("generic clinical authorization cannot read psychology without its discipline grant; module and UG are enforced first", async () => {
-  const f = fixture(); f.state.disciplineGrant.canRead = false;
-  await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY"), /atuação profissional/);
-  await assert.rejects(assertDisciplineAccess(f.context, "other", "PSYCHOLOGY"), /Unidade Gestora/);
-  f.state.disciplineGrant.canRead = true; f.state.disciplineGrant.isActive = false;
-  await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY"), /atuação profissional/);
-  f.state.disciplineGrant.isActive = true; f.state.disciplineGrant.canWrite = false;
-  await assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY");
-  await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY", true));
-  f.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: true } } });
-  await assert.rejects(assertDisciplineAccess(f.context, "ug", "MEDICINE"), /módulo SST/);
-  assert.deepEqual(disciplineUnitWhere(f.context, "MEDICINE"), { id: { in: [] } });
+  const f = await fixture();
+  try {
+    await f.db.exec(`UPDATE "SstDisciplineGrant" SET "canRead"=false,"canWrite"=false WHERE discipline='PSYCHOLOGY'`);
+    await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY"), /atuação profissional/);
+    await assert.rejects(assertDisciplineAccess(f.context, "other", "PSYCHOLOGY"), /Unidade Gestora/);
+    await f.db.exec(`UPDATE "SstDisciplineGrant" SET "canRead"=true,"isActive"=false WHERE discipline='PSYCHOLOGY'`);
+    await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY"), /atuação profissional/);
+    await f.db.exec(`UPDATE "SstDisciplineGrant" SET "isActive"=true WHERE discipline='PSYCHOLOGY'`);
+    await assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY");
+    await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY", true));
+    f.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: true } } });
+    await assert.rejects(assertDisciplineAccess(f.context, "ug", "MEDICINE"), /módulo SST/);
+    assert.deepEqual(disciplineUnitWhere(f.context, "MEDICINE"), { id: { in: [] } });
+  } finally { await f.close(); }
 });
-
 test("only the canonical role usuario may author a visit or proof; generic privilege cannot self-create a habilitation", async () => {
-  const f = fixture(); f.role.usuarioId = "someone-else";
-  await assert.rejects(registerClinicalRecord(f.context, visit), /usuário registrador/);
-  await assert.rejects(registerOccupationalVaccination(f.context, shot), /usuário registrador/);
-  await assert.rejects(registerProfessionalRole(f.context, {}), /administração técnica/);
-  await assert.rejects(registerDisciplineGrant(f.context, {}), /administração técnica/);
-  f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
-  await assert.rejects(registerClinicalRecord(f.context, visit), /usuário registrador/);
-  await assert.rejects(registerOccupationalVaccination(f.context, shot), /usuário registrador/);
-  assert.equal(f.clinical.length + f.vaccinations.length, 0);
+  const f = await fixture({ roleUser: "other-user" });
+  try {
+    await assert.rejects(registerClinicalRecord(f.context, visit), /usuário registrador/);
+    await assert.rejects(registerOccupationalVaccination(f.context, shot), /usuário registrador/);
+    await assert.rejects(registerProfessionalRole(f.context, {}), /administração técnica/);
+    await assert.rejects(registerDisciplineGrant(f.context, {}), /administração técnica/);
+    f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
+    await assert.rejects(registerClinicalRecord(f.context, visit), /usuário registrador/);
+    await assert.rejects(registerOccupationalVaccination(f.context, shot), /usuário registrador/);
+    assert.deepEqual(await f.counts(), { clinical: 0, vaccines: 0, audits: 0 });
+  } finally { await f.close(); }
 });
-
 test("discipline authorization is sysadmin-only, rejects inactive users and reflects audited revocation", async () => {
-  const f = fixture(); f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
-  const grant = { usuarioId: "actor", budgetUnitId: "ug", discipline: "PSYCHOLOGY", canRead: true, canWrite: true, isActive: true };
-  await assert.rejects(registerDisciplineGrant(f.context, { ...grant, canRead: false }), /leitura/);
-  f.state.activeUser = false;
-  await assert.rejects(registerDisciplineGrant(f.context, grant), /inativo/);
-  f.state.activeUser = true;
-  assert.equal(await registerDisciplineGrant(f.context, grant), "grant");
-  assert.equal(f.audits[0].targetType, "SST_DISCIPLINE_GRANT");
-  await registerDisciplineGrant(f.context, { ...grant, isActive: false });
-  f.context.user.profileCode = "SST_OPERATOR";
-  await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY"), /atuação profissional/);
-  assert.equal(f.audits.length, 2);
+  const f = await fixture();
+  try {
+    f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
+    const grant = { usuarioId: "actor", budgetUnitId: "ug", discipline: "PSYCHOLOGY", canRead: true, canWrite: true, isActive: true };
+    await assert.rejects(registerDisciplineGrant(f.context, { ...grant, canRead: false }), /leitura/);
+    await f.db.exec(`UPDATE "Usuario" SET ativo=false WHERE id='actor'`);
+    await assert.rejects(registerDisciplineGrant(f.context, grant), /inativo/);
+    await f.db.exec(`UPDATE "Usuario" SET ativo=true WHERE id='actor'`);
+    const id = await registerDisciplineGrant(f.context, grant); assert.ok(id);
+    assert.equal(await registerDisciplineGrant(f.context, { ...grant, isActive: false }), id);
+    f.context.user.profileCode = "SST_OPERATOR";
+    await assert.rejects(assertDisciplineAccess(f.context, "ug", "PSYCHOLOGY"), /atuação profissional/);
+    assert.equal((await f.counts()).audits, 2);
+  } finally { await f.close(); }
 });
-
 test("civil day validity is inclusive and vaccines DATE never shift to the preceding day", async () => {
-  const f = fixture();
-  await registerClinicalRecord(f.context, visit);
-  assert.equal(f.roleDates[0].toISOString(), "2026-10-01T00:00:00.000Z");
-  const before = fixture();
-  await assert.rejects(registerClinicalRecord(before.context, { ...visit, attendedAt: "2026-10-01T02:59:59Z" }), /vigência/);
-  await assert.rejects(registerClinicalRecord(before.context, { ...visit, attendedAt: "2026-10-02T03:00:00Z" }), /vigência/);
-  await registerOccupationalVaccination(f.context, shot);
-  assert.equal(f.roleDates.at(-1)!.toISOString(), "2026-10-01T00:00:00.000Z");
-  assert.equal((f.vaccinations[0].administeredAt as Date).toISOString(), "2026-10-01T00:00:00.000Z");
-  f.role.isActive = false;
-  await assert.rejects(registerClinicalRecord(f.context, { ...visit, submissionKey: otherKey }), /outros dados/);
-  const inactive = fixture(); inactive.role.isActive = false;
-  await assert.rejects(registerClinicalRecord(inactive.context, visit), /vigência/);
-  await assert.rejects(registerOccupationalVaccination(inactive.context, shot), /vigência/);
-  await assert.rejects(registerClinicalRecord(fixture().context, { ...visit, attendedAt: "2999-01-01T03:00:00Z" }), /futura/);
-  for (const value of ["not-a-date", "2026-02-30T03:00:00Z", Infinity]) assert.equal(clinicalRecordInput.safeParse({ ...visit, attendedAt: value }).success, false);
-  for (const value of ["2026-02-30", "2026-10-01T00:00:00Z", Infinity]) assert.equal(vaccinationInput.safeParse({ ...shot, administeredAt: value }).success, false);
+  const f = await fixture();
+  try {
+    await registerClinicalRecord(f.context, visit); await registerOccupationalVaccination(f.context, shot);
+    const document = await clinicalRecordDocument(f.context, { id: (await f.db.query<{ id: string }>('SELECT id FROM "SstClinicalRecord"')).rows[0].id });
+    assert.equal(document.record.attendedAt.toISOString(), "2026-10-01T03:00:00.000Z");
+    assert.deepEqual((await f.db.query('SELECT "administeredAt"::text FROM "SstVaccination"')).rows, [{ administeredAt: "2026-10-01" }]);
+    for (const attendedAt of ["2026-10-01T02:59:59Z", "2026-10-02T03:00:00Z"]) await assert.rejects(registerClinicalRecord(f.context, { ...visit, attendedAt, submissionKey: otherKey }), /vigência/);
+    await f.db.exec('UPDATE "SstProfessionalRole" SET "isActive"=false');
+    await assert.rejects(registerClinicalRecord(f.context, { ...visit, submissionKey: otherKey }), /vigência/);
+    await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, doseNumber: 2, submissionKey: otherKey }), /vigência/);
+    await assert.rejects(registerClinicalRecord(f.context, { ...visit, attendedAt: "2999-01-01T03:00:00Z" }), /futura/);
+    for (const value of ["not-a-date", "2026-02-30T03:00:00Z", Infinity]) assert.equal(clinicalRecordInput.safeParse({ ...visit, attendedAt: value }).success, false);
+    for (const value of ["2026-02-30", "2026-10-01T00:00:00Z", Infinity]) assert.equal(vaccinationInput.safeParse({ ...shot, administeredAt: value }).success, false);
+  } finally { await f.close(); }
 });
-
 test("professional registration preserves canonical council/dates and rejects inactive account bindings", async () => {
-  const f = fixture(); f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
-  const input = { budgetUnitId: "ug", personId: "doctor", usuarioId: "actor", discipline: "MEDICINE", council: "CRM PR 123", startsAt: "2026-10-01", endsAt: "2026-10-01" };
-  f.state.activeUser = false;
-  await assert.rejects(registerProfessionalRole(f.context, input), /inativo/);
-  f.state.activeUser = true;
-  assert.equal(await registerProfessionalRole(f.context, input), "new-role");
-  assert.equal(f.professionalWrites[0].council, "CRM PR 123");
-  assert.equal(f.professionalWrites[0].usuarioId, "actor");
-  assert.equal(f.professionalWrites[0].createdById, "actor");
-  assert.equal((f.professionalWrites[0].startsAt as Date).toISOString(), "2026-10-01T00:00:00.000Z");
-  assert.equal(f.audits[0].targetType, "SST_PROFESSIONAL");
-  assert.ok(f.locks.includes("SST_PROFESSIONAL:ug:MEDICINE"));
-  await assert.rejects(registerProfessionalRole(f.context, { ...input, endsAt: "2026-09-30" }));
+  const f = await fixture({ seedRole: false });
+  try {
+    f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
+    await f.db.exec(`UPDATE "Usuario" SET ativo=false WHERE id='actor'`);
+    await assert.rejects(registerProfessionalRole(f.context, professional), /inativo/);
+    await f.db.exec(`UPDATE "Usuario" SET ativo=true WHERE id='actor'`);
+    await registerProfessionalRole(f.context, professional);
+    assert.deepEqual((await f.db.query('SELECT council,"usuarioId","createdById","startsAt"::text FROM "SstProfessionalRole"')).rows, [{ council: "CRM PR 123", usuarioId: "actor", createdById: "actor", startsAt: "2026-10-01" }]);
+    assert.deepEqual((await f.db.query('SELECT "targetType" FROM "AuditEvent"')).rows, [{ targetType: "SST_PROFESSIONAL" }]);
+    await assert.rejects(registerProfessionalRole(f.context, { ...professional, endsAt: "2026-09-30" }));
+  } finally { await f.close(); }
 });
-
 test("identical professional creation retries return the original id without a second write/audit; conflicting metadata or creator blocks", async () => {
-  const f = fixture(); f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
-  const input = { budgetUnitId: "ug", personId: "doctor", usuarioId: "actor", discipline: "MEDICINE", council: "CRM PR 123", startsAt: "2026-10-01", endsAt: "2026-10-01" };
-  assert.equal(await registerProfessionalRole(f.context, input), "new-role");
-  assert.equal(await registerProfessionalRole(f.context, input), "new-role");
-  for (const changes of [{ council: "CRM PR 999" }, { usuarioId: "other-user" }, { personId: "other-professional" }, { startsAt: "2026-09-30" }, { endsAt: "2026-10-02" }]) {
-    await assert.rejects(registerProfessionalRole(f.context, { ...input, ...changes }), /sobreposta/);
-  }
-  f.context.user.id = "other-admin";
-  await assert.rejects(registerProfessionalRole(f.context, input), /sobreposta/);
-  assert.equal(f.professionalWrites.length, 1); assert.equal(f.audits.length, 1);
-  const unlinked = fixture(); unlinked.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
-  assert.equal(await registerProfessionalRole(unlinked.context, { ...input, usuarioId: "" }), "new-role");
-  assert.equal(await registerProfessionalRole(unlinked.context, { ...input, usuarioId: "" }), "new-role");
-  assert.equal(unlinked.professionalWrites[0].usuarioId, null);
-  assert.equal(unlinked.professionalWrites.length, 1);
+  const f = await fixture({ seedRole: false });
+  try {
+    f.context.user.profileCode = "SYSTEM_ADMINISTRATOR";
+    const id = await registerProfessionalRole(f.context, professional);
+    assert.equal(await registerProfessionalRole(f.context, professional), id);
+    for (const changes of [{ council: "CRM PR 999" }, { usuarioId: "other-user" }, { personId: "other-professional" }, { startsAt: "2026-09-30" }, { endsAt: "2026-10-02" }]) await assert.rejects(registerProfessionalRole(f.context, { ...professional, ...changes }), /sobreposta/);
+    f.context.user.id = "other-user";
+    await assert.rejects(registerProfessionalRole(f.context, professional), /sobreposta/);
+    assert.equal((await f.counts()).audits, 1);
+    const unlinked = { ...professional, startsAt: "2026-11-01", endsAt: "2026-11-01", usuarioId: "" };
+    const freeId = await registerProfessionalRole(f.context, unlinked);
+    assert.equal(await registerProfessionalRole(f.context, unlinked), freeId);
+    assert.deepEqual((await f.db.query('SELECT "usuarioId" FROM "SstProfessionalRole" WHERE id=$1', [freeId])).rows, [{ usuarioId: null }]);
+  } finally { await f.close(); }
 });
-
 test("a medical clinic user with an own canonical role and clinical write grants cannot edit their own authorization", async () => {
-  const f = fixture(); f.context.user.profileCode = "MEDICAL_CLINIC";
-  f.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: false, create: true, update: true } } });
-  await registerClinicalRecord(f.context, visit);
-  const before = { ...f.state.disciplineGrant };
-  for (const changes of [{ isActive: false }, { canWrite: false }, { discipline: "PSYCHOLOGY" }]) {
-    await assert.rejects(registerDisciplineGrant(f.context, { usuarioId: "actor", budgetUnitId: "ug", discipline: "MEDICINE", ...before, ...changes }), /administração técnica/);
-  }
-  assert.deepEqual(f.state.disciplineGrant, before);
-  assert.equal(f.audits.length, 1);
+  const f = await fixture();
+  try {
+    f.context.user.profileCode = "MEDICAL_CLINIC"; await registerClinicalRecord(f.context, visit);
+    const before = (await f.db.query('SELECT * FROM "SstDisciplineGrant" ORDER BY id')).rows;
+    for (const changes of [{ isActive: false }, { canWrite: false }, { discipline: "PSYCHOLOGY" }]) await assert.rejects(registerDisciplineGrant(f.context, { usuarioId: "actor", budgetUnitId: "ug", discipline: "MEDICINE", canRead: true, canWrite: true, isActive: true, ...changes }), /administração técnica/);
+    assert.deepEqual((await f.db.query('SELECT * FROM "SstDisciplineGrant" ORDER BY id')).rows, before);
+    assert.equal((await f.counts()).audits, 1);
+  } finally { await f.close(); }
 });
-
 test("historical worker UG is explicit: current secretariat does not grant or deny coverage and missing/ambiguous history blocks", async () => {
-  const f = fixture(); await registerClinicalRecord(f.context, visit);
-  assert.equal(f.historyQueries.length, 1);
-  assert.match(f.historyQueries[0].sql, /NOT p.voided/);
-  assert.match(f.historyQueries[0].sql, /supersedesId/);
-  assert.deepEqual(f.historyQueries[0].values.slice(0, 2), ["employee", "ug"]);
-  assert.ok(f.locks.includes("HR_FUNCTIONAL:employee"));
-  for (const history of [[], [{ id: "a" }, { id: "b" }]]) {
-    const missing = fixture(); missing.state.history = history;
-    await assert.rejects(registerClinicalRecord(missing.context, visit), /período funcional RH/);
-    await assert.rejects(registerOccupationalVaccination(missing.context, shot), /período funcional RH/);
-    assert.equal(missing.clinical.length + missing.vaccinations.length, 0);
-  }
-  const nonWorker = fixture(); nonWorker.state.worker = false;
-  await assert.rejects(registerClinicalRecord(nonWorker.context, visit), /servidor canônico/);
+  const f = await fixture();
+  try {
+    await registerClinicalRecord(f.context, visit);
+    await f.db.exec(`INSERT INTO "HrEmployeeFunctionalPeriod" SELECT 'duplicate',"employeeId","budgetUnitId","startsAt","endsAt",false,NULL FROM "HrEmployeeFunctionalPeriod"`);
+    for (const mode of ["ambiguous", "missing"]) {
+      if (mode === "missing") await f.db.exec('DELETE FROM "HrEmployeeFunctionalPeriod"');
+      await assert.rejects(registerClinicalRecord(f.context, { ...visit, submissionKey: otherKey }), /período funcional RH/);
+      await assert.rejects(registerOccupationalVaccination(f.context, shot), /período funcional RH/);
+    }
+    await f.db.exec('UPDATE "Employee" SET "personId"=NULL');
+    await assert.rejects(registerClinicalRecord(f.context, { ...visit, submissionKey: otherKey }), /servidor canônico/);
+    assert.deepEqual(await f.counts(), { clinical: 1, vaccines: 0, audits: 1 });
+  } finally { await f.close(); }
 });
-
 test("questionnaire scope, canonical medicine and MEDICINE-only requests are enforced before writes", async () => {
-  const input = { ...visit, questionnaireVersionId: "q", answers: { symptom: "Dor" } };
-  for (const field of ["budgetUnitId", "discipline"] as const) {
-    const f = fixture(); f.questionnaire[field] = "other";
-    await assert.rejects(registerClinicalRecord(f.context, input), /Questionário incompatível/);
-    assert.equal(f.clinical.length, 0);
-  }
-  const f = fixture();
-  await assert.rejects(registerClinicalRecord(f.context, { ...input, answers: { unknown: "PHI" } }), /não pertencem/);
-  const medication = { kind: "MEDICATION", description: "Nome adulterado", medicineId: "medicine", instructions: "Uma dose diária", quantity: 1, days: 1 };
-  f.state.medicine = false;
-  await assert.rejects(registerClinicalRecord(f.context, { ...visit, requests: [medication] }), /catálogo canônico/);
-  f.state.medicine = true;
-  await registerClinicalRecord(f.context, { ...visit, requests: [medication] });
-  assert.equal((f.clinical[0].requests as { description: string }[])[0].description, "Nome canônico");
-  assert.equal((f.clinical[0].snapshot as { council: string }).council, "CRM PR 123");
-  for (const discipline of ["NURSING", "PSYCHOLOGY", "SOCIAL_WORK"]) {
-    assert.equal(clinicalRecordInput.safeParse({ ...visit, discipline, requests: [medication] }).success, false);
-    assert.equal(clinicalRecordInput.safeParse({ ...visit, discipline, requests: [{ kind: "EXAM", description: "Exame" }] }).success, false);
-    assert.equal(clinicalRecordInput.safeParse({ ...visit, discipline, requests: [{ kind: "REFERRAL", description: "Encaminhamento" }] }).success, true);
-  }
+  const f = await fixture();
+  try {
+    for (const questionnaireVersionId of ["foreign-q", "psy-q"]) await assert.rejects(registerClinicalRecord(f.context, { ...visit, questionnaireVersionId, answers: {} }), /Questionário incompatível/);
+    await assert.rejects(registerClinicalRecord(f.context, { ...visit, questionnaireVersionId: "q", answers: { unknown: "PHI" } }), /não pertencem/);
+    const medication = { kind: "MEDICATION", description: "Nome adulterado", medicineId: "medicine", instructions: "Uma dose diária", quantity: 1, days: 1 };
+    await f.db.exec('UPDATE "Medicine" SET "isActive"=false');
+    await assert.rejects(registerClinicalRecord(f.context, { ...visit, requests: [medication] }), /catálogo canônico/);
+    await f.db.exec('UPDATE "Medicine" SET "isActive"=true');
+    const id = await registerClinicalRecord(f.context, { ...visit, requests: [medication] });
+    const document = await clinicalRecordDocument(f.context, { id });
+    assert.equal(document.requests[0].description, "Nome canônico"); assert.equal(document.snapshot.council, "CRM PR 123");
+    for (const discipline of ["NURSING", "PSYCHOLOGY", "SOCIAL_WORK"]) {
+      assert.equal(clinicalRecordInput.safeParse({ ...visit, discipline, requests: [medication] }).success, false);
+      assert.equal(clinicalRecordInput.safeParse({ ...visit, discipline, requests: [{ kind: "EXAM", description: "Exame" }] }).success, false);
+      assert.equal(clinicalRecordInput.safeParse({ ...visit, discipline, requests: [{ kind: "REFERRAL", description: "Encaminhamento" }] }).success, true);
+    }
+  } finally { await f.close(); }
 });
-
 test("identical retries preserve council snapshots and audit count; changed payload/actor and duplicate vaccine doses block", async () => {
-  const f = fixture();
-  assert.equal(await registerClinicalRecord(f.context, visit), "visit");
-  f.role.council = "CRM alterado";
-  assert.equal(await registerClinicalRecord(f.context, visit), "visit");
-  assert.equal((f.clinical[0].snapshot as { council: string }).council, "CRM PR 123");
-  await assert.rejects(registerClinicalRecord(f.context, { ...visit, narrative: "Outro atendimento" }), /outros dados/);
-  await registerOccupationalVaccination(f.context, shot);
-  assert.equal(await registerOccupationalVaccination(f.context, shot), "shot");
-  await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, lotNumber: "OTHER" }), /outros dados/);
-  await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, submissionKey: otherKey }), /Dose.*já registrada/);
-  f.context.user.id = "other-actor";
-  await assert.rejects(registerClinicalRecord(f.context, visit), /outros dados/);
-  await assert.rejects(registerOccupationalVaccination(f.context, shot), /outros dados/);
-  assert.equal(f.clinical.length, 1); assert.equal(f.vaccinations.length, 1); assert.equal(f.audits.length, 2);
-  assert.deepEqual(Object.keys(f.audits[0]).sort(), ["actorUsuarioId", "eventType", "targetId", "targetType"]);
+  const f = await fixture();
+  try {
+    const id = await registerClinicalRecord(f.context, visit), vaccineId = await registerOccupationalVaccination(f.context, shot);
+    await f.db.exec('UPDATE "SstProfessionalRole" SET "isActive"=false');
+    assert.equal(await registerClinicalRecord(f.context, visit), id); assert.equal(await registerOccupationalVaccination(f.context, shot), vaccineId);
+    await assert.rejects(registerClinicalRecord(f.context, { ...visit, narrative: "Outro atendimento" }), /outros dados/);
+    await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, lotNumber: "OTHER" }), /outros dados/);
+    await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, submissionKey: otherKey }), /Dose.*já registrada/);
+    f.context.user.id = "other-user";
+    await assert.rejects(registerClinicalRecord(f.context, visit), /outros dados/); await assert.rejects(registerOccupationalVaccination(f.context, shot), /outros dados/);
+    assert.deepEqual(await f.counts(), { clinical: 1, vaccines: 1, audits: 2 });
+    const audits = (await f.db.query('SELECT "eventType","targetType","targetId","actorUsuarioId" FROM "AuditEvent"')).rows;
+    assert.doesNotMatch(JSON.stringify(audits), /Atendimento clínico|Exposição|CID|CRM/);
+  } finally { await f.close(); }
 });
-
 test("same vaccine/person/dose/date blocks a new submission but annual cycles on another civil date are allowed in canonical scope", async () => {
-  const f = fixture(); f.role.startsAt = new Date("2025-10-01");
-  const previous = { ...shot, administeredAt: "2025-10-01" };
-  assert.equal(await registerOccupationalVaccination(f.context, previous), "shot");
-  await assert.rejects(registerOccupationalVaccination(f.context, { ...previous, submissionKey: otherKey }), /já registrada.*nesta data/);
-  assert.equal(await registerOccupationalVaccination(f.context, { ...shot, submissionKey: otherKey }), "shot-2");
-  assert.equal(await registerOccupationalVaccination(f.context, { ...shot, submissionKey: otherKey }), "shot-2");
-  assert.equal(f.vaccinations.length, 2); assert.equal(f.audits.length, 2);
-  assert.deepEqual(f.vaccinations.map((row) => [(row.administeredAt as Date).toISOString().slice(0, 10), row.doseNumber]), [["2025-10-01", 1], ["2026-10-01", 1]]);
-  assert.deepEqual(f.historyQueries.map((query) => query.values), [["employee", "ug", "2025-10-01", "2025-10-01"], ["employee", "ug", "2026-10-01", "2026-10-01"]]);
-  assert.ok(f.locks.includes("SST_VACCINE_DOSE:worker:vaccine:1:2025-10-01"));
-  assert.ok(f.locks.includes("SST_VACCINE_DOSE:worker:vaccine:1:2026-10-01"));
-  await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, budgetUnitId: "foreign", submissionKey: "5d161f17-63ca-4d57-9c87-82c4f74e4d5a", administeredAt: "2026-10-02" }), /Unidade Gestora/);
-  const missingHistory = fixture(); missingHistory.role.endsAt = new Date("2026-10-02");
-  await registerOccupationalVaccination(missingHistory.context, shot);
-  missingHistory.state.history = [];
-  await assert.rejects(registerOccupationalVaccination(missingHistory.context, { ...shot, administeredAt: "2026-10-02", submissionKey: otherKey }), /período funcional RH/);
-  assert.equal(missingHistory.vaccinations.length, 1);
+  const f = await fixture({ startsAt: "2025-10-01", endsAt: "2026-10-02" });
+  try {
+    await registerOccupationalVaccination(f.context, { ...shot, administeredAt: "2025-10-01" });
+    await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, administeredAt: "2025-10-01", submissionKey: otherKey }), /já registrada.*nesta data/);
+    const id = await registerOccupationalVaccination(f.context, { ...shot, submissionKey: otherKey });
+    assert.equal(await registerOccupationalVaccination(f.context, { ...shot, submissionKey: otherKey }), id);
+    assert.deepEqual((await f.db.query('SELECT "administeredAt"::text,"doseNumber" FROM "SstVaccination" ORDER BY "administeredAt"')).rows, [{ administeredAt: "2025-10-01", doseNumber: 1 }, { administeredAt: "2026-10-01", doseNumber: 1 }]);
+    await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, budgetUnitId: "foreign", submissionKey: key }), /Unidade Gestora/);
+    await f.db.exec('DELETE FROM "HrEmployeeFunctionalPeriod"');
+    await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, administeredAt: "2026-10-02", submissionKey: "5d161f17-63ca-4d57-9c87-82c4f74e4d5a" }), /período funcional RH/);
+    assert.deepEqual(await f.counts(), { clinical: 0, vaccines: 2, audits: 2 });
+  } finally { await f.close(); }
 });
-
-test("date-specific P2002 conflicts become domain errors; unrelated unique constraints/errors are preserved", async () => {
-  for (const target of ["SstVaccination_person_vaccine_dose_date_key", ["personId", "vaccineId", "doseNumber", "administeredAt"]]) {
-    const f = fixture();
-    f.state.vaccineCreateError = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", { code: "P2002", clientVersion: "7.9.1", meta: { target } });
-    await assert.rejects(registerOccupationalVaccination(f.context, shot), (error: unknown) => error instanceof SstValidationError && /nesta data/.test(error.message));
-    assert.equal(f.vaccinations.length, 0); assert.equal(f.audits.length, 0);
-  }
-  for (const error of [new Prisma.PrismaClientKnownRequestError("Other unique constraint", { code: "P2002", clientVersion: "7.9.1", meta: { target: ["budgetUnitId", "submissionKey"] } }), new Error("Database unavailable")]) {
-    const f = fixture(); f.state.vaccineCreateError = error;
-    await assert.rejects(registerOccupationalVaccination(f.context, shot), (actual: unknown) => actual === error);
-  }
+test("date-specific PostgreSQL conflicts become domain errors; unrelated constraints and database errors retain their cause", async () => {
+  const f = await fixture();
+  try {
+    await f.db.exec(`CREATE FUNCTION reject_shot() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE unique_violation USING CONSTRAINT='SstVaccination_person_vaccine_dose_date_key'; END $$;
+      CREATE TRIGGER test_conflict BEFORE INSERT ON "SstVaccination" FOR EACH ROW EXECUTE FUNCTION reject_shot()`);
+    await assert.rejects(registerOccupationalVaccination(f.context, shot), error => error instanceof SstValidationError && /nesta data/.test(error.message));
+    await f.db.exec(`CREATE OR REPLACE FUNCTION reject_shot() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE unique_violation USING CONSTRAINT='unrelated_key'; END $$`);
+    await assert.rejects(registerOccupationalVaccination(f.context, shot), error => getPostgresError(error)?.constraint === "unrelated_key");
+    await f.db.exec(`CREATE OR REPLACE FUNCTION reject_shot() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Database unavailable'; END $$`);
+    await assert.rejects(registerOccupationalVaccination(f.context, shot), sstDatabaseError("P0001", /Database unavailable/));
+    assert.deepEqual(await f.counts(), { clinical: 0, vaccines: 0, audits: 0 });
+  } finally { await f.close(); }
 });
-
 test("report authorization precedes private data, validates discipline/type and uses genuine timestamps and configured GLOBAL metadata", async () => {
-  const f = fixture(); await registerClinicalRecord(f.context, visit);
-  await assert.rejects(clinicalRecordDocument(f.context, { id: "visit", printing: true }), /emitir relatórios/);
-  assert.equal(f.audits.length, 1);
-  f.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: false, issueReports: true } } });
-  const document = await clinicalRecordDocument(f.context, { id: "visit", printing: true, report: "opinion", issuedAt: "1900-01-01", issuedBy: "Fake" });
-  assert.equal(document.title, "Laudo médico ocupacional");
-  assert.equal(document.template!.header, "Cabeçalho configurado");
-  assert.equal(document.template!.footer, "Rodapé configurado");
-  assert.equal(document.template!.orientation, "PORTRAIT");
-  assert.equal(document.institution!.legalName, "Instituição canônica");
-  assert.equal(document.emission!.issuedBy, "Registrador");
-  assert.ok(Math.abs(Date.now() - Date.parse(document.emission!.issuedAt)) < 5000);
-  assert.equal(document.record.attendedAt.toISOString(), "2026-10-01T03:00:00.000Z");
-  assert.equal(document.record.createdAt.toISOString(), "2026-10-01T04:00:00.000Z");
-  assert.equal(f.audits.at(-1)!.eventType, "REPORT_ISSUED");
-  assert.deepEqual(Object.keys(f.audits.at(-1)!).sort(), ["actorUsuarioId", "eventType", "targetId", "targetType"]);
-  await assert.rejects(clinicalRecordDocument(f.context, { id: "visit", report: "invented" }));
-  f.clinical[0].discipline = "PSYCHOLOGY";
-  await assert.rejects(clinicalRecordDocument(f.context, { id: "visit", printing: true, report: "opinion" }), /Medicina/);
-  f.state.disciplineGrant.canRead = false;
-  await assert.rejects(clinicalRecordDocument(f.context, { id: "visit" }), /atuação profissional/);
+  const f = await fixture();
+  try {
+    // Capture the default's origin in the INSERT transaction, independently of
+    // both the report DTO and the raw driver's (unmapped) timestamp strings.
+    await f.db.exec(`CREATE TABLE clinical_timestamp_origin (id text PRIMARY KEY, "transactionAt" timestamp(3), "clockAt" timestamp(3), timezone text);
+      CREATE FUNCTION clinical_timestamp_origin() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        INSERT INTO clinical_timestamp_origin VALUES (NEW.id, transaction_timestamp() AT TIME ZONE 'UTC', clock_timestamp() AT TIME ZONE 'UTC', current_setting('TimeZone'));
+        RETURN NEW;
+      END $$;
+      CREATE TRIGGER clinical_timestamp_origin AFTER INSERT ON "SstClinicalRecord" FOR EACH ROW EXECUTE FUNCTION clinical_timestamp_origin()`);
+    const before = Date.now(), id = await registerClinicalRecord(f.context, visit);
+    const origin = (await f.connection.db.execute<{ createdAt: string; createdById: string; transactionAt: string; clockAt: string; timezone: string }>(sql`
+      SELECT r."createdAt", r."createdById", o."transactionAt", o."clockAt", o.timezone
+      FROM "SstClinicalRecord" r JOIN clinical_timestamp_origin o ON o.id=r.id WHERE r.id=${id}
+    `)).rows[0];
+    assert.equal(origin.timezone, "UTC"); assert.equal(origin.createdById, "actor");
+    assert.equal(databaseTimestamp(origin.createdAt).getTime(), databaseTimestamp(origin.transactionAt).getTime(), "createdAt must be the INSERT transaction timestamp");
+    assert.ok(databaseTimestamp(origin.clockAt).getTime() >= databaseTimestamp(origin.transactionAt).getTime());
+    await assert.rejects(clinicalRecordDocument(f.context, { id, printing: true }), /emitir relatórios/);
+    assert.equal((await f.counts()).audits, 1);
+    f.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: false, create: true, issueReports: true } } });
+    const document = await clinicalRecordDocument(f.context, { id, printing: true, report: "opinion", issuedAt: "1900-01-01", issuedBy: "Fake" });
+    assert.equal(document.title, "Laudo médico ocupacional"); assert.equal(document.template!.header, "Cabeçalho configurado"); assert.equal(document.template!.footer, "Rodapé configurado");
+    assert.equal(document.template!.orientation, "PORTRAIT"); assert.equal(document.institution!.legalName, "Instituição canônica"); assert.equal(document.emission!.issuedBy, "Registrador");
+    assert.ok(Math.abs(Date.now() - Date.parse(document.emission!.issuedAt)) < 5000);
+    assert.equal(document.record.attendedAt.toISOString(), "2026-10-01T03:00:00.000Z");
+    assert.equal(document.record.createdAt.getTime(), databaseTimestamp(origin.createdAt).getTime(), "report and raw PostgreSQL timestamp must represent the same UTC instant");
+    assert.ok(document.record.createdAt.getTime() >= before - 1000, JSON.stringify({ before: new Date(before).toISOString(), reported: document.record.createdAt.toISOString(), ...origin }));
+    await assert.rejects(clinicalRecordDocument(f.context, { id, report: "invented" }));
+    await f.db.exec(`INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId","usuarioId",discipline,council,"startsAt","endsAt","createdById") VALUES ('psy-role','ug','doctor','actor','PSYCHOLOGY','CRP 123','2026-10-01','2026-10-01','actor')`);
+    const psyId = await registerClinicalRecord(f.context, { ...visit, professionalRoleId: "psy-role", discipline: "PSYCHOLOGY", submissionKey: otherKey });
+    await assert.rejects(clinicalRecordDocument(f.context, { id: psyId, printing: true, report: "opinion" }), /Medicina/);
+    await f.db.exec(`UPDATE "SstDisciplineGrant" SET "canRead"=false,"canWrite"=false WHERE discipline='MEDICINE'`);
+    await assert.rejects(clinicalRecordDocument(f.context, { id }), /atuação profissional/);
+  } finally { await f.close(); }
 });
-
 test("clinical services use shared catalog only, never SUSPatient or assistential patient history", async () => {
-  const f = fixture();
-  for (const delegate of ["sUSPatient", "susPatient", "healthMedicalRecord", "healthVaccination", "healthPrescription"]) {
-    Object.defineProperty(f.context.prisma, delegate, { get() { throw new Error(`Forbidden PHI lookup: ${delegate}`); } });
-  }
-  await registerClinicalRecord(f.context, { ...visit, requests: [{ kind: "MEDICATION", description: "Remédio", medicineId: "medicine", instructions: "Uma dose", quantity: 1, days: 1 }] });
-  await registerOccupationalVaccination(f.context, shot);
-  await clinicalRecordDocument(f.context, { id: "visit" });
-  assert.equal(f.clinical.length, 1); assert.equal(f.vaccinations.length, 1);
+  const f = await fixture();
+  try {
+    // Assistential relations deliberately do not exist in this fixture.
+    const id = await registerClinicalRecord(f.context, { ...visit, requests: [{ kind: "MEDICATION", description: "Remédio", medicineId: "medicine", instructions: "Uma dose", quantity: 1, days: 1 }] });
+    await registerOccupationalVaccination(f.context, shot); await clinicalRecordDocument(f.context, { id });
+    assert.equal((await f.counts()).clinical, 1); assert.equal((await f.counts()).vaccines, 1);
+  } finally { await f.close(); }
 });
-
 test("private chart and vaccine lists are audited before reading, paginated by 20, and cannot replace a selected UG with an allowed-unit spread", async () => {
-  const events: string[] = [], queries: { where: { budgetUnitId: { in: string[] }; discipline?: string }; take: number; skip: number; select: Record<string, boolean> }[] = [];
-  const delegate = {
-    count: async () => { events.push("count"); return 45; },
-    findMany: async (query: typeof queries[number]) => { events.push("read"); queries.push(query); return []; },
-  };
-  const context = { user, prisma: {
-    budgetUnit: { findMany: async ({ where }: { where: { sstDisciplineGrants: { some: { discipline: string } } } }) => { assert.equal(where.sstDisciplineGrants.some.discipline, "MEDICINE"); return [{ id: "ug", name: "UG" }, { id: "another-authorized", name: "Outra" }]; } },
-    auditEvent: { create: async () => { events.push("audit"); } },
-    sstClinicalRecord: delegate, sstVaccination: delegate,
-  } } as unknown as AppContext;
-  const result = await listClinicalRecords(context, { discipline: "MEDICINE", budgetUnitId: "ug", page: 2 });
-  assert.deepEqual(events, ["audit", "count", "read"]);
-  assert.equal(result.page, 2); assert.equal(queries[0].take, 20); assert.equal(queries[0].skip, 20);
-  assert.deepEqual(queries[0].where.budgetUnitId, { in: ["ug"] });
-  assert.deepEqual(queries[0].select, { id: true, attendedAt: true, snapshot: true });
-  await listOccupationalVaccinations(context, { discipline: "MEDICINE", budgetUnitId: "foreign", page: 100 });
-  assert.deepEqual(queries[1].where.budgetUnitId, { in: [] });
-  assert.equal(queries[1].take, 20); assert.equal(queries[1].skip, 40);
-  context.prisma.auditEvent.create = async () => { throw new Error("audit unavailable"); };
-  const reads = queries.length;
-  await assert.rejects(listClinicalRecords(context, { discipline: "MEDICINE", page: 1 }), /audit unavailable/);
-  assert.equal(queries.length, reads);
-  await assert.rejects(listClinicalRecords(context, { discipline: "MEDICINE", page: Infinity }));
+  const f = await fixture();
+  try {
+    for (let n = 1; n <= 45; n++) await registerClinicalRecord(f.context, { ...visit, submissionKey: `00000000-0000-4000-8000-${n.toString().padStart(12, "0")}` });
+    const result = await listClinicalRecords(f.context, { discipline: "MEDICINE", budgetUnitId: "ug", page: 2 });
+    assert.equal(result.total, 45); assert.equal(result.page, 2); assert.equal(result.records.length, 20);
+    assert.deepEqual(Object.keys(result.records[0]).sort(), ["attendedAt", "id", "snapshot"]);
+    const foreign = await listOccupationalVaccinations(f.context, { discipline: "MEDICINE", budgetUnitId: "foreign", page: 100 });
+    assert.equal(foreign.total, 0); assert.equal(foreign.page, 1); assert.equal(foreign.records.length, 0);
+    await f.db.exec(`CREATE FUNCTION reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit unavailable'; END $$;
+      CREATE TRIGGER test_audit BEFORE INSERT ON "AuditEvent" FOR EACH ROW EXECUTE FUNCTION reject_audit();
+      ALTER TABLE "SstClinicalRecord" RENAME TO "HiddenClinicalRecord"`);
+    await assert.rejects(listClinicalRecords(f.context, { discipline: "MEDICINE", page: 1 }), sstDatabaseError("P0001", /audit unavailable/));
+    await assert.rejects(listClinicalRecords(f.context, { discipline: "MEDICINE", page: Infinity }));
+  } finally { await f.close(); }
 });
 
 async function migrationDb() {
   const db = new PGlite();
-  await db.exec(`CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY); CREATE TABLE "Person" (id TEXT PRIMARY KEY); CREATE TABLE "Usuario" (id TEXT PRIMARY KEY); CREATE TABLE "Vaccine" (id TEXT PRIMARY KEY); CREATE TABLE "SstQuestionnaireVersion" (id TEXT PRIMARY KEY, "budgetUnitId" TEXT NOT NULL);
+  await db.exec(`CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY); CREATE TABLE "Person" (id TEXT PRIMARY KEY); CREATE TABLE "Usuario" (id TEXT PRIMARY KEY); CREATE TABLE "Vaccine" (id TEXT PRIMARY KEY); CREATE TABLE "SstQuestionnaireVersion" (id TEXT PRIMARY KEY,"budgetUnitId" TEXT NOT NULL);
     INSERT INTO "BudgetUnit" VALUES ('ug'),('other'); INSERT INTO "Person" VALUES ('worker'),('doctor'); INSERT INTO "Usuario" VALUES ('actor'); INSERT INTO "Vaccine" VALUES ('vaccine');`);
-  await db.exec(readFileSync(new URL("../prisma/migrations-ibema/20261011010000_add_sst_clinical_services/migration.sql", import.meta.url), "utf8"));
-  await db.exec(readFileSync(new URL("../prisma/migrations-ibema/20261011120000_harden_sst_clinical_integrity/migration.sql", import.meta.url), "utf8"));
-  await db.exec(`INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId","usuarioId",discipline,council,"startsAt","endsAt","createdById") VALUES ('role','ug','doctor','actor','MEDICINE','CRM PR 123','2026-10-01','2026-10-01','actor');
-    INSERT INTO "SstQuestionnaireVersion" VALUES ('q','ug','MEDICINE'),('otherq','other','MEDICINE'),('psychq','ug','PSYCHOLOGY');`);
+  for (const name of ["20261011010000_add_sst_clinical_services", "20261011120000_harden_sst_clinical_integrity"]) await db.exec(readFileSync(`prisma/migrations-ibema/${name}/migration.sql`, "utf8"));
+  await db.exec(`INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId","usuarioId",discipline,council,"startsAt","endsAt","createdById") VALUES ('role','ug','doctor','actor','MEDICINE','CRM PR 123','2026-10-01','2026-10-01','actor'); INSERT INTO "SstQuestionnaireVersion" VALUES ('q','ug','MEDICINE'),('otherq','other','MEDICINE'),('psychq','ug','PSYCHOLOGY')`);
   return db;
 }
 async function insertVisit(db: PGlite, id: string, at = "2026-10-01 03:00:00", q: string | null = null, discipline = "MEDICINE") {
@@ -339,73 +305,52 @@ async function insertVisit(db: PGlite, id: string, at = "2026-10-01 03:00:00", q
 async function insertShot(db: PGlite, id: string, at = "2026-10-01", dose = 1, professionalRoleId = "role") {
   return db.query(`INSERT INTO "SstVaccination" (id,"budgetUnitId","personId","professionalRoleId","vaccineId","administeredAt","doseNumber","lotNumber",source,"occupationalContext",snapshot,"submissionKey","requestHash","createdById") VALUES ($1,'ug','worker',$4,'vaccine',$2,$3,'LOT','EXTERNAL_PROOF','Contexto','{}',$1,'hash','actor')`, [id, at, dose, professionalRoleId]);
 }
-
 test("deployed 0100 followed by additive 1200 enforces UTC civil validity independent of session timezone, DATE validity, scope and inactive roles", async () => {
   const db = await migrationDb();
   try {
-    const definition = await db.query<{ definition: string }>(`SELECT pg_get_functiondef('sst_clinical_scope()'::regprocedure) AS definition`);
-    assert.match(definition.rows[0].definition, /FOR SHARE/);
+    assert.match((await db.query<{ definition: string }>(`SELECT pg_get_functiondef('sst_clinical_scope()'::regprocedure) definition`)).rows[0].definition, /FOR SHARE/);
     for (const zone of ["UTC", "Pacific/Auckland"]) {
-      await db.exec(`SET TIME ZONE '${zone}'`);
-      await insertVisit(db, `valid-${zone}`, "2026-10-02 02:59:59", "q");
-      await assert.rejects(insertVisit(db, "before", "2026-10-01 02:59:59"), /validity/);
-      await assert.rejects(insertVisit(db, "after", "2026-10-02 03:00:00"), /validity/);
+      await db.exec(`SET TIME ZONE '${zone}'`); await insertVisit(db, `valid-${zone}`, "2026-10-02 02:59:59", "q");
+      await assert.rejects(insertVisit(db, "before", "2026-10-01 02:59:59"), /validity/); await assert.rejects(insertVisit(db, "after", "2026-10-02 03:00:00"), /validity/);
     }
-    await insertShot(db, "shot");
-    await assert.rejects(insertVisit(db, "infinite", "infinity"));
-    await assert.rejects(insertShot(db, "infinite-shot", "infinity", 2));
+    await insertShot(db, "shot"); await assert.rejects(insertVisit(db, "infinite", "infinity")); await assert.rejects(insertShot(db, "infinite-shot", "infinity", 2));
     await assert.rejects(db.exec(`INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId",discipline,council,"startsAt","endsAt","createdById") VALUES ('infinite-role','ug','doctor','MEDICINE','CRM','2026-10-02','infinity','actor')`), /check constraint/);
     await assert.rejects(insertShot(db, "duplicate"), /SstVaccination_person_vaccine_dose_date_key/);
     await db.exec(`INSERT INTO "SstProfessionalRole" (id,"budgetUnitId","personId","usuarioId",discipline,council,"startsAt","endsAt","createdById") VALUES ('prior-role','ug','doctor','actor','MEDICINE','CRM PR 123','2025-10-01','2025-10-01','actor')`);
-    await insertShot(db, "annual-cycle", "2025-10-01", 1, "prior-role");
-    await assert.rejects(insertShot(db, "annual-duplicate", "2025-10-01", 1, "prior-role"), /SstVaccination_person_vaccine_dose_date_key/);
-    assert.equal((await db.query<{ total: number }>(`SELECT count(*)::int AS total FROM "SstVaccination" WHERE "personId"='worker' AND "vaccineId"='vaccine' AND "doseNumber"=1`)).rows[0].total, 2);
+    await insertShot(db, "annual-cycle", "2025-10-01", 1, "prior-role"); await assert.rejects(insertShot(db, "annual-duplicate", "2025-10-01", 1, "prior-role"), /SstVaccination_person_vaccine_dose_date_key/);
+    assert.equal((await db.query<{ total: number }>('SELECT count(*)::int total FROM "SstVaccination"')).rows[0].total, 2);
     await assert.rejects(insertShot(db, "old", "2026-09-30", 2), /validity/);
-    await assert.rejects(insertVisit(db, "wrong-q", undefined, "otherq"), /questionnaire scope/);
-    await assert.rejects(insertVisit(db, "psych-q", undefined, "psychq"), /questionnaire scope/);
+    await assert.rejects(insertVisit(db, "wrong-q", undefined, "otherq"), /questionnaire scope/); await assert.rejects(insertVisit(db, "psych-q", undefined, "psychq"), /questionnaire scope/);
     await assert.rejects(insertVisit(db, "wrong-discipline", undefined, null, "PSYCHOLOGY"), /discipline mismatch/);
     await assert.rejects(db.exec(`INSERT INTO "SstDisciplineGrant" (id,"budgetUnitId","usuarioId",discipline,"canRead","canWrite") VALUES ('bad-grant','ug','actor','MEDICINE',false,true)`), /check constraint/);
-    await db.exec(`UPDATE "SstProfessionalRole" SET "isActive"=false WHERE id='role'`);
-    await assert.rejects(insertVisit(db, "inactive"), /must be active/);
-    await assert.rejects(insertShot(db, "inactive-shot", undefined, 2), /must be active/);
+    await db.exec('UPDATE "SstProfessionalRole" SET "isActive"=false'); await assert.rejects(insertVisit(db, "inactive"), /must be active/); await assert.rejects(insertShot(db, "inactive-shot", undefined, 2), /must be active/);
   } finally { await db.close(); }
 });
-
 test("0100 history is immutable, council cannot change, and failed mutation rolls back the entire transaction", async () => {
   const db = await migrationDb();
   try {
     await insertVisit(db, "visit"); await insertShot(db, "shot");
-    for (const table of ["SstClinicalRecord", "SstVaccination"]) {
-      await assert.rejects(db.exec(`UPDATE "${table}" SET "requestHash"='changed'`), /immutable/);
-      await assert.rejects(db.exec(`DELETE FROM "${table}"`), /immutable/);
-    }
-    await assert.rejects(db.exec(`UPDATE "SstProfessionalRole" SET council='CRM OTHER'`), /immutable/);
-    await assert.rejects(db.exec(`DELETE FROM "SstProfessionalRole"`), /immutable/);
-    await db.exec("BEGIN");
-    await insertVisit(db, "rolled-back");
-    await assert.rejects(db.exec(`UPDATE "SstClinicalRecord" SET diagnosis='changed' WHERE id='visit'`), /immutable/);
-    await db.exec("ROLLBACK");
-    assert.deepEqual((await db.query<{ id: string }>(`SELECT id FROM "SstClinicalRecord" ORDER BY id`)).rows, [{ id: "visit" }]);
-    assert.equal((await db.query<{ council: string }>(`SELECT council FROM "SstProfessionalRole"`)).rows[0].council, "CRM PR 123");
+    for (const table of ["SstClinicalRecord", "SstVaccination"]) { await assert.rejects(db.exec(`UPDATE "${table}" SET "requestHash"='changed'`), /immutable/); await assert.rejects(db.exec(`DELETE FROM "${table}"`), /immutable/); }
+    await assert.rejects(db.exec(`UPDATE "SstProfessionalRole" SET council='CRM OTHER'`), /immutable/); await assert.rejects(db.exec('DELETE FROM "SstProfessionalRole"'), /immutable/);
+    await db.exec("BEGIN"); await insertVisit(db, "rolled-back"); await assert.rejects(db.exec(`UPDATE "SstClinicalRecord" SET diagnosis='changed' WHERE id='visit'`), /immutable/); await db.exec("ROLLBACK");
+    assert.deepEqual((await db.query('SELECT id FROM "SstClinicalRecord" ORDER BY id')).rows, [{ id: "visit" }]);
+    assert.deepEqual((await db.query('SELECT council FROM "SstProfessionalRole"')).rows, [{ council: "CRM PR 123" }]);
   } finally { await db.close(); }
 });
-
-test("real historical query parameters enforce instant end-exclusive coverage and full Sao Paulo vaccination civil day", async () => {
-  const db = new PGlite();
+test("real historical service enforces instant end-exclusive coverage and full Sao Paulo vaccination civil day", async () => {
+  const f = await fixture({ startsAt: "2026-10-01", endsAt: "2026-10-02" });
   try {
-    await db.exec(`CREATE TABLE "HrEmployeeFunctionalPeriod" (id TEXT, "employeeId" TEXT, "budgetUnitId" TEXT, "startsAt" TIMESTAMP, "endsAt" TIMESTAMP, voided BOOLEAN DEFAULT false, "supersedesId" TEXT);
-      INSERT INTO "HrEmployeeFunctionalPeriod" VALUES ('period','employee','ug','2026-10-01 03:00','2026-10-02 03:00',false,null);`);
-    const f = fixture(); await registerClinicalRecord(f.context, visit); await registerOccupationalVaccination(f.context, shot);
-    for (const zone of ["UTC", "America/Los_Angeles", "Pacific/Auckland"]) {
-      await db.exec(`SET TIME ZONE '${zone}'`);
-      for (const query of f.historyQueries) assert.equal((await db.query(query.sql, query.values)).rows.length, 1);
+    f.connection.pool.options.max = 1;
+    await f.db.exec(`UPDATE "HrEmployeeFunctionalPeriod" SET "startsAt"='2026-10-01 03:00',"endsAt"='2026-10-02 03:00'`);
+    for (const [index, zone] of ["UTC", "America/Los_Angeles", "Pacific/Auckland"].entries()) {
+      await f.connection.db.execute((await import("drizzle-orm")).sql`SELECT set_config('TimeZone', ${zone}, false)`);
+      await registerClinicalRecord(f.context, { ...visit, submissionKey: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}` });
+      await registerOccupationalVaccination(f.context, { ...shot, doseNumber: index + 1, submissionKey: `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}` });
     }
-    const instant = f.historyQueries[0];
-    assert.equal((await db.query(instant.sql, ["employee", "ug", "2026-10-02T03:00:00Z", "2026-10-02T03:00:00Z"])).rows.length, 0);
-    assert.equal((await db.query(instant.sql, ["employee", "other", ...instant.values.slice(2)])).rows.length, 0);
-    await db.exec(`UPDATE "HrEmployeeFunctionalPeriod" SET "startsAt"='2026-10-01 04:00'`);
-    assert.equal((await db.query(f.historyQueries[1].sql, f.historyQueries[1].values)).rows.length, 0);
-    await db.exec(`UPDATE "HrEmployeeFunctionalPeriod" SET "startsAt"='2026-10-01 03:00'; INSERT INTO "HrEmployeeFunctionalPeriod" VALUES ('correction','employee','ug','2026-10-01 03:00','2026-10-02 03:00',true,'period')`);
-    assert.equal((await db.query(instant.sql, instant.values)).rows.length, 0);
-  } finally { await db.close(); }
+    await assert.rejects(registerClinicalRecord(f.context, { ...visit, attendedAt: "2026-10-02T03:00:00Z", submissionKey: key }), /período funcional RH/);
+    await f.db.exec(`UPDATE "HrEmployeeFunctionalPeriod" SET "startsAt"='2026-10-01 04:00'`);
+    await assert.rejects(registerOccupationalVaccination(f.context, { ...shot, doseNumber: 4, submissionKey: key }), /período funcional RH/);
+    await f.db.exec(`UPDATE "HrEmployeeFunctionalPeriod" SET "startsAt"='2026-10-01 03:00'; INSERT INTO "HrEmployeeFunctionalPeriod" VALUES ('correction','employee','ug','2026-10-01 03:00','2026-10-02 03:00',true,'period')`);
+    await assert.rejects(registerClinicalRecord(f.context, visit), /período funcional RH/);
+  } finally { await f.close(); }
 });

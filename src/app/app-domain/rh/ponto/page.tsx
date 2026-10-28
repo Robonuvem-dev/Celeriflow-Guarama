@@ -4,10 +4,10 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PontoRowActions } from "./PontoRowActions";
 import { UploadCSVButton } from "./UploadCSVButton";
 import { format } from "date-fns";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readAttendancePage } from "@/db/repositories/personnel-pages/records";
 import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
 import { RhPagination } from "../_components/RhPagination";
-import { rhPagination } from "@/lib/rh/list-pagination";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import {
   ErpTableContainer,
@@ -27,27 +27,10 @@ function pontoVariant(status: string): ErpStatusVariant {
 }
 
 export default async function PontoPage({ searchParams }: { searchParams: Promise<{ q?: string; month?: string; page?: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH");
   const { q, month, page } = await searchParams;
 
-  const whereClause: Prisma.AttendanceRecordWhereInput = {};
-  if (q) whereClause.employee = { name: { contains: q, mode: "insensitive" } };
-  if (month) {
-    const [year, m] = month.split("-");
-    const startDate = new Date(parseInt(year), parseInt(m) - 1, 1);
-    const endDate = new Date(parseInt(year), parseInt(m), 0);
-    whereClause.date = { gte: startDate, lte: endDate };
-  }
-
-  const total = await prisma.attendanceRecord.count({ where: whereClause });
-  const pagination = rhPagination(page, total);
-  const records = await prisma.attendanceRecord.findMany({
-    where: whereClause,
-    take: pagination.take,
-    skip: pagination.skip,
-    orderBy: [{ date: "desc" }, { id: "asc" }],
-    include: { employee: true },
-  });
+  const { total, pagination, records } = await readAttendancePage(context.database ?? db, { q, month, page });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">

@@ -7,24 +7,31 @@ import { ingestGedDocument } from "@/lib/documents/document-flow-service";
 import { assertSstClinicalAccess } from "./access";
 import { asoSnapshot, asoKinds, asoResults, formatSstCivilDate } from "./aso-policy";
 import { SstValidationError } from "./errors";
+import { asc, eq, sql } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { sstAsos, sstExams } from "@/db/schema/sst-clinical";
+import { sstRows } from "@/db/repositories/sst/sql";
+import { sstContextConnection, sstDatabase } from "./database";
 
-export async function archiveAsoDocument(context: AppContext, asoId: string, origin?: { file: File; examId: string; submissionKey: string }) {
+export async function archiveAsoDocument(context: AppContext, asoId: string, origin?: { file: File; examId: string; submissionKey: string }, connection: DatabaseConnection = sstContextConnection(context)) {
   if (!canPerformModuleOperation(context.user, "SST", origin ? "update" : "issueReports")) throw new AccessError("Permissão para documento ASO necessária.", 403);
-  const scope = await context.prisma.sstAso.findUnique({ where: { id: asoId }, select: { budgetUnitId: true } });
+  const [scope] = await sstDatabase(context).select({ budgetUnitId: sstAsos.budgetUnitId }).from(sstAsos).where(eq(sstAsos.id, asoId));
   if (!scope) throw new SstValidationError("ASO não encontrado.");
   await assertSstClinicalAccess(context, scope.budgetUnitId, !!origin);
-  const aso = await context.prisma.sstAso.findUniqueOrThrow({ where: { id: asoId }, include: { exams: { orderBy: { id: "asc" } } } });
+  const [record] = await sstDatabase(context).select().from(sstAsos).where(eq(sstAsos.id, asoId));
+  if (!record) throw new SstValidationError("ASO não encontrado.");
+  const aso = { ...record, exams: await sstDatabase(context).select().from(sstExams).where(eq(sstExams.asoId, asoId)).orderBy(asc(sstExams.id)) };
   if (origin && !aso.exams.some((e) => e.id === origin.examId)) throw new SstValidationError("O exame não pertence ao ASO.");
   const documentLinkId = origin ? z.uuid().parse(origin.submissionKey) : randomUUID();
   const requestHash = origin ? createHash("sha256").update(`${asoId}:${origin.examId}:`).update(new Uint8Array(await origin.file.arrayBuffer())).digest("hex") : aso.requestHash;
   const retry = async () => {
-    const [previous] = await context.prisma.$queryRaw<{ documentId: string; requestHash: string; createdById: string; asoId: string }[]>`SELECT "documentId","requestHash","createdById","asoId" FROM "SstAsoDocument" WHERE id=${documentLinkId}`;
+    const [previous] = await sstRows<{ documentId: string; requestHash: string; createdById: string; asoId: string }>(connection.db, sql`SELECT "documentId","requestHash","createdById","asoId" FROM "SstAsoDocument" WHERE id=${documentLinkId}`);
     if (previous && (previous.requestHash !== requestHash || previous.createdById !== context.user.id || previous.asoId !== asoId)) throw new SstValidationError("Submissão de laudo reutilizada com outros dados.");
     return previous?.documentId;
   };
   if (origin) { const previous = await retry(); if (previous) return previous; }
   if (!origin) {
-    const [existing] = await context.prisma.$queryRaw<{ documentId: string }[]>`SELECT "documentId" FROM "SstAsoDocument" WHERE "asoId"=${asoId} AND kind='GENERATED'`;
+    const [existing] = await sstRows<{ documentId: string }>(connection.db, sql`SELECT "documentId" FROM "SstAsoDocument" WHERE "asoId"=${asoId} AND kind='GENERATED'`);
     if (existing) return existing.documentId;
   }
   let file: File;
@@ -52,19 +59,19 @@ export async function archiveAsoDocument(context: AppContext, asoId: string, ori
   }
   const blob = origin ? await uploadProcessFile(file) : await uploadFile(file);
   try {
-    const result = await ingestGedDocument(context.prisma, {
+    const result = await ingestGedDocument(connection, {
       title: origin ? "Laudo de origem ASO restrito" : "ASO original gerado restrito", documentType: origin ? "SST_ASO_ORIGEM" : "SST_ASO", documentClassCode: "SST_OCUPACIONAL",
       fileUrl: blob.url, content: new Uint8Array(await file.arrayBuffer()), actorUsuarioId: context.user.id,
       afterCreate: async (tx, documentId) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`SST_ASO_DOCUMENT:${asoId}`}))`;
-        await tx.$executeRaw`INSERT INTO "SstAsoDocument" (id,"asoId","examId","documentId",kind,"requestHash","createdById") VALUES (${documentLinkId},${asoId},${origin?.examId || null},${documentId},${origin ? "ORIGIN" : "GENERATED"},${requestHash},${context.user.id})`;
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`SST_ASO_DOCUMENT:${asoId}`}))`);
+        await tx.execute(sql`INSERT INTO "SstAsoDocument" (id,"asoId","examId","documentId",kind,"requestHash","createdById") VALUES (${documentLinkId},${asoId},${origin?.examId || null},${documentId},${origin ? "ORIGIN" : "GENERATED"},${requestHash},${context.user.id})`);
       },
     });
     return result.documentId;
   } catch (error) {
     // Competing generation rolls back GED rows; return the winner only.
     if (!origin) {
-      const [winner] = await context.prisma.$queryRaw<{ documentId: string }[]>`SELECT "documentId" FROM "SstAsoDocument" WHERE "asoId"=${asoId} AND kind='GENERATED'`;
+      const [winner] = await sstRows<{ documentId: string }>(connection.db, sql`SELECT "documentId" FROM "SstAsoDocument" WHERE "asoId"=${asoId} AND kind='GENERATED'`);
       if (winner) return winner.documentId;
     } else { const winner = await retry(); if (winner) return winner; }
     throw error;

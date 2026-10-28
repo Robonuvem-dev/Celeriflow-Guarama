@@ -2,23 +2,21 @@ import { File, Save, ArrowLeft, Building, User, Info, Upload } from "lucide-reac
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import type { DocumentInput } from "@/lib/contracts/registry";
+import { db } from "@/db/client";
+import { listCompanyOptions, listPersonOptions } from "@/db/repositories/registry/queries";
+import { insertDocument } from "@/db/repositories/registry/operations";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 
 export default async function NovoDocumentoPage() {
-  const { prisma } = await getTenantContextForModule("CADASTROS");
-  const persons = await prisma.person.findMany({
-    select: { id: true, fullName: true, cpf: true }
-  });
-  
-  const companies = await prisma.company.findMany({
-    select: { id: true, corporateName: true, cnpj: true }
-  });
+  const context = await getTenantContextForModule("CADASTROS");
+  const persons = await listPersonOptions(context.database ?? db);
+  const companies = await listCompanyOptions(context.database ?? db);
 
   async function createDocument(formData: FormData) {
     "use server";
-    const { prisma } = await getTenantContextForModuleOperation("CADASTROS", "create");
+    const context = await getTenantContextForModuleOperation("CADASTROS", "create");
     
     const title = formData.get("title") as string;
     const documentType = formData.get("documentType") as string;
@@ -35,7 +33,7 @@ export default async function NovoDocumentoPage() {
       fileUrl = "/uploads/simulated-" + file.name;
     }
 
-    const data: Prisma.DocumentUncheckedCreateInput = {
+    const data: DocumentInput = {
       title,
       documentType,
       notes: notes || null,
@@ -47,9 +45,7 @@ export default async function NovoDocumentoPage() {
     if (personId) data.personId = personId;
     else if (companyId) data.companyId = companyId;
 
-    await prisma.document.create({
-      data
-    });
+    await insertDocument(context.database ?? db, data);
 
     redirect("/cadastros/documentos");
   }

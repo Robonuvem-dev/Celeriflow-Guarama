@@ -3,7 +3,11 @@
 import { getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { CulturalIncentiveProject, Prisma } from "@prisma/client";
+import type { CulturalIncentiveProject } from "@/lib/contracts/culture";
+import { db } from "@/db/client";
+import { Decimal } from "@/db/decimal";
+import { desc, eq } from "drizzle-orm";
+import { culturalIncentiveProjects } from "@/db/schema/culture";
 
 type ActionResult<T = unknown> = { error?: string; data?: T };
 
@@ -26,15 +30,13 @@ export async function submitCulturalProjectAction(input: z.infer<typeof projectS
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
 
   try {
-    const context = await getTenantContextForModuleOperation("CULTURA", "create");
-    const project = await context.prisma.culturalIncentiveProject.create({
-      data: {
+    await getTenantContextForModuleOperation("CULTURA", "create");
+    const [project] = await db.insert(culturalIncentiveProjects).values({
         ...parsed.data,
-        valorSolicitado: new Prisma.Decimal(parsed.data.valorSolicitado),
-        valorAprovado: new Prisma.Decimal(parsed.data.valorSolicitado),
+        valorSolicitado: new Decimal(parsed.data.valorSolicitado),
+        valorAprovado: new Decimal(parsed.data.valorSolicitado),
         status: "APROVADO",
-      },
-    });
+    }).returning();
 
     revalidatePath("/cultura/fomento-projetos");
     return { data: project };
@@ -46,18 +48,16 @@ export async function submitCulturalProjectAction(input: z.infer<typeof projectS
 export async function submitAccountabilityAction(projectId: string, reciboNota: string): Promise<ActionResult<{ project: CulturalIncentiveProject; recibo: string }>> {
   void reciboNota;
   try {
-    const context = await getTenantContextForModuleOperation("CULTURA", "update");
+    await getTenantContextForModuleOperation("CULTURA", "update");
     const timestamp = Date.now();
     const recibo = `REC-PREST-${timestamp}`;
 
-    const updated = await context.prisma.culturalIncentiveProject.update({
-      where: { id: projectId },
-      data: {
+    const [updated] = await db.update(culturalIncentiveProjects).set({
         prestacaoContasStatus: "HOMOLOGADA",
         reciboPrestacaoContas: recibo,
         status: "CONCLUIDO",
-      },
-    });
+    }).where(eq(culturalIncentiveProjects.id, projectId)).returning();
+    if (!updated) throw new Error("Projeto cultural não encontrado.");
 
     revalidatePath("/cultura/fomento-projetos");
     return { data: { project: updated, recibo } };
@@ -68,11 +68,8 @@ export async function submitAccountabilityAction(projectId: string, reciboNota: 
 
 export async function getCulturalProjectsAction(): Promise<ActionResult<CulturalIncentiveProject[]>> {
   try {
-    const context = await getTenantContextForModule("CULTURA");
-    const projects = await context.prisma.culturalIncentiveProject.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
+    await getTenantContextForModule("CULTURA");
+    const projects = await db.select().from(culturalIncentiveProjects).orderBy(desc(culturalIncentiveProjects.createdAt)).limit(20);
     return { data: projects };
   } catch (error) {
     return { error: getErrorMessage(error, "Erro ao carregar projetos de fomento.") };

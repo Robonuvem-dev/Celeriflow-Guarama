@@ -2,7 +2,9 @@ import PDFDocument from "pdfkit";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import { z } from "zod";
 import { certificateReport, reportInput } from "./report-service";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { sstDatabase } from "./database";
 
 function csvCell(value: unknown) {
   const text = String(value ?? "");
@@ -38,6 +40,6 @@ export async function exportCertificateReport(context: AppContext, raw: unknown,
     content = await complete;
   }
   // Identifiers only. No CID, diagnosis, names, filters or document bytes enter general audit logs.
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: format === "pdf" ? "SST_REPORT_PDF" : "SST_REPORT_CSV", targetId: input.budgetUnitId });
+  await writeAuditEvent(sstDatabase(context), { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: format === "pdf" ? "SST_REPORT_PDF" : "SST_REPORT_CSV", targetId: input.budgetUnitId });
   return { content, contentType: format === "pdf" ? "application/pdf" : "text/csv; charset=utf-8", filename: `sst-${kind}.${format}` };
 }

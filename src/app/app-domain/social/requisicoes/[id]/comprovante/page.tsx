@@ -2,21 +2,25 @@ import { notFound } from "next/navigation";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { assertSocialUnitAccess, resolveSocialAccess } from "@/lib/social/access-policy";
 import { socialAmountCents, socialCentsDisplay } from "@/lib/social/money";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import PrintSocialDocumentButton from "./PrintSocialDocumentButton";
+import { db } from "@/db/client";
+import { findSocialInstitution, listSocialBenefitRequests } from "@/db/repositories/social/queries";
 
 const labels: Record<string, string> = { PENDING: "Pendente de avaliação", APPROVED: "Autorizado", DENIED: "Negado", DELIVERED: "Entregue", CANCELLED: "Cancelado" };
 export default async function BenefitReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const context = await getTenantContextForModuleOperation("SOCIAL", "issueReports");
   const access = await resolveSocialAccess(context);
-  const request = await context.prisma.socialBenefitRequest.findFirst({ where: { id, ...(access.administrator ? {} : { unitId: { in: access.links.map((link) => link.unitId) } }) }, include: { unit: { select: { name: true, streetAddress: true, municipality: true } }, family: { select: { familyCode: true, representative: { select: { fullName: true, socialName: true, cpf: true } } } }, items: { include: { benefit: { select: { name: true } } } } } });
+  const database = context.database ?? db;
+  const [request] = await listSocialBenefitRequests(database, access, id);
   if (!request) notFound();
   assertSocialUnitAccess(access, request.unitId);
   const items = request.items.filter((item) => access.administrator || !item.approvalRequired || item.authorizerEmployeeId === access.employeeId || request.createdBy === context.user.id);
   if (!items.length) notFound();
-  const institution = await context.prisma.institution.findFirst({ select: { name: true, legalName: true, city: true, state: true } });
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SocialBenefitRequest", targetId: request.id });
+  const institution = await findSocialInstitution(database);
+  await insertAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SocialBenefitRequest", targetId: request.id });
   return <main className="mx-auto max-w-4xl space-y-4 bg-white p-6 text-slate-900"><PrintSocialDocumentButton />
     <header className="border-b-2 border-slate-800 pb-3 text-center"><h1 className="text-lg font-bold">{institution?.name || institution?.legalName || "Prefeitura Municipal de Ibema"}</h1><p className="text-sm">Assistência Social — {institution?.city || "Ibema"}/{institution?.state || "PR"}</p><h2 className="mt-3 text-base font-bold">Requisição, avaliação e entrega de benefícios</h2><p className="text-[10px]">Modelo local POC-1.0 • informações extraídas dos registros do sistema</p></header>
     <section className="grid gap-2 text-xs sm:grid-cols-2"><p><strong>Protocolo:</strong> {request.id}</p><p><strong>Data:</strong> {request.createdAt.toLocaleString("pt-BR")}</p><p><strong>Família / responsável:</strong> {request.family.representative.socialName || request.family.representative.fullName}</p><p><strong>CPF:</strong> {request.family.representative.cpf}</p><p><strong>Equipamento:</strong> {request.unit.name}</p><p><strong>Código familiar:</strong> {request.family.familyCode || "—"}</p></section>

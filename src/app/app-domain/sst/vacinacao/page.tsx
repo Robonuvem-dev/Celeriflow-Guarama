@@ -1,5 +1,7 @@
 import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
-import { disciplineUnitWhere } from "@/lib/sst/clinical-access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
+import { searchSstWorkerPeople, searchSstPageVaccines, readSstUserProfessionals } from "@/db/repositories/sst-pages/clinical-options";
 import { clinicalSnapshot } from "@/lib/sst/clinical-policy";
 import { formatSstCivilDate } from "@/lib/sst/aso-policy";
 import { SstForm } from "../SstForm";
@@ -13,11 +15,12 @@ export default async function SstVaccinationPage({ searchParams }: { searchParam
   const discipline = params.discipline === "NURSING" ? "NURSING" : "MEDICINE";
   const n = Number(params.page);
   const { units, unit, total, page, records } = await listOccupationalVaccinations(context, { discipline, budgetUnitId: params.budgetUnitId || "", page: Number.isFinite(n) ? Math.max(1, Math.trunc(n)) : 1 });
-  const writeUnit = unit ? await context.prisma.budgetUnit.findFirst({ where: { AND: [{ id: unit.id }, disciplineUnitWhere(context, discipline, true)] }, select: { id: true } }) : null;
+  const database = sstDatabase(context);
+  const writeUnit = unit ? (await listSstUnits(database, context, discipline, true)).find(candidate => candidate.id === unit.id) : null;
   const create = !!writeUnit && canPerformModuleOperation(context.user, "SST", "create");
-  const people = create && unit && (params.personQ || "").trim().length >= 3 ? await context.prisma.person.findMany({ where: { fullName: { contains: params.personQ!.trim().slice(0, 200), mode: "insensitive" }, employee: { isNot: null } }, take: 20, select: { id: true, fullName: true }, orderBy: [{ fullName: "asc" }, { id: "asc" }] }) : [];
-  const vaccines = create && (params.vaccineQ || "").trim().length >= 3 ? await context.prisma.vaccine.findMany({ where: { isActive: true, name: { contains: params.vaccineQ!.trim().slice(0, 200), mode: "insensitive" } }, take: 20, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] }) : [];
-  const roles = create && unit ? await context.prisma.sstProfessionalRole.findMany({ where: { budgetUnitId: unit.id, discipline, isActive: true, usuarioId: context.user.id }, take: 100, include: { person: { select: { fullName: true } } } }) : [];
+  const people = create && unit && (params.personQ || "").trim().length >= 3 ? await searchSstWorkerPeople(database, params.personQ!) : [];
+  const vaccines = create && (params.vaccineQ || "").trim().length >= 3 ? await searchSstPageVaccines(database, params.vaccineQ!) : [];
+  const roles = create && unit ? await readSstUserProfessionals(database, unit.id, discipline, context.user.id, false) : [];
   const href = (value: number) => `/sst/vacinacao?${new URLSearchParams({ budgetUnitId: params.budgetUnitId || "", discipline, personQ: params.personQ || "", vaccineQ: params.vaccineQ || "", page: String(value) })}`;
   const field = "block w-full rounded border p-2";
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Vacinação ocupacional</h1><p>Registro de vacinação comprovada externamente, sem gerar nova aplicação ou baixar estoque assistencial.</p><form className="grid gap-3 sm:grid-cols-2"><label>Atuação<select name="discipline" defaultValue={discipline} className={field}><option value="MEDICINE">Medicina</option><option value="NURSING">Enfermagem</option></select></label><label>UG<select name="budgetUnitId" defaultValue={unit?.id || ""} className={field}><option value="">Todas autorizadas</option>{units.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Servidor (3 letras)<input name="personQ" defaultValue={params.personQ} className={field}/></label><label>Vacina (3 letras)<input name="vaccineQ" defaultValue={params.vaccineQ} className={field}/></label><button className="w-fit rounded border p-2">Carregar</button></form>

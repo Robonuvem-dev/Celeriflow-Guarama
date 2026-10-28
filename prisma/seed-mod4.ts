@@ -1,9 +1,15 @@
-import { prisma } from '../src/lib/prisma';
+import { and, eq, isNull } from 'drizzle-orm';
+import { createDatabaseConnection } from '../src/db/connection';
+import { documentFolders } from '../src/db/schema/document-workflow';
+import { documents } from '../src/db/schema/registry';
+
+const connection = createDatabaseConnection(process.env.DATABASE_URL!);
+const db = connection.db;
 
 async function upsertFolder(name: string, description: string, parentId?: string) {
-  const existing = await prisma.folder.findFirst({ where: { name, parentId: parentId ?? null } });
+  const [existing] = await db.select().from(documentFolders).where(and(eq(documentFolders.name, name), parentId == null ? isNull(documentFolders.parentId) : eq(documentFolders.parentId, parentId))).limit(1);
   if (existing) return existing;
-  return prisma.folder.create({ data: { name, description, parentId: parentId ?? null } });
+  return (await db.insert(documentFolders).values({ name, description, parentId: parentId ?? null }).returning())[0];
 }
 
 async function upsertDocument(title: string, data: {
@@ -13,9 +19,9 @@ async function upsertDocument(title: string, data: {
   notes?: string | null;
   folderId?: string | null;
 }) {
-  const existing = await prisma.document.findFirst({ where: { title, documentType: data.documentType } });
+  const [existing] = await db.select().from(documents).where(and(eq(documents.title, title), eq(documents.documentType, data.documentType))).limit(1);
   if (existing) return existing;
-  return prisma.document.create({ data: { title, ...data, status: data.status ?? 'Válido' } });
+  return (await db.insert(documents).values({ title, ...data, status: data.status ?? 'Válido' }).returning())[0];
 }
 
 async function main() {
@@ -114,5 +120,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await connection.pool.end();
   });

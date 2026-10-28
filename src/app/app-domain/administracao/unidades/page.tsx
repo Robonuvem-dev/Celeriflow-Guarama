@@ -4,20 +4,15 @@ import UnidadesClient from "./UnidadesClient";
 import { MapPin } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listActiveSecretariatOptions, listUnitDetails } from "@/db/repositories/administration/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function UnidadesPage() {
-  const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
-  const units = await prisma.administrativeUnit.findMany({
-    orderBy: { name: 'asc' },
-    include: { secretariat: true }
-  });
-
-  const secretariats = await prisma.secretariat.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true }
-  });
+  const context = await getTenantContextForModule("ADMINISTRACAO");
+  const units = await listUnitDetails(context.database ?? db);
+  const secretariats = await listActiveSecretariatOptions(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

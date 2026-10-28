@@ -1,16 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
-import type { AppContext } from "../src/lib/platform/tenant-context";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { sstTestContext } from "./helpers/sst-drizzle-context";
 import { functionalSstReport, pppReport, portalPppReport } from "../src/lib/sst/closure-service";
 import { emitClosureDocument } from "../src/lib/sst/closure-document";
 import { readFileSync } from "node:fs";
 
 test("isolated PG consolidated report includes every source, pages 20, scopes before count and protects portal clinical data", { timeout: 60000 }, async () => {
-  const db = new PGlite(); const server = new PGLiteSocketServer({ db, port: 0, host: "127.0.0.1" }); let client: PrismaClient | undefined;
+  const local = await createLocalDrizzleDatabase(), db = local.database;
   try {
     await db.exec(`CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY); INSERT INTO "BudgetUnit" VALUES ('ug'),('other');
       CREATE TABLE "AuditEvent" (id TEXT PRIMARY KEY,"actorUsuarioId" TEXT,"eventType" TEXT,"targetType" TEXT,"targetId" TEXT,"createdAt" TIMESTAMP DEFAULT now());
@@ -38,20 +35,11 @@ test("isolated PG consolidated report includes every source, pages 20, scopes be
       CREATE TABLE "SstAnamnesis" (id TEXT PRIMARY KEY,"asoId" TEXT,"createdAt" TIMESTAMP); INSERT INTO "SstAnamnesis" VALUES ('anamnesis','aso','2026-02-12');
       CREATE TABLE "SstVaccination" (id TEXT PRIMARY KEY,"personId" TEXT,"budgetUnitId" TEXT,"administeredAt" TIMESTAMP); INSERT INTO "SstVaccination" VALUES ('vaccine','person','ug','2026-02-13');`);
     await db.exec(readFileSync("prisma/migrations-ibema/20261011060000_add_sst_integrations/migration.sql", "utf8"));
-    await server.start(); client = new PrismaClient({ adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`, max: 1 }) });
-    // Programs have no historical rows in this fixture; canonical history and
-    // every consolidated source/count/pagination query execute against PG.
-    const prisma = new Proxy(client, { get(target, property) {
-      if (property === "sstProgramExposureGroup") return { findMany: async () => [] };
-      // The grant lookup and record-level EXISTS run against the same isolated
-      // PG rows, including canRead=false, write-only and inactive grants.
-      if (property === "sstDisciplineGrant") return { findUnique: async ({where}:{where:{usuarioId_budgetUnitId_discipline:{usuarioId:string;budgetUnitId:string;discipline:string}}}) => {
-        const key=where.usuarioId_budgetUnitId_discipline;
-        return (await target.$queryRaw<{isActive:boolean;canRead:boolean;canWrite:boolean}[]>`SELECT "isActive","canRead","canWrite" FROM "SstDisciplineGrant" WHERE "usuarioId"=${key.usuarioId} AND "budgetUnitId"=${key.budgetUnitId} AND discipline=${key.discipline}`)[0] || null;
-      }};
-      const value = Reflect.get(target, property); return typeof value === "function" ? value.bind(target) : value;
-    } });
-    const context = { prisma, user: { id: "actor", name: "Test", email: "test@example.invalid", firebaseUid: "actor", role: "ADMIN", profileCode: "SYSTEM_ADMINISTRATOR", permissions: "{}", modulePermissions: [], allowedBudgetUnitIds: [], employeeId: "employee", departmentId: null, secretariatId: null } } as unknown as AppContext;
+    // Empty program tables still execute the real historical join and decoder.
+    await db.exec(`ALTER TABLE "HrEmployeeFunctionalPeriod" ADD "sourceReference" TEXT DEFAULT 'Fonte oficial', ADD "requestHash" TEXT DEFAULT 'hash', ADD "createdById" TEXT DEFAULT 'actor', ADD "createdAt" TIMESTAMP DEFAULT now();
+      CREATE TABLE "SstOccupationalProgram" (id TEXT PRIMARY KEY,"budgetUnitId" TEXT,code TEXT,kind TEXT,version INT,"startsAt" TIMESTAMP,"endsAt" TIMESTAMP,"responsiblePersonId" TEXT,"responsibleCouncil" TEXT,"responsibleSnapshot" JSONB,content JSONB,"createdById" TEXT,"createdAt" TIMESTAMP);
+      CREATE TABLE "SstProgramExposureGroup" (id TEXT PRIMARY KEY,"programId" TEXT,"groupId" TEXT,"groupSnapshot" JSONB,risks JSONB,exams JSONB);`);
+    const context = sstTestContext(local.connection.db, { id: "actor", profileCode: "SYSTEM_ADMINISTRATOR", allowedBudgetUnitIds: [], employeeId: "employee" });
     const input = { employeeId: "employee", budgetUnitId: "ug", from: "2026-01-01", until: "2027-01-01" };
     const pages = await Promise.all([1,2,3].map(page => functionalSstReport(context,input,page)));
     assert.deepEqual(pages.map(page => page.records.length),[20,20,15]);
@@ -93,8 +81,9 @@ test("isolated PG consolidated report includes every source, pages 20, scopes be
     assert.equal(JSON.stringify(ownStored).includes("SECRET_MEDICAL"),false);
     assert.equal(JSON.stringify(ownStored).includes("SECRET_PSYCHOLOGY"),false);
     await assert.rejects(emitClosureDocument(context,"FUNCTIONAL",input,true),/Portal/);
-    const own = await portalPppReport(context,{budgetUnitId:"ug",from:input.from,until:input.until,employeeId:"other-employee"} as unknown as Parameters<typeof portalPppReport>[1]);
+    const untrustedInput = {budgetUnitId:"ug",from:input.from,until:input.until,employeeId:"other-employee"};
+    const own = await portalPppReport(context,untrustedInput);
     assert.equal(own.input.employeeId,"employee");
     await assert.rejects(portalPppReport(context,{budgetUnitId:"other",from:input.from,until:input.until}),/próprio/);
-  } finally { await client?.$disconnect(); await server.stop(); await db.close(); }
+  } finally { await local.close(); }
 });

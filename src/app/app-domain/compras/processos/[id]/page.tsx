@@ -7,45 +7,13 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { loadPurchaseProcessDetail } from "@/db/repositories/procurement/purchase-processes";
 
 export default async function ProcessoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
+  const context = await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const processo = await prisma.purchaseProcess.findUnique({
-    where: { id: resolvedParams.id },
-    include: {
-      secretariat: true,
-      items: {
-        include: {
-          catalogItem: true,
-          requestItemOrigins: {
-            include: {
-              purchaseRequestItem: {
-                include: {
-                  purchaseRequest: { select: { id: true, number: true } },
-                  budgetAllocations: {
-                    include: {
-                      budgetAppropriation: {
-                        include: {
-                          budgetUnit: true,
-                          expenseNature: true,
-                          resourceSource: true,
-                          financialYear: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      requestOrigins: {
-        include: { purchaseRequest: { select: { id: true, number: true, object: true, estimatedValue: true } } },
-      },
-    }
-  });
+  const processo = await loadPurchaseProcessDetail(context.database ?? db, resolvedParams.id);
 
   if (!processo) {
     notFound();

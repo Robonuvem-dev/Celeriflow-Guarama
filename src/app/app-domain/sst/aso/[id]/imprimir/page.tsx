@@ -3,19 +3,24 @@ import { notFound } from "next/navigation";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { assertSstClinicalAccess } from "@/lib/sst/access";
 import { asoKinds, asoResults, asoSnapshot, formatSstCivilDate } from "@/lib/sst/aso-policy";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { findSstAsoScope, findSstAsoCorrection } from "@/db/repositories/sst-pages/aso";
+import { readSstAso } from "@/db/repositories/sst/clinical";
+import { sstDatabase } from "@/lib/sst/database";
 import { PrintAso } from "./PrintAso";
 
 export default async function SstAsoPrint({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModuleOperation("SST", "issueReports");
   const { id } = await params;
-  const scope = await context.prisma.sstAso.findUnique({ where: { id }, select: { budgetUnitId: true } });
+  const database = sstDatabase(context);
+  const scope = await findSstAsoScope(database, id);
   if (!scope) notFound();
   await assertSstClinicalAccess(context, scope.budgetUnitId);
-  const record = await context.prisma.sstAso.findUniqueOrThrow({ where: { id }, include: { exams: { orderBy: { id: "asc" } } } });
+  const record = await readSstAso(database, id);
   const snapshot = asoSnapshot.parse(record.snapshot);
-  const [correction] = await context.prisma.$queryRaw<{ kind: string; replacementAsoId: string | null }[]>`SELECT kind,"replacementAsoId" FROM "SstAsoCorrection" WHERE "asoId"=${id}`;
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SST_ASO_PRINT", targetId: record.id });
+  const correction = await findSstAsoCorrection(database, id);
+  await writeAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SST_ASO_PRINT", targetId: record.id });
   return <div className="space-y-4 p-4"><div className="flex gap-4 print:hidden"><Link className="underline" href={`/sst/aso/${id}`}>Voltar ao ASO</Link><PrintAso/></div>
     <article data-sst-aso className="mx-auto max-w-4xl space-y-5 rounded border bg-white p-6 text-black print:border-0"><header><h1 className="text-center text-xl font-bold">ATESTADO DE SAÚDE OCUPACIONAL — ASO</h1><p className="text-center">{snapshot.unitName}</p></header>
       <p className="break-all text-sm">Identificador: {record.id}</p><p>Nome: {snapshot.personName} · CPF: {snapshot.cpf}</p><p>Matrícula: {snapshot.registration || "Candidato sem vínculo"}{record.candidateReference ? ` · Concurso/processo: ${record.candidateReference}` : ""}</p><p>Cargo: {snapshot.role || "Não informado"} · Local: {snapshot.department || "Não informado"}</p>

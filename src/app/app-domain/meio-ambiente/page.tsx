@@ -15,22 +15,14 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { getEnvironmentTotals } from "@/db/repositories/environment/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function MeioAmbienteDashboardPage() {
-  const { prisma } = await getTenantContextForModule("MEIO_AMBIENTE");
-  const [
-    totalEnterprises,
-    totalLicenses,
-    totalComplaints,
-    totalGreenAreas
-  ] = await Promise.all([
-    prisma.envEnterprise.count(),
-    prisma.envLicense.count(),
-    prisma.envComplaint.count(),
-    prisma.envGreenArea.count()
-  ]);
+  const context = await getTenantContextForModule("MEIO_AMBIENTE");
+  const { totalEnterprises, totalLicenses, totalComplaints, totalGreenAreas } = await getEnvironmentTotals(context.database ?? db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

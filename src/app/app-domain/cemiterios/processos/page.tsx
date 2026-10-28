@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readScheduledProcessPage } from "@/db/repositories/cemeteries/workflow-pages";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { WorkflowAdvance, WorkflowForm } from "@/components/cemeteries/WorkflowForms";
 import CemeteryLookup from "@/components/cemeteries/CemeteryLookup";
-import { cemeteryEventDayStart } from "@/lib/cemeteries/query-policy";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 
 const day = z.union([z.literal(""), z.iso.date()]).default("");
@@ -16,15 +16,7 @@ export default async function CemeteryProcessesPage({ searchParams }: { searchPa
   if (!parsed.success) return <p role="alert" className="p-6">Filtros inválidos: {parsed.error.issues[0].message}</p>;
   const filters = parsed.data;
   const cemeteryId = filters.cemetery || filters.cemeteryId;
-  const endDay = filters.end ? new Date(new Date(`${filters.end}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0,10) : "";
-  const where: Prisma.CemeteryProcessWhereInput = {
-    ...(filters.q ? { OR: [{ receiptCode: { contains: filters.q, mode: "insensitive" } }, { deceased: { fullName: { contains: filters.q, mode: "insensitive" } } }] } : {}),
-    ...(filters.type ? { processType: filters.type } : {}), ...(filters.status ? { status: filters.status } : {}), ...(cemeteryId ? { cemeteryId } : {}),
-    ...(filters.start || filters.end ? { scheduledAt: { ...(filters.start ? { gte: cemeteryEventDayStart(filters.start) } : {}), ...(endDay ? { lt: cemeteryEventDayStart(endDay) } : {}) } } : {}),
-  };
-  const total = await context.prisma.cemeteryProcess.count({ where });
-  const page = Math.min(filters.page, Math.max(1, Math.ceil(total / 20)));
-  const rows = await context.prisma.cemeteryProcess.findMany({ where, include: { deceased: true, cemetery: true, grave: true, chapel: true }, orderBy: [{ scheduledAt: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 });
+  const { total, page, rows } = await readScheduledProcessPage(context.database ?? db, { ...filters, cemeteryId });
   const values = { q: filters.q, type: filters.type, status: filters.status, cemetery: cemeteryId, start: filters.start, end: filters.end };
   const href = (next: number) => `/cemiterios/processos?${new URLSearchParams({ ...values, page: String(next) })}`;
   const canUpdate = canPerformModuleOperation(context.user, "CEMITERIOS", "update");

@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { employees } from "@/db/schema/administration";
+import { healthProfessionals } from "@/db/schema/health-workforce";
+import { healthAuthorizationIssuers, healthAuthorizationNumberRanges, healthTreatmentReportEvents, healthTreatmentReportRevisions } from "@/db/schema/health-treatment";
+import { instanceParameters } from "@/db/schema/instance-configuration";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { authorizationRangePosition, treatmentReportForActor } from "@/lib/saude/treatment-authorization-service";
 import { TreatmentReportEditor, type TreatmentReportEditorData } from "../TreatmentReportEditor";
@@ -10,15 +16,17 @@ const field = "w-full rounded border bg-white p-2 text-sm";
 const dateTime = (value: Date) => value.toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" }).replace(" ", "T").slice(0, 19);
 export default async function TreatmentReportPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
-  const report = await context.prisma.$transaction(tx => treatmentReportForActor(tx, context, id));
-  const [events, revisions, professional, performers, ranges, cancellationParameter] = await Promise.all([
-    context.prisma.healthTreatmentReportEvent.findMany({ where: { reportId: id }, orderBy: { createdAt: "asc" } }),
-    context.prisma.healthTreatmentReportRevision.findMany({ where: { reportId: id }, orderBy: { version: "desc" }, select: { version: true, createdAt: true, actorUsuarioId: true, reason: true } }),
-    context.prisma.healthProfessional.findFirst({ where: { employeeId: context.user.employeeId || "__SEM_PROFISSIONAL__", isActive: true, employee: { isActive: true } }, select: { id: true, employee: { select: { name: true } } } }),
-    context.prisma.healthProfessional.findMany({ where: { isActive: true, employee: { isActive: true }, OR: [{ unitId: report.unitId }, { assignments: { some: { unitId: report.unitId, isActive: true } } }] }, orderBy: { employee: { name: "asc" } }, select: { id: true, employee: { select: { name: true } } } }),
-    context.prisma.healthAuthorizationNumberRange.findMany({ where: { kind: report.kind, issuer: { isActive: true } }, include: { issuer: true }, orderBy: { validUntil: "asc" } }),
-    context.prisma.configuracaoParametroInstancia.findFirst({ where: { chave: `SAUDE:AIH_CANCEL_PASSWORD:${report.unitId}` }, select: { valor: true } }),
+  const database = context.database ?? db;
+  const report = await treatmentReportForActor(database, context, id);
+  const [events, revisions, professionalRows, performers, rangeRows, cancellationRows] = await Promise.all([
+    database.select().from(healthTreatmentReportEvents).where(eq(healthTreatmentReportEvents.reportId, id)).orderBy(asc(healthTreatmentReportEvents.createdAt)),
+    database.select({ version: healthTreatmentReportRevisions.version, createdAt: healthTreatmentReportRevisions.createdAt, actorUsuarioId: healthTreatmentReportRevisions.actorUsuarioId, reason: healthTreatmentReportRevisions.reason }).from(healthTreatmentReportRevisions).where(eq(healthTreatmentReportRevisions.reportId, id)).orderBy(desc(healthTreatmentReportRevisions.version)),
+    database.select({ id: healthProfessionals.id, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(and(eq(healthProfessionals.employeeId, context.user.employeeId || "__SEM_PROFISSIONAL__"), eq(healthProfessionals.isActive, true), eq(employees.isActive, true))).limit(1),
+    database.select({ id: healthProfessionals.id, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(and(eq(healthProfessionals.isActive, true), eq(employees.isActive, true), or(eq(healthProfessionals.unitId, report.unitId), sql`EXISTS (SELECT 1 FROM "HealthProfessionalAssignment" a WHERE a."professionalId"=${healthProfessionals.id} AND a."unitId"=${report.unitId} AND a."isActive"=true)`))).orderBy(asc(employees.name)),
+    database.select({ range: healthAuthorizationNumberRanges, issuer: healthAuthorizationIssuers }).from(healthAuthorizationNumberRanges).innerJoin(healthAuthorizationIssuers, eq(healthAuthorizationIssuers.id, healthAuthorizationNumberRanges.issuerId)).where(and(eq(healthAuthorizationNumberRanges.kind, report.kind), eq(healthAuthorizationIssuers.isActive, true))).orderBy(asc(healthAuthorizationNumberRanges.validUntil)),
+    database.select({ valor: instanceParameters.valor }).from(instanceParameters).where(eq(instanceParameters.chave, `SAUDE:AIH_CANCEL_PASSWORD:${report.unitId}`)).limit(1),
   ]);
+  const professional = professionalRows[0], cancellationParameter = cancellationRows[0], ranges = rangeRows.map(row => ({ ...row.range, issuer: row.issuer }));
   const today = new Date(`${new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })}T00:00:00Z`);
   const activeRanges = ranges.filter(range => range.validFrom <= today && range.validUntil >= today && authorizationRangePosition(range).available !== "0").map(range => ({ id: range.id, name: `${range.issuer.name} · ${range.firstNumber}–${range.lastNumber}`, ...authorizationRangePosition(range) }));
   const authorization = report.authorization;

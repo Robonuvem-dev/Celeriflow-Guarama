@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
 import { cipaCalendar } from "@/lib/sst/prevention-service";
 export const dynamic = "force-dynamic";
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const context = await getTenantContextForModule("SST"), search = await searchParams;
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), orderBy: { name: "asc" } });
+  const units = await listSstUnits(sstDatabase(context), context);
   const budgetUnitId = typeof search.budgetUnitId === "string" ? search.budgetUnitId : units[0]?.id;
   const year = Number(search.year || new Date().getFullYear());
   const rows = budgetUnitId ? await cipaCalendar(context, budgetUnitId, year) : [];

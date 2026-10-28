@@ -1,5 +1,9 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { findSstClinicalGrant } from "@/db/repositories/sst/access";
+import { searchSstPeople } from "@/db/repositories/sst/references";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstNewCertificateOptions } from "@/db/repositories/sst-pages/certificates";
 import { createSstCertificate } from "../../actions";
 import { SstForm } from "../../SstForm";
 import Link from "next/link";
@@ -7,13 +11,12 @@ import Link from "next/link";
 export default async function NewSstCertificatePage({ searchParams }: { searchParams: Promise<{ budgetUnitId?: string; employeeId?: string; personQ?: string }> }) {
   const context = await getTenantContextForModule("SST");
   const params = await searchParams;
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), orderBy: { name: "asc" }, select: { id: true, name: true, secretariatId: true } });
+  const database = sstDatabase(context), units = await listSstUnits(database, context);
   const unit = units.find((item) => item.id === params.budgetUnitId);
-  const employees = unit ? await context.prisma.employee.findMany({ where: { isActive: true, secretariatId: unit.secretariatId }, select: { id: true, name: true, registration: true }, orderBy: { name: "asc" } }) : [];
-  const reasons = unit ? await context.prisma.sstCertificateReason.findMany({ where: { budgetUnitId: unit.id, isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true, dependentPolicy: true } }) : [];
-  const dependents = employees.some((item) => item.id === params.employeeId) ? await context.prisma.dependent.findMany({ where: { employeeId: params.employeeId }, select: { id: true, name: true } }) : [];
-  const issuers = params.personQ && params.personQ.trim().length >= 3 ? await context.prisma.person.findMany({ where: { fullName: { contains: params.personQ.trim(), mode: "insensitive" } }, take: 20, orderBy: [{ fullName: "asc" }, { id: "asc" }], select: { id: true, fullName: true } }) : [];
-  const clinical = unit && (isSystemAdministrator(context.user) || Boolean(await context.prisma.sstAccessGrant.findFirst({ where: { usuarioId: context.user.id, budgetUnitId: unit.id, isActive: true, canReadClinical: true }, select: { id: true } })));
+  const { employees, reasons, dependents } = await readSstNewCertificateOptions(database, unit, params.employeeId);
+  const issuers = params.personQ && params.personQ.trim().length >= 3 ? await searchSstPeople(database, params.personQ.trim()) : [];
+  const grant = unit ? await findSstClinicalGrant(database, context.user.id, unit.id) : null;
+  const clinical = unit && (isSystemAdministrator(context.user) || Boolean(grant?.isActive && grant.canReadClinical));
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Registrar atestado</h1><Link href="/sst/atestados">Voltar à consulta</Link>
     <form className="grid gap-3 rounded border p-4 sm:grid-cols-2"><label>Unidade gestora<select name="budgetUnitId" className="block w-full rounded border p-2" defaultValue={params.budgetUnitId} required><option value="">Selecione</option>{units.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Servidor<select name="employeeId" className="block w-full rounded border p-2" defaultValue={params.employeeId}><option value="">Selecione após carregar a unidade</option>{employees.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.registration}</option>)}</select></label><label>Emitente no Cadastro Único<input name="personQ" defaultValue={params.personQ} placeholder="Nome, ao menos 3 letras" className="block w-full rounded border p-2"/></label><button className="self-end rounded border p-2">Carregar opções</button></form>
     {unit && !clinical && <p role="alert">Solicite autorização clínica ocupacional nesta unidade gestora.</p>}

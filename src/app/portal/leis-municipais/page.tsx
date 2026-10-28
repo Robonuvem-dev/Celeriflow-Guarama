@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Scale } from "lucide-react";
 import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell";
 import { MUNICIPALITY_INSTITUTION_NAME, MUNICIPALITY_NAME } from "@/lib/municipality-identity";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { legalTexts } from "@/db/schema/master-data";
 
 export const metadata: Metadata = {
   title: `Leis Municipais | ${MUNICIPALITY_INSTITUTION_NAME}`,
@@ -14,10 +16,11 @@ export const dynamic = "force-dynamic";
 
 export default async function LeisMunicipaisPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const raw = await searchParams, type = typeof raw.tipo === "string" ? raw.tipo : "", q = typeof raw.q === "string" ? raw.q.trim().slice(0, 100) : "";
-  const where = { governmentLevel: "MUNICIPAL", ...(type ? { type } : {}), ...(q ? { OR: [{ number: { contains: q, mode: "insensitive" as const } }, { summary: { contains: q, mode: "insensitive" as const } }, { issuingBody: { contains: q, mode: "insensitive" as const } }] } : {}) };
+  const pattern=`%${q.replace(/[\\%_]/g,"\\$&")}%`;
+  const where = and(eq(legalTexts.governmentLevel,"MUNICIPAL"),type?eq(legalTexts.type,type):undefined,q?or(ilike(legalTexts.number,pattern),ilike(legalTexts.summary,pattern),ilike(legalTexts.issuingBody,pattern)):undefined);
   const [laws, types] = await Promise.all([
-    prisma.legalText.findMany({ where, select: { id: true, type: true, number: true, summary: true, issuingBody: true, publicationDate: true, status: true }, orderBy: [{ publicationDate: "desc" }, { number: "desc" }], take: 100 }),
-    prisma.legalText.findMany({ where: { governmentLevel: "MUNICIPAL" }, distinct: ["type"], select: { type: true }, orderBy: { type: "asc" } }),
+    db.select({id:legalTexts.id,type:legalTexts.type,number:legalTexts.number,summary:legalTexts.summary,issuingBody:legalTexts.issuingBody,publicationDate:legalTexts.publicationDate,status:legalTexts.status}).from(legalTexts).where(where).orderBy(desc(legalTexts.publicationDate),desc(legalTexts.number)).limit(100),
+    db.selectDistinct({type:legalTexts.type}).from(legalTexts).where(eq(legalTexts.governmentLevel,"MUNICIPAL")).orderBy(asc(legalTexts.type)),
   ]);
   return (
     <main className="mx-auto max-w-4xl px-4 py-9 sm:px-6">

@@ -5,6 +5,12 @@ import { createHash } from "node:crypto";
 import { put, get, del } from "@vercel/blob";
 import { getBlobDocumentPrefix } from "../src/lib/platform/blob";
 import { defaultTransparencySettings, transparencySettingsKey, transparencySettingsSchema } from "../src/lib/transparencia/presentation-settings";
+import {and,asc,eq} from "drizzle-orm";
+import {withDatabaseTransaction} from "../src/db/transaction";
+import {systemInstances,instanceParameters} from "../src/db/schema/instance-configuration";
+import {users} from "../src/db/schema/identity";
+import {transparencyPublications} from "../src/db/schema/transparency";
+import {financialAuditLogs} from "../src/db/schema/finance-identity";
 
 config({ path: ".env.local", quiet: true });
 const apply = process.argv.includes("--apply");
@@ -59,14 +65,15 @@ async function main() {
   const catalog = await readFile(resolve("docs/CATALOGO_NOVOS_DOCUMENTOS_IBEMA.md"), "utf8");
   const sources = [...catalog.matchAll(/^\| (\d{3}) \| `([^`]+)`([^|]*)\|/gm)].filter(match => !match[3].includes("excluído")).map(match => ({ id: Number(match[1]), filename: match[2] }));
   if (sources.length !== 136 || new Set(groups.flatMap(group => group[2])).size !== 136) throw new Error("Inventário de 136 fontes divergente. Confira o catálogo antes da carga.");
-  const { prisma } = await import("../src/lib/prisma");
+  const { db, databaseConnection } = await import("../src/db/client");
   try {
-    const instance = await prisma.configuracaoInstancia.findFirstOrThrow({ orderBy: { createdAt: "asc" }, select: { id:true } });
-    const actor = await prisma.usuario.findFirstOrThrow({ where: { ativo:true }, orderBy:{createdAt:"asc"}, select:{id:true} });
-    const parameter = await prisma.configuracaoParametroInstancia.findUnique({where:{configuracaoInstanciaId_chave:{configuracaoInstanciaId:instance.id,chave:transparencySettingsKey}}});
+    const [instance] = await db.select({id:systemInstances.id}).from(systemInstances).orderBy(asc(systemInstances.createdAt)).limit(1);
+    const [actor] = await db.select({id:users.id}).from(users).where(eq(users.ativo,true)).orderBy(asc(users.createdAt)).limit(1);
+    if(!instance||!actor)throw new Error("Instância ou autor ativo não encontrado.");
+    const [parameter] = await db.select({valor:instanceParameters.valor}).from(instanceParameters).where(and(eq(instanceParameters.configuracaoInstanciaId,instance.id),eq(instanceParameters.chave,transparencySettingsKey))).limit(1);
     const settings = parameter ? transparencySettingsSchema.parse(parameter.valor) : defaultTransparencySettings();
     const years = [...new Set([...settings.availableYears, ...sources.map(source => historicalYears[source.id] || 2026)])].sort((a,b)=>b-a);
-    if (apply) await prisma.configuracaoParametroInstancia.upsert({where:{configuracaoInstanciaId_chave:{configuracaoInstanciaId:instance.id,chave:transparencySettingsKey}},create:{configuracaoInstanciaId:instance.id,chave:transparencySettingsKey,valor:{...settings,initialYear:Math.min(...years),availableYears:years}},update:{valor:{...settings,initialYear:Math.min(...years),availableYears:years}}});
+    if (apply) await db.insert(instanceParameters).values({configuracaoInstanciaId:instance.id,chave:transparencySettingsKey,valor:{...settings,initialYear:Math.min(...years),availableYears:years}}).onConflictDoUpdate({target:[instanceParameters.configuracaoInstanciaId,instanceParameters.chave],set:{valor:{...settings,initialYear:Math.min(...years),availableYears:years}}});
     let created = 0, reused = 0, reclassified=0, totalBytes = 0;
     for (const source of sources) {
       const group = groups.find(group => group[2].includes(source.id));
@@ -77,11 +84,11 @@ async function main() {
       if (sizes.some(size=>size<=0) || sizes.reduce((sum,size)=>sum+size,0)>512*1024*1024) throw new Error(`Arquivo vazio ou acima de 512 MB: ${source.filename}`);
       const bytes = Buffer.concat(await Promise.all(files.map(filename=>readFile(resolve(archive,filename)))));
       const sha256 = createHash("sha256").update(bytes).digest("hex"), id = `ibema-archive-ND-${String(source.id).padStart(3,"0")}-v1`;
-      const previous = await prisma.transparencyPublication.findUnique({where:{id}});
+      const [previous] = await db.select().from(transparencyPublications).where(eq(transparencyPublications.id,id)).limit(1);
       if (previous) { if (previous.sha256!==sha256) throw new Error(`Original alterado em ${id}; criar nova versão.`);
         const corrected=collectionOverrides[source.id];
         if(corrected&&previous.collectionSlug===group[1]&&corrected!==previous.collectionSlug&&previous.status!=="WITHDRAWN"){
-          if(apply)await prisma.$transaction(async tx=>{await tx.transparencyPublication.update({where:{id},data:{collectionSlug:corrected}});await tx.financialAuditLog.create({data:{action:"CLASSIFY_TRANSPARENCY_ARCHIVE",entityType:"TransparencyPublication",entityId:id,authorUsuarioId:actor.id,payload:{from:previous.collectionSlug,to:corrected,sourceDocumentId:source.id}}});});reclassified++;
+          if(apply)await withDatabaseTransaction(databaseConnection,async tx=>{if(!(await tx.update(transparencyPublications).set({collectionSlug:corrected}).where(eq(transparencyPublications.id,id)).returning({id:transparencyPublications.id})).length)throw new Error("Publicação não encontrada.");await tx.insert(financialAuditLogs).values({action:"CLASSIFY_TRANSPARENCY_ARCHIVE",entityType:"TransparencyPublication",entityId:id,authorUsuarioId:actor.id,payload:{from:previous.collectionSlug,to:corrected,sourceDocumentId:source.id}});},{timeoutMs:5_000});reclassified++;
         }
         reused++; continue; }
       if (!apply) { created++; continue; }
@@ -92,14 +99,14 @@ async function main() {
       try {
         const stored = await get(blob.url,{access:"private",token:process.env.BLOB_READ_WRITE_TOKEN});
         if (!stored || createHash("sha256").update(Buffer.from(await new Response(stored.stream).arrayBuffer())).digest("hex")!==sha256) throw new Error(`Integridade do Blob não confirmada: ${id}`);
-        await prisma.$transaction(async tx => {
-          await tx.transparencyPublication.create({data:{id,collectionSlug:collectionOverrides[source.id]||group[1],entity:"prefeitura",year:historicalYears[source.id]||2026,title:source.filename.replace(/\.[^.]+$/,""),group:group[0],referencePeriod:correctedPeriod[source.id]||periods.find(period=>period[1].includes(source.id))?.[0]||`Referência ${historicalYears[source.id]||2026}; detalhes no documento original`,source:"DOCUMENTOS",status:"PUBLISHED",publishedAt:new Date(),values:{origin:"Acervo recebido do antigo Portal da Transparência de Ibema",sourceDocumentId:`ND-${String(source.id).padStart(3,"0")}`,sourceMunicipality:source.id===5?"Campina do Simão — referência comparativa":"Ibema/PR",sizeBytes:bytes.length},fileUrl:blob.url,filePathname:blob.pathname,filename:source.filename,contentType,sha256,order:source.id}});
-          await tx.financialAuditLog.create({data:{action:"IMPORT_TRANSPARENCY_ARCHIVE",entityType:"TransparencyPublication",entityId:id,authorUsuarioId:actor.id,payload:{sourceDocumentId:source.id,sha256,filename:source.filename,origin:"Acervo público antigo Ibema",sizeBytes:bytes.length}}});
-        }); created++;
+        await withDatabaseTransaction(databaseConnection,async tx => {
+          await tx.insert(transparencyPublications).values({id,collectionSlug:collectionOverrides[source.id]||group[1],entity:"prefeitura",year:historicalYears[source.id]||2026,title:source.filename.replace(/\.[^.]+$/,""),group:group[0],referencePeriod:correctedPeriod[source.id]||periods.find(period=>period[1].includes(source.id))?.[0]||`Referência ${historicalYears[source.id]||2026}; detalhes no documento original`,source:"DOCUMENTOS",status:"PUBLISHED",publishedAt:new Date(),values:{origin:"Acervo recebido do antigo Portal da Transparência de Ibema",sourceDocumentId:`ND-${String(source.id).padStart(3,"0")}`,sourceMunicipality:source.id===5?"Campina do Simão — referência comparativa":"Ibema/PR",sizeBytes:bytes.length},fileUrl:blob.url,filePathname:blob.pathname,filename:source.filename,contentType,sha256,order:source.id});
+          await tx.insert(financialAuditLogs).values({action:"IMPORT_TRANSPARENCY_ARCHIVE",entityType:"TransparencyPublication",entityId:id,authorUsuarioId:actor.id,payload:{sourceDocumentId:source.id,sha256,filename:source.filename,origin:"Acervo público antigo Ibema",sizeBytes:bytes.length}});
+        },{timeoutMs:5_000}); created++;
         console.log(JSON.stringify({id,status:"PUBLISHED",bytes:bytes.length}));
       } catch(error) { await del(blob.url,{token:process.env.BLOB_READ_WRITE_TOKEN}); throw error; }
     }
     console.log(JSON.stringify({mode:apply?"IMPORTED_TO_PRIVATE_VERCEL_BLOB":"READ_ONLY",sources:sources.length,created,reused,reclassified,totalBytes,years}));
-  } finally { await prisma.$disconnect(); }
+  } finally { await databaseConnection.pool.end(); }
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

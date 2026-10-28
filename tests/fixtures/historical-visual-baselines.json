@@ -1,0 +1,944 @@
+{
+  "formatVersion": 1,
+  "sourceCommit": "5cfa75dfe20a6d3fcc20dce33e818585cb8b9954",
+  "typescriptVersion": "5.9.3",
+  "works": {
+    "root": "src/app/app-domain/obras",
+    "files": {
+      "src/app/app-domain/obras/components/IluminacaoEnergiaClient.tsx": {
+        "sourceSha256": "e2902dc12e07408c7b37021a3544b82fae917bd6f60b2476ff2d4edce3ce92a0",
+        "jsxRoots": {
+          "count": 4,
+          "sha256": "41b4b3c829daafcf0644170a154e374c817f1a14312815c87589cbc2e4651892"
+        }
+      },
+      "src/app/app-domain/obras/components/MaquinasEquipesClient.tsx": {
+        "sourceSha256": "af40eeaf8d7997fe233c45fe7a6132789652068125e4ad4110df11ab6542a37f",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "373cfb42ea9c3ace958146963c2bba8a80fce6342fb255c13e19392e0d48e947"
+        }
+      },
+      "src/app/app-domain/obras/components/MedicoesClient.tsx": {
+        "sourceSha256": "4bde52c261a81728afd70806a3a62554cc8aeae6c75f6f3753bf7e673b5eb43d",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "7e49bf82db2cd43e7530fd263a7de6c7bdd5444436a1c85af459da5dbc7ef8d7"
+        }
+      },
+      "src/app/app-domain/obras/components/ObrasDocumentosClient.tsx": {
+        "sourceSha256": "a77c15cf0d5dbb01a72b234cddadf89adf8e2ff539012022d8ddef6c9304bb3f",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "e43940a9614a132def25fe2833a70894b16f6e497a49c6a183d68f98e824f430"
+        }
+      },
+      "src/app/app-domain/obras/components/ObrasProjetosClient.tsx": {
+        "sourceSha256": "70ccfc5b3bb87bb8051fcc85c934567bdf3fff185aafeba9aeee6ccbd8100f37",
+        "jsxRoots": {
+          "count": 5,
+          "sha256": "f8516fc298d898c9a289fac392fb6cd0f2324f2617cd8e6d0d380fd9648dc943"
+        }
+      },
+      "src/app/app-domain/obras/components/OrdensServicoClient.tsx": {
+        "sourceSha256": "388e89017bb0d455352e712af83a7b2678570f4f21a49c6da969aae35879d25d",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "f71a0c48db81d600d7074e02b50f387ee4d194f7376a8afce639aeec059c1074"
+        }
+      },
+      "src/app/app-domain/obras/components/ServicosUrbanosClient.tsx": {
+        "sourceSha256": "7f5bef030733bba1868d12cc6422ebb9e1fbc1591361f0dbcbc5be2732a40a16",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "16ece0438b54557c30eccbc76ce65af84c740331517d9e31d2bf3877cdd593a9"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/ConstructionAssignmentClient.tsx": {
+        "sourceSha256": "fab006e9645f1266d5d8a4081f9a4b45dcc3f2f17e8d9eab67b4d0b901d20ace",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "091a4a380aac19060d295979e28cffdeb73563974ed89870217d41a0ecfa4211"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/ConstructionReviewClient.tsx": {
+        "sourceSha256": "3fa979e187d3d4c610b84f3413e6e24987defa2aea698dae7175e3e4effed0c8",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "769dd480e4b43670b296526444662075017d9859ff512c10851452d8b75753ef"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/ConstructionViabilityClient.tsx": {
+        "sourceSha256": "6280ca28be30ecb4a68909423a60fd1af873d79144aa9a3374c72797d5421613",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "00a02c50f3879c3cf451d38a9f414a628eab512d782e151660e5cd5921fc0078"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/ciclo/ConstructionLifecycleClient.tsx": {
+        "sourceSha256": "8f88bb17aeac025f01308fb34c7b9b0c8f58bcc109b52e3b59430cda9b734c35",
+        "jsxRoots": {
+          "count": 5,
+          "sha256": "43f0521ff5dbe925704887f33eff957f7bb03da7701e1050dc322b87b782c0c8"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/ciclo/page.tsx": {
+        "sourceSha256": "c410d7017477f81ec3df1447a1b804bed72f9b088e20b832d096ffc084f28037",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "0d1dcdcdf8ff87a0b0aac3a1abf8c6e482185d96bf9419b8d2c778a11d56bad3"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/documentos/ConstructionDocumentsClient.tsx": {
+        "sourceSha256": "d4e7d687cecad6629d1f15915b01b6561b08a1a3378895f2e91ad18f1590587f",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "1f2d6c9f851180c8769f69e96d3135a6f7637c7a3c2d7f3f3f5327163d15a022"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/documentos/layout.tsx": {
+        "sourceSha256": "df0381b670328a6c5afc59c4fa1769f9c5371b5f56ba554073de7a56eac2facb",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "6104494e9bb5bb03518b39e87c8d233dfe4bc8207ca61ac0f0c6762c744b180a"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/documentos/page.tsx": {
+        "sourceSha256": "b675617d67e4e125213dbbeaf457619fcc653dbdb7d132be6b44d22d26d20527",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "4ab8760633851f2d121a6bf34a36eaf9753b4d8d82af71e0986be85fcb5ccc28"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/page.tsx": {
+        "sourceSha256": "665fc3e410b65c24e745e4bc5cdebe001aed0abe30cf10059b95d471d7c68e24",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "5178ba84f87950ebd8afec707c85fdfa6ab371809da62154bc4ed439ce2a5c7a"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/pranchas/ConstructionExtractionClient.tsx": {
+        "sourceSha256": "9122c0452621aac5eb3b32e5e59d3d48d87321d71576781c04ab97a9ac406f18",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "a683cf6be9c6090789981af7756b61db2cb9fdc72eb4125cccdadde844283292"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/[id]/pranchas/page.tsx": {
+        "sourceSha256": "b741de505c193a850cec579b3e385c7f0de9e05ae2c06e43df5552e6088ccca2",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "4340c1316836815ca8736b9d99192f8c89f5c055f6ae6f4c7326dcf01045a5aa"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/configuracoes/ConstructionSettingsClient.tsx": {
+        "sourceSha256": "518b3d3565d26249540a9f82440a6e0c2da584cbbd3ab51f618076663f6078b5",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "9fa85e9696d34bf3bc1a905d819fbf5054a1736be1e57ede88e00c4280819b88"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/configuracoes/page.tsx": {
+        "sourceSha256": "3ca83f84e5cf2be24acb415ba4034ab40ec62b30f7f08b433679aa57e8d11945",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "6b667297a101759d6fb30f2de65075757a8ee5071376f21074a593f7587af508"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/construtoras/ConstructionCompaniesClient.tsx": {
+        "sourceSha256": "d1f8aa3aaf73c0c9682b90059403f439f00c066ca75a04a270544fa12441848b",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "b9abd63a56c60a919c61b77f1b43b6ff821a0f6056425f7aad5d056015929c5c"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/construtoras/page.tsx": {
+        "sourceSha256": "ff3bf9c9c99e880aeea5dc84c2ecc88f1e5cb5282e56565bd75f4db7eac7184c",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "0d586a2486fb7dc70aa6fb86cb1ad72f4bc8cbba459f58934d8bfe1c179a1719"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/consultas/page.tsx": {
+        "sourceSha256": "9cf339107f64416f21e24ef8dc5e33fea683a7cb752e2ebe17b260d1f2b9618e",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "b25d0d13238dee35e578505da022ff6de8fd932b2a22586392a003e3d288dd54"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/documentos/DocumentTemplatesClient.tsx": {
+        "sourceSha256": "9ac3b08c8d911e7e699f2d947987df1f5f37727a81ea0c8809445590b1dd3df8",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "5c82dccd43b3512d532c2754844982da2dc04c8759ffa972e552605f1541b0a5"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/documentos/page.tsx": {
+        "sourceSha256": "f4255f97ac8a43defc402dd9688b901c6cb4e176eb02ea32b3ed9da38727acec",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "c23b1d5b87c20db409cddefb09f0377c539e4ca2c6c5386eeae8a4cc5ddce052"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/equipe/ConstructionStaffClient.tsx": {
+        "sourceSha256": "73d6819bb7d43ad31e11e37a88cdf1168d394495656054defb8b36273c5ef9b5",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "15a178e2be07d3cf618d43aad2a7fa74b02566ca8c0f8fa2981642340e1f9632"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/equipe/page.tsx": {
+        "sourceSha256": "39252fa8ddc9434391ae1b859669af739963fb7a6e48848dd6d6094f2e50be73",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "5e209cd5afb585f5efab9e40e3042364f0a17f90a2c95c72275353665e8d0f52"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/fiscalizacao/ConstructionEnforcementClient.tsx": {
+        "sourceSha256": "9ac94b88e3fdf2e6de4c945c58a230f898fa119627796b0fda2918464302c2c9",
+        "jsxRoots": {
+          "count": 8,
+          "sha256": "22532be4cbe314bea1e321393fd22bbaedf541d38f37649db767fd6dca2d9970"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/fiscalizacao/EnforcementHistoryFilters.tsx": {
+        "sourceSha256": "53aae476d9853b76867ae54668fb448df2b766f6b99ed8d67f31afa12649c745",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "a1e09ae6ea9465f812b3943ba3082f2c0f2eb1d003030dcf7bac3328b8fb0919"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/fiscalizacao/EnforcementPrintButton.tsx": {
+        "sourceSha256": "d4190d4312cfa42c32c3887755ecffb54f5df6950fd44e08fed97a3440e02a4e",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "edcff5c6ccf6b536ae1873625ea9f253157e8e5ebfc63b982968046dc48eaaf7"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/fiscalizacao/[id]/atos/[actId]/page.tsx": {
+        "sourceSha256": "8e8c815161256397fde3fb41918963dbfad0e332230ab5b85f01a8a1e38b1346",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "f242ecc30506855e7a8fffa0558a9e85d098d724045272439d61ad81567e1606"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/fiscalizacao/[id]/page.tsx": {
+        "sourceSha256": "c17fc52a515c7e588d751b99b33a61d8559a6458358188252a52289fd7a2cc5a",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "8be45efe73f89b61a7d0ada9dc7e105f1a8777b04bf49f721aaafe851e55902a"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/fiscalizacao/page.tsx": {
+        "sourceSha256": "2d4a0497150377951373c722c1c6c42c1aa8e3d92524adc0066f119b1c4deb40",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "d553fb8d5740a168badfe265fc6f9fbbb656620a2030427fa93e11057c72847e"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/integracoes/ConstructionIntegrationsClient.tsx": {
+        "sourceSha256": "82a54a665afd749dfe1277cc745095e2751593f1946ea947bbb1564a9a63e14f",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "d1483dc30034a7eb94116b365d10a1ef5b36d54cf7a04bf96c0e9086a1fcd90b"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/integracoes/page.tsx": {
+        "sourceSha256": "acc02d417f9b3c239bbbb82123ba3b9693ef996d247253900fb821c60d9e85fb",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "fadbb3d783890365f2443a908f81d4385e7c6b7ad0ebe174411a5a5e3c3ef239"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/novo/ConstructionCaseForm.tsx": {
+        "sourceSha256": "29d621ce667eb9bfe6091d93508826ced09bcd405a4e591dec288521511a44a6",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "3bfbbf90dd22b07c6a8d10b481ca9736b833cdb2a03f2d82ac0854311b4c1029"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/novo/page.tsx": {
+        "sourceSha256": "5dd9fc4daa5a8d51a7bc4e72bc187c5b207ef2ca0286b3c411dc6daa003615f9",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "e5d0f5aa7c8062e06e0948acb2c9aa26c4e00f18f068cf067846e015aa5ceab5"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/page.tsx": {
+        "sourceSha256": "a0f37cfead9b8dedf52cf72e08ccb42480c6aa46e11a3443b43f2765647d2173",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "143593ee5b7921ad286568b079943525f8fda8f292c46043f64df142fd781307"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/participacao/ConstructionParticipationClient.tsx": {
+        "sourceSha256": "0a44f9428736c1861a8d1fa9a551b4c39b2e5851bc26870fccfcf2fcd45fb539",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "fc9d67b52979ffea307031c6ffe0b9ac5672f0835067dab85ea78a130d99c998"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/participacao/page.tsx": {
+        "sourceSha256": "5692b544412d730ee40c453d08a1f62e4257247327d7bc3b2794594a30bc2ed2",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "169932ca2bfe8e239c6c0728302f96c3b5c924beee953ebfcc43a926a2abed4e"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/profissionais/ConstructionProfessionalsClient.tsx": {
+        "sourceSha256": "ac0ab5415c01a589dfe7166da4487b1dd9a640c8fdc2da83a62d3480ff8197bc",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "7163d14dfec3b336bc0fb85d038bf43bcb1211e62577b2c44f5f1b33caaa47ef"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/profissionais/page.tsx": {
+        "sourceSha256": "280388a4f3610dbe80983d1ff9f490493ed05656b01b87785429cf8675d6b0f8",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "e622987f4445b2b2a5b820d6eb5e6d40f3a957776ad158f6f18c5b05af132e54"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/regras/ConstructionRulesClient.tsx": {
+        "sourceSha256": "20e2dd284e909f6b1a9998e9020b1c1d1fd7bba041c2e9555f69d407c395d7d9",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "bb8a1a52998a84e8147f8733e99c2b955029b304bdc3b9c5068c4cb1440e7919"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/regras/page.tsx": {
+        "sourceSha256": "59d2ec274e4c6ef19c2af96402cbda8a1bc55634c1a1c0c4fc8311486bc8595b",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "1567846fd2be2a7c33d42950a981202afc29129d503b51192132cbf3e86391b6"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/taxas/ConstructionTaxClient.tsx": {
+        "sourceSha256": "73b6ceb9bf168323e99259ae2b9f2f84b0d41de3e5408b1f27261e5e42c7b530",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "3f11f2ebc784f4f26a34d53e82653090e607bb6b8ffa5e0b1c83e459b7da4707"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/taxas/guias/[id]/page.tsx": {
+        "sourceSha256": "db2fc7684946366de58be8203a48f73c9bb7e7cbc749e124d9960a9ef70645d6",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "d7e8da6d2867cb38af3c28baeb0ac4a8e199c495cd44e3398e2223227c89ea0f"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/taxas/page.tsx": {
+        "sourceSha256": "5bb892949ed45ec9f9c37ea5184e84825181f6b4e739241b42e23979bb2eb935",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "b362215dc73c677c3597a86831a41c85a71e6e214405c9b9aaaf2b80dfc0b9c9"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/vistorias/ApplyPropertyUpdateButton.tsx": {
+        "sourceSha256": "9a71f8a3145fbbf7a19448e9a629bfb61699dadaecd70dd4651a590526901a83",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "423f7bfdd4fa1ab9fbc760bc4a5200702d6fa88ed574827929d525330bfeded6"
+        }
+      },
+      "src/app/app-domain/obras/construcao-civil/vistorias/page.tsx": {
+        "sourceSha256": "0f5bd4bdf506bb5ed6ddeb7db0960a1efc1c80283aea5981b3490f9dd0c35252",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "4d9fe367bca3b6c6a40a420ce9943cb2c46bc2a138786631e1e91df5bdea889c"
+        }
+      },
+      "src/app/app-domain/obras/documentos/page.tsx": {
+        "sourceSha256": "f4dafeea43645a1b7da10a8af7ac1a4fb40b657fba366a36a8c378fa4ac2e68b",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "f09433ee120b0cb3f5502c8133f6162b9d82a4136b85daa57061516e96b462b3"
+        }
+      },
+      "src/app/app-domain/obras/fiscalizacao-medicoes/page.tsx": {
+        "sourceSha256": "1ae3e2c95dbe92adff16258fccc7a0c891aeef248054af7b96ea69fa555f64fa",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "e7db9e671cb004df874c01bcc851bbdc885a03de7378251a30aab75edad13acd"
+        }
+      },
+      "src/app/app-domain/obras/iluminacao-energia/page.tsx": {
+        "sourceSha256": "7c73ed0e2d35aa3abc3804caa8565173f0868bc7fdc9857cf8810775366d8cc6",
+        "jsxRoots": {
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "src/app/app-domain/obras/layout.tsx": {
+        "sourceSha256": "2b4f46fd79094d18996d4448ad0db743faa599d1cd1e9cc50bd7304a6d23449f",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "7448c62edc3c05fb2c75117054a1f6297e44fbecfc1ded4125ce44bc491f3836"
+        }
+      },
+      "src/app/app-domain/obras/maquinas-equipes/page.tsx": {
+        "sourceSha256": "bd6f60be66db68e844e3a2f0da1008e074187a9f236df613c402797ba277672c",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "3d329877c8b0257131a4d5337651db4348c88c9f6cbebc3d05ccbec416638e6b"
+        }
+      },
+      "src/app/app-domain/obras/obras-projetos/page.tsx": {
+        "sourceSha256": "f2d24c824e1a7514bf3dff2b82ab9741b49c438e8e1edbb83ee343a49e57f23f",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "f2a9873953b6459cb050b2052f8db5564e39f794bda948cc99d775fc44426ca1"
+        }
+      },
+      "src/app/app-domain/obras/ordens-servico/page.tsx": {
+        "sourceSha256": "865924a46f22e0116e833833a9c7d1ef74de3ae36d35dcc99d83e8613b36bbab",
+        "jsxRoots": {
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "src/app/app-domain/obras/page.tsx": {
+        "sourceSha256": "ae4482a3fcba7ab710bbd2dc20753ccf34d61d2e4e619054519a554d371cf6ec",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "901af52fef86ab18316c274eaced38f42450e9cf5f1d498d83545771e5a191f3"
+        }
+      },
+      "src/app/app-domain/obras/relatorios/page.tsx": {
+        "sourceSha256": "74258b20a9ec27df1ff25a64906884ce66ce3e0c4756a71c60318047c717b0be",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "143ff6fa3a991bce6700991434fa4cda4597c9057fa717a26ba4bd227cd7944d"
+        }
+      },
+      "src/app/app-domain/obras/servicos-urbanos/page.tsx": {
+        "sourceSha256": "323c3ce9d1cd7cdda8ca9d672318b4a65706cf64d40476d17f25ab7636a5ed27",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "332d899a0377ef9706d54e2c54102b1f7e5c2eac30dabdf49f04fd332f88cd0c"
+        }
+      }
+    }
+  },
+  "planning": {
+    "root": "src/components/app-ui/planejamento",
+    "decimalException": {
+      "path": "src/components/app-ui/planejamento/PlanningVersionPage.tsx",
+      "namespace": "Prisma.Decimal",
+      "before": "new Prisma.Decimal(",
+      "after": "new Decimal("
+    },
+    "files": {
+      "src/components/app-ui/planejamento/PlanningCatalogPage.tsx": {
+        "sourceSha256": "0243eb512f3f82d95b02e7b7a384c282c1da011b987a11d4e1fe3a124c89d01d",
+        "fullAstSha256": "66b8ef51103c00d1d4792f4589670d357270a3eafd9d5c2a28984d72d17f5ca8",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "2ebe2cadf400c660d57454d69186c8a67c1a09dbbf7d6aa3200b3b2aa4cae5d0"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "2ebe2cadf400c660d57454d69186c8a67c1a09dbbf7d6aa3200b3b2aa4cae5d0"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningDocumentUpload.tsx": {
+        "sourceSha256": "a809af358985ab4714170f21bce5a4f855305c11ce16efad25b7d8eb460a5787",
+        "fullAstSha256": "c607b69bacc2e3ca75d1983aea1eda3fb45f263da50b35f4274cc2ea0f822951",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "69918423f334a83dff742d063efea5ee76a36cc642f65e0c83f37b7bd775fea1"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "69918423f334a83dff742d063efea5ee76a36cc642f65e0c83f37b7bd775fea1"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningForm.tsx": {
+        "sourceSha256": "fffc166f88223a162907db6793c0699132c7ac7b553dd38ed0e381fe173f1516",
+        "fullAstSha256": "5396331a47160f3d156299cda6fb6cce7fbcf2798b6641d340399893a794a57d",
+        "jsxRoots": {
+          "count": 5,
+          "sha256": "d48593be9bce4ad8ee3e421825191c569d75684da61be93a78d3d071a0c36442"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 5,
+          "sha256": "d48593be9bce4ad8ee3e421825191c569d75684da61be93a78d3d071a0c36442"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningHearingsPage.tsx": {
+        "sourceSha256": "10c189e51ca3126a4d2a28b10866f6f22152a1584803016249a4a20827ebdd05",
+        "fullAstSha256": "21ef78b7d9e0e8d82a2f3bb33af4e84cfcf461c4fd99b3e44d973a4ee3bfbcf9",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "460139070f3f4acf87abacacf6ec6f2a2fa8bf758252de3d0c81a088a9a488a1"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "460139070f3f4acf87abacacf6ec6f2a2fa8bf758252de3d0c81a088a9a488a1"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningImportsPage.tsx": {
+        "sourceSha256": "696cd533687d647b78783bd3df44017bfdd1a193bcf4f0e6096833aae2883165",
+        "fullAstSha256": "f640c455cf191a77ac4f0f710fb97cab24e978f1f49c479ebc3aa8b2231795ef",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "1d54641e433853721d1c1fafc88958573cc780fd9f49a87eea20e33acb5f0c12"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "1d54641e433853721d1c1fafc88958573cc780fd9f49a87eea20e33acb5f0c12"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningLookupField.tsx": {
+        "sourceSha256": "7703b6696d9c4be50009361edf9ee44bc0f9d4c4b9aec9c1a7fccfe4c1b0c9b9",
+        "fullAstSha256": "7df1ffae1a364d18fa1ce690edc4c9bd3ff04b5c853a31a02b0b09ad0b7ca118",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "95c3c6f7bc9b3028d7decfeec7f96f10cdaf19ad49d695d9ada891e3ccabe207"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "95c3c6f7bc9b3028d7decfeec7f96f10cdaf19ad49d695d9ada891e3ccabe207"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningMaintenancePage.tsx": {
+        "sourceSha256": "5d6f9ad0bd171f284596a4c0fe2abc58462efd62ccaccbd60fa4446b03851b8f",
+        "fullAstSha256": "20b5a0ddd5a045214113c289dd801320da5970d89e70b0925449e4a5c9929820",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "ab7b1e6c8beab3c879489716821015fc79895fbbfa5b209ff816a069e8ad3607"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "ab7b1e6c8beab3c879489716821015fc79895fbbfa5b209ff816a069e8ad3607"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningManagementPage.tsx": {
+        "sourceSha256": "f0f39fb9baca7c0dd0b4e758e446502e7dc00ab2532f4fd9bf14ff36e3b171b9",
+        "fullAstSha256": "6994490fdc9c464cdf3ce646a4234bc80ffa5e078fdb5b1907a53648bb95c911",
+        "jsxRoots": {
+          "count": 16,
+          "sha256": "c19c49b24fd882326924589f4ffea2a1079ae83b963a6fce87927181e731b768"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 16,
+          "sha256": "c19c49b24fd882326924589f4ffea2a1079ae83b963a6fce87927181e731b768"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningMovementHistory.tsx": {
+        "sourceSha256": "f6ecd985646169bde0c895122aa7de5c00405c6d0b6c212d82eabaf500a2abb1",
+        "fullAstSha256": "0904146e543fca922613b22d869408979d62438926093614ad4be8f79065491c",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "b056081bb9d2ca4f9cd12819015c3d7494960f6de0dff34ab326b20216db0ccf"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "b056081bb9d2ca4f9cd12819015c3d7494960f6de0dff34ab326b20216db0ccf"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningPages.tsx": {
+        "sourceSha256": "f25e8032da0e37fad445350802d737206433e5e11643bbcae0103445c39dde29",
+        "fullAstSha256": "f45ebbf0baee3e6ba920deeeb9c21adb545e2e70eebc23bd18c62041579a3c70",
+        "jsxRoots": {
+          "count": 6,
+          "sha256": "b22841866eadb8f312808a60250b983d37caada0fe925e090910551d1c8a975a"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 6,
+          "sha256": "b22841866eadb8f312808a60250b983d37caada0fe925e090910551d1c8a975a"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningRecordEditor.tsx": {
+        "sourceSha256": "4928f595cfb51795fad2dfc9ba7f2a1e1dc71e33cd7c9ff90127c97f5cc4d606",
+        "fullAstSha256": "15c055dbcc901ca6fb5d5b28942e96b96a29363716b5ec64a232003b81250ffb",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "4b76b901eadd04957e7bcc68e871105c26742d0ea0056bd511d6f0dc63e5ced1"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "4b76b901eadd04957e7bcc68e871105c26742d0ea0056bd511d6f0dc63e5ced1"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningReferencePage.tsx": {
+        "sourceSha256": "8bf69acc011d3f9e9034c34e515e944c970c1128a22fd3f582135424c6f4ecac",
+        "fullAstSha256": "0f2d6740095379fb3cd3f266dc419b8cdada19f8eed8f2b43195aa291bf8968e",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "a772b16aa77a4dd65dedf525f22f86721bedbf164e66b3e590edfe83dd7ee9dc"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "a772b16aa77a4dd65dedf525f22f86721bedbf164e66b3e590edfe83dd7ee9dc"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningReportForm.tsx": {
+        "sourceSha256": "e99e93a7a559316005d612b821aeadbc68984a657694c5f334478203c36651a3",
+        "fullAstSha256": "7d45872654b05a859f7dc6ab9c81576e392dfb947b31f4c978a048ce60d673f4",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "af4201f02441702077858819a6b19248dc20837886d642c620cd9ecf58914cf8"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "af4201f02441702077858819a6b19248dc20837886d642c620cd9ecf58914cf8"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningReportSubmission.tsx": {
+        "sourceSha256": "34fa45789fc602f6546f4f5f7334436fbc9ffece8ff5b80544cea1a5ce4e7278",
+        "fullAstSha256": "cd00f51ebc5afc49803054f74faa95d18e89fce737a0ba1082a0989f3f8bbc3e",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "9a0f98ab83a41cba2774502bbfc9109f4e8cf543f4b004ec6287e000c8cc71f2"
+        },
+        "decimalConstructors": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "9a0f98ab83a41cba2774502bbfc9109f4e8cf543f4b004ec6287e000c8cc71f2"
+        }
+      },
+      "src/components/app-ui/planejamento/PlanningVersionPage.tsx": {
+        "sourceSha256": "17a71ede4b37f67431954405def07d815bbc3b4fa03d1cd7d9c01e4a546d1659",
+        "fullAstSha256": "70d5b0524245563cd53a680855e18ba9c6de1ac881dca64040fe0a762b036490",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "7b0ae5a709ee45d4493e3bef7b111ca94e47ef1b2ebe802df21dd888145110f9"
+        },
+        "decimalConstructors": 1,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "7ab9f691d383b3492b35beac87aa3b0390464a065deef01b97e0cfe2207a4c0e"
+        }
+      }
+    },
+    "financeWrappers": {
+      "src/app/app-domain/financeiro/orcamento/planejamento/page.tsx": {
+        "sourceSha256": "92f902994a1a330ef874a8ba267ce70e010c47ae31c057627a0e1fdb53b2c695",
+        "fullAstSha256": "66c0f1ff6ddd3758f07825eb8f39af9bc317db1d968a4187e73ab24499fba8d8"
+      },
+      "src/app/app-domain/financeiro/orcamento/planejamento/PlanejamentoClient.tsx": {
+        "sourceSha256": "4406fed641f5bfa1c6f21dde690cd4f3c970ecb80ce2ceec5750a3ce48606990",
+        "fullAstSha256": "7ef1f133ea8dfea05190670087d04021768f6126bbe94140366fda164068ba6c"
+      }
+    }
+  },
+  "cemetery": {
+    "roots": [
+      "src/lib/cemeteries",
+      "src/app/app-domain/cemiterios",
+      "src/app/api/cemiterios",
+      "src/components/cemeteries",
+      "src/db/repositories/cemeteries"
+    ],
+    "decimalException": {
+      "path": "src/app/app-domain/cemiterios/taxas/guias/[id]/page.tsx",
+      "namespace": "Prisma.Decimal",
+      "before": "Prisma.Decimal.max(0, total.minus(paid))",
+      "after": "Decimal.max(0, total.minus(paid))"
+    },
+    "files": {
+      "src/app/app-domain/cemiterios/CemiteriosClient.tsx": {
+        "sourceSha256": "b8548ef2b9fb99c3c5964aae86bbd8fe531efe4a9bee692ef5f0b9a7d866c811",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "937c97f4e279b349f728f1a77c0c317b05fe3d7650ffb9fb5cc1e3d04fde985e"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "937c97f4e279b349f728f1a77c0c317b05fe3d7650ffb9fb5cc1e3d04fde985e"
+        }
+      },
+      "src/app/app-domain/cemiterios/comprovante/[code]/page.tsx": {
+        "sourceSha256": "aa70fead537c5f7f71f3c286a091b7ecc2911c680fcdb76fe036abcb0f295309",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "d27c6afe95b8088dc1923bfdd7e601b02679dde9474fba6076c03a1068e131c4"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "d27c6afe95b8088dc1923bfdd7e601b02679dde9474fba6076c03a1068e131c4"
+        }
+      },
+      "src/app/app-domain/cemiterios/consulta/page.tsx": {
+        "sourceSha256": "425f38e26855a4d47cf02a04c9adfb0c7e8685998fb4628ce7a10206d8e16af5",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "9d23efc5ce998a912ac5bfed6256044062d938e0ccec07039711190905b4629e"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "9d23efc5ce998a912ac5bfed6256044062d938e0ccec07039711190905b4629e"
+        }
+      },
+      "src/app/app-domain/cemiterios/estrutura/[id]/page.tsx": {
+        "sourceSha256": "5b798cdf89471dc468b507178a4710f1fd96020e7cf808943484001ef7db0084",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "5de9ab75e65d4d4713001f8ce2f2fa6fca9edc94b094ce43a6c46866a87c0d28"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "5de9ab75e65d4d4713001f8ce2f2fa6fca9edc94b094ce43a6c46866a87c0d28"
+        }
+      },
+      "src/app/app-domain/cemiterios/estrutura/page.tsx": {
+        "sourceSha256": "7e2654625f0646f2fd3f6985daacf1331ddf87f108351c0471ad3a5062fad482",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "63dd1bb6d1515e359b57146d87ed250afdd4764c7b5dba2498eafe88a8718793"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "63dd1bb6d1515e359b57146d87ed250afdd4764c7b5dba2498eafe88a8718793"
+        }
+      },
+      "src/app/app-domain/cemiterios/layout.tsx": {
+        "sourceSha256": "10358b9921518b148bd63694a08f788bee45a966421522cacf1f222117edc541",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "5a15d2932e831689a57b73ef8210e3558718c313543e199e965e639158b25248"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "5a15d2932e831689a57b73ef8210e3558718c313543e199e965e639158b25248"
+        }
+      },
+      "src/app/app-domain/cemiterios/ocupacao/[id]/page.tsx": {
+        "sourceSha256": "023b31d5b4596b4763409496e7f4854894dbba31b003074678c62258b0e74a2f",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "815bd471a14e1120e32709ac343efb3e9f4d0cc73a13d2dc3d8e5d994485c71e"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "815bd471a14e1120e32709ac343efb3e9f4d0cc73a13d2dc3d8e5d994485c71e"
+        }
+      },
+      "src/app/app-domain/cemiterios/ocupacao/page.tsx": {
+        "sourceSha256": "fb90d5e22dc5c42441b23f3682f82880dae92e31eb740bef060b7faea27d8387",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "c9a7ee1923b2c55fa6698dade828a61480b382a1726779199deda74467c0178c"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "c9a7ee1923b2c55fa6698dade828a61480b382a1726779199deda74467c0178c"
+        }
+      },
+      "src/app/app-domain/cemiterios/page.tsx": {
+        "sourceSha256": "e05788788d47139d81c38fbd78a11908809b0a832aa8a388bbf88fe9d1136a00",
+        "jsxRoots": {
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "src/app/app-domain/cemiterios/processos/[id]/page.tsx": {
+        "sourceSha256": "14019eef23a7acff2240a798ea2238b8c4571d42556518a6091043e0a273e518",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "6b41d30d271fceeb4d23d78c36de0dc030740971f35c4d651e1b7d0e578408e5"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "6b41d30d271fceeb4d23d78c36de0dc030740971f35c4d651e1b7d0e578408e5"
+        }
+      },
+      "src/app/app-domain/cemiterios/processos/page.tsx": {
+        "sourceSha256": "00b51ca80cbddacaa1b699f03fb4557b51c9edf7e07ce32d1fbf3393177e768d",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "fbcafbbddf92f4cefe4f1e0e2ac53b162886dbb6ff0c0b68b8e7d61eb4bcfcdf"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "fbcafbbddf92f4cefe4f1e0e2ac53b162886dbb6ff0c0b68b8e7d61eb4bcfcdf"
+        }
+      },
+      "src/app/app-domain/cemiterios/relatorio/page.tsx": {
+        "sourceSha256": "1bc65cecd91d3b25cd6f3db79542da3999bbdeac580305784e9b01166f496b00",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "844a0bd29b51b39d79fe56cb74283f574bbf9feca4924495f2a0142be3f8b41c"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "844a0bd29b51b39d79fe56cb74283f574bbf9feca4924495f2a0142be3f8b41c"
+        }
+      },
+      "src/app/app-domain/cemiterios/taxas/FeeForms.tsx": {
+        "sourceSha256": "fafbd9564c0ba0bda5ee18c38591be0a571a9102e96758596c8e97e2cdbbdcb0",
+        "jsxRoots": {
+          "count": 3,
+          "sha256": "5bfd68a82c7c11769f789d1fe44c5254e01939f279c19b0ba40a75d8bf8acf58"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 3,
+          "sha256": "5bfd68a82c7c11769f789d1fe44c5254e01939f279c19b0ba40a75d8bf8acf58"
+        }
+      },
+      "src/app/app-domain/cemiterios/taxas/guias/[id]/page.tsx": {
+        "sourceSha256": "ab8a36417f62ccc987684d6c7d0d12e448786c817fc62b0f40b17e8d864718db",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "2162bf95d0fd1a2e64ed1c7039be3e3a3369489f1b6d8c137e279dad4e3ff1ac"
+        },
+        "decimalOccurrences": 1,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "2566e9093bd347a76165a249746774cc54f2db68ed3585a31a5b318b2b15e22b"
+        }
+      },
+      "src/app/app-domain/cemiterios/taxas/page.tsx": {
+        "sourceSha256": "1fca1a516d59c70975375db222e69c394921e7e6558a3d843f0c295a5169b39d",
+        "jsxRoots": {
+          "count": 3,
+          "sha256": "ba5ac936a7bf154b5d68a3886555f3b6f9bf001a26a2f730c7a9177290aba497"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 3,
+          "sha256": "ba5ac936a7bf154b5d68a3886555f3b6f9bf001a26a2f730c7a9177290aba497"
+        }
+      },
+      "src/app/app-domain/cemiterios/transferencias/page.tsx": {
+        "sourceSha256": "8d67089412f859e90f270cdc5de084e83094dda0047c4d90f2c6b6b27200d1b4",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "ae3f6bf4c1dbb224b308636333a8a9bdd4bc1edf187bfaadae85f27dd2323961"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "ae3f6bf4c1dbb224b308636333a8a9bdd4bc1edf187bfaadae85f27dd2323961"
+        }
+      },
+      "src/components/cemeteries/CemeteryAttachments.tsx": {
+        "sourceSha256": "836d245f096e7729b815cf67e9961f8025ea0aac63c4b9ab66e6222a85a6720b",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "c93046d52666e4820eb7c8f978d4b58b12eb4099293110f48b8e1174ae771fb9"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "c93046d52666e4820eb7c8f978d4b58b12eb4099293110f48b8e1174ae771fb9"
+        }
+      },
+      "src/components/cemeteries/CemeteryLookup.tsx": {
+        "sourceSha256": "ec8cb0a01418b3e95a52661a1bd2b2088da0f40cc56f45c8ac2fa42345173969",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "e34ce7e57c69e5cbd6344278a3bbdb12037b8c3171944bee137731df4a15a3bc"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "e34ce7e57c69e5cbd6344278a3bbdb12037b8c3171944bee137731df4a15a3bc"
+        }
+      },
+      "src/components/cemeteries/CemeteryPrintButton.tsx": {
+        "sourceSha256": "fb9ebd0b5ec16f4dcff3e3ad44483a77ce7e739acc3f62f3e88b1bbdc767eacf",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "eee87e8676927c52f984979d9491c2254d856d4743b0cdae1fdfdad7bce86f3d"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "eee87e8676927c52f984979d9491c2254d856d4743b0cdae1fdfdad7bce86f3d"
+        }
+      },
+      "src/components/cemeteries/CemeteryQueryFilters.tsx": {
+        "sourceSha256": "1aee9a6115bcd6f3fe6100833c39dc1745f38066fe4d037194f1c44ac15ff614",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "4cb098275f9d8e1eede6a71793b82bacb8081ff7441fbec059b6af4eb4f03d86"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "4cb098275f9d8e1eede6a71793b82bacb8081ff7441fbec059b6af4eb4f03d86"
+        }
+      },
+      "src/components/cemeteries/StructureFilters.tsx": {
+        "sourceSha256": "75a5af92ec6e12ab1eb3c7b64fbe3d3918fdf1c8eba687f3abd95bfe8cc2df64",
+        "jsxRoots": {
+          "count": 1,
+          "sha256": "61f90825b93fd9c2680d48d310c44a32d7514d27f4d5fdd60ad44637fb20ae6e"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 1,
+          "sha256": "61f90825b93fd9c2680d48d310c44a32d7514d27f4d5fdd60ad44637fb20ae6e"
+        }
+      },
+      "src/components/cemeteries/StructureForm.tsx": {
+        "sourceSha256": "5d1ee8df9b79946e52656f3b98d62c3455d7054ae43e1d4ea6068b7d8de6de8c",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "34d6e198e6c43e872dc4200885090106c2e4541fbe74938cadf558d4cfd0cfa3"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "34d6e198e6c43e872dc4200885090106c2e4541fbe74938cadf558d4cfd0cfa3"
+        }
+      },
+      "src/components/cemeteries/StructurePages.tsx": {
+        "sourceSha256": "6bf1e7eb601762467e469bf12d7a76a56ab736aa91754f79e74fad71a61e4364",
+        "jsxRoots": {
+          "count": 2,
+          "sha256": "77f504a9f5f5f277a8ded9ccba0cc2b08533ff65defd6d1bbcb291956d522408"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 2,
+          "sha256": "77f504a9f5f5f277a8ded9ccba0cc2b08533ff65defd6d1bbcb291956d522408"
+        }
+      },
+      "src/components/cemeteries/WorkflowForms.tsx": {
+        "sourceSha256": "8c5ad401374ae3a5efa60da11ed3f5a4c059047fa744b11798a7c611314d9750",
+        "jsxRoots": {
+          "count": 5,
+          "sha256": "023b682e02c566e0e781b2ca7bb97b098cb74d47fbf62ee3110aa5e0422e76d4"
+        },
+        "decimalOccurrences": 0,
+        "decimalNormalizedJsxRoots": {
+          "count": 5,
+          "sha256": "023b682e02c566e0e781b2ca7bb97b098cb74d47fbf62ee3110aa5e0422e76d4"
+        }
+      }
+    }
+  }
+}

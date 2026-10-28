@@ -1,47 +1,52 @@
 import { createHash } from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import { sql } from "drizzle-orm";
+import type { JsonValue } from "@/db/json";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
 import { z } from "zod";
 import { fiscalIndexTermSchema } from "./fiscal-indices";
 import { resolveFinancialReportScope } from "./report-scope";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { hasFiscalAccountChildren, listFiscalAccounts } from "@/db/repositories/finance/fiscal-indices";
+import { insertPersonnelFiscalDefinition, listPersonnelFiscalCloses, listPersonnelFiscalEntries, listPersonnelFiscalYears, readPersonnelFiscalDefinition } from "@/db/repositories/finance/personnel-fiscal";
 
-type Db = PrismaClient | Prisma.TransactionClient;
 type Actor = { usuarioId: string; allowedBudgetUnitIds?: string[] };
 export class PersonnelFiscalError extends Error {}
 const term = fiscalIndexTermSchema.omit({ functionCodes: true });
 export const personnelFiscalComposition = z.object({ personnel: z.array(term).min(1).max(100), adjustedRcl: z.array(term).min(1).max(100) }).strict();
 export const personnelFiscalDefinitionInput = z.object({ financialYearId: z.string().min(1), effectiveFrom: z.iso.date(), legalReference: z.string().trim().min(3).max(4000), legalLimit: z.string().regex(/^\d{1,3}(?:\.\d{1,4})?$/), prudentialLimit: z.string().regex(/^\d{1,3}(?:\.\d{1,4})?$/), alertLimit: z.string().regex(/^\d{1,3}(?:\.\d{1,4})?$/), definition: personnelFiscalComposition, reason: z.string().trim().min(10).max(4000) }).strict();
-const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as JsonValue;
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
-export async function definePersonnelFiscalComposition(db: PrismaClient, actor: Actor, raw: z.infer<typeof personnelFiscalDefinitionInput>) {
+export async function definePersonnelFiscalComposition(db: DatabaseConnection, actor: Actor, raw: z.infer<typeof personnelFiscalDefinitionInput>) {
   const input = personnelFiscalDefinitionInput.parse(raw);
-  const legalLimit = new Prisma.Decimal(input.legalLimit), prudentialLimit = new Prisma.Decimal(input.prudentialLimit), alertLimit = new Prisma.Decimal(input.alertLimit);
+  const legalLimit = new Decimal(input.legalLimit), prudentialLimit = new Decimal(input.prudentialLimit), alertLimit = new Decimal(input.alertLimit);
   if (legalLimit.lte(0) || legalLimit.gt(100) || prudentialLimit.lte(0) || prudentialLimit.gt(legalLimit) || alertLimit.lte(0) || alertLimit.gt(prudentialLimit)) throw new PersonnelFiscalError("Limites devem satisfazer 0 < alerta ≤ prudencial ≤ legal ≤ 100.");
-  return db.$transaction(async tx => {
+  return withDatabaseTransaction(db, async tx => {
     const scope = await resolveFinancialReportScope(tx, input.financialYearId, { budgetUnitIds: actor.allowedBudgetUnitIds });
     if (!scope.fullEntity || !scope.governmentEntityId || !scope.budgetUnitIds?.length) throw new PersonnelFiscalError("Composição de pessoal exige todas as UGs do ente.");
     const effectiveFrom = new Date(`${input.effectiveFrom}T00:00:00Z`);
     if (effectiveFrom.getUTCFullYear() !== scope.year) throw new PersonnelFiscalError("Vigência deve pertencer ao exercício selecionado.");
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`PERSONNEL_FISCAL:${input.financialYearId}`},0))::text`;
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`PERSONNEL_FISCAL:${input.financialYearId}`},0))::text`);
     for (const component of [...input.definition.personnel, ...input.definition.adjustedRcl]) {
       if (component.budgetUnitIds?.some(id => !scope.budgetUnitIds!.includes(id))) throw new PersonnelFiscalError("Componente contém UG de outro ente.");
-      const accounts = await tx.accountingPlan.findMany({ where: { id: { in: component.accountIds } }, select: { code: true } });
-      if (accounts.length !== component.accountIds.length || await tx.accountingPlan.count({ where: { OR: accounts.map(account => ({ code: { startsWith: `${account.code}.` } })) } })) throw new PersonnelFiscalError("Composição exige contas contábeis analíticas existentes.");
+      const accounts = await listFiscalAccounts(tx, component.accountIds);
+      if (accounts.length !== component.accountIds.length || await hasFiscalAccountChildren(tx, accounts.map(account => account.code))) throw new PersonnelFiscalError("Composição exige contas contábeis analíticas existentes.");
     }
-    const latest = await tx.municipalPersonnelFiscalDefinition.findFirst({ where: { financialYearId: input.financialYearId }, orderBy: { revision: "desc" } });
-    const record = await tx.municipalPersonnelFiscalDefinition.create({ data: { financialYearId: input.financialYearId, revision: (latest?.revision ?? 0) + 1, effectiveFrom, legalReference: input.legalReference, legalLimit, prudentialLimit, alertLimit, definition: json(input.definition), reason: input.reason, actorId: actor.usuarioId } });
-    await writeAuditEvent(tx, { actorUsuarioId: actor.usuarioId, eventType: auditEventTypes.administrativeMutation, targetType: "MUNICIPAL_PERSONNEL_FISCAL_DEFINITION", targetId: record.id });
+    const record = await insertPersonnelFiscalDefinition(tx, { financialYearId: input.financialYearId, effectiveFrom, legalReference: input.legalReference, legalLimit, prudentialLimit, alertLimit, definition: json(input.definition), reason: input.reason, actorId: actor.usuarioId });
+    await insertAuditEvent(tx, { actorUsuarioId: actor.usuarioId, eventType: auditEventTypes.administrativeMutation, targetType: "MUNICIPAL_PERSONNEL_FISCAL_DEFINITION", targetId: record.id });
     return record;
   });
 }
 
 type PositionInput = { financialYearId: string; through: Date; governmentEntityId?: string; budgetUnitIds?: string[] };
-export async function readPersonnelFiscalPosition(db: Db, input: PositionInput) {
-  return "$transaction" in db ? db.$transaction(tx => readPosition(tx, input), { isolationLevel: "RepeatableRead", timeout: 60000 }) : readPosition(db, input);
+export async function readPersonnelFiscalPosition(db: DatabaseConnection, input: PositionInput) {
+  return withDatabaseTransaction(db, tx => readPersonnelFiscalPositionInTransaction(tx, input), { isolationLevel: "repeatable read", timeoutMs: 60000 });
 }
 
-async function readPosition(db: Prisma.TransactionClient, input: PositionInput) {
+export async function readPersonnelFiscalPositionInTransaction(db: DatabaseTransaction, input: PositionInput) {
   const scope = await resolveFinancialReportScope(db, input.financialYearId, { governmentEntityId: input.governmentEntityId, budgetUnitIds: input.budgetUnitIds });
   if (!scope.fullEntity || !scope.governmentEntityId || !scope.budgetUnitIds?.length) throw new PersonnelFiscalError("Apuração de pessoal exige autorização de todas as UGs do ente.");
   const issues: string[] = [];
@@ -50,9 +55,9 @@ async function readPosition(db: Prisma.TransactionClient, input: PositionInput) 
   if (input.through.getTime() !== endOfMonth.getTime()) issues.push("Corte deve encerrar uma competência mensal completa.");
   const start = new Date(Date.UTC(scope.year, input.through.getUTCMonth() - 11, 1));
   const months = Array.from({ length: 12 }, (_, at) => new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + at, 1)));
-  const definition = await db.municipalPersonnelFiscalDefinition.findFirst({ where: { financialYearId: input.financialYearId, effectiveFrom: { lte: input.through } }, orderBy: [{ effectiveFrom: "desc" }, { revision: "desc" }] });
-  const years = await db.financialYear.findMany({ where: { governmentEntityId: scope.governmentEntityId, year: { in: [...new Set(months.map(month => month.getUTCFullYear()))] } }, select: { id: true, year: true } });
-  const closes = await db.monthlyAccountingClose.findMany({ where: { financialYearId: { in: years.map(year => year.id) }, status: "FECHADO", competence: { gte: start, lte: input.through } }, select: { id: true, competence: true } });
+  const definition = await readPersonnelFiscalDefinition(db, input.financialYearId, input.through);
+  const years = await listPersonnelFiscalYears(db, scope.governmentEntityId, [...new Set(months.map(month => month.getUTCFullYear()))]);
+  const closes = await listPersonnelFiscalCloses(db, years.map(year => year.id), start, input.through);
   for (const month of months) if (!closes.some(close => close.competence.getTime() === month.getTime())) issues.push(`Competência ${month.toISOString().slice(0, 7)} sem fechamento confirmado do ente.`);
   if (!definition) issues.push("Composição de pessoal/RCL ajustada e limites do ente não configurados.");
   const rows: Array<{ section: string; label: string; amount: string; entryIds: string[] }> = [];
@@ -60,11 +65,11 @@ async function readPosition(db: Prisma.TransactionClient, input: PositionInput) 
   if (!definition) return { ...base, status: "NOT_EVALUATED" as const, issues, personnel: null, adjustedRcl: null, percentage: null, rows, sourceHash: null };
   const config = personnelFiscalComposition.parse(definition.definition);
   const components = [...config.personnel, ...config.adjustedRcl];
-  const entries = await db.accountingEntry.findMany({ where: { accountId: { in: [...new Set(components.flatMap(component => component.accountIds))] }, transaction: { status: "POSTADO", governmentEntityId: scope.governmentEntityId, financialYearId: { in: years.map(year => year.id) }, budgetUnitId: { in: scope.budgetUnitIds }, date: { gte: start, lte: input.through } } }, include: { transaction: { include: { reversalOf: true } } }, orderBy: { id: "asc" } });
+  const entries = await listPersonnelFiscalEntries(db, { accountIds: [...new Set(components.flatMap(component => component.accountIds))], yearIds: years.map(year => year.id), governmentEntityId: scope.governmentEntityId, unitIds: scope.budgetUnitIds, start, through: input.through });
   const total = (section: string, selection: z.infer<typeof term>[]) => {
-    let sum = new Prisma.Decimal(0); const used = new Set<string>();
+    let sum = new Decimal(0); const used = new Set<string>();
     for (const component of selection) {
-      let amount = new Prisma.Decimal(0); const entryIds: string[] = [];
+      let amount = new Decimal(0); const entryIds: string[] = [];
       for (const entry of entries) {
         const transaction = entry.transaction!;
         const origin = transaction.reversalOfId ? transaction.reversalOf : transaction;

@@ -5,7 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import { and, count, desc, eq, ilike, inArray } from "drizzle-orm";
+import { db } from "@/db/client";
+import { materialRequests, materialRequestItems } from "@/db/schema/assets-requests";
+import { warehouses } from "@/db/schema/assets-stock";
+import { departments, employees } from "@/db/schema/administration";
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import {
@@ -22,30 +26,20 @@ export default async function RequisicoesPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const { prisma } = await getTenantContextForModule("PATRIMONIO");
+  await getTenantContextForModule("PATRIMONIO");
   const params = await searchParams;
   const q = params?.q?.trim() || "";
   const status = params?.status || "";
   const requestedPage = parsePatrimonioListPage(params?.page);
-  const where: Prisma.MaterialRequestWhereInput = {};
-
-  if (q) where.number = { contains: q, mode: "insensitive" };
-  if (status) where.status = status;
-
-  const total = await prisma.materialRequest.count({ where });
+  const where = and(q ? ilike(materialRequests.number, `%${q}%`) : undefined, status ? eq(materialRequests.status, status) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(materialRequests).where(where);
   const page = clampPatrimonioListPage(requestedPage, total);
-  const requests = await prisma.materialRequest.findMany({
-    where,
-    skip: (page - 1) * PATRIMONIO_LIST_PAGE_SIZE,
-    take: PATRIMONIO_LIST_PAGE_SIZE,
-    orderBy: { date: "desc" },
-    include: {
-      department: true,
-      requester: true,
-      sourceWarehouse: { select: { name: true } },
-      items: true,
-    },
-  });
+  const requests = await db.select({ request: materialRequests, department: { name: departments.name }, requester: { name: employees.name }, sourceWarehouse: { name: warehouses.name } }).from(materialRequests)
+    .innerJoin(departments, eq(departments.id, materialRequests.departmentId)).innerJoin(employees, eq(employees.id, materialRequests.requesterId)).leftJoin(warehouses, eq(warehouses.id, materialRequests.sourceWarehouseId))
+    .where(where).orderBy(desc(materialRequests.date)).offset((page - 1) * PATRIMONIO_LIST_PAGE_SIZE).limit(PATRIMONIO_LIST_PAGE_SIZE).then(async rows => {
+      const items = rows.length ? await db.select({ id: materialRequestItems.id, requestId: materialRequestItems.requestId }).from(materialRequestItems).where(inArray(materialRequestItems.requestId, rows.map(row => row.request.id))) : [];
+      return rows.map(row => ({ ...row.request, department: row.department, requester: row.requester, sourceWarehouse: row.sourceWarehouse, items: items.filter(item => item.requestId === row.request.id) }));
+    });
   const hrefValues = { q, status };
 
   return (

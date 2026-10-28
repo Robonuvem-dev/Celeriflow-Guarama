@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Institution } from "@prisma/client";
+import type { InstitutionRecord } from "@/lib/contracts/administration";
 import Image from "next/image";
 import { saveInstitution } from "./actions";
 import { Save, Building2 } from "lucide-react";
@@ -15,7 +15,7 @@ function maskCep(value: string) {
   return value.replace(/\D/g, "").slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2");
 }
 
-export function InstitutionForm({ institution }: { institution: Institution | null }) {
+export function InstitutionForm({ institution }: { institution: InstitutionRecord | null }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [cnpj, setCnpj] = useState(institution?.cnpj || "");

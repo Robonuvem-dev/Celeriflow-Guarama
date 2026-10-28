@@ -1,4 +1,7 @@
-import { type Prisma, type PrismaClient } from "@prisma/client";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import { inventorySessions, inventorySessionItems, materialStocks, warehouses } from "@/db/schema/assets-stock";
 import { applyStockMovement, type StockActor } from "./stock-service";
 
 export class InventoryServiceError extends Error {}
@@ -33,40 +36,28 @@ function validCountedQuantity(quantity: number) {
   return quantity;
 }
 
-export async function createInventorySession(db: PrismaClient, input: { warehouseId: string; actor: InventoryActor }) {
+export async function createInventorySession(db: DatabaseConnection, input: { warehouseId: string; actor: InventoryActor }) {
   const warehouseId = required(input.warehouseId, "Almoxarifado");
   const createdByUsuarioId = required(input.actor.usuarioId, "Usuário responsável");
 
-  return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`WAREHOUSE_INVENTORY:${warehouseId}`}))`;
-    const warehouse = await tx.warehouse.findFirst({ where: { id: warehouseId, isActive: true }, select: { id: true } });
+  return withDatabaseTransaction(db, async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`WAREHOUSE_INVENTORY:${warehouseId}`}))`);
+    const [warehouse] = await tx.select({ id: warehouses.id }).from(warehouses).where(and(eq(warehouses.id, warehouseId), eq(warehouses.isActive, true))).limit(1);
     if (!warehouse) throw new InventoryServiceError("Almoxarifado não encontrado ou inativo.");
 
-    const openSession = await tx.inventorySession.findFirst({
-      where: { warehouseId, lockMovements: true, status: { in: OPEN_STATUSES } },
-      select: { id: true },
-    });
+    const [openSession] = await tx.select({ id: inventorySessions.id }).from(inventorySessions).where(and(eq(inventorySessions.warehouseId, warehouseId), eq(inventorySessions.lockMovements, true), inArray(inventorySessions.status, OPEN_STATUSES))).limit(1);
     if (openSession) throw new InventoryServiceError("Já existe um inventário em andamento para este almoxarifado.");
 
-    const stocks = await tx.materialStock.findMany({
-      where: { warehouseId },
-      orderBy: { id: "asc" },
-      select: { id: true, quantity: true },
-    });
+    const stocks = await tx.select({ id: materialStocks.id, quantity: materialStocks.quantity }).from(materialStocks).where(eq(materialStocks.warehouseId, warehouseId)).orderBy(asc(materialStocks.id));
     if (stocks.length === 0) throw new InventoryServiceError("O almoxarifado não possui posições de estoque para inventariar.");
 
-    return tx.inventorySession.create({
-      data: {
-        warehouseId,
-        createdByUsuarioId,
-        items: { create: stocks.map((stock) => ({ stockId: stock.id, expectedQuantity: stock.quantity })) },
-      },
-      include: { items: true },
-    });
+    const [session] = await tx.insert(inventorySessions).values({ warehouseId, createdByUsuarioId }).returning();
+    const items = await tx.insert(inventorySessionItems).values(stocks.map(stock => ({ sessionId: session.id, stockId: stock.id, expectedQuantity: stock.quantity }))).returning();
+    return { ...session, items };
   });
 }
 
-export async function recordInventoryCount(db: PrismaClient, input: {
+export async function recordInventoryCount(db: DatabaseConnection, input: {
   sessionId: string;
   itemId: string;
   countedQuantity: number;
@@ -80,14 +71,11 @@ export async function recordInventoryCount(db: PrismaClient, input: {
   const requestedType = input.divergenceType?.trim().toUpperCase();
   if (requestedType && !DIVERGENCE_TYPES.has(requestedType)) throw new InventoryServiceError("Tipo de divergência inválido.");
 
-  return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT id FROM "InventorySession" WHERE id=${sessionId} FOR UPDATE`;
-    const item = await tx.inventorySessionItem.findFirst({
-      where: { id: itemId, sessionId },
-      select: { id: true, expectedQuantity: true, session: { select: { status: true } } },
-    });
+  return withDatabaseTransaction(db, async (tx) => {
+    await tx.execute(sql`SELECT id FROM "InventorySession" WHERE id=${sessionId} FOR UPDATE`);
+    const [item] = await tx.select({ id: inventorySessionItems.id, expectedQuantity: inventorySessionItems.expectedQuantity, status: inventorySessions.status }).from(inventorySessionItems).innerJoin(inventorySessions, eq(inventorySessions.id, inventorySessionItems.sessionId)).where(and(eq(inventorySessionItems.id, itemId), eq(inventorySessionItems.sessionId, sessionId))).limit(1);
     if (!item) throw new InventoryServiceError("Item do inventário não encontrado.");
-    if (item.session.status !== "COUNTING") throw new InventoryServiceError("Este inventário não está aberto para contagem.");
+    if (item.status !== "COUNTING") throw new InventoryServiceError("Este inventário não está aberto para contagem.");
 
     const quantityType = countedQuantity === item.expectedQuantity
       ? "SEM_DIVERGENCIA"
@@ -102,31 +90,28 @@ export async function recordInventoryCount(db: PrismaClient, input: {
       throw new InventoryServiceError("Informe a justificativa do ajuste de inventário.");
     }
 
-    return tx.inventorySessionItem.update({
-      where: { id: item.id },
-      data: { countedQuantity, divergenceType, countEvidence, adjustmentReason, countedAt: new Date() },
-    });
+    const [updated] = await tx.update(inventorySessionItems).set({ countedQuantity, divergenceType, countEvidence, adjustmentReason, countedAt: new Date() }).where(eq(inventorySessionItems.id, item.id)).returning();
+    return updated;
   });
 }
 
-export async function submitInventoryForApproval(db: PrismaClient, sessionId: string) {
+export async function submitInventoryForApproval(db: DatabaseConnection, sessionId: string) {
   const id = required(sessionId, "Inventário");
-  return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT id FROM "InventorySession" WHERE id=${id} FOR UPDATE`;
-    const session = await tx.inventorySession.findUnique({
-      where: { id },
-      include: { items: { select: { countedQuantity: true } } },
-    });
+  return withDatabaseTransaction(db, async (tx) => {
+    await tx.execute(sql`SELECT id FROM "InventorySession" WHERE id=${id} FOR UPDATE`);
+    const [session] = await tx.select().from(inventorySessions).where(eq(inventorySessions.id, id)).limit(1);
     if (!session) throw new InventoryServiceError("Inventário não encontrado.");
     if (session.status !== "COUNTING") throw new InventoryServiceError("O inventário não está aberto para envio.");
-    if (session.items.some((item) => item.countedQuantity === null)) {
+    const items = await tx.select({ countedQuantity: inventorySessionItems.countedQuantity }).from(inventorySessionItems).where(eq(inventorySessionItems.sessionId, id));
+    if (items.some((item) => item.countedQuantity === null)) {
       throw new InventoryServiceError("Todos os itens devem ser contados antes do envio para aprovação.");
     }
-    return tx.inventorySession.update({ where: { id }, data: { status: "PENDING_APPROVAL", submittedAt: new Date() } });
+    const [updated] = await tx.update(inventorySessions).set({ status: "PENDING_APPROVAL", submittedAt: new Date() }).where(eq(inventorySessions.id, id)).returning();
+    return updated;
   });
 }
 
-export async function closeApprovedInventory(db: PrismaClient, input: {
+export async function closeApprovedInventory(db: DatabaseConnection, input: {
   sessionId: string;
   approvalEvidence: string;
   actor: InventoryActor;
@@ -135,25 +120,17 @@ export async function closeApprovedInventory(db: PrismaClient, input: {
   const approvalEvidence = required(input.approvalEvidence, "Evidência da aprovação");
   const approvedByUsuarioId = required(input.actor.usuarioId, "Usuário aprovador");
 
-  return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT id FROM "InventorySession" WHERE id=${sessionId} FOR UPDATE`;
-    const session = await tx.inventorySession.findUnique({
-      where: { id: sessionId },
-      include: {
-        items: {
-          include: {
-            stock: { select: { warehouseId: true, materialId: true, batchNumber: true, unitCost: true } },
-          },
-        },
-      },
-    });
+  return withDatabaseTransaction(db, async (tx) => {
+    await tx.execute(sql`SELECT id FROM "InventorySession" WHERE id=${sessionId} FOR UPDATE`);
+    const [session] = await tx.select().from(inventorySessions).where(eq(inventorySessions.id, sessionId)).limit(1);
     if (!session) throw new InventoryServiceError("Inventário não encontrado.");
     if (session.status !== "PENDING_APPROVAL") throw new InventoryServiceError("O inventário ainda não está aguardando aprovação.");
     if (session.createdByUsuarioId === approvedByUsuarioId) {
       throw new InventoryServiceError("Segregação de Funções: O aprovador do inventário deve ser diferente do servidor inventoriante que iniciou a sessão.");
     }
 
-    for (const item of session.items) {
+    const items = await tx.select({ item: inventorySessionItems, stock: { warehouseId: materialStocks.warehouseId, materialId: materialStocks.materialId, batchNumber: materialStocks.batchNumber, unitCost: materialStocks.unitCost } }).from(inventorySessionItems).innerJoin(materialStocks, eq(materialStocks.id, inventorySessionItems.stockId)).where(eq(inventorySessionItems.sessionId, session.id));
+    for (const { item, stock } of items) {
       if (item.countedQuantity === null) throw new InventoryServiceError("Todos os itens devem ser contados antes do encerramento.");
       const adjustment = item.countedQuantity - item.expectedQuantity;
       if (adjustment === 0) continue;
@@ -161,31 +138,29 @@ export async function closeApprovedInventory(db: PrismaClient, input: {
 
       const { movement } = await applyStockMovement(tx, {
         kind: "ADJUSTMENT",
-        warehouseId: item.stock.warehouseId,
-        materialId: item.stock.materialId,
-        batchNumber: item.stock.batchNumber,
+        warehouseId: stock.warehouseId,
+        materialId: stock.materialId,
+        batchNumber: stock.batchNumber,
         quantity: adjustment,
-        unitCost: item.stock.unitCost,
+        unitCost: stock.unitCost,
         reason: `Inventário ${session.id}: ${item.adjustmentReason}`,
         inventorySessionId: session.id,
         idempotencyKey: `INVENTORY_CLOSE:${session.id}:${item.id}`,
         actor: { usuarioId: approvedByUsuarioId, employeeId: input.actor.employeeId },
       });
-      await tx.inventorySessionItem.update({ where: { id: item.id }, data: { adjustmentMovementId: movement.id } });
+      await tx.update(inventorySessionItems).set({ adjustmentMovementId: movement.id }).where(eq(inventorySessionItems.id, item.id));
     }
 
-    return tx.inventorySession.update({
-      where: { id: session.id },
-      data: {
+    const [closed] = await tx.update(inventorySessions).set({
         status: "CLOSED",
         lockMovements: false,
         approvedAt: new Date(),
         closedAt: new Date(),
         approvalEvidence,
         approvedByUsuarioId,
-      },
-    });
+    }).where(eq(inventorySessions.id, session.id)).returning();
+    return closed;
   });
 }
 
-export type InventoryTransaction = Prisma.TransactionClient;
+export type InventoryTransaction = DatabaseTransaction;

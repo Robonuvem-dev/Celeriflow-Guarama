@@ -1,0 +1,42 @@
+{
+  "formatVersion": 1,
+  "kind": "AUDITED_EXISTING_DATABASE_BASELINE",
+  "authority": "celeriflow-explicit-sql-v1",
+  "authorization": {
+    "id": "owner-decision-2026-10-28-audited-baseline",
+    "date": "2026-10-28",
+    "decision": "Baseline auditada (Recommended)",
+    "recordedIn": ["docs/MIGRACAO_DRIZZLE_STATUS.md", "docs/MIGRACAO_DRIZZLE_CONTRATOS.md"],
+    "scope": "Initialize an audited baseline of the existing database only after full comparison with the original reviewed catalog. The owner has no original clinical SQL copy. This records the unresolved difference; it does not recover or prove the installed clinical bytes.",
+    "acknowledgesUnresolvedHistoricalBytes": true,
+    "preserveHistoricalSqlAndLegacyLedger": true,
+    "executeHistoricalSql": false,
+    "requireExactFutureChecksums": true
+  },
+  "historicalCount": 156,
+  "baselineDigest": "d3d9962b793d2f76082f1fd2e89ed3d171761b8de611f1cdec264a72d928ae8a",
+  "historySha256": "97270664bd9671054bd3e790d460f65ed8ae0cecc8b12459ee3bedae488b1a9e",
+  "recovery": {
+    "source": "docs/drizzle-inventory/recovery.json",
+    "fileSha256": "bfbbd1c3003a22f85e5a5ae64cba4283e644eadab47ebdfecde3edcb786aefa2"
+  },
+  "reviewedCatalog": {
+    "source": ".agent/drizzle/database-before-2026-10-28T01-26-00.861Z/catalog.json",
+    "fileSha256": "bc2cd102e4627e250d00af1420cef46d95dbd954477202044024fdccceca729d",
+    "digest": "a84b2392d6dcb19e0c9fce24dc6b4bdf91a72fe19665c7865c4dfe3e2c0ac76c"
+  },
+  "unresolvedHistoricalDifferences": [
+    {
+      "name": "20261011010000_add_sst_clinical_services",
+      "source": "prisma/migrations-ibema/20261011010000_add_sst_clinical_services/migration.sql",
+      "installedChecksum": "56942636553fc17917a3e70970ac21b9d9bad907c4289960170333f6fd3f5a80",
+      "recordedLocalChecksum": "d8822bb147ec2e24a48ec2c74ed02d5808809d5d48dacde896850b8b5a5d6fbb",
+      "lfChecksum": "e4590cc6c6426625afe58396ebfd7a5f07f75ed2dfdfb32eb319586a82c1ea2a",
+      "localByteVariants": [
+        "d8822bb147ec2e24a48ec2c74ed02d5808809d5d48dacde896850b8b5a5d6fbb",
+        "e4590cc6c6426625afe58396ebfd7a5f07f75ed2dfdfb32eb319586a82c1ea2a"
+      ],
+      "classification": "UNRESOLVED_HISTORICAL_DIFFERENCE"
+    }
+  ]
+}

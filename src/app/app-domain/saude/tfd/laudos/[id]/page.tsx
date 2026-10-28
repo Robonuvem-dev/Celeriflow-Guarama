@@ -2,22 +2,32 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { tfdRequestForActor } from "@/lib/saude/tfd-clinical-service";
 import { authorizeTfdReportAction, requestTfdBenefitAction, saveTfdReportAction, supplementTfdReportAction, transitionTfdBenefitAction, transitionTfdReportAction } from "../actions";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { healthTfdRequestEvents, healthTfdBenefits, healthTfdReportRevisions, healthTfdReportSupplements } from "@/db/schema/health-tfd";
+import { healthProfessionals } from "@/db/schema/health-workforce";
+import { employees } from "@/db/schema/administration";
+import { medicalRecords } from "@/db/schema/health-care";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
 
 const field = "w-full rounded border border-slate-300 bg-white p-2 text-sm";
 
 export default async function TfdReportPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
-  const request = await context.prisma.$transaction(tx => tfdRequestForActor(tx, context, id));
+  const request = await withDatabaseTransaction(databaseConnection, tx => tfdRequestForActor(tx, context, id));
   const report = request.clinicalReport;
-  const [events, benefits, revisions, supplements, professional, records, procedures] = await Promise.all([
-    context.prisma.healthTfdRequestEvent.findMany({ where: { requestId: id }, orderBy: { createdAt: "asc" } }),
-    context.prisma.healthTfdBenefit.findMany({ where: { requestId: id }, orderBy: { createdAt: "desc" } }),
-    report ? context.prisma.healthTfdReportRevision.findMany({ where: { reportId: report.id }, orderBy: { version: "desc" }, select: { version: true, reason: true, actorUsuarioId: true, createdAt: true } }) : [],
-    report ? context.prisma.healthTfdReportSupplement.findMany({ where: { reportId: report.id }, orderBy: { createdAt: "asc" } }) : [],
-    context.prisma.healthProfessional.findFirst({ where: { employeeId: context.user.employeeId || "__SEM_PROFISSIONAL__", isActive: true }, include: { employee: { select: { name: true } } } }),
-    context.prisma.medicalRecord.findMany({ where: { patientId: request.patientId, ...(request.originUnitId ? { unitId: request.originUnitId } : {}) }, take: 100, orderBy: { date: "desc" }, select: { id: true, date: true } }),
-    context.prisma.healthSusProcedure.findMany({ take: 300, orderBy: { code: "asc" }, select: { id: true, code: true, description: true } }),
+  const db = context.database;
+  const [events, benefits, revisions, supplements, professionalRows, records, procedures] = await Promise.all([
+    db.select().from(healthTfdRequestEvents).where(eq(healthTfdRequestEvents.requestId, id)).orderBy(asc(healthTfdRequestEvents.createdAt)),
+    db.select().from(healthTfdBenefits).where(eq(healthTfdBenefits.requestId, id)).orderBy(desc(healthTfdBenefits.createdAt)),
+    report ? db.select({ version: healthTfdReportRevisions.version, reason: healthTfdReportRevisions.reason, actorUsuarioId: healthTfdReportRevisions.actorUsuarioId, createdAt: healthTfdReportRevisions.createdAt }).from(healthTfdReportRevisions).where(eq(healthTfdReportRevisions.reportId, report.id)).orderBy(desc(healthTfdReportRevisions.version)) : [],
+    report ? db.select().from(healthTfdReportSupplements).where(eq(healthTfdReportSupplements.reportId, report.id)).orderBy(asc(healthTfdReportSupplements.createdAt)) : [],
+    db.select({ professional: healthProfessionals, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(and(eq(healthProfessionals.employeeId, context.user.employeeId || "__SEM_PROFISSIONAL__"), eq(healthProfessionals.isActive, true))).limit(1),
+    db.select({ id: medicalRecords.id, date: medicalRecords.date }).from(medicalRecords).where(and(eq(medicalRecords.patientId, request.patientId), request.originUnitId ? eq(medicalRecords.unitId, request.originUnitId) : undefined)).orderBy(desc(medicalRecords.date)).limit(100),
+    db.select({ id: healthSusProcedures.id, code: healthSusProcedures.code, description: healthSusProcedures.description }).from(healthSusProcedures).orderBy(asc(healthSusProcedures.code)).limit(300),
   ]);
+  const professional = professionalRows[0] ? { ...professionalRows[0].professional, employee: professionalRows[0].employee } : null;
   const documentUrl = `/api/saude/tfd/${encodeURIComponent(id)}/documento`;
   const editable = ["SOLICITADA", "GLOSADA", "ALTERACAO"].includes(request.status);
   return <main className="space-y-4 p-4">

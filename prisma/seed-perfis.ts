@@ -4,7 +4,8 @@
  * Seguro para re-executar.
  */
 import 'dotenv/config';
-import { prisma } from "../src/lib/prisma";
+import { db, databaseConnection } from "../src/db/client";
+import { accessProfiles } from "../src/db/schema/identity";
 
 async function main() {
   const perfis = [
@@ -32,10 +33,9 @@ async function main() {
   ];
 
   for (const perfil of perfis) {
-    await prisma.configuracaoPerfil.upsert({
-      where: { codigo: perfil.codigo },
-      create: perfil,
-      update: {
+    await db.insert(accessProfiles).values(perfil).onConflictDoUpdate({
+      target: accessProfiles.codigo,
+      set: {
         nome: perfil.nome,
         descricao: perfil.descricao,
         permissoes: perfil.permissoes,
@@ -54,5 +54,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await databaseConnection.pool.end();
   });

@@ -1,31 +1,17 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import NfseClient from "./NfseClient";
+import { db } from "@/db/client";
+import { readNfsePage } from "@/db/repositories/taxation-pages/nfse";
+import { listFiscalRegistrations } from "@/db/repositories/taxation-pages/lookups";
 export const dynamic = "force-dynamic";
 export default async function NfsePage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
   const unrestricted = isSystemAdministrator(user);
-  const scope = unrestricted ? {} : { OR: user.allowedBudgetUnitIds.map(budgetUnitId => ({ calculationSnapshot: { path: ["budgetUnitId"], equals: budgetUnitId } })) };
-  const scopedFiscal = await prisma.nfseInvoiceData.findMany({ where: unrestricted ? {} : user.allowedBudgetUnitIds.length ? scope : { id: { in: [] } }, select: { invoiceId: true } });
-  const invoiceIds = scopedFiscal.map(row => row.invoiceId);
-  const activities = await prisma.taxServiceActivity.findMany({ where: unrestricted ? {} : { tax: { financialMapping: { defaultBankAccount: { budgetUnitId: { in: user.allowedBudgetUnitIds } } } } }, select: { id: true } });
-  const activityIds = activities.map(row => row.id);
-  const credentialScope = unrestricted ? {} : { serviceActivityId: { in: activityIds } };
-  const scopedProviders = await prisma.nfseCredentialRequest.findMany({ where: credentialScope, select: { taxpayerId: true } });
-  const providerIds = [...new Set(scopedProviders.map(row => row.taxpayerId))];
-  const [activity, rawInvoices, rawTaxpayers, registrations, credentials, events, rpsBatches, dms, occasional, credits] = await Promise.all([
-    prisma.taxServiceActivity.findFirst({ where: { isActive: true, issRate: { not: null }, ...(unrestricted ? {} : { id: { in: activityIds } }) }, orderBy: { name: "asc" } }),
-    prisma.invoice.findMany({ where: unrestricted ? {} : { id: { in: invoiceIds } }, include: { provider: { include: { person: true, company: true } }, taker: { include: { person: true, company: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, include: { person: true, company: true }, orderBy: { createdAt: "asc" } }),
-    prisma.economicRegistration.findMany({ where: { status: "Ativo" }, orderBy: { municipalInsc: "asc" } }),
-    prisma.nfseCredentialRequest.findMany({ where: credentialScope, include: { events: { orderBy: { createdAt: "desc" } } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.nfseEvent.findMany({ where: unrestricted ? {} : { invoiceId: { in: invoiceIds } }, orderBy: { createdAt: "desc" }, take: 400 }),
-    prisma.nfseRpsBatch.findMany({ where: unrestricted ? {} : { providerTaxpayerId: { in: providerIds } }, include: { items: true }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.nfseDmsDeclaration.findMany({ where: unrestricted ? {} : user.allowedBudgetUnitIds.length ? { OR: user.allowedBudgetUnitIds.map(budgetUnitId => ({ payload: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : { id: { in: [] } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.nfseOccasionalRequest.findMany({ where: unrestricted ? {} : { serviceActivityId: { in: activityIds } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.nfseDeductionCredit.findMany({ where: unrestricted ? {} : { taxpayerId: { in: providerIds } }, include: { consumptions: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+  const [{ activity, rawInvoices, rawTaxpayers, credentials, events, rpsBatches, dms, occasional, credits, fiscalRows }, registrations] = await Promise.all([
+    readNfsePage(database, unrestricted ? undefined : user.allowedBudgetUnitIds),
+    listFiscalRegistrations(database, { active: true, order: true }),
   ]);
   if (!activity) throw new Error("Cadastre uma atividade de serviço ativa com alíquota de ISS antes de acessar a NFS-e.");
-  const fiscalRows = await prisma.nfseInvoiceData.findMany({ where: { invoiceId: { in: rawInvoices.map((row) => row.id) } } });
   const fiscalMap = new Map(fiscalRows.map((row) => [row.invoiceId, row]));
   const taxpayers = rawTaxpayers.map((row) => ({ id: row.id, name: row.company?.corporateName ?? row.person?.fullName ?? row.id, document: row.company?.cnpj ?? row.person?.cpf ?? "" }));
   const nameMap = new Map(taxpayers.map((row) => [row.id, row.name]));

@@ -3,7 +3,9 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { buttonVariants } from "@/components/ui/button";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
 import { BadgeCheck, Search, WalletCards } from "lucide-react";
 import Link from "next/link";
 
@@ -61,41 +63,12 @@ export default async function BeneficiosPortalPage({ searchParams }: { searchPar
   const params = await searchParams;
   const q = firstValue(params.q).trim().slice(0, 120);
   const { context, employee } = access;
-  const benefitConfigWhere: Prisma.BenefitConfigWhereInput = q
-    ? {
-        isActive: true,
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { type: { contains: q, mode: "insensitive" } },
-        ],
-      }
-    : { isActive: true };
-  const where: Prisma.PayrollBenefitWhereInput = {
-    employeeId: employee.id,
-    status: "Ativo",
-    benefitConfig: benefitConfigWhere,
-  };
-
-  const total = await context.prisma.payrollBenefit.count({ where });
+  const executor = context.database ?? db;
+  const where = sql`b."employeeId"=${employee.id} AND b.status='Ativo' AND c."isActive" ${q ? sql`AND (strpos(lower(c.name),lower(${q}))>0 OR strpos(lower(c.type),lower(${q}))>0)` : sql``}`;
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "PayrollBenefit" b JOIN "BenefitConfig" c ON c.id=b."benefitConfigId" WHERE ${where}`);
   const page = resolvePage(params.page, total);
-  const benefits = await context.prisma.payrollBenefit.findMany({
-    where,
-    select: {
-      id: true,
-      customValue: true,
-      createdAt: true,
-      benefitConfig: {
-        select: {
-          name: true,
-          type: true,
-          baseValue: true,
-        },
-      },
-    },
-    orderBy: [{ benefitConfig: { name: "asc" } }, { id: "asc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const benefitRows = await portalRows<{ id: string; customValue: number | null; createdAt: Date; name: string; type: string; baseValue: number }>(executor, sql`SELECT b.id,b."customValue",b."createdAt",c.name,c.type,c."baseValue" FROM "PayrollBenefit" b JOIN "BenefitConfig" c ON c.id=b."benefitConfigId" WHERE ${where} ORDER BY c.name,b.id LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
+  const benefits = benefitRows.map(({ name, type, baseValue, ...row }) => ({ ...row, benefitConfig: { name, type, baseValue } }));
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">

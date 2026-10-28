@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "authority": "celeriflow-explicit-sql-v1",
+  "historicalDirectory": "prisma/migrations-ibema",
+  "historicalCount": 156,
+  "historyReport": "docs/drizzle-inventory/migration-history.json",
+  "recoveryReport": "docs/drizzle-inventory/recovery.json",
+  "futureDirectory": "db/migrations",
+  "auditedBaseline": {
+    "manifest": "db/audited-baseline-2026-10-28.json",
+    "manifestDigest": "2b6df6002e92bf0725bae8f5574ea6d00c7d1e9d1b9214900881ddc96d201825"
+  },
+  "historicalTransactionEnvelopes": [
+    "20261009232100_database_guards",
+    "20261009232200_reference_data",
+    "20261010130000_add_master_data_foundation",
+    "20261027110000_sanitation_unit_identifier"
+  ]
+}

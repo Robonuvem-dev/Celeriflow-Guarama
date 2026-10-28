@@ -1,12 +1,13 @@
 import { getTenantContextForModuleOperation, AccessError } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { sstDatabase } from "@/lib/sst/database";
 import { pppReport, functionalSstReport } from "@/lib/sst/closure-service";
 import { PppView, FunctionalView } from "./ReportView";
 type Search = { budgetUnitId?: string; employeeId?: string; from?: string; until?: string; kind?: string; page?: string };
 export default async function ConsolidatedPage({ searchParams }: { searchParams: Promise<Search> }) {
   const context = await getTenantContextForModuleOperation("SST", "issueReports");
   const params = await searchParams;
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
+  const units = await listSstUnits(sstDatabase(context), context);
   const input = { budgetUnitId: params.budgetUnitId || "", employeeId: params.employeeId || "", from: params.from || "", until: params.until || "" };
   const baseHref = `/sst/consolidado?${new URLSearchParams({ ...input, kind: params.kind || "PPP" })}`;
   let ppp: Awaited<ReturnType<typeof pppReport>> | null = null;

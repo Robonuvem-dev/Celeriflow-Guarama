@@ -3,7 +3,9 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import { getPlanningContext, planningInstrumentWhere, planningLineWhere } from "@/lib/planejamento/access";
+import { getPlanningContext } from "@/lib/planejamento/access";
+import { pageImports } from "@/db/repositories/planning-pages/navigation";
+import { pageDatabase } from "@/db/repositories/planning-pages/shared";
 import { planningBasePath, type PlanningJurisdiction } from "@/lib/planejamento/policy";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { PlanningForm } from "./PlanningForm";
@@ -11,13 +13,8 @@ import { PlanningForm } from "./PlanningForm";
 export async function PlanningImportsPage({ jurisdiction, filters }: { jurisdiction: PlanningJurisdiction; filters: { sourceId?: string; page?: string } }) {
   const context = await getPlanningContext(jurisdiction);
   const base = `${planningBasePath(jurisdiction)}/importacoes`;
-  const instruments = await context.prisma.planningInstrument.findMany({ where: planningInstrumentWhere(context), include: { governmentEntity: { select: { name: true } } }, orderBy: [{ startYear: "desc" }, { id: "asc" }], take: 20 });
+  const { instruments, total, page, records } = await pageImports(pageDatabase(context), context, filters);
   const options = instruments.map((row) => ({ id: row.id, name: `${row.governmentEntity.name} · ${row.kind} ${row.code}` }));
-  const where = { ...planningLineWhere(context), instrumentId: filters.sourceId ?? "" };
-  const total = await context.prisma.planningBudgetLine.count({ where });
-  const requested = Number(filters.page ?? 1);
-  const page = Math.min(Number.isSafeInteger(requested) && requested > 0 ? requested : 1, Math.max(1, Math.ceil(total / 20)));
-  const records = await context.prisma.planningBudgetLine.findMany({ where, include: { budgetUnit: { select: { name: true } }, resourceSource: { select: { name: true } } }, orderBy: [{ code: "asc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
   const href = (value: number) => `${base}?${new URLSearchParams({ sourceId: filters.sourceId ?? "", page: String(value) })}`;
   return <PageFrame className="space-y-3 p-3"><PageHeader title="Importação de peças orçamentárias" />
     <form method="get" className="flex flex-wrap gap-2"><select aria-label="Peça de origem para prévia" name="sourceId" defaultValue={filters.sourceId} className="rounded border bg-background p-2 text-sm"><option value="">Selecione a origem</option>{options.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select><button className="rounded border px-3 text-sm">Visualizar prévia</button></form>

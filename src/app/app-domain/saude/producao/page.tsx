@@ -6,7 +6,14 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { captureFactsAction, captureManualFactAction, closeCompetenceAction, generateFileAction, importProductionFileAction, openCompetenceAction, processCompetenceAction, processFileAction, reopenCompetenceAction, resolveCriticismAction, saveProductionTargetAction, saveUnitCeilingAction } from "./actions";
-import type { Prisma } from "@prisma/client";
+import { and, asc, desc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthProductionFacts, healthProductionCompetences, healthProductionCriticisms, healthSusFiles } from "@/db/schema/health-production";
+import { healthSusProcedures, healthSusReferences } from "@/db/schema/health-catalogs";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { healthCareAgreements } from "@/db/schema/health-agreements";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
 import { ProcedureField } from "./laudos/TreatmentReportEditor";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
@@ -17,7 +24,7 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function ProducaoPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const database = context.database ?? db;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
@@ -28,32 +35,33 @@ export default async function ProducaoPage({ searchParams }: { searchParams: Pro
   const cidFilter = (first(params.cid) || "").trim().slice(0, 64);
   const municipalityFilter = (first(params.municipality) || "").trim().slice(0, 120);
   const stateFilter = (first(params.state) || "").trim().slice(0, 2).toUpperCase();
-  const where: Prisma.HealthProductionFactWhereInput = {
-    ...(unitIds ? { unitId: { in: unitIds } } : {}),
-    ...(filter ? { status: filter } : {}),
-    ...(compFilter ? { period: compFilter } : {}),
-    ...(professionalFilter ? { professionalId: professionalFilter } : {}),
-    ...(procedureFilter ? { procedureId: procedureFilter } : {}),
-    ...(cidFilter ? { cidReferenceId: cidFilter } : {}),
-    ...(municipalityFilter ? { municipality: { contains: municipalityFilter, mode: "insensitive" } } : {}),
-    ...(stateFilter ? { state: stateFilter } : {}),
-    ...(q ? { OR: [{ originType: { contains: q, mode: "insensitive" } }, { procedure: { code: { contains: q, mode: "insensitive" } } }, { procedure: { description: { contains: q, mode: "insensitive" } } }, { cidReference: { code: { contains: q, mode: "insensitive" } } }, { municipality: { contains: q, mode: "insensitive" } }] } : {}),
-  };
-  const total = await prisma.healthProductionFact.count({ where });
+  const where = and(
+    unitIds ? inArray(healthProductionFacts.unitId, unitIds) : undefined,
+    filter ? eq(healthProductionFacts.status, filter) : undefined,
+    compFilter ? eq(healthProductionFacts.period, compFilter) : undefined,
+    professionalFilter ? eq(healthProductionFacts.professionalId, professionalFilter) : undefined,
+    procedureFilter ? eq(healthProductionFacts.procedureId, procedureFilter) : undefined,
+    cidFilter ? eq(healthProductionFacts.cidReferenceId, cidFilter) : undefined,
+    municipalityFilter ? sql`strpos(lower(${healthProductionFacts.municipality}), lower(${municipalityFilter})) > 0` : undefined,
+    stateFilter ? eq(healthProductionFacts.state, stateFilter) : undefined,
+    q ? or(sql`strpos(lower(${healthProductionFacts.originType}), lower(${q})) > 0`, sql`strpos(lower(${healthSusProcedures.code}), lower(${q})) > 0`, sql`strpos(lower(${healthSusProcedures.description}), lower(${q})) > 0`, sql`strpos(lower(${healthSusReferences.code}), lower(${q})) > 0`, sql`strpos(lower(${healthProductionFacts.municipality}), lower(${q})) > 0`) : undefined,
+  );
+  const [{ total }] = await database.select({ total: sql<number>`count(*)::int` }).from(healthProductionFacts).leftJoin(healthSusProcedures, eq(healthSusProcedures.id, healthProductionFacts.procedureId)).leftJoin(healthSusReferences, eq(healthSusReferences.id, healthProductionFacts.cidReferenceId)).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [facts, competences, criticisms, files, units, professionals, procedures, cids, municipalities, agreements, patients] = await Promise.all([
-    prisma.healthProductionFact.findMany({ where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { occurredAt: "desc" }, include: { procedure: { select: { code: true } }, cidReference: { select: { code: true } }, unit: true, professional: { select: { id: true } } } }),
-    prisma.healthProductionCompetence.findMany({ orderBy: { period: "desc" }, take: 24 }),
-    prisma.healthProductionCriticism.findMany({ where: { status: "ABERTA", ...(unitIds ? { fact: { unitId: { in: unitIds } } } : {}) }, orderBy: { createdAt: "desc" }, take: 100, include: { fact: { select: { originType: true, originId: true, period: true } } } }),
-    prisma.healthSusFile.findMany({ where: unitIds ? { unitId: { in: unitIds } } : {}, orderBy: { createdAt: "desc" }, take: 100, include: { competence: true, unit: true } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthProfessional.findMany({ where: { isActive: true }, take: 200, select: { id: true, cbo: true } }),
-    prisma.healthSusProcedure.findMany({ where: { isActive: true, isCurrent: true }, take: 300, orderBy: { code: "asc" }, select: { id: true, code: true } }),
-    prisma.healthSusReference.findMany({ where: { kind: "CID", isActive: true, isCurrent: true }, take: 200, orderBy: { code: "asc" }, select: { id: true, code: true } }),
-    prisma.healthProductionFact.findMany({ where: { ...(unitIds ? { unitId: { in: unitIds } } : {}), municipality: { not: null } }, distinct: ["municipality"], take: 100, select: { municipality: true, state: true } }),
-    prisma.healthCareAgreement.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.patient.findMany({ where: unitIds ? { OR: [{ referenceUnitId: { in: unitIds } }, { records: { some: { unitId: { in: unitIds } } } }] } : {}, orderBy: { person: { fullName: "asc" } }, take: 500, select: { id: true, person: { select: { fullName: true } } } }),
+  const [factRows, competences, criticismRows, fileRows, units, professionals, procedures, cids, municipalities, agreements, patients] = await Promise.all([
+    database.select({ fact: healthProductionFacts, procedure: { code: healthSusProcedures.code }, cidReference: { code: healthSusReferences.code }, unit: healthUnits, professional: { id: healthProfessionals.id } }).from(healthProductionFacts).leftJoin(healthSusProcedures, eq(healthSusProcedures.id, healthProductionFacts.procedureId)).leftJoin(healthSusReferences, eq(healthSusReferences.id, healthProductionFacts.cidReferenceId)).leftJoin(healthUnits, eq(healthUnits.id, healthProductionFacts.unitId)).leftJoin(healthProfessionals, eq(healthProfessionals.id, healthProductionFacts.professionalId)).where(where).orderBy(desc(healthProductionFacts.occurredAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    database.select().from(healthProductionCompetences).orderBy(desc(healthProductionCompetences.period)).limit(24),
+    database.select({ criticism: healthProductionCriticisms, fact: { originType: healthProductionFacts.originType, originId: healthProductionFacts.originId, period: healthProductionFacts.period } }).from(healthProductionCriticisms).innerJoin(healthProductionFacts, eq(healthProductionFacts.id, healthProductionCriticisms.factId)).where(and(eq(healthProductionCriticisms.status, "ABERTA"), unitIds ? inArray(healthProductionFacts.unitId, unitIds) : undefined)).orderBy(desc(healthProductionCriticisms.createdAt)).limit(100),
+    database.select({ file: healthSusFiles, competence: healthProductionCompetences, unit: healthUnits }).from(healthSusFiles).innerJoin(healthProductionCompetences, eq(healthProductionCompetences.id, healthSusFiles.competenceId)).leftJoin(healthUnits, eq(healthUnits.id, healthSusFiles.unitId)).where(unitIds ? inArray(healthSusFiles.unitId, unitIds) : undefined).orderBy(desc(healthSusFiles.createdAt)).limit(100),
+    database.select().from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    database.select({ id: healthProfessionals.id, cbo: healthProfessionals.cbo }).from(healthProfessionals).where(eq(healthProfessionals.isActive, true)).limit(200),
+    database.select({ id: healthSusProcedures.id, code: healthSusProcedures.code }).from(healthSusProcedures).where(and(eq(healthSusProcedures.isActive, true), eq(healthSusProcedures.isCurrent, true))).orderBy(asc(healthSusProcedures.code)).limit(300),
+    database.select({ id: healthSusReferences.id, code: healthSusReferences.code }).from(healthSusReferences).where(and(eq(healthSusReferences.kind, "CID"), eq(healthSusReferences.isActive, true), eq(healthSusReferences.isCurrent, true))).orderBy(asc(healthSusReferences.code)).limit(200),
+    database.selectDistinctOn([healthProductionFacts.municipality], { municipality: healthProductionFacts.municipality, state: healthProductionFacts.state }).from(healthProductionFacts).where(and(isNotNull(healthProductionFacts.municipality), unitIds ? inArray(healthProductionFacts.unitId, unitIds) : undefined)).limit(100),
+    database.select({ id: healthCareAgreements.id, name: healthCareAgreements.name }).from(healthCareAgreements).where(eq(healthCareAgreements.isActive, true)).orderBy(asc(healthCareAgreements.name)),
+    database.select({ id: patientTable.id, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(unitIds ? or(inArray(patientTable.referenceUnitId, unitIds), sql`EXISTS (SELECT 1 FROM "MedicalRecord" r WHERE r."patientId"=${patientTable.id} AND ${inArray(sql`r."unitId"`, unitIds)})`) : undefined).orderBy(asc(people.fullName)).limit(500),
   ]);
+  const facts = factRows.map(row => ({ ...row.fact, procedure: row.procedure, cidReference: row.cidReference, unit: row.unit, professional: row.professional })), criticisms = criticismRows.map(row => ({ ...row.criticism, fact: row.fact })), files = fileRows.map(row => ({ ...row.file, competence: row.competence, unit: row.unit }));
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

@@ -4,6 +4,10 @@ import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { BriefcaseBusiness, Building2, FileText, UserRound } from "lucide-react";
 import Link from "next/link";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
+import { portalEmployeeProfile } from "@/db/repositories/portal-servidor/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -49,38 +53,16 @@ export default async function FichaFuncionalPage({ searchParams }: { searchParam
   if (access.status !== "AVAILABLE") return <PortalUnavailable />;
 
   const { context, employee } = access;
+  const executor = context.database ?? db;
   const [profile, totalActs] = await Promise.all([
-    context.prisma.employee.findUnique({
-      where: { id: employee.id },
-      select: {
-        name: true,
-        registration: true,
-        isActive: true,
-        contractedHours: true,
-        role: { select: { name: true } },
-        department: { select: { name: true } },
-        secretariat: { select: { name: true } },
-      },
-    }),
-    context.prisma.personnelAct.count({ where: { employeeId: employee.id } }),
+    portalEmployeeProfile(executor, employee.id),
+    portalCount(executor, sql`SELECT count(*) FROM "PersonnelAct" WHERE "employeeId"=${employee.id}`),
   ]);
 
   if (!profile) return <PortalUnavailable />;
 
   const page = resolvePage((await searchParams).page, totalActs);
-  const acts = await context.prisma.personnelAct.findMany({
-    where: { employeeId: employee.id },
-    select: {
-      id: true,
-      type: true,
-      actNumber: true,
-      date: true,
-      createdAt: true,
-    },
-    orderBy: [{ date: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const acts = await portalRows<{ id: string; type: string; actNumber: string | null; date: Date; createdAt: Date }>(executor, sql`SELECT id,type,"actNumber",date,"createdAt" FROM "PersonnelAct" WHERE "employeeId"=${employee.id} ORDER BY date DESC,id DESC LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
 
   const lotacao = profile.department?.name || profile.secretariat?.name || "Não informada";
 

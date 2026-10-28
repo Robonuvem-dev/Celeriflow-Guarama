@@ -39,11 +39,10 @@ export async function POST(req: Request) {
 
     const parsedData = leadSchema.parse(body);
 
-    // Importação dinâmica do Prisma — só carrega quando a rota é chamada em runtime
-    const { prisma } = await import("@/lib/prisma");
+    // Load persistence only when the validated request reaches the write.
+    const [{ db }, { insertLead }] = await Promise.all([import("@/db/client"), import("@/db/repositories/platform/leads")]);
 
-    const lead = await prisma.lead.create({
-      data: {
+    const lead = await insertLead(db, {
         name: parsedData.name,
         role: parsedData.role,
         organization: parsedData.organization,
@@ -54,7 +53,6 @@ export async function POST(req: Request) {
         moduleInterest: parsedData.moduleInterest,
         message: parsedData.message,
         consent: parsedData.consent,
-      },
     });
 
     return NextResponse.json({ success: true, lead }, { status: 201 });

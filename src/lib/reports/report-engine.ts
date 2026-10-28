@@ -1,4 +1,6 @@
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { db } from "@/db/client";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { auditEventTypes } from "@/lib/contracts/audit";
 import type { AppContext } from "@/lib/platform/tenant-context";
 
 export const reportFormats = ["preview", "pdf", "csv", "xlsx", "txt", "print"] as const;
@@ -52,7 +54,7 @@ export async function writeReportIssuanceAudit<Input, Dataset extends ReportData
   if (execution.format === "preview") return;
 
   const target = execution.definition.auditTarget(execution.dataset);
-  await writeAuditEvent(execution.context.prisma, {
+  await insertAuditEvent(execution.context.database ?? db, {
     actorUsuarioId: execution.context.user.id,
     eventType: auditEventTypes.reportIssued,
     targetType: target.targetType,

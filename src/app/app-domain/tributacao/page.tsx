@@ -3,20 +3,15 @@ import Link from "next/link";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { readTaxationDashboard } from "@/db/repositories/taxation-pages/overview";
 
 export const dynamic = "force-dynamic";
 
 export default async function TributacaoDashboardPage() {
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const taxpayersCount = await prisma.taxpayer.count();
-  const guidesCount = await prisma.taxGuide.count();
-  const economyCount = await prisma.economicRegistration.count();
-
-  const paidPayments = await prisma.taxPayment.aggregate({
-    where: { status: "Confirmado" },
-    _sum: { amountPaidDecimal: true }
-  });
-  const totalArrecadado = Number(paidPayments._sum.amountPaidDecimal ?? 0);
+  const context = await getTenantContextForModule("TRIBUTACAO");
+  const { taxpayersCount, guidesCount, economyCount, paidTotal } = await readTaxationDashboard(context.database ?? db);
+  const totalArrecadado = Number(paidTotal ?? 0);
 
   const stats = [
     { title: "Arrecadação do Mês", value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalArrecadado), icon: BarChart3, href: "/tributacao/guias", color: "text-emerald-600", bg: "bg-emerald-100" },

@@ -4,7 +4,9 @@ import { AccessError } from "@/lib/platform/tenant-context";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { buildOwnPersonalReport, personalReportQuerySchema } from "@/lib/portal-servidor/personal-reports";
 import { renderHrReport } from "@/lib/rh/report-service";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { db } from "@/db/client";
 
 export const runtime = "nodejs";
 
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
     const input = personalReportQuerySchema.parse(values);
     const report = await buildOwnPersonalReport(access.context, input);
     const file = await renderHrReport(report, input.format);
-    await writeAuditEvent(access.context.prisma, {
+    await writeAuditEvent(access.context.database ?? db, {
       actorUsuarioId: access.context.user.id,
       eventType: auditEventTypes.reportIssued,
       targetType: "EMPLOYEE_PERSONAL_REPORT",

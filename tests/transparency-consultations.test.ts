@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { Decimal } from "../src/db/decimal";
+import { eq } from "drizzle-orm";
+import { createProcessesPortalsDatabase } from "./helpers/processes-portals-database";
+import { transparencyCitizenRequests } from "../src/db/schema/citizen-channels";
+import { transparencyPublications } from "../src/db/schema/transparency";
 import { getTransparencyCollection } from "../src/lib/transparencia/consultation-catalog";
 import { parseTransparencyQuery, filterPublicDataset, publicQueryHref } from "../src/lib/transparencia/query-contract";
 import { exampleTransparencyDataset } from "../src/lib/transparencia/example-provider";
@@ -15,7 +19,6 @@ import { isPublicationPublic } from "../src/lib/transparencia/publication-policy
 import { publicPublicationValues } from "../src/lib/transparencia/document-provider";
 import { monthlyTransparencyTotals } from "../src/lib/transparencia/dashboard";
 import { createCitizenRequest,consultCitizenRequest } from "../src/lib/transparencia/citizen-service";
-import type {PrismaClient} from "@prisma/client";
 import {isSameOriginRequest} from "../src/lib/transparencia/request-origin";
 import {publishedTransparencyCatalog,runTransparencyConsultation} from "../src/lib/transparencia/consultation-service";
 
@@ -25,17 +28,17 @@ const query = parseTransparencyQuery(new URLSearchParams("source=EXEMPLO&year=20
 test("paginação intermediária conserva totais e exporta mais de 125 registros", () => {
   const dataset = exampleTransparencyDataset(collection, query), result = filterPublicDataset(collection, dataset, query);
   assert.equal(result.total, 180); assert.equal(result.records.length, 20); assert.equal(result.page, 3);
-  assert.equal(result.totals.committed, dataset.records.reduce((sum, row) => sum.add(String(row.values.committed)), new Prisma.Decimal(0)).toFixed(2));
+  assert.equal(result.totals.committed, dataset.records.reduce((sum, row) => sum.add(String(row.values.committed)), new Decimal(0)).toFixed(2));
   const csv = exportTransparencyCsv(collection, dataset, query);
   assert.equal(csv.trim().split("\r\n").length, 181);
-  assert.ok(new Prisma.Decimal(String(result.rows[0].values.committed)).gte(String(result.rows[1].values.committed)));
+  assert.ok(new Decimal(String(result.rows[0].values.committed)).gte(String(result.rows[1].values.committed)));
 });
 
 test("filtros combinados, entidade e URL compartilhada usam o mesmo conjunto", () => {
   const filtered = parseTransparencyQuery(new URLSearchParams("source=EXEMPLO&entity=consolidado&year=2026&f.unit=Saúde&from=2026-01-01&until=2026-06-30&f.minimum=1000"));
   const result = filterPublicDataset(collection, exampleTransparencyDataset(collection, filtered), filtered);
   assert.ok(result.total > 0);
-  assert.ok(result.rows.every(row => row.entity === "prefeitura" && row.values.unit === "Saúde" && String(row.values.date) <= "2026-06-30" && new Prisma.Decimal(String(row.values.committed)).gte(1000)));
+  assert.ok(result.rows.every(row => row.entity === "prefeitura" && row.values.unit === "Saúde" && String(row.values.date) <= "2026-06-30" && new Decimal(String(row.values.committed)).gte(1000)));
   assert.deepEqual(parseTransparencyQuery(new URLSearchParams(publicQueryHref(filtered))), filtered);
 });
 
@@ -75,7 +78,7 @@ test("todas as famílias têm cenários próprios nos dois Poderes e consolidado
 
 test("remuneração usa competência, não data de admissão; diária conserva unitário × quantidade",()=>{
  const collection=getTransparencyCollection("servidores")!,input={...query,from:"2026-07-01",until:"2026-07-31",sort:""};const data=exampleTransparencyDataset(collection,input);data.records.forEach(row=>{row.values.date="2001-01-01";});const result=filterPublicDataset(collection,data,input);assert.equal(result.total,15);assert.ok(result.rows.every(row=>row.values.competence==="07/2026"));
- const diarias=exampleTransparencyDataset(getTransparencyCollection("diarias")!,query);assert.ok(diarias.records.every(row=>new Prisma.Decimal(String(row.values.unitPrice)).mul(String(row.values.quantity)).eq(String(row.values.value))));
+ const diarias=exampleTransparencyDataset(getTransparencyCollection("diarias")!,query);assert.ok(diarias.records.every(row=>new Decimal(String(row.values.unitPrice)).mul(String(row.values.quantity)).eq(String(row.values.value))));
 });
 
 test("arquivos PDF/XLSX/DOCX/TXT são binários reais e contêm o conjunto completo",async()=>{
@@ -100,13 +103,16 @@ test("gráfico mensal não transforma data/valor ausente em zero",()=>{
 });
 
 test("solicitação usa chave privada hasheada; resposta nunca inclui identidade ou narrativa",async()=>{
- let stored:Record<string,unknown>|null=null;
- const fake={configuracaoParametroInstancia:{findFirst:async()=>null},transparencyCitizenRequest:{create:async({data}:{data:Record<string,unknown>})=>{stored=data;return data;},findFirst:async({where,select}:{where:Record<string,unknown>;select:Record<string,unknown>})=>{assert.ok(!("name"in select)&&!("email"in select)&&!("message"in select)&&!("accessHash"in select));if(!stored||stored.accessHash!==where.accessHash||stored.protocol!==where.protocol)return null;return {protocol:stored.protocol,status:"RESPONDIDO",response:"Resposta reservada",appeals:[],nativeTicket:null,nativeOmbudsman:null};}}};
-  const channel={...fake,processType:{upsert:async()=>({id:"channel-type",isActive:true})},subject:{upsert:async()=>({id:"channel-subject",isActive:true})},processSequence:{upsert:async()=>({nextNumber:2})},process:{create:async()=>({id:"channel-process",protocolNumber:"PROC-TEST-000001"})}};
-  const db={...channel,$transaction:async(callback:(tx:unknown)=>unknown)=>callback(channel)} as unknown as PrismaClient;
- const receipt=await createCitizenRequest(db,{type:"ESIC",name:"Solicitante de teste",email:"teste@example.test",subject:"Solicitação de teste",message:"Solicito informação pública para testar o acompanhamento."});
- assert.ok(stored);assert.notEqual(stored!["accessHash"],receipt.token);assert.equal(await consultCitizenRequest(db,receipt.protocol,"0".repeat(64)),null);assert.equal((await consultCitizenRequest(db,receipt.protocol,receipt.token))?.status,"RESPONDIDO");
- await assert.rejects(createCitizenRequest(db,{type:"ESIC",subject:"Teste",message:"Pedido sem nome e sem email para conferência."}));
+ const {connection,close}=await createProcessesPortalsDatabase();const db=connection.db;
+ try {
+  const receipt=await createCitizenRequest(connection,{type:"ESIC",name:"Solicitante de teste",email:"teste@example.test",subject:"Solicitação de teste",message:"Solicito informação pública para testar o acompanhamento."});
+  const [stored]=await db.select().from(transparencyCitizenRequests).where(eq(transparencyCitizenRequests.protocol,receipt.protocol));
+  assert.notEqual(stored.accessHash,receipt.token);assert.equal(await consultCitizenRequest(db,receipt.protocol,"0".repeat(64)),null);
+  await db.update(transparencyCitizenRequests).set({status:"RESPONDIDO",response:"Resposta reservada",respondedAt:new Date()}).where(eq(transparencyCitizenRequests.id,stored.id));
+  const response=await consultCitizenRequest(db,receipt.protocol,receipt.token);assert.equal(response?.status,"RESPONDIDO");
+  for(const key of ["name","email","message","accessHash","nativeTicket","nativeOmbudsman","id"])assert.ok(!(key in response!));
+  await assert.rejects(createCitizenRequest(connection,{type:"ESIC",subject:"Teste",message:"Pedido sem nome e sem email para conferência."}));
+ } finally {await close();}
 });
 
 test("origem usa Host público mesmo com URL normalizada pelo servidor, sem aceitar outro domínio",()=>{
@@ -118,7 +124,10 @@ test("origem usa Host público mesmo com URL normalizada pelo servidor, sem acei
 test("nova consulta documental cria grupo, consulta a biblioteca e deixa de publicar quando desativada",async()=>{
  const settings=defaultTransparencySettings();settings.customQueries=[{slug:"doc-saude-planos",title:"Planos de Saúde",group:"Saúde e Conselhos",description:"Documentos setoriais",enabled:true}];
  assert.ok(publishedTransparencyCatalog(settings).some(collection=>collection.slug==="doc-saude-planos"&&collection.group==="Saúde e Conselhos"));
- const db={transparencyPublication:{findMany:async({where}:{where:Record<string,unknown>})=>{assert.equal(where.collectionSlug,"doc-saude-planos");return [{publicKey:"arquivo-publico",entity:"prefeitura",year:2026,title:"Plano de teste",group:"PMS",publishedAt:new Date(),updatedAt:new Date(),values:{},contentType:"application/pdf",referencePeriod:"2026–2029",version:1,fileUrl:"private-blob"}];}}} as unknown as PrismaClient;
- const result=await runTransparencyConsultation(db,"doc-saude-planos",{...query,source:"DOCUMENTOS",sort:""},settings);assert.equal(result.total,1);assert.equal(result.records[0].values.name,"Plano de teste");
- settings.customQueries[0].enabled=false;await assert.rejects(runTransparencyConsultation(db,"doc-saude-planos",query,settings));
+ const {connection,close}=await createProcessesPortalsDatabase();const db=connection.db;
+ try {
+  await db.insert(transparencyPublications).values({publicKey:"arquivo-publico",collectionSlug:"doc-saude-planos",entity:"prefeitura",year:2026,title:"Plano de teste",group:"PMS",status:"PUBLISHED",publishedAt:new Date(),values:{},contentType:"application/pdf",referencePeriod:"2026–2029",version:1,linkUrl:"https://example.test/plano"});
+  const result=await runTransparencyConsultation(db,"doc-saude-planos",{...query,source:"DOCUMENTOS",sort:""},settings);assert.equal(result.total,1);assert.equal(result.records[0].values.name,"Plano de teste");
+  settings.customQueries[0].enabled=false;await assert.rejects(runTransparencyConsultation(db,"doc-saude-planos",query,settings));
+ } finally {await close();}
 });

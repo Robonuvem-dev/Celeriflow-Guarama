@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { BarChart3, ShieldCheck } from "lucide-react";
-import { getAttendanceContext, ombudsmanScope, ticketScope } from "@/lib/attendance/access";
+import { getAttendanceContext } from "@/lib/attendance/access";
+import { and, asc, count, desc, eq, gte, isNotNull, lt } from "drizzle-orm";
+import { db } from "@/db/client";
+import { tickets, ombudsmans, supportChannels } from "@/db/schema/attendance-portals";
+import { departments as departmentTable, employees as employeeTable } from "@/db/schema/administration";
+import { ticketScopeCondition, ombudsmanScopeCondition } from "@/db/repositories/attendance-portals/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -23,27 +28,25 @@ export default async function AtendimentoReportsPage({ searchParams }: { searchP
   const context = await getAttendanceContext();
   const startDate = reportDate(start);
   const endDate = reportDate(end, true);
-  const dateFilter = startDate || endDate ? { createdAt: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lt: endDate } : {}) } } : {};
-  const departmentFilter = context.attendanceAccess.isManager && departmentId ? { departmentId } : {};
-  const ticketsWhere = { AND: [ticketScope(context), dateFilter, departmentFilter] };
-  const ombudsmanWhere = { AND: [ombudsmanScope(context), dateFilter, departmentFilter] };
+  const ticketsWhere = and(ticketScopeCondition(context), startDate ? gte(tickets.createdAt, startDate) : undefined, endDate ? lt(tickets.createdAt, endDate) : undefined, context.attendanceAccess.isManager && departmentId ? eq(tickets.departmentId, departmentId) : undefined);
+  const ombudsmanWhere = and(ombudsmanScopeCondition(context), startDate ? gte(ombudsmans.createdAt, startDate) : undefined, endDate ? lt(ombudsmans.createdAt, endDate) : undefined, context.attendanceAccess.isManager && departmentId ? eq(ombudsmans.departmentId, departmentId) : undefined);
   const now = new Date();
   const deadlineWarning = new Date(now.getTime() + 48 * 60 * 60 * 1000);
   const [ticketStatus, ticketDepartments, ticketChannels, ticketPriorities, ticketResponsibles, ticketDeadlines, ombudsmanTypes, ombudsmanStatus, ombudsmanDepartments, ombudsmanResponsibles, ombudsmanCompletions, departments, employees, channels] = await Promise.all([
-    context.prisma.ticket.groupBy({ by: ["status"], where: ticketsWhere, _count: { _all: true }, orderBy: { _count: { status: "desc" } } }),
-    context.prisma.ticket.groupBy({ by: ["departmentId"], where: ticketsWhere, _count: { _all: true }, orderBy: { _count: { departmentId: "desc" } } }),
-    context.prisma.ticket.groupBy({ by: ["channelId"], where: ticketsWhere, _count: { _all: true }, orderBy: { _count: { channelId: "desc" } } }),
-    context.prisma.ticket.groupBy({ by: ["priority"], where: ticketsWhere, _count: { _all: true }, orderBy: { _count: { priority: "desc" } } }),
-    context.prisma.ticket.groupBy({ by: ["resolvedById"], where: { AND: [ticketsWhere, { resolvedAt: { not: null } }] }, _count: { _all: true }, orderBy: { _count: { resolvedById: "desc" } } }),
-    context.prisma.ticket.findMany({ where: ticketsWhere, select: { createdAt: true, dueAt: true, resolvedAt: true, concludedAt: true } }),
-    context.prisma.ombudsman.groupBy({ by: ["type"], where: ombudsmanWhere, _count: { _all: true }, orderBy: { _count: { type: "desc" } } }),
-    context.prisma.ombudsman.groupBy({ by: ["status"], where: ombudsmanWhere, _count: { _all: true }, orderBy: { _count: { status: "desc" } } }),
-    context.prisma.ombudsman.groupBy({ by: ["departmentId"], where: ombudsmanWhere, _count: { _all: true }, orderBy: { _count: { departmentId: "desc" } } }),
-    context.prisma.ombudsman.groupBy({ by: ["concludedById"], where: { AND: [ombudsmanWhere, { concludedAt: { not: null } }] }, _count: { _all: true }, orderBy: { _count: { concludedById: "desc" } } }),
-    context.prisma.ombudsman.findMany({ where: ombudsmanWhere, select: { createdAt: true, concludedAt: true } }),
-    context.prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    context.prisma.employee.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
-    context.prisma.supportChannel.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
+    db.select({ status: tickets.status, _count: { _all: count() } }).from(tickets).where(ticketsWhere).groupBy(tickets.status).orderBy(desc(count(tickets.status))),
+    db.select({ departmentId: tickets.departmentId, _count: { _all: count() } }).from(tickets).where(ticketsWhere).groupBy(tickets.departmentId).orderBy(desc(count(tickets.departmentId))),
+    db.select({ channelId: tickets.channelId, _count: { _all: count() } }).from(tickets).where(ticketsWhere).groupBy(tickets.channelId).orderBy(desc(count(tickets.channelId))),
+    db.select({ priority: tickets.priority, _count: { _all: count() } }).from(tickets).where(ticketsWhere).groupBy(tickets.priority).orderBy(desc(count(tickets.priority))),
+    db.select({ resolvedById: tickets.resolvedById, _count: { _all: count() } }).from(tickets).where(and(ticketsWhere, isNotNull(tickets.resolvedAt))).groupBy(tickets.resolvedById).orderBy(desc(count(tickets.resolvedById))),
+    db.select({ createdAt: tickets.createdAt, dueAt: tickets.dueAt, resolvedAt: tickets.resolvedAt, concludedAt: tickets.concludedAt }).from(tickets).where(ticketsWhere),
+    db.select({ type: ombudsmans.type, _count: { _all: count() } }).from(ombudsmans).where(ombudsmanWhere).groupBy(ombudsmans.type).orderBy(desc(count(ombudsmans.type))),
+    db.select({ status: ombudsmans.status, _count: { _all: count() } }).from(ombudsmans).where(ombudsmanWhere).groupBy(ombudsmans.status).orderBy(desc(count(ombudsmans.status))),
+    db.select({ departmentId: ombudsmans.departmentId, _count: { _all: count() } }).from(ombudsmans).where(ombudsmanWhere).groupBy(ombudsmans.departmentId).orderBy(desc(count(ombudsmans.departmentId))),
+    db.select({ concludedById: ombudsmans.concludedById, _count: { _all: count() } }).from(ombudsmans).where(and(ombudsmanWhere, isNotNull(ombudsmans.concludedAt))).groupBy(ombudsmans.concludedById).orderBy(desc(count(ombudsmans.concludedById))),
+    db.select({ createdAt: ombudsmans.createdAt, concludedAt: ombudsmans.concludedAt }).from(ombudsmans).where(ombudsmanWhere),
+    db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(eq(departmentTable.isActive, true)).orderBy(asc(departmentTable.name)),
+    db.select({ id: employeeTable.id, name: employeeTable.name }).from(employeeTable).where(eq(employeeTable.isActive, true)),
+    db.select({ id: supportChannels.id, name: supportChannels.name }).from(supportChannels).where(eq(supportChannels.isActive, true)),
   ]);
   const departmentNames = new Map(departments.map((department) => [department.id, department.name]));
   const employeeNames = new Map(employees.map((employee) => [employee.id, employee.name]));

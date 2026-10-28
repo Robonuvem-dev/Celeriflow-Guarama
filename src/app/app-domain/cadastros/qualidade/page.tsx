@@ -7,6 +7,8 @@ import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { RunConsistencyButton } from "./RunConsistencyButton";
 import { IdentityReconciliationForm } from "./IdentityReconciliationForm";
+import { db } from "@/db/client";
+import { loadConsistencyIssues, loadConsistencyRuns } from "@/db/repositories/registry/overview";
 
 export const dynamic = "force-dynamic";
 
@@ -18,31 +20,10 @@ export default async function QualidadePage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(firstParam(params.page) || "1", 10) || 1);
   const requestedRunId = firstParam(params.run);
-  const { prisma, user } = await getTenantContextForModule("CADASTROS");
-  const [runs, selectedRun] = await Promise.all([
-    prisma.masterDataConsistencyRun.findMany({
-      where: { area: "CADASTROS" },
-      include: { _count: { select: { issues: true } } },
-      orderBy: { startedAt: "desc" },
-      take: 8,
-    }),
-    prisma.masterDataConsistencyRun.findFirst({
-      where: { area: "CADASTROS", ...(requestedRunId ? { id: requestedRunId } : {}) },
-      orderBy: { startedAt: "desc" },
-      select: { id: true },
-    }),
-  ]);
+  const { database, user } = await getTenantContextForModule("CADASTROS");
+  const { runs, selectedRun } = await loadConsistencyRuns(database ?? db, requestedRunId);
   const runId = selectedRun?.id;
-  const issueWhere = { area: "CADASTROS", runId: runId || "__none__" };
-  const [issues, total] = await Promise.all([
-    prisma.masterDataConsistencyIssue.findMany({
-      where: issueWhere,
-      orderBy: [{ severity: "asc" }, { detectedAt: "desc" }],
-      skip: (page - 1) * 20,
-      take: 20,
-    }),
-    prisma.masterDataConsistencyIssue.count({ where: issueWhere }),
-  ]);
+  const { issues, total } = await loadConsistencyIssues(database ?? db, runId || "__none__", page);
   const runQuery = runId ? `&run=${encodeURIComponent(runId)}` : "";
 
   return (

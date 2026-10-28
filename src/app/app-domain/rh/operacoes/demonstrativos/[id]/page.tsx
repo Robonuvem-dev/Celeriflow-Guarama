@@ -3,13 +3,17 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { assertPayrollBudgetScope } from "@/lib/rh/payroll-access";
 import { getPayrollStatement } from "@/lib/rh/statement-service";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
+import { db } from "@/db/client";
+import { readPersonnelStatementSource } from "@/db/repositories/personnel-pages/workforce";
 
 export const dynamic = "force-dynamic";
 export default async function StatementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"); const { id } = await params;
-  const source = await context.prisma.hrPayrollStatement.findUniqueOrThrow({ where: { id }, select: { run: { select: { id: true, payrollId: true } } } });
+  const executor = context.database ?? db;
+   const source = await readPersonnelStatementSource(executor, id);
+  if (!source) throw new Error("Demonstrativo indisponível.");
   await assertPayrollBudgetScope(context, source.run.payrollId);
-  const statement = await getPayrollStatement(context.prisma, id);
+  const statement = await getPayrollStatement(executor, id);
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title={`${statement.contract.employee.name} · ${statement.competence}`} description={`${statement.payrollType} · matrícula ${statement.contract.registration} · ${statement.mode} · ${statement.scope}`} action={<Link href={`/rh/operacoes/calculos/${source.run.id}`}>Voltar ao cálculo</Link>} />
     <p className="rounded border bg-white p-3 text-sm">Bruto R$ {statement.gross} · descontos R$ {statement.deductions} · líquido R$ {statement.net} · encargos R$ {statement.employer}</p>

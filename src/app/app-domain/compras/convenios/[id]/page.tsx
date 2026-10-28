@@ -11,74 +11,16 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { calculateInclusiveContractTermDays } from "@/lib/compras/contract-lifecycle";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { InstrumentLifecyclePanel } from "../../contratos/InstrumentLifecyclePanel";
+import { databaseConnection } from "@/db/client";
+import { loadCovenantDetail, loadInstrumentSelectors } from "@/db/repositories/procurement/instruments";
 
 export default async function ConvenioDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
+  await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const covenant = await prisma.covenant.findUnique({
-    where: { id },
-    include: {
-      responsibilityGroups: {
-        orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, description: true, status: true, _count: { select: { members: true } } },
-      },
-      instrumentParties: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          responsibilityGroup: { select: { id: true, name: true } },
-          supplier: { select: { id: true, company: { select: { corporateName: true, tradeName: true } }, person: { select: { fullName: true } } } },
-          person: { select: { id: true, fullName: true } },
-          company: { select: { id: true, corporateName: true, tradeName: true } },
-          employee: { select: { id: true, name: true, registration: true } },
-        },
-      },
-      measurements: {
-        orderBy: { number: "asc" },
-        include: {
-          document: { select: { id: true, title: true } },
-          items: {
-            orderBy: { createdAt: "asc" },
-            include: {
-              purchaseProcessItem: { select: { id: true, customName: true, catalogItem: { select: { name: true } }, material: { select: { name: true } } } },
-              purchaseReceiptItem: { select: { id: true, purchaseReceipt: { select: { number: true } } } },
-            },
-          },
-        },
-      },
-      installments: {
-        orderBy: { number: "asc" },
-        include: { payment: { select: { orderNumber: true, date: true, value: true, valueDecimal: true, status: true } } },
-      },
-      commitments: {
-        where: { status: { in: ["Emitido", "Liquidado", "Pago"] } },
-        select: {
-          number: true,
-          date: true,
-          status: true,
-          value: true,
-          valueDecimal: true,
-          movements: { select: { type: true, valueDecimal: true } },
-          settlements: { where: { status: "Liquidado" }, select: { value: true, valueDecimal: true } },
-          payments: { where: { status: { in: ["Pago", "Paga"] } }, select: { value: true, valueDecimal: true } },
-        },
-      },
-    },
-  });
+  const covenant = await loadCovenantDetail(databaseConnection.db, id);
   if (!covenant) notFound();
 
-  const [events, employees, suppliers, people, companies, documents] = await Promise.all([
-    prisma.procurementLifecycleEvent.findMany({
-      where: { sourceType: "COVENANT", sourceId: covenant.id },
-      include: { actorUsuario: { select: { nome: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.employee.findMany({ where: { isActive: true }, select: { id: true, name: true, registration: true, role: { select: { name: true } } }, orderBy: { name: "asc" } }),
-    prisma.supplier.findMany({ where: { status: "Ativo" }, select: { id: true, company: { select: { corporateName: true, tradeName: true } }, person: { select: { fullName: true } } }, orderBy: { createdAt: "desc" } }),
-    prisma.person.findMany({ where: { status: "Ativo" }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } }),
-    prisma.company.findMany({ where: { status: "Ativo" }, select: { id: true, corporateName: true, tradeName: true }, orderBy: { corporateName: "asc" } }),
-    prisma.document.findMany({ where: { status: "Válido", documentType: { not: "Modelo" } }, select: { id: true, title: true }, orderBy: { createdAt: "desc" }, take: 100 }),
-  ]);
+  const { events, employees, suppliers, people, companies, documents } = await loadInstrumentSelectors(databaseConnection.db, { kind: "COVENANT", id: covenant.id });
 
   const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const termDays = calculateInclusiveContractTermDays(covenant.startDate, covenant.endDate);

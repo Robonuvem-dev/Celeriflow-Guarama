@@ -1,5 +1,12 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, ilike, inArray, isNotNull, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { vaccinationRecords as records, vaccines as vaccineTable } from "@/db/schema/health-vaccination";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { employees } from "@/db/schema/administration";
+import { healthProfessionals, healthUnits } from "@/db/schema/health-workforce";
+import { pharmacyPatients } from "@/db/repositories/health-pharmacy-pages/common";
 import { Syringe } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -19,7 +26,7 @@ const positivePage = (value: string | undefined) => value && /^\d+$/.test(value)
 
 export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const db = context.database;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   if (first(params.patientId)) {
@@ -30,16 +37,20 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
   }
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 120);
-  const itemWhere: Prisma.VaccinationRecordWhereInput = { ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(filter ? { vaccine: { name: filter } } : {}), ...(q ? { OR: [{ patient: { person: { fullName: { contains: q, mode: "insensitive" } } } }, { vaccine: { name: { contains: q, mode: "insensitive" } } }, { professional: { employee: { person: { fullName: { contains: q, mode: "insensitive" } } } } }, { lotNumber: { contains: q, mode: "insensitive" } }] } : {}) };
-  const total = await prisma.vaccinationRecord.count({ where: itemWhere });
+  const professionalPerson = alias(people, "vaccination_professional_person");
+  const scope = unitIds ? inArray(records.unitId, unitIds) : undefined;
+  const itemWhere = and(scope, filter ? eq(vaccineTable.name, filter) : undefined, q ? or(ilike(people.fullName, `%${q}%`), ilike(vaccineTable.name, `%${q}%`), ilike(professionalPerson.fullName, `%${q}%`), ilike(records.lotNumber, `%${q}%`)) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(records).innerJoin(patientTable, eq(patientTable.id, records.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(vaccineTable, eq(vaccineTable.id, records.vaccineId)).innerJoin(healthProfessionals, eq(healthProfessionals.id, records.professionalId)).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).leftJoin(professionalPerson, eq(professionalPerson.id, employees.personId)).where(itemWhere);
   const page = Math.min(positivePage(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [items, exportItems, vaccines, patients, applicationOptions] = await Promise.all([
-    prisma.vaccinationRecord.findMany({ where: itemWhere, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { createdAt: "desc" }, include: { patient: { include: { person: true } }, vaccine: true, professional: { include: { employee: { include: { person: true } } } }, unit: true } }),
-    prisma.vaccinationRecord.findMany({ where: unitIds ? { unitId: { in: unitIds } } : {}, take: 500, orderBy: { createdAt: "desc" }, include: { patient: { include: { person: true } }, vaccine: true } }),
-    prisma.vaccine.findMany({ where: { isActive: true, materialId: { not: null } }, orderBy: { name: "asc" } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, orderBy: { person: { fullName: "asc" } }, take: 500, include: { person: true } }),
+  const [itemRows, exportRows, vaccines, patients, applicationOptions] = await Promise.all([
+    db.select({ record: records, patient: patientTable, person: people, vaccine: vaccineTable, professional: healthProfessionals, employee: employees, professionalPerson, unit: healthUnits }).from(records).innerJoin(patientTable, eq(patientTable.id, records.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(vaccineTable, eq(vaccineTable.id, records.vaccineId)).innerJoin(healthProfessionals, eq(healthProfessionals.id, records.professionalId)).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).leftJoin(professionalPerson, eq(professionalPerson.id, employees.personId)).innerJoin(healthUnits, eq(healthUnits.id, records.unitId)).where(itemWhere).orderBy(desc(records.createdAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    db.select({ record: records, patient: patientTable, person: people, vaccine: vaccineTable }).from(records).innerJoin(patientTable, eq(patientTable.id, records.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(vaccineTable, eq(vaccineTable.id, records.vaccineId)).where(scope).orderBy(desc(records.createdAt)).limit(500),
+    db.select().from(vaccineTable).where(and(eq(vaccineTable.isActive, true), isNotNull(vaccineTable.materialId))).orderBy(asc(vaccineTable.name)),
+    pharmacyPatients(db, unitIds, undefined, 500),
     vaccinationFormOptions(context),
   ]);
+  const items = itemRows.map(row => ({ ...row.record, patient: { ...row.patient, person: row.person }, vaccine: row.vaccine, professional: { ...row.professional, employee: { ...row.employee, person: row.professionalPerson } }, unit: row.unit }));
+  const exportItems = exportRows.map(row => ({ ...row.record, patient: { ...row.patient, person: row.person }, vaccine: row.vaccine }));
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

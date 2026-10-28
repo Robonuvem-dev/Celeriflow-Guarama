@@ -1,15 +1,17 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import { modules as moduleConfigurations } from "@/db/schema/identity";
+import { planningDatabase, type PlanningDatabaseContext } from "./database";
 import { AccessError, canPerformModuleOperation, canViewModule, getTenantContextForModule, isSystemAdministrator, type AppContext, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { jurisdictionSchema, type PlanningJurisdiction } from "./policy";
 
-export type PlanningContext = AppContext & { jurisdiction: PlanningJurisdiction };
+export type PlanningContext = Omit<AppContext, "database"> & PlanningDatabaseContext & { jurisdiction: PlanningJurisdiction };
 
 export async function getPlanningContext(jurisdiction: PlanningJurisdiction): Promise<PlanningContext> {
   jurisdictionSchema.parse(jurisdiction);
   const context = await getTenantContextForModule("PLANEJAMENTO");
   if (jurisdiction === "LEGISLATIVE") {
-    const moduleConfig = await context.prisma.configuracaoModulo.findUnique({ where: { codigo: "CAMARA" }, select: { ativo: true } });
+    const [moduleConfig] = await planningDatabase(context).select({ ativo: moduleConfigurations.ativo }).from(moduleConfigurations).where(eq(moduleConfigurations.codigo, "CAMARA")).limit(1);
     if (moduleConfig?.ativo === false || !canViewModule(context.user, "CAMARA")) throw new AccessError("Acesso negado ao Planejamento da Câmara.", 403);
   }
   return { ...context, jurisdiction };
@@ -34,26 +36,4 @@ export function canDecidePlanningLegally(context: PlanningContext) {
 export function assertPlanningLegalAuthority(context: PlanningContext) {
   assertPlanningOperation(context, "update");
   if (!canDecidePlanningLegally(context)) throw new AccessError("Decisão legal exige autorização específica de aprovação no Planejamento.", 403);
-}
-
-export function planningEntityWhere(context: PlanningContext): Prisma.GovernmentEntityWhereInput {
-  return {
-    status: "ATIVA", planningScope: { is: { jurisdiction: context.jurisdiction, isActive: true } },
-    ...(isSystemAdministrator(context.user) ? {} : { planningUnits: { some: { budgetUnitId: { in: context.user.allowedBudgetUnitIds } } } }),
-  };
-}
-
-export function planningInstrumentWhere(context: PlanningContext): Prisma.PlanningInstrumentWhereInput {
-  return { governmentEntity: planningEntityWhere(context) };
-}
-
-export function planningUnitWhere(context: PlanningContext): Prisma.BudgetUnitWhereInput {
-  return {
-    planningEntityUnit: { is: { governmentEntity: planningEntityWhere(context) } },
-    ...(isSystemAdministrator(context.user) ? {} : { id: { in: context.user.allowedBudgetUnitIds } }),
-  };
-}
-
-export function planningLineWhere(context: PlanningContext): Prisma.PlanningBudgetLineWhereInput {
-  return { instrument: planningInstrumentWhere(context), budgetUnit: planningUnitWhere(context) };
 }

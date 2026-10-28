@@ -1,18 +1,18 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 
 export class TributarioS3Error extends Error {}
 
-function decimal(value: Prisma.Decimal | string | number, label: string) {
-  const parsed = new Prisma.Decimal(String(value));
+function decimal(value: Decimal | string | number, label: string) {
+  const parsed = new Decimal(String(value));
   if (!parsed.isFinite()) throw new TributarioS3Error(`${label} inválido.`);
   return parsed;
 }
 
 export function calculateItbi(input: {
-  propertyValue: Prisma.Decimal | string | number;
-  transmittedFractionPercent: Prisma.Decimal | string | number;
-  ratePercent: Prisma.Decimal | string | number;
-  buyerSharesPercent: Array<Prisma.Decimal | string | number>;
+  propertyValue: Decimal | string | number;
+  transmittedFractionPercent: Decimal | string | number;
+  ratePercent: Decimal | string | number;
+  buyerSharesPercent: Array<Decimal | string | number>;
 }) {
   const propertyValue = decimal(input.propertyValue, "Valor do imóvel").toDecimalPlaces(2);
   const fraction = decimal(input.transmittedFractionPercent, "Fração transmitida");
@@ -24,7 +24,7 @@ export function calculateItbi(input: {
   if (rate.lessThanOrEqualTo(0)) throw new TributarioS3Error("A alíquota deve ser maior que zero.");
   if (!shares.length) throw new TributarioS3Error("Informe ao menos um adquirente.");
   if (shares.some((share) => share.lessThanOrEqualTo(0))) throw new TributarioS3Error("Cada participação deve ser maior que zero.");
-  const sharesTotal = shares.reduce((total, share) => total.plus(share), new Prisma.Decimal(0));
+  const sharesTotal = shares.reduce((total, share) => total.plus(share), new Decimal(0));
   if (!sharesTotal.equals(100)) throw new TributarioS3Error("As participações dos adquirentes devem totalizar exatamente 100%.");
 
   const taxableBase = propertyValue.mul(fraction).div(100).toDecimalPlaces(2);

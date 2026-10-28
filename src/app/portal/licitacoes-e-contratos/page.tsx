@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { getPublicBiddings, getPublicContracts } from "@/lib/transparencia/portal-public";
 import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell";
 import { MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipality-identity";
@@ -21,7 +21,7 @@ function formatDate(value: Date | null) {
 }
 
 export default async function LicitacoesContratosPage() {
-  const [biddings, contracts] = await Promise.all([getPublicBiddings(prisma), getPublicContracts(prisma)]);
+  const [biddings, contracts] = await Promise.all([getPublicBiddings(db), getPublicContracts(db)]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-9 sm:px-6">

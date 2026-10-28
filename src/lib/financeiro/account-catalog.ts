@@ -1,18 +1,20 @@
-import { Prisma } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import type { JsonObject, JsonValue } from "@/db/json";
+import { listAccountingClassifications } from "@/db/repositories/finance/accounting";
 import { currentPresentationEntries } from "../planejamento/catalog-presentation";
 
 type ClassificationScope = { governmentEntityId: string; budgetUnitId: string };
 
-function attributesOf(value: Prisma.JsonValue): Prisma.JsonObject {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Prisma.JsonObject : {};
+function attributesOf(value: JsonValue): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
 /** Freeze the edition actually applicable to the posting date and entity. */
-export async function resolveAccountClassificationSnapshots(tx: Prisma.TransactionClient, accounts: { id: string }[], date: Date, scope?: ClassificationScope) {
+export async function resolveAccountClassificationSnapshots(tx: DatabaseExecutor, accounts: { id: string }[], date: Date, scope?: ClassificationScope) {
   if (!Number.isFinite(date.getTime())) throw new Error("Data da classificação contábil inválida.");
   const day = date.toISOString().slice(0, 10);
-  const bindings = await tx.planningCatalogEntry.findMany({ where: { kind: "ACCOUNT", canonicalId: { in: accounts.map((account) => account.id) }, version: { status: "PUBLISHED" } }, include: { version: { select: { year: true, sourceHash: true, normativeReference: true } } } });
-  const snapshots = new Map<string, Prisma.InputJsonObject>();
+  const bindings = await listAccountingClassifications(tx, "ACCOUNT", accounts.map(account => account.id));
+  const snapshots = new Map<string, JsonObject>();
   for (const account of accounts) {
     const versions = bindings.filter((entry) => entry.canonicalId === account.id);
     if (!versions.length) {
@@ -40,12 +42,12 @@ export async function resolveAccountClassificationSnapshots(tx: Prisma.Transacti
     if (!attributes.effectiveFrom || !attributes.effectiveUntil || date.toISOString().slice(0, 10) < String(attributes.effectiveFrom) || date.toISOString().slice(0, 10) > String(attributes.effectiveUntil)) throw new Error("Conta contábil fora da vigência da classificação.");
     if (!["D", "C", "X", "DC", "D/C"].includes(String(attributes.balanceNature))) throw new Error("Natureza D/C da conta não está conciliada.");
     const selected = candidates[0];
-    snapshots.set(account.id, { entryId: selected.id, versionId: selected.versionId, externalCode: selected.code, canonicalId: account.id, sourceHash: selected.version.sourceHash ?? null, normativeReference: selected.version.normativeReference ?? null, postingDate: day, attributes: attributes as Prisma.InputJsonObject });
+    snapshots.set(account.id, { entryId: selected.id, versionId: selected.versionId, externalCode: selected.code, canonicalId: account.id, sourceHash: selected.version.sourceHash ?? null, normativeReference: selected.version.normativeReference ?? null, postingDate: day, attributes });
   }
   return snapshots;
 }
 
 /** Kept for existing validation-only consumers. */
-export async function assertPublishedAccountClassification(tx: Prisma.TransactionClient, accounts: { id: string }[], date: Date) {
+export async function assertPublishedAccountClassification(tx: DatabaseExecutor, accounts: { id: string }[], date: Date) {
   await resolveAccountClassificationSnapshots(tx, accounts, date);
 }

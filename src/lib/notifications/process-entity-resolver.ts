@@ -1,4 +1,6 @@
-import { getProtocolContext, protocolScope } from "@/lib/protocols/access";
+import { getProtocolContext } from "@/lib/protocols/access";
+import { db } from "@/db/client";
+import { listVisibleNotificationProcessTargets } from "@/db/repositories/platform/notifications";
 
 type NotificationEntity = {
   id: string;
@@ -21,10 +23,7 @@ export async function resolveNotificationEntities(notifications: NotificationEnt
   try {
     const context = await getProtocolContext();
     const processIds = [...new Set(processNotifications.map((notification) => notification.entityId))];
-    const processes = await context.prisma.process.findMany({
-      where: { id: { in: processIds }, ...protocolScope(context) },
-      select: { id: true, protocolNumber: true },
-    });
+    const processes = await listVisibleNotificationProcessTargets(context.database ?? db, processIds, { administrator: context.protocolAccess.isAdmin, departmentId: context.user.departmentId });
     const processesById = new Map(processes.map((process) => [process.id, process]));
     for (const notification of processNotifications) {
       const process = processesById.get(notification.entityId);

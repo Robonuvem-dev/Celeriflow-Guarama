@@ -1,23 +1,12 @@
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listPurchasePlannings } from "@/db/repositories/procurement/purchase-planning";
 import { PlanningListClient } from "./PlanningListClient";
 
 export default async function PlanejamentoComprasPage() {
-  const { prisma, user } = await getTenantContextForModule("COMPRAS");
-  const plannings = await prisma.purchasePlanning.findMany({
-    select: {
-      id: true,
-      description: true,
-      unit: true,
-      quantity: true,
-      expectedPeriodStart: true,
-      expectedPeriodEnd: true,
-      estimatedValueDecimal: true,
-      status: true,
-      catalogItem: { select: { name: true } },
-      originPurchaseRequest: { select: { id: true, number: true, object: true } },
-    },
-    orderBy: [{ expectedPeriodStart: "asc" }, { createdAt: "desc" }],
-  });
+  const context = await getTenantContextForModule("COMPRAS");
+  const { user } = context;
+  const plannings = await listPurchasePlannings(context.database ?? db);
 
   return <PlanningListClient
     canCreate={canPerformModuleOperation(user, "COMPRAS", "create")}

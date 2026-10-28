@@ -1,10 +1,20 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { Prisma } from "@prisma/client";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import { getPostgresError } from "@/db/errors";
+import { biddings, biddingLots, biddingParticipants, biddingResults, purchaseProcessItems, purchaseProcesses } from "@/db/schema/procurement-core";
+import { biddingPhases, biddingActs, biddingAppointments, biddingAppointmentMembers, biddingAppointmentAssignments, biddingLotItems, biddingBids, biddingEligibilities, supplierPortalIdentities } from "@/db/schema/procurement-bidding";
+import { procurementLifecycleEvents } from "@/db/schema/procurement-requests";
+import { employees } from "@/db/schema/administration";
+import { suppliers } from "@/db/schema/registry";
+import { users } from "@/db/schema/identity";
 import { revalidatePath } from "next/cache";
 import { getCurrentTenantContext, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import { nextYearlyCode } from "@/lib/sequence";
+import { nextYearlyCodeDrizzle } from "@/db/repositories/platform/sequences";
 import { BIDDING_NUMBER_DUPLICATE_ERROR, biddingNumberDuplicateError } from "@/lib/compras/bidding-number-integrity";
 import {
   BIDDING_BID_STATUS,
@@ -32,7 +42,7 @@ import {
   normalizeBiddingStatus,
 } from "@/lib/compras/bidding-workflow";
 
-type Tx = Prisma.TransactionClient;
+type Tx = DatabaseTransaction;
 
 export type BiddingActionResult =
   | { success: true; status?: string; id?: string; created?: boolean; alreadySubmitted?: boolean }
@@ -72,7 +82,7 @@ function requiredMoney(value: number, label: string, allowZero = false) {
     throw new BiddingWorkflowError(`${label} deve possuir no máximo duas casas decimais.`);
   }
   if (allowZero ? cents < 0 : cents <= 0) throw new BiddingWorkflowError(`${label} deve ser ${allowZero ? "maior ou igual a zero" : "maior que zero"}.`);
-  return new Prisma.Decimal(cents).div(100);
+  return new Decimal(cents).div(100);
 }
 
 function optionalMoney(value: number | null | undefined, label: string) {
@@ -93,13 +103,13 @@ function isInactiveParticipantStatus(status: string | null | undefined) {
   return normalized === "inativo" || normalized === "desclassificado" || normalized === "impedido";
 }
 
-function decimalsEqual(left: Prisma.Decimal | null, right: Prisma.Decimal | null) {
+function decimalsEqual(left: Decimal | null, right: Decimal | null) {
   if (left === null || right === null) return left === right;
   return left.equals(right);
 }
 
 function isUniqueConstraint(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+  return getPostgresError(error)?.code === "23505";
 }
 
 function actionError(error: unknown, fallback: string): BiddingActionResult {
@@ -116,11 +126,7 @@ function revalidateBiddingPaths(id?: string) {
 }
 
 async function currentPhaseId(tx: Tx, biddingId: string) {
-  const phase = await tx.biddingPhase.findFirst({
-    where: { biddingId, version: 1, isCurrent: true },
-    orderBy: { sequence: "asc" },
-    select: { id: true },
-  });
+  const [phase] = await tx.select({ id: biddingPhases.id }).from(biddingPhases).where(and(eq(biddingPhases.biddingId, biddingId), eq(biddingPhases.version, 1), eq(biddingPhases.isCurrent, true))).orderBy(asc(biddingPhases.sequence)).limit(1);
   return phase?.id ?? null;
 }
 
@@ -136,8 +142,7 @@ async function writeBiddingAct(
     idempotencyKey?: string;
   },
 ) {
-  return tx.biddingAct.create({
-    data: {
+  const [act] = await tx.insert(biddingActs).values({
       biddingId: input.biddingId,
       actorUsuarioId: input.actorUsuarioId,
       type: input.type,
@@ -145,16 +150,15 @@ async function writeBiddingAct(
       phaseId: input.phaseId ?? null,
       biddingLotId: input.biddingLotId ?? null,
       idempotencyKey: input.idempotencyKey ?? randomUUID(),
-    },
-  });
+  }).returning();
+  return act;
 }
 
 async function writeLifecycleEvent(
   tx: Tx,
   input: { eventType: string; biddingId: string; actorUsuarioId: string; sourceType?: string; sourceId?: string; idempotencyKey?: string },
 ) {
-  await tx.procurementLifecycleEvent.create({
-    data: {
+  await tx.insert(procurementLifecycleEvents).values({
       eventType: input.eventType,
       entityType: "BIDDING",
       entityId: input.biddingId,
@@ -162,21 +166,16 @@ async function writeLifecycleEvent(
       sourceId: input.sourceId,
       actorUsuarioId: input.actorUsuarioId,
       idempotencyKey: input.idempotencyKey ?? randomUUID(),
-    },
   });
 }
 
 async function ensureBiddingPhases(tx: Tx, biddingId: string, biddingStatus: string, now = new Date()) {
-  let phases = await tx.biddingPhase.findMany({
-    where: { biddingId, version: 1 },
-    orderBy: { sequence: "asc" },
-  });
+  let phases = await tx.select().from(biddingPhases).where(and(eq(biddingPhases.biddingId, biddingId), eq(biddingPhases.version, 1))).orderBy(asc(biddingPhases.sequence));
   const existingCodes = new Set(phases.map((phase) => phase.code));
 
   for (const definition of BIDDING_PHASE_DEFINITIONS) {
     if (existingCodes.has(definition.code)) continue;
-    await tx.biddingPhase.create({
-      data: {
+    await tx.insert(biddingPhases).values({
         biddingId,
         code: definition.code,
         name: definition.name,
@@ -184,25 +183,18 @@ async function ensureBiddingPhases(tx: Tx, biddingId: string, biddingStatus: str
         version: 1,
         isCurrent: false,
         status: BIDDING_PHASE_STATUS.PENDING,
-      },
     });
   }
 
-  phases = await tx.biddingPhase.findMany({
-    where: { biddingId, version: 1 },
-    orderBy: { sequence: "asc" },
-  });
+  phases = await tx.select().from(biddingPhases).where(and(eq(biddingPhases.biddingId, biddingId), eq(biddingPhases.version, 1))).orderBy(asc(biddingPhases.sequence));
   const plan = getBiddingPhasePlan(biddingStatus);
 
   if (!plan) {
     const suspended = normalizeBiddingStatus(biddingStatus) === BIDDING_STATUS.SUSPENDED;
-    await tx.biddingPhase.updateMany({
-      where: { biddingId, version: 1, isCurrent: true },
-      data: {
+    await tx.update(biddingPhases).set({
         status: suspended ? BIDDING_PHASE_STATUS.SUSPENDED : BIDDING_PHASE_STATUS.INTERRUPTED,
         isCurrent: suspended,
-      },
-    });
+    }).where(and(eq(biddingPhases.biddingId, biddingId), eq(biddingPhases.version, 1), eq(biddingPhases.isCurrent, true)));
     return currentPhaseId(tx, biddingId);
   }
 
@@ -210,17 +202,14 @@ async function ensureBiddingPhases(tx: Tx, biddingId: string, biddingStatus: str
   for (const expected of plan) {
     const phase = phaseByCode.get(expected.code);
     if (!phase) continue;
-    await tx.biddingPhase.update({
-      where: { id: phase.id },
-      data: {
+    await tx.update(biddingPhases).set({
         name: expected.name,
         sequence: expected.sequence,
         isCurrent: expected.isCurrent,
         status: expected.status,
         startedAt: expected.status === BIDDING_PHASE_STATUS.PENDING ? phase.startedAt : phase.startedAt ?? now,
         completedAt: expected.status === BIDDING_PHASE_STATUS.COMPLETED ? phase.completedAt ?? now : null,
-      },
-    });
+    }).where(eq(biddingPhases.id, phase.id));
   }
 
   return currentPhaseId(tx, biddingId);
@@ -233,35 +222,26 @@ async function assertTransitionRequirements(
   now: Date,
 ) {
   if (nextStatus === BIDDING_STATUS.PUBLISHED) {
-    const [lots, assignment] = await Promise.all([
-      tx.biddingLot.findMany({
-        where: { biddingId: bidding.id },
-        select: { id: true, _count: { select: { items: true } } },
-      }),
-      tx.biddingAppointmentAssignment.findFirst({
-        where: { biddingId: bidding.id, status: "Ativa" },
-        select: { id: true },
-      }),
+    const [lots, [assignment]] = await Promise.all([
+      tx.select({ id: biddingLots.id, itemCount: sql<number>`(SELECT count(*)::integer FROM "BiddingLotItem" i WHERE i."biddingLotId" = ${biddingLots.id})` }).from(biddingLots).where(eq(biddingLots.biddingId, bidding.id)),
+      tx.select({ id: biddingAppointmentAssignments.id }).from(biddingAppointmentAssignments).where(and(eq(biddingAppointmentAssignments.biddingId, bidding.id), eq(biddingAppointmentAssignments.status, "Ativa"))).limit(1),
     ]);
     if (!assignment) throw new BiddingWorkflowError("Vincule uma comissão ou agente de contratação antes de publicar a licitação.");
     if (!lots.length) throw new BiddingWorkflowError("Cadastre ao menos um lote antes de publicar a licitação.");
-    if (lots.some((lot) => lot._count.items === 0)) throw new BiddingWorkflowError("Todos os lotes precisam possuir ao menos um item antes da publicação.");
+    if (lots.some((lot) => lot.itemCount === 0)) throw new BiddingWorkflowError("Todos os lotes precisam possuir ao menos um item antes da publicação.");
   }
 
   if (nextStatus === BIDDING_STATUS.OPEN) {
     if (!bidding.sessionDate || bidding.sessionDate.getTime() <= now.getTime()) {
       throw new BiddingWorkflowError("Defina um prazo futuro para a sessão antes de abrir a disputa.");
     }
-    const participantCount = await tx.biddingParticipant.count({ where: { biddingId: bidding.id } });
-    if (!participantCount) throw new BiddingWorkflowError("Cadastre ao menos um participante antes de abrir a disputa.");
+    const participant = await tx.select({ id: biddingParticipants.id }).from(biddingParticipants).where(eq(biddingParticipants.biddingId, bidding.id)).limit(1);
+    if (!participant.length) throw new BiddingWorkflowError("Cadastre ao menos um participante antes de abrir a disputa.");
   }
 
   if (nextStatus === BIDDING_STATUS.HOMOLOGATED) {
-    const lots = await tx.biddingLot.findMany({
-      where: { biddingId: bidding.id },
-      select: { id: true, results: { where: { isCurrent: true }, select: { id: true } } },
-    });
-    if (!lots.length || lots.some((lot) => !lot.results.length)) {
+    const lots = await tx.select({ id: biddingLots.id, hasResult: sql<boolean>`EXISTS (SELECT 1 FROM "BiddingResult" r WHERE r."biddingLotId" = ${biddingLots.id} AND r."isCurrent" = true)` }).from(biddingLots).where(eq(biddingLots.biddingId, bidding.id));
+    if (!lots.length || lots.some((lot) => !lot.hasResult)) {
       throw new BiddingWorkflowError("Registre a arrematação de todos os lotes antes de homologar a licitação.");
     }
   }
@@ -270,29 +250,20 @@ async function assertTransitionRequirements(
 async function changeBiddingStatus(id: string, requestedStatus: string): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const status = await context.prisma.$transaction(async (tx) => {
-      const bidding = await tx.bidding.findUnique({
-        where: { id },
-        select: { id: true, status: true, sessionDate: true },
-      });
+    const status = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select({ id: biddings.id, status: biddings.status, sessionDate: biddings.sessionDate }).from(biddings).where(eq(biddings.id, id)).limit(1);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
 
       const { current, next } = assertBiddingStatusTransition(bidding.status, requestedStatus);
       const now = new Date();
       await assertTransitionRequirements(tx, bidding, next, now);
-      const claimed = await tx.bidding.updateMany({
-        where: { id: bidding.id, status: bidding.status },
-        data: { status: next },
-      });
-      if (claimed.count !== 1) {
+      const claimed = await tx.update(biddings).set({ status: next }).where(and(eq(biddings.id, bidding.id), eq(biddings.status, bidding.status))).returning({ id: biddings.id });
+      if (claimed.length !== 1) {
         throw new BiddingWorkflowError("A situação da licitação foi alterada por outra operação. Atualize a página e tente novamente.");
       }
 
       const phaseId = await ensureBiddingPhases(tx, bidding.id, next, now);
-      await tx.biddingLot.updateMany({
-        where: { biddingId: bidding.id },
-        data: { status: biddingLotStatusForBiddingStatus(next) },
-      });
+      await tx.update(biddingLots).set({ status: biddingLotStatusForBiddingStatus(next) }).where(eq(biddingLots.biddingId, bidding.id));
 
       const idempotencyKey = randomUUID();
       await writeBiddingAct(tx, {
@@ -346,11 +317,11 @@ export async function saveBidding(formData: FormData): Promise<BiddingActionResu
       return { success: false, error: "A sessão não pode ocorrer antes da publicação." };
     }
 
-    const process = await context.prisma.purchaseProcess.findUnique({ where: { id: processId }, select: { id: true } });
+    const [process] = await (context.database ?? db).select({ id: purchaseProcesses.id }).from(purchaseProcesses).where(eq(purchaseProcesses.id, processId)).limit(1);
     if (!process) return { success: false, error: "O processo de compra selecionado não existe." };
 
     if (id) {
-      const existing = await context.prisma.bidding.findUnique({ where: { id }, select: { id: true, modality: true, status: true } });
+      const [existing] = await (context.database ?? db).select({ id: biddings.id, modality: biddings.modality, status: biddings.status }).from(biddings).where(eq(biddings.id, id)).limit(1);
       if (!existing) return { success: false, error: "Licitação não encontrada." };
       if (!canEditBiddingDetails(existing.status)) {
         return { success: false, error: "Somente licitações em elaboração podem ter seus dados alterados." };
@@ -360,45 +331,35 @@ export async function saveBidding(formData: FormData): Promise<BiddingActionResu
         return { success: false, error: "A modalidade é definida na criação para preservar a numeração do certame." };
       }
 
-      const duplicate = await context.prisma.bidding.findFirst({
-        where: { number, id: { not: existing.id } },
-        select: { id: true },
-      });
+      const [duplicate] = await (context.database ?? db).select({ id: biddings.id }).from(biddings).where(and(eq(biddings.number, number), ne(biddings.id, existing.id))).limit(1);
       if (duplicate) return { success: false, error: BIDDING_NUMBER_DUPLICATE_ERROR };
 
-      await context.prisma.bidding.update({
-        where: { id: existing.id },
-        data: { number, processId: process.id, publicationDate, sessionDate },
-      });
+      await (context.database ?? db).update(biddings).set({ number, processId: process.id, publicationDate, sessionDate }).where(eq(biddings.id, existing.id));
       revalidateBiddingPaths(existing.id);
       return { success: true, id: existing.id };
     }
 
     if (!isBiddingModality(modality)) return { success: false, error: "Selecione uma modalidade válida." };
 
-    const biddingId = await context.prisma.$transaction(async (tx) => {
-      const finalNumber = number || await nextYearlyCode({
-        prisma: tx,
+    const biddingId = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const finalNumber = number || await nextYearlyCodeDrizzle({
+        db: tx,
         key: biddingSequenceKey(modality),
         prefix: biddingModalityPrefix(modality),
-        existingCodes: (await tx.bidding.findMany({ select: { number: true } })).map(({ number: code }) => ({ code })),
+        existingCodes: (await tx.select({ number: biddings.number }).from(biddings)).map(({ number: code }) => ({ code })),
       });
 
-      const duplicate = number
-        ? await tx.bidding.findFirst({ where: { number: finalNumber }, select: { id: true } })
-        : null;
+      const [duplicate] = number ? await tx.select({ id: biddings.id }).from(biddings).where(eq(biddings.number, finalNumber)).limit(1) : [];
       if (duplicate) throw new BiddingWorkflowError(BIDDING_NUMBER_DUPLICATE_ERROR);
 
-      const bidding = await tx.bidding.create({
-        data: {
+      const [bidding] = await tx.insert(biddings).values({
           number: finalNumber,
           modality,
           status: BIDDING_STATUS.DRAFT,
           publicationDate,
           sessionDate,
           processId: process.id,
-        },
-      });
+      }).returning();
       const phaseId = await ensureBiddingPhases(tx, bidding.id, BIDDING_STATUS.DRAFT);
       await writeBiddingAct(tx, {
         biddingId: bidding.id,
@@ -431,10 +392,10 @@ export async function saveBidding(formData: FormData): Promise<BiddingActionResu
 export async function initializeBiddingWorkflow(biddingId: string): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    await context.prisma.$transaction(async (tx) => {
-      const bidding = await tx.bidding.findUnique({ where: { id: biddingId }, select: { id: true, status: true } });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select({ id: biddings.id, status: biddings.status }).from(biddings).where(eq(biddings.id, biddingId)).limit(1);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
-      const phaseCount = await tx.biddingPhase.count({ where: { biddingId: bidding.id, version: 1 } });
+      const phaseCount = (await tx.select({ id: biddingPhases.id }).from(biddingPhases).where(and(eq(biddingPhases.biddingId, bidding.id), eq(biddingPhases.version, 1)))).length;
       const phaseId = await ensureBiddingPhases(tx, bidding.id, bidding.status);
       if (phaseCount < BIDDING_PHASE_DEFINITIONS.length) {
         await writeBiddingAct(tx, {
@@ -480,43 +441,26 @@ export async function createBiddingAppointment(input: {
     const endsAt = optionalDate(input.endsAt?.trim() ?? "", "Data final da designação");
     if (appointedAt && endsAt && endsAt < appointedAt) throw new BiddingWorkflowError("A vigência não pode terminar antes da designação.");
 
-    const appointmentId = await context.prisma.$transaction(async (tx) => {
-      const [bidding, employees] = await Promise.all([
-        tx.bidding.findUnique({ where: { id: biddingId }, select: { id: true, status: true } }),
-        tx.employee.findMany({
-          where: { id: { in: members.map((member) => member.employeeId) }, isActive: true },
-          select: { id: true },
-        }),
+    const appointmentId = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [[bidding], selectedEmployees] = await Promise.all([
+        tx.select({ id: biddings.id, status: biddings.status }).from(biddings).where(eq(biddings.id, biddingId)).limit(1),
+        tx.select({ id: employees.id }).from(employees).where(and(inArray(employees.id, members.map(member => member.employeeId)), eq(employees.isActive, true))),
       ]);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
       if (isTerminalBiddingStatus(bidding.status)) throw new BiddingWorkflowError("Não é possível alterar a comissão de uma licitação encerrada.");
-      if (employees.length !== new Set(members.map((member) => member.employeeId)).size) {
+      if (selectedEmployees.length !== new Set(members.map((member) => member.employeeId)).size) {
         throw new BiddingWorkflowError("Um ou mais servidores não estão ativos.");
       }
 
-      const appointment = await tx.biddingAppointment.create({
-        data: {
+      const [appointment] = await tx.insert(biddingAppointments).values({
           kind,
           name,
           appointedAt,
           endsAt,
           notes: input.notes?.trim() || null,
-          members: {
-            create: members.map((member) => ({
-              employeeId: member.employeeId,
-              role: member.role,
-              appointedAt,
-              endsAt,
-            })),
-          },
-          assignments: {
-            create: {
-              biddingId: bidding.id,
-              role: input.role?.trim() || null,
-            },
-          },
-        },
-      });
+      }).returning();
+      await tx.insert(biddingAppointmentMembers).values(members.map(member => ({ appointmentId: appointment.id, employeeId: member.employeeId, role: member.role, appointedAt, endsAt })));
+      await tx.insert(biddingAppointmentAssignments).values({ appointmentId: appointment.id, biddingId: bidding.id, role: input.role?.trim() || null });
       const phaseId = await currentPhaseId(tx, bidding.id);
       await writeBiddingAct(tx, {
         biddingId: bidding.id,
@@ -540,27 +484,19 @@ export async function assignBiddingAppointment(input: { biddingId: string; appoi
   try {
     const biddingId = requiredText(input.biddingId, "Licitação");
     const appointmentId = requiredText(input.appointmentId, "Designação");
-    const assignmentId = await context.prisma.$transaction(async (tx) => {
-      const [bidding, appointment] = await Promise.all([
-        tx.bidding.findUnique({ where: { id: biddingId }, select: { id: true, status: true } }),
-        tx.biddingAppointment.findUnique({ where: { id: appointmentId }, select: { id: true, name: true, status: true } }),
+    const assignmentId = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [[bidding], [appointment]] = await Promise.all([
+        tx.select({ id: biddings.id, status: biddings.status }).from(biddings).where(eq(biddings.id, biddingId)).limit(1),
+        tx.select({ id: biddingAppointments.id, name: biddingAppointments.name, status: biddingAppointments.status }).from(biddingAppointments).where(eq(biddingAppointments.id, appointmentId)).limit(1),
       ]);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
       if (!appointment || appointment.status !== "Ativa") throw new BiddingWorkflowError("A designação informada não está ativa.");
       if (isTerminalBiddingStatus(bidding.status)) throw new BiddingWorkflowError("Não é possível alterar a comissão de uma licitação encerrada.");
 
-      const current = await tx.biddingAppointmentAssignment.findFirst({
-        where: { biddingId: bidding.id, appointmentId: appointment.id },
-        select: { id: true },
-      });
-      const assignment = current
-        ? await tx.biddingAppointmentAssignment.update({
-          where: { id: current.id },
-          data: { status: "Ativa", endedAt: null, role: input.role?.trim() || null },
-        })
-        : await tx.biddingAppointmentAssignment.create({
-          data: { biddingId: bidding.id, appointmentId: appointment.id, role: input.role?.trim() || null },
-        });
+      const [current] = await tx.select({ id: biddingAppointmentAssignments.id }).from(biddingAppointmentAssignments).where(and(eq(biddingAppointmentAssignments.biddingId, bidding.id), eq(biddingAppointmentAssignments.appointmentId, appointment.id))).limit(1);
+      const [assignment] = current
+        ? await tx.update(biddingAppointmentAssignments).set({ status: "Ativa", endedAt: null, role: input.role?.trim() || null }).where(eq(biddingAppointmentAssignments.id, current.id)).returning()
+        : await tx.insert(biddingAppointmentAssignments).values({ biddingId: bidding.id, appointmentId: appointment.id, role: input.role?.trim() || null }).returning();
       const phaseId = await currentPhaseId(tx, bidding.id);
       await writeBiddingAct(tx, {
         biddingId: bidding.id,
@@ -583,18 +519,13 @@ export async function endBiddingAppointmentAssignment(input: { biddingId: string
   try {
     const biddingId = requiredText(input.biddingId, "Licitação");
     const assignmentId = requiredText(input.assignmentId, "Vínculo de designação");
-    await context.prisma.$transaction(async (tx) => {
-      const assignment = await tx.biddingAppointmentAssignment.findFirst({
-        where: { id: assignmentId, biddingId },
-        include: { appointment: { select: { name: true } }, bidding: { select: { status: true } } },
-      });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [row] = await tx.select({ assignment: biddingAppointmentAssignments, appointment: { name: biddingAppointments.name }, bidding: { status: biddings.status } }).from(biddingAppointmentAssignments).innerJoin(biddingAppointments, eq(biddingAppointments.id, biddingAppointmentAssignments.appointmentId)).innerJoin(biddings, eq(biddings.id, biddingAppointmentAssignments.biddingId)).where(and(eq(biddingAppointmentAssignments.id, assignmentId), eq(biddingAppointmentAssignments.biddingId, biddingId))).limit(1);
+      const assignment = row ? { ...row.assignment, appointment: row.appointment, bidding: row.bidding } : null;
       if (!assignment) throw new BiddingWorkflowError("Vínculo de designação não encontrado.");
       if (isTerminalBiddingStatus(assignment.bidding.status)) throw new BiddingWorkflowError("Não é possível alterar a comissão de uma licitação encerrada.");
       if (assignment.status === "Encerrada") return;
-      await tx.biddingAppointmentAssignment.update({
-        where: { id: assignment.id },
-        data: { status: "Encerrada", endedAt: new Date() },
-      });
+      await tx.update(biddingAppointmentAssignments).set({ status: "Encerrada", endedAt: new Date() }).where(eq(biddingAppointmentAssignments.id, assignment.id));
       const phaseId = await currentPhaseId(tx, biddingId);
       await writeBiddingAct(tx, {
         biddingId,
@@ -627,8 +558,8 @@ export async function createBiddingLot(input: {
     }
     if (!quantities.size) throw new BiddingWorkflowError("Selecione ao menos um item para o lote.");
 
-    const lotId = await context.prisma.$transaction(async (tx) => {
-      const bidding = await tx.bidding.findUnique({ where: { id: biddingId }, select: { id: true, processId: true, status: true } });
+    const lotId = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select({ id: biddings.id, processId: biddings.processId, status: biddings.status }).from(biddings).where(eq(biddings.id, biddingId)).limit(1);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
       if (!canConfigureBiddingLots(bidding.status)) {
         throw new BiddingWorkflowError("Os lotes só podem ser alterados enquanto a licitação está em elaboração.");
@@ -636,47 +567,30 @@ export async function createBiddingLot(input: {
 
       const itemIds = [...quantities.keys()];
       const [processItems, alreadyAssigned] = await Promise.all([
-        tx.purchaseProcessItem.findMany({
-          where: { id: { in: itemIds }, purchaseProcessId: bidding.processId },
-          select: { id: true, quantity: true, estimatedUnitValue: true },
-        }),
-        tx.biddingLotItem.findMany({
-          where: { purchaseProcessItemId: { in: itemIds }, biddingLot: { biddingId: bidding.id } },
-          select: { purchaseProcessItemId: true },
-        }),
+        tx.select({ id: purchaseProcessItems.id, quantity: purchaseProcessItems.quantity, estimatedUnitValue: purchaseProcessItems.estimatedUnitValue }).from(purchaseProcessItems).where(and(inArray(purchaseProcessItems.id, itemIds), eq(purchaseProcessItems.purchaseProcessId, bidding.processId))),
+        tx.select({ purchaseProcessItemId: biddingLotItems.purchaseProcessItemId }).from(biddingLotItems).innerJoin(biddingLots, eq(biddingLots.id, biddingLotItems.biddingLotId)).where(and(inArray(biddingLotItems.purchaseProcessItemId, itemIds), eq(biddingLots.biddingId, bidding.id))),
       ]);
       if (processItems.length !== itemIds.length) throw new BiddingWorkflowError("Um ou mais itens não pertencem ao processo desta licitação.");
       if (alreadyAssigned.length) throw new BiddingWorkflowError("Um ou mais itens já pertencem a outro lote deste certame.");
 
-      let estimatedValue = new Prisma.Decimal(0);
+      let estimatedValue = new Decimal(0);
       for (const item of processItems) {
         const quantity = quantities.get(item.id);
         if (!quantity || quantity > item.quantity) {
           throw new BiddingWorkflowError("A quantidade do lote não pode ser maior que a quantidade disponível no processo.");
         }
-        estimatedValue = estimatedValue.plus(new Prisma.Decimal(String(item.estimatedUnitValue ?? 0)).mul(String(quantity)));
+        estimatedValue = estimatedValue.plus(new Decimal(String(item.estimatedUnitValue ?? 0)).mul(String(quantity)));
       }
 
-      const lastLot = await tx.biddingLot.findFirst({
-        where: { biddingId: bidding.id },
-        orderBy: { number: "desc" },
-        select: { number: true },
-      });
-      const lot = await tx.biddingLot.create({
-        data: {
+      const [lastLot] = await tx.select({ number: biddingLots.number }).from(biddingLots).where(eq(biddingLots.biddingId, bidding.id)).orderBy(desc(biddingLots.number)).limit(1);
+      const [lot] = await tx.insert(biddingLots).values({
           biddingId: bidding.id,
           number: (lastLot?.number ?? 0) + 1,
           description: input.description?.trim() || null,
           status: BIDDING_LOT_STATUS.DRAFT,
           estimatedValueDecimal: estimatedValue.toDecimalPlaces(2),
-          items: {
-            create: processItems.map((item) => ({
-              purchaseProcessItemId: item.id,
-              quantity: quantities.get(item.id) ?? 0,
-            })),
-          },
-        },
-      });
+      }).returning();
+      await tx.insert(biddingLotItems).values(processItems.map(item => ({ biddingLotId: lot.id, purchaseProcessItemId: item.id, quantity: quantities.get(item.id) ?? 0 })));
       const phaseId = await currentPhaseId(tx, bidding.id);
       await writeBiddingAct(tx, {
         biddingId: bidding.id,
@@ -707,10 +621,10 @@ export async function addBiddingParticipant(input: {
     const biddingId = requiredText(input.biddingId, "Licitação");
     const supplierId = requiredText(input.supplierId, "Fornecedor");
     const displayCode = input.displayCode?.trim() || null;
-    const result = await context.prisma.$transaction(async (tx) => {
-      const [bidding, supplier] = await Promise.all([
-        tx.bidding.findUnique({ where: { id: biddingId }, select: { id: true, status: true } }),
-        tx.supplier.findUnique({ where: { id: supplierId }, select: { id: true, status: true } }),
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [[bidding], [supplier]] = await Promise.all([
+        tx.select({ id: biddings.id, status: biddings.status }).from(biddings).where(eq(biddings.id, biddingId)).limit(1),
+        tx.select({ id: suppliers.id, status: suppliers.status }).from(suppliers).where(eq(suppliers.id, supplierId)).limit(1),
       ]);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
       if (!canRegisterBiddingParticipant(bidding.status)) {
@@ -718,27 +632,19 @@ export async function addBiddingParticipant(input: {
       }
       if (!supplier || !isActiveStatus(supplier.status)) throw new BiddingWorkflowError("O fornecedor selecionado não está ativo.");
       if (displayCode) {
-        const duplicateCode = await tx.biddingParticipant.findFirst({
-          where: { biddingId: bidding.id, displayCode },
-          select: { id: true },
-        });
+        const [duplicateCode] = await tx.select({ id: biddingParticipants.id }).from(biddingParticipants).where(and(eq(biddingParticipants.biddingId, bidding.id), eq(biddingParticipants.displayCode, displayCode))).limit(1);
         if (duplicateCode) throw new BiddingWorkflowError("Este código de participante já está em uso no certame.");
       }
 
-      const existing = await tx.biddingParticipant.findFirst({
-        where: { biddingId: bidding.id, supplierId: supplier.id },
-        select: { id: true },
-      });
+      const [existing] = await tx.select({ id: biddingParticipants.id }).from(biddingParticipants).where(and(eq(biddingParticipants.biddingId, bidding.id), eq(biddingParticipants.supplierId, supplier.id))).limit(1);
       if (existing) return { id: existing.id, created: false };
 
-      const participant = await tx.biddingParticipant.create({
-        data: {
+      const [participant] = await tx.insert(biddingParticipants).values({
           biddingId: bidding.id,
           supplierId: supplier.id,
           displayCode,
           notes: input.notes?.trim() || null,
-        },
-      });
+      }).returning();
       const phaseId = await currentPhaseId(tx, bidding.id);
       await writeBiddingAct(tx, {
         biddingId: bidding.id,
@@ -766,25 +672,19 @@ export async function saveSupplierPortalIdentity(input: {
     const biddingId = requiredText(input.biddingId, "Licitação");
     const supplierId = requiredText(input.supplierId, "Fornecedor");
     const usuarioId = requiredText(input.usuarioId, "Usuário do portal");
-    const result = await context.prisma.$transaction(async (tx) => {
-      const [participant, user] = await Promise.all([
-        tx.biddingParticipant.findFirst({
-          where: { biddingId, supplierId },
-          include: { supplier: { select: { status: true } } },
-        }),
-        tx.usuario.findUnique({ where: { id: usuarioId }, select: { id: true, ativo: true } }),
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [[participant], [user]] = await Promise.all([
+        tx.select({ id: biddingParticipants.id, supplier: { status: suppliers.status } }).from(biddingParticipants).innerJoin(suppliers, eq(suppliers.id, biddingParticipants.supplierId)).where(and(eq(biddingParticipants.biddingId, biddingId), eq(biddingParticipants.supplierId, supplierId))).limit(1),
+        tx.select({ id: users.id, ativo: users.ativo }).from(users).where(eq(users.id, usuarioId)).limit(1),
       ]);
       if (!participant) throw new BiddingWorkflowError("Registre o fornecedor como participante antes de liberar o portal.");
       if (!isActiveStatus(participant.supplier.status)) throw new BiddingWorkflowError("O fornecedor não está ativo para usar o portal.");
       if (!user?.ativo) throw new BiddingWorkflowError("O usuário selecionado não está ativo.");
 
-      const current = await tx.supplierPortalIdentity.findFirst({
-        where: { supplierId, usuarioId },
-        select: { id: true },
-      });
-      const identity = current
-        ? await tx.supplierPortalIdentity.update({ where: { id: current.id }, data: { status: "Ativo" } })
-        : await tx.supplierPortalIdentity.create({ data: { supplierId, usuarioId, status: "Ativo" } });
+      const [current] = await tx.select({ id: supplierPortalIdentities.id }).from(supplierPortalIdentities).where(and(eq(supplierPortalIdentities.supplierId, supplierId), eq(supplierPortalIdentities.usuarioId, usuarioId))).limit(1);
+      const [identity] = current
+        ? await tx.update(supplierPortalIdentities).set({ status: "Ativo" }).where(eq(supplierPortalIdentities.id, current.id)).returning()
+        : await tx.insert(supplierPortalIdentities).values({ supplierId, usuarioId, status: "Ativo" }).returning();
       const phaseId = await currentPhaseId(tx, biddingId);
       await writeBiddingAct(tx, {
         biddingId,
@@ -815,16 +715,16 @@ export async function registerBiddingAct(input: {
     const type = requiredText(input.type, "Tipo do ato");
     const phaseId = input.phaseId?.trim() || null;
     const biddingLotId = input.biddingLotId?.trim() || null;
-    const actId = await context.prisma.$transaction(async (tx) => {
-      const bidding = await tx.bidding.findUnique({ where: { id: biddingId }, select: { id: true, status: true } });
+    const actId = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select({ id: biddings.id, status: biddings.status }).from(biddings).where(eq(biddings.id, biddingId)).limit(1);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
       if (isTerminalBiddingStatus(bidding.status)) throw new BiddingWorkflowError("Não é possível registrar novos atos em uma licitação encerrada.");
       if (phaseId) {
-        const phase = await tx.biddingPhase.findFirst({ where: { id: phaseId, biddingId }, select: { id: true } });
+        const [phase] = await tx.select({ id: biddingPhases.id }).from(biddingPhases).where(and(eq(biddingPhases.id, phaseId), eq(biddingPhases.biddingId, biddingId))).limit(1);
         if (!phase) throw new BiddingWorkflowError("A fase selecionada não pertence à licitação.");
       }
       if (biddingLotId) {
-        const lot = await tx.biddingLot.findFirst({ where: { id: biddingLotId, biddingId }, select: { id: true } });
+        const [lot] = await tx.select({ id: biddingLots.id }).from(biddingLots).where(and(eq(biddingLots.id, biddingLotId), eq(biddingLots.biddingId, biddingId))).limit(1);
         if (!lot) throw new BiddingWorkflowError("O lote selecionado não pertence à licitação.");
       }
       const act = await writeBiddingAct(tx, {
@@ -863,33 +763,31 @@ export async function decideBiddingEligibility(input: {
     }
     const idempotencyKey = input.idempotencyKey?.trim() || randomUUID();
 
-    const decisionId = await context.prisma.$transaction(async (tx) => {
-      const existing = await tx.biddingEligibility.findUnique({ where: { idempotencyKey }, select: { id: true, biddingLotId: true, participantId: true } });
+    const decisionId = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = await tx.select({ id: biddingEligibilities.id, biddingLotId: biddingEligibilities.biddingLotId, participantId: biddingEligibilities.participantId }).from(biddingEligibilities).where(eq(biddingEligibilities.idempotencyKey, idempotencyKey)).limit(1);
       if (existing) {
         if (existing.biddingLotId !== biddingLotId || existing.participantId !== participantId) {
           throw new BiddingWorkflowError("A chave de idempotência já pertence a outra decisão.");
         }
         return existing.id;
       }
-      const [bidding, lot, participant] = await Promise.all([
-        tx.bidding.findUnique({ where: { id: biddingId }, select: { id: true, status: true } }),
-        tx.biddingLot.findFirst({ where: { id: biddingLotId, biddingId }, select: { id: true } }),
-        tx.biddingParticipant.findFirst({ where: { id: participantId, biddingId }, select: { id: true, displayCode: true } }),
+      const [[bidding], [lot], [participant]] = await Promise.all([
+        tx.select({ id: biddings.id, status: biddings.status }).from(biddings).where(eq(biddings.id, biddingId)).limit(1),
+        tx.select({ id: biddingLots.id }).from(biddingLots).where(and(eq(biddingLots.id, biddingLotId), eq(biddingLots.biddingId, biddingId))).limit(1),
+        tx.select({ id: biddingParticipants.id, displayCode: biddingParticipants.displayCode }).from(biddingParticipants).where(and(eq(biddingParticipants.id, participantId), eq(biddingParticipants.biddingId, biddingId))).limit(1),
       ]);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
       if (!canDecideBiddingEligibility(bidding.status)) throw new BiddingWorkflowError("Não é possível decidir a habilitação de uma licitação encerrada.");
       if (!lot || !participant) throw new BiddingWorkflowError("O lote ou participante não pertence à licitação.");
 
-      const decision = await tx.biddingEligibility.create({
-        data: {
+      const [decision] = await tx.insert(biddingEligibilities).values({
           biddingLotId,
           participantId,
           status,
           reason: input.reason?.trim() || null,
           decidedByUsuarioId: context.user.id,
           idempotencyKey,
-        },
-      });
+      }).returning();
       const phaseId = await currentPhaseId(tx, biddingId);
       await writeBiddingAct(tx, {
         biddingId,
@@ -929,8 +827,8 @@ export async function decideBiddingResult(input: {
     const biddingLotId = requiredText(input.biddingLotId, "Lote");
     const biddingBidId = requiredText(input.biddingBidId, "Lance");
     const idempotencyKey = input.idempotencyKey?.trim() || randomUUID();
-    const resultId = await context.prisma.$transaction(async (tx) => {
-      const existing = await tx.biddingResult.findUnique({ where: { idempotencyKey }, select: { id: true, biddingLotId: true, biddingBidId: true } });
+    const resultId = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = await tx.select({ id: biddingResults.id, biddingLotId: biddingResults.biddingLotId, biddingBidId: biddingResults.biddingBidId }).from(biddingResults).where(eq(biddingResults.idempotencyKey, idempotencyKey)).limit(1);
       if (existing) {
         if (existing.biddingLotId !== biddingLotId || existing.biddingBidId !== biddingBidId) {
           throw new BiddingWorkflowError("A chave de idempotência já pertence a outra arrematação.");
@@ -938,26 +836,18 @@ export async function decideBiddingResult(input: {
         return existing.id;
       }
 
-      const lot = await tx.biddingLot.findFirst({
-        where: { id: biddingLotId, biddingId },
-        include: { bidding: { select: { status: true } } },
-      });
+      const [lotRow] = await tx.select({ lot: biddingLots, bidding: { status: biddings.status } }).from(biddingLots).innerJoin(biddings, eq(biddings.id, biddingLots.biddingId)).where(and(eq(biddingLots.id, biddingLotId), eq(biddingLots.biddingId, biddingId))).limit(1);
+      const lot = lotRow ? { ...lotRow.lot, bidding: lotRow.bidding } : null;
       if (!lot) throw new BiddingWorkflowError("O lote não pertence à licitação.");
       if (!canDecideBiddingResult(lot.bidding.status)) {
         throw new BiddingWorkflowError("A arrematação só pode ser registrada durante o julgamento.");
       }
-      const bid = await tx.biddingBid.findFirst({
-        where: { id: biddingBidId, biddingLotId },
-        include: { participant: { select: { id: true, biddingId: true, displayCode: true } } },
-      });
+      const [bidRow] = await tx.select({ bid: biddingBids, participant: { id: biddingParticipants.id, biddingId: biddingParticipants.biddingId, displayCode: biddingParticipants.displayCode } }).from(biddingBids).innerJoin(biddingParticipants, eq(biddingParticipants.id, biddingBids.participantId)).where(and(eq(biddingBids.id, biddingBidId), eq(biddingBids.biddingLotId, biddingLotId))).limit(1);
+      const bid = bidRow ? { ...bidRow.bid, participant: bidRow.participant } : null;
       if (!bid || bid.participant.biddingId !== biddingId) throw new BiddingWorkflowError("O lance não pertence ao lote desta licitação.");
       if (bid.status !== BIDDING_BID_STATUS.ACCEPTED) throw new BiddingWorkflowError("Somente lances aceitos podem ser arrematados.");
 
-      const eligibility = await tx.biddingEligibility.findFirst({
-        where: { biddingLotId, participantId: bid.participantId },
-        orderBy: [{ decidedAt: "desc" }, { createdAt: "desc" }],
-        select: { status: true },
-      });
+      const [eligibility] = await tx.select({ status: biddingEligibilities.status }).from(biddingEligibilities).where(and(eq(biddingEligibilities.biddingLotId, biddingLotId), eq(biddingEligibilities.participantId, bid.participantId))).orderBy(desc(biddingEligibilities.decidedAt), desc(biddingEligibilities.createdAt)).limit(1);
       if (!eligibility || !isBiddingParticipantEligible(eligibility.status)) {
         throw new BiddingWorkflowError("O participante precisa estar habilitado neste lote para receber a arrematação.");
       }
@@ -972,9 +862,8 @@ export async function decideBiddingResult(input: {
         biddingLotId,
         idempotencyKey: `${idempotencyKey}:ACT`,
       });
-      await tx.biddingResult.updateMany({ where: { biddingLotId, isCurrent: true }, data: { isCurrent: false } });
-      const result = await tx.biddingResult.create({
-        data: {
+      await tx.update(biddingResults).set({ isCurrent: false }).where(and(eq(biddingResults.biddingLotId, biddingLotId), eq(biddingResults.isCurrent, true)));
+      const [result] = await tx.insert(biddingResults).values({
           biddingLotId,
           participantId: bid.participantId,
           biddingBidId: bid.id,
@@ -984,9 +873,8 @@ export async function decideBiddingResult(input: {
           totalValueDecimal: bid.totalValueDecimal,
           decidedByUsuarioId: context.user.id,
           idempotencyKey,
-        },
-      });
-      await tx.biddingLot.update({ where: { id: biddingLotId }, data: { status: BIDDING_LOT_STATUS.AWARDED } });
+      }).returning();
+      await tx.update(biddingLots).set({ status: BIDDING_LOT_STATUS.AWARDED }).where(eq(biddingLots.id, biddingLotId));
       await writeLifecycleEvent(tx, {
         eventType: "BIDDING_LOT_AWARDED",
         biddingId,
@@ -1021,31 +909,19 @@ export async function submitBiddingBid(input: {
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        const result = await context.prisma.$transaction(async (tx) => {
-          const participant = await tx.biddingParticipant.findUnique({
-            where: { id: participantId },
-            include: {
-              supplier: { select: { status: true } },
-              bidding: { select: { id: true, status: true, sessionDate: true } },
-            },
-          });
+        const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+          const [participantRow] = await tx.select({ participant: biddingParticipants, supplier: { status: suppliers.status }, bidding: { id: biddings.id, status: biddings.status, sessionDate: biddings.sessionDate } }).from(biddingParticipants).innerJoin(suppliers, eq(suppliers.id, biddingParticipants.supplierId)).innerJoin(biddings, eq(biddings.id, biddingParticipants.biddingId)).where(eq(biddingParticipants.id, participantId)).limit(1);
+          const participant = participantRow ? { ...participantRow.participant, supplier: participantRow.supplier, bidding: participantRow.bidding } : null;
           if (!participant || isInactiveParticipantStatus(participant.status)) {
             throw new BiddingWorkflowError("O participante não está ativo para apresentar lances.");
           }
 
-          const identity = await tx.supplierPortalIdentity.findFirst({
-            where: {
-              supplierId: participant.supplierId,
-              usuarioId: context.user.id,
-              status: "Ativo",
-            },
-            select: { id: true },
-          });
+          const [identity] = await tx.select({ id: supplierPortalIdentities.id }).from(supplierPortalIdentities).where(and(eq(supplierPortalIdentities.supplierId, participant.supplierId), eq(supplierPortalIdentities.usuarioId, context.user.id), eq(supplierPortalIdentities.status, "Ativo"))).limit(1);
           if (!identity || !isActiveStatus(participant.supplier.status)) {
             throw new BiddingWorkflowError("Sua conta não possui acesso ativo para enviar lances deste fornecedor.");
           }
 
-          const existing = await tx.biddingBid.findUnique({ where: { idempotencyKey } });
+          const [existing] = await tx.select().from(biddingBids).where(eq(biddingBids.idempotencyKey, idempotencyKey)).limit(1);
           if (existing) {
             if (
               existing.biddingLotId !== biddingLotId
@@ -1059,10 +935,7 @@ export async function submitBiddingBid(input: {
             return { id: existing.id, alreadySubmitted: true, biddingId: participant.bidding.id };
           }
 
-          const lot = await tx.biddingLot.findFirst({
-            where: { id: biddingLotId, biddingId: participant.bidding.id },
-            select: { id: true, status: true },
-          });
+          const [lot] = await tx.select({ id: biddingLots.id, status: biddingLots.status }).from(biddingLots).where(and(eq(biddingLots.id, biddingLotId), eq(biddingLots.biddingId, participant.bidding.id))).limit(1);
           if (!lot) throw new BiddingWorkflowError("O lote não pertence a este certame.");
           if (!participant.bidding.sessionDate) throw new BiddingWorkflowError("O certame não possui prazo definido para lances.");
           if (!isBiddingBidSubmissionOpen({
@@ -1073,22 +946,13 @@ export async function submitBiddingBid(input: {
             throw new BiddingWorkflowError("O prazo de lances está encerrado ou a disputa não está aberta.");
           }
 
-          const eligibility = await tx.biddingEligibility.findFirst({
-            where: { biddingLotId: lot.id, participantId: participant.id },
-            orderBy: [{ decidedAt: "desc" }, { createdAt: "desc" }],
-            select: { status: true },
-          });
+          const [eligibility] = await tx.select({ status: biddingEligibilities.status }).from(biddingEligibilities).where(and(eq(biddingEligibilities.biddingLotId, lot.id), eq(biddingEligibilities.participantId, participant.id))).orderBy(desc(biddingEligibilities.decidedAt), desc(biddingEligibilities.createdAt)).limit(1);
           if (!eligibility || !isBiddingParticipantEligible(eligibility.status)) {
             throw new BiddingWorkflowError("Seu fornecedor precisa estar habilitado neste lote antes de apresentar lances.");
           }
 
-          const lastBid = await tx.biddingBid.findFirst({
-            where: { biddingLotId: lot.id },
-            orderBy: { sequence: "desc" },
-            select: { sequence: true },
-          });
-          const bid = await tx.biddingBid.create({
-            data: {
+          const [lastBid] = await tx.select({ sequence: biddingBids.sequence }).from(biddingBids).where(eq(biddingBids.biddingLotId, lot.id)).orderBy(desc(biddingBids.sequence)).limit(1);
+          const [bid] = await tx.insert(biddingBids).values({
               biddingLotId: lot.id,
               participantId: participant.id,
               supplierPortalIdentityId: identity.id,
@@ -1098,8 +962,7 @@ export async function submitBiddingBid(input: {
               sequence: (lastBid?.sequence ?? 0) + 1,
               status: BIDDING_BID_STATUS.ACCEPTED,
               idempotencyKey,
-            },
-          });
+          }).returning();
           const phaseId = await currentPhaseId(tx, participant.bidding.id);
           await writeBiddingAct(tx, {
             biddingId: participant.bidding.id,
@@ -1124,7 +987,7 @@ export async function submitBiddingBid(input: {
         return { success: true, id: result.id, alreadySubmitted: result.alreadySubmitted };
       } catch (error) {
         if (!isUniqueConstraint(error)) throw error;
-        const existing = await context.prisma.biddingBid.findUnique({ where: { idempotencyKey } });
+        const [existing] = await (context.database ?? db).select().from(biddingBids).where(eq(biddingBids.idempotencyKey, idempotencyKey)).limit(1);
         if (existing) {
           if (
             existing.biddingLotId !== biddingLotId

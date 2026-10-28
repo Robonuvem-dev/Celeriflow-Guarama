@@ -2,8 +2,14 @@
 
 import { getTenantContextForModuleOperation, isSystemAdministrator, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
-import { nextYearlyCode } from "@/lib/sequence";
-import { Prisma } from "@prisma/client";
+import { eq, inArray } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { nextYearlyCodeDrizzle } from "@/db/repositories/platform/sequences";
+import { loadPurchaseRequestsWithAllocations } from "@/db/repositories/procurement/lifecycle";
+import { listRequestAppropriations, loadRequestCatalogItems } from "@/db/repositories/procurement/purchase-requests";
+import { departments, employees, secretariats } from "@/db/schema/administration";
+import { purchaseRequests, purchaseRequestItems, purchaseRequestBudgetAllocations } from "@/db/schema/procurement-requests";
 import { approvePurchaseRequest as approveOfficialPurchaseRequest, ProcurementLifecycleError } from "@/lib/compras/procurement-lifecycle";
 import { assertPurchaseRequestOrigin, canManagePurchaseRequest, PurchaseRequestOriginError } from "@/lib/compras/purchase-request-policy";
 import { normalizePurchaseRequestItemBudgetAllocations, PurchaseRequestBudgetError, totalPurchaseRequestBudgetAllocations } from "@/lib/compras/purchase-request-budget";
@@ -43,21 +49,15 @@ const purchaseRequestPriorities = new Set(["Baixa", "Normal", "Alta", "Urgente"]
 export async function deletePurchaseRequest(id: string) {
   try {
     const context = await getTenantContext("delete");
-    const { prisma } = context;
-    const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.purchaseRequest.findUnique({
-        where: { id },
-        select: { requesterId: true, secretariatId: true, departmentId: true, status: true, items: { select: { id: true } } },
-      });
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = await loadPurchaseRequestsWithAllocations(tx, [id]);
       if (!existing || !canManagePurchaseRequest(context.user, existing)) {
         return { error: "Somente o solicitante pode excluir uma solicitacao em rascunho." };
       }
       if (existing.items.length) {
-        await tx.purchaseRequestItemBudgetAllocation.deleteMany({
-          where: { purchaseRequestItemId: { in: existing.items.map((item) => item.id) } },
-        });
+        await tx.delete(purchaseRequestBudgetAllocations).where(inArray(purchaseRequestBudgetAllocations.purchaseRequestItemId, existing.items.map(item => item.id)));
       }
-      await tx.purchaseRequest.delete({ where: { id } });
+      await tx.delete(purchaseRequests).where(eq(purchaseRequests.id, id));
       return { success: true };
     });
     if ("error" in result) return { success: false, error: result.error };
@@ -79,23 +79,11 @@ export async function savePurchaseRequest(payload: PurchaseRequestInput) {
     const allocationsByItem = normalizedItems.items.map((item, index) => normalizePurchaseRequestItemBudgetAllocations(items[index]?.allocations, item));
     const estimatedValue = totalPurchaseRequestBudgetAllocations(allocationsByItem).toNumber();
     const context = await getTenantContextForModuleOperation("COMPRAS", id ? "update" : "create");
-    const { prisma } = context;
     if (!secretariatId?.trim() || !departmentId?.trim()) return { success: false, error: "Selecione a secretaria e o departamento solicitante." };
     if (!context.user.employeeId && !id) return { success: false, error: "O usuário autenticado deve estar vinculado a um servidor solicitante para criar a solicitação." };
     assertPurchaseRequestOrigin(context.user, { secretariatId, departmentId });
-    const result = await prisma.$transaction(async (tx) => {
-      const existing = id
-        ? await tx.purchaseRequest.findUnique({
-          where: { id },
-          select: {
-            status: true,
-            requesterId: true,
-            secretariatId: true,
-            departmentId: true,
-            items: { select: { id: true } },
-          },
-        })
-        : null;
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = id ? await loadPurchaseRequestsWithAllocations(tx, [id]) : [];
       if (id && (!existing || !canManagePurchaseRequest(context.user, existing))) {
         return { error: "Somente o solicitante pode editar uma solicitação em rascunho." };
       }
@@ -105,24 +93,12 @@ export async function savePurchaseRequest(payload: PurchaseRequestInput) {
 
       const catalogItemIds = normalizedItems.items.flatMap((item) => item.catalogItemId ? [item.catalogItemId] : []);
       const budgetAppropriationIds = [...new Set(allocationsByItem.flatMap((allocations) => allocations.map((allocation) => allocation.budgetAppropriationId)))];
-      const [secretariat, department, requester, catalogItems, budgetAppropriations] = await Promise.all([
-        tx.secretariat.findUnique({ where: { id: secretariatId } }),
-        tx.department.findUnique({ where: { id: departmentId } }),
-        tx.employee.findUnique({ where: { id: requesterId }, select: { id: true, isActive: true } }),
-        catalogItemIds.length
-          ? tx.catalogItem.findMany({
-            where: { id: { in: catalogItemIds }, isActive: true },
-            select: { id: true, materials: { select: { id: true, isActive: true } } },
-          })
-          : [],
-        tx.budgetAppropriation.findMany({
-          where: {
-            id: { in: budgetAppropriationIds },
-            budgetUnit: { is: { secretariatId } },
-            ...(isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } }),
-          },
-          select: { id: true },
-        }),
+      const [[secretariat], [department], [requester], catalogItems, budgetAppropriations] = await Promise.all([
+        tx.select().from(secretariats).where(eq(secretariats.id, secretariatId)).limit(1),
+        tx.select().from(departments).where(eq(departments.id, departmentId)).limit(1),
+        tx.select({ id: employees.id, isActive: employees.isActive }).from(employees).where(eq(employees.id, requesterId)).limit(1),
+        loadRequestCatalogItems(tx, catalogItemIds),
+        listRequestAppropriations(tx, { ids: budgetAppropriationIds, secretariatId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }),
       ]);
       if (!secretariat || !department || department.secretariatId !== secretariat.id || !requester?.isActive) {
         return { error: "Secretaria, departamento ou solicitante inválido." };
@@ -142,8 +118,8 @@ export async function savePurchaseRequest(payload: PurchaseRequestInput) {
 
       let finalNumber = number?.trim();
       if (!finalNumber && !id) {
-        const requests = await tx.purchaseRequest.findMany({ select: { number: true } });
-        finalNumber = await nextYearlyCode({ prisma: tx, key: "compras-solicitacao", prefix: "REQ", existingCodes: requests.map(({ number }) => ({ code: number })) });
+        const requests = await tx.select({ number: purchaseRequests.number }).from(purchaseRequests);
+        finalNumber = await nextYearlyCodeDrizzle({ db: tx, key: "compras-solicitacao", prefix: "REQ", existingCodes: requests.map(({ number }) => ({ code: number })) });
       }
       if (!finalNumber) return { error: "Informe o número da solicitação." };
 
@@ -167,15 +143,13 @@ export async function savePurchaseRequest(payload: PurchaseRequestInput) {
         departmentId: department.id,
         requesterId: requester.id,
       };
-      const request = id
-        ? await tx.purchaseRequest.update({ where: { id }, data: requestData })
-        : await tx.purchaseRequest.create({ data: requestData });
+      const [request] = id
+        ? await tx.update(purchaseRequests).set(requestData).where(eq(purchaseRequests.id, id)).returning()
+        : await tx.insert(purchaseRequests).values(requestData).returning();
       const removedItems = (existing?.items ?? []).filter((item) => !suppliedItemIds.has(item.id));
       if (removedItems.length) {
-        await tx.purchaseRequestItemBudgetAllocation.deleteMany({
-          where: { purchaseRequestItemId: { in: removedItems.map((item) => item.id) } },
-        });
-        await tx.purchaseRequestItem.deleteMany({ where: { id: { in: removedItems.map((item) => item.id) } } });
+        await tx.delete(purchaseRequestBudgetAllocations).where(inArray(purchaseRequestBudgetAllocations.purchaseRequestItemId, removedItems.map(item => item.id)));
+        await tx.delete(purchaseRequestItems).where(inArray(purchaseRequestItems.id, removedItems.map(item => item.id)));
       }
 
       for (const [index, item] of normalizedItems.items.entries()) {
@@ -193,22 +167,16 @@ export async function savePurchaseRequest(payload: PurchaseRequestInput) {
           valueDecimal: allocation.valueDecimal,
         }));
         if (item.id) {
-          await tx.purchaseRequestItem.update({ where: { id: item.id }, data: itemData });
-          await tx.purchaseRequestItemBudgetAllocation.deleteMany({ where: { purchaseRequestItemId: item.id } });
-          await tx.purchaseRequestItemBudgetAllocation.createMany({
-            data: allocations.map((allocation) => ({ purchaseRequestItemId: item.id!, ...allocation })),
-          });
+          await tx.update(purchaseRequestItems).set(itemData).where(eq(purchaseRequestItems.id, item.id));
+          await tx.delete(purchaseRequestBudgetAllocations).where(eq(purchaseRequestBudgetAllocations.purchaseRequestItemId, item.id));
+          if (allocations.length) await tx.insert(purchaseRequestBudgetAllocations).values(allocations.map(allocation => ({ purchaseRequestItemId: item.id!, ...allocation })));
         } else {
-          await tx.purchaseRequestItem.create({
-            data: {
-              ...itemData,
-              budgetAllocations: { create: allocations },
-            },
-          });
+          const [created] = await tx.insert(purchaseRequestItems).values(itemData).returning({ id: purchaseRequestItems.id });
+          if (allocations.length) await tx.insert(purchaseRequestBudgetAllocations).values(allocations.map(allocation => ({ purchaseRequestItemId: created.id, ...allocation })));
         }
       }
       return { id: request.id };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }, { isolationLevel: "serializable" });
 
     if ("error" in result) return { success: false, error: result.error };
 
@@ -227,7 +195,7 @@ export async function savePurchaseRequest(payload: PurchaseRequestInput) {
 export async function approvePurchaseRequest(id: string) {
   try {
     const context = await getTenantContextForModuleOperation("COMPRAS", "update");
-    await approveOfficialPurchaseRequest(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id);
+    await approveOfficialPurchaseRequest(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id);
     revalidatePath("/compras/solicitacoes");
     revalidatePath(`/compras/solicitacoes/${id}`);
     return { success: true };

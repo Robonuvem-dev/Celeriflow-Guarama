@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { z } from "zod";
 import { constructionDate, definitionSchema, validateConstructionFields } from "./construction-rules";
 
@@ -17,10 +17,10 @@ export const inspectionResultSchema = base.extend({ inspectionId: id, inspectedA
 export const completionSchema = base.extend({ kind: z.enum(["PARTIAL", "TOTAL"]), completedAt: constructionDate, area, notes: z.string().trim().min(3).max(4000), ...evidence });
 export const propertyUpdateSchema = base.extend({ completionId: id, processTypeId: id, subjectId: id, changes: z.array(z.object({ realEstateId: id, expectedBuiltArea: area, builtArea: area, propertyUse: z.string().trim().min(2).max(100) })).min(1).max(100).refine((items) => new Set(items.map((item) => item.realEstateId)).size === items.length, "Imóveis repetidos.") });
 
-export function calculateCompletionBalance(total: Prisma.Decimal | string, previous: (Prisma.Decimal | string)[], amount: string, kind: "PARTIAL" | "TOTAL") {
-  const approved = new Prisma.Decimal(total);
-  const increment = new Prisma.Decimal(area.parse(amount));
-  const cumulative = previous.reduce<Prisma.Decimal>((sum, value) => sum.plus(value), new Prisma.Decimal(0)).plus(increment);
+export function calculateCompletionBalance(total: string | { toString(): string }, previous: (string | { toString(): string })[], amount: string, kind: "PARTIAL" | "TOTAL") {
+  const approved = new Decimal(String(total));
+  const increment = new Decimal(area.parse(amount));
+  const cumulative = previous.reduce<Decimal>((sum, value) => sum.plus(String(value)), new Decimal(0)).plus(increment);
   const remaining = approved.minus(cumulative);
   if (!increment.greaterThan(0) || remaining.lessThan(0)) throw new Error("Área concluída deve ser positiva e não pode exceder a área aprovada.");
   if (kind === "TOTAL" && !remaining.isZero()) throw new Error("Conclusão total deve quitar exatamente o saldo de área.");

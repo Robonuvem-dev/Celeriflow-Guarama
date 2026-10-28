@@ -4,30 +4,25 @@ import { getProtocolContext } from "@/lib/protocols/access";
 import { createProtocol } from "../../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { processTypes, processSubjects } from "@/db/schema/processes";
+import { people } from "@/db/schema/people";
+import { companies } from "@/db/schema/registry";
+import { departments } from "@/db/schema/administration";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovoProtocoloPage() {
-  const { prisma } = await getProtocolContext("edit");
+  await getProtocolContext("edit");
   // Buscar os tipos de processo e pessoas para o formulário
-  const tiposProcesso = await prisma.processType.findMany({
-    where: { isActive: true },
-    include: { subjects: { where: { isActive: true } } }
-  });
+  const types = await db.select({ id: processTypes.id, name: processTypes.name }).from(processTypes).where(eq(processTypes.isActive, true));
+  const subjects = types.length ? await db.select({ id: processSubjects.id, name: processSubjects.name, processTypeId: processSubjects.processTypeId }).from(processSubjects).where(and(eq(processSubjects.isActive, true), inArray(processSubjects.processTypeId, types.map(type => type.id)))) : [];
+  const tiposProcesso = types.map(type => ({ ...type, subjects: subjects.filter(subject => subject.processTypeId === type.id) }));
   
-  const pessoas = await prisma.person.findMany({
-    where: { status: "Ativo" },
-    take: 100 // Simplificação para o MVP
-  });
-  const empresas = await prisma.company.findMany({
-    where: { status: "Ativo" },
-    take: 100,
-    orderBy: { corporateName: "asc" },
-  });
-  const departamentos = await prisma.department.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-  });
+  const pessoas = await db.select({ id: people.id, fullName: people.fullName, cpf: people.cpf }).from(people).where(eq(people.status, "Ativo")).limit(100);
+  const empresas = await db.select({ id: companies.id, corporateName: companies.corporateName, cnpj: companies.cnpj }).from(companies).where(eq(companies.status, "Ativo")).orderBy(asc(companies.corporateName)).limit(100);
+  const departamentos = await db.select({ id: departments.id, name: departments.name }).from(departments).where(eq(departments.isActive, true)).orderBy(asc(departments.name));
 
   return (
     <PageFrame className="max-w-5xl space-y-2">

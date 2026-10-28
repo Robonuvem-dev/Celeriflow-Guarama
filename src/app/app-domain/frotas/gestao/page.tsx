@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { departmentWhere, fleetScope } from "@/lib/frotas/service";
+import { fleetScope } from "@/lib/frotas/service";
+import { fleetDatabase } from "@/db/repositories/fleet/records";
+import { fleetManagementOptions } from "@/db/repositories/fleet/page-data";
 import { queryFleetControl } from "@/lib/frotas/control-queries";
 import { fleetControlForms } from "./forms";
 import type { FleetControlOperation } from "@/lib/frotas/control-policy";
@@ -38,10 +40,8 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
   const canEdit = canPerformModuleOperation(context.user, "FROTAS", "update"), canCreate = canPerformModuleOperation(context.user, "FROTAS", "create");
   const filters = { area: result.query.area, q: result.query.q, unitId: result.query.unitId, unitIds: result.query.unitIds, departmentId: result.query.departmentId, driverId: result.query.driverId, catalogVersionId: result.query.catalogVersionId, nature: result.query.nature, from: result.query.from, to: result.query.to, status: result.query.status };
   const href = (page: number) => `?${new URLSearchParams({ ...filters, page: String(page) })}`;
-  const departments = await context.prisma.department.findMany({ where: scope.administrator ? {} : { id: scope.departmentId! }, select: { id: true, name: true }, orderBy: { name: "asc" } });
-  const unitOptions = await context.prisma.fleetUnit.findMany({ where: { AND: [departmentWhere(scope), ...(result.query.departmentId ? [{ departmentId: result.query.departmentId }] : [])] }, select: { id: true, code: true, name: true, plate: true }, orderBy: { code: "asc" } });
+  const { departments, unitOptions, catalogOptions } = await fleetManagementOptions(fleetDatabase(context), scope, result.query.departmentId, result.query.area === "infracoes");
   const drivers = (await queryFleetControl(context, { area: "motoristas", departmentId: result.query.departmentId }, true)).rows;
-  const catalogOptions = result.query.area === "infracoes" ? await context.prisma.fleetCatalogVersion.findMany({ where: { kind: "CTB", published: true }, select: { id: true, reference: true }, orderBy: { createdAt: "desc" } }) : [];
   return <main className="mx-auto max-w-7xl space-y-5 p-3 sm:p-5">
     <header><Link href="/frotas" className="text-sm font-semibold text-teal-800">← Cadastro e rotinas existentes da Frota</Link><h1 className="mt-3 text-2xl font-bold text-slate-950">Gestão e controle operacional da Frota</h1><p className="mt-2 text-sm leading-6 text-slate-600">Cadastro patrimonial permanece na origem. Autorizar, executar, registrar despesa e confirmar pagamento são etapas distintas.</p></header>
     <nav className="flex flex-wrap gap-2" aria-label="Rotinas da Frota">{areas.map(([id, label]) => <Link key={id} href={`?area=${id}`} aria-current={result.query.area === id ? "page" : undefined} className={`rounded border px-3 py-2 text-sm ${result.query.area === id ? "border-teal-600 bg-teal-50 font-semibold text-teal-900" : "border-slate-300 bg-white text-slate-700"}`}>{label}</Link>)}</nav>

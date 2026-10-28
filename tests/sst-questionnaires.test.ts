@@ -5,6 +5,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { questionnaireInput, questionnaireQuestions, validateQuestionnaireAnswers } from "../src/lib/sst/questionnaire-policy";
 import { registerAnamnesis, registerQuestionnaireVersion } from "../src/lib/sst/questionnaire-service";
 import type { AppContext } from "../src/lib/platform/tenant-context";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { sstTestContext } from "./helpers/sst-drizzle-context";
 
 const key = "2d161f17-63ca-4d57-9c87-82c4f74e4d5a";
 const questions = questionnaireQuestions.parse([
@@ -39,61 +41,66 @@ test("answer validation preserves false and zero and rejects unknown questions, 
   assert.equal(validateQuestionnaireAnswers(questionnaireQuestions.parse([{ key: "constructor", label: "Opcional", kind: "TEXT", required: false }]), {}).constructor, null);
 });
 
-function fixture(grant = { isActive: true, canReadClinical: true, canAssess: true }) {
-  const records: { id: string; requestHash: string; createdById: string; revision: number }[] = [];
-  const writes: Record<string, unknown>[] = [];
-  const questionnaire = { id: "q", budgetUnitId: "ug", code: "MED", title: "Anamnese", version: 2, questions };
-  const tx = {
-    $executeRaw: async () => 1,
-    sstQuestionnaireVersion: { findUnique: async () => questionnaire },
-    sstAnamnesis: {
-      findUnique: async ({ where }: { where: { asoId_submissionKey: { submissionKey: string } } }) => where.asoId_submissionKey.submissionKey === key ? records[0] || null : null,
-      findFirst: async () => records.at(-1) || null,
-      create: async ({ data }: { data: Record<string, unknown> }) => { writes.push(data); const record = { id: `answer-${writes.length}`, requestHash: String(data.requestHash), createdById: String(data.createdById), revision: Number(data.revision) }; records.push(record); return record; },
-    },
-    sstAso: { findUniqueOrThrow: async () => ({ examinerCouncil: "CRM PR 123", snapshot: { personName: "Pessoa", cpf: "00000000000", registration: null, role: null, department: null, unitName: "UG", examinerName: "Médico", programCode: "PCMSO", programVersion: 1, group: { code: "G", name: "Grupo", departmentIds: [], roleIds: [], startsAt: "2026-01-01", endsAt: null }, prescribedExams: [] } }) },
-    auditEvent: { create: async () => ({}) },
-  };
-  const context = { user: { ...user }, prisma: { sstAso: { findUnique: async () => ({ budgetUnitId: "ug" }) }, sstAccessGrant: { findUnique: async () => grant }, $transaction: async (callback: (db: typeof tx) => Promise<unknown>) => callback(tx) } } as unknown as AppContext;
-  return { context, writes, questionnaire };
+async function fixture(grant = { isActive: true, canReadClinical: true, canAssess: true }) {
+  const local = await createLocalDrizzleDatabase(), db = local.database;
+  try {
+    await db.exec(`CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY); INSERT INTO "BudgetUnit" VALUES ('ug'),('other');
+    CREATE TABLE "SstAso" (id TEXT PRIMARY KEY,"budgetUnitId" TEXT,"examinerCouncil" TEXT,snapshot JSONB);
+    CREATE TABLE "SstAccessGrant" (id TEXT PRIMARY KEY,"usuarioId" TEXT,"budgetUnitId" TEXT,"isActive" BOOLEAN,"canReadClinical" BOOLEAN,"canAssess" BOOLEAN,"createdAt" TIMESTAMP DEFAULT now(),"updatedAt" TIMESTAMP DEFAULT now());
+    CREATE TABLE "AuditEvent" (id TEXT PRIMARY KEY,"actorUsuarioId" TEXT,"eventType" TEXT,"targetType" TEXT,"targetId" TEXT,"createdAt" TIMESTAMP DEFAULT now());`);
+    await db.exec(readFileSync("prisma/migrations-ibema/20261010210000_add_sst_questionnaires/migration.sql", "utf8"));
+    await db.exec(`ALTER TABLE "SstQuestionnaireVersion" ADD discipline TEXT NOT NULL DEFAULT 'MEDICINE'`);
+    await db.query(`INSERT INTO "SstAccessGrant" (id,"usuarioId","budgetUnitId","isActive","canReadClinical","canAssess") VALUES ('grant','user','ug',$1,$2,$3)`, [grant.isActive, grant.canReadClinical, grant.canAssess]);
+    await db.query(`INSERT INTO "SstQuestionnaireVersion" (id,"budgetUnitId",code,title,version,questions,"submissionKey","requestHash","createdById") VALUES ('q','ug','MED','Anamnese',3,$1,'seed','hash','user')`, [JSON.stringify(questions)]);
+    await db.query(`INSERT INTO "SstAso" VALUES ('aso','ug','CRM PR 123',$1)`, [JSON.stringify({ personName: "Pessoa", cpf: "00000000000", registration: null, role: null, department: null, unitName: "UG", examinerName: "Médico", programCode: "PCMSO", programVersion: 1, group: { code: "G", name: "Grupo", departmentIds: [], roleIds: [], startsAt: "2026-01-01", endsAt: null }, prescribedExams: [] })]);
+    const context = sstTestContext(local.connection.db, { ...user });
+    const responses = async () => (await db.query<{ revision: number; snapshot: { title: string } }>('SELECT revision,snapshot FROM "SstAnamnesis" ORDER BY revision')).rows;
+    return { context, db, responses, close: local.close };
+  } catch (error) { await local.close(); throw error; }
 }
 const input = { asoId: "aso", questionnaireVersionId: "q", answers, submissionKey: key };
 
 test("anamnesis requires clinical assessment authorization and enforces ASO/questionnaire unit scope", async () => {
-  const reader = fixture({ isActive: true, canReadClinical: true, canAssess: false });
-  await assert.rejects(registerAnamnesis(reader.context, input), /clínica/);
-  assert.equal(reader.writes.length, 0);
-  const other = fixture(); other.questionnaire.budgetUnitId = "other";
-  await assert.rejects(registerAnamnesis(other.context, input), /UG do ASO/);
-  assert.equal(other.writes.length, 0);
-  other.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: false, create: false } } });
-  await assert.rejects(registerAnamnesis(other.context, input), /incluir registros/);
+  const reader = await fixture({ isActive: true, canReadClinical: true, canAssess: false });
+  try {
+    await assert.rejects(registerAnamnesis(reader.context, input), /clínica/);
+    assert.equal((await reader.responses()).length, 0);
+  } finally { await reader.close(); }
+  const other = await fixture();
+  try {
+    await other.db.query(`INSERT INTO "SstQuestionnaireVersion" (id,"budgetUnitId",code,title,version,questions,"submissionKey","requestHash","createdById") VALUES ('other-q','other','MED','Outra UG',1,$1,'other','hash','user')`, [JSON.stringify(questions)]);
+    await assert.rejects(registerAnamnesis(other.context, { ...input, questionnaireVersionId: "other-q" }), /UG do ASO/);
+    assert.equal((await other.responses()).length, 0);
+    other.context.user.permissions = JSON.stringify({ modules: { SST: { blocked: false, create: false } } });
+    await assert.rejects(registerAnamnesis(other.context, input), /incluir registros/);
+  } finally { await other.close(); }
 });
 
 test("anamnesis retries preserve snapshots and revisions require a reason without overwriting existing answers", async () => {
-  const { context, writes, questionnaire } = fixture();
-  assert.equal(await registerAnamnesis(context, input), "answer-1");
-  assert.equal(await registerAnamnesis(context, input), "answer-1");
-  assert.equal(writes.length, 1);
-  await assert.rejects(registerAnamnesis(context, { ...input, answers: { ...answers, queixa: "Dor" } }), /outros dados/);
-  const next = { ...input, submissionKey: "4d161f17-63ca-4d57-9c87-82c4f74e4d5a" };
-  await assert.rejects(registerAnamnesis(context, next), /Justifique/);
-  questionnaire.title = "Título da versão seguinte";
-  await registerAnamnesis(context, { ...next, revisionReason: "Complementação após conferência médica" });
-  assert.equal(writes[0].revision, 1); assert.equal(writes[1].revision, 2);
-  assert.equal((writes[0].snapshot as { title: string }).title, "Anamnese");
-  assert.equal((writes[1].snapshot as { title: string }).title, "Título da versão seguinte");
+  const f = await fixture();
+  try {
+    const id = await registerAnamnesis(f.context, input);
+    assert.equal(await registerAnamnesis(f.context, input), id);
+    assert.equal((await f.responses()).length, 1);
+    await assert.rejects(registerAnamnesis(f.context, { ...input, answers: { ...answers, queixa: "Dor" } }), /outros dados/);
+    const next = { ...input, submissionKey: "4d161f17-63ca-4d57-9c87-82c4f74e4d5a" };
+    await assert.rejects(registerAnamnesis(f.context, next), /Justifique/);
+    const nextQuestionnaire = await registerQuestionnaireVersion(f.context, { budgetUnitId: "ug", code: "MED", title: "Título da versão seguinte", questions, submissionKey: next.submissionKey });
+    await registerAnamnesis(f.context, { ...next, questionnaireVersionId: nextQuestionnaire, revisionReason: "Complementação após conferência médica" });
+    const responses = await f.responses();
+    assert.deepEqual(responses.map(row => [row.revision, row.snapshot.title]), [[1, "Anamnese"], [2, "Título da versão seguinte"]]);
+  } finally { await f.close(); }
 });
 
 test("questionnaire registration allocates a new version under locks and retries do not duplicate it", async () => {
-  let existing: { id: string; createdById: string; requestHash: string } | null = null;
-  let locks = 0; let writes = 0;
-  const tx = { $executeRaw: async () => { locks++; }, sstQuestionnaireVersion: { findUnique: async () => existing, findFirst: async () => ({ version: 3 }), create: async ({ data }: { data: { version: number; createdById: string; requestHash: string } }) => { assert.equal(data.version, 4); writes++; existing = { id: "q4", createdById: data.createdById, requestHash: data.requestHash }; return existing; } }, auditEvent: { create: async () => ({}) } };
-  const context = { user, prisma: { sstAccessGrant: { findUnique: async () => ({ isActive: true, canReadClinical: true, canAssess: true }) }, $transaction: async (callback: (db: typeof tx) => Promise<unknown>) => callback(tx) } } as unknown as AppContext;
-  const raw = { budgetUnitId: "ug", code: "MED", title: "Anamnese", questions, submissionKey: key };
-  assert.equal(await registerQuestionnaireVersion(context, raw), "q4");
-  assert.equal(await registerQuestionnaireVersion(context, raw), "q4");
-  assert.equal(writes, 1); assert.equal(locks, 3);
+  const f = await fixture();
+  try {
+    const raw = { budgetUnitId: "ug", code: "MED", title: "Anamnese", questions, submissionKey: key };
+    const id = await registerQuestionnaireVersion(f.context, raw);
+    assert.equal(await registerQuestionnaireVersion(f.context, raw), id);
+    assert.deepEqual((await f.db.query('SELECT version FROM "SstQuestionnaireVersion" ORDER BY version')).rows, [{ version: 3 }, { version: 4 }]);
+    assert.equal((await f.db.query('SELECT id FROM "AuditEvent"')).rows.length, 1);
+  } finally { await f.close(); }
 });
 
 test("migration preserves versions and responses, enforces cross-unit scope and protects canonical ASO", async () => {

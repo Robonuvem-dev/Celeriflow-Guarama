@@ -4,14 +4,14 @@ import { CalendarDays } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import Link from "next/link";
+import { db } from "@/db/client";
+import { listCalendarEvents } from "@/db/repositories/administration/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function CalendarioPage() {
-  const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
-  const events = await prisma.calendarEvent.findMany({
-    orderBy: { date: 'asc' }
-  });
+  const context = await getTenantContextForModule("ADMINISTRACAO");
+  const events = await listCalendarEvents(context.database ?? db);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

@@ -1,8 +1,15 @@
 import { createHash } from "node:crypto";
 import { MUNICIPALITY_INSTITUTION_NAME, MUNICIPALITY_LABEL } from "@/lib/municipality-identity";
-import type { PrismaClient } from "@prisma/client";
-
-type Db = PrismaClient;
+import { and, desc, eq, inArray, isNotNull, isNull, notInArray } from "drizzle-orm";
+import type { DatabaseExecutor as Db } from "@/db/transaction";
+import { financialYears } from "@/db/schema/finance-years";
+import { governmentEntities } from "@/db/schema/master-data";
+import { annualAccountingCloses } from "@/db/schema/finance-accounting";
+import { documents as documentTable, suppliers, companies } from "@/db/schema/registry";
+import { people } from "@/db/schema/people";
+import { secretariats } from "@/db/schema/administration";
+import { documentVersions } from "@/db/schema/document-workflow";
+import { procurementContracts, purchaseProcesses, biddings as biddingTable } from "@/db/schema/procurement-core";
 
 export const publicFinancialReportOptions = [
   { type: "RREO", label: "RREO" },
@@ -44,31 +51,12 @@ function publicSupplier(supplier: {
 }
 
 export async function getPublicFinancialReportSnapshots(db: Db) {
-  const years = await db.financialYear.findMany({
-    select: {
-      id: true,
-      year: true,
-      governmentEntityId: true,
-      governmentEntity: { select: { name: true } },
-      annualAccountingCloses: { select: { status: true, closedAt: true } },
-    },
-    orderBy: { year: "desc" },
-  });
-  const documents = await db.document.findMany({
-    where: {
-      status: "Publicado",
-      documentType: { in: years.flatMap((year) => publicFinancialReportOptions.map((report) => publicFinancialReportDocumentType(year.id, report.type))) },
-    },
-    select: {
-      id: true,
-      documentType: true,
-      versions: {
-        where: { status: { in: ["FINAL", "SIGNED"] } },
-        orderBy: { versionNumber: "desc" },
-        select: { versionNumber: true, finalizedAt: true },
-      },
-    },
-  });
+  const yearRows=await db.select({id:financialYears.id,year:financialYears.year,governmentEntityId:financialYears.governmentEntityId,governmentEntity:{name:governmentEntities.name}}).from(financialYears).leftJoin(governmentEntities,eq(governmentEntities.id,financialYears.governmentEntityId)).orderBy(desc(financialYears.year));
+  const closes=yearRows.length?await db.select({financialYearId:annualAccountingCloses.financialYearId,status:annualAccountingCloses.status,closedAt:annualAccountingCloses.closedAt}).from(annualAccountingCloses).where(inArray(annualAccountingCloses.financialYearId,yearRows.map(row=>row.id))):[];
+  const years=yearRows.map(row=>({...row,annualAccountingCloses:closes.filter(close=>close.financialYearId===row.id)}));
+  const documentRows=years.length?await db.select({id:documentTable.id,documentType:documentTable.documentType}).from(documentTable).where(and(eq(documentTable.status,"Publicado"),inArray(documentTable.documentType,years.flatMap(year=>publicFinancialReportOptions.map(report=>publicFinancialReportDocumentType(year.id,report.type)))))):[];
+  const versions=documentRows.length?await db.select({documentId:documentVersions.documentId,versionNumber:documentVersions.versionNumber,finalizedAt:documentVersions.finalizedAt}).from(documentVersions).where(and(inArray(documentVersions.documentId,documentRows.map(row=>row.id)),inArray(documentVersions.status,["FINAL","SIGNED"]))).orderBy(desc(documentVersions.versionNumber)):[];
+  const documents=documentRows.map(row=>({...row,versions:versions.filter(version=>version.documentId===row.id)}));
   const documentsByType = new Map(documents.map((document) => [document.documentType, document]));
 
   return years.flatMap((year) => publicFinancialReportOptions.flatMap((report) => {
@@ -93,44 +81,17 @@ export async function getPublicFinancialReportSnapshot(
   db: Db,
   input: { year: number; reportType: PublicFinancialReportType; version?: number; governmentEntityId?: string },
 ) {
-  const financialYear = await db.financialYear.findFirst({
-    where: { year: input.year, governmentEntityId: input.governmentEntityId ?? null },
-    select: { id: true, annualAccountingCloses: { select: { status: true } } },
-  });
+  const [financialYear] = await db.select({id:financialYears.id}).from(financialYears).where(and(eq(financialYears.year,input.year),input.governmentEntityId?eq(financialYears.governmentEntityId,input.governmentEntityId):isNull(financialYears.governmentEntityId))).limit(1);
   if (!financialYear) return null;
-  if (annualReportTypes.has(input.reportType) && !financialYear.annualAccountingCloses.some((close) => close.status === "ENCERRADO")) return null;
-
-  const document = await db.document.findFirst({
-    where: {
-      status: "Publicado",
-      documentType: publicFinancialReportDocumentType(financialYear.id, input.reportType),
-    },
-    select: {
-      versions: {
-        where: {
-          status: { in: ["FINAL", "SIGNED"] },
-          ...(input.version ? { versionNumber: input.version } : {}),
-        },
-        orderBy: { versionNumber: "desc" },
-        take: 1,
-        select: { fileUrl: true, versionNumber: true },
-      },
-    },
-  });
-  return document?.versions[0] ?? null;
+  if (annualReportTypes.has(input.reportType) && !(await db.select({id:annualAccountingCloses.id}).from(annualAccountingCloses).where(and(eq(annualAccountingCloses.financialYearId,financialYear.id),eq(annualAccountingCloses.status,"ENCERRADO"))).limit(1)).length) return null;
+  const [document]=await db.select({id:documentTable.id}).from(documentTable).where(and(eq(documentTable.status,"Publicado"),eq(documentTable.documentType,publicFinancialReportDocumentType(financialYear.id,input.reportType)))).limit(1);
+  if(!document)return null;
+  return (await db.select({fileUrl:documentVersions.fileUrl,versionNumber:documentVersions.versionNumber}).from(documentVersions).where(and(eq(documentVersions.documentId,document.id),inArray(documentVersions.status,["FINAL","SIGNED"]),input.version?eq(documentVersions.versionNumber,input.version):undefined)).orderBy(desc(documentVersions.versionNumber)).limit(1))[0]??null;
 }
 
 export async function getPublicContracts(db: Db) {
-  const contracts = await db.contract.findMany({
-    where: { status: { notIn: ["Minuta", "Rascunho", "Em Elaboração"] } },
-    include: {
-      supplier: { include: { person: { select: { fullName: true, cpf: true } }, company: { select: { corporateName: true, tradeName: true, cnpj: true } } } },
-      process: { select: { number: true, modality: true } },
-      secretariat: { select: { name: true } },
-    },
-    orderBy: { startDate: "desc" },
-    take: 100,
-  });
+  const rows=await db.select({contract:procurementContracts,person:{fullName:people.fullName,cpf:people.cpf},company:{corporateName:companies.corporateName,tradeName:companies.tradeName,cnpj:companies.cnpj},process:{number:purchaseProcesses.number,modality:purchaseProcesses.modality},secretariat:{name:secretariats.name}}).from(procurementContracts).innerJoin(suppliers,eq(suppliers.id,procurementContracts.supplierId)).leftJoin(people,eq(people.id,suppliers.personId)).leftJoin(companies,eq(companies.id,suppliers.companyId)).innerJoin(purchaseProcesses,eq(purchaseProcesses.id,procurementContracts.processId)).innerJoin(secretariats,eq(secretariats.id,procurementContracts.secretariatId)).where(notInArray(procurementContracts.status,["Minuta","Rascunho","Em Elaboração"])).orderBy(desc(procurementContracts.startDate)).limit(100);
+  const contracts=rows.map(row=>({...row.contract,supplier:{person:row.person,company:row.company},process:row.process,secretariat:row.secretariat}));
   return contracts.map((contract) => ({
     number: contract.number,
     object: contract.object,
@@ -147,12 +108,8 @@ export async function getPublicContracts(db: Db) {
 }
 
 export async function getPublicBiddings(db: Db) {
-  const biddings = await db.bidding.findMany({
-    where: { publicationDate: { not: null }, status: { notIn: ["Em Elaboração", "Rascunho"] } },
-    include: { process: { select: { number: true, object: true, estimatedValue: true, secretariat: { select: { name: true } } } } },
-    orderBy: { publicationDate: "desc" },
-    take: 100,
-  });
+  const rows=await db.select({bidding:biddingTable,process:{number:purchaseProcesses.number,object:purchaseProcesses.object,estimatedValue:purchaseProcesses.estimatedValue},secretariat:{name:secretariats.name}}).from(biddingTable).innerJoin(purchaseProcesses,eq(purchaseProcesses.id,biddingTable.processId)).innerJoin(secretariats,eq(secretariats.id,purchaseProcesses.secretariatId)).where(and(isNotNull(biddingTable.publicationDate),notInArray(biddingTable.status,["Em Elaboração","Rascunho"]))).orderBy(desc(biddingTable.publicationDate)).limit(100);
+  const biddings=rows.map(row=>({...row.bidding,process:{...row.process,secretariat:row.secretariat}}));
   return biddings.map((bidding) => ({
     number: bidding.number,
     modality: bidding.modality,
@@ -176,46 +133,39 @@ export async function publishApprovedSnapshot(
     versionNumber?: number;
   },
 ) {
-  const year = await db.financialYear.findUnique({ where: { id: input.financialYearId } });
+  const [year] = await db.select({id:financialYears.id}).from(financialYears).where(eq(financialYears.id,input.financialYearId)).limit(1);
   if (!year) throw new Error("Exercício financeiro não encontrado.");
 
   if (annualReportTypes.has(input.reportType)) {
-    const closed = await db.annualAccountingClose.findFirst({ where: { financialYearId: year.id, status: "ENCERRADO" } });
+    const [closed] = await db.select({id:annualAccountingCloses.id}).from(annualAccountingCloses).where(and(eq(annualAccountingCloses.financialYearId,year.id),eq(annualAccountingCloses.status,"ENCERRADO"))).limit(1);
     if (!closed) throw new Error("Balanços anuais e PCA exigem o encerramento anual concluído.");
   }
 
   const docType = publicFinancialReportDocumentType(year.id, input.reportType);
-  let document = await db.document.findFirst({ where: { documentType: docType } });
+  let [document] = await db.select({id:documentTable.id}).from(documentTable).where(eq(documentTable.documentType,docType)).limit(1);
 
   if (!document) {
-    document = await db.document.create({
-      data: {
+    [document] = await db.insert(documentTable).values({
         title: input.title,
         documentType: docType,
         fileUrl: input.fileUrl,
         status: "Publicado",
-      },
-    });
+    }).returning({id:documentTable.id});
   }
 
-  const lastVersion = await db.documentVersion.findFirst({
-    where: { documentId: document.id },
-    orderBy: { versionNumber: "desc" },
-  });
+  const [lastVersion] = await db.select({versionNumber:documentVersions.versionNumber}).from(documentVersions).where(eq(documentVersions.documentId,document.id)).orderBy(desc(documentVersions.versionNumber)).limit(1);
 
   const nextVersion = input.versionNumber ?? (lastVersion ? lastVersion.versionNumber + 1 : 1);
   const hashSha256 = createHash("sha256").update(input.fileUrl).digest("hex");
 
-  const version = await db.documentVersion.create({
-    data: {
+  const [version] = await db.insert(documentVersions).values({
       documentId: document.id,
       versionNumber: nextVersion,
       fileUrl: input.fileUrl,
       hashSha256,
       status: "FINAL",
       finalizedAt: new Date(),
-    },
-  });
+  }).returning({id:documentVersions.id,versionNumber:documentVersions.versionNumber});
 
   return { documentId: document.id, versionId: version.id, versionNumber: version.versionNumber };
 }

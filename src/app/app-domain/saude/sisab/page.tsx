@@ -5,7 +5,15 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { createBatchAction, finalizeFormAction, processBatchAction } from "./actions";
 import SisabFormClient from "./SisabFormClient";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { healthEsusForms, healthHouseholds, healthFamilies } from "@/db/schema/health-territory";
+import { diagnosticEsusBatches, diagnosticEsusBatchItems } from "@/db/schema/health-diagnostics";
+import { healthUnits, healthTeams, healthProfessionals } from "@/db/schema/health-workforce";
+import { medicalRecords } from "@/db/schema/health-care";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { pharmacyPatients } from "@/db/repositories/health-pharmacy-pages/common";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
 const PAGE_SIZE = 20;
@@ -16,28 +24,30 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function SisabPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const db = context.database;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
-  const where: Prisma.HealthEsusFormWhereInput = {
-    ...(unitIds ? { unitId: { in: unitIds } } : {}),
-    ...(filter ? { kind: filter } : {}),
-  };
-  const total = await prisma.healthEsusForm.count({ where });
+  const where = and(unitIds ? inArray(healthEsusForms.unitId, unitIds) : undefined, filter ? eq(healthEsusForms.kind, filter) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(healthEsusForms).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [forms, batches, patients, units, teams, professionals, households, families, records] = await Promise.all([
-    prisma.healthEsusForm.findMany({ where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { createdAt: "desc" }, include: { patient: { include: { person: true } }, person: true, unit: true, professional: { select: { id: true } } } }),
-    prisma.healthEsusBatch.findMany({ orderBy: { createdAt: "desc" }, take: 50, include: { items: { take: 5, select: { status: true } } } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, take: 300, orderBy: { person: { fullName: "asc" } }, include: { person: true } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthTeam.findMany({ where: { isActive: true, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthProfessional.findMany({ where: { isActive: true }, take: 200, orderBy: { id: "asc" } }),
-    prisma.healthHousehold.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.healthFamily.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.medicalRecord.findMany({ where: unitIds ? { unitId: { in: unitIds } } : {}, orderBy: { date: "desc" }, take: 200, include: { patient: { include: { person: true } } } }),
+  const patientPerson = alias(people, "sisab_patient_person");
+  const [formRows, batchRows, patients, units, teams, professionals, households, families, recordRows] = await Promise.all([
+    db.select({ form: healthEsusForms, patient: patientTable, patientPerson, person: people, unit: healthUnits, professional: { id: healthProfessionals.id } }).from(healthEsusForms).leftJoin(patientTable, eq(patientTable.id, healthEsusForms.patientId)).leftJoin(patientPerson, eq(patientPerson.id, patientTable.personId)).leftJoin(people, eq(people.id, healthEsusForms.personId)).leftJoin(healthUnits, eq(healthUnits.id, healthEsusForms.unitId)).leftJoin(healthProfessionals, eq(healthProfessionals.id, healthEsusForms.professionalId)).where(where).orderBy(desc(healthEsusForms.createdAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    db.select().from(diagnosticEsusBatches).orderBy(desc(diagnosticEsusBatches.createdAt)).limit(50),
+    pharmacyPatients(db, unitIds, undefined, 300),
+    db.select().from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    db.select().from(healthTeams).where(and(eq(healthTeams.isActive, true), unitIds ? inArray(healthTeams.unitId, unitIds) : undefined)).orderBy(asc(healthTeams.name)),
+    db.select().from(healthProfessionals).where(eq(healthProfessionals.isActive, true)).orderBy(asc(healthProfessionals.id)).limit(200),
+    db.select().from(healthHouseholds).orderBy(desc(healthHouseholds.createdAt)).limit(200),
+    db.select().from(healthFamilies).orderBy(desc(healthFamilies.createdAt)).limit(200),
+    db.select({ record: medicalRecords, patient: patientTable, person: people }).from(medicalRecords).innerJoin(patientTable, eq(patientTable.id, medicalRecords.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(unitIds ? inArray(medicalRecords.unitId, unitIds) : undefined).orderBy(desc(medicalRecords.date)).limit(200),
   ]);
+  const batchItems = await db.select({ batchId: diagnosticEsusBatchItems.batchId, status: diagnosticEsusBatchItems.status }).from(diagnosticEsusBatchItems).where(inArray(diagnosticEsusBatchItems.batchId, batchRows.map(row => row.id)));
+  const batches = batchRows.map(row => ({ ...row, items: batchItems.filter(item => item.batchId === row.id).slice(0, 5).map(({ status }) => ({ status })) }));
+  const forms = formRows.map(row => ({ ...row.form, patient: row.patient && row.patientPerson ? { ...row.patient, person: row.patientPerson } : null, person: row.person, unit: row.unit, professional: row.professional }));
+  const records = recordRows.map(row => ({ ...row.record, patient: { ...row.patient, person: row.person } }));
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

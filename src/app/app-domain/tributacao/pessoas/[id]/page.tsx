@@ -5,15 +5,17 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { FiscalRecordWorkspace } from "../../cadastros-fiscais/FiscalRecordWorkspace";
 import { getFiscalRegistryWorkspaceData } from "../../cadastros-fiscais/data";
+import { db } from "@/db/client";
+import { readFiscalTaxpayerCard } from "@/db/repositories/taxation-pages/cadastral-details";
 
 export const dynamic = "force-dynamic";
 
 export default async function PessoaFiscalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const taxpayer = await prisma.taxpayer.findUnique({ where: { id }, include: { person: { include: { addresses: true, documents: true } }, company: { include: { addresses: true, documents: true, representatives: { include: { representative: true } } } }, realEstates: true, economicRegistrations: true, taxCaseLinks: true } });
+  const context = await getTenantContextForModule("TRIBUTACAO"); const database = context.database ?? db;
+  const taxpayer = await readFiscalTaxpayerCard(database, id);
   if (!taxpayer) notFound();
-  const workspace = await getFiscalRegistryWorkspaceData(prisma, "TAXPAYER", id);
+  const workspace = await getFiscalRegistryWorkspaceData(database, "TAXPAYER", id);
   const name = taxpayer.company?.corporateName ?? taxpayer.person?.fullName ?? "Cadastro fiscal";
   const document = taxpayer.company?.cnpj ?? taxpayer.person?.cpf ?? "Não informado";
   const links = [

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyPaymentBankReturn } from "@/lib/financeiro/payment-bank-return";
 import { bankIntegrationClient } from "@/lib/financeiro/bank-integration-client";
-import { prisma } from "@/lib/prisma";
+import { db, databaseConnection } from "@/db/client";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { users } from "@/db/schema/identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,11 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
-  const actor = await prisma.usuario.findFirst({
-    where: { ativo: true, employeeId: { not: null } },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, employeeId: true },
-  });
+  const [actor] = await db.select({ id: users.id, employeeId: users.employeeId }).from(users).where(and(eq(users.ativo, true), isNotNull(users.employeeId))).orderBy(asc(users.createdAt)).limit(1);
   if (!actor?.employeeId) return NextResponse.json({ error: "Usuário técnico financeiro não configurado." }, { status: 503 });
 
   const interactions = await bankIntegrationClient.fetchPendingInteractions();
@@ -36,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await applyPaymentBankReturn(prisma, { usuarioId: actor.id, employeeId: actor.employeeId }, interaction.payload);
+      await applyPaymentBankReturn(databaseConnection, { usuarioId: actor.id, employeeId: actor.employeeId }, interaction.payload);
 
       await bankIntegrationClient.acknowledgeInteraction(interaction.externalId, "COMPLETED");
       completed += 1;

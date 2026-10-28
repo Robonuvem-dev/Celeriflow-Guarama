@@ -1,4 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { eq, or } from "drizzle-orm";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { cadUnicoRecords, suasProntuarioRma } from "@/db/schema/social";
+import type { SuasRmaRecord } from "@/lib/contracts/social";
 
 export interface CadUnicoQueryResult {
   nis: string;
@@ -14,16 +17,12 @@ export interface CadUnicoQueryResult {
 }
 
 export async function queryCadUnicoMds(
-  prisma: PrismaClient,
+  database: DatabaseExecutor,
   searchNisOrCpf: string
 ): Promise<CadUnicoQueryResult> {
   const cleanSearch = searchNisOrCpf.replace(/\D/g, "");
 
-  const record = await prisma.cadUnicoRecord.findFirst({
-    where: {
-      OR: [{ nis: cleanSearch }, { cpf: cleanSearch }, { nis: searchNisOrCpf }, { cpf: searchNisOrCpf }],
-    },
-  });
+  const [record] = await database.select().from(cadUnicoRecords).where(or(eq(cadUnicoRecords.nis, cleanSearch), eq(cadUnicoRecords.cpf, cleanSearch), eq(cadUnicoRecords.nis, searchNisOrCpf), eq(cadUnicoRecords.cpf, searchNisOrCpf))).limit(1);
 
   if (!record) throw new Error("Registro do CadÚnico não encontrado.");
 
@@ -44,7 +43,7 @@ export async function queryCadUnicoMds(
 }
 
 export async function createSuasRmaRecord(
-  prisma: PrismaClient,
+  database: DatabaseExecutor,
   data: {
     nis: string;
     nomeCidadao: string;
@@ -53,9 +52,8 @@ export async function createSuasRmaRecord(
     detalhesRma: string;
     tecnicoResponsavel: string;
   }
-) {
-  return await prisma.suasProntuarioRma.create({
-    data: {
+) : Promise<SuasRmaRecord> {
+  const [record] = await database.insert(suasProntuarioRma).values({
       nis: data.nis,
       nomeCidadao: data.nomeCidadao,
       unidadeAtendimento: data.unidadeAtendimento,
@@ -63,6 +61,6 @@ export async function createSuasRmaRecord(
       detalhesRma: data.detalhesRma,
       tecnicoResponsavel: data.tecnicoResponsavel,
       status: "FINALIZADO",
-    },
-  });
+  }).returning();
+  return record;
 }

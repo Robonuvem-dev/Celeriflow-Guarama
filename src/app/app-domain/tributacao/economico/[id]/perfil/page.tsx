@@ -3,21 +3,24 @@ import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform
 import { economicProfileSchema } from "@/lib/tributacao/economic-profile";
 import EconomicProfileClient from "./EconomicProfileClient";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
+import { db } from "@/db/client";
+import { listFiscalRegistrations, listFiscalPlanningUnits, listFiscalProperties, listFiscalDocumentOptions, listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
+import { listPageTaxpayers, listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
 
 export const dynamic = "force-dynamic";
 
 export default async function EconomicProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
-  const row = await prisma.economicRegistration.findUnique({ where: { id } }); if (!row) notFound();
+  const { id } = await params; const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
+  const row = (await listFiscalRegistrations(database, { ids: [id], limit: 1 }))[0]; if (!row) notFound();
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const [profile, units, taxpayers, properties, documents, processes, catalogs] = await Promise.all([
-    prisma.taxRegistryEntry.findFirst({ where: { entityType: "ECONOMIC_REGISTRATION", entityId: id, category: "ECONOMIC_PROFILE" }, orderBy: { version: "desc" } }),
-    prisma.planningEntityUnit.findMany({ where: allowed ? { budgetUnitId: { in: allowed } } : {}, include: { governmentEntity: true, budgetUnit: true } }),
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, include: { person: true, company: true }, take: 1000 }),
-    prisma.realEstate.findMany({ select: { id: true, municipalInsc: true, streetName: true }, take: 1000 }),
-    prisma.document.findMany({ where: { status: "Válido" }, select: { id: true, title: true }, take: 200 }),
-    prisma.process.findMany({ select: { id: true, protocolNumber: true }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "FISCAL_CATALOG", category: "TYPED_FISCAL_CATALOG", ...(allowed ? { OR: allowed.map(budgetUnitId => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {}) }, orderBy: { version: "desc" } }),
+    listFiscalEntries(database, { entityType: "ECONOMIC_REGISTRATION", entityIds: [id], categories: ["ECONOMIC_PROFILE"], limit: 1 }).then(rows => rows[0]),
+    listFiscalPlanningUnits(database, allowed),
+    listPageTaxpayers(database, { active: true, limit: 1000 }),
+    listFiscalProperties(database, { limit: 1000 }),
+    listFiscalDocumentOptions(database),
+    listFiscalProcessOptions(database),
+    listFiscalEntries(database, { entityType: "FISCAL_CATALOG", categories: ["TYPED_FISCAL_CATALOG"], allowedBudgetUnitIds: allowed }),
   ]);
   const data = profile ? economicProfileSchema.parse(profile.data) : null;
   if (data && allowed && !allowed.includes(data.budgetUnitId)) notFound();

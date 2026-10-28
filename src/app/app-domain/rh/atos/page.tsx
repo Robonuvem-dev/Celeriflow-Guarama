@@ -3,10 +3,10 @@ import { Plus, FileSignature, Search, ExternalLink } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { AtoRowActions } from "./AtoRowActions";
 import { format } from "date-fns";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readActsPage } from "@/db/repositories/personnel-pages/records";
 import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
 import { RhPagination } from "../_components/RhPagination";
-import { rhPagination } from "@/lib/rh/list-pagination";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import {
   ErpTableContainer,
@@ -27,22 +27,10 @@ function atoVariant(type: string): ErpStatusVariant {
 }
 
 export default async function AtosPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; page?: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH");
   const { q, type, page } = await searchParams;
 
-  const whereClause: Prisma.PersonnelActWhereInput = {};
-  if (q) whereClause.employee = { name: { contains: q, mode: "insensitive" } };
-  if (type && type !== "all") whereClause.type = type;
-
-  const total = await prisma.personnelAct.count({ where: whereClause });
-  const pagination = rhPagination(page, total);
-  const acts = await prisma.personnelAct.findMany({
-    where: whereClause,
-    take: pagination.take,
-    skip: pagination.skip,
-    orderBy: [{ date: "desc" }, { id: "asc" }],
-    include: { employee: true },
-  });
+  const { total, pagination, acts } = await readActsPage(context.database ?? db, { q, type, page });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">

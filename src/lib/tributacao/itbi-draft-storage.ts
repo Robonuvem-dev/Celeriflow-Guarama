@@ -1,5 +1,8 @@
 import "server-only";
-import type { PrismaClient } from "@prisma/client";
+import { and, eq, sql } from "drizzle-orm";
+import type { DatabaseConnection } from "@/db/connection";
+import { taxRegistryEntries } from "@/db/schema/taxation-registry";
+import { firstItbiRegistryEntry, insertItbiRegistryEntry, itbiRegistryPosition, lockItbiKey, readItbiRegistryEntries } from "@/db/repositories/tax-itbi/records";
 import { z } from "zod";
 import { getBlobDocumentPrefix, getFile } from "@/lib/platform/blob";
 import { validPortalBlobUrl } from "@/lib/portal-cidadao/evidence-policy";
@@ -13,13 +16,14 @@ export const itbiDraftUploadSchema = z.object({ notaryId: z.string().min(1), req
 export function itbiDraftUploadPrefix(usuarioId: string, requestKey: string) { z.uuid().parse(requestKey); return `${getBlobDocumentPrefix()}itbi-drafts/${usuarioId}/${requestKey}/`; }
 class ExistingDraftAttachment extends Error { constructor(readonly documentId: string) { super("Anexo já preparado."); } }
 
-export async function registerOnlineItbiDraftUpload(db: PrismaClient, usuarioId: string, raw: z.input<typeof itbiDraftUploadSchema> & { url: string }) {
+export async function registerOnlineItbiDraftUpload(connection: DatabaseConnection, usuarioId: string, raw: z.input<typeof itbiDraftUploadSchema> & { url: string }) {
+  const db = connection.db;
   const { url, ...payload } = raw; const input = itbiDraftUploadSchema.parse(payload);
-  const existing = await db.taxRegistryEntry.findFirst({ where: { entityType: "ONLINE_ITBI_DRAFT", entityId: `${usuarioId}:${input.requestKey}`, category: "ONLINE_ITBI_DRAFT_ATTACHMENT", actorUsuarioId: usuarioId, data: { path: ["url"], equals: url } } });
+  const existing = await firstItbiRegistryEntry(db, and(itbiRegistryPosition("ONLINE_ITBI_DRAFT", `${usuarioId}:${input.requestKey}`, "ONLINE_ITBI_DRAFT_ATTACHMENT"), eq(taxRegistryEntries.actorUsuarioId, usuarioId), sql`${taxRegistryEntries.data}->'url' = ${JSON.stringify(url)}::jsonb`)!);
   if (existing?.documentId) {
     const data = taxScopeSnapshot(existing.data);
     if (data.notaryId !== input.notaryId || data.propertyId !== input.propertyId || existing.title !== input.filename) throw new Error("Arquivo já preparado com outros dados.");
-    const submitted = await db.taxRegistryEntry.findFirst({ where: { entityType: "ONLINE_ITBI_REQUEST", entityId: `${usuarioId}:${input.requestKey}`, category: "ONLINE_ITBI_REQUEST" } });
+    const submitted = await firstItbiRegistryEntry(db, itbiRegistryPosition("ONLINE_ITBI_REQUEST", `${usuarioId}:${input.requestKey}`, "ONLINE_ITBI_REQUEST"));
     if (submitted) await assertPortalItbiAccess(db, usuarioId, String(taxScopeSnapshot(submitted.data).declarationId));
     else await assertOnlineItbiDraftAccess(db, usuarioId, input);
     return { documentId: existing.documentId, filename: existing.title };
@@ -32,15 +36,15 @@ export async function registerOnlineItbiDraftUpload(db: PrismaClient, usuarioId:
   const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer()); assertItbiContent(bytes, file.blob.contentType);
   let documentId = "";
   try {
-    await ingestGedDocument(db, { title: input.filename, documentType: "Anexo de solicitação ITBI", documentClassCode: "ITBI_EVIDENCE", publicLabel: "Anexo privado de ITBI", actorUsuarioId: usuarioId, fileUrl: url, content: bytes, afterCreate: async (tx, id) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ONLINE_ITBI_REQUEST:${usuarioId}:${input.requestKey}`},0))::text`;
+    await ingestGedDocument(connection, { title: input.filename, documentType: "Anexo de solicitação ITBI", documentClassCode: "ITBI_EVIDENCE", publicLabel: "Anexo privado de ITBI", actorUsuarioId: usuarioId, fileUrl: url, content: bytes, afterCreate: async (tx, id) => {
+      await lockItbiKey(tx, `ONLINE_ITBI_REQUEST:${usuarioId}:${input.requestKey}`);
       const scope = await assertOnlineItbiDraftAccess(tx, usuarioId, input);
       const entityId = `${usuarioId}:${input.requestKey}`;
-      const entries = await tx.taxRegistryEntry.findMany({ where: { entityType: "ONLINE_ITBI_DRAFT", entityId, category: "ONLINE_ITBI_DRAFT_ATTACHMENT" } });
+      const entries = await readItbiRegistryEntries(tx, itbiRegistryPosition("ONLINE_ITBI_DRAFT", entityId, "ONLINE_ITBI_DRAFT_ATTACHMENT"));
       const previous = entries.find(entry => taxScopeSnapshot(entry.data).url === url);
       if (previous?.documentId) throw new ExistingDraftAttachment(previous.documentId);
       if (entries.length >= 20) throw new Error("A solicitação admite até 20 anexos preparados.");
-      await tx.taxRegistryEntry.create({ data: { entityType: "ONLINE_ITBI_DRAFT", entityId, category: "ONLINE_ITBI_DRAFT_ATTACHMENT", title: input.filename, documentId: id, actorUsuarioId: usuarioId, data: { ...scope, ...input, usuarioId, url, bytes: bytes.length } } });
+      await insertItbiRegistryEntry(tx, { entityType: "ONLINE_ITBI_DRAFT", entityId, category: "ONLINE_ITBI_DRAFT_ATTACHMENT", title: input.filename, documentId: id, actorUsuarioId: usuarioId, data: { ...scope, ...input, usuarioId, url, bytes: bytes.length } });
       documentId = id;
     } });
   } catch (error) { if (!(error instanceof ExistingDraftAttachment)) throw error; documentId = error.documentId; }

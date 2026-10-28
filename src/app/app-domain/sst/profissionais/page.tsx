@@ -1,5 +1,8 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import { sstUnitWhere } from "@/lib/sst/access";
+import { listSstUnits } from "@/db/repositories/sst/scope";
+import { searchSstPeople } from "@/db/repositories/sst/references";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstProfessionalsPage } from "@/db/repositories/sst-pages/administration";
 import { clinicalDisciplines, disciplineInput } from "@/lib/sst/clinical-policy";
 import { formatSstCivilDate } from "@/lib/sst/aso-policy";
 import { SstForm } from "../SstForm";
@@ -9,14 +12,10 @@ import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 export default async function SstProfessionalsPage({ searchParams }: { searchParams: Promise<{ budgetUnitId?: string; personQ?: string; page?: string }> }) {
   const context = await getTenantContextForModule("SST"); const params = await searchParams;
   const admin = isSystemAdministrator(context.user);
-  const units = await context.prisma.budgetUnit.findMany({ where: sstUnitWhere(context), select: { id: true, name: true }, orderBy: { name: "asc" } });
+  const database = sstDatabase(context), units = await listSstUnits(database, context);
   const unit = units.find((item) => item.id === params.budgetUnitId);
-  const people = admin && unit && (params.personQ || "").trim().length >= 3 ? await context.prisma.person.findMany({ where: { fullName: { contains: params.personQ!.trim().slice(0, 200), mode: "insensitive" } }, take: 20, select: { id: true, fullName: true }, orderBy: [{ fullName: "asc" }, { id: "asc" }] }) : [];
-  const users = admin ? await context.prisma.usuario.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: { nome: "asc" } }) : [];
-  const where = { budgetUnitId: { in: params.budgetUnitId ? unit ? [unit.id] : [] : units.map((item) => item.id) } };
-  const total = await context.prisma.sstProfessionalRole.count({ where });
-  const n = Number(params.page); const page = Math.min(Number.isFinite(n) ? Math.max(1, Math.trunc(n)) : 1, Math.max(1, Math.ceil(total / 20)));
-  const records = await context.prisma.sstProfessionalRole.findMany({ where, take: 20, skip: (page - 1) * 20, orderBy: [{ createdAt: "desc" }, { id: "asc" }], include: { person: { select: { fullName: true } } } });
+  const people = admin && unit && (params.personQ || "").trim().length >= 3 ? await searchSstPeople(database, params.personQ!.trim().slice(0, 200)) : [];
+  const { users, total, page, records } = await readSstProfessionalsPage(database, params.budgetUnitId ? unit ? [unit.id] : [] : units.map(item => item.id), params.page, admin);
   const disciplineSelect = <label>Atuação<select required name="discipline" className="block w-full rounded border p-2">{Object.entries(clinicalDisciplines).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>;
   const userSelect = <label>Usuário registrador<select name="usuarioId" className="block w-full rounded border p-2"><option value="">Profissional externo sem conta vinculada</option>{users.map((user) => <option key={user.id} value={user.id}>{user.nome}</option>)}</select></label>;
   const href = (value: number) => `/sst/profissionais?${new URLSearchParams({ budgetUnitId: params.budgetUnitId || "", personQ: params.personQ || "", page: String(value) })}`;

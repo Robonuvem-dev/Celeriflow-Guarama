@@ -1,0 +1,110 @@
+# Processos, documentos, portais e transparência — progresso Drizzle
+
+Responsável: sessão filha de Processos/Portais, 28/10/2026. Escopo conforme a mensagem de delegação. Entrega local para integração concorrente; a remoção integral de Prisma ainda depende dos consumidores externos e da validação central.
+
+## Contratos para integração concorrente
+
+- `getTransparencySettings`, `getDiscoverySettings`, `searchPublishedDocuments`, `recordPageFeedback`, `documentTransparencyDataset` e `registerPublicationUpload` passam a receber `DatabaseExecutor`. Não passar cliente Prisma a essas funções.
+- GED: `ingestGedDocument` e `requestDocumentSignaturesForActor` recebem `DatabaseConnection`; `afterCreate` recebe `DatabaseTransaction`. `findPublicDocumentValidation` recebe `DatabaseExecutor`. Funções que já recebem `AppContext` preservam assinatura e usam a conexão Drizzle. `notifyProtocol{Department,Users}` recebem `DatabaseTransaction`, com writer Drizzle compartilhado já existente. **Consumidores intermodulares devem migrar integralmente a transação antes de passar `tx`; não misturar ORMs.**
+- Consumidores externos de settings: `src/lib/c7/circumstantiated-report.ts`, `src/app/app-domain/controle-interno/relatorios/page.tsx` e `src/app/{robots,sitemap}.ts` já passam executor Drizzle na última leitura. `src/components/transparencia/CitizenServiceInformation.tsx` ainda passa `prisma` a `getTransparencySettings` e precisa receber `db` pelo responsável pela integração.
+- Nenhuma mudança em `client.ts`, `tenant-context.ts`, `prisma.ts`, writers compartilhados de auditoria/notificações, configuração global ou escopos de outros agentes.
+- Handoff recebido: `src/app/app-domain/configuracoes/{processos,certificados}/{actions.ts,page.tsx}` migrados nesta sessão; consultas Drizzle explícitas, formulários `Promise<void>`, JSX preservado. `readProcessConfiguration` fornece os DTOs relacionais de configuração.
+- Workflow: `createValidatedProcess`, `openCitizenChannelProcess`, `openExternalServiceProcess`, writers de notificação e runtime genérico recebem `DatabaseTransaction`; definição/publicação/configuração de fuso recebem `DatabaseExecutor`.
+- A1: `registerA1Certificate`, `setA1CertificateStatus`, `recordA1Failure` recebem `DatabaseExecutor`; `signDocumentVersionWithA1` recebe `DatabaseConnection`; variante `signDocumentVersionWithA1InTransaction` recebe `DatabaseTransaction`.
+- Consumidores de testes incluem `src/lib/protocols/__tests__/*.test.ts` e `src/lib/attendance/__tests__/*.test.ts`, além de `tests/` e testes novos untracked. Fixtures: `tests/helpers/local-drizzle-database.ts` e `tests/helpers/processes-portals-database.ts` (PGlite + driver Neon WS real, sem casts; a segunda reaplica o histórico SQL). Execução dos testes e validação ampla centralizadas pelo parent.
+- e-SIC/Ouvidoria públicos: `createCitizenRequest` recebe `DatabaseConnection`; consulta/recurso/avaliação recebem `DatabaseExecutor`. A API `/api/transparencia/cidadao` já foi adaptada. Testes exclusivos e `tests/integrated-portal-services.test.ts` devem usar os novos contratos. Atendimento interno (11 arquivos backend/páginas), detalhes/listagens de Ouvidoria e upload já usam Drizzle, com sequências compartilhadas `db: tx`.
+- Testes intermodulares localizados: `tests/{configured-license-signature,tax-a1-signature,construction-documents-service,fleet-control-checklist,municipal-travel-allowance}.test.ts` consomem GED/A1/runtime; respectivos agentes precisam passar conexão/tx Drizzle e preparar o `AppContext` novo. Testes de policy em `src/lib/protocols/__tests__` e `src/lib/attendance/__tests__` são puros, sem mocks Prisma.
+- Handoff C7: `controle-interno/consultas/{ouvidoria,judicial}/page.tsx` migradas aqui, preservando isolamento `repeatable read`, contagens/grupos/paginação e JSX. Ouvidoria exclui secretarias cujo conjunto completo de UGs tenha vínculo ausente ou de outro ente, mantendo recorte de origem/sigilo. Judicial intersecta as UGs autorizadas de Controle e Processos.
+- `judicialCaseWhere` agora retorna condição SQL Drizzle (usa `ProcessJudicialCase` sem alias e subconsulta `Process`); `recordProcessJudicialCase` preserva contexto/retorno e aceita terceiro argumento opcional `DatabaseConnection` para fixtures isoladas. API de publicações agora passa `db` a `readFrozenControlReportBytes`, sem import Prisma residual.
+- Reservas: `createScopedSpaceReservation(tx, input)` delega ao writer compartilhado `createCultureSpaceReservation` com `DatabaseTransaction`; a transação origem em `requests.ts` já foi migrada integralmente.
+- Registro do cidadão: `requestCitizenAccess` e `decideCitizenAccess` recebem `DatabaseConnection`; API de acesso e páginas/actions de conferência foram adaptadas, com retornos de erro/void preservados.
+- Autoatendimento: `submitPortalService`, `operatePortalRequest` e `saveDigitalService` recebem `DatabaseConnection`; `listDigitalServices`, `readDigitalService`, `readOwnPortalRequest` e `ratePortalRequest` recebem `DatabaseExecutor`. `programPortalRequests`/`finishPortalSchedule` aceitam conexão opcional para fixtures; `portalRequestCosts` aceita executor opcional. Não abrir transação de outro ORM dentro desses fluxos.
+- Conta fiscal cidadã: `authorizedTaxpayerIds(db, actorId, scope)` e `readTaxpayerAccount(db, actorId, taxpayerId, year?)` agora recebem `DatabaseExecutor`. Reutilizam o overload Drizzle de `taxAssessmentCompensatedValue`, sem nova conexão. Consumidores tributários pendentes estão discriminados abaixo.
+- Fontes de Transparência: `nativeTransparencyDataset`, `readNativePublicBinding`, `nativeSourceOptions`, `runTransparencyConsultation` e leitores de `portal-fiscal.ts`/`portal-public.ts` recebem `DatabaseExecutor`. `saveNativeBinding` recebe `DatabaseConnection`, com validação de origem por despacho fixo e configuração/auditoria na mesma transação. A trava por ente evita publicar simultaneamente renúncia agregada por regra e individual por concessão.
+- Reconciliação: `reconcilePublicAndInternalData(db, financialYearId, readInternalRreo)` recebe executor Drizzle e leitor canônico `ReadReconciliationRreo` obrigatório. O callback recebe **o mesmo executor** e `{ financialYearId }`; retorna `expenseSummary[{ committedValue, settledValue, paidValue }]` e `revenueSummary[{ realizedValue }]`, com valores aceitos por `Decimal`. Não havia chamadores antes da alteração. A integração real deve fornecer o RREO financeiro migrado, sem cast do `generateRREO` legado. Somas/diferenças ficam em Decimal e só o DTO público final usa números.
+- Publicações de Planejamento: página/API públicas usam `src/lib/transparencia/planning-publications.ts` e as projeções de leitura de `transparency-planning.ts`. Não dependem mais dos leitores Prisma de `src/lib/planejamento/publication{,-response}.ts`. O writer financeiro de publicação continua sob responsabilidade de Planejamento; ambos leem/escrevem as mesmas tabelas físicas.
+- Escopos: `protocolScopeCondition`, `citizenProcessWhere` e `judicialCaseWhere` produzem condições SQL das tabelas originais. Usos com alias exigem adaptação explícita. `citizenProcessSelect` é projeção Drizzle; não usar em `select` Prisma. `ProtocolScopeContext` contém somente `user` e `protocolAccess`.
+- Transações próprias usam `withDatabaseTransaction`, preservando os 5.000 ms implícitos legados e os limites explícitos de 30/60/120 segundos. Auditoria/notificações usam `insertAuditEvent`/`insertInternalNotifications`; os eventos administrativos de Transparência mantêm os registros existentes em `financialAuditLogs`.
+
+## Cobertura implementada
+
+- **Processos/Protocolo:** abertura operacional e externa, tramitação, recebimento/devolução/rejeição/conclusão, workflow versionado, assinaturas, notificações, histórico/setor, catálogo, dashboard, listagens, busca, arquivados, relatórios e acompanhamento. As listas de busca/arquivados mapeiam explicitamente o DTO enviado ao cliente, sem serializar o Process completo.
+- **GED/A1:** ingestão Blob, versões/evidências, assinaturas internas e A1, certificados e verificação pública. Configurações de processos/certificados foram migradas no handoff exclusivo, preservando JSX/CSS e os contratos das actions.
+- **Atendimento:** tickets, Ouvidoria operacional/confidencial, concessões, prazos, avaliação, abertura cidadã e upload. Sequência anual usa `nextYearlyCodeDrizzle({ db: tx, key, prefix, existingCodes, padding? })` dentro da transação, sem alteração de `sequence.ts` legado.
+- **Cidadão:** registro e conferência de acesso, catálogo/versões, pedidos/evidências, acompanhamento, resultado assinado, vínculos fiscais/cadastrais, reservas, agenda/programação e custos. Preservados locks de concorrência, replay/idempotência, revisão, titularidade, autorizações de Obras/Cultura e rateio de centavos.
+- **Judicial/C7:** writer judicial e consultas Ouvidoria/judicial, preservando ente/UG/setor, evidências, versionamento, sigilo, contagens/grupos/paginação e isolamento `repeatable read`.
+- **Institucional:** leitores de notícias, páginas, banners, serviços, diário oficial, estrutura institucional, busca e leis; ações/listagens administrativas correspondentes e dashboard de gestão de Portal Cidadão. Busca literal escapa `%`, `_` e `\` onde usa `ILIKE`.
+- **Transparência:** settings/discovery, busca documental, feedback/acessos/avaliações, publicações/uploads/avisos, e-SIC/Ouvidoria públicos, solicitações/prorrogações/recursos, PNTP, fontes nativas e documentais, painel/estatísticas/mapa/pesquisa e APIs. Preservados token hasheado, allowlist pública, hashes dos arquivos, proveniência, filtros, paginação e grão das fontes.
+- **Leitores financeiros públicos:** despesas/receitas, licitações/contratos e snapshots oficiais. Projeções relacionais explícitas e Decimal independente; números somente no DTO público legado. Balanços anuais continuam condicionados ao encerramento do exercício e a versões finais/assinadas publicadas.
+- **Planejamento público:** listagem e download usam Drizzle, conservando filtros por ente/ano, paginação de 20, ordenação, indicação de cópia para conferência, ausência da tabela na instalação, hash do arquivo e respostas 404/423/503.
+- **Scripts exclusivos:** `check-transparency-links.ts`, `configure-transparency-sources.ts`, `verify-transparency-portal.ts`, `smoke-transparency-http.ts`, `import-transparency-archive.ts`, `import-pntp-2026.ts` e `prepare-aurora-portal-services.ts` usam Drizzle e fecham o pool. Scripts de carga/smoke não foram executados nesta sessão.
+
+Lidos: AGENTS.md, planejamento integral, contratos e revisão de 28/10; guias Next instalados `07-mutating-data.md`, `page.md` e `route.md`. Consumidores localizados em `src`, `tests` e `scripts` antes das alterações de assinaturas.
+
+## Inventário residual atualizado
+
+Varredura textual por `@prisma/client`, palavra `prisma`/`Prisma`, `$transaction`, `$queryRaw` e `$executeRaw`, após a migração do dashboard interno e das APIs de upload de Protocolos/localização do Portal:
+
+| Grupo | Arquivos examinados | Arquivos com marcadores |
+| --- | ---: | ---: |
+| `src/lib/{protocols,documents,signatures,attendance,portal-cidadao,portal-institucional,transparencia}` | 71 | 1 |
+| `app-domain/{protocolos,processos,documentos,atendimento,portal-cidadao,transparencia}` | 98 | 0 |
+| Configurações de processos/certificados e consultas C7 exclusivas | 6 | 0 |
+| Portal público próprio, portal-protocolos, portal-transparencia e quatro validadores | 46 | 0 |
+| APIs próprias de Protocolos, Atendimento, Transparência, Portal e upload GED | 31 | 0 |
+| Repositórios próprios | 14 | 0 |
+| Contratos `documents.ts` e `transparency.ts` | 2 | 0 |
+| Sete scripts exclusivos listados acima | 7 | 0 |
+
+O único residual textual próprio é `src/lib/protocols/access.ts`: import somente de tipo e `protocolScope(): Prisma.ProcessWhereInput`. Mantido para `src/lib/sst/certificate-service.ts`, que ainda consulta com Prisma. O consumidor migrado deve usar `protocolScopeCondition`; remover o contrato legado após o handoff de SST. `scripts/drizzle-verify-notifications.ts` também contém referência de comparação ao escopo legado. `ticketScope`/`ombudsmanScope` foram removidos de Atendimento após busca de todos os usos; consumidores atuais usam as condições SQL de `repositories/attendance-portals/scope.ts`.
+
+As contagens não são prova de integração ou typecheck. Foram excluídos `portal/{tributario,nfse,construcao-civil,frota}/**`, concursos/convenentes/departamentos e suas APIs de propriedade PortalServidor; o inventário não absorve escopos de outros agentes. Caminhos `prisma/migrations-ibema` nas fixtures referem-se ao histórico SQL preservado, não a cliente Prisma.
+
+### Pendências externas para o parent
+
+1. **Tributação — transações de abertura:** `executePortalTaxOpening` já fornece `DatabaseTransaction`. `generateTaxGuideInTransaction` (`tributacao/index.ts`), `createOccasionalRequestInTransaction` (`s4-service.ts`) e `createItbiDeclarationInTransaction` (`s3-service.ts`) ainda recebem `Prisma.TransactionClient`. Migrar integralmente as unidades transacionais na frente Tributação.
+2. **Tributação — consumidores da conta fiscal:** `src/app/portal/tributario/page.tsx` ainda chama `readTaxpayerAccount(prisma, ...)`; `src/app/api/portal/tributos/guias/[id]/route.ts` e `.../documentos/[id]/route.ts` ainda chamam `authorizedTaxpayerIds(prisma, ...)`. Passar executor Drizzle e preservar o restante de cada fluxo fiscal sob seu responsável. Esses três arquivos estão fora da reserva de edição desta sessão.
+3. **SST:** migrar `certificate-service.ts` antes de retirar `protocolScope`/seu import Prisma.
+4. **Financeiro:** entregar leitor RREO canônico que satisfaça `ReadReconciliationRreo`. `generateRREO` de `financeiro/relatorios-legais.ts` continua legado; a reconciliação local não importa nem adapta esse cliente. O leitor público de Planejamento já está desacoplado; a persistência administrativa e a publicação do artefato continuam na frente Financeiro/Planejamento.
+5. **Componente de informação cidadã:** `src/components/transparencia/CitizenServiceInformation.tsx` ainda precisa passar `db` a `getTransparencySettings`. C7/relatórios e robots/sitemap já foram observados com o executor correto.
+6. **GED/A1/runtime intermodulares:** conferir produtores/consumidores e testes `configured-license-signature`, `tax-a1-signature`, `construction-documents-service`, `fleet-control-checklist` e `municipal-travel-allowance`. Passar conexão a quem abre transação e o mesmo `DatabaseTransaction` aos writers internos. `rh/travel-process.ts` já declara Drizzle nas funções de concluir/rejeitar; sua ligação às actions aguarda validação integrada.
+
+## Projeções físicas e escalares
+
+- Projeções de leitura de fontes externas ficam em `transparency-{financial,sources,planning}.ts` e `portal-fiscal.ts`; reutilizam schemas compartilhados quando existem. Não geram DDL nem mudam ownership dos writers.
+- Conferência offline contra `.agent/drizzle/database-before-2026-10-28T01-26-00.861Z/catalog.json`: **13 arquivos, 107 declarações, 934 colunas e quatro enums; nenhuma divergência de nome/tipo/nulabilidade/rótulos**. Arquivos: `processes`, `process-judicial`, `document-workflow`, `portal-content`, `portal-services`, `portal-fiscal`, `citizen-access`, `citizen-channels`, `attendance-portals`, `transparency`, `transparency-financial`, `transparency-sources`, `transparency-planning`. Comparação de tipos normaliza a citação física dos enums; não é conexão nem DDL no banco real.
+- `portalTaxGuides.guideNumber` permanece nullable conforme o catálogo. Enums de receita/planejamento foram conferidos contra os rótulos físicos. O vínculo `PlanningBudgetLine.appropriationId` é único fisicamente, evitando multiplicação no join financeiro.
+- Após o aviso real do parent sobre escalares Neon, revisão individual das consultas cruas: `execute<T>` não decodifica datas/numerics. `searchPublishedDocuments` mapeia explicitamente `publishedAt` com `databaseTimestamp`, preservando `null` e UTC do timestamp sem zona. O teste documental ganhou data fixa `2026-10-19 12:34:56.789` e expectativa `2026-10-19T12:34:56.789Z`, além do caso nullable.
+- As outras consultas cruas próprias encontradas retornam locks, IDs, booleanos ou `count(*)::integer`; não há agregações JSON cruas com campos Date/Decimal nessas consultas. Leitores relacionais de GED, processos, atendimento, portais e fontes financeiras usam seleção de colunas tipadas; seus mappers Date/Decimal continuam ativos. JSON persistido continua JSON, sem conversão heurística por nome de chave.
+
+## Validação
+
+Resultados efetivamente obtidos nesta sessão:
+
+- ESLint direcionado aprovado nos lotes de bibliotecas, páginas/actions, APIs, testes e scripts migrados. Os lotes recentes de reconciliação/Planejamento público, conta fiscal, DTOs de listas, APIs residuais, scripts, dashboard interno e correção temporal passaram sem erros/avisos.
+- Inspeção AST final de sintaxe/imports diretos de banco aprovada em **262 arquivos**; não substitui typecheck.
+- Conferência física offline acima aprovada. Revisão estática de **76 inserts** das duas fixtures financeiras/nativas conferiu nomes de colunas e campos obrigatórios; o seed de Planejamento foi corrigido para criar a cadeia canônica PPA → LDO → LOA, preservando checks/FKs/triggers.
+- `git diff --check` direcionado passou; a ferramenta exibiu apenas avisos de conversão LF/CRLF da configuração Git local.
+- Retorno central recebido em 28/10: suíte integrada de Processos com **78 testes, 72 aprovados e seis falhas**. O parent confirmou aprovação dos cenários de documentos públicos, leitor RREO canônico, serviços do portal e judicial. A falha própria nova foi a fixture nullable de `tests/transparency-completion.test.ts`: `PUBLISHED` com `publishedAt=NULL` viola o guard físico. Corrigido o teste para exigir a rejeição por `TransparencyPublication_publication_integrity`, persistir `DRAFT` com `NULL` e comprovar sua exclusão da busca pública (total 25 → 24 e busca específica de rascunho vazia). Mantidas a data UTC fixa e a cobertura de null válido; reteste central pendente. ESLint do arquivo corrigido passou.
+- O parent corrigiu a serialização crua de `Date` no driver central com `parseInputDatesAsUTC=true` e coordenará a regressão temporal/tracking em três fusos. Não foi alterada a policy de acompanhamento nesta frente. Nenhum build, tsc pesado, suíte ampla, DDL/seed de produção ou commit/push foi executado por esta sessão, conforme coordenação.
+
+### Lote de integração após o diagnóstico monolítico
+
+- `src/db/repositories/portal-content/services.ts`: `readInternalPortalRequest` agora seleciona `portalScheduleRequests.requestId` e o preserva em `schedule.links`, junto com `request.id` e `request.process.protocolNumber`. O único consumidor de produção, `protocolos/servicos/solicitacoes/[id]/page.tsx`, foi comparado à base visual: JSX textual idêntico. `tests/integrated-portal-services.test.ts` ganhou a conferência desses três campos no retorno real do leitor após programar uma solicitação.
+- `src/lib/transparencia/publication-storage.ts`: `registerPublicationUpload` envia `order: 0` ao repositório, preservando o default físico usado pelo antigo upsert. Conferidos os consumidores das duas APIs de upload/confirmação, o schema Zod e as actions de metadados; o contrato público de metadados permanece o mesmo.
+- O JSON `.agent/drizzle-monolithic-typecheck-errors.json` foi conferido: não há diagnóstico `dataJson` nesta frente. As correções do parent em `DatabaseExecutor` (`selectDistinct`/`selectDistinctOn`) e no 404 do C7 foram mantidas.
+- Este lote inclui a fixture nullable descrita acima e a correção posterior de `finance-pages/operations.ts`, detalhada em `docs/drizzle-finance-pages-progress.md`. ESLint dos seis arquivos de código/teste do lote, parse e `diff --check` passaram. Reteste SQL dos serviços/Transparência e typecheck central após as correções continuam pendentes; os passes da execução central anterior não comprovam estes novos asserts.
+
+Preparados para execução **sequencial centralizada** (a fixture restaura Neon global ao fechar; fechar uma fixture antes de abrir outra; SQL aplicado somente no PGlite descartável):
+
+```powershell
+node --conditions=react-server --import tsx --test --test-concurrency=1 tests/processes-portals-drizzle.test.ts tests/transparency-completion.test.ts tests/transparency-citizen-workflow.test.ts tests/transparency-consultations.test.ts tests/transparency-preservation.test.ts tests/transparency-native.test.ts tests/public-transparency-finance.test.ts tests/integrated-portal-services.test.ts tests/process-judicial-cases.test.ts tests/citizen-process-tracking.test.ts src/lib/protocols/__tests__/generic-workflow-policy.test.ts src/lib/protocols/__tests__/movement-policy.test.ts src/lib/protocols/__tests__/process-listing-policy.test.ts src/lib/attendance/__tests__/ombudsman-disclosure-policy.test.ts
+```
+
+`tests/public-finance.test.ts` conserva os casos compartilhados de Financeiro. Seus quatro mocks relacionais Prisma dos leitores públicos foram transferidos para testes PostgreSQL reais em `tests/public-transparency-finance.test.ts`; executar o arquivo compartilhado na validação coordenada de Financeiro:
+
+```powershell
+node --conditions=react-server --import tsx --test --test-concurrency=1 tests/public-finance.test.ts
+```
+
+Cenários preparados: publicação imutável/DTOs de configuração; rollback de abertura/workflow e sequência anual; setor/sigilo/grants; replay e-SIC/token hasheado/allowlist; prazos/recurso/avaliação; acompanhamento cidadão excluindo Ouvidoria, vínculos RH e atestados SST; recibos/estoque/obras/renúncia/previsão versus arrecadação; filtragem/anonimização/precisão dos leitores financeiros; snapshots por encerramento/versão; reconciliação com diferença de um centavo; publicação de Planejamento com integridade e paginação; conta fiscal com titularidade/revogação/escopo, pagamento desconhecido e valores acima da precisão segura de Number; timestamp documental sem dependência do fuso do host.

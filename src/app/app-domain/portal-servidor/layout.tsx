@@ -5,6 +5,7 @@ import { EMPLOYEE_PORTAL_LOGIN, EMPLOYEE_PORTAL_PATH_HEADER, employeePortalDesti
 import { EmployeePortalShell } from "@/components/portal-servidor/EmployeePortalShell";
 import { getInstitutionalContact } from "@/lib/portal-institucional/public-content";
 import { assertEmployeePortalLogin } from "@/lib/portal-servidor/login-policy";
+import { db } from "@/db/client";
 
 export default async function PortalServidorLayout({ children }: { children: React.ReactNode }) {
   const requestedPath = (await headers()).get(EMPLOYEE_PORTAL_PATH_HEADER) || "/portal-servidor";
@@ -15,7 +16,7 @@ export default async function PortalServidorLayout({ children }: { children: Rea
   if (!context) redirect(`${EMPLOYEE_PORTAL_LOGIN}?${new URLSearchParams({ returnTo: employeePortalDestination(requestedPath) })}`);
   // Recheck the current functional status even when a cookie was issued earlier.
   try {
-    await assertEmployeePortalLogin(context.prisma, context.user);
+    await assertEmployeePortalLogin(context.database ?? db, context.user);
   } catch (error) {
     if (!(error instanceof AccessError)) throw error;
     redirect(`${EMPLOYEE_PORTAL_LOGIN}?${new URLSearchParams({ returnTo: employeePortalDestination(requestedPath), access: "unavailable" })}`);

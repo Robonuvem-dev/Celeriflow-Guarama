@@ -1,11 +1,28 @@
 import PDFDocument from "pdfkit";
-import type { AppContext } from "@/lib/platform/tenant-context";
-import { activeTfdPassengerWhere, tfdTripAccessWhere } from "./tfd-service";
+import { and, asc, eq, getTableColumns } from "drizzle-orm";
+import type { HealthTfdContext as AppContext } from "@/lib/contracts/health-tfd";
+import { db } from "@/db/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { employees, institutions } from "@/db/schema/administration";
+import { patients } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { fleetBookings, fleetTrips, fleetUnits } from "@/db/schema/fleet";
+import * as t from "@/db/schema/health-tfd";
+import { activeTfdPassengerWhere, readTfdTrip, requiredTfdRecord } from "@/db/repositories/health-tfd/records";
 
-export async function tfdTripDocument(context: AppContext, tripId: string) {
-  const trip = await context.prisma.healthTfdTrip.findFirstOrThrow({ where: { id: tripId, ...tfdTripAccessWhere(context.user) }, include: { fleetUnit: true, fleetBooking: true, driverEmployee: true, assistantEmployee: true, responsibleEmployee: true, passengers: { where: activeTfdPassengerWhere, include: { patient: { include: { person: true } } } }, events: { orderBy: { createdAt: "asc" } } } });
-  const institution = await context.prisma.institution.findFirst();
-  const fleetMovement = trip.fleetBookingId ? await context.prisma.fleetTrip.findUnique({ where: { bookingId: trip.fleetBookingId } }) : null;
+export async function tfdTripDocument(context: AppContext, tripId: string, executor: DatabaseExecutor = db) {
+  const record = requiredTfdRecord(await readTfdTrip(executor, context.user, tripId));
+  const employee = async (id: string | null) => id ? (await executor.select().from(employees).where(eq(employees.id, id)).limit(1))[0] ?? null : null;
+  const [fleetUnit, fleetBooking, driverEmployee, assistantEmployee, responsibleEmployee, passengerRows, events] = await Promise.all([
+    executor.select().from(fleetUnits).where(eq(fleetUnits.id, record.fleetUnitId)).limit(1).then(rows => requiredTfdRecord(rows[0])),
+    record.fleetBookingId ? executor.select().from(fleetBookings).where(eq(fleetBookings.id, record.fleetBookingId)).limit(1).then(rows => rows[0] ?? null) : null,
+    employee(record.driverEmployeeId), employee(record.assistantEmployeeId), employee(record.responsibleEmployeeId),
+    executor.select({ passenger: getTableColumns(t.healthTfdPassengers), patient: getTableColumns(patients), person: getTableColumns(people) }).from(t.healthTfdPassengers).innerJoin(patients, eq(patients.id, t.healthTfdPassengers.patientId)).innerJoin(people, eq(people.id, patients.personId)).where(and(eq(t.healthTfdPassengers.tripId, tripId), activeTfdPassengerWhere)),
+    executor.select().from(t.healthTfdTripEvents).where(eq(t.healthTfdTripEvents.tripId, tripId)).orderBy(asc(t.healthTfdTripEvents.createdAt)),
+  ]);
+  const trip = { ...record, fleetUnit, fleetBooking, driverEmployee, assistantEmployee, responsibleEmployee, passengers: passengerRows.map(row => ({ ...row.passenger, patient: { ...row.patient, person: row.person } })), events };
+  const [institution] = await executor.select().from(institutions).limit(1);
+  const fleetMovement = trip.fleetBookingId ? (await executor.select().from(fleetTrips).where(eq(fleetTrips.bookingId, trip.fleetBookingId)).limit(1))[0] ?? null : null;
   const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: "Ordem de tráfego e relação de passageiros TFD" } }), chunks: Buffer[] = [];
   const finished = new Promise<Buffer>((resolve, reject) => { doc.on("data", chunk => chunks.push(Buffer.from(chunk))); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject); });
   doc.fontSize(14).text(institution?.name || "Saúde municipal").fontSize(10).text(institution?.cnpj || "").moveDown();

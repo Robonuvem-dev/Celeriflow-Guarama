@@ -4,7 +4,8 @@ import { AlertTriangle, Search } from "lucide-react";
 import { NewComplaintSheet } from "../components/NewComplaintSheet";
 import { QuickFilters } from "../components/QuickFilters";
 import { ComplaintRowActions } from "../components/ComplaintRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { listComplaints } from "@/db/repositories/environment/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -13,13 +14,9 @@ import { environmentPageHref, filterAndPaginate } from "../list-utils";
 export const dynamic = "force-dynamic";
 
 export default async function DenunciasPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> | { [key: string]: string | undefined } }) {
-  const { prisma } = await getTenantContextForModule("MEIO_AMBIENTE");
+  const context = await getTenantContextForModule("MEIO_AMBIENTE");
   const searchParams = await Promise.resolve(props.searchParams || {});
-  const where: Prisma.EnvComplaintWhereInput = {};
-  if (searchParams.tipo) where.complaintType = { contains: searchParams.tipo, mode: "insensitive" };
-  if (searchParams.status) where.status = searchParams.status;
-
-  const complaints = await prisma.envComplaint.findMany({ where, orderBy: { createdAt: "desc" } });
+  const complaints = await listComplaints(context.database ?? db, searchParams);
 
   const list = filterAndPaginate(complaints, searchParams);
 

@@ -1,34 +1,28 @@
 import "./helpers/fleet-test-environment";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { Prisma, PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { count } from "drizzle-orm";
+import { getPostgresError } from "../src/db/errors";
+import { fleetUnits } from "../src/db/schema/fleet";
+import { createFleetTestDatabase } from "./fleet-fixture";
 import { AccessError } from "../src/lib/platform/tenant-context";
 import { fleetPageIssue } from "../src/lib/frotas/page-errors";
 
 for (const partialSchema of [false, true]) {
   test(`Abertura de Frotas · ${partialSchema ? "coluna pendente" : "tabela pendente"}`, async () => {
-    const memory = await PGlite.create();
-    if (partialSchema) await memory.exec('CREATE TABLE "FleetUnit" ("id" TEXT PRIMARY KEY);');
-    const socket = new PGLiteSocketServer({ db: memory, port: 0, host: "127.0.0.1", maxConnections: 1 });
-    await socket.start();
-    const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${socket.getServerConn()}/postgres?sslmode=disable`, max: 1 }) });
+    const fixture = await createFleetTestDatabase(false), db = fixture.connection.db;
     try {
-      const query = partialSchema ? db.fleetUnit.findMany({ select: { id: true, operationalStatus: true } }) : db.fleetUnit.count();
+      if (partialSchema) await fixture.database.exec('CREATE TABLE "FleetUnit" ("id" TEXT PRIMARY KEY);');
+      const query = partialSchema ? db.select({ id: fleetUnits.id, operationalStatus: fleetUnits.operationalStatus }).from(fleetUnits) : db.select({ total: count() }).from(fleetUnits);
       await assert.rejects(query, error => {
-        assert.ok(error instanceof Prisma.PrismaClientKnownRequestError);
-        assert.equal(error.code, partialSchema ? "P2022" : "P2021");
+        assert.equal(getPostgresError(error)?.code, partialSchema ? "42703" : "42P01");
         const issue = fleetPageIssue(error);
         assert.equal(issue?.kind, "database");
         assert.doesNotMatch(JSON.stringify(issue), /postgresql|SELECT|FleetUnit|operationalStatus/);
         return true;
       });
     } finally {
-      await db.$disconnect();
-      await socket.stop();
-      await memory.close();
+      await fixture.close();
     }
   });
 }
@@ -39,5 +33,5 @@ test("Abertura de Frotas · sessão e setor sem ocultar erros inesperados", () =
   assert.equal(fleetPageIssue(new AccessError(sectorMessage, 403))?.message, sectorMessage);
   assert.equal(fleetPageIssue(new AccessError("Módulo inativo.", 423))?.kind, "access");
   assert.equal(fleetPageIssue(new Error("Falha inesperada com dados internos")), null);
-  assert.equal(fleetPageIssue(new Prisma.PrismaClientKnownRequestError("Connection closed", { code: "P1017", clientVersion: "fixture" })), null);
+  assert.equal(fleetPageIssue(Object.assign(new Error("Connection closed"), { code: "08006" })), null);
 });

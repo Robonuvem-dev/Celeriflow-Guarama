@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { taxActionContext } from "@/db/repositories/tax-actions/context";
 import {
   acknowledgeTiaf,
   cancelTiaf,
@@ -32,7 +32,7 @@ const done = (error?: unknown) => ({
         : undefined,
 });
 async function ctx(operation: "create" | "update") {
-  return getTenantContextForModuleOperation("TRIBUTACAO", operation);
+  return taxActionContext(operation);
 }
 const actor = (context: Awaited<ReturnType<typeof ctx>>) => ({
   usuarioId: context.user.id,
@@ -43,7 +43,7 @@ export async function createFiscalPlanAction(
 ) {
   try {
     const c = await ctx("create");
-    await createFiscalPlan(c.prisma, actor(c), input);
+    await createFiscalPlan(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -53,7 +53,7 @@ export async function createFiscalPlanAction(
 export async function generatePlanOrdersAction(id: string) {
   try {
     const c = await ctx("create");
-    const data = await generatePlanOrders(c.prisma, actor(c), id);
+    const data = await generatePlanOrders(c.connection, actor(c), id);
     revalidatePath(path);
     return { ...done(), ...data };
   } catch (error) {
@@ -65,7 +65,7 @@ export async function createStandaloneOrderAction(
 ) {
   try {
     const c = await ctx("create");
-    await createStandaloneFiscalOrder(c.prisma, actor(c), input);
+    await createStandaloneFiscalOrder(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -75,7 +75,7 @@ export async function createStandaloneOrderAction(
 export async function markOrderReadAction(id: string) {
   try {
     const c = await ctx("update");
-    await markFiscalOrderRead(c.prisma, actor(c), id);
+    await markFiscalOrderRead(c.connection, actor(c), id);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -85,7 +85,7 @@ export async function markOrderReadAction(id: string) {
 export async function issueTiafAction(input: Parameters<typeof issueTiaf>[2]) {
   try {
     const c = await ctx("create");
-    await issueTiaf(c.prisma, actor(c), input);
+    await issueTiaf(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -98,7 +98,7 @@ export async function acknowledgeTiafAction(
 ) {
   try {
     const c = await ctx("update");
-    await acknowledgeTiaf(c.prisma, actor(c), { documentId, receivedBy });
+    await acknowledgeTiaf(c.connection, actor(c), { documentId, receivedBy });
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -108,7 +108,7 @@ export async function acknowledgeTiafAction(
 export async function cancelTiafAction(documentId: string, reason: string) {
   try {
     const c = await ctx("update");
-    await cancelTiaf(c.prisma, actor(c), { documentId, reason });
+    await cancelTiaf(c.connection, actor(c), { documentId, reason });
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -120,7 +120,7 @@ export async function receiveDocumentAction(
 ) {
   try {
     const c = await ctx("create");
-    await receiveFiscalDocument(c.prisma, actor(c), input);
+    await receiveFiscalDocument(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -132,7 +132,7 @@ export async function returnDocumentAction(
 ) {
   try {
     const c = await ctx("create");
-    await returnFiscalDocument(c.prisma, actor(c), input);
+    await returnFiscalDocument(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -144,7 +144,7 @@ export async function createAssessmentMapAction(
 ) {
   try {
     const c = await ctx("create");
-    await createFiscalAssessmentMap(c.prisma, actor(c), input);
+    await createFiscalAssessmentMap(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -154,7 +154,7 @@ export async function createAssessmentMapAction(
 export async function finalizeMapAction(id: string) {
   try {
     const c = await ctx("create");
-    await finalizeFiscalMapAndIssueAuto(c.prisma, actor(c), id);
+    await finalizeFiscalMapAndIssueAuto(c.connection, actor(c), id);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -166,7 +166,7 @@ export async function issueSeizureAction(
 ) {
   try {
     const c = await ctx("create");
-    await issueSeizureTerm(c.prisma, actor(c), input);
+    await issueSeizureTerm(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -178,7 +178,7 @@ export async function closeOrderAction(
 ) {
   try {
     const c = await ctx("update");
-    await closeFiscalOrder(c.prisma, actor(c), input);
+    await closeFiscalOrder(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -188,7 +188,7 @@ export async function closeOrderAction(
 export async function communicateDocumentAction(id: string) {
   try {
     const c = await ctx("create");
-    await communicateFiscalDocumentDte(c.prisma, actor(c), id);
+    await communicateFiscalDocumentDte(c.connection, actor(c), id);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -198,7 +198,7 @@ export async function communicateDocumentAction(id: string) {
 export async function runMeshesAction(competence: string) {
   try {
     const c = await ctx("create");
-    const data = await runFiscalMeshes(c.prisma, competence);
+    const data = await runFiscalMeshes(c.connection, competence, actor(c));
     revalidatePath(path);
     return { ...done(), ...data };
   } catch (error) {
@@ -211,7 +211,7 @@ export async function createOrderFromMeshAction(
 ) {
   try {
     const c = await ctx("create");
-    await createOrderFromMesh(c.prisma, actor(c), {
+    await createOrderFromMesh(c.connection, actor(c), {
       findingId,
       responsibleEmployeeId,
     });
@@ -224,7 +224,7 @@ export async function createOrderFromMeshAction(
 export async function confirmProductivityAction(id: string) {
   try {
     const c = await ctx("update");
-    await confirmProductivityPeriod(c.prisma, id);
+    await confirmProductivityPeriod(c.connection, id, actor(c));
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -236,7 +236,7 @@ export async function saveTemplateAction(
 ) {
   try {
     const c = await ctx("create");
-    await saveFiscalTemplate(c.prisma, actor(c), input);
+    await saveFiscalTemplate(c.connection, actor(c), input);
     revalidatePath(path);
     return done();
   } catch (error) {
@@ -248,7 +248,7 @@ export async function savePenaltyRuleAction(
 ) {
   try {
     const c = await ctx("create");
-    await saveFiscalPenaltyRule(c.prisma, input);
+    await saveFiscalPenaltyRule(c.connection, input, actor(c));
     revalidatePath(path);
     return done();
   } catch (error) {

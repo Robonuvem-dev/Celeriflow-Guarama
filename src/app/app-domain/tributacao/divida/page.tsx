@@ -1,20 +1,16 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import DividaClient from "./DividaClient";
+import { db } from "@/db/client";
+import { listDebtPageRows } from "@/db/repositories/taxation-pages/overview";
+import { listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
 
 export const dynamic = "force-dynamic";
 
 export default async function DividaPage() {
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const activeDebts = await prisma.activeDebt.findMany({
-    include: {
-      taxpayer: { include: { person: true, company: true } }
-    },
-    orderBy: { createdAt: "desc" }
-  });
-
-  const rawTaxpayers = await prisma.taxpayer.findMany({
-    include: { person: true, company: true }
-  });
+  const context = await getTenantContextForModule("TRIBUTACAO");
+  const database = context.database ?? db;
+  const activeDebts = await listDebtPageRows(database);
+  const rawTaxpayers = await listPageTaxpayers(database);
 
   const taxpayers = rawTaxpayers.map(tp => ({
     id: tp.id,

@@ -1,14 +1,16 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import NovoServidorForm from "./NovoServidorForm";
+import { db } from "@/db/client";
+import { listDepartments, listRoles, listSecretariats, listUnits } from "@/db/repositories/administration/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovoServidorPage() {
-  const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
-  const roles = await prisma.role.findMany({ orderBy: { name: 'asc' } });
-  const secretariats = await prisma.secretariat.findMany({ orderBy: { name: 'asc' } });
-  const departments = await prisma.department.findMany({ orderBy: { name: 'asc' } });
-  const units = await prisma.administrativeUnit.findMany({ orderBy: { name: 'asc' } });
+  const context = await getTenantContextForModule("ADMINISTRACAO");
+  const roles = await listRoles(context.database ?? db);
+  const secretariats = await listSecretariats(context.database ?? db);
+  const departments = await listDepartments(context.database ?? db);
+  const units = await listUnits(context.database ?? db);
   
   return <NovoServidorForm roles={roles} secretariats={secretariats} departments={departments} units={units} />;
 }

@@ -1,10 +1,18 @@
 import PDFDocument from "pdfkit";
-import { assertHealthUnitAccess, type AppContext } from "@/lib/platform/tenant-context";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthPharmacyJudicialCases } from "@/db/schema/health-pharmacy";
+import { pharmacyRecord } from "@/db/repositories/health-pharmacy/records";
+import { readPharmacyJudicialStatement } from "@/db/repositories/health-pharmacy/judicial";
+import { assertHealthUnitAccess } from "@/lib/platform/tenant-context";
+import type { HealthPharmacyContext } from "@/lib/contracts/health-pharmacy";
 const states: Record<string, string> = { OPEN: "Aberto", ANALYSIS: "Em análise", APPROVED: "Aprovado", DENIED: "Negado", CANCELLED: "Cancelado", ARCHIVED: "Arquivado" };
-export async function pharmacyJudicialStatement(context: AppContext, caseId: string) {
-  const current = await context.prisma.healthPharmacyJudicialCase.findUniqueOrThrow({ where: { id: caseId }, include: { patient: { include: { person: true } }, lawyer: { include: { person: true } }, process: true, purchaseRequest: true, items: { include: { medicine: true, dispensations: { include: { stock: true } } } }, events: { orderBy: { createdAt: "asc" } }, documents: { include: { document: { select: { title: true } } } } } });
-  assertHealthUnitAccess(context.user, current.unitId);
-  const [institution, unit] = await Promise.all([context.prisma.institution.findFirst(), context.prisma.healthUnit.findUniqueOrThrow({ where: { id: current.unitId }, select: { name: true } })]);
+export async function pharmacyJudicialStatement(context: HealthPharmacyContext, caseId: string) {
+  const executor = context.database ?? db;
+  const identity = pharmacyRecord((await executor.select().from(healthPharmacyJudicialCases).where(eq(healthPharmacyJudicialCases.id, caseId)).limit(1))[0]);
+  assertHealthUnitAccess(context.user, identity.unitId);
+  const current = await readPharmacyJudicialStatement(executor, identity);
+  const { institution, unit } = current;
   const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: "Extrato do processo judicial farmacêutico", Subject: `${current.caseNumber} · versão ${current.version}` } }), chunks: Buffer[] = [];
   const finished = new Promise<Buffer>((resolve, reject) => { doc.on("data", chunk => chunks.push(Buffer.from(chunk))); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject); });
   doc.fontSize(15).text(institution?.name || "Saúde municipal").fontSize(10).text(institution?.cnpj || "").text(unit.name).moveDown();

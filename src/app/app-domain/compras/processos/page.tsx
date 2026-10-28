@@ -1,22 +1,11 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listPurchaseProcesses } from "@/db/repositories/procurement/purchase-processes";
 import { ProcessosListClient } from "./ProcessosListClient";
 
 export default async function ProcessosComprasPage() {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
-  const processos = await prisma.purchaseProcess.findMany({
-    include: {
-      secretariat: true,
-      _count: {
-        select: {
-          preliminaryStudies: true,
-          termsOfReference: true,
-          items: true,
-          requestOrigins: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  }).catch(() => []);
+  const context = await getTenantContextForModule("COMPRAS");
+  const processos = await listPurchaseProcesses(context.database ?? db).catch(() => []);
 
   return <ProcessosListClient processes={processos.map((process) => ({
     id: process.id,

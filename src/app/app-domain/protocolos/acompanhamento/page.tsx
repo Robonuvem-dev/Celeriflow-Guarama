@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { AlertTriangle, Clock3, Eye, FileSearch, FileText, Inbox, Search, Timer } from "lucide-react";
-import type { Prisma } from "@prisma/client";
-import { getProtocolContext, protocolScope } from "@/lib/protocols/access";
+import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
+import { db } from "@/db/client";
+import { and, asc, eq, gte, inArray, lt, lte, notInArray, type SQL } from "drizzle-orm";
+import { processes as processTable } from "@/db/schema/processes";
+import { departments as departmentTable } from "@/db/schema/administration";
+import { countProcesses, listProcessTracking, processSearchCondition } from "@/db/repositories/processes/listing";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -74,59 +78,33 @@ export default async function AcompanhamentoPage({ searchParams }: { searchParam
     deadline: ["overdue", "soon"].includes(deadlineValue) ? deadlineValue : "",
   };
   const requestedPage = Number.parseInt(valueOf(raw.page), 10);
-  const conditions: Prisma.ProcessWhereInput[] = [protocolScope(context)];
+  const scope = protocolScopeCondition(context);
+  const conditions: (SQL | undefined)[] = [scope];
 
-  if (filters.status) conditions.push({ status: filters.status });
-  if (filters.priority) conditions.push({ priority: filters.priority });
-  if (filters.departmentId) conditions.push({ currentDepartmentId: filters.departmentId });
-  if (filters.deadline === "overdue") conditions.push({ expectedCompletionAt: { lt: requestTime } });
+  if (filters.status) conditions.push(eq(processTable.status, filters.status));
+  if (filters.priority) conditions.push(eq(processTable.priority, filters.priority));
+  if (filters.departmentId) conditions.push(eq(processTable.currentDepartmentId, filters.departmentId));
+  if (filters.deadline === "overdue") conditions.push(lt(processTable.expectedCompletionAt, requestTime));
   if (filters.deadline === "soon") {
-    conditions.push({ expectedCompletionAt: { gte: requestTime, lte: new Date(requestTime.getTime() + 3 * 86_400_000) } });
+    conditions.push(and(gte(processTable.expectedCompletionAt, requestTime), lte(processTable.expectedCompletionAt, new Date(requestTime.getTime() + 3 * 86_400_000))));
   }
   if (filters.q) {
-    conditions.push({
-      OR: [
-        { protocolNumber: { contains: filters.q, mode: "insensitive" } },
-        { description: { contains: filters.q, mode: "insensitive" } },
-        { person: { is: { OR: [{ fullName: { contains: filters.q, mode: "insensitive" } }, { cpf: { contains: filters.q, mode: "insensitive" } }] } } },
-        { company: { is: { OR: [{ corporateName: { contains: filters.q, mode: "insensitive" } }, { cnpj: { contains: filters.q, mode: "insensitive" } }] } } },
-        { processType: { is: { name: { contains: filters.q, mode: "insensitive" } } } },
-        { subject: { is: { name: { contains: filters.q, mode: "insensitive" } } } },
-      ],
-    });
+    conditions.push(processSearchCondition(filters.q, true));
   }
 
-  const where: Prisma.ProcessWhereInput = { AND: conditions };
+  const where = and(...conditions);
   const [total, awaitingReceipt, active, overdue, departments] = await Promise.all([
-    context.prisma.process.count({ where }),
-    context.prisma.process.count({ where: { AND: [protocolScope(context), { status: "Aguardando Recebimento" }] } }),
-    context.prisma.process.count({ where: { AND: [protocolScope(context), { status: { in: ["Recebido", "Em Analise", "Reaberto"] } }] } }),
-    context.prisma.process.count({ where: { AND: [protocolScope(context), { expectedCompletionAt: { lt: requestTime } }, { status: { notIn: ["Concluido", "Arquivado", "Cancelado"] } }] } }),
+    countProcesses(db, where),
+    countProcesses(db, and(scope, eq(processTable.status, "Aguardando Recebimento"))),
+    countProcesses(db, and(scope, inArray(processTable.status, ["Recebido", "Em Analise", "Reaberto"]))),
+    countProcesses(db, and(scope, lt(processTable.expectedCompletionAt, requestTime), notInArray(processTable.status, ["Concluido", "Arquivado", "Cancelado"]))),
     isAdmin
-      ? context.prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } })
+      ? db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(eq(departmentTable.isActive, true)).orderBy(asc(departmentTable.name))
       : Promise.resolve([]),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-  const processes = await context.prisma.process.findMany({
-    where,
-    include: {
-      processType: { select: { name: true } },
-      subject: { select: { name: true } },
-      person: { select: { fullName: true } },
-      company: { select: { corporateName: true } },
-      currentDepartment: { select: { name: true } },
-      currentResponsibleEmployee: { select: { name: true } },
-      movements: {
-        include: { fromDepartment: { select: { name: true } }, toDepartment: { select: { name: true } } },
-        orderBy: { movedAt: "desc" },
-        take: 1,
-      },
-    },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const processes = await listProcessTracking(db, where, { offset: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE });
 
   const firstVisible = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const lastVisible = Math.min(page * PAGE_SIZE, total);

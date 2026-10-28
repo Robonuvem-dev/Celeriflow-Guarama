@@ -1,10 +1,15 @@
-import "dotenv/config";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
-import { auditEventTypes, writeAuditEvent, type AuditEventInput, type AuditEventType } from "../src/lib/platform/audit-evidence.ts";
+import test, { after, before } from "node:test";
+import { eq, sql } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { auditEventTypes, type AuditEventInput, type AuditEventType } from "../src/lib/platform/audit-evidence.ts";
+import { insertAuditEvent as writeAuditEvent } from "../src/db/repositories/platform/audit";
 import { auditEventPageSize, buildAuditEventPageQuery, buildAuditEventWhere, createAuditEventPage, encodeAuditEventCursor, normalizeAuditEventFilters, parseAuditEventQuery } from "../src/lib/platform/audit-query.ts";
-import { prisma } from "../src/lib/prisma.ts";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { getPostgresError } from "../src/db/errors";
+import { auditEvents } from "../src/db/schema/audit";
+import { createPlatformAuditFixture } from "./helpers/platform-audit-fixture";
 import { canEditModule, canPerformModuleOperation, canShowDashboardCard, canViewModule, isModuleActive, isModuleBlockedForUser, isSystemAdministrator } from "../src/lib/platform/tenant-context.ts";
 
 const permissionUser: Parameters<typeof canViewModule>[0] = {
@@ -12,25 +17,25 @@ const permissionUser: Parameters<typeof canViewModule>[0] = {
   permissions: "{}", modulePermissions: [], allowedBudgetUnitIds: [], employeeId: null, departmentId: null, secretariatId: null,
 };
 
-test("persists payload-free audit evidence with only actor, event, and target identifiers", async () => {
-  let data: unknown;
-  const prisma = {
-    auditEvent: {
-      create: async ({ data: receivedData }: { data: unknown }) => {
-        data = receivedData;
-      },
-    },
-  } as never;
+let fixture: Awaited<ReturnType<typeof createPlatformAuditFixture>>;
+before(async () => { fixture = await createPlatformAuditFixture(); });
+after(async () => { await fixture?.close(); });
 
-  await writeAuditEvent(prisma, {
-    actorUsuarioId: "user-1",
+test("persists payload-free audit evidence with only actor, event, and target identifiers", async () => {
+  await writeAuditEvent(fixture.connection.db, {
+    actorUsuarioId: fixture.actorId,
     eventType: auditEventTypes.documentDownload,
     targetType: "DOCUMENT",
     targetId: "document-1",
   });
 
+  const [event] = await fixture.connection.db.select().from(auditEvents)
+    .where(eq(auditEvents.actorUsuarioId, fixture.actorId));
+  assert.ok(event.id);
+  assert.ok(event.createdAt instanceof Date);
+  const data = Object.fromEntries(Object.entries(event).filter(([key]) => key !== "id" && key !== "createdAt"));
   assert.deepEqual(data, {
-    actorUsuarioId: "user-1",
+    actorUsuarioId: fixture.actorId,
     eventType: "DOCUMENT_DOWNLOAD",
     targetType: "DOCUMENT",
     targetId: "document-1",
@@ -82,7 +87,7 @@ test("exports the audit event contract", () => {
   assert.equal(input.eventType, "INSTANCE_CONFIGURATION_CHANGED");
 });
 
-test("normalizes validated audit consultation filters and builds their Prisma where clause", () => {
+test("normalizes validated audit consultation filters and parameterizes SQL dates/identifiers", () => {
   const filters = normalizeAuditEventFilters({
     actorUsuarioId: " user-1 ",
     eventType: "DOCUMENT_DOWNLOAD",
@@ -100,16 +105,11 @@ test("normalizes validated audit consultation filters and builds their Prisma wh
     from: "2026-08-01",
     to: "2026-08-02",
   });
-  assert.deepEqual(buildAuditEventWhere(filters), {
-    actorUsuarioId: "user-1",
-    eventType: "DOCUMENT_DOWNLOAD",
-    targetType: "DOCUMENT",
-    targetId: "document-1",
-    createdAt: {
-      gte: new Date("2026-08-01T00:00:00.000Z"),
-      lte: new Date("2026-08-02T23:59:59.999Z"),
-    },
-  });
+  const predicate = buildAuditEventWhere(filters); assert.ok(predicate);
+  const compiled = new PgDialect().sqlToQuery(predicate);
+  assert.deepEqual(compiled.params, ["user-1", "DOCUMENT_DOWNLOAD", "DOCUMENT", "document-1", "2026-08-01T00:00:00.000Z", "2026-08-02T23:59:59.999Z"]);
+  assert.equal(compiled.sql.includes("document-1"), false);
+  assert.equal(buildAuditEventWhere({}), undefined);
   assert.throws(() => normalizeAuditEventFilters({ eventType: "UNKNOWN" }), /eventType inválido/);
   assert.throws(() => normalizeAuditEventFilters({ from: "2026-08-03", to: "2026-08-02" }), /auditoria/i);
   assert.throws(() => normalizeAuditEventFilters({ targetId: ["one", "two"] }), /targetId inválido/);
@@ -120,17 +120,14 @@ test("builds stable cursor queries and page navigation without a database", () =
   const nextQuery = parseAuditEventQuery({ targetType: "DOCUMENT", cursor: encodeAuditEventCursor(cursor) });
   const previousQuery = parseAuditEventQuery({ targetType: "DOCUMENT", cursor: encodeAuditEventCursor(cursor), direction: "previous" });
 
-  assert.deepEqual(buildAuditEventPageQuery(nextQuery), {
-    where: {
-      AND: [
-        { targetType: "DOCUMENT" },
-        { OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: "event-50" } }] },
-      ],
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: auditEventPageSize + 1,
-  });
-  assert.deepEqual(buildAuditEventPageQuery(previousQuery).orderBy, [{ createdAt: "asc" }, { id: "asc" }]);
+  const nextSelection = buildAuditEventPageQuery(nextQuery); assert.ok(nextSelection.where);
+  const compiled = new PgDialect().sqlToQuery(nextSelection.where);
+  assert.deepEqual(compiled.params, ["DOCUMENT", cursor.createdAt.toISOString(), cursor.createdAt.toISOString(), "event-50"]);
+  assert.equal(nextSelection.take, auditEventPageSize + 1);
+  assert.match(compiled.sql, /"createdAt" < \$2/);
+  assert.match(compiled.sql, /"id" < \$4/);
+  const previousSelection = buildAuditEventPageQuery(previousQuery);
+  assert.equal(new PgDialect().sqlToQuery(sql.join(previousSelection.orderBy, sql`, `)).sql, '"AuditEvent"."createdAt" asc, "AuditEvent"."id" asc');
 
   const records = Array.from({ length: auditEventPageSize + 1 }, (_, index) => ({
     id: `event-${index}`,
@@ -294,24 +291,10 @@ test("migration protects audit evidence from mutation and indexes retention quer
 });
 
 test("database rejects mutation of audit evidence", async () => {
-  const actor = await prisma.usuario.findFirst({ select: { id: true } });
-  assert.ok(actor, "A test actor is required to verify the audit foreign key.");
-
-  await assert.rejects(
-    prisma.$transaction(async (tx) => {
-      const event = await tx.auditEvent.create({
-        data: {
-          actorUsuarioId: actor.id,
-          eventType: auditEventTypes.sessionLogin,
-          targetType: "SESSION",
-          targetId: actor.id,
-        },
-      });
-      await tx.auditEvent.update({
-        where: { id: event.id },
-        data: { eventType: auditEventTypes.sessionLogout },
-      });
-    }),
-    /append-only/,
-  );
+  await assert.rejects(withDatabaseTransaction(fixture.connection, async tx => {
+      const [event] = await tx.insert(auditEvents).values({ actorUsuarioId: fixture.actorId, eventType: auditEventTypes.sessionLogin, targetType: "SESSION", targetId: fixture.actorId }).returning({ id: auditEvents.id });
+      await tx.update(auditEvents).set({ eventType: auditEventTypes.sessionLogout }).where(eq(auditEvents.id, event.id));
+  }), error => getPostgresError(error)?.code === "P0001" && error instanceof Error && error.cause instanceof Error && /append-only/.test(error.cause.message));
+  assert.equal((await fixture.connection.db.select().from(auditEvents)
+    .where(eq(auditEvents.eventType, auditEventTypes.sessionLogin))).length, 0, "A falha do guard reverte a inserção na transação de origem.");
 });

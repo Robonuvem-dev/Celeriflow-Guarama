@@ -1,17 +1,16 @@
 "use server";
 
-import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
-import type { Prisma } from "@prisma/client";
-
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("COMPRAS", operation)).prisma;
-}
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { directContractings } from "@/db/schema/procurement-core";
 
 export async function deleteDispensa(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  const context = await getTenantContextForModuleOperation("COMPRAS", "delete");
   try {
-    await prisma.directContracting.delete({ where: { id } });
+    const deleted = await (context.database ?? db).delete(directContractings).where(eq(directContractings.id, id)).returning({ id: directContractings.id });
+    if (!deleted.length) throw new Error("Dispensa não encontrada.");
     revalidatePath("/compras/licitacoes");
     return { success: true };
   } catch (error) {
@@ -22,7 +21,7 @@ export async function deleteDispensa(id: string) {
 
 export async function saveDispensa(formData: FormData) {
   const id = formData.get("id") as string | null;
-  const prisma = await getTenantPrisma(id ? "update" : "create");
+  const context = await getTenantContextForModuleOperation("COMPRAS", id ? "update" : "create");
   const type = formData.get("type") as string;
   const status = formData.get("status") as string;
   const justification = formData.get("justification") as string;
@@ -35,7 +34,7 @@ export async function saveDispensa(formData: FormData) {
     return { success: false, error: "Selecione o processo e o fornecedor vinculados." };
   }
 
-  const data: Prisma.DirectContractingUncheckedCreateInput = {
+  const data = {
     type: type || "Dispensa",
     status: status || "Em Elaboração",
     justification,
@@ -46,9 +45,10 @@ export async function saveDispensa(formData: FormData) {
 
   try {
     if (id) {
-      await prisma.directContracting.update({ where: { id }, data });
+      const updated = await (context.database ?? db).update(directContractings).set(data).where(eq(directContractings.id, id)).returning({ id: directContractings.id });
+      if (!updated.length) throw new Error("Dispensa não encontrada.");
     } else {
-      await prisma.directContracting.create({ data });
+      await (context.database ?? db).insert(directContractings).values(data);
     }
     revalidatePath("/compras/licitacoes");
     return { success: true };

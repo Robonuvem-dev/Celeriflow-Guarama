@@ -3,7 +3,9 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { buttonVariants } from "@/components/ui/button";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
 import { FileSignature, FileText, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -81,37 +83,12 @@ export default async function DocumentosPortalPage({ searchParams }: { searchPar
   const q = firstValue(params.q).trim().slice(0, 120);
   const status = parseStatus(params.status);
   const { context, employee } = access;
-  const conditions: Prisma.DocumentSignatureWhereInput[] = [{ signerEmployeeId: employee.id }];
-
-  if (status) conditions.push({ status });
-  if (q) {
-    conditions.push({
-      document: {
-        OR: [
-          { title: { contains: q, mode: "insensitive" } },
-          { documentType: { contains: q, mode: "insensitive" } },
-        ],
-      },
-    });
-  }
-
-  const where: Prisma.DocumentSignatureWhereInput = { AND: conditions };
-  const total = await context.prisma.documentSignature.count({ where });
+  const executor = context.database ?? db;
+  const where = sql`s."signerEmployeeId"=${employee.id} ${status ? sql`AND s.status=${status}` : sql``} ${q ? sql`AND (strpos(lower(d.title),lower(${q}))>0 OR strpos(lower(d."documentType"),lower(${q}))>0)` : sql``}`;
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "DocumentSignature" s JOIN "Document" d ON d.id=s."documentId" WHERE ${where}`);
   const page = resolvePage(params.page, total);
-  const signatures = await context.prisma.documentSignature.findMany({
-    where,
-    select: {
-      id: true,
-      status: true,
-      requestedAt: true,
-      signedAt: true,
-      rejectedAt: true,
-      document: { select: { title: true, documentType: true, status: true } },
-    },
-    orderBy: [{ requestedAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const signatureRows = await portalRows<{ id: string; status: string; requestedAt: Date; signedAt: Date | null; rejectedAt: Date | null; title: string; documentType: string; documentStatus: string }>(executor, sql`SELECT s.id,s.status,s."requestedAt",s."signedAt",s."rejectedAt",d.title,d."documentType",d.status AS "documentStatus" FROM "DocumentSignature" s JOIN "Document" d ON d.id=s."documentId" WHERE ${where} ORDER BY s."requestedAt" DESC,s.id DESC LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
+  const signatures = signatureRows.map(({ title, documentType, documentStatus, ...row }) => ({ ...row, document: { title, documentType, status: documentStatus } }));
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">

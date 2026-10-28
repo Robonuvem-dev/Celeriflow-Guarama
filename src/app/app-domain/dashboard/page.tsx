@@ -29,6 +29,8 @@ import {
   Globe
 } from "lucide-react";
 import { canShowDashboardCard, canViewModule, getOptionalTenantContext, isModuleBlockedForUser } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listModuleActivations } from "@/db/repositories/platform/identity";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import styles from "./dashboard.module.css";
@@ -83,9 +85,7 @@ export default async function PainelPage() {
   const moduleActivationByCode = new Map<string, boolean>();
 
   try {
-    const modulos = await context?.prisma.configuracaoModulo.findMany({
-      select: { codigo: true, ativo: true },
-    }) ?? [];
+    const modulos = context ? await listModuleActivations(context.database ?? db) : [];
     modulos.forEach((module) => moduleActivationByCode.set(module.codigo.toUpperCase(), module.ativo));
   } catch (err) {
     console.warn("Notice: Failed to fetch configuracaoModulo status", err);

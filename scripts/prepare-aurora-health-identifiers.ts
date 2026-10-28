@@ -1,8 +1,15 @@
 import { config } from "dotenv";
+import { eq } from "drizzle-orm";
+import type { DatabaseConnection } from "../src/db/connection";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { users } from "../src/db/schema/identity";
+import { patients } from "../src/db/schema/health-registration";
+import { financialAuditLogs } from "../src/db/schema/finance-identity";
+import { openCrossDomainDatabase } from "./lib/cross-domain-database";
+import { healthCatalogRequired, lockHealthCatalogTool } from "./lib/health-catalog-tools";
 
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
-const apply = process.argv.includes("--apply");
 const key = "aurora-health-identifiers-2026-v1";
 const decision = "Identificadores CNS sintéticos autorizados para os pacientes fictícios documentados das jornadas; dígito verificador local, sem consulta, inscrição ou confirmação CADSUS. Não são documentos oficiais de pessoas reais.";
 
@@ -16,33 +23,36 @@ function syntheticCns(index: number) {
   throw new Error("Não foi possível gerar identificador sintético local.");
 }
 
-async function main() {
-  const { prisma } = await import("../src/lib/prisma");
-  try {
-    const results = await prisma.$transaction(async tx => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
-      const actor = await tx.usuario.findUniqueOrThrow({ where: { email: "admin@email.com" }, select: { id: true, ativo: true } });
-      if (!actor.ativo) throw new Error("Administrador autorizado inativo.");
-      const rows = [];
-      for (let index = 1; index <= 3; index++) {
-        const id = `aurora-shared-catalogs-2026-v1:patient:p1-poc-person-${index}`;
-        const patient = await tx.patient.findUniqueOrThrow({ where: { id } });
-        if (patient.personId !== `p1-poc-person-${index}`) throw new Error("Paciente não corresponde à identidade fictícia documentada.");
-        const cns = syntheticCns(index);
-        if (cns.length !== 15 || [...cns].reduce((sum, digit, position) => sum + Number(digit) * (15 - position), 0) % 11) throw new Error("Checksum do identificador sintético divergente.");
-        if (patient.cns && patient.cns !== cns) throw new Error("Paciente já possui CNS distinto; preservar o documento cadastrado.");
-        const other = await tx.patient.findUnique({ where: { cns } });
-        if (other && other.id !== id) throw new Error("Identificador já utilizado por outra pessoa.");
-        if (apply && !patient.cns) {
-          await tx.patient.update({ where: { id }, data: { cns } });
-          await tx.financialAuditLog.create({ data: { action: "PREPARE_SYNTHETIC_HEALTH_IDENTIFIER", entityType: "Patient", entityId: id, authorUsuarioId: actor.id, payload: { decision, configurationKey: key, identifierNature: "SYNTHETIC_NOT_CADSUS_VERIFIED", personId: patient.personId } } });
-        }
-        rows.push({ patientId: id, replay: Boolean(patient.cns), identifierNature: "SYNTHETIC_NOT_CADSUS_VERIFIED" });
+export async function prepareAuroraHealthIdentifiers(connection: DatabaseConnection, apply: boolean) {
+  const results = await withDatabaseTransaction(connection, async tx => {
+    await lockHealthCatalogTool(tx, key);
+    const actor = healthCatalogRequired((await tx.select({ id: users.id, ativo: users.ativo }).from(users).where(eq(users.email, "admin@email.com")).limit(1))[0], "Usuario");
+    if (!actor.ativo) throw new Error("Administrador autorizado inativo.");
+    const rows = [];
+    for (let index = 1; index <= 3; index++) {
+      const id = `aurora-shared-catalogs-2026-v1:patient:p1-poc-person-${index}`;
+      const patient = healthCatalogRequired((await tx.select({ id: patients.id, personId: patients.personId, cns: patients.cns }).from(patients).where(eq(patients.id, id)).limit(1))[0], "Patient");
+      if (patient.personId !== `p1-poc-person-${index}`) throw new Error("Paciente não corresponde à identidade fictícia documentada.");
+      const cns = syntheticCns(index);
+      if (cns.length !== 15 || [...cns].reduce((sum, digit, position) => sum + Number(digit) * (15 - position), 0) % 11) throw new Error("Checksum do identificador sintético divergente.");
+      if (patient.cns && patient.cns !== cns) throw new Error("Paciente já possui CNS distinto; preservar o documento cadastrado.");
+      const [other] = await tx.select({ id: patients.id }).from(patients).where(eq(patients.cns, cns)).limit(1);
+      if (other && other.id !== id) throw new Error("Identificador já utilizado por outra pessoa.");
+      if (apply && !patient.cns) {
+        await tx.update(patients).set({ cns }).where(eq(patients.id, id));
+        await tx.insert(financialAuditLogs).values({ action: "PREPARE_SYNTHETIC_HEALTH_IDENTIFIER", entityType: "Patient", entityId: id, authorUsuarioId: actor.id, payload: { decision, configurationKey: key, identifierNature: "SYNTHETIC_NOT_CADSUS_VERIFIED", personId: patient.personId } });
       }
-      return rows;
-    });
-    console.log(JSON.stringify({ mode: apply ? "ADDITIVE_IDEMPOTENT" : "READ_ONLY", decision, patients: results }, null, 2));
-  } finally { await prisma.$disconnect(); }
+      rows.push({ patientId: id, replay: Boolean(patient.cns), identifierNature: "SYNTHETIC_NOT_CADSUS_VERIFIED" });
+    }
+    return rows;
+  }, { timeoutMs: 30_000 });
+  return { mode: apply ? "ADDITIVE_IDEMPOTENT" : "READ_ONLY", decision, patients: results };
 }
 
-main().catch(error => { console.error(error instanceof Error ? error.message : "Falha na preparação de identificadores."); process.exitCode = 1; });
+async function main() {
+  const connection = openCrossDomainDatabase();
+  try { console.log(JSON.stringify(await prepareAuroraHealthIdentifiers(connection, process.argv.includes("--apply")), null, 2)); }
+  finally { await connection.pool.end(); }
+}
+
+if (require.main === module) main().catch(error => { console.error(error instanceof Error ? error.message : "Falha na preparação de identificadores."); process.exitCode = 1; });

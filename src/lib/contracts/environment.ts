@@ -1,0 +1,20 @@
+type EnvironmentTimestamps = { id: string; createdAt: Date; updatedAt: Date };
+export type EnvironmentEnterprise = EnvironmentTimestamps & { name: string; cnpjCpf: string | null; activityType: string | null; potentialRisk: string | null; address: string | null; status: string };
+export type EnvironmentLicense = EnvironmentTimestamps & { licenseNumber: string; licenseType: string; issueDate: Date; validUntil: Date | null; status: string; enterpriseId: string };
+export type EnvironmentRequest = EnvironmentTimestamps & { requestType: string; description: string; address: string | null; requesterName: string | null; status: string };
+export type EnvironmentComplaint = EnvironmentTimestamps & { complaintType: string; description: string; address: string | null; isAnonymous: boolean; status: string };
+export type EnvironmentInspection = EnvironmentTimestamps & { dateScheduled: Date | null; dateExecuted: Date | null; inspector: string | null; notes: string | null; status: string; enterpriseId: string | null };
+export type EnvironmentGreenArea = EnvironmentTimestamps & { name: string; areaType: string; sizeSqm: number | null; location: string | null; status: string; notes: string | null };
+export type EnvironmentWaste = EnvironmentTimestamps & { generatorName: string; wasteType: string; quantityKg: number; destination: string; date: Date; notes: string | null; enterpriseId: string | null };
+export type EnvironmentEducationProgram = EnvironmentTimestamps & { title: string; description: string; targetAudience: string | null; startDate: Date; endDate: Date | null; participantsCount: number | null; status: string };
+export type EnvironmentDocument = EnvironmentTimestamps & { title: string; docType: string; fileUrl: string | null; enterpriseId: string | null };
+export type IssuedEnvironmentalLicense = { id: string; numeroProcesso: string; numeroLicenca: string; tipoLicenca: string; requerenteNome: string; requerenteCnpjCpf: string; atividade: string; enderecoEmpreendimento: string; validadeData: Date; status: string; hashSHA256: string; qrCodeValidationUrl: string; emissaoData: Date; createdAt: Date };
+
+export type EnvironmentEnterpriseInput = Pick<EnvironmentEnterprise, "name" | "cnpjCpf" | "activityType" | "potentialRisk" | "address"> & { status?: string };
+export type EnvironmentLicenseInput = Pick<EnvironmentLicense, "licenseNumber" | "licenseType" | "validUntil"> & { status?: string };
+export type EnvironmentComplaintInput = Pick<EnvironmentComplaint, "complaintType" | "description" | "address" | "isAnonymous">;
+export type EnvironmentInspectionInput = Pick<EnvironmentInspection, "inspector" | "notes" | "enterpriseId"> & { dateScheduled?: Date; status?: string };
+export type EnvironmentGreenAreaInput = Pick<EnvironmentGreenArea, "name" | "areaType" | "sizeSqm" | "location" | "status" | "notes">;
+export type EnvironmentWasteInput = Pick<EnvironmentWaste, "generatorName" | "wasteType" | "quantityKg" | "destination" | "notes" | "enterpriseId">;
+export type EnvironmentEducationProgramInput = Pick<EnvironmentEducationProgram, "title" | "description" | "targetAudience" | "startDate" | "endDate" | "participantsCount" | "status">;
+export type EnvironmentDocumentInput = Pick<EnvironmentDocument, "title" | "docType" | "enterpriseId">;

@@ -3,17 +3,21 @@
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { validateEmployeeRelations } from "@/lib/administration/employee-lifecycle";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
-import { resolveEmployeePerson } from "@/lib/rh/employee-person";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { resolveEmployeePerson } from "@/db/repositories/administration/creation";
+import { databaseConnection } from "@/db/client";
+import { employees } from "@/db/schema/administration";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { eq, sql } from "drizzle-orm";
 
-async function getTenantPrisma(operation: "create" | "update" | "delete") {
+async function getEmployeeContext(operation: "create" | "update" | "delete") {
   return getTenantContextForModuleOperation("RH", operation);
 }
 
 export async function saveServidor(formData: FormData) {
   const id = formData.get("id") as string | null;
-  const context = await getTenantPrisma(id ? "update" : "create");
-  const { prisma } = context;
+  const context = await getEmployeeContext(id ? "update" : "create");
   try {
     const name = formData.get("name") as string;
     const cpf = formData.get("cpf") as string;
@@ -32,7 +36,6 @@ export async function saveServidor(formData: FormData) {
       return { success: false, error: "Nome é obrigatório." };
     }
 
-    const hierarchy = await validateEmployeeRelations(prisma, { secretariatId: secretariatId || null, departmentId: departmentId || null });
     const data = {
       name,
       cpf: cpf || null,
@@ -41,20 +44,23 @@ export async function saveServidor(formData: FormData) {
       phone: phone || null,
       roleId: roleId || null,
       departmentId: departmentId || null,
-      secretariatId: hierarchy.secretariatId,
       isActive,
       salaryBase,
       contractedHours
     };
 
-    await prisma.$transaction(async (tx) => {
-      if (id) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${id}`}))`;
-      const previous = id ? await tx.employee.findUniqueOrThrow({ where: { id } }) : null;
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      if (id) await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${id}`}))`);
+      const hierarchy = await validateEmployeeRelations(tx, { secretariatId: secretariatId || null, departmentId: departmentId || null });
+      const [previous] = id ? await tx.select({ personId: employees.personId }).from(employees).where(eq(employees.id, id)).limit(1) : [];
+      if (id && !previous) throw new Error("Servidor não encontrado.");
       const canonical = await resolveEmployeePerson(tx, { personId, cpf, existingPersonId: previous?.personId });
-      const employee = id
-        ? await tx.employee.update({ where: { id }, data: { ...data, ...canonical } })
-        : await tx.employee.create({ data: { ...data, ...canonical } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: employee.id });
+      const details = { ...data, ...canonical, secretariatId: hierarchy.secretariatId };
+      const [employee] = id
+        ? await tx.update(employees).set(details).where(eq(employees.id, id)).returning({ id: employees.id })
+        : await tx.insert(employees).values(details).returning({ id: employees.id });
+      if (!employee) throw new Error("Servidor não encontrado.");
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: employee.id });
     });
 
     revalidatePath("/rh/servidores");
@@ -66,12 +72,12 @@ export async function saveServidor(formData: FormData) {
 }
 
 export async function toggleServidorStatus(id: string, isActive: boolean) {
-  const context = await getTenantPrisma("update");
-  const { prisma } = context;
+  const context = await getEmployeeContext("update");
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.employee.update({ where: { id }, data: { isActive } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: id });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [employee] = await tx.update(employees).set({ isActive }).where(eq(employees.id, id)).returning({ id: employees.id });
+      if (!employee) throw new Error("Servidor não encontrado.");
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: id });
     });
     revalidatePath("/rh/servidores");
     return { success: true };

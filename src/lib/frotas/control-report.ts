@@ -1,17 +1,24 @@
-import { Prisma } from "@prisma/client";
-import type { AppContext } from "@/lib/platform/tenant-context";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import * as f from "@/db/schema/fleet";
+import { departments as departmentTable } from "@/db/schema/administration";
+import { costCenters } from "@/db/schema/master-data";
+import { people } from "@/db/schema/people";
+import { fleetDatabase, fleetDepartmentFilter, readFleetUnits } from "@/db/repositories/fleet/records";
+import { readFleetSupplier } from "@/db/repositories/fleet/sources";
+import { fleetDates } from "@/db/repositories/fleet/filters";
+import type { FleetContext as AppContext } from "@/lib/contracts/fleet";
 import type { InternalReportDataset } from "@/lib/financeiro/report-delivery";
-import { fleetScope, departmentWhere } from "./service";
+import { fleetScope } from "./service";
 import { fleetControlUnitWhere, queryFleetControl } from "./control-queries";
 import { controlQuerySchema } from "./control-policy";
 import { FleetControlError, scopedFleetUnit } from "./control-access";
-import { dateOnly } from "./contract";
 
 export type FleetControlReportInput = { query: unknown; documentType?: "authorization" | "trip" | "blankFuel" | "blankTrip"; documentId?: string; unitIds?: string[] };
 const date = (value: Date | null | undefined) => value?.toISOString() || "Não informado";
-const amount = (value: Prisma.Decimal | null | undefined, scale = 2) => value === null || value === undefined ? "Não informado" : value.toFixed(scale);
+const amount = (value: Decimal | null | undefined, scale = 2) => value === null || value === undefined ? "Não informado" : value.toFixed(scale);
 export async function buildFleetControlReport(context: AppContext, input: FleetControlReportInput): Promise<InternalReportDataset> {
-  const query = controlQuerySchema.parse(input.query), scope = fleetScope(context), db = context.prisma;
+  const query = controlQuerySchema.parse(input.query), scope = fleetScope(context), db = fleetDatabase(context);
   let title = "Frota — relatório operacional", sections: InternalReportDataset["sections"] = [];
   const warnings: string[] = [];
   if (input.documentType === "blankFuel" || input.documentType === "blankTrip") {
@@ -20,27 +27,27 @@ export async function buildFleetControlReport(context: AppContext, input: FleetC
     sections = [{ title: "Preenchimento manual", rows: fields.map((field) => ({ Campo: field, Preenchimento: "________________________________________________" })) }];
     warnings.push("Formulário em branco: impressão não cria autorização, consumo, viagem, despesa ou pagamento no banco.");
   } else if (input.documentType === "authorization") {
-    const authorization = await db.fleetAuthorization.findUnique({ where: { id: input.documentId || "" } });
+    const [authorization] = await db.select().from(f.fleetAuthorizations).where(eq(f.fleetAuthorizations.id, input.documentId || "")).limit(1);
     if (!authorization) throw new FleetControlError("Autorização não encontrada.");
     const unit = await scopedFleetUnit(db, scope, authorization.unitId, false);
-    const provider = authorization.providerId ? await db.fleetProvider.findUnique({ where: { id: authorization.providerId } }) : null;
-    const supplier = provider ? await db.supplier.findUnique({ where: { id: provider.supplierId }, select: { company: { select: { corporateName: true, cnpj: true } } } }) : null;
+    const provider = authorization.providerId ? (await db.select().from(f.fleetProviders).where(eq(f.fleetProviders.id, authorization.providerId)).limit(1))[0] : null;
+    const supplier = provider ? await readFleetSupplier(db, provider.supplierId, false) : null;
     title = `${authorization.kind === "ABASTECIMENTO" ? "Autorização de abastecimento" : "Autorização de serviço"} ${authorization.code}`;
     sections = [{ title: "Autorização cadastrada", rows: [{ Código: authorization.code, Situação: authorization.status, Unidade: `${unit.code} · ${unit.name}`, Placa: unit.plate || "Não aplicável", Origem: authorization.origin, Prestador: supplier?.company?.corporateName || "Próprio", CNPJ: supplier?.company?.cnpj || "Não aplicável", Finalidade: authorization.description, Emissão: date(authorization.issuedAt), Validade: date(authorization.validUntil), "Litros autorizados": amount(authorization.authorizedQuantity, 3), "Valor limite": amount(authorization.authorizedAmount), "Execução efetiva": date(authorization.executedAt), "Litros executados": amount(authorization.actualQuantity, 3), "Custo realizado": amount(authorization.actualAmount), Contrato: authorization.contractId || "Sem vínculo", "Compra/dispensa/licitação": authorization.purchaseProcessId || "Sem vínculo", "Ordem de serviço": authorization.workOrderId || "Não aplicável" }] }];
     warnings.push("A autorização não comprova execução/pagamento. O código externo de conferência é entregue separadamente ao prestador.");
   } else if (input.documentType === "trip") {
-    const trip = await db.fleetTrip.findUnique({ where: { id: input.documentId || "" } }); if (!trip) throw new FleetControlError("Viagem não encontrada.");
+    const [trip] = await db.select().from(f.fleetTrips).where(eq(f.fleetTrips.id, input.documentId || "")).limit(1); if (!trip) throw new FleetControlError("Viagem não encontrada.");
     const unit = await scopedFleetUnit(db, scope, trip.unitId, false);
     title = `Planilha de deslocamento — ${unit.code}`;
-    const gates = await db.fleetGateEvent.findMany({ where: { tripId: trip.id }, orderBy: { occurredAt: "asc" } });
+    const gates = await db.select().from(f.fleetGateEvents).where(eq(f.fleetGateEvents.tripId, trip.id)).orderBy(asc(f.fleetGateEvents.occurredAt));
     sections = [{ title: "Saída, acompanhamento e retorno", rows: [{ Unidade: `${unit.code} · ${unit.name}`, Motorista: (trip.driverSnapshot as { name: string }).name, Finalidade: trip.purpose, Destino: trip.destination, Saída: date(trip.departedAt), Retorno: date(trip.returnedAt), Marcador: trip.meterType, Inicial: amount(trip.startReading, 3), Final: amount(trip.endReading, 3), "Percorrido (unidade do marcador)": trip.startReading !== null && trip.endReading !== null ? trip.endReading.sub(trip.startReading).toString() : "Não aplicável/aberto", Rota: trip.routeSnapshot || "Sem rota", Checklist: JSON.stringify(trip.checklist) }] }, { title: "Eventos únicos da guarita", rows: gates.map((gate) => ({ Movimento: gate.kind, Horário: date(gate.occurredAt), Leitura: amount(gate.reading, 3) })) }];
   } else if (query.area === "relatorios") {
     const requestedIds = input.unitIds?.length ? input.unitIds : query.unitIds ? query.unitIds.split(",") : [];
-    if (requestedIds.length && await db.fleetUnit.count({ where: { AND: [departmentWhere(scope), { id: { in: requestedIds } }] } }) !== new Set(requestedIds).size) throw new FleetControlError("Uma das unidades está fora da repartição autorizada.");
+    if (requestedIds.length && (await db.select({ id: f.fleetUnits.id }).from(f.fleetUnits).where(and(fleetDepartmentFilter(scope), inArray(f.fleetUnits.id, requestedIds)))).length !== new Set(requestedIds).size) throw new FleetControlError("Uma das unidades está fora da repartição autorizada.");
     const selectedQuery = { ...query, unitIds: requestedIds.join(",") };
-    const units = await db.fleetUnit.findMany({ where: fleetControlUnitWhere(context, selectedQuery), include: { control: true, asset: { include: { responsible: { select: { name: true } } } }, parent: { select: { code: true, name: true } } }, orderBy: { code: "asc" } });
-    const departments = await db.department.findMany({ where: { id: { in: units.flatMap(unit => unit.departmentId ? [unit.departmentId] : []) } }, select: { id: true, name: true } });
-    const centers = await db.costCenter.findMany({ where: { id: { in: units.flatMap(unit => unit.control?.costCenterId ? [unit.control.costCenterId] : []) } }, select: { id: true, name: true } });
+    const units = await readFleetUnits(db, fleetControlUnitWhere(context, selectedQuery));
+    const departments = await db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(inArray(departmentTable.id, units.flatMap(unit => unit.departmentId ? [unit.departmentId] : [])));
+    const centers = await db.select({ id: costCenters.id, name: costCenters.name }).from(costCenters).where(inArray(costCenters.id, units.flatMap(unit => unit.control?.costCenterId ? [unit.control.costCenterId] : [])));
     title = "Dossiê integral de veículos, máquinas e equipamentos";
     for (const unit of units) {
       sections.push({ title: `${unit.code} · ${unit.name} — ficha completa`, rows: [{ Unidade: unit.code, Descrição: unit.name, Categoria: unit.category, Situação: unit.status, "Disponibilidade operacional": unit.operationalStatus, Placa: unit.plate || "Não aplicável", RENAVAM: unit.renavam || "Não informado", Marca: unit.asset?.brand || unit.brand || "Não informada", Modelo: unit.asset?.model || unit.model || "Não informado", Ano: unit.year || "Não informado", Espécie: unit.control?.species || "Não informada", Cor: unit.control?.color || "Não informada", Departamento: departments.find(department => department.id === unit.departmentId)?.name || "Sem setor", "Centro de custo": centers.find(center => center.id === unit.control?.costCenterId)?.name || "Não informado", Patrimônio: unit.asset?.patrimonyNumber || "Sem vínculo", "Situação patrimonial": unit.asset?.status || "Sem vínculo", Responsável: unit.asset?.responsible?.name || "Não informado", Aquisição: date(unit.asset?.acquisitionDate || unit.control?.acquisitionDate), "Documento de aquisição": unit.asset?.invoiceNumber || "Não informado", Combustível: unit.control?.fuelType || "Não informado", "Tanque (L)": amount(unit.control?.tankCapacity, 3), Marcador: unit.control?.meterType || "HODOMETRO", Leitura: amount(unit.control?.currentReading, 3), "Consumo esperado": amount(unit.control?.expectedConsumption, 3), "Tolerância (%)": amount(unit.control?.tolerancePercent, 3), "Modelo FIPE": unit.control?.fipeModelId || "Não vinculado", "Tipo de máquina": unit.control?.machineTypeId || "Não aplicável", "Campos da máquina": JSON.stringify(unit.control?.machineValues || {}), "Categorias CNH": JSON.stringify(unit.control?.allowedLicenseCategories || []), "Unidade principal": unit.parent ? `${unit.parent.code} · ${unit.parent.name}` : "Não aplicável", Observações: unit.notes || "Não informadas" }] });
@@ -48,22 +55,20 @@ export async function buildFleetControlReport(context: AppContext, input: FleetC
         const list = await queryFleetControl(context, { ...query, area, q: "", status: "", unitIds: "", unitId: unit.id, page: 1 }, true);
         sections.push({ title: `${unit.code} — ${area}`, rows: list.rows.map((row) => ({ Registro: row.id, Identificação: row.label, Situação: row.status, ...row.detail })) });
       }
-      const range = { ...(query.from ? { gte: dateOnly(query.from) } : {}), ...(query.to ? { lt: new Date(dateOnly(query.to).getTime() + 86400000) } : {}) };
-      const timeRange = { ...(query.from ? { gte: new Date(`${query.from}T00:00:00-03:00`) } : {}), ...(query.to ? { lt: new Date(new Date(`${query.to}T00:00:00-03:00`).getTime() + 86400000) } : {}) };
       const [usages, documents, plans, orders, consumptions, expenses, events] = await Promise.all([
-        db.fleetUsage.findMany({ where: { unitId: unit.id, startedAt: timeRange, ...(query.driverId ? { driverId: query.driverId } : {}) }, orderBy: { startedAt: "asc" } }), db.fleetDocument.findMany({ where: { unitId: unit.id, dueAt: range }, orderBy: { dueAt: "asc" } }),
-        db.fleetPlan.findMany({ where: { unitId: unit.id, nextDueAt: range } }), db.fleetWorkOrder.findMany({ where: { unitId: unit.id, scheduledAt: range } }), db.fleetConsumption.findMany({ where: { unitId: unit.id, occurredAt: range } }),
-        db.fleetExpense.findMany({ where: { unitId: unit.id, occurredAt: range }, orderBy: { occurredAt: "asc" } }), db.fleetControlEvent.findMany({ where: { unitId: unit.id, createdAt: timeRange }, orderBy: { createdAt: "asc" } }),
+        db.select().from(f.fleetUsages).where(and(eq(f.fleetUsages.unitId, unit.id), fleetDates(f.fleetUsages.startedAt, query.from, query.to, true), query.driverId ? eq(f.fleetUsages.driverId, query.driverId) : undefined)).orderBy(asc(f.fleetUsages.startedAt)), db.select().from(f.fleetDocuments).where(and(eq(f.fleetDocuments.unitId, unit.id), fleetDates(f.fleetDocuments.dueAt, query.from, query.to, false, true))).orderBy(asc(f.fleetDocuments.dueAt)),
+        db.select().from(f.fleetPlans).where(and(eq(f.fleetPlans.unitId, unit.id), fleetDates(f.fleetPlans.nextDueAt, query.from, query.to, false, true))), db.select().from(f.fleetWorkOrders).where(and(eq(f.fleetWorkOrders.unitId, unit.id), fleetDates(f.fleetWorkOrders.scheduledAt, query.from, query.to, false, true))), db.select().from(f.fleetConsumptions).where(and(eq(f.fleetConsumptions.unitId, unit.id), fleetDates(f.fleetConsumptions.occurredAt, query.from, query.to, false, true))),
+        db.select().from(f.fleetExpenses).where(and(eq(f.fleetExpenses.unitId, unit.id), fleetDates(f.fleetExpenses.occurredAt, query.from, query.to, false, true))).orderBy(asc(f.fleetExpenses.occurredAt)), db.select().from(f.fleetControlEvents).where(and(eq(f.fleetControlEvents.unitId, unit.id), fleetDates(f.fleetControlEvents.createdAt, query.from, query.to, true))).orderBy(asc(f.fleetControlEvents.createdAt)),
       ]);
       sections.push({ title: `${unit.code} — utilização canônica (uma por retorno)`, rows: usages.map((row) => ({ Registro: row.id, Início: date(row.startedAt), Fim: date(row.endedAt), Finalidade: row.purpose, Condutor: row.employeeName || "Não informado", Marcador: row.meterType, Inicial: amount(row.initialReading, 3), Final: amount(row.finalReading, 3), Rota: row.routeSnapshot || "Sem rota" })) });
       const driverIds = [...new Set(usages.flatMap(usage => usage.driverId ? [usage.driverId] : []))];
-      const drivers = await db.fleetDriver.findMany({ where: { id: { in: driverIds } } });
-      const persons = await db.person.findMany({ where: { id: { in: drivers.map(driver => driver.personId) } }, select: { id: true, fullName: true } });
+      const drivers = await db.select().from(f.fleetDrivers).where(inArray(f.fleetDrivers.id, driverIds));
+      const persons = await db.select({ id: people.id, fullName: people.fullName }).from(people).where(inArray(people.id, drivers.map(driver => driver.personId)));
       sections.push({ title: `${unit.code} — condutores vinculados às utilizações`, rows: drivers.map(driver => ({ Condutor: persons.find(person => person.id === driver.personId)?.fullName || "Não informado", CNH: driver.cnhNumber, Categorias: JSON.stringify(driver.cnhCategories), Validade: date(driver.cnhExpiresAt), Vínculo: driver.employeeId ? "Servidor RH" : "Terceirizado", "Política de pontos": `${driver.pointLimit} / ${driver.pointWindowMonths} meses · ${driver.policyReference}` })) });
       sections.push({ title: `${unit.code} — seguros/licenciamento/obrigações previstos e realizados`, rows: documents.map((row) => ({ Registro: row.id, Tipo: `${row.kind} / ${row.type}`, Documento: row.title, Apólice: row.reference, Seguradora: row.insurerName || "Não informada", Início: date(row.startsAt), Programação: date(row.scheduledAt), Vencimento: date(row.dueAt), Cumprimento: date(row.fulfilledAt), Valor: amount(row.value), Situação: row.status })) });
       sections.push({ title: `${unit.code} — planos e OS`, rows: [...plans.map((row) => ({ Registro: row.id, Tipo: "PLANO", Serviços: row.services, Programação: date(row.nextDueAt), Realizado: "Não é execução", Previsto: amount(row.estimatedCost) })), ...orders.map((row) => ({ Registro: row.id, Tipo: row.type, Serviços: row.services, Programação: date(row.scheduledAt), Realizado: date(row.completedAt), Previsto: amount(row.estimatedCost), "Custo realizado": amount(row.actualCost), Situação: row.status }))] });
       sections.push({ title: `${unit.code} — consumos e origem (não somar novamente ao gasto)`, rows: consumptions.map((row) => ({ Registro: row.id, Origem: row.origin, Material: row.material, Quantidade: `${row.quantity} ${row.measurementUnit}`, Custo: amount(row.cost), Fornecedor: row.supplierName || "Não informado", "Saída de estoque": row.stockMovementId || "Sem vínculo" })) });
-      const unknown = expenses.filter((row) => row.amount === null).length, known = expenses.reduce((sum, row) => sum.add(row.amount || 0), new Prisma.Decimal(0));
+      const unknown = expenses.filter((row) => row.amount === null).length, known = expenses.reduce((sum, row) => sum.add(row.amount || 0), new Decimal(0));
       if (unknown) warnings.push(`${unit.code}: ${unknown} gasto(s) sem valor. Total conhecido parcial, não equivalente a zero para os desconhecidos.`);
       sections.push({ title: `${unit.code} — gastos canônicos únicos`, rows: [...expenses.map((row) => ({ Registro: row.id, Natureza: row.nature, Data: date(row.occurredAt), Descrição: row.description, Valor: amount(row.amount), Fonte: `${row.sourceType}:${row.sourceId}`, Fornecedor: row.supplierName || "Não informado", Contrato: row.contractId || "Não vinculado" })), { "Total realizado conhecido": known.toFixed(2), "Valores desconhecidos": unknown, Conciliação: unknown ? "PARCIAL" : "COMPLETO_DO_FILTRO" }] });
       sections.push({ title: `${unit.code} — histórico imutável de operações`, rows: events.map((row) => ({ Operação: row.operation, Registro: row.targetId, Data: date(row.createdAt), Ator: row.actorId, "Hash da confirmação": row.payloadHash })) });
@@ -75,12 +80,12 @@ export async function buildFleetControlReport(context: AppContext, input: FleetC
     if (list.debtSummary) sections.push({ title: "Débitos e pendências administrativas", rows: [{ "Pendente conhecido": list.debtSummary.outstandingKnown, "Valores não informados": list.debtSummary.unknownValues, "Pagamentos registrados": list.debtSummary.payments, "Cumprimentos administrativos": list.debtSummary.administrativeClosures, Observação: "Baixa administrativa de documento não comprova pagamento financeiro." }] });
     if (list.catalog) sections.push({ title: "Fonte do catálogo", rows: [{ Versão: list.catalog.reference, Fonte: list.catalog.sourceReference, Registros: list.catalog.records, Cobertura: list.catalog.complete ? "Integral da edição declarada" : "Parcial/amostra" }] });
   }
-  const unitIds = (await db.fleetUnit.findMany({ where: fleetControlUnitWhere(context, { ...query, unitIds: input.unitIds?.length ? input.unitIds.join(",") : query.unitIds }), select: { id: true, departmentId: true, code: true, name: true } }));
+  const unitIds = await db.select({ id: f.fleetUnits.id, departmentId: f.fleetUnits.departmentId, code: f.fleetUnits.code, name: f.fleetUnits.name }).from(f.fleetUnits).where(fleetControlUnitWhere(context, { ...query, unitIds: input.unitIds?.length ? input.unitIds.join(",") : query.unitIds }));
   if (!input.documentType) {
-    const expenses = await db.fleetExpense.findMany({ where: { unitId: { in: unitIds.map((row) => row.id) }, occurredAt: { ...(query.from ? { gte: new Date(`${query.from}T00:00:00Z`) } : {}), ...(query.to ? { lt: new Date(new Date(`${query.to}T00:00:00Z`).getTime() + 86400000) } : {}) } }, select: { unitId: true, nature: true, occurredAt: true, supplierId: true, supplierName: true, amount: true } });
+    const expenses = await db.select({ unitId: f.fleetExpenses.unitId, nature: f.fleetExpenses.nature, occurredAt: f.fleetExpenses.occurredAt, supplierId: f.fleetExpenses.supplierId, supplierName: f.fleetExpenses.supplierName, amount: f.fleetExpenses.amount }).from(f.fleetExpenses).where(and(inArray(f.fleetExpenses.unitId, unitIds.map(row => row.id)), fleetDates(f.fleetExpenses.occurredAt, query.from, query.to, false, true)));
     const unitMap = new Map(unitIds.map((row) => [row.id, row.departmentId || "SEM_SETOR"]));
-    const groups = new Map<string, { known: Prisma.Decimal; unknown: number; count: number }>();
-    for (const expense of expenses) for (const [dimension, value] of [["REPARTICAO", unitMap.get(expense.unitId)!], ["VEICULO", expense.unitId], ["FORNECEDOR", expense.supplierName || expense.supplierId || "NAO_INFORMADO"], ["PERIODO", expense.occurredAt.toISOString().slice(0, 7)]]) { const key = `${dimension}:${value}`, group = groups.get(key) || { known: new Prisma.Decimal(0), unknown: 0, count: 0 }; group.count++; if (expense.amount === null) group.unknown++; else group.known = group.known.add(expense.amount); groups.set(key, group); }
+    const groups = new Map<string, { known: Decimal; unknown: number; count: number }>();
+    for (const expense of expenses) for (const [dimension, value] of [["REPARTICAO", unitMap.get(expense.unitId)!], ["VEICULO", expense.unitId], ["FORNECEDOR", expense.supplierName || expense.supplierId || "NAO_INFORMADO"], ["PERIODO", expense.occurredAt.toISOString().slice(0, 7)]]) { const key = `${dimension}:${value}`, group = groups.get(key) || { known: new Decimal(0), unknown: 0, count: 0 }; group.count++; if (expense.amount === null) group.unknown++; else group.known = group.known.add(expense.amount); groups.set(key, group); }
     sections.push({ title: "Despesas agrupadas — fonte única FleetExpense", rows: [...groups].map(([key, group]) => ({ Agrupamento: key, Registros: group.count, "Valor conhecido": group.known.toFixed(2), "Custos desconhecidos": group.unknown, Qualificação: group.unknown ? "TOTAL_PARCIAL" : "TOTAL_DO_FILTRO" })) });
   }
   const filters = [`${query.from || "início"} a ${query.to || "sem limite final"}`, `Unidades: ${unitIds.map(unit => `${unit.code} · ${unit.name}`).join("; ") || "nenhuma unidade no filtro"}`, ...(query.departmentId ? [`Departamento: ${query.departmentId}`] : []), ...(query.driverId ? [`Condutor selecionado: ${query.driverId}`] : []), ...(query.q ? [`Busca: ${query.q}`] : []), ...(query.status ? [`Situação: ${query.status}`] : []), ...(query.nature ? [`Natureza: ${query.nature}`] : [])].join(" | ");

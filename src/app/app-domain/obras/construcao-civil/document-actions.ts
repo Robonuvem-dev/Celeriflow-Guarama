@@ -3,33 +3,38 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { constructionIssuedDocuments } from "@/db/schema/construction-documents";
+import { findConstructionCaseForAccess } from "@/db/repositories/infrastructure/construction-access";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { getIdTokenPrincipal } from "@/lib/platform/session";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
+import { constructionActionMessage } from "@/lib/obras/construction-errors";
 import { createConstructionPdfRevision, issueConstructionDocument, publishConstructionArtifact, publishConstructionDocumentTemplate } from "@/lib/obras/construction-documents-service";
 import { requestInternalDocumentSignatures, registerRequestedInternalDocumentSignature } from "@/lib/documents/document-flow-service";
 import { recordA1Failure, signDocumentVersionWithA1 } from "@/lib/signatures/a1-signature-service";
 import { readConstructionPdf } from "@/lib/obras/construction-document-storage";
 
-function message(error: unknown) { return error instanceof z.ZodError ? error.issues[0].message : error instanceof Error && !error.name.startsWith("Prisma") ? error.message : "Não foi possível concluir a operação documental."; }
+function message(error: unknown) { return constructionActionMessage(error, "Não foi possível concluir a operação documental."); }
 function refresh(caseId?: string) { revalidatePath("/obras/construcao-civil/documentos"); if (caseId) { revalidatePath(`/obras/construcao-civil/${caseId}/documentos`); revalidatePath(`/portal/construcao-civil/${caseId}/documentos`); } }
 async function scopedArtifact(id: string) {
   const context = await getTenantContextForModuleOperation("OBRAS", "update"); const access = await resolveConstructionAccess(context);
-  const issued = await context.prisma.constructionIssuedDocument.findUnique({ where: { id } });
-  if (!issued || !await context.prisma.constructionCase.findFirst({ where: { AND: [{ id: issued.caseId }, constructionCaseWhere(access)] }, select: { id: true } })) throw new Error("Documento indisponível no seu setor.");
+  const [issued] = await db.select().from(constructionIssuedDocuments).where(eq(constructionIssuedDocuments.id, id)).limit(1);
+  if (!issued || !await findConstructionCaseForAccess(db, issued.caseId, access)) throw new Error("Documento indisponível no seu setor.");
   if (issued.status !== "ISSUED") throw new Error("Documento já publicado ou substituído.");
   await readConstructionPdf(issued.fileUrl, issued.hashSha256);
   return { context, access, issued };
 }
 export async function saveConstructionDocumentTemplate(input: unknown) {
-  try { const context = await getTenantContextForModuleOperation("OBRAS", "update"); const access = await resolveConstructionAccess(context); await context.prisma.$transaction((tx) => publishConstructionDocumentTemplate(tx, access, context.user.id, input)); refresh(); return { success: true }; } catch (error) { return { error: message(error) }; }
+  try { const context = await getTenantContextForModuleOperation("OBRAS", "update"); const access = await resolveConstructionAccess(context); await withDatabaseTransaction(databaseConnection, (tx) => publishConstructionDocumentTemplate(tx, access, context.user.id, input)); refresh(); return { success: true }; } catch (error) { return { error: message(error) }; }
 }
 export async function emitConstructionDocument(input: unknown) {
-  try { const context = await getTenantContextForModuleOperation("OBRAS", "update"); const access = await resolveConstructionAccess(context); const id = await issueConstructionDocument(context.prisma, access, context.user.id, input); const row = await context.prisma.constructionIssuedDocument.findUniqueOrThrow({ where: { id } }); refresh(row.caseId); return { success: true, id }; } catch (error) { return { error: message(error) }; }
+  try { const context = await getTenantContextForModuleOperation("OBRAS", "update"); const access = await resolveConstructionAccess(context); const id = await issueConstructionDocument(databaseConnection, access, context.user.id, input); const [row] = await db.select({ caseId: constructionIssuedDocuments.caseId }).from(constructionIssuedDocuments).where(eq(constructionIssuedDocuments.id, id)).limit(1); refresh(row.caseId); return { success: true, id }; } catch (error) { return { error: message(error) }; }
 }
 export async function publishConstructionDocument(id: string) {
-  try { const context = await getTenantContextForModuleOperation("OBRAS", "update"); const access = await resolveConstructionAccess(context); await context.prisma.$transaction((tx) => publishConstructionArtifact(tx, access, context.user.id, id), { timeout: 30000 }); const row = await context.prisma.constructionIssuedDocument.findUniqueOrThrow({ where: { id } }); refresh(row.caseId); return { success: true }; } catch (error) { return { error: message(error) }; }
+  try { const context = await getTenantContextForModuleOperation("OBRAS", "update"); const access = await resolveConstructionAccess(context); await withDatabaseTransaction(databaseConnection, (tx) => publishConstructionArtifact(tx, access, context.user.id, id), { timeoutMs: 30000 }); const [row] = await db.select({ caseId: constructionIssuedDocuments.caseId }).from(constructionIssuedDocuments).where(eq(constructionIssuedDocuments.id, id)).limit(1); refresh(row.caseId); return { success: true }; } catch (error) { return { error: message(error) }; }
 }
 export async function requestConstructionDocumentSignatures(input: unknown) {
   try {
@@ -52,10 +57,10 @@ export async function signConstructionDocumentA1(input: unknown) {
     const data = z.object({ issuedDocumentId: z.string().min(1), certificateId: z.string().min(1) }).parse(input); const { context, access, issued } = await scopedArtifact(data.issuedDocumentId);
     if (!access.administrator && !access.roles.includes("MANAGER")) throw new Error("Assinatura A1 exige gestor urbanístico.");
     failure = { certificateId: data.certificateId, documentVersionId: issued.documentVersionId, actorUsuarioId: context.user.id };
-    await signDocumentVersionWithA1(context.prisma, context.user, { documentVersionId: issued.documentVersionId, certificateId: data.certificateId, purpose: "GED" }); refresh(issued.caseId); return { success: true };
+    await signDocumentVersionWithA1(databaseConnection, context.user, { documentVersionId: issued.documentVersionId, certificateId: data.certificateId, purpose: "GED" }); refresh(issued.caseId); return { success: true };
   } catch (error) {
     if (failure) {
-      try { const context = await getTenantContextForModuleOperation("OBRAS", "update"); await recordA1Failure(context.prisma, { ...failure, purpose: "GED", errorCode: "CONSTRUCTION_A1_FAILED" }); }
+      try { await getTenantContextForModuleOperation("OBRAS", "update"); await recordA1Failure(db, { ...failure, purpose: "GED", errorCode: "CONSTRUCTION_A1_FAILED" }); }
       catch { /* Preserve the client action's error contract if the failed reference cannot be audited. */ }
     }
     return { error: message(error) };

@@ -9,6 +9,9 @@ import { publicPlanningPublicationResponse } from "../src/lib/planejamento/publi
 import { addProgramPPA } from "../src/lib/financeiro/planejamento";
 import { addApprovedPlanningLine } from "../src/lib/planejamento/service";
 import { randomUUID } from "node:crypto";
+import { and, count, eq } from "drizzle-orm";
+import { planningBudgetLaws, planningInstruments } from "../src/db/schema/planning-budget";
+import { planningPublicationEvents, planningReportPublications } from "../src/db/schema/planning-publication-operations";
 
 function storageFixture() {
   const files = new Map<string, Uint8Array>(); let calls = 0;
@@ -56,13 +59,13 @@ test("S8: falha de storage/sondagem não publica; retry reaproveita identidade e
     const input = { snapshotId: snapshot.id, format: "CSV", reason: "Publicação após conferência" };
     const failing = { ...stored.storage, get: async () => new Uint8Array([1, 2, 3]) };
     await assert.rejects(publishPlanningReport(f.context, input, failing), /hash divergente/);
-    const failed = await f.db.planningReportPublication.findFirstOrThrow(); assert.equal(failed.status, "FAILED");
+    const [failed] = await f.db.select().from(planningReportPublications).limit(1); assert.equal(failed.status, "FAILED");
     assert.equal((await listPlanningPublications(f.db, {})).total, 0);
     assert.equal((await publicPlanningPublicationResponse(f.db, failed.publicKey, stored.storage)).status, 404);
     const completed = await publishPlanningReport(f.context, input, stored.storage);
     assert.equal(completed.id, failed.id); assert.equal(stored.calls(), 1); assert.equal(completed.status, "PUBLISHED");
-    assert.equal((await f.db.planningReportPublication.findUniqueOrThrow({ where: { id: failed.id } })).attempts, 2);
-    assert.equal(await f.db.planningPublicationEvent.count({ where: { publicationId: failed.id, type: "FAILED" } }), 1);
+    assert.equal((await f.db.select().from(planningReportPublications).where(eq(planningReportPublications.id, failed.id)))[0].attempts, 2);
+    assert.equal((await f.db.select({ value: count() }).from(planningPublicationEvents).where(and(eq(planningPublicationEvents.publicationId, failed.id), eq(planningPublicationEvents.type, "FAILED"))))[0].value, 1);
   } finally { await f.close(); }
 });
 
@@ -77,8 +80,8 @@ test("S8: lease impede uploads concorrentes e a transição não permite editor 
     const first = publishPlanningReport(f.context, input, delayed); await started;
     try { await assert.rejects(publishPlanningReport(f.context, input, stored.storage), /processamento/); } finally { release(); }
     await first; assert.equal(stored.calls(), 1);
-    const ppa = await f.db.planningInstrument.findUniqueOrThrow({ where: { id: f.ppa } });
-    await assert.rejects(addProgramPPA(f.db, { usuarioId: "ana", employeeId: "servidora-ana" }, { multiYearPlanId: ppa.multiYearPlanId!, code: "9999", name: "Programa pelo caminho antigo" }), /adotada/);
+    const [ppa] = await f.db.select().from(planningInstruments).where(eq(planningInstruments.id, f.ppa));
+    await assert.rejects(addProgramPPA(f.connection, { usuarioId: "ana", employeeId: "servidora-ana" }, { multiYearPlanId: ppa.multiYearPlanId!, code: "9999", name: "Programa pelo caminho antigo" }), /adotada/);
   } finally { await f.close(); }
 });
 
@@ -91,7 +94,7 @@ test("S8: permissão/escopo e peça não publicada recusam exposição pública"
     await addApprovedPlanningLine(f.context, { ...f.expenseInput, code: "OUTRA-UG", description: "Dotação de outra unidade", budgetUnitId: "ug-restrita", originalValue: "0.00", effectiveAt: "2026-03-01", legalActNumber: "Lei 3/2026", legalText: "Nova classificação", reason: "Nova unidade", submissionKey: randomUUID() });
     const partial = { ...limited, user: { ...limited.user, permissions: JSON.stringify({ modules: { PLANEJAMENTO: { blocked: false, update: true, issueReports: true, legalApproval: true }, TRANSPARENCIA: { blocked: false, create: true } } }) } };
     await assert.rejects(publishPlanningReport(partial, { snapshotId: snapshot.id, reason: "Tentativa com escopo parcial" }, stored.storage), /todas as unidades/);
-    await f.db.annualBudgetLaw.updateMany({ data: { status: "SANCTIONED" } });
+    await f.db.update(planningBudgetLaws).set({ status: "SANCTIONED" });
     await assert.rejects(publishPlanningReport(f.context, { snapshotId: snapshot.id, reason: "Tentativa antes da publicação legal" }, stored.storage), /fluxo legal/);
     assert.equal(stored.calls(), 0);
   } finally { await f.close(); }

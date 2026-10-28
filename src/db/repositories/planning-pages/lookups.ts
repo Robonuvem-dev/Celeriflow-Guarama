@@ -1,0 +1,70 @@
+import { and, eq, sql, type SQL } from "drizzle-orm";
+import type { ReadExecutor, PlanningLookupInput, PlanningLookupResult } from "@/lib/contracts/planning-pages";
+import type { PlanningContext } from "@/lib/planejamento/access";
+import { AccessError, canPerformModuleOperation } from "@/lib/platform/tenant-context";
+import { planningEntityScope, planningInstrumentScope, planningLineScope, planningUnitScope } from "@/db/repositories/planning/scope";
+import { planningLines } from "@/db/schema/planning-budget";
+import { planningCatalogEntries, planningCatalogVersions } from "@/db/schema/planning-legal";
+import { pageInstrument } from "./shared";
+
+// Fixed SQL projections only: this helper paginates an already constructed
+// domain SELECT. It accepts neither model names nor ORM query objects.
+async function optionsPage(database: ReadExecutor, select: SQL, order: SQL, requested: number): Promise<PlanningLookupResult> {
+  const total = (await database.execute<{ total: number }>(sql`SELECT count(*)::int AS total FROM (${select}) candidate`)).rows[0].total;
+  const page = Math.min(requested, Math.max(1, Math.ceil(total / 20)));
+  const options = (await database.execute<{ id: string; name: string }>(sql`SELECT id,name FROM (${select}) candidate ORDER BY ${order} LIMIT 20 OFFSET ${(page - 1) * 20}`)).rows;
+  return { options, total, page };
+}
+export async function pageLookup(database: ReadExecutor, context: PlanningContext, input: PlanningLookupInput): Promise<PlanningLookupResult> {
+  const piece = input.instrumentId ? await pageInstrument(database, context, input.instrumentId) : null;
+  const ppaId = piece?.multiYearPlanId ?? piece?.parent?.multiYearPlanId ?? piece?.parent?.parent?.multiYearPlanId ?? "";
+  const pattern = `%${input.q}%`, text = (columns: SQL) => input.q ? columns : sql`TRUE`;
+  const byCode = sql`sort_code ASC, id ASC`, byName = sql`name ASC, id ASC`;
+  const page = (select: SQL, order: SQL = byCode) => optionsPage(database, select, order, input.page);
+  if (input.field === "canonicalCatalogId" || input.field === "predecessorEntryId") {
+    if (!input.catalogKind) throw new Error("Selecione o tipo de classificação.");
+    if (input.field === "predecessorEntryId") {
+      if (!input.canonicalId) return { options: [], total: 0, page: 1 };
+      return page(sql`SELECT e.id, v.year::text || ' · ' || v.label || ' · ' || e.code || ' · ' || e.name AS name,v.year AS sort_year FROM "PlanningCatalogEntry" e JOIN "PlanningCatalogVersion" v ON v.id=e."versionId" WHERE e.kind=${input.catalogKind} AND e."canonicalId"=${input.canonicalId} AND v.status='PUBLISHED' AND EXISTS (SELECT 1 FROM "GovernmentEntity" lookup_entity WHERE e.attributes->'governmentEntityId'=to_jsonb(lookup_entity.id) AND ${planningEntityScope(context, sql`lookup_entity.id`)}) AND (e.attributes->'budgetUnitId'='null'::jsonb OR EXISTS (SELECT 1 FROM "BudgetUnit" bu WHERE e.attributes->'budgetUnitId'=to_jsonb(bu.id) AND ${planningUnitScope(context, sql`bu.id`)})) AND ${text(sql`(e.code ILIKE ${pattern} OR e.name ILIKE ${pattern} OR v.label ILIKE ${pattern})`)}`, sql`sort_year DESC,id ASC`);
+    }
+    if (input.catalogKind === "CBO") return page(sql`SELECT id,code AS sort_code,code || ' · ' || description AS name FROM "HealthCbo" WHERE ${text(sql`(code ILIKE ${pattern} OR description ILIKE ${pattern})`)}`);
+    if (input.catalogKind === "CNAE") return page(sql`SELECT id,"entityId" AS sort_code,"entityId" || ' · ' || title AS name FROM "TaxRegistryEntry" WHERE category='CNAE_CATALOG' AND status='ATIVO' AND ${text(sql`(title ILIKE ${pattern} OR "entityId" ILIKE ${pattern})`)}`);
+    if (input.catalogKind === "ACCOUNT") return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "AccountingPlan" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+    if (input.catalogKind === "SOURCE") return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "ResourceSource" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+    if (input.catalogKind === "REVENUE") return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "RevenueNature" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+    if (input.catalogKind === "EXPENSE") return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "ExpenseNature" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+    return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "TaxServiceActivity" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+  }
+  if (input.field === "governmentEntityId" || input.field === "destinationEntityId") return page(sql`SELECT lookup_entity.id,lookup_entity.name FROM "GovernmentEntity" lookup_entity WHERE ${input.field === "governmentEntityId" ? planningEntityScope(context, sql`lookup_entity.id`) : sql`lookup_entity.status='ATIVA' AND ${piece ? sql`lookup_entity.id<>${piece.governmentEntityId}` : sql`TRUE`}`} AND ${text(sql`(lookup_entity.name ILIKE ${pattern} OR lookup_entity.code ILIKE ${pattern})`)}`, byName);
+  if (["resourceSourceId", "revenueNatureId", "expenseNatureId"].includes(input.field) && piece?.catalogVersionId) {
+    const kind = input.field === "resourceSourceId" ? "SOURCE" : input.field === "revenueNatureId" ? "REVENUE" : "EXPENSE";
+    return page(sql`SELECT "canonicalId" AS id,id AS sort_id,code AS sort_code,code || ' · ' || name AS name FROM "PlanningCatalogEntry" WHERE "versionId"=${piece.catalogVersionId} AND kind=${kind} AND ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`, sql`sort_code ASC,sort_id ASC`);
+  }
+  if (input.field === "budgetUnitId") return page(sql`SELECT bu.id,bu.code AS sort_code,bu.code || ' · ' || bu.name AS name FROM "BudgetUnit" bu WHERE ${planningUnitScope(context, sql`bu.id`)} AND ${piece ? sql`EXISTS (SELECT 1 FROM "PlanningEntityUnit" eu WHERE eu."budgetUnitId"=bu.id AND eu."governmentEntityId"=${piece.governmentEntityId})` : sql`TRUE`} AND ${text(sql`(bu.code ILIKE ${pattern} OR bu.name ILIKE ${pattern})`)}`);
+  if (input.field === "resourceSourceId") return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "ResourceSource" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+  if (input.field === "revenueNatureId") return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "RevenueNature" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+  if (input.field === "expenseNatureId") return page(sql`SELECT id,code AS sort_code,code || ' · ' || name AS name FROM "ExpenseNature" WHERE ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`);
+  if (["programId", "programPPAId", "programCodes"].includes(input.field)) return page(sql`SELECT ${input.field === "programCodes" ? sql`code` : sql`id`} AS id,id AS sort_id,code AS sort_code,code || ' · ' || name AS name FROM "ProgramPPA" WHERE "multiYearPlanId"=${ppaId} AND ${text(sql`(code ILIKE ${pattern} OR name ILIKE ${pattern})`)}`, sql`sort_code ASC,sort_id ASC`);
+  if (input.field === "sourceCodes") return page(sql`SELECT s.code AS id,s.id AS sort_id,s.code AS sort_code,s.code || ' · ' || s.name AS name FROM "ResourceSource" s WHERE EXISTS (SELECT 1 FROM "PlanningInstrumentSource" b WHERE b."instrumentId"=${piece?.id ?? ""} AND b."resourceSourceId"=s.id) AND ${text(sql`(s.code ILIKE ${pattern} OR s.name ILIKE ${pattern})`)}`, sql`sort_code ASC,sort_id ASC`);
+  if (["actionId", "actionPPAId"].includes(input.field)) return page(sql`SELECT a.id,a.code AS sort_code,a.code || ' · ' || a.name AS name FROM "ActionPPA" a JOIN "ProgramPPA" p ON p.id=a."programId" WHERE p."multiYearPlanId"=${ppaId} AND ${text(sql`(a.code ILIKE ${pattern} OR a.name ILIKE ${pattern})`)}`);
+  if (input.field === "objectiveId") return page(sql`SELECT a.id,a.code AS sort_code,a.code || ' · ' || a.description AS name FROM "ObjectivePPA" a JOIN "ProgramPPA" p ON p.id=a."programId" WHERE p."multiYearPlanId"=${ppaId} AND ${text(sql`a.description ILIKE ${pattern}`)}`);
+  if (["instrumentId", "sourceInstrumentId", "targetInstrumentId", "parentId"].includes(input.field)) return page(sql`SELECT p.id,p."startYear" AS sort_year,p.kind::text || ' ' || p.code || ' · ' || p.title AS name FROM "PlanningInstrument" p WHERE ${planningInstrumentScope(context, sql`p.id`)} AND ${input.field === "parentId" && input.parentKind ? sql`p.kind=${input.parentKind}` : sql`TRUE`} AND ${text(sql`(p.code ILIKE ${pattern} OR p.title ILIKE ${pattern})`)}`, sql`sort_year DESC,id ASC`);
+  if (input.field === "catalogVersionId") {
+    const rows = await database.select({ attributes: planningCatalogEntries.attributes }).from(planningCatalogEntries).innerJoin(planningCatalogVersions, eq(planningCatalogVersions.id, planningCatalogEntries.versionId)).where(and(eq(planningCatalogVersions.status, "PUBLISHED"), sql`${planningCatalogEntries.attributes}->'presentationPredecessorVersionId' <> 'null'::jsonb`));
+    const today = new Date().toISOString().slice(0, 10);
+    const hidden = [...new Set(rows.flatMap(row => { const a = row.attributes; return a && typeof a === "object" && !Array.isArray(a) && typeof a.presentationPredecessorVersionId === "string" && typeof a.presentationEffectiveFrom === "string" && a.presentationEffectiveFrom <= today ? [a.presentationPredecessorVersionId] : []; }))];
+    return page(sql`SELECT v.id,v.year AS sort_year,v.year::text || ' · ' || v.label AS name FROM "PlanningCatalogVersion" v WHERE v.status='PUBLISHED' AND NOT (v.id=ANY(${sql.param(hidden)}::text[])) AND EXISTS (SELECT 1 FROM "PlanningCatalogEntry" e WHERE e."versionId"=v.id AND e.kind IN ('SOURCE','REVENUE','EXPENSE')) AND ${piece ? sql`v.year>=${piece.startYear} AND v.year<=${piece.endYear}` : sql`TRUE`} AND ${text(sql`v.label ILIKE ${pattern}`)}`, sql`sort_year DESC,id ASC`);
+  }
+  if (["lineId", "lineCodes", "items", "selectedCodes"].includes(input.field)) return page(sql`SELECT ${input.field === "lineId" ? planningLines.id : planningLines.code} AS id,${planningLines.code} AS sort_code,${planningLines.year} AS sort_year,${planningLines.id} AS sort_id,${planningLines.code} || ' · ' || ${planningLines.description} || ' · ' || ${planningLines.year}::text AS name FROM ${planningLines} WHERE ${planningLines.instrumentId}=${piece?.id ?? ""} AND ${planningLineScope(context)} AND ${["items", "selectedCodes"].includes(input.field) ? sql`${planningLines.kind}='EXPENSE'` : sql`TRUE`} AND ${input.operation === "amendment" ? sql`NOT ${planningLines.amendmentBlocked}` : sql`TRUE`} AND ${input.field === "selectedCodes" && input.amendmentId ? sql`EXISTS (SELECT 1 FROM "PlanningAmendmentItem" i WHERE i."lineId"=${planningLines.id} AND i."amendmentId"=${input.amendmentId})` : sql`TRUE`} AND ${text(sql`(${planningLines.code} ILIKE ${pattern} OR ${planningLines.description} ILIKE ${pattern})`)}`, sql`sort_year ASC,sort_code ASC,sort_id ASC`);
+  if (input.field === "taxId") return page(sql`SELECT id,name FROM "Tax" WHERE "isActive" AND ${text(sql`name ILIKE ${pattern}`)}`, byName);
+  if (input.field === "documentId") return page(sql`SELECT d.id,d.title AS name FROM "Document" d WHERE starts_with(d."documentType",'PLANEJAMENTO:') AND d."personId" IS NULL AND d."companyId" IS NULL AND d.status='Válido' AND NOT EXISTS (SELECT 1 FROM "HealthClinicalDocument" h WHERE h."documentId"=d.id) AND NOT EXISTS (SELECT 1 FROM "HealthLabReport" h WHERE h."documentId"=d.id) AND NOT EXISTS (SELECT 1 FROM "SstCertificateDocument" h WHERE h."documentId"=d.id) AND NOT EXISTS (SELECT 1 FROM "PlanningDocumentLink" l JOIN "PlanningInstrument" p ON p.id=l."instrumentId" WHERE l."documentId"=d.id AND p."governmentEntityId"<>${piece?.governmentEntityId ?? ""}) AND ${text(sql`d.title ILIKE ${pattern}`)}`, byName);
+  if (input.field === "hearingId") return page(sql`SELECT id,title AS name,"heldAt" AS sort_date FROM "PlanningHearing" WHERE "instrumentId"=${piece?.id ?? ""} AND ${text(sql`title ILIKE ${pattern}`)}`, sql`sort_date DESC,id ASC`);
+  if (input.field === "signerIds") return page(sql`SELECT id,nome AS name FROM "Usuario" WHERE ativo AND ${text(sql`nome ILIKE ${pattern}`)}`, byName);
+  if (input.field === "linkId") return page(sql`SELECT l.id,d.title AS name,l."createdAt" AS sort_date FROM "PlanningDocumentLink" l JOIN "Document" d ON d.id=l."documentId" WHERE l."instrumentId"=${piece?.id ?? ""} AND ${text(sql`d.title ILIKE ${pattern}`)}`, sql`sort_date DESC,id ASC`);
+  if (input.field === "creditId") return page(sql`SELECT b.id,r.number AS name,b."createdAt" AS sort_date FROM "PlanningCreditBatch" b JOIN "CreditRequest" r ON r.id=b."creditRequestId" WHERE b."instrumentId"=${piece?.id ?? ""} AND NOT EXISTS (SELECT 1 FROM "PlanningCreditLine" i JOIN ${planningLines} ON ${planningLines.id}=i."lineId" WHERE i."batchId"=b.id AND (${planningLineScope(context)}) IS NOT TRUE) AND ${text(sql`r.number ILIKE ${pattern}`)}`, sql`sort_date DESC,id ASC`);
+  if (input.field === "waiverId") return page(sql`SELECT id,year AS sort_year,year::text || ' · ' || description AS name FROM "PlanningRevenueWaiver" WHERE "instrumentId"=${piece?.id ?? ""} AND ${text(sql`description ILIKE ${pattern}`)}`, sql`sort_year ASC,id ASC`);
+  if (["propositionId", "lawId"].includes(input.field) && !canPerformModuleOperation(context.user, "CAMARA", "update")) throw new AccessError("Consulta legislativa exige autorização na Câmara.", 403);
+  if (input.field === "propositionId") return page(sql`SELECT id,numero || ' · ' || ementa || ' · ' || status AS name,"dataProtocolo" AS sort_date FROM "CamProposicao" WHERE ${text(sql`(numero ILIKE ${pattern} OR ementa ILIKE ${pattern})`)}`, sql`sort_date DESC,id ASC`);
+  if (input.field === "lawId") return page(sql`SELECT id,numero || ' · ' || ementa || ' · ' || status AS name,"createdAt" AS sort_date FROM "CamLei" WHERE ${text(sql`(numero ILIKE ${pattern} OR ementa ILIKE ${pattern})`)}`, sql`sort_date DESC,id ASC`);
+  return { options: [], total: 0, page: 1 };
+}

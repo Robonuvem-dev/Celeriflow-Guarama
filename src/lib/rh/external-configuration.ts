@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import type { ExternalConnection, ExternalReadiness } from "@/lib/contracts/personnel-external-operations";
+import { readExternalConfigurations, upsertExternalConfiguration } from "@/db/repositories/personnel-external-operations/configuration";
 import { validateCnpj } from "@/lib/identifiers/brazilian-identifiers";
 
 export const hrExternalConfigurationSchema = z.object({
@@ -14,16 +17,16 @@ export const hrExternalConfigurationSchema = z.object({
   effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 }).strict();
 
-export async function saveHrExternalConfiguration(db: PrismaClient, raw: unknown) {
+export async function saveHrExternalConfiguration(db: DatabaseConnection, raw: unknown): Promise<ExternalConnection> {
   const input = hrExternalConfigurationSchema.parse(raw);
   const code = `ESOCIAL_RH_${input.environment}`;
   const { credentialReference, ...configuration } = input;
-  const data = { name: `eSocial RH · ${input.environment}`, category: "GOVERNAMENTAL", provider: "eSocial", environment: input.environment, status: "CONFIGURANDO", baseUrl: input.sendEndpoint, credentialReference, configuration: configuration as Prisma.InputJsonValue };
-  return db.integrationConnection.upsert({ where: { code }, create: { code, ...data }, update: { ...data, lastTestedAt: null, lastTestStatus: null, lastTestMessage: "Configuração preparada. Nenhuma assinatura, conexão ou transmissão realizada." } });
+  const data = { name: `eSocial RH · ${input.environment}`, category: "GOVERNAMENTAL", provider: "eSocial", environment: input.environment, status: "CONFIGURANDO", baseUrl: input.sendEndpoint, credentialReference, configuration };
+  return withDatabaseTransaction(db, tx => upsertExternalConfiguration(tx, code, data));
 }
 
-export async function describeHrExternalReadiness(db: PrismaClient) {
-  const connections = await db.integrationConnection.findMany({ where: { code: { in: ["ESOCIAL_RH_PRODUCAO_RESTRITA", "ESOCIAL_RH_PRODUCAO"] } }, orderBy: { code: "asc" } });
+export async function describeHrExternalReadiness(db: DatabaseExecutor): Promise<ExternalReadiness[]> {
+  const connections = await readExternalConfigurations(db);
   return ["PRODUCAO_RESTRITA", "PRODUCAO"].map(environment => {
     const connection = connections.find(c => c.environment === environment);
     const configuration = connection?.configuration && typeof connection.configuration === "object" && !Array.isArray(connection.configuration) ? connection.configuration : {};

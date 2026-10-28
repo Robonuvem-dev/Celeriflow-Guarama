@@ -3,11 +3,13 @@ import { equipmentUsageReport } from "@/lib/sst/equipment-queries";
 import { EquipmentPagination as ErpPagination } from "../EquipmentPagination";
 import { EquipmentNav,EquipmentField,equipmentControl as control,equipmentDate } from "../EquipmentUi";
 import { PrintEquipment } from "../PrintEquipment";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { sstDatabase } from "@/lib/sst/database";
 
 export default async function EquipmentReportPage({searchParams}:{searchParams:Promise<{budgetUnitId?:string;q?:string;page?:string;from?:string;to?:string;role?:string;department?:string;costCenter?:string;ghe?:string;mode?:string}>}) {
   const context=await getTenantContextForModuleOperation("SST","issueReports"); const params=await searchParams; const data=await equipmentUsageReport(context,params);
-  await writeAuditEvent(context.prisma,{actorUsuarioId:context.user.id,eventType:auditEventTypes.reportIssued,targetType:"SST_EQUIPMENT_USAGE",targetId:params.budgetUnitId||context.user.id});
+  await writeAuditEvent(sstDatabase(context),{actorUsuarioId:context.user.id,eventType:auditEventTypes.reportIssued,targetType:"SST_EQUIPMENT_USAGE",targetId:params.budgetUnitId||context.user.id});
   const grouped=params.mode==="groups"; const page=grouped?data.summaryPage:data.page; const total=grouped?data.summaryTotal:data.total;
   const href=(value:number)=>`/sst/equipamentos/relatorios?${new URLSearchParams(Object.entries({...params,page:String(value)}).filter((entry):entry is [string,string]=>entry[1]!==undefined))}`;
   const number=(v:number|null)=>v===null?"Indisponível":v.toLocaleString("pt-BR",{maximumFractionDigits:2});

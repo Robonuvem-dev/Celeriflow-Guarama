@@ -2,9 +2,12 @@
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { validateEmployeeRelations } from "@/lib/administration/employee-lifecycle";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
-import { resolveEmployeePerson } from "@/lib/rh/employee-person";
+import { validateEmployeeRelations } from "@/db/repositories/administration/leadership";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { insertEmployee, resolveEmployeePerson } from "@/db/repositories/administration/creation";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
 
 export async function createEmployee(formData: FormData) {
   const cpf = formData.get("cpf") as string;
@@ -20,11 +23,11 @@ export async function createEmployee(formData: FormData) {
 
   try {
     const context = await getTenantContextForSystemAdministration();
-    const hierarchy = await validateEmployeeRelations(context.prisma, { secretariatId, departmentId, unitId });
-    await context.prisma.$transaction(async (tx) => {
+    const hierarchy = await validateEmployeeRelations(context.database ?? db, { secretariatId, departmentId, unitId });
+    await withDatabaseTransaction(databaseConnection, async tx => {
       const canonical = await resolveEmployeePerson(tx, { personId, cpf });
-      const employee = await tx.employee.create({ data: { ...canonical, registration, roleId, secretariatId: hierarchy.secretariatId, departmentId, unitId } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: employee.id });
+      const id = await insertEmployee(tx, canonical, { registration, roleId, secretariatId: hierarchy.secretariatId, departmentId, unitId });
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: id });
     });
   } catch (error: unknown) {
     console.error("Error creating employee:", error);

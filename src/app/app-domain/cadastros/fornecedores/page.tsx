@@ -1,4 +1,5 @@
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import Link from "next/link";
 import { Download, Plus, Search, Truck } from "lucide-react";
@@ -26,7 +27,7 @@ export default async function FornecedoresPage({
   const rawParams = searchParams ? await searchParams : {};
   const filters = parseSupplierFilters(rawParams);
   const referenceDate = new Date();
-  const list = await getSupplierList(context.prisma, filters, referenceDate);
+  const list = await getSupplierList(context.database ?? db, filters, referenceDate);
   const canCreate = canPerformModuleOperation(context.user, "CADASTROS", "create");
   const canUpdate = canPerformModuleOperation(context.user, "CADASTROS", "update");
   const canIssueReports = canPerformModuleOperation(context.user, "CADASTROS", "issueReports");

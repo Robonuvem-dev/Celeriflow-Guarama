@@ -5,7 +5,11 @@ import { z } from "zod";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
 import { applyConstructionPropertyUpdate, completeConstructionLifecycle, openConstructionPropertyUpdate, recordConstructionInspection, requestConstructionInspection, setConstructionInspectionPlan, startConstructionLifecycle } from "@/lib/obras/construction-lifecycle";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { constructionActionMessage } from "@/lib/obras/construction-errors";
 import { extendConstructionInspectionDeadline } from "@/lib/obras/construction-lifecycle-deadlines";
 
 export async function executeConstructionLifecycle(operation: string, input: unknown) {
@@ -14,7 +18,7 @@ export async function executeConstructionLifecycle(operation: string, input: unk
     const context = await getTenantContextForModuleOperation(op === "APPLY" ? "CADASTROS" : "OBRAS", "update");
     if (op === "PROPERTY") await getTenantContextForModuleOperation("PROCESSOS", "create");
     const access = await resolveConstructionAccess(context);
-    const result = await context.prisma.$transaction(async (tx) => {
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
       const id = op === "PLAN" ? await setConstructionInspectionPlan(tx, access, context.user.id, input)
         : op === "START" ? await startConstructionLifecycle(tx, access, context.user.id, input)
           : op === "REQUEST" ? await requestConstructionInspection(tx, access, context.user.id, input)
@@ -37,6 +41,6 @@ export async function executeConstructionLifecycle(operation: string, input: unk
     revalidatePath("/protocolos/processos");
     return { success: true, id: result };
   } catch (error) {
-    return { error: error instanceof z.ZodError ? error.issues[0].message : error instanceof Error && !error.name.startsWith("Prisma") ? error.message : "Não foi possível registrar a operação. Atualize e confira as referências." };
+    return { error: constructionActionMessage(error, "Não foi possível registrar a operação. Atualize e confira as referências.") };
   }
 }

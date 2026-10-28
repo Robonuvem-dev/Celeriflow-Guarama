@@ -1,4 +1,20 @@
 import Link from "next/link";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { findHealthCareRecord } from "@/db/repositories/health/care";
+import { healthPatientConditions, healthPatientConditionRevisions, healthOngoingMedications, healthClinicalQuestionnaires, healthClinicalQuestionnaireResponses, healthMedicationAdministrations, healthClinicalDocuments, healthCareRevisions, healthClinicalExamReviews, healthCounterreferences, healthInternalCareReferrals, healthExamRequests, healthReferrals, healthClinicalDocumentTemplates } from "@/db/schema/health-care";
+import { medicines as medicineTable, healthPrescriptions, healthPrescriptionItems, healthPrescriptionTemplates } from "@/db/schema/health-prescriptions";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { healthSpecialties, healthServices } from "@/db/schema/health-administration";
+import { employees } from "@/db/schema/administration";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
+import { healthPregnancies } from "@/db/schema/health-care-lines";
+import { documents } from "@/db/schema/registry";
+import { documentSignatures } from "@/db/schema/document-workflow";
+import { materials as materialTable, warehouses as warehouseTable } from "@/db/schema/assets-stock";
+import { instanceParameters } from "@/db/schema/instance-configuration";
+import { familyMembers } from "@/db/schema/master-data";
+import { people } from "@/db/schema/people";
 import { getTenantContextForModule, assertHealthUnitAccess } from "@/lib/platform/tenant-context";
 import { questionnaireFieldsSchema } from "@/lib/saude/clinical-extension-service";
 import { clinicalConditionQuestionnaireKeys } from "@/lib/saude/clinical-questionnaire-policy";
@@ -15,28 +31,52 @@ const Select = ({ name, label, options, required = false }: { name: string; labe
 const Input = ({ name, label, type = "text", required = false }: { name: string; label: string; type?: string; required?: boolean }) => <label className="grid gap-1 text-sm">{label}<input name={name} type={type} required={required} className={field} /></label>;
 
 export default async function ClinicalExtensionPage({ params }: { params: Promise<{ id: string }> }) {
-  const id = decodeURIComponent((await params).id), context = await getTenantContextForModule("SAUDE"), { prisma } = context;
-  const record = await prisma.medicalRecord.findUniqueOrThrow({ where: { id }, include: { patient: { include: { person: true } }, unit: true, appointment: true, prescriptions: { include: { items: true } }, clinicalDocuments: { include: { document: { include: { signatures: true } } } }, questionnaireResponses: true, medicationAdministrations: true, revisions: { orderBy: { createdAt: "desc" } }, examReviews: true, counterreferences: true, internalReferrals: true } });
-  assertHealthUnitAccess(context.user, record.unitId);
-  const [conditions, ongoing, questionnaires, medicines, units, specialties, professionals, services, procedures, warehouses, materials, exams, referrals, documentTemplates, prescriptionTemplates, parameters, family] = await Promise.all([
-    prisma.healthPatientCondition.findMany({ where: { patientId: record.patientId }, include: { revisions: { orderBy: { createdAt: "desc" } } }, orderBy: { startedAt: "desc" } }),
-    prisma.healthOngoingMedication.findMany({ where: { patientId: record.patientId }, orderBy: { startedAt: "desc" } }),
-    prisma.healthClinicalQuestionnaire.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.medicine.findMany({ where: { isActive: true }, select: { id: true, name: true, presentation: true } }),
-    prisma.healthUnit.findMany({ where: { isActive: true }, select: { id: true, name: true } }), prisma.healthSpecialty.findMany({ where: { isActive: true } }),
-    prisma.healthProfessional.findMany({ where: { isActive: true }, include: { employee: true } }), prisma.healthService.findMany({ where: { isActive: true } }),
-    prisma.healthSusProcedure.findMany({ where: { isActive: true, isCurrent: true }, take: 1000 }),
-    prisma.warehouse.findMany({ where: { isActive: true, healthUnitId: record.unitId }, select: { id: true, name: true } }),
-    prisma.material.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
-    prisma.healthExamRequest.findMany({ where: { patientId: record.patientId }, include: { labOrder: { include: { reports: { include: { document: true } } } } } }),
-    prisma.healthReferral.findMany({ where: { patientId: record.patientId } }), prisma.healthClinicalDocumentTemplate.findMany({ where: { isActive: true } }),
-    prisma.healthPrescriptionTemplate.findMany({ where: { isActive: true } }),
-    prisma.configuracaoParametroInstancia.findMany({ where: { chave: { in: [`HEALTH_BIOMETRY_ENABLED:${record.unitId}`, `HEALTH_CARE_REVISION_HOURS:${record.unitId}`] } } }),
-    prisma.familyMember.findFirst({ where: { personId: record.patient.personId, status: "ATIVO" }, include: { family: { include: { members: { where: { status: "ATIVO" }, include: { person: true } }, responsiblePerson: true, healthProfile: { include: { household: { include: { address: true } } } } } } } }),
+  const id = decodeURIComponent((await params).id), context = await getTenantContextForModule("SAUDE"), database = context.database ?? db;
+  const base = await findHealthCareRecord(database, id);
+  if (!base) throw new Error("Atendimento não encontrado.");
+  assertHealthUnitAccess(context.user, base.unitId);
+  const [conditionRows, ongoing, questionnaires, medicines, units, specialties, professionals, services, procedures, warehouses, materials, examRows, referrals, documentTemplates, prescriptionTemplates, parameters, familyResult, prescriptionRows, itemRows, documentRows, questionnaireResponses, medicationAdministrations, revisions, examReviews, counterreferences, internalReferrals, activePregnancies] = await Promise.all([
+    database.select().from(healthPatientConditions).where(eq(healthPatientConditions.patientId, base.patientId)).orderBy(desc(healthPatientConditions.startedAt)),
+    database.select().from(healthOngoingMedications).where(eq(healthOngoingMedications.patientId, base.patientId)).orderBy(desc(healthOngoingMedications.startedAt)),
+    database.select().from(healthClinicalQuestionnaires).where(eq(healthClinicalQuestionnaires.isActive, true)).orderBy(asc(healthClinicalQuestionnaires.name)),
+    database.select({ id: medicineTable.id, name: medicineTable.name, presentation: medicineTable.presentation }).from(medicineTable).where(eq(medicineTable.isActive, true)),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(eq(healthUnits.isActive, true)),
+    database.select({ id: healthSpecialties.id, name: healthSpecialties.name }).from(healthSpecialties).where(eq(healthSpecialties.isActive, true)),
+    database.select({ id: healthProfessionals.id, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(eq(healthProfessionals.isActive, true)),
+    database.select({ id: healthServices.id, name: healthServices.name }).from(healthServices).where(eq(healthServices.isActive, true)),
+    database.select({ id: healthSusProcedures.id, code: healthSusProcedures.code, description: healthSusProcedures.description }).from(healthSusProcedures).where(and(eq(healthSusProcedures.isActive, true), eq(healthSusProcedures.isCurrent, true))).limit(1000),
+    database.select({ id: warehouseTable.id, name: warehouseTable.name }).from(warehouseTable).where(and(eq(warehouseTable.isActive, true), eq(warehouseTable.healthUnitId, base.unitId))),
+    database.select({ id: materialTable.id, name: materialTable.name }).from(materialTable).where(eq(materialTable.isActive, true)),
+    database.select().from(healthExamRequests).where(eq(healthExamRequests.patientId, base.patientId)),
+    database.select().from(healthReferrals).where(eq(healthReferrals.patientId, base.patientId)),
+    database.select({ id: healthClinicalDocumentTemplates.id, name: healthClinicalDocumentTemplates.name }).from(healthClinicalDocumentTemplates).where(eq(healthClinicalDocumentTemplates.isActive, true)),
+    database.select({ id: healthPrescriptionTemplates.id, name: healthPrescriptionTemplates.name }).from(healthPrescriptionTemplates).where(eq(healthPrescriptionTemplates.isActive, true)),
+    database.select({ chave: instanceParameters.chave, valor: instanceParameters.valor }).from(instanceParameters).where(inArray(instanceParameters.chave, [`HEALTH_BIOMETRY_ENABLED:${base.unitId}`, `HEALTH_CARE_REVISION_HOURS:${base.unitId}`])),
+    database.execute<{ familyId: string; responsibleName: string | null; healthId: string | null; householdId: string | null; addressId: string | null; streetName: string | null }>(sql`SELECT f.id AS "familyId", p."fullName" AS "responsibleName", h.id AS "healthId", d.id AS "householdId", a.id AS "addressId", a."streetName" FROM "FamilyMember" m JOIN "Family" f ON f.id=m."familyId" LEFT JOIN "Person" p ON p.id=f."responsiblePersonId" LEFT JOIN "HealthFamily" h ON h."masterFamilyId"=f.id LEFT JOIN "HealthHousehold" d ON d.id=h."householdId" LEFT JOIN "Address" a ON a.id=d."addressId" WHERE m."personId"=${base.patient.personId} AND m.status='ATIVO' LIMIT 1`),
+    database.select().from(healthPrescriptions).where(eq(healthPrescriptions.medicalRecordId, id)),
+    database.select({ item: healthPrescriptionItems }).from(healthPrescriptionItems).innerJoin(healthPrescriptions, eq(healthPrescriptions.id, healthPrescriptionItems.prescriptionId)).where(eq(healthPrescriptions.medicalRecordId, id)),
+    database.select({ link: healthClinicalDocuments, document: { id: documents.id, title: documents.title, status: documents.status } }).from(healthClinicalDocuments).innerJoin(documents, eq(documents.id, healthClinicalDocuments.documentId)).where(eq(healthClinicalDocuments.medicalRecordId, id)),
+    database.select().from(healthClinicalQuestionnaireResponses).where(eq(healthClinicalQuestionnaireResponses.medicalRecordId, id)),
+    database.select().from(healthMedicationAdministrations).where(eq(healthMedicationAdministrations.medicalRecordId, id)),
+    database.select().from(healthCareRevisions).where(eq(healthCareRevisions.medicalRecordId, id)).orderBy(desc(healthCareRevisions.createdAt)),
+    database.select().from(healthClinicalExamReviews).where(eq(healthClinicalExamReviews.medicalRecordId, id)),
+    database.select().from(healthCounterreferences).where(eq(healthCounterreferences.medicalRecordId, id)),
+    database.select().from(healthInternalCareReferrals).where(eq(healthInternalCareReferrals.medicalRecordId, id)),
+    database.select({ id: healthPregnancies.id }).from(healthPregnancies).where(and(eq(healthPregnancies.patientId, base.patientId), eq(healthPregnancies.status, "ACTIVE"))).limit(1),
   ]);
+  const familyRow = familyResult.rows[0];
+  const [conditionRevisions, signatures, labReports, members] = await Promise.all([
+    database.select().from(healthPatientConditionRevisions).where(inArray(healthPatientConditionRevisions.conditionId, conditionRows.map(row => row.id))).orderBy(desc(healthPatientConditionRevisions.createdAt)),
+    database.select({ documentId: documentSignatures.documentId, status: documentSignatures.status }).from(documentSignatures).where(inArray(documentSignatures.documentId, documentRows.map(row => row.link.documentId))),
+    database.execute<{ id: string; examRequestId: string; documentId: string; title: string; fileUrl: string }>(sql`SELECT r.id, o."examRequestId", d.id AS "documentId", d.title, d."fileUrl" FROM "HealthLabReport" r JOIN "HealthLabOrder" o ON o.id=r."orderId" JOIN "Document" d ON d.id=r."documentId" WHERE ${inArray(sql`o."examRequestId"`, examRows.map(row => row.id))}`),
+    familyRow ? database.select({ id: familyMembers.id, kinship: familyMembers.kinship, person: { fullName: people.fullName } }).from(familyMembers).innerJoin(people, eq(people.id, familyMembers.personId)).where(and(eq(familyMembers.familyId, familyRow.familyId), eq(familyMembers.status, "ATIVO"))) : [],
+  ]);
+  const record = { ...base, prescriptions: prescriptionRows.map(row => ({ ...row, items: itemRows.filter(item => item.item.prescriptionId === row.id).map(item => item.item) })), clinicalDocuments: documentRows.map(row => ({ ...row.link, document: { ...row.document, signatures: signatures.filter(signature => signature.documentId === row.link.documentId) } })), questionnaireResponses, medicationAdministrations, revisions, examReviews, counterreferences, internalReferrals };
+  const conditions = conditionRows.map(row => ({ ...row, revisions: conditionRevisions.filter(revision => revision.conditionId === row.id) })), exams = examRows.map(row => ({ ...row, labOrder: { reports: labReports.rows.filter(report => report.examRequestId === row.id).map(report => ({ id: report.id, document: { id: report.documentId, title: report.title, fileUrl: report.fileUrl } })) } }));
+  const family = familyRow ? { family: { responsiblePerson: familyRow.responsibleName ? { fullName: familyRow.responsibleName } : null, members, healthProfile: familyRow.healthId ? { household: familyRow.householdId ? { address: familyRow.addressId ? { streetName: familyRow.streetName } : null } : null } : null } } : null;
   const origin = <input type="hidden" name="medicalRecordId" value={id} />;
   const active = conditions.filter(condition => !condition.endedAt), biometry = parameters.find(parameter => parameter.chave.startsWith("HEALTH_BIOMETRY"))?.valor === true;
-  const conditionKeys = clinicalConditionQuestionnaireKeys(active, await prisma.healthPregnancy.count({ where: { patientId: record.patientId, status: "ACTIVE" } }) > 0);
+  const conditionKeys = clinicalConditionQuestionnaireKeys(active, activePregnancies.length > 0);
   return <div data-health-clinical-record="true" className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3"><header className="flex flex-wrap justify-between gap-2"><h1 className="font-semibold">Atendimento multiprofissional · {record.patient.person.fullName}</h1><div className="flex gap-3 text-sm"><Link href={`/saude/atendimentos/${encodeURIComponent(id)}`} className="underline">Prontuário</Link><Link href={`/saude/atendimentos/${encodeURIComponent(id)}/linhas-cuidado`} className="underline">Linhas de cuidado e odontologia</Link><Link href={`/saude/vacinacao/carteira/${encodeURIComponent(record.patientId)}?medicalRecordId=${encodeURIComponent(record.id)}${record.appointment ? `&appointmentId=${encodeURIComponent(record.appointment.id)}` : ""}`} className="underline">Vacinação do paciente neste atendimento</Link></div></header>
     <ClinicalAccessSwitch biometryEnabled={biometry} /><ClinicalDictation />
     <details className="rounded border bg-white p-3"><summary className="font-semibold">Validade dos receituários deste atendimento</summary><form action={prescriptionValidityAction} className={grid}>{origin}<Select name="prescriptionId" label="Receituário" required options={record.prescriptions.map(prescription => ({ id: prescription.id, name: `${prescription.prescriptionType} · ${prescription.items.map(item => item.medicineName).join(", ")}` }))} /><Input name="validUntil" label="Válida até" type="date" required /><button className="rounded border p-2">Definir validade da receita</button></form></details>

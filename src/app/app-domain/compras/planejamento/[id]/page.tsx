@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listPurchasePlannings } from "@/db/repositories/procurement/purchase-planning";
 
 function formatDate(value: Date) {
   const [year, month, day] = value.toISOString().slice(0, 10).split("-");
@@ -14,15 +16,10 @@ function formatDate(value: Date) {
 }
 
 export default async function PlanejamentoComprasDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma, user } = await getTenantContextForModule("COMPRAS");
+  const context = await getTenantContextForModule("COMPRAS");
+  const { user } = context;
   const { id } = await params;
-  const planning = await prisma.purchasePlanning.findUnique({
-    where: { id },
-    include: {
-      catalogItem: { select: { code: true, name: true, unit: true } },
-      originPurchaseRequest: { select: { id: true, number: true, object: true, status: true } },
-    },
-  });
+  const [planning] = await listPurchasePlannings(context.database ?? db, id);
   if (!planning) notFound();
 
   const canEdit = canPerformModuleOperation(user, "COMPRAS", "update");

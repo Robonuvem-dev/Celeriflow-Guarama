@@ -3,10 +3,10 @@ import { Plus, HeartPulse, Search } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { LicencaRowActions } from "./LicencaRowActions";
 import { format } from "date-fns";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readLeavesPage } from "@/db/repositories/personnel-pages/records";
 import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
 import { RhPagination } from "../_components/RhPagination";
-import { rhPagination } from "@/lib/rh/list-pagination";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import {
   ErpTableContainer,
@@ -26,22 +26,10 @@ function licencaVariant(status: string): ErpStatusVariant {
 }
 
 export default async function LicencasPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH");
+  const context = await getTenantContextForModule("RH");
   const { q, status, page } = await searchParams;
 
-  const whereClause: Prisma.LeaveWhereInput = {};
-  if (q) whereClause.employee = { name: { contains: q, mode: "insensitive" } };
-  if (status && status !== "all") whereClause.status = status;
-
-  const total = await prisma.leave.count({ where: whereClause });
-  const pagination = rhPagination(page, total);
-  const leaves = await prisma.leave.findMany({
-    where: whereClause,
-    take: pagination.take,
-    skip: pagination.skip,
-    orderBy: [{ startDate: "desc" }, { id: "asc" }],
-    include: { employee: true },
-  });
+  const { total, pagination, leaves } = await readLeavesPage(context.database ?? db, { q, status, page });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">

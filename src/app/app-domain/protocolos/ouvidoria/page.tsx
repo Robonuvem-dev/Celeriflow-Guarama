@@ -1,7 +1,11 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { and, count, eq, ilike, or, type SQL } from "drizzle-orm";
+import { db } from "@/db/client";
+import { ombudsmans } from "@/db/schema/attendance-portals";
+import { ombudsmanScopeCondition } from "@/db/repositories/attendance-portals/scope";
+import { listOmbudsmanSummaries } from "@/db/repositories/attendance-portals/queries";
 import { EyeOff, MessageSquareWarning, Plus, Search } from "lucide-react";
-import { canViewOmbudsmanIdentity, getOmbudsmanContextForProtocols, ombudsmanScope } from "@/lib/attendance/access";
+import { canViewOmbudsmanIdentity, getOmbudsmanContextForProtocols } from "@/lib/attendance/access";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -47,41 +51,20 @@ export default async function OuvidoriaProtocolosPage({ searchParams }: { search
     status: valueOf(raw.status).slice(0, 80),
   };
   const requestedPage = Number.parseInt(valueOf(raw.page), 10);
-  const conditions: Prisma.OmbudsmanWhereInput[] = [ombudsmanScope(context)];
+  const conditions: (SQL | undefined)[] = [ombudsmanScopeCondition(context)];
 
-  if (filters.type) conditions.push({ type: filters.type });
-  if (filters.status) conditions.push({ status: filters.status });
+  if (filters.type) conditions.push(eq(ombudsmans.type, filters.type));
+  if (filters.status) conditions.push(eq(ombudsmans.status, filters.status));
   if (filters.q) {
-    conditions.push({
-      OR: [
-        { protocolNumber: { contains: filters.q, mode: "insensitive" } },
-        { subject: { contains: filters.q, mode: "insensitive" } },
-      ],
-    });
+    const pattern = `%${filters.q.replace(/[\\%_]/g, "\\$&")}%`;
+    conditions.push(or(ilike(ombudsmans.protocolNumber, pattern), ilike(ombudsmans.subject, pattern)));
   }
 
-  const where: Prisma.OmbudsmanWhereInput = { AND: conditions };
-  const total = await context.prisma.ombudsman.count({ where });
+  const where = and(...conditions);
+  const [{ total }] = await db.select({ total: count() }).from(ombudsmans).where(where);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-  const manifestacoes = await context.prisma.ombudsman.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-    select: {
-      id: true,
-      protocolNumber: true,
-      type: true,
-      subject: true,
-      isAnonymous: true,
-      isConfidential: true,
-      status: true,
-      createdAt: true,
-      person: { select: { fullName: true } },
-      accessGrants: { where: { userId: context.user.id }, select: { canViewIdentity: true } },
-    },
-  });
+  const manifestacoes = await listOmbudsmanSummaries(db, where, context.user.id, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, stableOrder: true });
   const safeManifestacoes = manifestacoes.map((manifestacao) => ({
     ...manifestacao,
     person: canViewOmbudsmanIdentity(context, manifestacao.isConfidential, manifestacao.accessGrants.some((grant) => grant.canViewIdentity))

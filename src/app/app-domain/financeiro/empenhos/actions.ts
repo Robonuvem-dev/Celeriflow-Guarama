@@ -1,5 +1,8 @@
 "use server";
 
+import { databaseConnection, db } from "@/db/client";
+import { findBudgetAppropriation, findBudgetReservation, findExpenseRequest, findFinanceCommitment } from "@/db/repositories/finance/budget-execution";
+import { hasFinanceProcurementEvent } from "@/db/repositories/finance/procurement-origins";
 import { FinanceError, cancelCommitment as cancelOfficialCommitment, createCommitment as createOfficialCommitment } from "@/lib/financeiro";
 import {
   ProcurementFinanceBridgeError,
@@ -17,39 +20,20 @@ function message(error: unknown) {
 }
 
 async function assertCommitmentAccess(context: AppContext, commitmentId: string) {
-  const commitment = await context.prisma.commitment.findUnique({
-    where: { id: commitmentId },
-    select: { contractId: true, appropriation: { select: { budgetUnitId: true } } },
-  });
+  const commitment = await findFinanceCommitment(db, commitmentId);
   if (!commitment) throw new FinanceError("Empenho não encontrado.");
   assertBudgetUnitAccess(context.user, commitment.appropriation.budgetUnitId);
   return commitment;
 }
 
 async function expenseAuthorizationForReservation(context: AppContext, reservationId: string) {
-  const reservation = await context.prisma.budgetReservation.findUnique({
-    where: { id: reservationId },
-    select: {
-      id: true,
-      number: true,
-      appropriationId: true,
-      appropriation: { select: { budgetUnitId: true } },
-      expense: {
-        select: {
-          id: true,
-          supplierId: true,
-          sourceModule: true,
-          sourceType: true,
-          sourceId: true,
-          eventType: true,
-        },
-      },
-    },
-  });
+  const reservation = await findBudgetReservation(db, reservationId);
   if (!reservation) throw new FinanceError("Reserva orçamentária não encontrada.");
-  assertBudgetUnitAccess(context.user, reservation.appropriation.budgetUnitId);
+  const appropriation = await findBudgetAppropriation(db, reservation.appropriationId);
+  if (!appropriation) throw new FinanceError("Dotação orçamentária não encontrada.");
+  assertBudgetUnitAccess(context.user, appropriation.budgetUnitId);
 
-  const expense = reservation.expense;
+  const expense = reservation.expenseId ? await findExpenseRequest(db, { id: reservation.expenseId }) : null;
   if (
     !expense
     || expense.sourceModule !== "COMPRAS"
@@ -115,7 +99,7 @@ export async function createCommitment(data: {
 
     const actor = { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
     const commitment = expense
-      ? (await createCommitmentFromExpenseAuthorization(context.prisma, actor, {
+      ? (await createCommitmentFromExpenseAuthorization(databaseConnection, actor, {
         expenseId: expense.id,
         reservationId: reservation.id,
         reservationNumber: reservation.number,
@@ -125,7 +109,7 @@ export async function createCommitment(data: {
         type: data.type,
         history: data.history,
       })).commitment
-      : await createOfficialCommitment(context.prisma, actor, data);
+      : await createOfficialCommitment(databaseConnection, actor, data);
     revalidatePath("/financeiro/empenhos");
     revalidatePath("/financeiro/orcamento");
     revalidateContractExecution(commitment.contractId);
@@ -163,19 +147,12 @@ export async function cancelCommitment(id: string): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "delete");
     const commitment = await assertCommitmentAccess(context, id);
-    const fromProcurement = await context.prisma.procurementLifecycleEvent.findFirst({
-      where: {
-        eventType: procurementFinanceEventTypes.commitmentCreated,
-        entityType: "COMMITMENT",
-        entityId: id,
-      },
-      select: { id: true },
-    });
+    const fromProcurement = await hasFinanceProcurementEvent(db, procurementFinanceEventTypes.commitmentCreated, "COMMITMENT", id);
     const actor = { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
     if (fromProcurement) {
-      await cancelCommitmentForCancelledContract(context.prisma, actor, id);
+      await cancelCommitmentForCancelledContract(databaseConnection, actor, id);
     } else {
-      await cancelOfficialCommitment(context.prisma, actor, id);
+      await cancelOfficialCommitment(databaseConnection, actor, id);
     }
     revalidatePath("/financeiro/empenhos");
     revalidatePath("/financeiro/orcamento");

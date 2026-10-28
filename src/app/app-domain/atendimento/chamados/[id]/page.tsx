@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAttendanceContext, ticketScope } from "@/lib/attendance/access";
+import { getAttendanceContext } from "@/lib/attendance/access";
+import { and, asc, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { ticketAuditLogs } from "@/db/schema/attendance-portals";
+import { departments as departmentTable, employees as employeeTable } from "@/db/schema/administration";
+import { ticketScopeCondition } from "@/db/repositories/attendance-portals/scope";
+import { readTicketDetail, readActiveProcessTypes } from "@/db/repositories/attendance-portals/queries";
 import DocumentUpload from "../../DocumentUpload";
 import { addTicketInteraction, assumeTicket, assignTicket, concludeTicket, createProcessFromTicket, forwardTicket, reopenTicket, resolveTicket } from "../../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
@@ -11,22 +17,13 @@ export const dynamic = "force-dynamic";
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const context = await getAttendanceContext();
-  const ticket = await context.prisma.ticket.findFirst({
-    where: { AND: [{ id }, ticketScope(context)] },
-    include: {
-      person: true, company: true, channel: true, department: true, assignee: true, serviceSubject: true, resolvedBy: true, concludedBy: true, process: true,
-      interactions: { include: { employee: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
-      movements: { include: { fromDepartment: { select: { name: true } }, toDepartment: { select: { name: true } }, employee: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
-      documents: { include: { document: true }, orderBy: { createdAt: "desc" } },
-      auditLogs: { include: { user: { select: { nome: true } } }, orderBy: { createdAt: "desc" }, take: 50 },
-    },
-  });
+  const ticket = await readTicketDetail(db, id, ticketScopeCondition(context));
   if (!ticket) notFound();
-  await context.prisma.ticketAuditLog.create({ data: { ticketId: id, userId: context.user.id, employeeId: context.user.employeeId, action: "VIEWED" } });
+  await db.insert(ticketAuditLogs).values({ ticketId: id, userId: context.user.id, employeeId: context.user.employeeId, action: "VIEWED" });
   const [departments, employees, processTypes] = await Promise.all([
-    context.prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    ticket.departmentId ? context.prisma.employee.findMany({ where: { isActive: true, departmentId: ticket.departmentId }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : [],
-    context.prisma.processType.findMany({ where: { isActive: true }, include: { subjects: { where: { isActive: true } } }, orderBy: { name: "asc" } }),
+    db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(eq(departmentTable.isActive, true)).orderBy(asc(departmentTable.name)),
+    ticket.departmentId ? db.select({ id: employeeTable.id, name: employeeTable.name }).from(employeeTable).where(and(eq(employeeTable.isActive, true), eq(employeeTable.departmentId, ticket.departmentId))).orderBy(asc(employeeTable.name)) : [],
+    readActiveProcessTypes(db),
   ]);
   const closed = ["Resolvido", "Concluído", "Cancelado"].includes(ticket.status);
   const requester = ticket.isAnonymous ? "Anônimo" : ticket.person ? `${ticket.person.fullName} · CPF ${ticket.person.cpf}` : ticket.company ? `${ticket.company.corporateName} · CNPJ ${ticket.company.cnpj}` : "Não informado";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { ObrasServico } from "@prisma/client";
+import type { InfrastructureServiceRecord as ObrasServico } from "@/lib/contracts/infrastructure";
 import { Pencil, Plus, Power, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {

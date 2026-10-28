@@ -2,27 +2,22 @@ import { Home, Save, ArrowLeft, MapPin, Maximize, Building } from "lucide-react"
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import type { RealEstateInput } from "@/lib/contracts/registry";
+import { databaseConnection, db } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { listNeighborhoods, listTaxpayerOptions } from "@/db/repositories/registry/queries";
+import { insertPropertyWithHistory } from "@/db/repositories/registry/operations";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
-import { createPropertyWithHistory } from "@/lib/tributacao/property-history";
 
 export default async function NovoImovelPage() {
-  const { prisma } = await getTenantContextForModule("CADASTROS");
-  const taxpayers = await prisma.taxpayer.findMany({
-    include: {
-      person: true,
-      company: true,
-    }
-  });
-
-  const neighborhoods = await prisma.neighborhood.findMany({
-    orderBy: { name: 'asc' }
-  });
+  const context = await getTenantContextForModule("CADASTROS");
+  const taxpayers = await listTaxpayerOptions(context.database ?? db);
+  const neighborhoods = await listNeighborhoods(context.database ?? db);
 
   async function createRealEstate(formData: FormData) {
     "use server";
-    const { prisma, user } = await getTenantContextForModuleOperation("CADASTROS", "create");
+    const { user } = await getTenantContextForModuleOperation("CADASTROS", "create");
     
     const municipalInsc = formData.get("municipalInsc") as string;
     const propertyType = formData.get("propertyType") as string;
@@ -35,7 +30,7 @@ export default async function NovoImovelPage() {
     const landArea = parseFloat(formData.get("landArea") as string) || null;
     const builtArea = parseFloat(formData.get("builtArea") as string) || null;
 
-    const data: Prisma.RealEstateUncheckedCreateInput = {
+    const data: RealEstateInput = {
       municipalInsc: municipalInsc || null,
       propertyType: propertyType || null,
       propertyUse: propertyUse || null,
@@ -50,7 +45,7 @@ export default async function NovoImovelPage() {
     if (neighborhoodId) data.neighborhoodId = neighborhoodId;
     if (taxpayerId) data.taxpayerId = taxpayerId;
 
-    await createPropertyWithHistory(prisma, user.id, data);
+    await withDatabaseTransaction(databaseConnection, tx => insertPropertyWithHistory(tx, user.id, data));
 
     redirect("/cadastros/imoveis");
   }

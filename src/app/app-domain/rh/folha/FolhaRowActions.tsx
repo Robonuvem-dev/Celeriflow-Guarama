@@ -4,7 +4,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { deleteFolha } from "./actions";
-import type { Payroll } from "@prisma/client";
+import type { Payroll } from "@/lib/contracts/personnel-pages";
 
 export function FolhaRowActions({ folha }: { folha: Payroll }) {
   const handleDelete = async () => {

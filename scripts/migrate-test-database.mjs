@@ -1,5 +1,5 @@
-import { spawnSync } from "node:child_process";
 import { config } from "dotenv";
+import { databaseMigrateMain } from "./database-migrate.mjs";
 
 config({ path: ".env.local", quiet: true });
 const testUrl = process.env.TEST_DATABASE_URL;
@@ -11,13 +11,9 @@ if (targets.some(test => operational.some(prod => host(test) === host(prod) && t
   throw new Error("Test and operational databases must differ.");
 }
 const operation = process.argv[2] || "status";
-if (!["status", "deploy", "foundation"].includes(operation)) throw new Error("Unsupported operation.");
-const args = operation === "foundation"
-  ? ["prisma", "db", "execute", "--file", "prisma/migrations-ibema/20261010130000_add_master_data_foundation/migration.sql"]
-  : ["prisma", "migrate", operation];
-const env = { ...process.env, DATABASE_URL: testUrl, DATABASE_URL_UNPOOLED: process.env.TEST_DATABASE_URL_UNPOOLED || testUrl };
-const result = process.platform === "win32"
-  ? spawnSync("cmd.exe", ["/d", "/s", "/c", `npx ${args.join(" ")}`], { stdio: "inherit", env })
-  : spawnSync("npx", args, { stdio: "inherit", env });
-if (result.error) throw result.error;
-process.exit(result.status ?? 1);
+if (operation === "foundation") throw new Error("Migração histórica isolada não é uma operação da autoridade SQL. Use bootstrap:test-db para criar uma fixture de teste ou db:migrate:plan para conferir um banco existente.");
+if (!["status", "deploy"].includes(operation)) throw new Error("Unsupported operation.");
+process.exitCode = await databaseMigrateMain([operation === "status" ? "plan" : "deploy", ...process.argv.slice(3)], {
+  ...process.env,
+  DATABASE_MIGRATION_URL: process.env.TEST_DATABASE_URL_UNPOOLED || testUrl,
+});

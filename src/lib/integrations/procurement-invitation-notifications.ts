@@ -1,5 +1,6 @@
-import type { Prisma } from "@prisma/client";
-import { createInternalNotifications } from "@/lib/notifications/internal-notifications";
+import type { DatabaseTransaction } from "@/db/transaction";
+import { insertInternalNotifications } from "@/db/repositories/platform/notifications";
+import { listPendingProcurementInvitations } from "@/db/repositories/procurement/invitations";
 
 function supplierName(supplier: {
   person: { fullName: string } | null;
@@ -10,27 +11,15 @@ function supplierName(supplier: {
 
 // This is an internal reminder only. It deliberately does not invoke SMTP or claim email delivery.
 export async function notifyPendingPriceResearchInvitations(
-  tx: Prisma.TransactionClient,
+  tx: DatabaseTransaction,
   input: { actorUsuarioId: string; recipientUserIds: string[] },
 ) {
-  const invitations = await tx.priceQuote.findMany({
-    where: { status: "CONVITE_PENDENTE" },
-    orderBy: { createdAt: "asc" },
-    include: {
-      supplier: {
-        select: {
-          person: { select: { fullName: true } },
-          company: { select: { tradeName: true, corporateName: true } },
-        },
-      },
-      research: { select: { process: { select: { number: true } } } },
-    },
-  });
+  const invitations = await listPendingProcurementInvitations(tx);
   const recipientUserIds = [...new Set(input.recipientUserIds.filter(Boolean))];
   let notificationsCreated = 0;
 
   for (const invitation of invitations) {
-    const result = await createInternalNotifications(tx, {
+    const result = await insertInternalNotifications(tx, {
       actorUsuarioId: input.actorUsuarioId,
       recipientUserIds,
       sourceModule: "COMPRAS",

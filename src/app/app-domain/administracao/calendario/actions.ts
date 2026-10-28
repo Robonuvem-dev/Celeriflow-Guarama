@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { calendarDate, calendarEventSchema } from "@/lib/administration/calendar-event";
 import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { insertCalendarEvent } from "@/db/repositories/administration/creation";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
 
 export async function createCalendarEvent(formData: FormData) {
   try {
@@ -16,9 +20,9 @@ export async function createCalendarEvent(formData: FormData) {
       isHoliday: formData.get("isHoliday") === "on",
     });
     if (!parsed.success) return { error: parsed.error.issues[0].message };
-    await context.prisma.$transaction(async (tx) => {
-      const event = await tx.calendarEvent.create({ data: parsed.data });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "CALENDAR_EVENT", targetId: event.id });
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const id = await insertCalendarEvent(tx, parsed.data);
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "CALENDAR_EVENT", targetId: id });
     });
     revalidatePath("/administracao/calendario");
     revalidatePath("/saude/administracao");

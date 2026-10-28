@@ -1,4 +1,9 @@
 import { z } from "zod";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { sstAsos, sstExams } from "@/db/schema/sst-clinical";
+import { sstRows } from "@/db/repositories/sst/sql";
+import { readSstFunctionalPeriods } from "@/db/repositories/sst/functional";
+import { sstDatabase } from "./database";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import { assertSstClinicalAccess } from "./access";
 import { assertDisciplineAccess } from "./clinical-access";
@@ -7,7 +12,6 @@ import { readCatForEsocial } from "./accident-service";
 import { readCatLayoutForEsocial } from "./accident-layout-service";
 import { catLayoutProvenance } from "./accident-layout-policy";
 import { getAuthorizedHistoricalExposure } from "./functional-service";
-import type { FunctionalScope } from "./functional-policy";
 import { asoCorrectionVersion } from "./aso-flow-policy";
 
 // Stable DTOs for the domain owners. Fiscal codes and historical exposure are
@@ -32,10 +36,12 @@ export async function loadEsocialSource(context: AppContext, kind: EsocialKind, 
   await assertSstClinicalAccess(context, budgetUnitId);
   if (kind === "S2220") {
     await assertDisciplineAccess(context, budgetUnitId, "MEDICINE");
-    const aso = await context.prisma.sstAso.findFirst({ where: { id: sourceId, budgetUnitId }, include: { exams: { orderBy: { id: "asc" } } } });
+    const database = sstDatabase(context);
+    const [record] = await database.select().from(sstAsos).where(and(eq(sstAsos.id, sourceId), eq(sstAsos.budgetUnitId, budgetUnitId)));
+    const aso = record ? { ...record, exams: await database.select().from(sstExams).where(eq(sstExams.asoId, record.id)).orderBy(asc(sstExams.id)) } : null;
     if (!aso) throw new Error("ASO não encontrado na UG autorizada.");
-    const [correction] = await context.prisma.$queryRaw<{ id: string; kind: string; replacementAsoId: string | null; requestHash: string }[]>`SELECT id,kind,"replacementAsoId","requestHash" FROM "SstAsoCorrection" WHERE "asoId"=${aso.id}`;
-    const [rectifies] = await context.prisma.$queryRaw<{ id: string; asoId: string; requestHash: string }[]>`SELECT id,"asoId","requestHash" FROM "SstAsoCorrection" WHERE "replacementAsoId"=${aso.id}`;
+    const [correction] = await sstRows<{ id: string; kind: string; replacementAsoId: string | null; requestHash: string }>(database, sql`SELECT id,kind,"replacementAsoId","requestHash" FROM "SstAsoCorrection" WHERE "asoId"=${aso.id}`);
+    const [rectifies] = await sstRows<{ id: string; asoId: string; requestHash: string }>(database, sql`SELECT id,"asoId","requestHash" FROM "SstAsoCorrection" WHERE "replacementAsoId"=${aso.id}`);
     const snapshot = z.object({ cpf: z.string().nullable(), registration: z.string().nullable(), examinerName: z.string() }).parse(aso.snapshot);
     const missing = ["RH: categoria fiscal histórica e vínculo RET", "Médico: CRM e UF estruturados", ...aso.exams.map((exam) => `Exame ${exam.id}: procedimento oficial Tabela 27 e proveniência do mapeamento`)];
     if (correction) missing.push(correction.kind === "ANNULMENT" ? "ASO anulado: origem bloqueada; exclusão fiscal exige recibo e fluxo eSocial" : `ASO retificado: usar versão sucessora ${correction.replacementAsoId}; retificação fiscal exige recibo de origem`);
@@ -68,7 +74,7 @@ export async function loadEsocialSource(context: AppContext, kind: EsocialKind, 
     const sourceHash = hashSource(data);
     return { kind, sourceId, sourceVersion: sourceHash, budgetUnitId, employeeId: cat.employeeId, sourceHash, data, missing };
   }
-  const periods = await context.prisma.$queryRaw<FunctionalScope[]>`SELECT p.* FROM "HrEmployeeFunctionalPeriod" p WHERE p.id=${sourceId} AND p."budgetUnitId"=${budgetUnitId} AND NOT p.voided AND NOT EXISTS (SELECT 1 FROM "HrEmployeeFunctionalPeriod" n WHERE n."supersedesId"=p.id)`;
+  const periods = await readSstFunctionalPeriods(sstDatabase(context), sql`p.id=${sourceId} AND p."budgetUnitId"=${budgetUnitId} AND NOT p.voided AND NOT EXISTS (SELECT 1 FROM "HrEmployeeFunctionalPeriod" n WHERE n."supersedesId"=p.id)`);
   const period = periods[0];
   if (!period) throw new Error("Período funcional canônico não encontrado na UG.");
   const history = await getAuthorizedHistoricalExposure(context, period.employeeId, budgetUnitId, period.startsAt, period.endsAt);

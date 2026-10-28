@@ -1,18 +1,19 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveSocialAccess } from "@/lib/social/access-policy";
 import ReferralClient from "./ReferralClient";
+import { db } from "@/db/client";
+import { listSocialReferrals, listSocialOrganizations, listSocialCatalogs, socialAttendanceOptions, socialReferralOptions } from "@/db/repositories/social/queries";
 
 export default async function SocialReferralsPage() {
   const context = await getTenantContextForModule("SOCIAL");
   const access = await resolveSocialAccess(context);
-  const unitIds = access.links.map((link) => link.unitId);
+  const database = context.database ?? db;
   const [referrals, organizations, units, people, families, catalogs] = await Promise.all([
-    context.prisma.socialReferral.findMany({ where: access.administrator ? {} : { unitId: { in: unitIds } }, include: { unit: { select: { name: true } }, destinationOrganization: { select: { name: true, usesCounterReference: true } } }, orderBy: { referredAt: "desc" } }),
-    context.prisma.socialNetworkOrganization.findMany({ orderBy: { name: "asc" } }),
-    context.prisma.socialUnit.findMany({ where: { isActive: true, ...(access.administrator ? {} : { id: { in: unitIds } }) }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    context.prisma.person.findMany({ where: { status: "Ativo", ...(!access.administrator && !unitIds.length ? { id: { in: [] } } : {}) }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } }),
-    context.prisma.socialFamily.findMany({ where: { status: "Ativo", ...(!access.administrator && !unitIds.length ? { id: { in: [] } } : {}) }, select: { id: true, representative: { select: { fullName: true } } }, orderBy: { representative: { fullName: "asc" } } }),
-    context.prisma.socialCatalogEntry.findMany({ where: { isActive: true, kind: { in: ["REFERRAL_REASON", "PRIORITY"] } }, select: { id: true, name: true, kind: true }, orderBy: { name: "asc" } }),
+    listSocialReferrals(database, access), listSocialOrganizations(database),
+    socialAttendanceOptions(database, access).then(rows => rows.units),
+    socialReferralOptions(database, access).then(rows => rows.people),
+    socialReferralOptions(database, access).then(rows => rows.families),
+    listSocialCatalogs(database, ["REFERRAL_REASON", "PRIORITY"]).then(rows => rows.map(({ id, name, kind }) => ({ id, name, kind }))),
   ]);
   const personNames = new Map(people.map((person) => [person.id, person.fullName]));
   const familyNames = new Map(families.map((family) => [family.id, family.representative.fullName]));

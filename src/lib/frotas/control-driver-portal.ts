@@ -1,5 +1,12 @@
 import "server-only";
-import { Prisma } from "@prisma/client";
+import { and, eq, isNull } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { fleetControlEvents, fleetDrivers, fleetTrips } from "@/db/schema/fleet";
+import { employees } from "@/db/schema/administration";
+import { citizenRegistryIdentities } from "@/db/schema/citizen-access";
+import { people } from "@/db/schema/people";
+import { fleetDatabase, fleetJson } from "@/db/repositories/fleet/records";
 import { getCurrentTenantContext } from "@/lib/platform/tenant-context";
 import { FleetControlError, lockFleetResources } from "./control-access";
 import { stableFleetHash } from "./control-policy";
@@ -8,9 +15,10 @@ import type { FleetScope } from "./service";
 
 export async function getFleetDriverPortal() {
   const context = await getCurrentTenantContext();
-  const employee = context.user.employeeId ? await context.prisma.employee.findFirst({ where: { id: context.user.employeeId, isActive: true }, select: { id: true, personId: true, departmentId: true } }) : null;
-  const identity = employee?.personId ? { personId: employee.personId } : await context.prisma.citizenRegistryIdentity.findFirst({ where: { usuarioId: context.user.id, revokedAt: null, person: { status: "Ativo" } }, select: { personId: true } });
-  const driver = identity?.personId ? await context.prisma.fleetDriver.findFirst({ where: { personId: identity.personId, active: true, ...(employee ? { employeeId: employee.id } : { outsourced: true }) } }) : null;
+  const db = fleetDatabase(context);
+  const employee = context.user.employeeId ? (await db.select({ id: employees.id, personId: employees.personId, departmentId: employees.departmentId }).from(employees).where(and(eq(employees.id, context.user.employeeId), eq(employees.isActive, true))).limit(1))[0] : null;
+  const identity = employee?.personId ? { personId: employee.personId } : (await db.select({ personId: citizenRegistryIdentities.personId }).from(citizenRegistryIdentities).innerJoin(people, eq(people.id, citizenRegistryIdentities.personId)).where(and(eq(citizenRegistryIdentities.usuarioId, context.user.id), isNull(citizenRegistryIdentities.revokedAt), eq(people.status, "Ativo"))).limit(1))[0];
+  const driver = identity?.personId ? (await db.select().from(fleetDrivers).where(and(eq(fleetDrivers.personId, identity.personId), eq(fleetDrivers.active, true), employee ? eq(fleetDrivers.employeeId, employee.id) : eq(fleetDrivers.outsourced, true))).limit(1))[0] : null;
   const departmentId = employee?.departmentId || driver?.departmentId;
   if (!driver || !departmentId) throw new FleetControlError("Conta sem vínculo canônico de motorista ativo.");
   const scope: FleetScope = { actorId: context.user.id, employeeId: employee?.id || null, departmentId, administrator: false, canIssueStock: false, canReadAssets: false };
@@ -18,13 +26,13 @@ export async function getFleetDriverPortal() {
 }
 export async function operateFleetDriverPortal(requestId: string, operation: "depart" | "arrive", data: Record<string, unknown>) {
   const access = await getFleetDriverPortal(), payload = operation === "depart" ? { ...data, driverId: access.driver.id } : data;
-  return access.context.prisma.$transaction(async (tx) => {
+  return withDatabaseTransaction(databaseConnection, async (tx) => {
     await lockFleetResources(tx, [`REQUEST:${requestId}`]);
-    const hash = stableFleetHash({ operation, payload }), previous = await tx.fleetControlEvent.findUnique({ where: { requestId } });
-    if (previous) { if (previous.actorId !== access.context.user.id || previous.payloadHash !== hash || previous.targetType !== "TRIP" || !await tx.fleetTrip.findFirst({ where: { id: previous.targetId, driverId: access.driver.id }, select: { id: true } })) throw new FleetControlError("Confirmação não autorizada."); return { recorded: true }; }
-    if (operation === "arrive" && !await tx.fleetTrip.findFirst({ where: { id: String(data.tripId || ""), driverId: access.driver.id }, select: { id: true } })) throw new FleetControlError("Saída não pertence ao motorista autenticado.");
+    const hash = stableFleetHash({ operation, payload }), [previous] = await tx.select().from(fleetControlEvents).where(eq(fleetControlEvents.requestId, requestId)).limit(1);
+    if (previous) { if (previous.actorId !== access.context.user.id || previous.payloadHash !== hash || previous.targetType !== "TRIP" || !(await tx.select({ id: fleetTrips.id }).from(fleetTrips).where(and(eq(fleetTrips.id, previous.targetId), eq(fleetTrips.driverId, access.driver.id))).limit(1)).length) throw new FleetControlError("Confirmação não autorizada."); return { recorded: true }; }
+    if (operation === "arrive" && !(await tx.select({ id: fleetTrips.id }).from(fleetTrips).where(and(eq(fleetTrips.id, String(data.tripId || "")), eq(fleetTrips.driverId, access.driver.id))).limit(1)).length) throw new FleetControlError("Saída não pertence ao motorista autenticado.");
     const result = operation === "depart" ? await departFleetTrip(tx, access.scope, payload) : await arriveFleetTrip(tx, access.scope, payload);
-    await tx.fleetControlEvent.create({ data: { requestId, actorId: access.context.user.id, payloadHash: hash, operation: `DRIVER_${operation}`, targetType: "TRIP", targetId: result.id, unitId: result.unitId, snapshot: payload as Prisma.InputJsonValue } });
+    await tx.insert(fleetControlEvents).values({ requestId, actorId: access.context.user.id, payloadHash: hash, operation: `DRIVER_${operation}`, targetType: "TRIP", targetId: result.id, unitId: result.unitId, snapshot: fleetJson(payload) });
     return { recorded: true };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
+  }, { isolationLevel: "serializable", timeoutMs: 30000 });
 }

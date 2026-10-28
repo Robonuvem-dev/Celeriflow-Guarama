@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Gavel, LogIn, Search } from "lucide-react";
 import { getCurrentTenantContext } from "@/lib/platform/tenant-context";
 import { biddingStatusLabel } from "@/lib/compras/bidding-workflow";
+import { databaseConnection } from "@/db/client";
+import { listSupplierBiddingParticipations } from "@/db/repositories/procurement/bidding";
 
 export const dynamic = "force-dynamic";
 
@@ -31,32 +33,7 @@ async function loadPortalData(searchValues: SearchValues) {
     const statusFilter = valueOf(searchValues.status).trim();
     const requestedPage = Number(valueOf(searchValues.page));
     const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-    const identities = await context.prisma.supplierPortalIdentity.findMany({
-      where: {
-        usuarioId: context.user.id,
-        status: "Ativo",
-        supplier: { is: { status: "Ativo" } },
-      },
-      select: { supplierId: true },
-    });
-    const participations = await context.prisma.biddingParticipant.findMany({
-      where: { supplierId: { in: identities.map((identity) => identity.supplierId) } },
-      orderBy: { registeredAt: "desc" },
-      include: {
-        supplier: {
-          select: {
-            company: { select: { corporateName: true, tradeName: true } },
-            person: { select: { fullName: true } },
-          },
-        },
-        bidding: {
-          include: {
-            process: { select: { number: true, object: true } },
-            _count: { select: { biddingLots: true } },
-          },
-        },
-      },
-    });
+    const participations = await listSupplierBiddingParticipations(databaseConnection.db, context.user.id);
     const statuses = [...new Set(participations.map((participant) => participant.bidding.status))].sort((left, right) => left.localeCompare(right, "pt-BR"));
     const filtered = participations.filter((participant) => {
       const matchesStatus = !statusFilter || participant.bidding.status === statusFilter;

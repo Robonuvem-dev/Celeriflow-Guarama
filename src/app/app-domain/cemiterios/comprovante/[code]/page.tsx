@@ -2,19 +2,19 @@ import { Printer } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import CemeteryPrintButton from "@/components/cemeteries/CemeteryPrintButton";
+import { db } from "@/db/client";
+import { readWorkflowFuneralHome, readWorkflowProcess, readWorkflowTaxpayer } from "@/db/repositories/cemeteries/workflow-pages";
 
 export const dynamic = "force-dynamic";
 
 export default async function CemeteryReceiptPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const { prisma } = await getTenantContextForModule("CEMITERIOS");
-  const process = await prisma.cemeteryProcess.findUnique({
-    where: { receiptCode: code },
-    include: { deceased: { include: { cause: true } }, cemetery: true, grave: true, chapel: true },
-  });
+  const context = await getTenantContextForModule("CEMITERIOS");
+  const database = context.database ?? db;
+  const process = await readWorkflowProcess(database, { receiptCode: code });
   if (!process) notFound();
-  const funeralHome = process.funeralHomeId ? await prisma.taxFuneralHome.findUnique({ where: { id: process.funeralHomeId }, select: { name: true } }) : null;
-  const declarant = await prisma.taxpayer.findUnique({ where: { id: process.declarantTaxpayerId }, include: { person: true, company: true } });
+  const funeralHome = process.funeralHomeId ? await readWorkflowFuneralHome(database, process.funeralHomeId) : null;
+  const declarant = await readWorkflowTaxpayer(database, process.declarantTaxpayerId);
   return <main className="mx-auto max-w-3xl p-6 text-slate-900 print:p-0">
     <div className="mb-4 flex justify-end gap-2 print:hidden"><CemeteryPrintButton /><span className="rounded border px-3 py-2 text-xs"><Printer className="mr-2 inline size-4" />Use Ctrl+P para imprimir ou salvar em PDF</span></div>
     <article className="rounded-xl border-2 border-slate-800 p-8 print:rounded-none">

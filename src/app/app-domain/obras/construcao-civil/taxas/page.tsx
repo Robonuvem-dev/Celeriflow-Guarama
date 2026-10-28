@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
+import { db } from "@/db/client";
+import { loadPageTaxation } from "@/db/repositories/works-pages/taxation";
 import { constructionFeeKinds, confirmedConstructionBalance } from "@/lib/obras/construction-tax-engine";
 import { getConstructionPropertyDebts } from "@/lib/obras/construction-taxation";
 import ConstructionTaxClient from "./ConstructionTaxClient";
@@ -13,15 +14,9 @@ export default async function ConstructionTaxPage({ searchParams }: { searchPara
   const access = await resolveConstructionAccess(context);
   if (!access.administrator && !access.roles.length) notFound();
   const page = Math.max(1, Number.parseInt(params.page || "1", 10) || 1);
-  const where = { AND: [constructionCaseWhere(access), ...(params.caseId ? [{ id: params.caseId }] : [])] };
-  const [records, taxes, rules, total] = await Promise.all([
-    context.prisma.constructionCase.findMany({ where, orderBy: { createdAt: "desc" }, take: 20, skip: (page - 1) * 20, include: { configuration: true, process: { include: { person: { include: { taxpayerInfo: true } }, company: { include: { taxpayerInfo: true } } } }, properties: { include: { realEstate: true } }, fees: { include: { assessment: { include: { guides: { include: { payments: { where: { status: "Confirmado" } } } } } } } } } }),
-    context.prisma.tax.findMany({ where: { isActive: true, taxType: "Taxa" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    context.prisma.constructionTaxRuleVersion.findMany({ orderBy: { publishedAt: "desc" }, take: 30, include: { tax: true } }),
-    context.prisma.constructionCase.count({ where }),
-  ]);
-  const documentRequests = await context.prisma.constructionDocumentRequest.findMany({ where: { caseId: { in: records.map((record) => record.id) }, status: "PENDING", type: { in: ["CORRECTION", "RENEWAL"] } }, select: { id: true, caseId: true, type: true, sourceIssuedDocumentId: true } });
-  const debts = params.caseId && records.length ? await context.prisma.$transaction((tx) => getConstructionPropertyDebts(tx, records[0].id)) : null;
+  const database = context.database ?? db;
+  const { records, taxes, rules, total, documentRequests } = await loadPageTaxation(database, access, page, params.caseId);
+  const debts = params.caseId && records.length ? await database.transaction((tx) => getConstructionPropertyDebts(tx, records[0].id)) : null;
   return <main className="space-y-4 p-4">
     <h1 className="text-xl font-semibold">Construção Civil — Taxas e débitos</h1>
     <Link href="/obras/construcao-civil" className="underline">Solicitações</Link>

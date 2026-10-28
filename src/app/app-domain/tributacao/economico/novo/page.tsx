@@ -1,18 +1,21 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import EconomicProfileClient from "../[id]/perfil/EconomicProfileClient";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
+import { db } from "@/db/client";
+import { listFiscalPlanningUnits, listFiscalProperties, listFiscalDocumentOptions, listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
+import { listPageTaxpayers, listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
 
 export const dynamic = "force-dynamic";
 export default async function NewEconomicRegistrationPage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const [units, taxpayers, properties, documents, processes, catalogs] = await Promise.all([
-    prisma.planningEntityUnit.findMany({ where: allowed ? { budgetUnitId: { in: allowed } } : {}, include: { governmentEntity: true, budgetUnit: true } }),
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, include: { person: true, company: true }, take: 1000 }),
-    prisma.realEstate.findMany({ select: { id: true, municipalInsc: true, streetName: true }, take: 1000 }),
-    prisma.document.findMany({ where: { status: "Válido" }, select: { id: true, title: true }, take: 200 }),
-    prisma.process.findMany({ select: { id: true, protocolNumber: true }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "FISCAL_CATALOG", category: "TYPED_FISCAL_CATALOG", ...(allowed ? { OR: allowed.map(budgetUnitId => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {}) }, orderBy: { version: "desc" } }),
+    listFiscalPlanningUnits(database, allowed),
+    listPageTaxpayers(database, { active: true, limit: 1000 }),
+    listFiscalProperties(database, { limit: 1000 }),
+    listFiscalDocumentOptions(database),
+    listFiscalProcessOptions(database),
+    listFiscalEntries(database, { entityType: "FISCAL_CATALOG", categories: ["TYPED_FISCAL_CATALOG"], allowedBudgetUnitIds: allowed }),
   ]);
   const latest = new Map<string, typeof catalogs[number]>();
   for (const catalog of catalogs) if (!latest.has(catalog.entityId)) latest.set(catalog.entityId, catalog);

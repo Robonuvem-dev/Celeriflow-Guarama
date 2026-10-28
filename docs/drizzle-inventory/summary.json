@@ -1,0 +1,985 @@
+{
+  "capturedAt": "2026-10-28T01:24:35.373Z",
+  "baseSha": "4476c3ea07de7ef9c6ddcbc7740c9f89483ff3a1",
+  "branch": "feat/migracao-integral-drizzle",
+  "models": 973,
+  "schemaLines": 19712,
+  "enums": [
+    "PlanningJurisdiction",
+    "PlanningInstrumentKind",
+    "PlanningLineKind",
+    "ProcurementOriginPolicy",
+    "RevenueStage",
+    "RevenueClassification"
+  ],
+  "decimalFields": 415,
+  "cuidDefaults": 934,
+  "updatedAtFields": 507,
+  "dependentFiles": 1858,
+  "calls": 18281,
+  "transactions": 1330,
+  "migrations": 156,
+  "generatedClientMiB": 96.34365177154541,
+  "domains": {
+    "api/administracao": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "api/atendimento": {
+      "files": 1,
+      "calls": 8,
+      "transactions": 1
+    },
+    "api/audit": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "api/auth": {
+      "files": 4,
+      "calls": 1,
+      "transactions": 0
+    },
+    "api/cemiterios": {
+      "files": 4,
+      "calls": 5,
+      "transactions": 1
+    },
+    "api/construcao-civil": {
+      "files": 12,
+      "calls": 55,
+      "transactions": 7
+    },
+    "api/controle-interno": {
+      "files": 5,
+      "calls": 2,
+      "transactions": 0
+    },
+    "api/download": {
+      "files": 1,
+      "calls": 12,
+      "transactions": 0
+    },
+    "api/financeiro": {
+      "files": 9,
+      "calls": 19,
+      "transactions": 1
+    },
+    "api/frotas": {
+      "files": 4,
+      "calls": 3,
+      "transactions": 0
+    },
+    "api/health": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "api/leads": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "api/patrimonio": {
+      "files": 3,
+      "calls": 10,
+      "transactions": 0
+    },
+    "api/portal": {
+      "files": 19,
+      "calls": 20,
+      "transactions": 0
+    },
+    "api/portal-paciente": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "api/portal-servidor": {
+      "files": 15,
+      "calls": 13,
+      "transactions": 0
+    },
+    "api/protocolos": {
+      "files": 2,
+      "calls": 4,
+      "transactions": 1
+    },
+    "api/publico": {
+      "files": 2,
+      "calls": 0,
+      "transactions": 0
+    },
+    "api/rh": {
+      "files": 8,
+      "calls": 18,
+      "transactions": 0
+    },
+    "api/saude": {
+      "files": 19,
+      "calls": 13,
+      "transactions": 0
+    },
+    "api/sst": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "api/transparencia": {
+      "files": 17,
+      "calls": 8,
+      "transactions": 0
+    },
+    "api/tributacao": {
+      "files": 14,
+      "calls": 9,
+      "transactions": 0
+    },
+    "administracao": {
+      "files": 22,
+      "calls": 76,
+      "transactions": 8
+    },
+    "atendimento": {
+      "files": 13,
+      "calls": 152,
+      "transactions": 21
+    },
+    "auditoria": {
+      "files": 1,
+      "calls": 4,
+      "transactions": 0
+    },
+    "cadastros": {
+      "files": 18,
+      "calls": 205,
+      "transactions": 6
+    },
+    "camara": {
+      "files": 10,
+      "calls": 25,
+      "transactions": 0
+    },
+    "cemiterios": {
+      "files": 12,
+      "calls": 22,
+      "transactions": 2
+    },
+    "compras": {
+      "files": 52,
+      "calls": 324,
+      "transactions": 36
+    },
+    "configuracoes": {
+      "files": 20,
+      "calls": 90,
+      "transactions": 12
+    },
+    "controle-interno": {
+      "files": 8,
+      "calls": 26,
+      "transactions": 2
+    },
+    "cultura": {
+      "files": 10,
+      "calls": 39,
+      "transactions": 1
+    },
+    "dashboard": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "documentos": {
+      "files": 6,
+      "calls": 23,
+      "transactions": 0
+    },
+    "educacao": {
+      "files": 27,
+      "calls": 174,
+      "transactions": 8
+    },
+    "financeiro": {
+      "files": 40,
+      "calls": 208,
+      "transactions": 5
+    },
+    "frotas": {
+      "files": 2,
+      "calls": 5,
+      "transactions": 0
+    },
+    "iluminacao-publica": {
+      "files": 2,
+      "calls": 2,
+      "transactions": 0
+    },
+    "indicadores": {
+      "files": 2,
+      "calls": 6,
+      "transactions": 0
+    },
+    "layout.tsx": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "meio-ambiente": {
+      "files": 12,
+      "calls": 43,
+      "transactions": 0
+    },
+    "notificacoes": {
+      "files": 2,
+      "calls": 1,
+      "transactions": 1
+    },
+    "obras": {
+      "files": 44,
+      "calls": 283,
+      "transactions": 30
+    },
+    "patrimonio": {
+      "files": 32,
+      "calls": 124,
+      "transactions": 5
+    },
+    "portal-cidadao": {
+      "files": 1,
+      "calls": 7,
+      "transactions": 0
+    },
+    "portal-paciente": {
+      "files": 4,
+      "calls": 3,
+      "transactions": 0
+    },
+    "portal-servidor": {
+      "files": 27,
+      "calls": 52,
+      "transactions": 0
+    },
+    "protocolos": {
+      "files": 22,
+      "calls": 112,
+      "transactions": 15
+    },
+    "rh": {
+      "files": 85,
+      "calls": 307,
+      "transactions": 21
+    },
+    "saneamento": {
+      "files": 11,
+      "calls": 36,
+      "transactions": 2
+    },
+    "saude": {
+      "files": 85,
+      "calls": 629,
+      "transactions": 24
+    },
+    "seguranca": {
+      "files": 8,
+      "calls": 29,
+      "transactions": 0
+    },
+    "social": {
+      "files": 23,
+      "calls": 167,
+      "transactions": 19
+    },
+    "sst": {
+      "files": 58,
+      "calls": 193,
+      "transactions": 5
+    },
+    "transparencia": {
+      "files": 22,
+      "calls": 90,
+      "transactions": 9
+    },
+    "tributacao": {
+      "files": 141,
+      "calls": 423,
+      "transactions": 11
+    },
+    "src/app/portal": {
+      "files": 44,
+      "calls": 92,
+      "transactions": 8
+    },
+    "src/app/portal-protocolos": {
+      "files": 1,
+      "calls": 2,
+      "transactions": 0
+    },
+    "src/app/robots.ts": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "src/app/sitemap.ts": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "src/app/validar-alvara": {
+      "files": 1,
+      "calls": 3,
+      "transactions": 0
+    },
+    "src/app/validar-aviso": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "src/app/validar-documento": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "src/app/validar-emissao": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "src/app/validar-recibo": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "src/components/app-ui": {
+      "files": 9,
+      "calls": 92,
+      "transactions": 0
+    },
+    "src/components/cemeteries": {
+      "files": 1,
+      "calls": 7,
+      "transactions": 0
+    },
+    "src/components/construction": {
+      "files": 1,
+      "calls": 5,
+      "transactions": 0
+    },
+    "src/components/portal-institucional": {
+      "files": 3,
+      "calls": 7,
+      "transactions": 0
+    },
+    "src/components/transparencia": {
+      "files": 2,
+      "calls": 1,
+      "transactions": 0
+    },
+    "lib/administration": {
+      "files": 3,
+      "calls": 13,
+      "transactions": 0
+    },
+    "lib/attendance": {
+      "files": 1,
+      "calls": 2,
+      "transactions": 0
+    },
+    "lib/c7": {
+      "files": 16,
+      "calls": 212,
+      "transactions": 26
+    },
+    "lib/cadastros": {
+      "files": 4,
+      "calls": 57,
+      "transactions": 4
+    },
+    "lib/cemeteries": {
+      "files": 8,
+      "calls": 91,
+      "transactions": 5
+    },
+    "lib/compras": {
+      "files": 6,
+      "calls": 166,
+      "transactions": 20
+    },
+    "lib/documents": {
+      "files": 1,
+      "calls": 30,
+      "transactions": 6
+    },
+    "lib/financeiro": {
+      "files": 55,
+      "calls": 1389,
+      "transactions": 111
+    },
+    "lib/frotas": {
+      "files": 18,
+      "calls": 405,
+      "transactions": 6
+    },
+    "lib/integrations": {
+      "files": 3,
+      "calls": 19,
+      "transactions": 2
+    },
+    "lib/meio-ambiente": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "lib/notifications": {
+      "files": 2,
+      "calls": 7,
+      "transactions": 0
+    },
+    "lib/obras": {
+      "files": 31,
+      "calls": 357,
+      "transactions": 8
+    },
+    "lib/patrimonio": {
+      "files": 12,
+      "calls": 164,
+      "transactions": 14
+    },
+    "lib/planejamento": {
+      "files": 35,
+      "calls": 742,
+      "transactions": 58
+    },
+    "lib/platform": {
+      "files": 4,
+      "calls": 7,
+      "transactions": 0
+    },
+    "lib/portal-cidadao": {
+      "files": 13,
+      "calls": 156,
+      "transactions": 7
+    },
+    "lib/portal-institucional": {
+      "files": 1,
+      "calls": 9,
+      "transactions": 0
+    },
+    "lib/portal-paciente": {
+      "files": 1,
+      "calls": 2,
+      "transactions": 0
+    },
+    "lib/portal-servidor": {
+      "files": 21,
+      "calls": 300,
+      "transactions": 23
+    },
+    "lib/prisma.ts": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "lib/protocols": {
+      "files": 6,
+      "calls": 55,
+      "transactions": 1
+    },
+    "lib/reports": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "lib/rh": {
+      "files": 63,
+      "calls": 1033,
+      "transactions": 84
+    },
+    "lib/saneamento": {
+      "files": 3,
+      "calls": 4,
+      "transactions": 0
+    },
+    "lib/saude": {
+      "files": 68,
+      "calls": 1567,
+      "transactions": 145
+    },
+    "lib/sequence.ts": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "lib/signatures": {
+      "files": 1,
+      "calls": 16,
+      "transactions": 1
+    },
+    "lib/social": {
+      "files": 3,
+      "calls": 14,
+      "transactions": 0
+    },
+    "lib/sst": {
+      "files": 38,
+      "calls": 572,
+      "transactions": 60
+    },
+    "lib/transparencia": {
+      "files": 21,
+      "calls": 133,
+      "transactions": 3
+    },
+    "lib/tributacao": {
+      "files": 90,
+      "calls": 1963,
+      "transactions": 182
+    },
+    "scripts/adopt": {
+      "files": 11,
+      "calls": 145,
+      "transactions": 11
+    },
+    "scripts/audit": {
+      "files": 2,
+      "calls": 5,
+      "transactions": 0
+    },
+    "scripts/backfill": {
+      "files": 1,
+      "calls": 3,
+      "transactions": 0
+    },
+    "scripts/bootstrap": {
+      "files": 2,
+      "calls": 3,
+      "transactions": 0
+    },
+    "scripts/build.mjs": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "scripts/check": {
+      "files": 1,
+      "calls": 1,
+      "transactions": 0
+    },
+    "scripts/checkup": {
+      "files": 1,
+      "calls": 5,
+      "transactions": 0
+    },
+    "scripts/configure": {
+      "files": 3,
+      "calls": 28,
+      "transactions": 2
+    },
+    "scripts/deploy": {
+      "files": 2,
+      "calls": 0,
+      "transactions": 0
+    },
+    "scripts/diagnose": {
+      "files": 1,
+      "calls": 6,
+      "transactions": 0
+    },
+    "scripts/finance": {
+      "files": 3,
+      "calls": 15,
+      "transactions": 1
+    },
+    "scripts/fleet": {
+      "files": 1,
+      "calls": 34,
+      "transactions": 0
+    },
+    "scripts/import": {
+      "files": 6,
+      "calls": 57,
+      "transactions": 7
+    },
+    "scripts/inspect": {
+      "files": 3,
+      "calls": 9,
+      "transactions": 1
+    },
+    "scripts/load": {
+      "files": 1,
+      "calls": 10,
+      "transactions": 1
+    },
+    "scripts/migrate": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "scripts/municipal": {
+      "files": 2,
+      "calls": 136,
+      "transactions": 0
+    },
+    "scripts/prepare": {
+      "files": 20,
+      "calls": 327,
+      "transactions": 19
+    },
+    "scripts/provision": {
+      "files": 1,
+      "calls": 30,
+      "transactions": 0
+    },
+    "scripts/publish": {
+      "files": 1,
+      "calls": 3,
+      "transactions": 0
+    },
+    "scripts/register": {
+      "files": 1,
+      "calls": 6,
+      "transactions": 0
+    },
+    "scripts/repair": {
+      "files": 1,
+      "calls": 19,
+      "transactions": 1
+    },
+    "scripts/repopulate": {
+      "files": 1,
+      "calls": 8,
+      "transactions": 1
+    },
+    "scripts/restore": {
+      "files": 1,
+      "calls": 2,
+      "transactions": 0
+    },
+    "scripts/revise": {
+      "files": 2,
+      "calls": 44,
+      "transactions": 2
+    },
+    "scripts/sanitation": {
+      "files": 1,
+      "calls": 11,
+      "transactions": 0
+    },
+    "scripts/seed": {
+      "files": 21,
+      "calls": 432,
+      "transactions": 11
+    },
+    "scripts/smoke": {
+      "files": 1,
+      "calls": 6,
+      "transactions": 0
+    },
+    "scripts/sync": {
+      "files": 3,
+      "calls": 31,
+      "transactions": 3
+    },
+    "scripts/typecheck": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "scripts/verify": {
+      "files": 23,
+      "calls": 274,
+      "transactions": 8
+    },
+    "tests/accounting": {
+      "files": 2,
+      "calls": 16,
+      "transactions": 2
+    },
+    "tests/active": {
+      "files": 1,
+      "calls": 25,
+      "transactions": 0
+    },
+    "tests/advance": {
+      "files": 1,
+      "calls": 20,
+      "transactions": 1
+    },
+    "tests/annual": {
+      "files": 8,
+      "calls": 134,
+      "transactions": 0
+    },
+    "tests/asset": {
+      "files": 1,
+      "calls": 19,
+      "transactions": 0
+    },
+    "tests/audit": {
+      "files": 1,
+      "calls": 4,
+      "transactions": 1
+    },
+    "tests/bank": {
+      "files": 2,
+      "calls": 29,
+      "transactions": 1
+    },
+    "tests/bidding": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/c2": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/c3": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/carry": {
+      "files": 1,
+      "calls": 20,
+      "transactions": 0
+    },
+    "tests/cemetery": {
+      "files": 4,
+      "calls": 74,
+      "transactions": 5
+    },
+    "tests/citizen": {
+      "files": 1,
+      "calls": 18,
+      "transactions": 0
+    },
+    "tests/composite": {
+      "files": 1,
+      "calls": 16,
+      "transactions": 0
+    },
+    "tests/configurable": {
+      "files": 1,
+      "calls": 8,
+      "transactions": 0
+    },
+    "tests/configured": {
+      "files": 2,
+      "calls": 29,
+      "transactions": 0
+    },
+    "tests/construction": {
+      "files": 18,
+      "calls": 217,
+      "transactions": 102
+    },
+    "tests/document": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/economic": {
+      "files": 3,
+      "calls": 47,
+      "transactions": 0
+    },
+    "tests/employee": {
+      "files": 2,
+      "calls": 22,
+      "transactions": 4
+    },
+    "tests/financial": {
+      "files": 1,
+      "calls": 35,
+      "transactions": 0
+    },
+    "tests/fleet": {
+      "files": 2,
+      "calls": 63,
+      "transactions": 4
+    },
+    "tests/frotas": {
+      "files": 1,
+      "calls": 3,
+      "transactions": 0
+    },
+    "tests/frotas.integration.test.ts": {
+      "files": 1,
+      "calls": 82,
+      "transactions": 1
+    },
+    "tests/functional": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/health": {
+      "files": 1,
+      "calls": 342,
+      "transactions": 8
+    },
+    "tests/helpers": {
+      "files": 3,
+      "calls": 20,
+      "transactions": 0
+    },
+    "tests/hr": {
+      "files": 6,
+      "calls": 228,
+      "transactions": 6
+    },
+    "tests/identity": {
+      "files": 1,
+      "calls": 8,
+      "transactions": 1
+    },
+    "tests/integrated": {
+      "files": 1,
+      "calls": 27,
+      "transactions": 0
+    },
+    "tests/internal": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/itbi": {
+      "files": 4,
+      "calls": 89,
+      "transactions": 3
+    },
+    "tests/material": {
+      "files": 2,
+      "calls": 42,
+      "transactions": 11
+    },
+    "tests/msc": {
+      "files": 1,
+      "calls": 25,
+      "transactions": 6
+    },
+    "tests/municipal": {
+      "files": 6,
+      "calls": 156,
+      "transactions": 31
+    },
+    "tests/native": {
+      "files": 2,
+      "calls": 33,
+      "transactions": 0
+    },
+    "tests/ofx": {
+      "files": 1,
+      "calls": 17,
+      "transactions": 0
+    },
+    "tests/payroll": {
+      "files": 3,
+      "calls": 95,
+      "transactions": 0
+    },
+    "tests/personnel": {
+      "files": 1,
+      "calls": 4,
+      "transactions": 0
+    },
+    "tests/planning": {
+      "files": 9,
+      "calls": 241,
+      "transactions": 13
+    },
+    "tests/process": {
+      "files": 1,
+      "calls": 15,
+      "transactions": 0
+    },
+    "tests/procurement": {
+      "files": 2,
+      "calls": 48,
+      "transactions": 0
+    },
+    "tests/property": {
+      "files": 6,
+      "calls": 96,
+      "transactions": 2
+    },
+    "tests/purchase": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/report": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/saude": {
+      "files": 5,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/saude.migration.test.ts": {
+      "files": 1,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/secretariat": {
+      "files": 1,
+      "calls": 17,
+      "transactions": 7
+    },
+    "tests/shared": {
+      "files": 1,
+      "calls": 22,
+      "transactions": 4
+    },
+    "tests/simples": {
+      "files": 1,
+      "calls": 7,
+      "transactions": 0
+    },
+    "tests/social": {
+      "files": 5,
+      "calls": 11,
+      "transactions": 1
+    },
+    "tests/sst": {
+      "files": 24,
+      "calls": 3,
+      "transactions": 0
+    },
+    "tests/stock": {
+      "files": 1,
+      "calls": 38,
+      "transactions": 8
+    },
+    "tests/tax": {
+      "files": 10,
+      "calls": 349,
+      "transactions": 12
+    },
+    "tests/transparency": {
+      "files": 5,
+      "calls": 0,
+      "transactions": 0
+    },
+    "tests/travel": {
+      "files": 1,
+      "calls": 13,
+      "transactions": 0
+    },
+    "tests/treasury": {
+      "files": 1,
+      "calls": 4,
+      "transactions": 0
+    },
+    "tests/warehouse": {
+      "files": 1,
+      "calls": 19,
+      "transactions": 0
+    }
+  }
+}

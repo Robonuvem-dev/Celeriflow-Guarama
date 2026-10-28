@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, FileCheck2, LockKeyhole, Search } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, count, desc, eq, ilike } from "drizzle-orm";
+import { publicNotices } from "@/db/schema/transparency";
 
 export const dynamic = "force-dynamic";
 
@@ -23,20 +25,11 @@ export default async function PortalProtocolosPage({ searchParams }: { searchPar
   const raw = await searchParams;
   const q = firstValue(raw.q).slice(0, 120);
   const requestedPage = Number.parseInt(firstValue(raw.page), 10);
-  const where = {
-    sourceModule: "PROCESSOS",
-    ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-  };
-  const total = await prisma.publicNotice.count({ where });
+  const where = and(eq(publicNotices.sourceModule, "PROCESSOS"), q ? ilike(publicNotices.title, `%${q}%`) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(publicNotices).where(where);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-  const notices = await prisma.publicNotice.findMany({
-    where,
-    select: { title: true, publishedAt: true, validationCode: true },
-    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const notices = await db.select({ title: publicNotices.title, publishedAt: publicNotices.publishedAt, validationCode: publicNotices.validationCode }).from(publicNotices).where(where).orderBy(desc(publicNotices.publishedAt), desc(publicNotices.id)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE);
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900">

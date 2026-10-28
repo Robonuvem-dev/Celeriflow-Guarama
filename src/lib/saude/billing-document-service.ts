@@ -1,10 +1,12 @@
 import PDFDocument from "pdfkit";
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import { db } from "@/db/client";
+import { institutions } from "@/db/schema/administration";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import { healthBillingPreview, healthPatientConsumptionCost } from "./billing-report-service";
 
 export async function healthBillingDocument(context: AppContext, raw: unknown, kind: "PREVIA" | "BPA_C" | "BPA_I" | "CUSTO") {
-  const institution = await context.prisma.institution.findFirst();
+  const [institution] = await (context.database ?? db).select().from(institutions).limit(1);
   const title = { PREVIA: "Prévia de produção e faturamento", BPA_C: "BPA consolidado — impressão de conferência", BPA_I: "BPA individualizado — impressão de conferência", CUSTO: "Custo de consumo assistencial do paciente" }[kind];
   // Complete data is read before starting the PDF stream, so access/validation errors do not leave an open document.
   const preview = kind === "CUSTO" ? null : await healthBillingPreview(context, raw);
@@ -17,10 +19,10 @@ export async function healthBillingDocument(context: AppContext, raw: unknown, k
     doc.text(`Competência ${preview.period} · situação ${preview.competenceStatus}`);
     for (const group of preview.groups) section(group.name, `Quantidade ${group.quantity} · validada ${group.validQuantity} · criticada ${group.criticizedQuantity} · pendente ${group.pendingQuantity}\nValor conhecido R$ ${group.knownValue} · total ${group.totalValue !== null ? `R$ ${group.totalValue}` : "Incompleto: existem valores não informados"} · fatos sem valor ${group.unknownValueFacts}`);
     if (kind === "BPA_C") {
-      const groups = new Map<string, { label: string; quantity: number; knownValue: Prisma.Decimal; missing: number }>();
+      const groups = new Map<string, { label: string; quantity: number; knownValue: Decimal; missing: number }>();
       for (const row of preview.rows) {
         const key = `${row.unitId}|${row.billingProviderUnitId}|${row.procedureCode}|${row.cbo}|${row.status}`;
-        const group = groups.get(key) || { label: `${row.unit}${row.billingProviderUnit ? ` · prestadora ${row.billingProviderUnit}` : ""} · CNES ${row.cnes || "Não informado"}\n${row.procedureCode || "Sem procedimento"} · ${row.procedure || ""} · CBO ${row.cbo || "Não informado"} · ${row.status}`, quantity: 0, knownValue: new Prisma.Decimal(0), missing: 0 };
+        const group = groups.get(key) || { label: `${row.unit}${row.billingProviderUnit ? ` · prestadora ${row.billingProviderUnit}` : ""} · CNES ${row.cnes || "Não informado"}\n${row.procedureCode || "Sem procedimento"} · ${row.procedure || ""} · CBO ${row.cbo || "Não informado"} · ${row.status}`, quantity: 0, knownValue: new Decimal(0), missing: 0 };
         group.quantity += row.quantity; if (row.value === null) group.missing += 1; else group.knownValue = group.knownValue.plus(row.value); groups.set(key, group);
       }
       for (const group of groups.values()) section(group.label, `Quantidade ${group.quantity} · valor conhecido R$ ${group.knownValue.toFixed(2)} · fatos sem valor ${group.missing}`);

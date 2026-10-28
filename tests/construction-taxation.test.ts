@@ -1,17 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
-import { Prisma } from "@prisma/client";
+import { count, eq } from "drizzle-orm";
+import { Decimal } from "../src/db/decimal";
+import { getPostgresError } from "../src/db/errors";
+import { constructionDocumentRequests, constructionDocumentTemplateVersions, constructionIssuedDocuments } from "../src/db/schema/construction-documents";
+import { constructionFees } from "../src/db/schema/construction-taxation";
+import { taxAssessments, taxGuides } from "../src/db/schema/taxation-core";
+import { taxPayments } from "../src/db/schema/tax-accounting";
+import { taxAuditLogs } from "../src/db/schema/taxation-audit";
+import { itbiDocumentSequences } from "../src/db/schema/tax-itbi";
+import { taxRegistryEntries } from "../src/db/schema/taxation-registry";
+import { processEvents } from "../src/db/schema/processes";
+import { createConstructionTaxationFixture } from "./helpers/construction-taxation-fixture";
+import { createConstructionFeeIssueFixture } from "./helpers/construction-fee-issue-fixture";
 import { calculateConstructionFee, confirmedConstructionBalance, demonstrationConstructionBarcode } from "../src/lib/obras/construction-tax-engine";
-import { assertConstructionFeesSatisfied, assertConstructionDocumentChangeFeesSatisfied, getConstructionPropertyDebts, issueConstructionFee } from "../src/lib/obras/construction-taxation";
+import { assertConstructionFeesSatisfied, assertConstructionDocumentChangeFeesSatisfied, getConstructionPropertyDebts, issueConstructionFee, publishConstructionTaxRule } from "../src/lib/obras/construction-taxation";
+import { submitConstructionServiceRequest } from "../src/lib/obras/construction-request-service";
+import { resolveConstructionServiceRequest } from "../src/lib/obras/construction-request-resolution";
 
 test("taxa preserva precisão da área e arredonda somente valor final", () => {
   assert.equal(calculateConstructionFee("123.4567", "10.01", "0.1234").amount.toFixed(2), "25.24");
   assert.equal(calculateConstructionFee("0.0050", "0", "1").amount.toFixed(2), "0.01");
   assert.throws(() => calculateConstructionFee("-1", "0", "1"), /não negativos/);
   assert.throws(() => calculateConstructionFee("Infinity", "0", "1"), /finitos/);
-  assert.equal(confirmedConstructionBalance("100", [{ amountPaidDecimal: new Prisma.Decimal("99.99"), amountPaid: 100 }]).toFixed(2), "0.01");
+  assert.equal(confirmedConstructionBalance("100", [{ amountPaidDecimal: new Decimal("99.99"), amountPaid: 100 }]).toFixed(2), "0.01");
 });
 
 test("linha demonstrativa FEBRABAN tem 44 dígitos, blocos e DVs módulo 10", () => {
@@ -26,21 +41,26 @@ test("linha demonstrativa FEBRABAN tem 44 dígitos, blocos e DVs módulo 10", ()
 });
 
 test("gate exige todas as reanálises excedentes; parcial, cancelada e estorno não liberam", async () => {
-  const fees: unknown[] = [];
-  const tx = { $queryRaw: async () => [], constructionCase: { findUniqueOrThrow: async () => ({ revisionCount: 3, configuration: { freeRevisions: 1 }, fees }) } } as unknown as Prisma.TransactionClient;
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "REANALYSIS"), /revisão 2/);
-  const fee = (revision: number, amount: string, paid: number, status = "Paga") => ({ kind: "REANALYSIS", revision, cycleKey: "INITIAL", amount: new Prisma.Decimal(amount), exemptionReason: null, assessment: { status: "Pago", guides: [{ status, payments: [{ amountPaid: paid, amountPaidDecimal: new Prisma.Decimal(paid) }] }] } });
-  fees.push(fee(2, "100", 100));
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "REANALYSIS"), /revisão 3/);
-  fees.push(fee(3, "100", 99));
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "REANALYSIS"), /integralmente paga/);
-  fees[1] = fee(3, "100", 100, "Cancelada");
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "REANALYSIS"), /guia válida/);
-  fees[1] = { ...fee(3, "100", 100), assessment: { ...fee(3, "100", 100).assessment, finalValueDecimal: new Prisma.Decimal("110") } };
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "REANALYSIS"), /integralmente paga/);
-  fees[1] = { ...fee(3, "100", 0), exemptionReason: "Isenção fundamentada na lei municipal" };
-  assert.equal((await assertConstructionFeesSatisfied(tx, "case", "REANALYSIS")).required.length, 2);
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "PERMIT"), /Taxa PERMIT/);
+  const f = await createConstructionTaxationFixture({ revisionCount: 3 });
+  const gate = (kind = "REANALYSIS") => f.transaction(tx => assertConstructionFeesSatisfied(tx, "case", kind));
+  try {
+    await assert.rejects(gate(), /revisão 2/);
+    await f.assessment("second"); await f.fee("REANALYSIS", { revision: 2, assessmentId: "second" });
+    await assert.rejects(gate(), /revisão 3/);
+    await f.assessment("third", { paid: "99" }); await f.fee("REANALYSIS", { revision: 3, assessmentId: "third" });
+    await assert.rejects(gate(), /integralmente paga/);
+    await f.db.update(taxGuides).set({ status: "Cancelada" }).where(eq(taxGuides.id, "guide:third"));
+    await assert.rejects(gate(), /guia válida/);
+    await f.db.update(taxGuides).set({ status: "Paga" }).where(eq(taxGuides.id, "guide:third"));
+    await f.db.update(taxPayments).set({ amountPaidDecimal: new Decimal(100) }).where(eq(taxPayments.id, "payment:third"));
+    await f.db.update(taxAssessments).set({ finalValueDecimal: new Decimal(110) }).where(eq(taxAssessments.id, "third"));
+    await assert.rejects(gate(), /integralmente paga/);
+    await f.db.update(taxAssessments).set({ finalValueDecimal: new Decimal(100) }).where(eq(taxAssessments.id, "third"));
+    assert.equal((await gate()).required.length, 2);
+    await f.db.update(taxPayments).set({ status: "Estornado" }).where(eq(taxPayments.id, "payment:third"));
+    await assert.rejects(gate(), /integralmente paga/);
+    await assert.rejects(gate("PERMIT"), /Taxa PERMIT/);
+  } finally { await f.close(); }
 });
 
 test("migration PostgreSQL garante unicidade e imutabilidade das versões e evidências", async () => {
@@ -63,127 +83,136 @@ test("migration PostgreSQL garante unicidade e imutabilidade das versões e evid
 });
 
 test("consulta usa o cadastro tributário real e abate somente pagamentos confirmados", async () => {
-  let assessmentWhere: unknown;
-  const tx = {
-    constructionCaseProperty: { findMany: async () => [{ realEstateId: "property" }] },
-    taxAssessment: { findMany: async (input: { where: unknown }) => { assessmentWhere = input.where; return [{ id: "assessment", realEstateId: "property", year: 2026, finalValueDecimal: new Prisma.Decimal("100.50"), guides: [{ payments: [{ amountPaidDecimal: new Prisma.Decimal("40.49"), amountPaid: 0 }] }] }]; } },
-    taxRegistryEntry: { findMany: async () => [{ id: "non-tax", entityId: "property", data: { amount: "20.00" } }] },
-  } as unknown as Prisma.TransactionClient;
-  const result = await getConstructionPropertyDebts(tx, "case");
-  assert.deepEqual(assessmentWhere, { realEstateId: { in: ["property"] }, status: { not: "Cancelado" } });
-  assert.equal(result.taxTotal, "60.01"); assert.equal(result.nonTaxTotal, "20.00"); assert.equal(result.total, "80.01");
+  const f = await createConstructionTaxationFixture();
+  try {
+    await f.assessment("assessment", { amount: "100.50", paid: "40.49" });
+    await f.assessment("cancelled", { amount: "999", paid: "0", status: "Cancelado" });
+    await f.assessment("cancelled-guide", { amount: "10", paid: "10", guideStatus: "Cancelada" });
+    await f.db.insert(taxPayments).values({ guideId: "guide:assessment", amountPaid: 999, amountPaidDecimal: new Decimal(999), status: "Estornado", paymentDate: new Date(), paymentMethod: "Transferência" });
+    await f.db.insert(taxRegistryEntries).values({ id: "non-tax", entityType: "REAL_ESTATE", entityId: "property", category: "NON_TAX_PROPERTY_DEBT", title: "Débito não tributário", data: { amount: "20.00" } });
+    const result = await getConstructionPropertyDebts(f.db, "case");
+    assert.equal(result.taxTotal, "70.01"); assert.equal(result.nonTaxTotal, "20.00"); assert.equal(result.total, "90.01");
+    assert.equal(result.debts.some(debt => debt.assessmentId === "cancelled"), false);
+    assert.equal((await getConstructionPropertyDebts(f.db, "foreign-case")).total, "0.00");
+    await f.db.update(taxRegistryEntries).set({ data: { amount: "-1" } }).where(eq(taxRegistryEntries.id, "non-tax"));
+    await assert.rejects(getConstructionPropertyDebts(f.db, "case"), /valor inválido/);
+  } finally { await f.close(); }
 });
 
-test("lançamento reutiliza geração de DAM tributário e repetições não duplicam taxa/guia", async () => {
-  const fees: { id: string; assessmentId?: string; caseId: string; kind: string; cycleKey: string; revision: number; requestKey: string }[] = [];
-  let assessment: Record<string, unknown> | undefined;
-  let guides = 0;
-  const audits: string[] = [];
-  const tx = {
-    $queryRaw: async () => [],
-    constructionCase: { findFirst: async () => ({ id: "case", configuration: { freeRevisions: 1 }, revisionCount: 2, properties: [{ realEstateId: "property" }], processId: "process", process: { personId: "person", companyId: null, status: "Em andamento" }, totalArea: new Prisma.Decimal("10") }) },
-    constructionFee: {
-      findUnique: async (input: { where: { requestKey?: string; caseId_kind_cycleKey_revision?: { kind: string; cycleKey: string; revision: number } } }) => fees.find((fee) => input.where.requestKey ? fee.requestKey === input.where.requestKey : fee.kind === input.where.caseId_kind_cycleKey_revision?.kind && fee.cycleKey === input.where.caseId_kind_cycleKey_revision.cycleKey && fee.revision === input.where.caseId_kind_cycleKey_revision.revision),
-      create: async (input: { data: (typeof fees)[number] }) => { const fee = { ...input.data, id: "fee" }; fees.push(fee); return fee; },
-      update: async (input: { data: { assessmentId: string } }) => { fees[0].assessmentId = input.data.assessmentId; return fees[0]; },
-    },
-    taxpayer: { findFirst: async (input: { where: { id: string } }) => input.where.id === "taxpayer" ? { id: "taxpayer" } : null },
-    constructionTaxRuleVersion: { findFirst: async () => ({ id: "rule", taxId: "tax", version: 1, startsAt: new Date("2026-01-01"), endsAt: null, fixedAmount: new Prisma.Decimal("5"), amountPerSquareMeter: new Prisma.Decimal("2"), legalBasis: "Lei demonstrativa", guideInstructions: "Sem convênio", demonstration: true }) },
-    taxAssessment: {
-      create: async (input: { data: Record<string, unknown> }) => { assessment = { ...input.data, id: "assessment", guides: [] }; return assessment; },
-      findUnique: async () => assessment,
-      update: async () => assessment,
-    },
-    financialYear: { findUnique: async () => ({ status: "Aberto" }) },
-    taxDocumentSequence: { upsert: async () => ({ currentValue: 1 }) },
-    taxGuide: { create: async (input: { data: Record<string, unknown> }) => { guides++; return { ...input.data, id: "guide" }; }, update: async () => ({}) },
-    taxAuditLog: { create: async (input: { data: { action: string } }) => { audits.push(input.data.action); return {}; } },
-  };
-  const db = { $transaction: async <T>(callback: (tx: Prisma.TransactionClient) => Promise<T>) => callback(tx as unknown as Prisma.TransactionClient) } as Parameters<typeof issueConstructionFee>[0];
-  const actor = { usuarioId: "actor", employeeId: "employee" };
-  const access = { administrator: false, employeeId: "employee", departmentId: "sector", roles: ["MANAGER"] };
-  const year = new Date().getUTCFullYear();
-  const input = { caseId: "case", kind: "REANALYSIS", revision: 2, requestKey: "e234a66b-0ee1-4d31-8f1a-33d7a9dbd2e9", taxpayerId: "taxpayer", realEstateId: "property", dueDate: `${year}-12-31`, exemptionReason: "" };
-  await assert.rejects(issueConstructionFee(db, access, actor, { ...input, taxpayerId: "other" }), /Contribuinte ativo/);
-  assert.equal(await issueConstructionFee(db, access, actor, input), "fee");
-  assert.equal(await issueConstructionFee(db, access, actor, input), "fee");
-  assert.equal(await issueConstructionFee(db, access, actor, { ...input, requestKey: "f234a66b-0ee1-4d31-8f1a-33d7a9dbd2e9" }), "fee");
-  assert.equal(fees.length, 1); assert.equal(guides, 1); assert.equal(fees[0].assessmentId, "assessment");
-  assert.equal(String(assessment?.finalValueDecimal), "25");
-  assert.deepEqual(audits, ["CREATE", "CONSTRUCTION_FEE_ISSUED"]);
+test("lançamento reutiliza geração de DAM tributário e repetições não duplicam taxa/guia", { timeout: 240000 }, async () => {
+  const f = await createConstructionFeeIssueFixture(), db = f.db;
+  const input = { caseId: "case", kind: "REANALYSIS", revision: 2, requestKey: randomUUID(), taxpayerId: "taxpayer", realEstateId: "property", dueDate: `${f.year}-12-31`, exemptionReason: "" };
+  const issue = (value: unknown = input, access = f.access) => issueConstructionFee(f.connection, access, f.actor, value);
+  try {
+    const rule = await f.transaction(tx => publishConstructionTaxRule(tx, f.actor.usuarioId, { kind: "REANALYSIS", taxId: "tax", startsAt: `${f.year}-01-01`, endsAt: `${f.year}-12-31`, fixedAmount: "5", amountPerSquareMeter: "2", legalBasis: "Lei demonstrativa", guideInstructions: "Sem convênio", demonstration: true }));
+    await assert.rejects(issue(input, { ...f.access, roles: ["ANALYST"] }), /gestor urbanístico/);
+    await assert.rejects(issue(input, { ...f.access, departmentId: "other" }), /no seu setor/);
+    await assert.rejects(issue({ ...input, taxpayerId: "other" }), /Contribuinte ativo/);
+    await assert.rejects(issue({ ...input, realEstateId: "other" }), /Imóvel deve estar vinculado/);
+    await assert.rejects(issue({ ...input, revision: 1 }), /franquia/);
+    await assert.rejects(issue({ ...input, dueDate: `${f.year - 1}-12-31` }), /Vencimento/);
+    // Fail after the shared writer has persisted its guide, audit and number.
+    // All must roll back with the fee and assessment on the very same tx.
+    await f.database.exec(`CREATE FUNCTION reject_construction_fee_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='CONSTRUCTION_FEE_ISSUED' THEN RAISE EXCEPTION 'fee audit rejected'; END IF; RETURN NEW; END $$;
+      CREATE TRIGGER reject_construction_fee_audit BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION reject_construction_fee_audit()`);
+    await assert.rejects(issue(), error => getPostgresError(error)?.code === "P0001");
+    assert.equal((await db.select({ total: count() }).from(constructionFees))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(taxAssessments))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(taxGuides))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(taxAuditLogs))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(itbiDocumentSequences))[0].total, 0);
+    await f.database.exec(`DROP TRIGGER reject_construction_fee_audit ON "TaxAuditLog"`);
+    const id = await issue();
+    assert.equal(await issue(), id);
+    assert.equal(await issue({ ...input, requestKey: randomUUID() }), id);
+    const [fee] = await db.select().from(constructionFees), [assessment] = await db.select().from(taxAssessments), [guide] = await db.select().from(taxGuides);
+    assert.equal((await db.select({ total: count() }).from(constructionFees))[0].total, 1);
+    assert.equal((await db.select({ total: count() }).from(taxGuides))[0].total, 1);
+    assert.equal(fee.id, id); assert.equal(fee.assessmentId, assessment.id); assert.equal(guide.assessmentId, assessment.id);
+    assert.equal(fee.ruleId, rule.id); assert.equal(fee.amount.toFixed(2), "25.00"); assert.equal(assessment.finalValueDecimal?.toFixed(2), "25.00");
+    assert.equal(assessment.taxableBaseDecimal?.toFixed(2), "10.00"); assert.equal(guide.totalValueDecimal?.toFixed(2), "25.00");
+    assert.equal(assessment.status, "Emitido"); assert.equal(guide.guideNumber, `DAM-${f.year}-0000001`);
+    assert.ok(assessment.competence instanceof Date); assert.ok(guide.dueDate instanceof Date);
+    assert.equal(assessment.competence.toISOString().slice(0, 10), new Date().toISOString().slice(0, 10));
+    assert.equal(guide.dueDate.toISOString(), `${f.year}-12-31T12:00:00.000Z`);
+    assert.deepEqual(assessment.calculationSnapshot, fee.calculationSnapshot);
+    assert.ok(fee.calculationSnapshot && typeof fee.calculationSnapshot === "object" && !Array.isArray(fee.calculationSnapshot));
+    assert.ok(guide.guideNumber);
+    const barcode = demonstrationConstructionBarcode("25.00", guide.guideNumber.replace(/\D/g, ""));
+    assert.equal(guide.barcode, barcode.barcode);
+    assert.deepEqual(guide.calculationSnapshot, { ...fee.calculationSnapshot, demonstrationBarcode: barcode });
+    assert.deepEqual((await db.select({ action: taxAuditLogs.action }).from(taxAuditLogs)).map(row => row.action).sort(), ["CONSTRUCTION_FEE_ISSUED", "CREATE"]);
+    assert.equal((await db.select().from(itbiDocumentSequences))[0].currentValue, 1);
+  } finally { await f.close(); }
 });
 
 test("checkPropertyDebts bloqueia somente ato final, sem bloquear alvará, vistoria ou parcelamento inicial", async () => {
-  let debtQueries = 0;
-  const fees = ["PERMIT", "INSPECTION", "SUBDIVISION", "HABITE_SE"].map((kind) => ({ kind, revision: 0, cycleKey: "INITIAL", amount: new Prisma.Decimal(0), exemptionReason: "Isenção demonstrativa fundamentada", assessment: null }));
-  const tx = {
-    $queryRaw: async () => [],
-    constructionCase: { findUniqueOrThrow: async () => ({ revisionCount: 0, configuration: { freeRevisions: 1, checkPropertyDebts: true }, fees }) },
-    constructionCaseProperty: { findMany: async () => { debtQueries++; return [{ realEstateId: "property" }]; } },
-    taxAssessment: { findMany: async () => [{ id: "old-debt", realEstateId: "property", year: 2025, originalValue: 100, guides: [] }] },
-    taxRegistryEntry: { findMany: async () => [] },
-  } as unknown as Prisma.TransactionClient;
-  for (const kind of ["PERMIT", "INSPECTION", "SUBDIVISION", "REANALYSIS"]) assert.equal((await assertConstructionFeesSatisfied(tx, "case", kind)).propertyDebts, null);
-  assert.equal(debtQueries, 0);
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "HABITE_SE"), /Imóveis possuem R\$ 100.00/);
-  assert.equal(debtQueries, 1);
+  const f = await createConstructionTaxationFixture({ checkPropertyDebts: true });
+  try {
+    for (const kind of ["PERMIT", "INSPECTION", "SUBDIVISION", "HABITE_SE"]) await f.fee(kind, { amount: "0", exemptionReason: "Isenção demonstrativa fundamentada" });
+    await f.assessment("old-debt", { year: 2025, paid: "0", status: "Lançado" });
+    for (const kind of ["PERMIT", "INSPECTION", "SUBDIVISION", "REANALYSIS"]) assert.equal((await f.transaction(tx => assertConstructionFeesSatisfied(tx, "case", kind))).propertyDebts, null);
+    await assert.rejects(f.transaction(tx => assertConstructionFeesSatisfied(tx, "case", "HABITE_SE")), /Imóveis possuem R\$ 100.00/);
+  } finally { await f.close(); }
 });
 
 test("F5: renovação/correção exige ciclo próprio, não aceita taxa inicial nem pagamento de outro pedido", async () => {
-  let type = "RENEWAL";
-  let requestStatus = "PENDING";
-  const fees: unknown[] = [{ kind: "PERMIT", revision: 0, cycleKey: "INITIAL", amount: new Prisma.Decimal(0), exemptionReason: "Isenção inicial", assessment: null }];
-  const tx = {
-    $queryRaw: async () => [],
-    constructionDocumentRequest: { findUnique: async ({ where }: { where: { id: string } }) => ({ id: where.id, caseId: "case", type, status: requestStatus, sourceIssuedDocumentId: `source-${where.id}` }) },
-    constructionIssuedDocument: { findFirst: async ({ where }: { where: { id: string } }) => ({ id: where.id, kind: "PERMIT" }) },
-    constructionCase: { findUniqueOrThrow: async () => ({ revisionCount: 0, configuration: { freeRevisions: 1, checkPropertyDebts: true }, fees }) },
-  } as unknown as Prisma.TransactionClient;
-  await assert.rejects(assertConstructionFeesSatisfied(tx, "case", "RENEWAL"), /identificar o ciclo/);
-  await assert.rejects(assertConstructionDocumentChangeFeesSatisfied(tx, "case", "renewal-a"), /Taxa RENEWAL/);
-  fees.push({ kind: "RENEWAL", revision: 0, cycleKey: "DOCUMENT_REQUEST:renewal-a", amount: new Prisma.Decimal(50), exemptionReason: null, assessment: { status: "Pago", finalValueDecimal: new Prisma.Decimal(50), guides: [{ status: "Paga", totalValueDecimal: new Prisma.Decimal(50), payments: [{ amountPaid: 50, amountPaidDecimal: new Prisma.Decimal(50) }] }] } });
-  const evidence = await assertConstructionDocumentChangeFeesSatisfied(tx, "case", "renewal-a");
-  assert.equal(evidence.required[0].cycleKey, "DOCUMENT_REQUEST:renewal-a"); assert.equal(evidence.propertyDebts, null);
-  await assert.rejects(assertConstructionDocumentChangeFeesSatisfied(tx, "case", "renewal-b"), /Taxa RENEWAL/);
-  type = "CORRECTION";
-  await assert.rejects(assertConstructionDocumentChangeFeesSatisfied(tx, "case", "correction-a"), /Taxa CORRECTION/);
-  fees.push({ kind: "CORRECTION", revision: 0, cycleKey: "DOCUMENT_REQUEST:correction-a", amount: new Prisma.Decimal(0), exemptionReason: "Correção isenta conforme regra própria", assessment: null });
-  assert.equal((await assertConstructionDocumentChangeFeesSatisfied(tx, "case", "correction-a")).cycle?.kind, "CORRECTION");
-  requestStatus = "FULFILLED";
-  await assert.rejects(assertConstructionDocumentChangeFeesSatisfied(tx, "case", "correction-a"), /pendente indisponível/);
+  const f = await createConstructionTaxationFixture({ checkPropertyDebts: true });
+  const gate = (requestId: string) => f.transaction(tx => assertConstructionDocumentChangeFeesSatisfied(tx, "case", requestId));
+  try {
+    await f.fee("PERMIT", { amount: "0", exemptionReason: "Isenção inicial" });
+    await f.db.insert(constructionDocumentTemplateVersions).values({ id: "template", kind: "PERMIT", version: 1, title: "Alvará", body: "Alvará", stamp: "Municipal", signaturePolicy: "INTERNAL_ALLOWED", createdBy: "manager-user" });
+    await f.db.insert(constructionIssuedDocuments).values({ id: "source", requestKey: crypto.randomUUID(), caseId: "case", processId: "process", kind: "PERMIT", year: 2026, sequence: 1, number: "PERMIT-1", templateVersionId: "template", templateSnapshot: {}, documentId: "current-project", documentVersionId: "ged-version", fileUrl: "/project.pdf", hashSha256: "a".repeat(64), backupPath: "/backup.pdf", validationCode: "test", status: "PUBLISHED", createdBy: "manager-user" });
+    for (const [id, type] of [["renewal-a", "RENEWAL"], ["renewal-b", "RENEWAL"], ["correction-a", "CORRECTION"]]) await f.db.insert(constructionDocumentRequests).values({ id, requestKey: crypto.randomUUID(), caseId: "case", sourceIssuedDocumentId: "source", type, reason: "Pedido documental", identityId: "identity" });
+    await assert.rejects(f.transaction(tx => assertConstructionFeesSatisfied(tx, "case", "RENEWAL")), /identificar o ciclo/);
+    await assert.rejects(gate("renewal-a"), /Taxa RENEWAL/);
+    await f.assessment("renewal-paid", { amount: "50", paid: "50" });
+    await f.fee("RENEWAL", { amount: "50", cycleKey: "DOCUMENT_REQUEST:renewal-a", assessmentId: "renewal-paid" });
+    const evidence = await gate("renewal-a");
+    assert.equal(evidence.required[0].cycleKey, "DOCUMENT_REQUEST:renewal-a"); assert.equal(evidence.propertyDebts, null);
+    await assert.rejects(gate("renewal-b"), /Taxa RENEWAL/);
+    await assert.rejects(gate("correction-a"), /Taxa CORRECTION/);
+    await f.fee("CORRECTION", { amount: "0", cycleKey: "DOCUMENT_REQUEST:correction-a", exemptionReason: "Correção isenta conforme regra própria" });
+    assert.equal((await gate("correction-a")).cycle?.kind, "CORRECTION");
+    await f.db.update(constructionDocumentRequests).set({ status: "FULFILLED" }).where(eq(constructionDocumentRequests.id, "correction-a"));
+    await assert.rejects(gate("correction-a"), /pendente indisponível/);
+  } finally { await f.close(); }
 });
 
-test("F5: lançamento bloqueia regra ausente e emite uma taxa/evento por ciclo documental", async () => {
-  let configured = false;
-  const fees: Record<string, unknown>[] = [];
-  const events: { eventType: string; metadata: string }[] = [];
-  const tx = {
-    $queryRaw: async () => [],
-    constructionCase: { findFirst: async () => ({ id: "case", configuration: { freeRevisions: 1 }, revisionCount: 0, properties: [{ realEstateId: "property" }], processId: "process", process: { personId: "person", status: "Em andamento" }, totalArea: new Prisma.Decimal(10) }) },
-    constructionDocumentRequest: { findUnique: async ({ where }: { where: { id: string } }) => ({ id: where.id, caseId: "case", type: "RENEWAL", status: "PENDING", sourceIssuedDocumentId: `source-${where.id}` }) },
-    constructionIssuedDocument: { findFirst: async ({ where }: { where: { id: string } }) => ({ id: where.id, kind: "PERMIT" }) },
-    constructionFee: {
-      findUnique: async ({ where }: { where: { requestKey?: string; caseId_kind_cycleKey_revision?: { cycleKey: string } } }) => fees.find((fee) => where.requestKey ? fee.requestKey === where.requestKey : fee.cycleKey === where.caseId_kind_cycleKey_revision?.cycleKey),
-      create: async ({ data }: { data: Record<string, unknown> }) => { const fee = { ...data, id: `fee-${fees.length + 1}` }; fees.push(fee); return fee; },
-    },
-    taxpayer: { findFirst: async () => ({ id: "taxpayer" }) },
-    constructionTaxRuleVersion: { findFirst: async ({ where }: { where: { kind: string } }) => { assert.equal(where.kind, "RENEWAL"); return configured ? { id: "renewal-rule", taxId: "tax", version: 1, startsAt: new Date("2026-01-01"), fixedAmount: new Prisma.Decimal(0), amountPerSquareMeter: new Prisma.Decimal(0), legalBasis: "Renovação isenta demonstrativa", guideInstructions: "Regra própria", demonstration: true } : null; } },
-    taxAuditLog: { create: async () => ({}) },
-    processEvent: { create: async ({ data }: { data: { eventType: string; metadata: string } }) => { events.push(data); return {}; } },
-  };
-  const db = { $transaction: async <T>(callback: (tx: Prisma.TransactionClient) => Promise<T>) => callback(tx as unknown as Prisma.TransactionClient) } as Parameters<typeof issueConstructionFee>[0];
-  const access = { administrator: true, employeeId: "employee", departmentId: "sector", roles: [] };
-  const actor = { usuarioId: "actor", employeeId: "employee" };
-  const input = { caseId: "case", kind: "RENEWAL", revision: 0, documentRequestId: "renewal-a", requestKey: "e234a66b-0ee1-4d31-8f1a-33d7a9dbd2e9", taxpayerId: "taxpayer", realEstateId: "property", dueDate: `${new Date().getUTCFullYear()}-12-31`, exemptionReason: "Isenção fundamentada para este ciclo" };
-  await assert.rejects(issueConstructionFee(db, access, actor, input), /vigente para RENEWAL/);
-  assert.equal(fees.length, 0);
-  configured = true;
-  assert.equal(await issueConstructionFee(db, access, actor, input), "fee-1");
-  assert.equal(await issueConstructionFee(db, access, actor, input), "fee-1");
-  assert.equal(await issueConstructionFee(db, access, actor, { ...input, requestKey: "f234a66b-0ee1-4d31-8f1a-33d7a9dbd2e9" }), "fee-1");
-  await assert.rejects(issueConstructionFee(db, access, actor, { ...input, documentRequestId: "renewal-b" }), /outra operação/);
-  assert.equal(await issueConstructionFee(db, access, actor, { ...input, documentRequestId: "renewal-b", requestKey: "d234a66b-0ee1-4d31-8f1a-33d7a9dbd2e9" }), "fee-2");
-  assert.equal(fees.length, 2); assert.equal(events.length, 2);
-  assert.equal(events[0].eventType, "CONSTRUCTION_DOCUMENT_CHANGE_FEE_EXEMPT");
-  assert.equal(JSON.parse(events[1].metadata).cycleKey, "DOCUMENT_REQUEST:renewal-b");
+test("F5: lançamento bloqueia regra ausente e emite uma taxa/evento por ciclo documental", { timeout: 240000 }, async () => {
+  const f = await createConstructionFeeIssueFixture(), db = f.db;
+  const issue = (value: unknown) => issueConstructionFee(f.connection, f.access, f.actor, value);
+  const request = () => f.transaction(tx => submitConstructionServiceRequest(tx, "identity", { caseId: "case", kind: "RENEWAL", revision: 2, termId: "term", sourceIssuedDocumentId: "source", requestKey: randomUUID(), notes: "Renovação documental fundamentada", documentIds: [], additionalValues: {} }));
+  try {
+    await f.database.exec(readFileSync("db/migrations/20261028193000_construction_document_rejection/migration.sql", "utf8"));
+    const serviceId = await request();
+    const [firstRequest] = await db.select().from(constructionDocumentRequests);
+    const input = { caseId: "case", kind: "RENEWAL", revision: 0, documentRequestId: firstRequest.id, requestKey: randomUUID(), taxpayerId: "taxpayer", realEstateId: "property", dueDate: `${f.year}-12-31`, exemptionReason: "Isenção fundamentada para este ciclo" };
+    await assert.rejects(issue(input), /vigente para RENEWAL/);
+    assert.equal((await db.select({ total: count() }).from(constructionFees))[0].total, 0);
+    await f.transaction(tx => publishConstructionTaxRule(tx, f.actor.usuarioId, { kind: "RENEWAL", taxId: "tax", startsAt: `${f.year}-01-01`, endsAt: "", fixedAmount: "0", amountPerSquareMeter: "0", legalBasis: "Renovação isenta demonstrativa", guideInstructions: "Regra própria", demonstration: true }));
+    await assert.rejects(issue({ ...input, exemptionReason: "" }), /Taxa zero exige/);
+    const firstFee = await issue(input);
+    assert.equal(await issue(input), firstFee);
+    assert.equal(await issue({ ...input, requestKey: randomUUID() }), firstFee);
+    const resolution = { id: serviceId, decision: "REJECTED", resolution: "Pedido indeferido por fundamento municipal" };
+    await f.transaction(tx => resolveConstructionServiceRequest(tx, f.access, f.actor.usuarioId, resolution));
+    assert.equal((await db.select().from(constructionDocumentRequests).where(eq(constructionDocumentRequests.id, firstRequest.id)))[0].status, "REJECTED");
+    await assert.rejects(issue(input), /pendente indisponível/);
+    await assert.rejects(f.transaction(tx => assertConstructionDocumentChangeFeesSatisfied(tx, "case", firstRequest.id)), /pendente indisponível/);
+    await request();
+    const requests = await db.select().from(constructionDocumentRequests), secondRequest = requests.find(row => row.id !== firstRequest.id)!;
+    assert.equal(secondRequest.status, "PENDING");
+    await assert.rejects(issue({ ...input, documentRequestId: secondRequest.id }), /outra operação/);
+    const secondFee = await issue({ ...input, documentRequestId: secondRequest.id, requestKey: randomUUID() });
+    assert.notEqual(secondFee, firstFee);
+    const fees = await db.select().from(constructionFees);
+    const events = (await db.select().from(processEvents)).filter(row => row.eventType === "CONSTRUCTION_DOCUMENT_CHANGE_FEE_EXEMPT");
+    assert.equal(fees.length, 2); assert.equal(events.length, 2);
+    assert.deepEqual(new Set(fees.map(row => row.cycleKey)), new Set([`DOCUMENT_REQUEST:${firstRequest.id}`, `DOCUMENT_REQUEST:${secondRequest.id}`]));
+    assert.equal(JSON.parse(events.find(row => JSON.parse(row.metadata!).feeId === secondFee)!.metadata!).cycleKey, `DOCUMENT_REQUEST:${secondRequest.id}`);
+    assert.equal((await db.select({ total: count() }).from(taxGuides))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(taxAssessments))[0].total, 0);
+    assert.equal((await db.select({ total: count() }).from(taxAuditLogs))[0].total, 2);
+  } finally { await f.close(); }
 });

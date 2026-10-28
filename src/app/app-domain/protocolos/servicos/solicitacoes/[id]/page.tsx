@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProtocolContext, protocolScope } from "@/lib/protocols/access";
+import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
+import { db } from "@/db/client";
+import { readInternalPortalRequest, readPortalScheduleResources } from "@/db/repositories/portal-content/services";
 import { digitalServiceSchema } from "@/lib/portal-cidadao/services-policy";
 import { portalRequestCosts } from "@/lib/portal-cidadao/scheduling";
 import { RequestTreatment } from "@/components/portal-institucional/RequestTreatment";
@@ -9,21 +11,12 @@ import { ProgramRequestsForm, ScheduleExecutionForm } from "../../ProgramRequest
 export const dynamic = "force-dynamic";
 export default async function InternalServiceRequestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params, context = await getProtocolContext();
-  const request = await context.prisma.portalServiceRequest.findFirst({
-    where: { id, process: protocolScope(context) },
-    include: {
-      process: { include: { documents: { include: { document: { include: { versions: { where: { status: { in: ["FINAL", "SIGNED"] } }, orderBy: { versionNumber: "desc" } } } } } } } },
-      uploads: true,
-      events: { orderBy: { createdAt: "asc" } },
-      schedules: { include: { schedule: { include: { links: { include: { request: { select: { id: true, process: { select: { protocolNumber: true } } } } } } } } } },
-      worksService: true,
-    },
-  });
+  const request = await readInternalPortalRequest(db, id, protocolScopeCondition(context));
   if (!request) notFound();
   const definition = digitalServiceSchema.parse((request.snapshot as { configuration: unknown }).configuration), costs = await portalRequestCosts(context, id);
   const operator = context.protocolAccess.canUpdate && (context.protocolAccess.isAdmin || Boolean(context.user.departmentId && context.user.departmentId === request.process.currentDepartmentId));
-  const documents = request.process.documents.flatMap((item) => item.document?.versions.map((version) => ({ id: version.id, label: `${item.document!.title} — versão ${version.versionNumber}` })) || []);
+  const documents = request.resultDocuments;
   const payload = request.payload as { description: string; values: Record<string, string>; location: string };
-  const [employees, teams, assets] = operator ? await Promise.all([context.prisma.employee.findMany({ where: { isActive: true, departmentId: request.process.currentDepartmentId }, select: { id: true, name: true } }), context.prisma.obrasEquipe.findMany({ where: { isActive: true, departmentId: request.process.currentDepartmentId }, select: { id: true, name: true } }), context.prisma.asset.findMany({ where: { status: { notIn: ["Baixado", "Inativo"] } }, select: { id: true, description: true }, take: 500 })]) : [[], [], []];
+  const [employees, teams, assets] = operator ? await readPortalScheduleResources(db, request.process.currentDepartmentId) : [[], [], []];
   return <main className="mx-auto max-w-6xl space-y-5 p-4"><Link href="/protocolos/servicos/solicitacoes" className="text-sm font-semibold text-emerald-800">← Fila de serviços</Link><header><h1 className="text-2xl font-semibold">{request.process.protocolNumber} — {(request.snapshot as { name: string }).name}</h1><p className="mt-2 text-sm">{request.status} • versão {request.serviceVersion} • revisão {request.revision}</p><Link href={`/protocolos/processos/${request.processId}`} className="mt-3 inline-block text-sm font-semibold text-emerald-800 underline">Receber, tramitar e consultar o processo central</Link>{request.worksServiceId && <Link href="/obras/ordens-servico" className="ml-4 inline-block text-sm font-semibold text-emerald-800 underline">Execução e materiais em Obras</Link>}</header><section className="rounded border bg-white p-5"><h2 className="font-semibold">Formulário recebido</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6">{payload.description}</p>{payload.location && <p className="mt-3 text-sm">Local: {payload.location}</p>}<dl className="mt-4 grid gap-3 sm:grid-cols-2">{definition.fields.map((item) => <div key={item.code}><dt className="text-sm font-semibold">{item.label}</dt><dd className="mt-1 whitespace-pre-wrap text-sm">{payload.values[item.code] || "—"}</dd></div>)}</dl><ul className="mt-4 space-y-2">{request.uploads.map((upload) => <li key={upload.id}><Link href={`/api/portal/solicitacoes/${id}/documentos/${upload.documentVersionId}`} className="text-sm text-emerald-800 underline">{upload.filename}</Link></li>)}</ul></section>{operator && <RequestTreatment key={request.revision} requestId={id} revision={request.revision} status={request.status} serviceId={request.serviceId} serviceVersion={request.serviceVersion} definition={definition} internal documents={documents} />}<section className="rounded border bg-white p-5"><h2 className="font-semibold">Histórico completo</h2><ol className="mt-4 space-y-4">{request.events.map((event) => <li key={event.id} className="border-l-2 pl-3"><p className="text-xs font-semibold text-slate-500">{event.createdAt.toLocaleString("pt-BR")} • {event.kind} • {event.visible ? "Visível ao requerente" : "Interno"}</p><p className="mt-2 whitespace-pre-wrap text-sm">{event.text}</p></li>)}</ol></section><section className="rounded border bg-white p-5"><h2 className="font-semibold">Custos previstos e realizados</h2><p className="mt-3 text-sm">Previsto: R$ {costs.planned} • Realizado: R$ {costs.realized}</p><ul className="mt-3 space-y-2 text-sm">{costs.items.map((item, index) => <li key={index}>{item.label}: previsto {item.planned}, realizado {item.realized}</li>)}</ul></section>{request.schedules.map(({ schedule }) => <section key={schedule.id} className="rounded border bg-white p-5"><h2 className="font-semibold">{schedule.type} — {schedule.status}</h2><p className="mt-2 text-sm">{schedule.startsAt.toLocaleString("pt-BR")} a {schedule.endsAt.toLocaleString("pt-BR")} • {schedule.reason}</p><a href={`/api/portal/programacoes/${schedule.id}/relatorio`} className="mt-3 inline-block text-sm font-semibold text-emerald-800 underline">Imprimir programação / ordem de serviço</a>{operator && ["PROGRAMADO", "EM_EXECUCAO"].includes(schedule.status) && <><ScheduleExecutionForm id={schedule.id} /><div className="mt-4"><ProgramRequestsForm previousId={schedule.id} previousRequestIds={schedule.links.map((link) => link.requestId)} requests={schedule.links.map((link) => ({ id: link.requestId, label: link.request.process.protocolNumber }))} employees={employees} teams={teams} assets={assets.map((item) => ({ id: item.id, name: item.description }))} /></div></>}</section>)}</main>;
 }

@@ -3,22 +3,13 @@ import { ArrowLeft, SearchCheck } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listPriceResearchProcessOptions } from "@/db/repositories/procurement/price-research";
 import { PriceResearchCreateForm } from "../PriceResearchCreateForm";
 
 export default async function NewPriceResearchPage() {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
-  const processes = await prisma.purchaseProcess.findMany({
-    where: { purchaseRequestId: { not: null } },
-    select: {
-      id: true,
-      number: true,
-      object: true,
-      purchaseRequest: { select: { number: true } },
-      _count: { select: { items: true } },
-      items: { select: { customName: true, catalogItem: { select: { code: true, name: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const context = await getTenantContextForModule("COMPRAS");
+  const processes = await listPriceResearchProcessOptions(context.database ?? db);
   const processOptions = processes.flatMap(process => process.purchaseRequest && process._count.items ? [{ id: process.id, number: process.number, object: process.object, purchaseRequestNumber: process.purchaseRequest.number, itemCount: process._count.items, itemLabels: process.items.map(item => item.catalogItem ? `${item.catalogItem.code} · ${item.catalogItem.name}` : item.customName || "Item livre") }] : []);
 
   return (

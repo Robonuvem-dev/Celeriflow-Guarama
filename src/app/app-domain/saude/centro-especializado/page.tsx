@@ -1,5 +1,14 @@
 import { Accessibility } from "lucide-react";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { diagnosticSpecializedPlans as planTable, diagnosticSpecializedEntries, diagnosticSpecializedQuotas } from "@/db/schema/health-diagnostics";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { employees } from "@/db/schema/administration";
+import { healthUnits, healthTeams, healthProfessionals } from "@/db/schema/health-workforce";
+import { healthSpecialties, healthServices } from "@/db/schema/health-administration";
+import { materials as materialTable, materialStocks, warehouses } from "@/db/schema/assets-stock";
+import { medicalRecords } from "@/db/schema/health-care";
+import { pharmacyPatients } from "@/db/repositories/health-pharmacy-pages/common";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -14,28 +23,34 @@ const positivePage = (value: string | undefined) => value && /^\d+$/.test(value)
 
 export default async function SpecializedCenterPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const db = context.database;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
-  const planScope: Prisma.SpecializedTherapeuticPlanWhereInput = unitIds ? { unitId: { in: unitIds } } : {};
-  const planWhere: Prisma.SpecializedTherapeuticPlanWhereInput = { ...planScope, ...(filter ? { status: filter } : {}), ...(q ? { OR: [{ patient: { person: { fullName: { contains: q, mode: "insensitive" } } } }, { unit: { name: { contains: q, mode: "insensitive" } } }, { team: { name: { contains: q, mode: "insensitive" } } }] } : {}) };
-  const total = await prisma.specializedTherapeuticPlan.count({ where: planWhere });
+  const planScope = unitIds ? inArray(planTable.unitId, unitIds) : undefined;
+  const planWhere = and(planScope, filter ? eq(planTable.status, filter) : undefined, q ? or(ilike(people.fullName, `%${q}%`), ilike(healthUnits.name, `%${q}%`), ilike(healthTeams.name, `%${q}%`)) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(planTable).innerJoin(patientTable, eq(patientTable.id, planTable.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(healthUnits, eq(healthUnits.id, planTable.unitId)).innerJoin(healthTeams, eq(healthTeams.id, planTable.teamId)).where(planWhere);
   const page = Math.min(positivePage(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [plans, planOptions, patients, units, teams, specialties, services, materials, stocks, quotas, records] = await Promise.all([
-    prisma.specializedTherapeuticPlan.findMany({ where: planWhere, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { startedAt: "desc" }, include: { patient: { include: { person: true } }, unit: true, team: true, entries: { orderBy: { createdAt: "desc" }, take: 1, include: { professional: { include: { employee: { include: { person: true } } } } } } } }),
-    prisma.specializedTherapeuticPlan.findMany({ where: planScope, take: 500, orderBy: { startedAt: "desc" }, include: { patient: { include: { person: true } } } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, take: 500, orderBy: { person: { fullName: "asc" } }, include: { person: true } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthTeam.findMany({ where: { isActive: true, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthSpecialty.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.healthService.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.material.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.materialStock.findMany({ where: { quantity: { gt: 0 }, warehouse: { healthUnitId: unitIds ? { in: unitIds } : { not: null } } }, include: { material: true, warehouse: true }, orderBy: { expirationDate: "asc" } }),
-    prisma.specializedQuota.findMany({ where: unitIds ? { patient: { referenceUnitId: { in: unitIds } } } : {}, include: { patient: { include: { person: true } }, material: true }, orderBy: { createdAt: "desc" } }),
-    prisma.medicalRecord.findMany({ where: unitIds ? { unitId: { in: unitIds } } : {}, orderBy: { date: "desc" }, take: 300, include: { patient: { include: { person: true } } } }),
+  const [planRows, optionRows, patients, units, teams, specialties, services, materials, stockRows, quotaRows, recordRows] = await Promise.all([
+    db.select({ plan: planTable, patient: patientTable, person: people, unit: healthUnits, team: healthTeams }).from(planTable).innerJoin(patientTable, eq(patientTable.id, planTable.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(healthUnits, eq(healthUnits.id, planTable.unitId)).innerJoin(healthTeams, eq(healthTeams.id, planTable.teamId)).where(planWhere).orderBy(desc(planTable.startedAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    db.select({ plan: planTable, patient: patientTable, person: people }).from(planTable).innerJoin(patientTable, eq(patientTable.id, planTable.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(planScope).orderBy(desc(planTable.startedAt)).limit(500),
+    pharmacyPatients(db, unitIds, undefined, 500),
+    db.select().from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    db.select().from(healthTeams).where(and(eq(healthTeams.isActive, true), unitIds ? inArray(healthTeams.unitId, unitIds) : undefined)).orderBy(asc(healthTeams.name)),
+    db.select().from(healthSpecialties).where(eq(healthSpecialties.isActive, true)).orderBy(asc(healthSpecialties.name)),
+    db.select().from(healthServices).where(eq(healthServices.isActive, true)).orderBy(asc(healthServices.name)),
+    db.select().from(materialTable).where(eq(materialTable.isActive, true)).orderBy(asc(materialTable.name)),
+    db.select({ stock: materialStocks, material: materialTable, warehouse: warehouses }).from(materialStocks).innerJoin(materialTable, eq(materialTable.id, materialStocks.materialId)).innerJoin(warehouses, eq(warehouses.id, materialStocks.warehouseId)).where(and(gt(materialStocks.quantity, 0), unitIds ? inArray(warehouses.healthUnitId, unitIds) : isNotNull(warehouses.healthUnitId))).orderBy(sql`${materialStocks.expirationDate} ASC NULLS LAST`),
+    db.select({ quota: diagnosticSpecializedQuotas, patient: patientTable, person: people, material: materialTable }).from(diagnosticSpecializedQuotas).innerJoin(patientTable, eq(patientTable.id, diagnosticSpecializedQuotas.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).innerJoin(materialTable, eq(materialTable.id, diagnosticSpecializedQuotas.materialId)).where(unitIds ? inArray(patientTable.referenceUnitId, unitIds) : undefined).orderBy(desc(diagnosticSpecializedQuotas.createdAt)),
+    db.select({ record: medicalRecords, patient: patientTable, person: people }).from(medicalRecords).innerJoin(patientTable, eq(patientTable.id, medicalRecords.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(unitIds ? inArray(medicalRecords.unitId, unitIds) : undefined).orderBy(desc(medicalRecords.date)).limit(300),
   ]);
+  const entryRows = await db.select({ entry: diagnosticSpecializedEntries, professional: healthProfessionals, employee: employees, person: people }).from(diagnosticSpecializedEntries).innerJoin(healthProfessionals, eq(healthProfessionals.id, diagnosticSpecializedEntries.professionalId)).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).leftJoin(people, eq(people.id, employees.personId)).where(inArray(diagnosticSpecializedEntries.planId, planRows.map(row => row.plan.id))).orderBy(desc(diagnosticSpecializedEntries.createdAt));
+  const plans = planRows.map(row => ({ ...row.plan, patient: { ...row.patient, person: row.person }, unit: row.unit, team: row.team, entries: entryRows.filter(item => item.entry.planId === row.plan.id).slice(0, 1).map(item => ({ ...item.entry, professional: { ...item.professional, employee: { ...item.employee, person: item.person } } })) }));
+  const planOptions = optionRows.map(row => ({ ...row.plan, patient: { ...row.patient, person: row.person } }));
+  const stocks = stockRows.map(row => ({ ...row.stock, material: row.material, warehouse: row.warehouse }));
+  const quotas = quotaRows.map(row => ({ ...row.quota, patient: { ...row.patient, person: row.person }, material: row.material }));
+  const records = recordRows.map(row => ({ ...row.record, patient: { ...row.patient, person: row.person } }));
   return <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
     <PageHeader title="Centro Especializado" icon={<Accessibility className="size-4 text-violet-700"/>}/>
     <div className="grid shrink-0 gap-2 md:grid-cols-2 xl:grid-cols-3">

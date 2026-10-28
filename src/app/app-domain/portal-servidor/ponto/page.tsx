@@ -3,7 +3,10 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { buttonVariants } from "@/components/ui/button";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
+import type { AttendanceRecord } from "@/lib/contracts/personnel";
 import { Clock3, FileClock, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -78,34 +81,12 @@ export default async function PontoPortalPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   const month = parseMonth(params.month);
   const { context, employee } = access;
-  const where: Prisma.AttendanceRecordWhereInput = { employeeId: employee.id };
-
-  if (month) {
-    const [year, monthNumber] = month.split("-").map(Number);
-    where.date = {
-      gte: new Date(Date.UTC(year, monthNumber - 1, 1)),
-      lt: new Date(Date.UTC(year, monthNumber, 1)),
-    };
-  }
-
-  const total = await context.prisma.attendanceRecord.count({ where });
+  const executor = context.database ?? db;
+  const [year, monthNumber] = month.split("-").map(Number);
+  const where = sql`"employeeId"=${employee.id} ${month ? sql`AND date>=${new Date(Date.UTC(year, monthNumber - 1, 1))} AND date<${new Date(Date.UTC(year, monthNumber, 1))}` : sql``}`;
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "AttendanceRecord" WHERE ${where}`);
   const page = resolvePage(params.page, total);
-  const records = await context.prisma.attendanceRecord.findMany({
-    where,
-    select: {
-      id: true,
-      date: true,
-      entryTime: true,
-      exitTime: true,
-      hoursWorked: true,
-      extraHours: true,
-      bankHours: true,
-      status: true,
-    },
-    orderBy: [{ date: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const records = await portalRows<AttendanceRecord>(executor, sql`SELECT * FROM "AttendanceRecord" WHERE ${where} ORDER BY date DESC,id DESC LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">

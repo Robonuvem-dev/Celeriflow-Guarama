@@ -1,24 +1,36 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { patients as patientTable, healthPatientRegistrations } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthUnits } from "@/db/schema/health-workforce";
+import { addresses } from "@/db/schema/registry";
+import { neighborhoods } from "@/db/schema/localities";
+import { medicalRecords } from "@/db/schema/health-care";
+import { healthPregnancies, healthPregnancyVisits, healthPostpartumVisits, healthChronicAssessments, healthClinicalScreenings } from "@/db/schema/health-care-lines";
 
 const kinds = { PREGNANCY: "Gestação e puerpério", HYPERTENSION: "Hipertensão", DIABETES: "Diabetes", CYTOLOGY: "Citopatológico", MAMMOGRAPHY: "Mamografia" };
 export default async function CareLinesManager({ searchParams }: { searchParams: Promise<{ q?: string; kind?: string }> }) {
   const { q = "", kind = "PREGNANCY" } = await searchParams;
   const context = await getTenantContextForModule("SAUDE");
-  const filter: Prisma.PatientWhereInput = { status: { notIn: ["Unificado", "Falecido"] } };
-  if (context.user.hasHealthAccessScope) filter.referenceUnitId = { in: context.user.allowedHealthUnitIds || [] };
-  if (q.trim()) filter.person = { fullName: { contains: q.trim(), mode: "insensitive" } };
-  if (kind === "PREGNANCY") filter.pregnancies = { some: {} };
-  else if (kind === "HYPERTENSION" || kind === "DIABETES") filter.chronicAssessments = { some: { conditionKind: kind } };
-  else if (kind === "CYTOLOGY" || kind === "MAMMOGRAPHY") filter.screenings = { some: { kind } };
-  const patients = await context.prisma.patient.findMany({ where: filter, orderBy: { person: { fullName: "asc" } }, take: 200, include: {
-    person: { include: { addresses: { include: { neighborhood: true } } } }, registrationProfile: true, referenceUnit: true,
-    pregnancies: { orderBy: { createdAt: "desc" }, include: { visits: { orderBy: { occurredAt: "desc" }, take: 1 }, postpartumVisits: true } },
-    chronicAssessments: { where: kind === "HYPERTENSION" || kind === "DIABETES" ? { conditionKind: kind } : {}, orderBy: { assessedAt: "desc" }, take: 1 },
-    screenings: { where: kind === "CYTOLOGY" || kind === "MAMMOGRAPHY" ? { kind } : {}, orderBy: { requestedAt: "desc" } },
-    records: { where: context.user.hasHealthAccessScope ? { unitId: { in: context.user.allowedHealthUnitIds || [] } } : {}, orderBy: { date: "desc" }, take: 1, select: { id: true } },
-  } });
+  const database = context.database ?? db;
+  const filter = and(notInArray(patientTable.status, ["Unificado", "Falecido"]), context.user.hasHealthAccessScope ? inArray(patientTable.referenceUnitId, context.user.allowedHealthUnitIds || []) : undefined, q.trim() ? sql`strpos(lower(${people.fullName}), lower(${q.trim()})) > 0` : undefined,
+    kind === "PREGNANCY" ? sql`EXISTS (SELECT 1 FROM "HealthPregnancy" p WHERE p."patientId"=${patientTable.id})` : kind === "HYPERTENSION" || kind === "DIABETES" ? sql`EXISTS (SELECT 1 FROM "HealthChronicAssessment" a WHERE a."patientId"=${patientTable.id} AND a."conditionKind"=${kind})` : kind === "CYTOLOGY" || kind === "MAMMOGRAPHY" ? sql`EXISTS (SELECT 1 FROM "HealthClinicalScreening" s WHERE s."patientId"=${patientTable.id} AND s.kind=${kind})` : undefined);
+  const rows = await database.select({ patient: patientTable, person: people, registrationProfile: healthPatientRegistrations, referenceUnit: { name: healthUnits.name } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).leftJoin(healthPatientRegistrations, eq(healthPatientRegistrations.patientId, patientTable.id)).leftJoin(healthUnits, eq(healthUnits.id, patientTable.referenceUnitId)).where(filter).orderBy(asc(people.fullName)).limit(200);
+  const ids = rows.map(row => row.patient.id);
+  const [addressRows, pregnancyRows, assessments, screenings, records] = await Promise.all([
+    database.select({ address: addresses, neighborhood: { name: neighborhoods.name, city: neighborhoods.city, state: neighborhoods.state } }).from(addresses).leftJoin(neighborhoods, eq(neighborhoods.id, addresses.neighborhoodId)).where(inArray(addresses.personId, rows.map(row => row.patient.personId))),
+    database.select().from(healthPregnancies).where(inArray(healthPregnancies.patientId, ids)).orderBy(desc(healthPregnancies.createdAt)),
+    database.select().from(healthChronicAssessments).where(and(inArray(healthChronicAssessments.patientId, ids), kind === "HYPERTENSION" || kind === "DIABETES" ? eq(healthChronicAssessments.conditionKind, kind) : undefined)).orderBy(desc(healthChronicAssessments.assessedAt)),
+    database.select().from(healthClinicalScreenings).where(and(inArray(healthClinicalScreenings.patientId, ids), kind === "CYTOLOGY" || kind === "MAMMOGRAPHY" ? eq(healthClinicalScreenings.kind, kind) : undefined)).orderBy(desc(healthClinicalScreenings.requestedAt)),
+    database.select({ id: medicalRecords.id, patientId: medicalRecords.patientId }).from(medicalRecords).where(and(inArray(medicalRecords.patientId, ids), context.user.hasHealthAccessScope ? inArray(medicalRecords.unitId, context.user.allowedHealthUnitIds || []) : undefined)).orderBy(desc(medicalRecords.date)),
+  ]);
+  const [visits, postpartumVisits] = await Promise.all([
+    database.select().from(healthPregnancyVisits).where(inArray(healthPregnancyVisits.pregnancyId, pregnancyRows.map(row => row.id))).orderBy(desc(healthPregnancyVisits.occurredAt)),
+    database.select().from(healthPostpartumVisits).where(inArray(healthPostpartumVisits.pregnancyId, pregnancyRows.map(row => row.id))),
+  ]);
+  const patients = rows.map(row => ({ ...row.patient, person: { ...row.person, addresses: addressRows.filter(address => address.address.personId === row.patient.personId).map(address => ({ ...address.address, neighborhood: address.neighborhood })) }, registrationProfile: row.registrationProfile, referenceUnit: row.referenceUnit, pregnancies: pregnancyRows.filter(pregnancy => pregnancy.patientId === row.patient.id).map(pregnancy => ({ ...pregnancy, visits: visits.filter(visit => visit.pregnancyId === pregnancy.id).slice(0, 1), postpartumVisits: postpartumVisits.filter(visit => visit.pregnancyId === pregnancy.id) })), chronicAssessments: assessments.filter(assessment => assessment.patientId === row.patient.id).slice(0, 1), screenings: screenings.filter(screening => screening.patientId === row.patient.id), records: records.filter(record => record.patientId === row.patient.id).slice(0, 1) }));
   return <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3"><h1 className="font-semibold">Linhas de cuidado e busca ativa</h1><form className="flex flex-wrap gap-2"><label className="grid gap-1 text-sm">Acompanhamento<select name="kind" defaultValue={kind} className="rounded border p-2">{Object.entries(kinds).map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label><label className="grid gap-1 text-sm">Paciente<input name="q" defaultValue={q} className="rounded border p-2" /></label><button className="self-end rounded border p-2 text-sm">Pesquisar</button></form>
     <p className="text-sm">{patients.length} paciente(s) na consulta{patients.length === 200 ? " · refine os filtros para consultar os demais" : ""}</p>
     {patients.map(patient => {

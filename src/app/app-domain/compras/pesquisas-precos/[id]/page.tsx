@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { loadPriceResearchDetail, listPriceResearchSuppliers } from "@/db/repositories/procurement/price-research";
 import { calculatePriceComparison, isSubmittedPriceQuote } from "@/lib/compras/price-research";
 import { PriceResearchDetailClient } from "./PriceResearchDetailClient";
 
@@ -12,47 +14,11 @@ function supplierName(supplier: { person: { fullName: string } | null; company: 
 }
 
 export default async function PriceResearchDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
+  const context = await getTenantContextForModule("COMPRAS");
   const { id } = await params;
   const [research, suppliers] = await Promise.all([
-    prisma.priceResearch.findUnique({
-      where: { id },
-      include: {
-        process: {
-          include: {
-            purchaseRequest: { select: { number: true } },
-            items: {
-              orderBy: { createdAt: "asc" },
-              include: {
-                catalogItem: { select: { name: true, unit: true } },
-                material: { select: { name: true, unitOfMeasure: true } },
-              },
-            },
-          },
-        },
-        quotes: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            supplier: {
-              select: {
-                id: true,
-                person: { select: { fullName: true } },
-                company: { select: { tradeName: true, corporateName: true } },
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.supplier.findMany({
-      where: { status: "Ativo" },
-      select: {
-        id: true,
-        person: { select: { fullName: true, email: true } },
-        company: { select: { tradeName: true, corporateName: true, emailPrimary: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
+    loadPriceResearchDetail(context.database ?? db, id),
+    listPriceResearchSuppliers(context.database ?? db),
   ]);
   if (!research) notFound();
 

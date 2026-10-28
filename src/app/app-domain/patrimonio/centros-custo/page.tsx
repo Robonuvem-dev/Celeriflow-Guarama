@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Landmark, Plus, Search } from "lucide-react";
-import type { Prisma } from "@prisma/client";
+import { asc, count, ilike, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { costCenters as costCenterTable } from "@/db/schema/master-data";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -22,22 +24,13 @@ export default async function CentrosCustoPage({ searchParams }: { searchParams?
   const params = await searchParams;
   const q = params?.q?.trim() || "";
   const requestedPage = parsePatrimonioListPage(params?.page);
-  const where: Prisma.CostCenterWhereInput = q ? {
-    OR: [
-      { code: { contains: q, mode: "insensitive" } },
-      { name: { contains: q, mode: "insensitive" } },
-      { description: { contains: q, mode: "insensitive" } },
-    ],
-  } : {};
-  const total = await context.prisma.costCenter.count({ where });
+  const pattern = `%${q}%`;
+  const where = q ? or(ilike(costCenterTable.code, pattern), ilike(costCenterTable.name, pattern), ilike(costCenterTable.description, pattern)) : undefined;
+  const [{ total }] = await db.select({ total: count() }).from(costCenterTable).where(where);
   const page = clampPatrimonioListPage(requestedPage, total);
-  const costCenters = await context.prisma.costCenter.findMany({
-    where,
-    include: { _count: { select: { warehouses: true } } },
-    orderBy: [{ code: "asc" }, { name: "asc" }],
-    skip: (page - 1) * PATRIMONIO_LIST_PAGE_SIZE,
-    take: PATRIMONIO_LIST_PAGE_SIZE,
-  });
+  const costCenters = await db.select({ costCenter: costCenterTable, warehouses: sql<number>`(SELECT count(*)::int FROM "Warehouse" WHERE "costCenterId"=${costCenterTable.id})` }).from(costCenterTable)
+    .where(where).orderBy(asc(costCenterTable.code), asc(costCenterTable.name)).offset((page - 1) * PATRIMONIO_LIST_PAGE_SIZE).limit(PATRIMONIO_LIST_PAGE_SIZE)
+    .then(rows => rows.map(row => ({ ...row.costCenter, _count: { warehouses: row.warehouses } })));
   const canCreate = canPerformModuleOperation(context.user, "PATRIMONIO", "create");
   const canUpdate = canPerformModuleOperation(context.user, "PATRIMONIO", "update");
   const canDelete = canPerformModuleOperation(context.user, "PATRIMONIO", "delete");

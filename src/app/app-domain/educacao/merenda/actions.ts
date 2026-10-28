@@ -3,13 +3,12 @@
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-async function getTenantPrisma() {
-  return (await getTenantContextForModuleOperation("EDUCACAO", "create")).prisma;
-}
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { recordSchoolMealInTransaction } from "@/lib/educacao/school-meal-service";
 
 export async function createSchoolMeal(formData: FormData) {
-  const prisma = await getTenantPrisma();
+  await getTenantContextForModuleOperation("EDUCACAO", "create");
   const schoolId = formData.get("schoolId") as string;
   const menu = formData.get("menu") as string;
   const servedQuantity = Number(formData.get("servedQuantity")) || 0;
@@ -21,44 +20,7 @@ export async function createSchoolMeal(formData: FormData) {
   }
 
   try {
-    // 1. Create the SchoolMeal record
-    await prisma.schoolMeal.create({
-      data: {
-        schoolId,
-        menu,
-        servedQuantity,
-        totalCost,
-        notes,
-      },
-    });
-
-    // 2. Integration with Finance (Create Expense/Empenho if cost > 0)
-    if (totalCost > 0) {
-      // Find Education secretariat
-      let secretariat = await prisma.secretariat.findFirst({
-        where: { name: { contains: "Educação", mode: "insensitive" } }
-      });
-
-      // Fallback: If no "Educação" secretariat, just get the first one available
-      if (!secretariat) {
-        secretariat = await prisma.secretariat.findFirst();
-      }
-
-      // We need a BudgetAppropriation
-      const appropriation = await prisma.budgetAppropriation.findFirst();
-
-      if (secretariat && appropriation) {
-        await prisma.expense.create({
-          data: {
-            description: `Custo Merenda Escolar - ${menu}`,
-            value: totalCost,
-            status: "Empenhada", // Automaticly empenhada
-            appropriationId: appropriation.id,
-            secretariatId: secretariat.id,
-          }
-        });
-      }
-    }
+    await withDatabaseTransaction(databaseConnection, tx => recordSchoolMealInTransaction(tx, { schoolId, menu, servedQuantity, totalCost, notes }));
 
   } catch (error) {
     console.error("Erro ao registrar merenda:", error);

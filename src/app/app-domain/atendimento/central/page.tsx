@@ -1,11 +1,16 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, eq, gte, ilike, lt, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { db } from "@/db/client";
+import { tickets as ticketTable, supportChannels } from "@/db/schema/attendance-portals";
+import { departments as departmentTable } from "@/db/schema/administration";
+import { ticketScopeCondition } from "@/db/repositories/attendance-portals/scope";
+import { listAttendanceTickets } from "@/db/repositories/attendance-portals/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { ErpStatusBadge, ErpTableContainer, ErpTableTd, ErpTableTh, ErpTableThead, ErpTableTr } from "@/components/app-ui/erp/ErpTable";
-import { getAttendanceContext, ticketScope } from "@/lib/attendance/access";
+import { getAttendanceContext } from "@/lib/attendance/access";
 
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 20;
@@ -17,22 +22,25 @@ export default async function CentralDemandasPage({ searchParams }: { searchPara
   const search = q.trim();
   const now = new Date();
   const deadlineWarning = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-  const filters: Prisma.TicketWhereInput[] = [ticketScope(context)];
-  if (status) filters.push({ status });
-  if (priority) filters.push({ priority });
-  if (channelId) filters.push({ channelId });
-  if (departmentId && context.attendanceAccess.isManager) filters.push({ departmentId });
-  if (overdue === "1") filters.push({ dueAt: { lt: now }, status: { notIn: ["Concluído", "Cancelado"] } });
-  if (deadline === "upcoming") filters.push({ dueAt: { gte: now, lte: deadlineWarning }, status: { notIn: ["Concluído", "Cancelado"] } });
-  if (search) filters.push({ OR: [{ ticketNumber: { contains: search, mode: "insensitive" } }, { subject: { contains: search, mode: "insensitive" } }, { person: { fullName: { contains: search, mode: "insensitive" } } }, { company: { corporateName: { contains: search, mode: "insensitive" } } }] });
-  const where = { AND: filters };
-  const total = await context.prisma.ticket.count({ where });
+  const filters: (SQL | undefined)[] = [ticketScopeCondition(context)];
+  if (status) filters.push(eq(ticketTable.status, status));
+  if (priority) filters.push(eq(ticketTable.priority, priority));
+  if (channelId) filters.push(eq(ticketTable.channelId, channelId));
+  if (departmentId && context.attendanceAccess.isManager) filters.push(eq(ticketTable.departmentId, departmentId));
+  if (overdue === "1") filters.push(and(lt(ticketTable.dueAt, now), notInArray(ticketTable.status, ["Concluído", "Cancelado"])));
+  if (deadline === "upcoming") filters.push(and(gte(ticketTable.dueAt, now), lte(ticketTable.dueAt, deadlineWarning), notInArray(ticketTable.status, ["Concluído", "Cancelado"])));
+  if (search) {
+    const pattern = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
+    filters.push(or(ilike(ticketTable.ticketNumber, pattern), ilike(ticketTable.subject, pattern), sql`EXISTS(SELECT 1 FROM "Person" p WHERE p.id=${ticketTable.personId} AND p."fullName" ILIKE ${pattern})`, sql`EXISTS(SELECT 1 FROM "Company" c WHERE c.id=${ticketTable.companyId} AND c."corporateName" ILIKE ${pattern})`));
+  }
+  const where = and(...filters);
+  const [{ total }] = await db.select({ total: count() }).from(ticketTable).where(where);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requestedPage, pages);
   const [tickets, channels, departments] = await Promise.all([
-    context.prisma.ticket.findMany({ where, take: PAGE_SIZE, skip: (page - 1) * PAGE_SIZE, orderBy: [{ dueAt: "asc" }, { updatedAt: "desc" }], include: { person: { select: { fullName: true } }, company: { select: { corporateName: true, tradeName: true } }, channel: { select: { name: true } }, department: { select: { name: true } }, assignee: { select: { name: true } } } }),
-    context.prisma.supportChannel.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    context.attendanceAccess.isManager ? context.prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : [],
+    listAttendanceTickets(db, where, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, order: "deadline-updated" }),
+    db.select({ id: supportChannels.id, name: supportChannels.name }).from(supportChannels).where(eq(supportChannels.isActive, true)).orderBy(asc(supportChannels.name)),
+    context.attendanceAccess.isManager ? db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(eq(departmentTable.isActive, true)).orderBy(asc(departmentTable.name)) : [],
   ]);
   const values = { q, status, priority, channelId, departmentId: context.attendanceAccess.isManager ? departmentId : "", overdue, deadline };
   const href = (targetPage: number) => {

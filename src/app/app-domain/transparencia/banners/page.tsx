@@ -4,14 +4,15 @@ import { Eye } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { BannersClient, type BannerRow } from "./BannersClient";
+import { db } from "@/db/client";
+import { asc } from "drizzle-orm";
+import { portalBanners } from "@/db/schema/portal-content";
 
 export const dynamic = "force-dynamic";
 
 export default async function BannersPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
-  const banners = await prisma.portalBanner.findMany({
-    orderBy: { order: 'asc' },
-  });
+  await getTenantContextForModule("TRANSPARENCIA");
+  const banners = await db.select().from(portalBanners).orderBy(asc(portalBanners.order));
   const rows: BannerRow[] = banners.map((banner) => ({
     id: banner.id,
     title: banner.title,

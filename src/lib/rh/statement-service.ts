@@ -1,4 +1,6 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { hrEmploymentContracts, hrPayrollRuns, hrPayrollStatements, payrolls } from "@/db/schema/personnel-workforce";
 import { z } from "zod";
 import PDFDocument from "pdfkit";
 import { consignmentMarginSchema } from "./consignment-margin";
@@ -21,9 +23,12 @@ const snapshotSchema = z.object({
   pensions: z.array(z.object({ id: z.string(), courtReference: z.string(), basis: z.string(), base: z.string(), amount: z.string(), deductFromIncomeTax: z.boolean(), beneficiary: z.object({ id: z.string(), fullName: z.string() }) })).optional().default([]),
 });
 
-export async function getPayrollStatement(db: PrismaClient | Prisma.TransactionClient, id: string, employeeId?: string) {
-  const statement = await db.hrPayrollStatement.findFirst({ where: { id, ...(employeeId ? { contract: { employeeId }, releaseAt: { lte: new Date() }, revokedAt: null, run: { mode: "OFICIAL", status: { in: ["FECHADA", "CALCULADA"] } } } : {}) }, include: { run: { include: { payroll: true } } } });
-  if (!statement) throw new Error("Demonstrativo indisponível.");
+export async function getPayrollStatement(db: DatabaseExecutor, id: string, employeeId?: string) {
+  const [row] = await db.select({ statement: hrPayrollStatements, run: hrPayrollRuns, payroll: payrolls }).from(hrPayrollStatements)
+    .innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId))
+    .where(and(eq(hrPayrollStatements.id, id), employeeId ? and(sql`EXISTS (SELECT 1 FROM ${hrEmploymentContracts} WHERE ${hrEmploymentContracts.id}=${hrPayrollStatements.contractId} AND ${hrEmploymentContracts.employeeId}=${employeeId})`, lte(hrPayrollStatements.releaseAt, new Date()), isNull(hrPayrollStatements.revokedAt), eq(hrPayrollRuns.mode, "OFICIAL"), inArray(hrPayrollRuns.status, ["FECHADA", "CALCULADA"])) : undefined)).limit(1);
+  if (!row) throw new Error("Demonstrativo indisponível.");
+  const statement = { ...row.statement, run: { ...row.run, payroll: row.payroll } };
   if (employeeId && !await personalStatementPublicationAllowed(db, statement, employeeId)) throw new Error("Demonstrativo indisponível.");
   return { id: statement.id, ...snapshotSchema.parse(statement.snapshot), competence: statement.run.payroll.competence, payrollType: statement.run.payroll.type, scope: statement.run.scope, mode: statement.run.mode, createdAt: statement.run.createdAt, gross: statement.gross.toFixed(2), deductions: statement.deductions.toFixed(2), net: statement.net.toFixed(2), employer: statement.employer.toFixed(2) };
 }

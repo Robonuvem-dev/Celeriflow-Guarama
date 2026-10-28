@@ -1,19 +1,24 @@
-import { prisma } from "@/lib/prisma";
+import { and, asc, desc, eq, exists, inArray, isNotNull } from "drizzle-orm";
+import { db } from "@/db/client";
+import { findConstructionCaseForPortal } from "@/db/repositories/infrastructure/construction-access";
+import { constructionMessages, constructionServiceRequests } from "@/db/schema/construction-portal";
+import { constructionIssuedDocuments } from "@/db/schema/construction-documents";
+import { documents as gedDocuments } from "@/db/schema/registry";
+import { processDocuments } from "@/db/schema/processes";
 import { getConstructionPortalIdentity } from "@/lib/obras/construction-portal-access";
-import { constructionPortalCaseWhere } from "@/lib/obras/construction-portal-policy";
 import { constructionRequestKinds } from "@/lib/obras/construction-request-policy";
 import { definitionSchema } from "@/lib/obras/construction-rules";
 import ConstructionServiceRequestForm from "./ConstructionServiceRequestForm";
 
 export default async function ConstructionExternalRequests({ caseId, termId, accepted }: { caseId: string; termId: string | undefined; accepted: boolean }) {
   const identity = await getConstructionPortalIdentity();
-  const record = await prisma.constructionCase.findFirst({ where: { AND: [{ id: caseId }, constructionPortalCaseWhere(identity.id)] }, select: { processId: true, revisionCount: true, reviewStatus: true, additionalValues: true, formSnapshot: true } });
+  const record = await findConstructionCaseForPortal(db, caseId, identity.id);
   if (!record) return null;
-  const shared = await prisma.constructionMessage.findMany({ where: { caseId, documentId: { not: null } }, select: { documentId: true }, orderBy: { createdAt: "desc" }, take: 200 });
+  const shared = await db.select({ documentId: constructionMessages.documentId }).from(constructionMessages).where(and(eq(constructionMessages.caseId, caseId), isNotNull(constructionMessages.documentId))).orderBy(desc(constructionMessages.createdAt)).limit(200);
   const [requests, documents, permits] = await Promise.all([
-    prisma.constructionServiceRequest.findMany({ where: { caseId }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 50, select: { id: true, kind: true, status: true, notes: true, createdAt: true, resolution: true } }),
-    prisma.document.findMany({ where: { id: { in: shared.flatMap((message) => message.documentId ? [message.documentId] : []) }, processDocuments: { some: { processId: record.processId } }, status: { in: ["Válido", "Assinado"] } }, select: { id: true, title: true }, orderBy: { title: "asc" }, take: 200 }),
-    prisma.constructionIssuedDocument.findMany({ where: { caseId, kind: "PERMIT", status: "PUBLISHED" }, select: { id: true, number: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.select({ id: constructionServiceRequests.id, kind: constructionServiceRequests.kind, status: constructionServiceRequests.status, notes: constructionServiceRequests.notes, createdAt: constructionServiceRequests.createdAt, resolution: constructionServiceRequests.resolution }).from(constructionServiceRequests).where(eq(constructionServiceRequests.caseId, caseId)).orderBy(desc(constructionServiceRequests.createdAt), asc(constructionServiceRequests.id)).limit(50),
+    db.select({ id: gedDocuments.id, title: gedDocuments.title }).from(gedDocuments).where(and(inArray(gedDocuments.id, shared.flatMap((message) => message.documentId ? [message.documentId] : [])), exists(db.select({ id: processDocuments.id }).from(processDocuments).where(and(eq(processDocuments.documentId, gedDocuments.id), eq(processDocuments.processId, record.processId)))), inArray(gedDocuments.status, ["Válido", "Assinado"]))).orderBy(asc(gedDocuments.title)).limit(200),
+    db.select({ id: constructionIssuedDocuments.id, number: constructionIssuedDocuments.number }).from(constructionIssuedDocuments).where(and(eq(constructionIssuedDocuments.caseId, caseId), eq(constructionIssuedDocuments.kind, "PERMIT"), eq(constructionIssuedDocuments.status, "PUBLISHED"))).orderBy(desc(constructionIssuedDocuments.createdAt)).limit(100),
   ]);
   const snapshot = record.formSnapshot as { definition?: unknown };
   const fields = definitionSchema.parse(snapshot.definition || { fields: [], checks: [], documents: [] }).fields;

@@ -1,0 +1,22 @@
+export type FamilyInput = { code: string | null; responsiblePersonId: string | null; status: string };
+export type GovernmentEntityInput = { code: string; name: string; type: string; cnpj: string | null; companyId: string | null; parentId: string | null };
+export type CostCenterInput = { code: string; name: string; description: string | null; parentId: string | null; governmentEntityId: string | null; secretariatId: string | null; departmentId: string | null; administrativeUnitId: string | null };
+export type CityInput = { stateId: string; ibgeCode: string; name: string };
+export type NeighborhoodInput = { name: string; type: string; cityId?: string; city?: string; state?: string; adminRegion: string | null; notes: string | null };
+export type StreetInput = { name: string; type: string; zipCode: string | null; cityId?: string; city?: string; state?: string; neighborhoodId: string | null };
+export type BankInput = { compe: string; ispb: string; name: string; shortName: string };
+export type BankBranchInput = { bankId: string; code: string; name: string; cnpj: string | null; cityId: string | null };
+export type TaxInput = { code: string | null; name: string; taxType: string; governmentLevel: string | null; revenueNature: string | null; effectiveFrom: Date | null; effectiveUntil: Date | null; description: string | null };
+export type CurrencyInput = { isoCode: string; name: string; symbol: string; decimalPlaces: number; isDefault: boolean };
+export type CatalogItemInput = { code: string | null; name: string; description: string | null; unit: string; category: string | null; productKind: string; specification: string | null; externalCode: string | null };
+export type LegalReportSignerInput = { personId: string | null; employeeId: string | null; governmentEntityId: string | null; signingRole: string; reportTypes: string[]; signatureOrder: number; effectiveFrom: Date; effectiveUntil: Date | null };
+export type LegalTextInput = { type: string; number: string; summary: string; governmentLevel: string; issuingBody: string; publicationDate: Date | null; effectiveFrom: Date | null; effectiveUntil: Date | null; governmentEntityId: string | null };
+export type LegalTextVersionSource = { content: string; summary: string | null; publicationDate: Date | null; effectiveFrom: Date | null; effectiveUntil: Date | null; versionNumber: number };
+export type ConsistencyRunRecord = { id: string; area: string; runType: string; status: string; startedAt: Date; completedAt: Date | null; createdAt: Date; updatedAt: Date };
+export type ConsistencyIssueRecord = { id: string; runId: string; area: string; issueType: string; recordType: string; recordId: string; severity: string; description: string; status: string; detectedAt: Date; resolvedAt: Date | null; createdAt: Date; updatedAt: Date };
+export type MasterDataPageData = {
+  rows: { id: string; active: boolean; values: Record<string, string | string[] | boolean> }[];
+  total: number;
+  options: Record<string, { value: string; label: string }[]>;
+};
+export type CanonicalReconciliationInput = { identityType: "PF" | "PJ"; identityId: string; taxpayerId?: string; supplierId?: string; creditorId?: string; reason: string; idempotencyKey: string };

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
 import { getCurrentTenantContext } from "@/lib/platform/tenant-context";
 import { getSupplierPriceQuoteReportAccess } from "@/lib/compras/price-research";
+import { db } from "@/db/client";
 import { CompactItemsTable } from "../../../CompactItemsTable";
 import { PrintQuoteButton } from "./PrintQuoteButton";
 
@@ -18,7 +19,7 @@ export default async function SupplierPriceQuoteReportPage({ params }: { params:
   let report: Awaited<ReturnType<typeof getSupplierPriceQuoteReportAccess>> | null = null;
   try {
     const context = await getCurrentTenantContext();
-    report = await getSupplierPriceQuoteReportAccess(context.prisma, { accessKey: key, authenticatedEmail: context.user.email });
+    report = await getSupplierPriceQuoteReportAccess(context.database ?? db, { accessKey: key, authenticatedEmail: context.user.email });
   } catch {
     return <UnavailableReport message="A proposta não foi encontrada ou este acesso não está autorizado." />;
   }

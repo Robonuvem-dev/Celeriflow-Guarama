@@ -6,6 +6,11 @@ import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-contex
 import { nextMaterialCode } from "@/lib/patrimonio/identifiers";
 import { materialUnitValues } from "@/lib/patrimonio/material-units";
 import { syncMaterialCatalog } from "@/lib/compras/shared-catalog";
+import { eq } from "drizzle-orm";
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { materials } from "@/db/schema/assets-stock";
+import { activeMaterialCategory, activeMaterialSubcategory, materialCatalogUsage } from "@/db/repositories/assets/material-catalog";
 
 const materialEditInput = z.object({
   description: z.string().trim().max(4000).optional(),
@@ -31,33 +36,14 @@ function revalidateMaterials() {
 export async function updateMaterialAction(id: string, input: MaterialEditInput): Promise<MaterialActionResult> {
   try {
     const parsed = materialEditInput.parse(input);
-    const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
+    await getTenantContextForModuleOperation("PATRIMONIO", "update");
     const [material, category] = await Promise.all([
-      context.prisma.material.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          type: true,
-          unitOfMeasure: true,
-          receiptItems: { select: { quantity: true, quantityIncorporated: true } },
-          _count: {
-            select: {
-              stocks: true,
-              movements: true,
-              requests: true,
-              purchaseRequestItems: true,
-              purchaseProcessItems: true,
-              receiptItems: true,
-              obrasServiceMaterials: true,
-            },
-          },
-        },
-      }),
-      context.prisma.materialCategory.findFirst({ where: { id: parsed.categoryId, isActive: true }, select: { id: true } }),
+      materialCatalogUsage(db, id),
+      activeMaterialCategory(db, parsed.categoryId),
     ]);
     if (!material) throw new Error("Material não encontrado.");
     if (!category) throw new Error("Categoria de material não encontrada ou inativa.");
-    if (parsed.subcategoryId && !await context.prisma.materialSubcategory.count({ where: { id: parsed.subcategoryId, categoryId: category.id, isActive: true } })) throw new Error("Selecione uma subclasse ativa da categoria informada.");
+    if (parsed.subcategoryId && !await activeMaterialSubcategory(db, parsed.subcategoryId, category.id)) throw new Error("Selecione uma subclasse ativa da categoria informada.");
     const unitOfMeasure = parsed.unitOfMeasure;
     if (unitOfMeasure !== material.unitOfMeasure && !materialUnitValues.some(unit => unit === unitOfMeasure)) throw new Error("Selecione UN, KG, m ou KT.");
     const typeChanged = material.type !== parsed.type;
@@ -70,12 +56,9 @@ export async function updateMaterialAction(id: string, input: MaterialEditInput)
     if (typeChanged && linkedRecords > 0 && !hasPendingAssetReceipt) {
       throw new Error("O tipo não pode ser alterado após o material possuir estoque ou documentos vinculados.");
     }
-    await context.prisma.$transaction(async tx => {
+    await withDatabaseTransaction(databaseConnection, async tx => {
     const code = typeChanged ? await nextMaterialCode(tx, parsed.type) : undefined;
-    await tx.material.update({
-      where: { id: material.id },
-      data: { description: parsed.description || null, categoryId: category.id, subcategoryId: parsed.subcategoryId || null, type: parsed.type, unitOfMeasure, ...(code ? { code } : {}) },
-    });
+    await tx.update(materials).set({ description: parsed.description || null, categoryId: category.id, subcategoryId: parsed.subcategoryId || null, type: parsed.type, unitOfMeasure, ...(code ? { code } : {}) }).where(eq(materials.id, material.id));
     await syncMaterialCatalog(tx, material.id);
     });
     revalidateMaterials();
@@ -87,11 +70,11 @@ export async function updateMaterialAction(id: string, input: MaterialEditInput)
 
 export async function setMaterialActiveAction(id: string, active: boolean): Promise<MaterialActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("PATRIMONIO", "update");
-    const material = await context.prisma.material.findUnique({ where: { id }, select: { id: true } });
+    await getTenantContextForModuleOperation("PATRIMONIO", "update");
+    const [material] = await db.select({ id: materials.id }).from(materials).where(eq(materials.id, id)).limit(1);
     if (!material) throw new Error("Material não encontrado.");
-    await context.prisma.$transaction(async tx => {
-      await tx.material.update({ where: { id: material.id }, data: { isActive: active } });
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      await tx.update(materials).set({ isActive: active }).where(eq(materials.id, material.id));
       await syncMaterialCatalog(tx, material.id);
     });
     revalidateMaterials();
@@ -103,28 +86,12 @@ export async function setMaterialActiveAction(id: string, active: boolean): Prom
 
 export async function deleteMaterialAction(id: string): Promise<MaterialActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("PATRIMONIO", "delete");
-    const material = await context.prisma.material.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        _count: {
-          select: {
-            stocks: true,
-            movements: true,
-            requests: true,
-            purchaseRequestItems: true,
-            purchaseProcessItems: true,
-            receiptItems: true,
-            obrasServiceMaterials: true,
-          },
-        },
-      },
-    });
+    await getTenantContextForModuleOperation("PATRIMONIO", "delete");
+    const material = await materialCatalogUsage(db, id);
     if (!material) throw new Error("Material não encontrado.");
     const linkedRecords = Object.values(material._count).reduce((total, value) => total + value, 0);
     if (linkedRecords > 0) throw new Error("Este material possui estoque, movimentações ou documentos vinculados. Inative-o em vez de excluir.");
-    await context.prisma.material.delete({ where: { id: material.id } });
+    await db.delete(materials).where(eq(materials.id, material.id));
     revalidateMaterials();
     return {};
   } catch (error) {

@@ -1,9 +1,12 @@
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
 import { getIdTokenPrincipal, getSessionPrincipal, SESSION_COOKIE_NAME, type SessionPrincipal } from "@/lib/platform/session";
-import type { PrismaClient } from "@prisma/client";
-import { isSystemAdministratorEmail, SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
-import { getCurrentHealthUnitIds } from "@/lib/saude/health-access-policy";
+import { SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
+import { db } from "@/db/client";
+import type { Database } from "@/db/connection";
+import { findModuleActivation } from "@/db/repositories/platform/identity";
+import type { PermissionUser } from "@/lib/contracts/identity";
+import { resolveIdentityUser } from "./identity-service";
+import { AccessError } from "./access-error";
 
 export { canIssueFinancialReports } from "@/lib/financeiro/report-access";
 
@@ -11,30 +14,11 @@ export { canIssueFinancialReports } from "@/lib/financeiro/report-access";
 // Access is resolved from the municipal database, which is the only active
 // application database.
 
-export class AccessError extends Error {
-  constructor(message: string, readonly status: 401 | 403 | 404 | 423) {
-    super(message);
-  }
-}
+export { AccessError } from "./access-error";
 
 export type AppContext = {
-  user: {
-    id: string;
-    firebaseUid: string;
-    email: string;
-    name: string;
-    role: string;
-    profileCode: string;
-    permissions?: string | null;
-    modulePermissions: { code: string; canView: boolean; canEdit: boolean }[];
-    allowedBudgetUnitIds: string[];
-    allowedHealthUnitIds?: string[];
-    hasHealthAccessScope?: boolean;
-    employeeId: string | null;
-    departmentId: string | null;
-    secretariatId: string | null;
-  };
-  prisma: PrismaClient;
+  user: PermissionUser;
+  database?: Database;
 };
 
 type RolePermissions = {
@@ -193,130 +177,13 @@ export function assertHealthUnitAccess(user: AppContext["user"], healthUnitId: s
 }
 
 async function resolveUser(principal: SessionPrincipal | null): Promise<AppContext["user"]> {
-  if (!principal) throw new AccessError("Sessao invalida ou expirada.", 401);
-
-  let usuario;
-  let allowedBudgetUnitIds: string[] = [];
-
-  try {
-    usuario = await prisma.usuario.findUnique({
-      where: { firebaseUid: principal.firebaseUid },
-      include: {
-        perfil: true,
-        employee: true,
-        permissoesModulo: {
-          include: { modulo: { select: { codigo: true } } },
-        },
-        unidadesGestoras: {
-          select: { budgetUnitId: true },
-        },
-        healthAccessScopes: true,
-      },
-    });
-    if (usuario?.unidadesGestoras) {
-      allowedBudgetUnitIds = usuario.unidadesGestoras.map((ug) => ug.budgetUnitId);
-    }
-  } catch {
-    // Fallback if UsuarioUnidadeGestora table does not exist yet in DB migration
-    usuario = await prisma.usuario.findUnique({
-      where: { firebaseUid: principal.firebaseUid },
-      include: {
-        perfil: true,
-        employee: true,
-        permissoesModulo: {
-          include: { modulo: { select: { codigo: true } } },
-        },
-        healthAccessScopes: true,
-      },
-    });
-  }
-
-  // The configured technical administrator is always repaired to the protected
-  // profile after Firebase has verified the identity, even if a stale row exists.
-  if (isSystemAdministratorEmail(principal.email)) {
-    const profile = await prisma.configuracaoPerfil.upsert({
-      where: { codigo: SYSTEM_ADMIN_PROFILE_CODE },
-      create: {
-        id: "system-administrator",
-        codigo: SYSTEM_ADMIN_PROFILE_CODE,
-        nome: "Administrador",
-        descricao: "Acesso administrativo inicial do sistema.",
-        permissoes: JSON.stringify({ acesso: "total" }),
-        ativo: true,
-      },
-      update: {
-        codigo: SYSTEM_ADMIN_PROFILE_CODE,
-        nome: "Administrador",
-        descricao: "Acesso administrativo inicial do sistema.",
-        permissoes: JSON.stringify({ acesso: "total" }),
-        ativo: true,
-      },
-    });
-
-    usuario = await prisma.usuario.upsert({
-      where: { email: principal.email },
-      create: {
-        nome: principal.name,
-        email: principal.email,
-        senha: "firebase",
-        firebaseUid: principal.firebaseUid,
-        ativo: true,
-        perfilId: profile.id,
-      },
-      update: {
-        nome: principal.name,
-        firebaseUid: principal.firebaseUid,
-        ativo: true,
-        perfilId: profile.id,
-      },
-      include: {
-        perfil: true,
-        employee: true,
-        permissoesModulo: {
-          include: { modulo: { select: { codigo: true } } },
-        },
-        unidadesGestoras: {
-          select: { budgetUnitId: true },
-        },
-        healthAccessScopes: true,
-      },
-    });
-    allowedBudgetUnitIds = usuario.unidadesGestoras.map((ug) => ug.budgetUnitId);
-  }
-
-  if (!usuario || !usuario.ativo || !usuario.perfil.ativo) {
-    throw new AccessError("Usuario sem acesso ao sistema.", 403);
-  }
-
-  const healthAccessScopes = usuario.healthAccessScopes ?? [];
-  const allowedHealthUnitIds = getCurrentHealthUnitIds(healthAccessScopes);
-
-  return {
-    id: usuario.id,
-    firebaseUid: principal.firebaseUid,
-    email: usuario.email,
-    name: usuario.nome || principal.name,
-    role: usuario.perfil.nome,
-    profileCode: usuario.perfil.codigo,
-    permissions: usuario.perfil.permissoes ?? null,
-    modulePermissions: usuario.permissoesModulo.map((permission) => ({
-      code: permission.modulo.codigo.toUpperCase(),
-      canView: permission.canView,
-      canEdit: permission.canEdit,
-    })),
-    allowedBudgetUnitIds,
-    allowedHealthUnitIds,
-    hasHealthAccessScope: healthAccessScopes.length > 0,
-    employeeId: usuario.employee?.id ?? null,
-    departmentId: usuario.employee?.departmentId ?? null,
-    secretariatId: usuario.employee?.secretariatId ?? null,
-  };
+  return resolveIdentityUser(db, principal);
 }
 
 function buildAppContext(user: AppContext["user"]): AppContext {
   return {
     user,
-    prisma,
+    database: db,
   };
 }
 
@@ -342,10 +209,7 @@ export async function getTenantContextForSystemAdministration(): Promise<AppCont
 export async function getTenantContextForModule(moduleCode: string): Promise<AppContext> {
   const context = await getCurrentTenantContext();
   const codeUpper = moduleCode.toUpperCase();
-  const moduleConfig = await context.prisma.configuracaoModulo.findUnique({
-    where: { codigo: codeUpper },
-    select: { ativo: true },
-  });
+  const moduleConfig = await findModuleActivation(context.database ?? db, codeUpper);
   if (moduleConfig && !moduleConfig.ativo) {
     throw new AccessError(`O módulo ${moduleCode} está inativo nesta instância.`, 423);
   }

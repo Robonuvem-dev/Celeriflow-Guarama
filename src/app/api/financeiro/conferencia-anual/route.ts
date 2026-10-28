@@ -1,6 +1,10 @@
 import { AccessError, getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { resolveFinancialReportScope } from "@/lib/financeiro/report-scope";
 import { z } from "zod";
+import { db } from "@/db/client";
+import { eq } from "drizzle-orm";
+import { financialAuditLogs } from "@/db/schema/finance-identity";
+import { PersistenceError } from "@/db/errors";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,9 +14,11 @@ export async function GET(request: Request) {
   try {
     const context = await getTenantContextForModuleOperation("FINANCEIRO", "issueReports");
     const reportId = new URL(request.url).searchParams.get("reportId") ?? "";
-    const record = await context.prisma.financialAuditLog.findUniqueOrThrow({ where: { id: reportId } });
+    const executor = context.database ?? db;
+    const [record] = await executor.select().from(financialAuditLogs).where(eq(financialAuditLogs.id, reportId));
+    if (!record) throw new PersistenceError("not-found", "Emissão de conferência anual não encontrada.");
     if (record.action !== "ANNUAL_CONSISTENCY_REPORT" || record.entityType !== "AnnualConsistencyReport" || !record.financialYearId) throw new Error("Emissão de conferência anual não encontrada.");
-    const scope = await resolveFinancialReportScope(context.prisma, record.financialYearId, { budgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
+    const scope = await resolveFinancialReportScope(executor, record.financialYearId, { budgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
     if (!scope.fullEntity || !scope.governmentEntityId) throw new Error("Relatório anual exige autorização para todas as UGs do ente.");
     const report = reportSchema.parse(record.payload);
     if (report.financialYearId !== record.financialYearId || report.governmentEntityId !== scope.governmentEntityId) throw new Error("Memória do relatório diverge do exercício autorizado.");

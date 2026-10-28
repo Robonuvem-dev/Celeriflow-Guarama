@@ -5,7 +5,12 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { assetOperationWhere } from "@/lib/patrimonio/asset-operations";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { assets as assetTable, assetCategories } from "@/db/schema/assets";
+import { equipmentCustodies, materials, materialCategories } from "@/db/schema/assets-stock";
+import { departments as departmentTable, employees } from "@/db/schema/administration";
+import { realEstates } from "@/db/schema/registry";
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { clampPatrimonioListPage, patrimonioListHref, parsePatrimonioListPage, PATRIMONIO_LIST_PAGE_SIZE } from "../listing";
@@ -22,27 +27,33 @@ function AssetRowActions({ asset, canUpdate }: { asset: { id: string; name: stri
 
 export default async function BensPatrimoniaisPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const context = await getTenantContextForModule("PATRIMONIO");
-  const { prisma } = context;
   const params = await searchParams;
   const q = params?.q?.trim() || "", status = params?.status || "", departmentId = params?.department || "", categoryId = params?.category || "";
   const tab: Tab = params?.tab === "tombamento" ? "tombamento" : params?.tab === "sem-tombamento" ? "sem-tombamento" : "lista";
   const scope = assetOperationWhere(context);
-  const where: Prisma.AssetWhereInput = { ...scope, ...(status ? { status } : {}), ...(departmentId ? { departmentId } : {}), ...(categoryId ? { categoryId } : {}) };
-  if (scope.departmentId && departmentId && scope.departmentId !== departmentId) where.AND = [{ id: { in: [] } }];
-  if (q) where.OR = [{ name: { contains: q, mode: "insensitive" } }, { code: { contains: q, mode: "insensitive" } }, { patrimonyNumber: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }, { brand: { contains: q, mode: "insensitive" } }, { model: { contains: q, mode: "insensitive" } }, { responsible: { name: { contains: q, mode: "insensitive" } } }];
-  const custodyWhere: Prisma.EquipmentCustodyWhereInput = { ...(scope.departmentId ? { departmentId: scope.departmentId as string } : {}), ...(departmentId ? { departmentId } : {}), ...(status ? { status } : {}), ...(q ? { OR: [{ code: { contains: q, mode: "insensitive" } }, { name: { contains: q, mode: "insensitive" } }, { serialNumber: { contains: q, mode: "insensitive" } }, { responsible: { name: { contains: q, mode: "insensitive" } } }] } : {}) };
-  if (scope.departmentId && departmentId && scope.departmentId !== departmentId) custodyWhere.AND = [{ id: { in: [] } }];
+  const pattern = `%${q}%`;
+  const where = and(scope.departmentId ? eq(assetTable.departmentId, scope.departmentId) : undefined, departmentId ? eq(assetTable.departmentId, departmentId) : undefined,
+    status ? eq(assetTable.status, status) : undefined, categoryId ? eq(assetTable.categoryId, categoryId) : undefined,
+    q ? or(ilike(assetTable.name, pattern), ilike(assetTable.code, pattern), ilike(assetTable.patrimonyNumber, pattern), ilike(assetTable.description, pattern), ilike(assetTable.brand, pattern), ilike(assetTable.model, pattern), sql`EXISTS (SELECT 1 FROM "Employee" e WHERE e.id=${assetTable.responsibleId} AND e.name ILIKE ${pattern})`) : undefined);
+  const custodyWhere = and(scope.departmentId ? eq(equipmentCustodies.departmentId, scope.departmentId) : undefined, departmentId ? eq(equipmentCustodies.departmentId, departmentId) : undefined,
+    status ? eq(equipmentCustodies.status, status) : undefined,
+    q ? or(ilike(equipmentCustodies.code, pattern), ilike(equipmentCustodies.name, pattern), ilike(equipmentCustodies.serialNumber, pattern), sql`EXISTS (SELECT 1 FROM "Employee" e WHERE e.id=${equipmentCustodies.responsibleId} AND e.name ILIKE ${pattern})`) : undefined);
   const [assetCount, custodyCount, departments, categories] = await Promise.all([
-    prisma.asset.count({ where }), prisma.equipmentCustody.count({ where: custodyWhere }),
-    prisma.department.findMany({ where: { isActive: true, ...(scope.departmentId ? { id: scope.departmentId as string } : {}) }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.assetCategory.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.select({ count: count() }).from(assetTable).where(where).then(rows => rows[0].count), db.select({ count: count() }).from(equipmentCustodies).where(custodyWhere).then(rows => rows[0].count),
+    db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(and(eq(departmentTable.isActive, true), scope.departmentId ? eq(departmentTable.id, scope.departmentId) : undefined)).orderBy(asc(departmentTable.name)),
+    db.select({ id: assetCategories.id, name: assetCategories.name }).from(assetCategories).where(eq(assetCategories.isActive, true)).orderBy(asc(assetCategories.name)),
   ]);
   const total = tab === "sem-tombamento" ? custodyCount : assetCount;
   const page = clampPatrimonioListPage(parsePatrimonioListPage(params?.page), total);
-  const window = { skip: (page - 1) * PATRIMONIO_LIST_PAGE_SIZE, take: PATRIMONIO_LIST_PAGE_SIZE };
   const [assets, custodies] = await Promise.all([
-    tab !== "sem-tombamento" ? prisma.asset.findMany({ where, ...window, orderBy: [{ ...(tab === "tombamento" ? { acquisitionDate: "desc" as const } : { createdAt: "desc" as const }) }, { id: "asc" }], include: { category: true, department: true, responsible: true, realEstate: true } }) : [],
-    tab === "sem-tombamento" ? prisma.equipmentCustody.findMany({ where: custodyWhere, ...window, orderBy: [{ deliveredAt: "desc" }, { id: "asc" }], include: { department: true, responsible: true, material: { include: { category: { select: { name: true } } } } } }) : [],
+    tab !== "sem-tombamento" ? db.select({ asset: assetTable, category: { name: assetCategories.name }, department: { name: departmentTable.name }, responsible: { name: employees.name }, realEstate: { id: realEstates.id, propertyType: realEstates.propertyType, streetName: realEstates.streetName } }).from(assetTable)
+      .innerJoin(assetCategories, eq(assetCategories.id, assetTable.categoryId)).leftJoin(departmentTable, eq(departmentTable.id, assetTable.departmentId)).leftJoin(employees, eq(employees.id, assetTable.responsibleId)).leftJoin(realEstates, eq(realEstates.id, assetTable.realEstateId))
+      .where(where).orderBy(desc(tab === "tombamento" ? assetTable.acquisitionDate : assetTable.createdAt), asc(assetTable.id)).offset((page - 1) * PATRIMONIO_LIST_PAGE_SIZE).limit(PATRIMONIO_LIST_PAGE_SIZE)
+      .then(rows => rows.map(row => ({ ...row.asset, category: row.category, department: row.department, responsible: row.responsible, realEstate: row.realEstate }))) : [],
+    tab === "sem-tombamento" ? db.select({ equipment: equipmentCustodies, department: { name: departmentTable.name }, responsible: { name: employees.name }, category: { name: materialCategories.name } }).from(equipmentCustodies)
+      .innerJoin(departmentTable, eq(departmentTable.id, equipmentCustodies.departmentId)).innerJoin(employees, eq(employees.id, equipmentCustodies.responsibleId)).innerJoin(materials, eq(materials.id, equipmentCustodies.materialId)).innerJoin(materialCategories, eq(materialCategories.id, materials.categoryId))
+      .where(custodyWhere).orderBy(desc(equipmentCustodies.deliveredAt), asc(equipmentCustodies.id)).offset((page - 1) * PATRIMONIO_LIST_PAGE_SIZE).limit(PATRIMONIO_LIST_PAGE_SIZE)
+      .then(rows => rows.map(row => ({ ...row.equipment, department: row.department, responsible: row.responsible, material: { category: row.category } }))) : [],
   ]);
   const filters = { q, status, department: departmentId, category: categoryId, tab };
   const canUpdate = canPerformModuleOperation(context.user, "PATRIMONIO", "update");

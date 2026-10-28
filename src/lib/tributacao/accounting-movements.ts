@@ -1,4 +1,15 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { and, asc, count, desc, eq, exists, gt, gte, ilike, inArray, lte, notExists, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import { accountingEntries, accountingPlans, accountingTransactions } from "@/db/schema/finance-accounting";
+import { users } from "@/db/schema/identity";
+import { planningBudgetUnitLabels } from "@/db/schema/planning-catalog";
+import { taxes } from "@/db/schema/taxation-core";
+import { taxIntegrationEvents } from "@/db/schema/tax-accounting";
+import { findTaxPaymentByKey, taxAccountingObject as object } from "@/db/repositories/tax-accounting/records";
+import { taxAccountingOriginFilter } from "@/db/repositories/tax-accounting/movements";
 import { z } from "zod";
 import { resolveFinancialReportScope } from "@/lib/financeiro/report-scope";
 
@@ -9,19 +20,18 @@ export const taxAccountingFilters = z.object({
   eventType: z.string().trim().max(150).optional(), account: z.string().trim().max(150).optional(),
   minimum: moneyFilter, maximum: moneyFilter, page: z.coerce.number().int().min(1).max(100000).default(1),
 }).refine(value => !value.from || !value.through || value.from <= value.through, "Data inicial posterior à final.")
-  .refine(value => !value.minimum || !value.maximum || new Prisma.Decimal(value.minimum).lte(value.maximum), "Valor mínimo superior ao máximo.");
-const object = (value: Prisma.JsonValue): Prisma.JsonObject => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  .refine(value => !value.minimum || !value.maximum || new Decimal(value.minimum).lte(value.maximum), "Valor mínimo superior ao máximo.");
 type AvailableReference = { id: string; date: string; eventType: string; amount: string; originEventId: string; guideId: string; assessmentId: string; taxId: string; taxName: string; budgetUnitId: string };
-const referenceSelection = { id: true, eventType: true, payload: true } satisfies Prisma.TaxIntegrationEventSelect;
-type ReferenceEntry = Prisma.TaxIntegrationEventGetPayload<{ select: typeof referenceSelection }>;
+const reversals = alias(accountingTransactions, "taxAccountingReversals");
+const contains = (value: string) => `%${value}%`;
 
-async function availableReferences(tx: Prisma.TransactionClient, input: z.infer<typeof taxAccountingFilters>, budgetUnitIds: string[], year: number) {
+async function availableReferences(tx: DatabaseTransaction, input: z.infer<typeof taxAccountingFilters>, budgetUnitIds: string[], year: number) {
   const result: AvailableReference[] = [];
   // Pending references have no posting account: account filters cannot classify them using today's matrix.
   if (input.account) return result;
   let cursor: string | undefined;
   for (;;) {
-    const references: ReferenceEntry[] = await tx.taxIntegrationEvent.findMany({ where: { integrationCode: "ACCOUNTING", status: "PENDENTE" }, select: referenceSelection, orderBy: { id: "asc" }, take: 500, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
+    const references = await tx.select({ id: taxIntegrationEvents.id, eventType: taxIntegrationEvents.eventType, payload: taxIntegrationEvents.payload }).from(taxIntegrationEvents).where(and(eq(taxIntegrationEvents.integrationCode, "ACCOUNTING"), eq(taxIntegrationEvents.status, "PENDENTE"), cursor ? gt(taxIntegrationEvents.id, cursor) : undefined)).orderBy(asc(taxIntegrationEvents.id)).limit(500);
     if (!references.length) break;
     for (const reference of references) {
       const payload = object(reference.payload);
@@ -30,11 +40,11 @@ async function availableReferences(tx: Prisma.TransactionClient, input: z.infer<
       if (!date || !Number.isFinite(date.getTime()) || date.getUTCFullYear() !== year || !sourceId || reference.eventType !== "ARRECADACAO") continue;
       const day = date.toISOString().slice(0, 10);
       if (input.from && day < input.from || input.through && day > input.through || input.eventType && !reference.eventType.toLowerCase().includes(input.eventType.toLowerCase())) continue;
-      const bankReturn = await tx.taxIntegrationEvent.findUnique({ where: { id: sourceId }, select: { integrationCode: true, status: true, idempotencyKey: true, payload: true } });
+      const bankReturn = (await tx.select().from(taxIntegrationEvents).where(eq(taxIntegrationEvents.id, sourceId)).limit(1))[0];
       if (bankReturn?.integrationCode !== "BANK_RETURN" || bankReturn.status !== "PROCESSADO") continue;
       const originPayload = object(bankReturn.payload);
       if (originPayload.amount !== payload.amount || originPayload.occurredAt !== payload.competence) continue;
-      const payment = await tx.taxPayment.findUnique({ where: { idempotencyKey: bankReturn.idempotencyKey }, select: { status: true, guideId: true, guide: { select: { assessmentId: true, assessment: { select: { taxId: true, calculationSnapshot: true, tax: { select: { name: true } } } } } }, revenueIntegration: { select: { revenueId: true, revenue: { select: { budgetUnitId: true, financialYearId: true, financialYear: { select: { governmentEntityId: true } } } } } } } });
+      const payment = await findTaxPaymentByKey(tx, bankReturn.idempotencyKey);
       if (payment?.status !== "Confirmado") continue;
       const assessment = payment.guide.assessment;
       if (input.taxId && assessment.taxId !== input.taxId) continue;
@@ -43,9 +53,9 @@ async function availableReferences(tx: Prisma.TransactionClient, input: z.infer<
       const budgetUnitId = revenue ? revenue.budgetUnitId : (typeof memory.budgetUnitId === "string" ? memory.budgetUnitId : null);
       const governmentEntityId = revenue ? revenue.financialYear?.governmentEntityId : memory.governmentEntityId;
       if (!budgetUnitId || !budgetUnitIds.includes(budgetUnitId) || governmentEntityId !== input.governmentEntityId || revenue && revenue.financialYearId !== input.financialYearId) continue;
-      const amount = typeof payload.amount === "string" && /^\d+(?:\.\d{1,2})?$/.test(payload.amount) ? new Prisma.Decimal(payload.amount) : null;
+      const amount = typeof payload.amount === "string" && /^\d+(?:\.\d{1,2})?$/.test(payload.amount) ? new Decimal(payload.amount) : null;
       if (!amount || !amount.isFinite() || amount.lte(0) || input.minimum && amount.lt(input.minimum) || input.maximum && amount.gt(input.maximum)) continue;
-      if (payment.revenueIntegration && await tx.accountingTransaction.count({ where: { sourceModule: { in: ["TRIBUTACAO", "TRIBUTARIO"] }, sourceType: "TAX_PAYMENT", sourceId: payment.revenueIntegration.revenueId, financialYearId: input.financialYearId, governmentEntityId: input.governmentEntityId, budgetUnitId, status: "POSTADO", reversedBy: { is: null } } })) continue;
+      if (payment.revenueIntegration && (await tx.select({ id: accountingTransactions.id }).from(accountingTransactions).where(and(inArray(accountingTransactions.sourceModule, ["TRIBUTACAO", "TRIBUTARIO"]), eq(accountingTransactions.sourceType, "TAX_PAYMENT"), eq(accountingTransactions.sourceId, payment.revenueIntegration.revenueId), eq(accountingTransactions.financialYearId, input.financialYearId), eq(accountingTransactions.governmentEntityId, input.governmentEntityId), eq(accountingTransactions.budgetUnitId, budgetUnitId), eq(accountingTransactions.status, "POSTADO"), notExists(tx.select({ id: reversals.id }).from(reversals).where(eq(reversals.reversalOfId, accountingTransactions.id))))).limit(1))[0]) continue;
       result.push({ id: reference.id, date: date.toISOString(), eventType: reference.eventType, amount: amount.toFixed(2), originEventId: sourceId, guideId: payment.guideId, assessmentId: payment.guide.assessmentId, taxId: assessment.taxId, taxName: assessment.tax.name, budgetUnitId });
     }
     cursor = references[references.length - 1].id;
@@ -53,55 +63,34 @@ async function availableReferences(tx: Prisma.TransactionClient, input: z.infer<
   return result.sort((left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id));
 }
 
-/** Fiscal identity follows canonical IDs; account names and transaction narratives never assign a tax. */
-async function taxOriginFilter(tx: Prisma.TransactionClient, taxId: string): Promise<Prisma.AccountingTransactionWhereInput> {
-  const assessments = await tx.taxAssessment.findMany({ where: { taxId }, select: { id: true } });
-  const assessmentIds = assessments.map(item => item.id);
-  const guides = await tx.taxGuide.findMany({ where: { assessmentId: { in: assessmentIds } }, select: { id: true } });
-  const guideIds = guides.map(item => item.id);
-  const receipts = await tx.taxRevenueIntegrationEvent.findMany({ where: { taxPayment: { guideId: { in: guideIds } } }, select: { revenueId: true } });
-  const roots = guideIds.length ? await tx.taxRegistryEntry.findMany({ where: { category: "TAX_CREDIT", OR: guideIds.map(id => ({ data: { path: ["originGuideId"], equals: id } })) }, select: { id: true } }) : [];
-  const registryIds = new Set(roots.map(item => item.id));
-  let frontier = [...registryIds];
-  for (let depth = 0; frontier.length; depth++) {
-    if (depth >= 32) throw new Error("Cadeia de créditos/transferências excede 32 níveis; concilie a origem documental.");
-    const successors = await tx.taxRegistryEntry.findMany({ where: { category: { in: ["TAX_CREDIT", "CREDIT_MOVEMENT", "REFUND_REQUEST"] }, OR: frontier.map(id => ({ data: { path: ["sourceCreditId"], equals: id } })) }, select: { id: true } });
-    frontier = successors.filter(item => !registryIds.has(item.id)).map(item => item.id);
-    for (const id of frontier) registryIds.add(id);
-  }
-  const compensations = await tx.taxRegistryEntry.findMany({ where: { entityType: "TAX_ASSESSMENT", entityId: { in: assessmentIds }, category: "CREDIT_MOVEMENT" }, select: { data: true } });
-  const compensationTransactionIds = compensations.flatMap(item => { const id = object(item.data).accountingTransactionId; return typeof id === "string" ? [id] : []; });
-  const origin: Prisma.AccountingTransactionWhereInput = { OR: [
-    { sourceType: { in: ["TAX_ASSESSMENT", "TAX_ASSESSMENT_ADJUSTMENT", "ACTIVE_DEBT_RECLASSIFICATION", "ACTIVE_DEBT_RETURN", "ACTIVE_DEBT_RESTORATION"] }, sourceId: { in: assessmentIds } },
-    { sourceType: "TAX_PAYMENT", sourceId: { in: receipts.map(item => item.revenueId) } },
-    { sourceType: { in: ["TAX_CREDIT", "TAX_CREDIT_COMPENSATION", "TAX_REFUND", "TAX_CREDIT_REVERSAL", "TAX_CREDIT_COMPENSATION_REVERSAL", "TAX_REFUND_REVERSAL"] }, sourceId: { in: [...registryIds] } },
-    { id: { in: compensationTransactionIds } },
-  ] };
-  return { OR: [origin, { reversalOf: { is: origin } }] };
-}
-
-export async function readTaxAccountingMovements(db: PrismaClient, actor: { allowedBudgetUnitIds?: string[] }, raw: unknown) {
+export async function readTaxAccountingMovements(db: DatabaseConnection, actor: { allowedBudgetUnitIds?: string[] }, raw: unknown) {
   const input = taxAccountingFilters.parse(raw);
-  return db.$transaction(async tx => {
+  return withDatabaseTransaction(db, async tx => {
     const scope = await resolveFinancialReportScope(tx, input.financialYearId, { governmentEntityId: input.governmentEntityId, budgetUnitId: input.budgetUnitId, budgetUnitIds: actor.allowedBudgetUnitIds });
     if (!scope.governmentEntityId || !scope.budgetUnitIds?.length) throw new Error("Consulta tributária exige ente/exercício e UG autorizados.");
-    if (input.taxId && !await tx.tax.count({ where: { id: input.taxId } })) throw new Error("Tributo não encontrado.");
-    const entryFilter: Prisma.AccountingEntryWhereInput = {
-      ...(input.account ? { OR: [{ account: { OR: [{ code: { contains: input.account, mode: "insensitive" } }, { name: { contains: input.account, mode: "insensitive" } }] } }, { classificationSnapshot: { path: ["externalCode"], string_contains: input.account } }] } : {}),
-      ...(input.minimum || input.maximum ? { valueDecimal: { ...(input.minimum ? { gte: new Prisma.Decimal(input.minimum) } : {}), ...(input.maximum ? { lte: new Prisma.Decimal(input.maximum) } : {}) } } : {}),
-    };
-    const where: Prisma.AccountingTransactionWhereInput = {
-      governmentEntityId: scope.governmentEntityId, financialYearId: input.financialYearId, budgetUnitId: { in: scope.budgetUnitIds },
-      sourceModule: { in: ["TRIBUTACAO", "TRIBUTARIO"] },
-      ...(input.from || input.through ? { date: { ...(input.from ? { gte: new Date(`${input.from}T00:00:00.000Z`) } : {}), ...(input.through ? { lte: new Date(`${input.through}T23:59:59.999Z`) } : {}) } } : {}),
-      ...(input.eventType ? { eventType: { contains: input.eventType, mode: "insensitive" } } : {}),
-      ...(input.taxId ? { AND: [await taxOriginFilter(tx, input.taxId)] } : {}),
-      ...(input.account || input.minimum || input.maximum ? { entries: { some: entryFilter } } : {}),
-    };
-    const total = await tx.accountingTransaction.count({ where });
+    if (input.taxId && !(await tx.select({ id: taxes.id }).from(taxes).where(eq(taxes.id, input.taxId)).limit(1))[0]) throw new Error("Tributo não encontrado.");
+    const entryFilter = and(
+      input.account ? or(ilike(accountingPlans.code, contains(input.account)), ilike(accountingPlans.name, contains(input.account)), sql`jsonb_typeof(${accountingEntries.classificationSnapshot}->'externalCode') = 'string' AND ${accountingEntries.classificationSnapshot}->>'externalCode' LIKE ${contains(input.account)}`) : undefined,
+      input.minimum ? gte(accountingEntries.valueDecimal, new Decimal(input.minimum)) : undefined,
+      input.maximum ? lte(accountingEntries.valueDecimal, new Decimal(input.maximum)) : undefined,
+    );
+    const where = and(
+      eq(accountingTransactions.governmentEntityId, scope.governmentEntityId), eq(accountingTransactions.financialYearId, input.financialYearId), inArray(accountingTransactions.budgetUnitId, scope.budgetUnitIds), inArray(accountingTransactions.sourceModule, ["TRIBUTACAO", "TRIBUTARIO"]),
+      input.from ? gte(accountingTransactions.date, new Date(`${input.from}T00:00:00.000Z`)) : undefined,
+      input.through ? lte(accountingTransactions.date, new Date(`${input.through}T23:59:59.999Z`)) : undefined,
+      input.eventType ? ilike(accountingTransactions.eventType, contains(input.eventType)) : undefined,
+      input.taxId ? await taxAccountingOriginFilter(tx, input.taxId) : undefined,
+      input.account || input.minimum || input.maximum ? exists(tx.select({ id: accountingEntries.id }).from(accountingEntries).innerJoin(accountingPlans, eq(accountingPlans.id, accountingEntries.accountId)).where(and(eq(accountingEntries.transactionId, accountingTransactions.id), entryFilter))) : undefined,
+    );
+    const [{ total }] = await tx.select({ total: count() }).from(accountingTransactions).where(where);
     const available = await availableReferences(tx, input, scope.budgetUnitIds, scope.year);
     const page = Math.min(input.page, Math.max(1, Math.ceil(Math.max(total, available.length) / 50)));
-    const transactions = await tx.accountingTransaction.findMany({ where, select: { id: true, date: true, history: true, status: true, sourceType: true, sourceModule: true, sourceId: true, eventType: true, reversalOfId: true, authorUsuario: { select: { nome: true } }, budgetUnit: { select: { code: true, name: true } }, entries: { where: entryFilter, select: { id: true, type: true, valueDecimal: true, classificationSnapshot: true, account: { select: { code: true, name: true } } }, orderBy: { id: "asc" } } }, orderBy: [{ date: "desc" }, { id: "desc" }], skip: (page - 1) * 50, take: 50 });
-    return { year: scope.year, total, page, availableTotal: available.length, available: available.slice((page - 1) * 50, page * 50), transactions: transactions.map(transaction => ({ ...transaction, date: transaction.date.toISOString(), entries: transaction.entries.map(({ valueDecimal, ...entry }) => ({ ...entry, amount: valueDecimal?.toFixed(2) ?? null, frozenAccountCode: typeof object(entry.classificationSnapshot).externalCode === "string" ? object(entry.classificationSnapshot).externalCode as string : null })) })) };
-  }, { isolationLevel: "RepeatableRead", timeout: 60000 });
+    const selected = await tx.select({ id: accountingTransactions.id, date: accountingTransactions.date, history: accountingTransactions.history, status: accountingTransactions.status, sourceType: accountingTransactions.sourceType, sourceModule: accountingTransactions.sourceModule, sourceId: accountingTransactions.sourceId, eventType: accountingTransactions.eventType, reversalOfId: accountingTransactions.reversalOfId, authorUsuario: { nome: users.nome }, budgetUnit: { code: planningBudgetUnitLabels.code, name: planningBudgetUnitLabels.name } }).from(accountingTransactions).innerJoin(users, eq(users.id, accountingTransactions.authorUsuarioId)).leftJoin(planningBudgetUnitLabels, eq(planningBudgetUnitLabels.id, accountingTransactions.budgetUnitId)).where(where).orderBy(desc(accountingTransactions.date), desc(accountingTransactions.id)).offset((page - 1) * 50).limit(50);
+    const transactions = [];
+    for (const transaction of selected) {
+      const entries = await tx.select({ id: accountingEntries.id, type: accountingEntries.type, valueDecimal: accountingEntries.valueDecimal, classificationSnapshot: accountingEntries.classificationSnapshot, account: { code: accountingPlans.code, name: accountingPlans.name } }).from(accountingEntries).innerJoin(accountingPlans, eq(accountingPlans.id, accountingEntries.accountId)).where(and(eq(accountingEntries.transactionId, transaction.id), entryFilter)).orderBy(asc(accountingEntries.id));
+      transactions.push({ ...transaction, date: transaction.date.toISOString(), entries: entries.map(({ valueDecimal, ...entry }) => { const code = object(entry.classificationSnapshot).externalCode; return { ...entry, amount: valueDecimal?.toFixed(2) ?? null, frozenAccountCode: typeof code === "string" ? code : null }; }) });
+    }
+    return { year: scope.year, total, page, availableTotal: available.length, available: available.slice((page - 1) * 50, page * 50), transactions };
+  }, { isolationLevel: "repeatable read", timeoutMs: 60000 });
 }

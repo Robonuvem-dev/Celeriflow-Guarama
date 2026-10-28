@@ -1,6 +1,8 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import type { JsonValue } from "@/db/json";
+import { findIntegrationConnection, saveIntegrationConfiguration, updateIntegrationTestResult } from "@/db/repositories/platform/integrations";
 import { assertIntegrationEnvironmentPolicy, getIntegrationDefinition } from "@/lib/integrations/registry";
 import { getProcurementExportConfigurationStatus } from "@/lib/integrations/procurement-export-contract";
 import { executeConfiguredHealthCheck } from "@/lib/integrations/runtime";
@@ -34,12 +36,12 @@ function assertNoSecretValues(value: unknown) {
     assertNoSecretValues(nestedValue);
   }
 }
-function parsePublicJson(value: string | undefined, field: string): Prisma.InputJsonValue | undefined {
+function parsePublicJson(value: string | undefined, field: string): JsonValue | undefined {
   if (!value?.trim()) return undefined;
   try {
     const parsed: unknown = JSON.parse(value);
     assertNoSecretValues(parsed);
-    return parsed as Prisma.InputJsonValue;
+    return parsed as JsonValue;
   } catch (error) {
     if (error instanceof Error && error.message.includes("segredo")) throw error;
     throw new Error(`${field} deve conter JSON válido.`);
@@ -75,33 +77,8 @@ export async function saveIntegrationConnection(rawInput: unknown): Promise<Acti
       credentialReference: input.credentialReference,
       configuration,
     });
-    const context = await getTenantContextForSystemAdministration();
-    const connection = await context.prisma.integrationConnection.upsert({
-      where: { code: definition.code },
-      create: {
-        code: definition.code,
-        name: definition.name,
-        category: definition.category,
-        provider: definition.provider,
-        environment: input.environment,
-        status: input.enabled ? "CONFIGURANDO" : "DESATIVADA",
-        baseUrl: input.baseUrl || undefined,
-        credentialReference: input.credentialReference || undefined,
-        configuration,
-        mockScenario,
-      },
-      update: {
-        name: definition.name,
-        category: definition.category,
-        provider: definition.provider,
-        environment: input.environment,
-        status: input.enabled ? "CONFIGURANDO" : "DESATIVADA",
-        baseUrl: input.baseUrl || null,
-        credentialReference: input.credentialReference || null,
-        configuration: configuration ?? Prisma.JsonNull,
-        mockScenario: mockScenario ?? Prisma.JsonNull,
-      },
-    });
+    await getTenantContextForSystemAdministration();
+    const connection = await saveIntegrationConfiguration(db, { code: definition.code, name: definition.name, category: definition.category, provider: definition.provider, environment: input.environment, status: input.enabled ? "CONFIGURANDO" : "DESATIVADA", baseUrl: input.baseUrl || null, credentialReference: input.credentialReference || null, configuration, mockScenario });
     revalidatePath("/configuracoes/integracoes");
     revalidatePath("/configuracoes");
     const message = procurementConfiguration.supported && !procurementConfiguration.ready
@@ -115,8 +92,8 @@ export async function saveIntegrationConnection(rawInput: unknown): Promise<Acti
 
 export async function testIntegrationConnection(connectionId: string): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForSystemAdministration();
-    const connection = await context.prisma.integrationConnection.findUnique({ where: { id: z.string().min(1).parse(connectionId) } });
+    await getTenantContextForSystemAdministration();
+    const connection = await findIntegrationConnection(db, "id", z.string().min(1).parse(connectionId));
     if (!connection) throw new Error("Conexão não encontrada.");
     if (connection.status === "DESATIVADA") throw new Error("Ative a conexão antes de executar o teste.");
     const procurementConfiguration = getProcurementExportConfigurationStatus({
@@ -128,17 +105,8 @@ export async function testIntegrationConnection(connectionId: string): Promise<A
       throw new Error(`A conexão permanece bloqueada até informar credencial, leiaute e operações: ${procurementConfiguration.issues.join(" ")}`);
     }
 
-    const result = await executeConfiguredHealthCheck(context.prisma, connection.code, true);
-
-    await context.prisma.integrationConnection.update({
-      where: { id: connection.id },
-      data: {
-        status: result.status === "SUCESSO" ? "ATIVA" : "CONFIGURANDO",
-        lastTestedAt: new Date(),
-        lastTestStatus: result.status,
-        lastTestMessage: result.message,
-      },
-    });
+    const result = await executeConfiguredHealthCheck(db, connection.code, true);
+    await updateIntegrationTestResult(db, connection.id, result);
     revalidatePath("/configuracoes/integracoes");
     revalidatePath("/configuracoes");
     return { data: { id: connection.id, message: result.message } };

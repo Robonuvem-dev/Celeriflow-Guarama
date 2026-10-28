@@ -2,9 +2,18 @@ import "server-only";
 
 import { getFile, uploadProcessFile } from "@/lib/platform/blob";
 import { getInstanceConfigurationDefaults } from "@/lib/platform/instance-configuration";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { databaseConnection } from "@/db/client";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor, type DatabaseTransaction } from "@/db/transaction";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { documents } from "@/db/schema/registry";
+import { documentClasses, documentVersions, documentSignatures, documentIcpEvidence } from "@/db/schema/document-workflow";
+import { processes, processDocuments, processEvents } from "@/db/schema/processes";
+import { instanceParameters } from "@/db/schema/instance-configuration";
+import { users } from "@/db/schema/identity";
 import type { AppContext } from "@/lib/platform/tenant-context";
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { notifyProtocolUsers } from "@/lib/protocols/notifications";
 import { verifyDocumentHashICPBrasil, type DocumentHashSignatureResult } from "@/lib/security/icp-brasil";
 import {
@@ -16,7 +25,7 @@ import {
   toPublicValidationResponse,
 } from "./document-flow-policy";
 
-type Db = PrismaClient | Prisma.TransactionClient;
+type Db = DatabaseExecutor;
 
 type SignatureAudit = {
   ipAddress: string | null;
@@ -30,11 +39,7 @@ async function hashStoredFile(fileUrl: string) {
 }
 
 async function getConfiguredRetentionMonths(db: Db) {
-  const parameter = await db.configuracaoParametroInstancia.findFirst({
-    where: { chave: "DOCUMENT_DEFAULT_RETENTION_MONTHS" },
-    orderBy: { createdAt: "asc" },
-    select: { valor: true },
-  });
+  const [parameter] = await db.select({ valor: instanceParameters.valor }).from(instanceParameters).where(eq(instanceParameters.chave, "DOCUMENT_DEFAULT_RETENTION_MONTHS")).orderBy(asc(instanceParameters.createdAt)).limit(1);
   const configured = typeof parameter?.valor === "number"
     ? parameter.valor
     : getInstanceConfigurationDefaults().DOCUMENT_DEFAULT_RETENTION_MONTHS;
@@ -42,7 +47,7 @@ async function getConfiguredRetentionMonths(db: Db) {
 }
 
 export async function ingestGedDocument(
-  db: PrismaClient,
+  db: DatabaseConnection,
   input: {
     title: string;
     documentType: string;
@@ -52,23 +57,19 @@ export async function ingestGedDocument(
     publicLabel?: string;
     content?: string | Uint8Array;
     actorUsuarioId: string;
-    afterCreate?: (tx: Prisma.TransactionClient, documentId: string) => Promise<void>;
+    afterCreate?: (tx: DatabaseTransaction, documentId: string) => Promise<void>;
   },
 ) {
   const hashSha256 = input.content !== undefined ? hashDocumentContent(input.content) : await hashStoredFile(input.fileUrl);
 
-  return db.$transaction(async (tx) => {
+  return withDatabaseTransaction(db, async (tx) => {
     const [documentClass, retentionMonths] = await Promise.all([
-      tx.documentClass.findFirst({
-        where: { code: input.documentClassCode, isActive: true },
-        select: { id: true },
-      }),
+      tx.select({ id: documentClasses.id }).from(documentClasses).where(and(eq(documentClasses.code, input.documentClassCode), eq(documentClasses.isActive, true))).limit(1).then(rows => rows[0]),
       getConfiguredRetentionMonths(tx),
     ]);
     if (!documentClass) throw new Error("A classe documental selecionada nao esta ativa.");
 
-    const document = await tx.document.create({
-      data: {
+    const [document] = await tx.insert(documents).values({
         title: input.title.trim(),
         documentType: input.documentType,
         documentClassId: documentClass.id,
@@ -77,29 +78,24 @@ export async function ingestGedDocument(
         publicLabel: input.publicLabel?.trim() || "Documento autenticado",
         retentionMonths,
         status: "Válido",
-      },
-      select: { id: true },
-    });
-    const version = await tx.documentVersion.create({
-      data: {
+    }).returning({ id: documents.id });
+    const [version] = await tx.insert(documentVersions).values({
         documentId: document.id,
         versionNumber: 1,
         fileUrl: input.fileUrl,
         hashSha256,
         publicValidationCode: createPublicValidationCode(),
         status: "FINAL",
-      },
-      select: { id: true, versionNumber: true, hashSha256: true, publicValidationCode: true },
-    });
+    }).returning({ id: documentVersions.id, versionNumber: documentVersions.versionNumber, hashSha256: documentVersions.hashSha256, publicValidationCode: documentVersions.publicValidationCode });
     if (input.afterCreate) await input.afterCreate(tx, document.id);
-    await writeAuditEvent(tx, {
+    await insertAuditEvent(tx, {
       actorUsuarioId: input.actorUsuarioId,
       eventType: auditEventTypes.gedDocumentIngested,
       targetType: "DOCUMENT",
       targetId: document.id,
     });
     return { documentId: document.id, version };
-  });
+  }, { timeoutMs: 5_000 });
 }
 
 export async function ingestProcessDocument(
@@ -118,27 +114,20 @@ export async function ingestProcessDocument(
   const content = new Uint8Array(await input.file.arrayBuffer());
   const hashSha256 = hashDocumentContent(content);
 
-  return context.prisma.$transaction(async (tx) => {
-    const process = await tx.process.findFirst({
-      where: { id: input.processId, currentDepartmentId: input.departmentId },
-      select: { id: true, protocolNumber: true, status: true },
-    });
+  return withDatabaseTransaction(databaseConnection, async (tx) => {
+    const [process] = await tx.select({ id: processes.id, protocolNumber: processes.protocolNumber, status: processes.status }).from(processes).where(and(eq(processes.id, input.processId), eq(processes.currentDepartmentId, input.departmentId))).limit(1);
     if (!process) throw new Error("Processo nao encontrado ou sem acesso ao seu setor.");
     if (["Aguardando Recebimento", "Arquivado", "Cancelado"].includes(process.status)) {
       throw new Error("Este processo nao aceita anexos neste momento.");
     }
 
     const [documentClass, retentionMonths] = await Promise.all([
-      tx.documentClass.findFirst({
-        where: { id: input.documentClassId, isActive: true, signaturePolicy: "INTERNAL_ALLOWED" },
-        select: { id: true },
-      }),
+      tx.select({ id: documentClasses.id }).from(documentClasses).where(and(eq(documentClasses.id, input.documentClassId), eq(documentClasses.isActive, true), eq(documentClasses.signaturePolicy, "INTERNAL_ALLOWED"))).limit(1).then(rows => rows[0]),
       getConfiguredRetentionMonths(tx),
     ]);
     if (!documentClass) throw new Error("Selecione uma classe documental ativa com assinatura interna permitida.");
 
-    const document = await tx.document.create({
-      data: {
+    const [document] = await tx.insert(documents).values({
         title: input.title.trim(),
         documentType: input.documentType,
         fileUrl: blob.url,
@@ -146,49 +135,41 @@ export async function ingestProcessDocument(
         notes: `Anexo do processo ${process.protocolNumber}.`,
         documentClassId: documentClass.id,
         retentionMonths,
-      },
-      select: { id: true },
-    });
-    await tx.documentVersion.create({
-      data: {
+    }).returning({ id: documents.id });
+    await tx.insert(documentVersions).values({
         documentId: document.id,
         versionNumber: 1,
         fileUrl: blob.url,
         hashSha256,
         publicValidationCode: createPublicValidationCode(),
         status: "FINAL",
-      },
     });
-    await tx.processDocument.create({
-      data: { processId: process.id, documentId: document.id, purpose: input.documentType, employeeId: input.employeeId },
-    });
-    await tx.processEvent.create({
-      data: {
+    await tx.insert(processDocuments).values({ processId: process.id, documentId: document.id, purpose: input.documentType, employeeId: input.employeeId });
+    await tx.insert(processEvents).values({
         processId: process.id,
         eventType: "DOCUMENT_ADDED",
         description: "Documento anexado ao processo e registrado no GED.",
         departmentId: input.departmentId,
         employeeId: input.employeeId,
-      },
     });
-    await writeAuditEvent(tx, {
+    await insertAuditEvent(tx, {
       actorUsuarioId: context.user.id,
       eventType: auditEventTypes.gedDocumentIngested,
       targetType: "DOCUMENT",
       targetId: document.id,
     });
-    await writeAuditEvent(tx, {
+    await insertAuditEvent(tx, {
       actorUsuarioId: context.user.id,
       eventType: auditEventTypes.processDocumentLinked,
       targetType: "PROCESS",
       targetId: process.id,
     });
     return { documentId: document.id };
-  });
+  }, { timeoutMs: 5_000 });
 }
 
 async function createInternalDocumentSignatures(
-  tx: Prisma.TransactionClient,
+  tx: DatabaseTransaction,
   actorUsuarioId: string,
   documentId: string,
   signerUsuarioIds: string[],
@@ -197,38 +178,19 @@ async function createInternalDocumentSignatures(
   const uniqueSignerIds = [...new Set(signerUsuarioIds.filter(Boolean))];
   if (uniqueSignerIds.length === 0) throw new Error("Selecione pelo menos um signatario interno.");
 
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`DOCUMENT_SIGNATURE:${documentId}`}))`;
-  const document = await tx.document.findUnique({
-    where: { id: documentId },
-    select: {
-      id: true,
-      documentClass: { select: { signaturePolicy: true } },
-      versions: {
-        where: { status: "FINAL", lockedAt: null, ...(typeof metadata?.planningDocumentVersionId === "string" ? { id: metadata.planningDocumentVersionId } : {}) },
-        orderBy: { versionNumber: "desc" },
-        take: 1,
-        select: { id: true, hashSha256: true, publicValidationCode: true },
-      },
-    },
-  });
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`DOCUMENT_SIGNATURE:${documentId}`}))`);
+  const [document] = await tx.select({ id: documents.id, signaturePolicy: documentClasses.signaturePolicy }).from(documents).leftJoin(documentClasses, eq(documentClasses.id, documents.documentClassId)).where(eq(documents.id, documentId)).limit(1);
   if (!document) throw new Error("Documento nao encontrado.");
-  assertInternalSigningAllowed(document.documentClass?.signaturePolicy);
-  const version = document.versions[0];
+  assertInternalSigningAllowed(document.signaturePolicy);
+  const [version] = await tx.select({ id: documentVersions.id, hashSha256: documentVersions.hashSha256, publicValidationCode: documentVersions.publicValidationCode }).from(documentVersions).where(and(eq(documentVersions.documentId, documentId), eq(documentVersions.status, "FINAL"), isNull(documentVersions.lockedAt), typeof metadata?.planningDocumentVersionId === "string" ? eq(documentVersions.id, metadata.planningDocumentVersionId) : undefined)).orderBy(desc(documentVersions.versionNumber)).limit(1);
   if (!version) throw new Error("O documento nao possui uma versao final disponivel para assinatura.");
 
-  const signers = await tx.usuario.findMany({
-    where: { id: { in: uniqueSignerIds }, ativo: true },
-    select: { id: true, nome: true, email: true, employeeId: true },
-  });
+  const signers = await tx.select({ id: users.id, nome: users.nome, email: users.email, employeeId: users.employeeId }).from(users).where(and(inArray(users.id, uniqueSignerIds), eq(users.ativo, true)));
   if (signers.length !== uniqueSignerIds.length) throw new Error("Um ou mais signatarios internos nao estao ativos.");
 
   const requestedAt = new Date();
-  await tx.documentVersion.update({
-    where: { id: version.id },
-    data: { status: "PENDING_SIGNATURE", lockedAt: requestedAt },
-  });
-  await tx.documentSignature.createMany({
-    data: signers.map((signer) => ({
+  await tx.update(documentVersions).set({ status: "PENDING_SIGNATURE", lockedAt: requestedAt }).where(eq(documentVersions.id, version.id));
+  await tx.insert(documentSignatures).values(signers.map((signer) => ({
       documentId: document.id,
       documentVersionId: version.id,
       signerUsuarioId: signer.id,
@@ -243,10 +205,9 @@ async function createInternalDocumentSignatures(
       status: "PENDING",
       requestedAt,
       metadata: metadata ? JSON.stringify(metadata) : null,
-    })),
-  });
-  await tx.document.update({ where: { id: document.id }, data: { status: "Pendente Assinatura" } });
-  await writeAuditEvent(tx, {
+    })));
+  await tx.update(documents).set({ status: "Pendente Assinatura" }).where(eq(documents.id, document.id));
+  await insertAuditEvent(tx, {
     actorUsuarioId,
     eventType: auditEventTypes.documentSignatureRequested,
     targetType: "DOCUMENT",
@@ -267,33 +228,30 @@ export async function requestInternalDocumentSignatures(
   signerUsuarioIds: string[],
   metadata?: Record<string, string | number>,
 ) {
-  return context.prisma.$transaction((tx) => createInternalDocumentSignatures(tx, context.user.id, documentId, signerUsuarioIds, metadata));
+  return withDatabaseTransaction(databaseConnection, (tx) => createInternalDocumentSignatures(tx, context.user.id, documentId, signerUsuarioIds, metadata), { timeoutMs: 5_000 });
 }
 
 // Background/domain issuers use the same GED signature request implementation
 // without fabricating a session context. The caller authorizes the domain action.
-export async function requestDocumentSignaturesForActor(db: PrismaClient, actorUsuarioId: string, documentId: string, signerUsuarioIds: string[], metadata?: Record<string, string | number>) {
-  return db.$transaction((tx) => createInternalDocumentSignatures(tx, actorUsuarioId, documentId, signerUsuarioIds, metadata));
+export async function requestDocumentSignaturesForActor(db: DatabaseConnection, actorUsuarioId: string, documentId: string, signerUsuarioIds: string[], metadata?: Record<string, string | number>) {
+  return withDatabaseTransaction(db, (tx) => createInternalDocumentSignatures(tx, actorUsuarioId, documentId, signerUsuarioIds, metadata), { timeoutMs: 5_000 });
 }
 
 export async function requestProcessDocumentSignatures(
   context: AppContext,
   input: { processId: string; departmentId: string; employeeId: string; documentId: string; signerUsuarioIds: string[] },
 ) {
-  return context.prisma.$transaction(async (tx) => {
-    const processDocument = await tx.processDocument.findFirst({
-      where: { processId: input.processId, documentId: input.documentId, process: { currentDepartmentId: input.departmentId } },
-      select: { processId: true, process: { select: { protocolNumber: true, status: true } }, document: { select: { id: true } } },
-    });
-    if (!processDocument?.document) throw new Error("Documento do processo nao encontrado ou sem acesso ao seu setor.");
-    if (["Aguardando Recebimento", "Arquivado", "Cancelado"].includes(processDocument.process.status)) {
+  return withDatabaseTransaction(databaseConnection, async (tx) => {
+    const [processDocument] = await tx.select({ processId: processDocuments.processId, protocolNumber: processes.protocolNumber, status: processes.status }).from(processDocuments).innerJoin(processes, eq(processes.id, processDocuments.processId)).innerJoin(documents, eq(documents.id, processDocuments.documentId)).where(and(eq(processDocuments.processId, input.processId), eq(processDocuments.documentId, input.documentId), eq(processes.currentDepartmentId, input.departmentId))).limit(1);
+    if (!processDocument) throw new Error("Documento do processo nao encontrado ou sem acesso ao seu setor.");
+    if (["Aguardando Recebimento", "Arquivado", "Cancelado"].includes(processDocument.status)) {
       throw new Error("Este processo nao aceita solicitacoes de assinatura neste momento.");
     }
     const result = await createInternalDocumentSignatures(tx, context.user.id, input.documentId, input.signerUsuarioIds);
     const notification = await notifyProtocolUsers(tx, context.user.id, result.signerIds, {
       processId: input.processId,
       type: "SIGNATURE_REQUESTED",
-      title: `Assinatura solicitada: ${processDocument.process.protocolNumber}`,
+      title: `Assinatura solicitada: ${processDocument.protocolNumber}`,
       message: "Ha um documento do processo aguardando sua assinatura interna.",
       priority: "ALTA",
       dedupeDiscriminator: result.documentVersionId,
@@ -301,23 +259,21 @@ export async function requestProcessDocumentSignatures(
     if (notification.created !== result.signerIds.length) {
       throw new Error("Todos os signatarios precisam ter acesso ao modulo de Processos para receber a solicitacao.");
     }
-    await tx.processEvent.create({
-      data: {
+    await tx.insert(processEvents).values({
         processId: input.processId,
         eventType: "SIGNATURE_REQUESTED",
         description: "Assinaturas internas solicitadas para documento do processo.",
         departmentId: input.departmentId,
         employeeId: input.employeeId,
-      },
     });
-    await writeAuditEvent(tx, {
+    await insertAuditEvent(tx, {
       actorUsuarioId: context.user.id,
       eventType: auditEventTypes.processUpdated,
       targetType: "PROCESS",
       targetId: input.processId,
     });
     return result;
-  });
+  }, { timeoutMs: 5_000 });
 }
 
 export async function registerRequestedInternalDocumentSignature(
@@ -326,34 +282,13 @@ export async function registerRequestedInternalDocumentSignature(
   audit: SignatureAudit,
   reauthenticatedAt: Date,
 ) {
-  return context.prisma.$transaction(async (tx) => {
-    const pendingSignature = await tx.documentSignature.findFirst({
-      where: { documentId, signerUsuarioId: context.user.id, status: "PENDING" },
-      select: {
-        id: true,
-        documentVersionId: true,
-        metadata: true,
-        documentVersion: {
-          select: {
-            documentId: true,
-            hashSha256: true,
-            status: true,
-            document: {
-              select: {
-                documentClass: { select: { signaturePolicy: true } },
-              },
-            },
-          },
-        },
-      },
-    });
+  return withDatabaseTransaction(databaseConnection, async (tx) => {
+    const [pendingSignature] = await tx.select({ id: documentSignatures.id, documentVersionId: documentSignatures.documentVersionId, metadata: documentSignatures.metadata, versionStatus: documentVersions.status, signaturePolicy: documentClasses.signaturePolicy }).from(documentSignatures).innerJoin(documentVersions, eq(documentVersions.id, documentSignatures.documentVersionId)).innerJoin(documents, eq(documents.id, documentVersions.documentId)).leftJoin(documentClasses, eq(documentClasses.id, documents.documentClassId)).where(and(eq(documentSignatures.documentId, documentId), eq(documentSignatures.signerUsuarioId, context.user.id), eq(documentSignatures.status, "PENDING"))).limit(1);
     if (!pendingSignature) throw new Error("Nenhuma solicitacao de assinatura pendente foi encontrada para este documento.");
-    assertInternalSigningAllowed(pendingSignature.documentVersion.document.documentClass?.signaturePolicy);
-    if (pendingSignature.documentVersion.status !== "PENDING_SIGNATURE") throw new Error("A versao solicitada nao esta disponivel para assinatura.");
+    assertInternalSigningAllowed(pendingSignature.signaturePolicy);
+    if (pendingSignature.versionStatus !== "PENDING_SIGNATURE") throw new Error("A versao solicitada nao esta disponivel para assinatura.");
 
-    const signature = await tx.documentSignature.update({
-      where: { id: pendingSignature.id },
-      data: {
+    const [signature] = await tx.update(documentSignatures).set({
         authenticationMethod: "FIREBASE_PASSWORD_REAUTH",
         reauthenticatedAt,
         status: "SIGNED",
@@ -366,42 +301,28 @@ export async function registerRequestedInternalDocumentSignature(
           documentVersionId: pendingSignature.documentVersionId,
           signatureId: pendingSignature.id,
         }),
-      },
-      select: { id: true, verificationCode: true },
-    });
-    const signatures = await tx.documentSignature.findMany({
-      where: { documentVersionId: pendingSignature.documentVersionId },
-      select: { status: true, isRequired: true },
-    });
+    }).where(eq(documentSignatures.id, pendingSignature.id)).returning({ id: documentSignatures.id, verificationCode: documentSignatures.verificationCode });
+    const signatures = await tx.select({ status: documentSignatures.status, isRequired: documentSignatures.isRequired }).from(documentSignatures).where(eq(documentSignatures.documentVersionId, pendingSignature.documentVersionId));
     const versionStatus = getVersionSignatureStatus(signatures);
     if (versionStatus === "SIGNED") {
-      await tx.documentVersion.update({ where: { id: pendingSignature.documentVersionId }, data: { status: "SIGNED" } });
-      await tx.document.update({ where: { id: documentId }, data: { status: "Assinado" } });
+      await tx.update(documentVersions).set({ status: "SIGNED" }).where(eq(documentVersions.id, pendingSignature.documentVersionId));
+      await tx.update(documents).set({ status: "Assinado" }).where(eq(documents.id, documentId));
     }
-    await writeAuditEvent(tx, {
+    await insertAuditEvent(tx, {
       actorUsuarioId: context.user.id,
       eventType: auditEventTypes.documentSignatureRegistered,
       targetType: "DOCUMENT_SIGNATURE",
       targetId: signature.id,
     });
     return { ...signature, versionStatus };
-  });
+  }, { timeoutMs: 5_000 });
 }
 
-export async function findPublicDocumentValidation(db: PrismaClient, code: string) {
-  const version = await db.documentVersion.findUnique({
-    where: { publicValidationCode: code },
-    select: {
-      versionNumber: true,
-      hashSha256: true,
-      status: true,
-      document: { select: { publicLabel: true } },
-      icpEvidence: true,
-    },
-  });
+export async function findPublicDocumentValidation(db: DatabaseExecutor, code: string) {
+  const [version] = await db.select({ versionNumber: documentVersions.versionNumber, hashSha256: documentVersions.hashSha256, status: documentVersions.status, publicLabel: documents.publicLabel, icpEvidence: documentIcpEvidence }).from(documentVersions).innerJoin(documents, eq(documents.id, documentVersions.documentId)).leftJoin(documentIcpEvidence, eq(documentIcpEvidence.documentVersionId, documentVersions.id)).where(eq(documentVersions.publicValidationCode, code)).limit(1);
   if (!version) return null;
   const base = toPublicValidationResponse({
-    publicLabel: version.document.publicLabel,
+    publicLabel: version.publicLabel,
     versionNumber: version.versionNumber,
     hashSha256: version.hashSha256,
     status: version.status,

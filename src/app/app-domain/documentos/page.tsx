@@ -3,18 +3,14 @@ import Link from "next/link";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { getDocumentDashboard } from "@/db/repositories/documents/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DocumentosDashboardPage() {
-  const { prisma } = await getTenantContextForModule("DOCUMENTOS");
-  const totalDocuments = await prisma.document.count({
-    where: { documentType: { not: 'Modelo' } }
-  });
-  const totalFolders = await prisma.folder.count();
-  const pendentesAssinatura = await prisma.document.count({
-    where: { status: 'Pendente Assinatura' }
-  });
+  await getTenantContextForModule("DOCUMENTOS");
+  const { totalDocuments, totalFolders, pendentesAssinatura } = await getDocumentDashboard(db);
 
   const stats = [
     { title: "Total de Documentos", value: totalDocuments.toString(), icon: FileText, href: "/documentos/ged", color: "text-indigo-600", bg: "bg-indigo-100" },

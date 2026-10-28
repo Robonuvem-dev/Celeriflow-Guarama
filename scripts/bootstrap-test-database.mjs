@@ -1,38 +1,49 @@
-import { readdirSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { config } from "dotenv";
+import { createDatabaseConnection } from "../src/db/connection.ts";
+import { withDatabaseTransaction } from "../src/db/transaction.ts";
+import { seedBootstrapTestFixture } from "../prisma/bootstrap-test/seed.ts";
+import { resolveBootstrapTestTarget } from "./lib/cross-domain-bootstrap-test-target.ts";
+import { resetBootstrapTestSchema } from "./lib/cross-domain-bootstrap-test-reset.mjs";
+import { loadMigrationSet } from "./database-migrate-files.mjs";
+import { migrationLock, runDatabaseMigrations } from "./database-migrate-core.mjs";
+import { openMigrationConnection } from "./database-migrate-driver.mjs";
 
-config({ path: ".env.local", quiet: true });
-
-const isWindows = process.platform === "win32";
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
-const testDatabaseUrlUnpooled = process.env.TEST_DATABASE_URL_UNPOOLED ?? testDatabaseUrl;
-
-if (!testDatabaseUrl) {
-  console.error("TEST_DATABASE_URL is required; refusing to reset the database configured in .env.local.");
-  process.exit(1);
+export async function bootstrapTestDatabaseMain(environment = process.env) {
+  const target = resolveBootstrapTestTarget(environment);
+  // Validate all preserved SQL/provenance before resetting anything.
+  const set = loadMigrationSet();
+  const connection = await openMigrationConnection(target.connectionString);
+  let locked = false;
+  try {
+    // A session-level lock spans reset, replay and seed. The executor's own
+    // transaction lock is reentrant on this same physical migration connection.
+    const [lock] = (await connection.query("SELECT pg_try_advisory_lock($1::integer,$2::integer) AS acquired", migrationLock)).rows;
+    if (!lock?.acquired) throw new Error("Another SQL migration/bootstrap holds the database lock.");
+    locked = true;
+    await resetBootstrapTestSchema(connection, environment);
+    const replay = await runDatabaseMigrations(connection, set, { command: "replay" });
+    const fixtureConnection = createDatabaseConnection(target.connectionString);
+    try {
+      await withDatabaseTransaction(fixtureConnection, seedBootstrapTestFixture, { timeoutMs: 120_000, lockTimeoutMs: 120_000 });
+    } finally { await fixtureConnection.pool.end(); }
+    return { result: "PASS", migrations: replay.applied.length, origin: replay.origin, fixture: "MINIMAL_FINANCE_AUDIT", legacyLedgerFabricated: false };
+  } finally {
+    if (locked) await connection.query("SELECT pg_advisory_unlock($1::integer,$2::integer)", migrationLock).catch(() => {});
+    await connection.close().catch(() => {});
+  }
 }
 
-process.env.DATABASE_URL = testDatabaseUrl;
-process.env.DATABASE_URL_UNPOOLED = testDatabaseUrlUnpooled;
-
-function run(...args) {
-  console.log(`$ npx ${args.join(" ")}`);
-  const result = isWindows
-    ? spawnSync("cmd.exe", ["/d", "/s", "/c", `npx ${args.join(" ")}`], { stdio: "inherit" })
-    : spawnSync("npx", args, { stdio: "inherit" });
-  if (result.status !== 0) process.exit(result.status ?? 1);
-}
-
-const migrations = readdirSync("prisma/migrations-ibema", { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-  .sort();
-
-run("prisma", "db", "push", "--force-reset", "--accept-data-loss");
-run("prisma", "db", "execute", "--file", "prisma/bootstrap-test/audit-immutability.sql");
-run("tsx", "prisma/bootstrap-test/seed.ts");
-
-for (const migration of migrations) {
-  run("prisma", "migrate", "resolve", "--applied", migration);
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  config({ path: ".env.local", quiet: true });
+  // TSX may load this API from a CommonJS TypeScript test. Keep all await
+  // expressions inside async functions, including in the CLI-only branch.
+  void bootstrapTestDatabaseMain().then(result => {
+    console.log(JSON.stringify(result, null, 2));
+  }).catch(error => {
+    // Never print a driver stack/URL: the destination is exclusively TEST_*.
+    console.error(JSON.stringify({ result: error.report?.result ?? "ERROR", message: error.code || error.cause ? "Dedicated test database bootstrap failed." : error.message, code: error.code ?? null }));
+    process.exitCode = 1;
+  });
 }

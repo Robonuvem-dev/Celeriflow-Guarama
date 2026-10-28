@@ -1,19 +1,17 @@
-import type { Prisma } from "@prisma/client";
-import type { AppContext } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listCurrentVaccinationRules } from "@/db/repositories/health-vaccination/cards";
+import { listVaccinationSearchHistory, listVaccinationSearchPatients } from "@/db/repositories/health-vaccination/search";
+import type { HealthVaccinationContext } from "@/lib/contracts/health-vaccination";
 import { vaccineDoseStatus, type VaccineCardEvent, type VaccineHistory } from "./vaccination-card-policy";
-export async function vaccinationActiveSearch(context: AppContext, query = "", at = new Date()) {
+export async function vaccinationActiveSearch(context: HealthVaccinationContext, query = "", at = new Date()) {
+  const executor = context.database ?? db;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const where: Prisma.PatientWhereInput = { status: "Ativo", person: { status: "Ativo", deathDate: null }, ...(unitIds ? { OR: [{ referenceUnitId: { in: unitIds } }, { vaccinations: { some: { unitId: { in: unitIds } } } }, { appointments: { some: { unitId: { in: unitIds } } } }] } : {}), ...(query.trim() ? { AND: [{ OR: [{ person: { fullName: { contains: query.trim(), mode: "insensitive" } } }, { cns: { contains: query.trim() } }, { person: { cpf: { contains: query.trim() } } }] }] } : {}) };
   const [patients, rules] = await Promise.all([
-    context.prisma.patient.findMany({ where, include: { person: { include: { addresses: { where: { canonicalAddressId: null, OR: [{ addressType: "Residencial" }, { addressType: null }] }, include: { neighborhood: true }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 } } }, referenceUnit: { select: { name: true } }, contactRecords: { where: { isActive: true }, select: { phone: true }, take: 1 } }, orderBy: { person: { fullName: "asc" } } }),
-    context.prisma.healthVaccineCalendarRule.findMany({ where: { enabled: true, validFrom: { lte: at }, OR: [{ validUntil: null }, { validUntil: { gte: at } }], vaccine: { isActive: true } }, include: { vaccine: { select: { name: true } } } }),
+    listVaccinationSearchPatients(executor, query, unitIds),
+    listCurrentVaccinationRules(executor, at),
   ]);
-  const scope = unitIds ? { unitId: { in: unitIds } } : {};
   const patientIds = patients.map(patient => patient.id);
-  const [records, events]: [(Omit<VaccineHistory, "source"> & { patientId: string })[], (VaccineCardEvent & { patientId: string; strategy: string })[]] = patientIds.length ? await Promise.all([
-    context.prisma.vaccinationRecord.findMany({ where: { patientId: { in: patientIds }, date: { lte: at }, ...scope }, select: { id: true, patientId: true, vaccineId: true, doseNumber: true, strategy: true, date: true } }),
-    context.prisma.healthVaccinationCardEvent.findMany({ where: { patientId: { in: patientIds }, occurredAt: { lte: at }, ...scope } }),
-  ]) : [[], []];
+  const [records, events]: readonly [(Omit<VaccineHistory, "source"> & { patientId: string })[], (VaccineCardEvent & { patientId: string; strategy: string })[]] = patientIds.length ? await listVaccinationSearchHistory(executor, patientIds, at, unitIds) : [[], []];
   const recordsByPatient = new Map<string, typeof records>();
   const eventsByPatient = new Map<string, typeof events>();
   for (const record of records) { const values = recordsByPatient.get(record.patientId) || []; values.push(record); recordsByPatient.set(record.patientId, values); }

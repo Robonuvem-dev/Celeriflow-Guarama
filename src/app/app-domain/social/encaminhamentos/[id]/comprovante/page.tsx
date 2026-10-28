@@ -1,27 +1,24 @@
 import { notFound } from "next/navigation";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { resolveSocialAccess } from "@/lib/social/access-policy";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import PrintSocialDocumentButton from "../../../requisicoes/[id]/comprovante/PrintSocialDocumentButton";
+import { db } from "@/db/client";
+import { findSocialInstitution, listSocialReferrals, socialReferralReceiptSubject } from "@/db/repositories/social/queries";
 
 export default async function ReferralReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const context = await getTenantContextForModuleOperation("SOCIAL", "issueReports");
   const access = await resolveSocialAccess(context);
-  const referral = await context.prisma.socialReferral.findFirst({
-    where: { id, ...(access.administrator ? {} : { unitId: { in: access.links.map((link) => link.unitId) } }) },
-    include: { unit: { select: { name: true } }, destinationOrganization: { select: { name: true, address: true, phone: true } } },
-  });
+  const database = context.database ?? db;
+  const [referral] = await listSocialReferrals(database, access, id);
   if (!referral) notFound();
-  const [institution, person, family, reason, priority] = await Promise.all([
-    context.prisma.institution.findFirst({ select: { name: true, legalName: true, city: true, state: true } }),
-    referral.personId ? context.prisma.person.findUnique({ where: { id: referral.personId }, select: { fullName: true, socialName: true, cpf: true } }) : null,
-    referral.familyId ? context.prisma.socialFamily.findUnique({ where: { id: referral.familyId }, select: { familyCode: true, representative: { select: { fullName: true, socialName: true, cpf: true } } } }) : null,
-    context.prisma.socialCatalogEntry.findUnique({ where: { id: referral.reasonId }, select: { name: true } }),
-    referral.priorityTypeId ? context.prisma.socialCatalogEntry.findUnique({ where: { id: referral.priorityTypeId }, select: { name: true } }) : null,
+  const [institution, { person, family, reason, priority }] = await Promise.all([
+    findSocialInstitution(database), socialReferralReceiptSubject(database, referral),
   ]);
   const subject = person || family?.representative;
-  await writeAuditEvent(context.prisma, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SocialReferral", targetId: referral.id });
+  await insertAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.reportIssued, targetType: "SocialReferral", targetId: referral.id });
   return <main className="mx-auto max-w-4xl space-y-4 bg-white p-6 text-slate-900">
     <PrintSocialDocumentButton />
     <header className="border-b-2 border-slate-800 pb-3 text-center"><h1 className="text-lg font-bold">{institution?.name || institution?.legalName || "Prefeitura Municipal de Ibema"}</h1><p className="text-sm">Assistência Social — {institution?.city || "Ibema"}/{institution?.state || "PR"}</p><h2 className="mt-3 text-base font-bold">Encaminhamento e contrarreferência socioassistencial</h2><p className="text-[10px]">Modelo local POC-1.0 • dados registrados no sistema</p></header>

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { calculateInclusiveContractTermDays } from "@/lib/compras/contract-lifecycle";
 import { InstrumentLifecycleReport } from "../../InstrumentLifecycleReport";
+import { databaseConnection } from "@/db/client";
+import { loadContractDetail, loadInstrumentEvents } from "@/db/repositories/procurement/instruments";
 
 const eventLabels: Record<string, string> = {
   CONTRACT_AMENDMENT_APPLIED: "Aditivo aplicado",
@@ -39,54 +41,12 @@ const eventLabels: Record<string, string> = {
 };
 
 export default async function ContratoRelatorioPage({ params }: { params: Promise<{ id: string }> }) {
-  const { prisma } = await getTenantContextForModule("COMPRAS");
+  await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const contract = await prisma.contract.findUnique({
-    where: { id },
-    include: {
-      process: { select: { number: true } },
-      supplier: { select: { company: { select: { corporateName: true, tradeName: true } }, person: { select: { fullName: true } } } },
-      secretariat: { select: { name: true } },
-      sourceBudgetUnit: { select: { code: true, name: true } },
-      responsibilityGroups: { orderBy: { createdAt: "asc" }, select: { name: true, description: true, status: true, _count: { select: { members: true } } } },
-      instrumentParties: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          responsibilityGroup: { select: { name: true } },
-          supplier: { select: { company: { select: { corporateName: true, tradeName: true } }, person: { select: { fullName: true } } } },
-          person: { select: { fullName: true } },
-          company: { select: { corporateName: true, tradeName: true } },
-          employee: { select: { name: true, registration: true } },
-        },
-      },
-      measurements: {
-        orderBy: { number: "asc" },
-        include: { items: { orderBy: { createdAt: "asc" }, select: { description: true, quantity: true, unit: true, valueDecimal: true } } },
-      },
-      installments: { orderBy: { number: "asc" }, include: { payment: { select: { orderNumber: true, status: true } } } },
-      commitments: {
-        where: { status: { in: ["Emitido", "Liquidado", "Pago"] } },
-        select: {
-          number: true,
-          date: true,
-          status: true,
-          value: true,
-          valueDecimal: true,
-          movements: { select: { type: true, valueDecimal: true } },
-          settlements: { where: { status: "Liquidado" }, select: { value: true, valueDecimal: true } },
-          payments: { where: { status: { in: ["Pago", "Paga"] } }, select: { value: true, valueDecimal: true } },
-        },
-      },
-    },
-  });
+  const contract = await loadContractDetail(databaseConnection.db, id);
   if (!contract) notFound();
 
-  const events = await prisma.procurementLifecycleEvent.findMany({
-    where: { sourceType: "CONTRACT", sourceId: contract.id },
-    include: { actorUsuario: { select: { nome: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const events = await loadInstrumentEvents(databaseConnection.db, { kind: "CONTRACT", id: contract.id });
   const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const supplierName = contract.supplier?.company?.corporateName || contract.supplier?.company?.tradeName || contract.supplier?.person?.fullName || "Não informado";
   const committed = contract.commitments.reduce((total, commitment) => total + commitment.movements.reduce((value, movement) => value + (movement.type === "Reforço" ? Number(movement.valueDecimal) : -Number(movement.valueDecimal)), Number(commitment.valueDecimal ?? commitment.value)), 0);

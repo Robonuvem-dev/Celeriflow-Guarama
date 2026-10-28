@@ -1,0 +1,540 @@
+{
+  "formatVersion": 1,
+  "sourceSha256": "7312fd277379643d95feb322d046d7fe35b7883547da50c8d2feb30257584ba0",
+  "mappingReference": "FOLHA_EVENTOS stores event CODES here; SQL checks resolve the database IDs independently by those codes.",
+  "code": "RH_POC_DOCUMENTAL_2026_V1",
+  "reference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md.",
+  "definitions": [
+    {
+      "code": "VENCIMENTO",
+      "name": "Vencimento",
+      "type": "PROVENTO",
+      "method": "FORMULA_CONTROLADA",
+      "formula": "SALARIO_BASE * DIAS / 30",
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "ATS",
+      "name": "ATS",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "EXTRA",
+      "name": "EXTRA",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "VARIAVEL",
+      "name": "VARIAVEL",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "CONSIGNADO",
+      "name": "Parcela consignada",
+      "type": "DESCONTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": []
+    },
+    {
+      "code": "POC_COMPLEMENTO",
+      "name": "COMPLEMENTO",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "POC_FERIAS",
+      "name": "FERIAS",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "POC_TERCO",
+      "name": "TERCO",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "POC_DECIMO_13",
+      "name": "DECIMO 13",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "POC_SALDO",
+      "name": "SALDO",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "POC_RRA",
+      "name": "RRA",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": [
+        "RGPS",
+        "IRRF"
+      ]
+    },
+    {
+      "code": "POC_ADIANTAMENTO",
+      "name": "ADIANTAMENTO",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": []
+    },
+    {
+      "code": "POC_ADIANTAMENTO_13",
+      "name": "ADIANTAMENTO 13",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": []
+    },
+    {
+      "code": "POC_FERIAS_IND",
+      "name": "FERIAS IND",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": []
+    },
+    {
+      "code": "POC_TERCO_IND",
+      "name": "TERCO IND",
+      "type": "PROVENTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": []
+    },
+    {
+      "code": "POC_ABATIMENTO",
+      "name": "Abatimento de valores já adiantados",
+      "type": "DESCONTO",
+      "method": "MANUAL",
+      "formula": null,
+      "incidences": []
+    }
+  ],
+  "rules": [
+    {
+      "code": "FOLHA_EVENTOS",
+      "value": {
+        "VENCIMENTO": "POC_V1_VENCIMENTO",
+        "ATS": "POC_V1_ATS",
+        "EXTRA": "POC_V1_EXTRA",
+        "VARIAVEL": "POC_V1_VARIAVEL",
+        "CONSIGNADO": "POC_V1_CONSIGNADO",
+        "POC_COMPLEMENTO": "POC_V1_POC_COMPLEMENTO",
+        "POC_FERIAS": "POC_V1_POC_FERIAS",
+        "POC_TERCO": "POC_V1_POC_TERCO",
+        "POC_DECIMO_13": "POC_V1_POC_DECIMO_13",
+        "POC_SALDO": "POC_V1_POC_SALDO",
+        "POC_RRA": "POC_V1_POC_RRA",
+        "POC_ADIANTAMENTO": "POC_V1_POC_ADIANTAMENTO",
+        "POC_ADIANTAMENTO_13": "POC_V1_POC_ADIANTAMENTO_13",
+        "POC_FERIAS_IND": "POC_V1_POC_FERIAS_IND",
+        "POC_TERCO_IND": "POC_V1_POC_TERCO_IND",
+        "POC_ABATIMENTO": "POC_V1_POC_ABATIMENTO",
+        "PREVIDENCIA_RGPS_POC": "POC_V1_PREVIDENCIA_RGPS_POC",
+        "IRRF": "POC_V1_IRRF"
+      }
+    },
+    {
+      "code": "IRRF_FAIXAS",
+      "value": [
+        {
+          "lowerLimit": "0",
+          "upperLimit": "2428.80",
+          "employeeRate": "0",
+          "amountToDeduct": "0"
+        },
+        {
+          "lowerLimit": "2428.80",
+          "upperLimit": "2826.65",
+          "employeeRate": "7.5",
+          "amountToDeduct": "182.16"
+        },
+        {
+          "lowerLimit": "2826.65",
+          "upperLimit": "3751.05",
+          "employeeRate": "15",
+          "amountToDeduct": "394.16"
+        },
+        {
+          "lowerLimit": "3751.05",
+          "upperLimit": "4664.68",
+          "employeeRate": "22.5",
+          "amountToDeduct": "675.49"
+        },
+        {
+          "lowerLimit": "4664.68",
+          "upperLimit": null,
+          "employeeRate": "27.5",
+          "amountToDeduct": "908.73"
+        }
+      ]
+    },
+    {
+      "code": "IRRF_REDUCAO_MENSAL",
+      "value": {
+        "origin": "IRRF_REDUCAO_MENSAL",
+        "effectiveFrom": "2026-01-01",
+        "effectiveUntil": null,
+        "exemptIncomeLimit": "5000",
+        "reductionIncomeLimit": "7350",
+        "maximumReduction": "312.89",
+        "linearConstant": "978.62",
+        "linearFactor": "0.133145",
+        "legalReference": "Lei 15.270/2025; RFB 2026; pacote RH T13–T15. Conferir enquadramento na implantação."
+      }
+    },
+    {
+      "code": "IRRF_DEDUCAO_DEPENDENTE",
+      "value": "189.59"
+    },
+    {
+      "code": "IRRF_DEDUCAO_SIMPLIFICADA",
+      "value": "607.20"
+    },
+    {
+      "code": "PREVIDENCIA_BASE_PATRONAL_RGPS_POC",
+      "value": "SEM_TETO"
+    },
+    {
+      "code": "FOLHAS_ESPECIAIS_POC",
+      "value": {
+        "origin": "FOLHAS_ESPECIAIS_POC",
+        "legalReference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md.",
+        "estimated": true,
+        "version": 1
+      }
+    },
+    {
+      "code": "RATEIO_MENSAL_CIVIL",
+      "value": {
+        "origin": "RATEIO_MENSAL_CIVIL",
+        "divisor": "DIAS_CIVIS_MES",
+        "manualMovements": "VALOR_INTEGRAL_RATEADO",
+        "legalReference": "POC: vencimento/fixos/fórmulas por proporção de dias civis do mês; movimentos informados são integrais e distribuídos entre vigências. Substituir divisor e critérios municipais.",
+        "estimated": true
+      }
+    },
+    {
+      "code": "DIARIAS_POC",
+      "value": {
+        "origin": "DIARIAS_POC",
+        "rates": {
+          "DF": "540.53",
+          "CAPITAL": "405.39",
+          "INTERIOR": "337.83",
+          "INTERNACIONAL": "130.00"
+        },
+        "minimumDistanceKm": 70,
+        "rounding": "DOWN",
+        "legalReference": "Cartilha Diárias julho/2025, p. 2–8; demais servidores. Limites de horas e truncamento estimados para POC.",
+        "estimated": true
+      }
+    },
+    {
+      "code": "FALTAS_FERIAS_POC",
+      "value": {
+        "origin": "FALTAS_FERIAS_POC",
+        "estimated": true,
+        "legalReference": "Ibema art. 101 histórico + Campina do Simão Lei 21/2025 art. 109 p. 29. >=33 faltas é fechamento estimado da lacuna para POC.",
+        "attendanceStatuses": [
+          "Falta"
+        ],
+        "bands": [
+          {
+            "minimumAbsences": 0,
+            "maximumAbsences": 5,
+            "days": 30
+          },
+          {
+            "minimumAbsences": 6,
+            "maximumAbsences": 14,
+            "days": 24
+          },
+          {
+            "minimumAbsences": 15,
+            "maximumAbsences": 23,
+            "days": 18
+          },
+          {
+            "minimumAbsences": 24,
+            "maximumAbsences": 32,
+            "days": 12
+          },
+          {
+            "minimumAbsences": 33,
+            "maximumAbsences": null,
+            "days": 0
+          }
+        ]
+      }
+    },
+    {
+      "code": "ATS",
+      "value": {
+        "origin": "ATS",
+        "rubricCode": "ATS",
+        "basis": "SALARIO_TEMPORAL",
+        "tiers": [
+          {
+            "minimumDays": 0,
+            "minimumYears": 0,
+            "rate": "0"
+          },
+          {
+            "minimumDays": 1825,
+            "minimumYears": 5,
+            "rate": "5"
+          },
+          {
+            "minimumDays": 3650,
+            "minimumYears": 10,
+            "rate": "10"
+          },
+          {
+            "minimumDays": 5475,
+            "minimumYears": 15,
+            "rate": "15"
+          },
+          {
+            "minimumDays": 7300,
+            "minimumYears": 20,
+            "rate": "20"
+          },
+          {
+            "minimumDays": 9125,
+            "minimumYears": 25,
+            "rate": "25"
+          },
+          {
+            "minimumDays": 10950,
+            "minimumYears": 30,
+            "rate": "30"
+          }
+        ],
+        "absences": [
+          {
+            "type": "Licença sem vencimentos",
+            "counts": false
+          },
+          {
+            "type": "Licença médica",
+            "counts": true
+          }
+        ],
+        "legalReference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md."
+      }
+    },
+    {
+      "code": "LICENCA_PREMIO",
+      "value": {
+        "origin": "LICENCA_PREMIO",
+        "acquisitionDays": 1825,
+        "acquisitionYears": 5,
+        "entitlementDays": 90,
+        "minSplitDays": 15,
+        "maxSplits": 6,
+        "allowsCash": true,
+        "maxCashDays": 45,
+        "absences": [
+          {
+            "type": "Licença sem vencimentos",
+            "effect": "SUSPENDER"
+          },
+          {
+            "type": "Licença médica",
+            "effect": "CONTAR"
+          },
+          {
+            "type": "Suspensão disciplinar",
+            "effect": "REINICIAR"
+          }
+        ],
+        "legalReference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md."
+      }
+    },
+    {
+      "code": "HORAS_EXTRAS_PONTO",
+      "value": {
+        "origin": "HORAS_EXTRAS_PONTO",
+        "rubricCode": "EXTRA",
+        "additionalRate": "50",
+        "legalReference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md."
+      }
+    },
+    {
+      "code": "BANCO_HORAS_PONTO",
+      "value": {
+        "origin": "BANCO_HORAS_PONTO",
+        "maxBalanceHours": "120",
+        "maxCreditPerDayHours": "2",
+        "maxDebitPerDayHours": "8",
+        "allowedStatuses": [
+          "Presente"
+        ],
+        "forbidPaidOvertimeForCredit": true,
+        "legalReference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md."
+      }
+    },
+    {
+      "code": "PROVISOES_FOLHA",
+      "value": {
+        "origin": "PROVISOES_FOLHA",
+        "legalReference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md.",
+        "components": [
+          {
+            "kind": "PROVISAO_FERIAS",
+            "rubricCodes": [
+              "VENCIMENTO",
+              "ATS"
+            ],
+            "rate": "11.11111111",
+            "employerRate": "22"
+          },
+          {
+            "kind": "PROVISAO_13",
+            "rubricCodes": [
+              "VENCIMENTO",
+              "ATS"
+            ],
+            "rate": "8.33333333",
+            "employerRate": "22"
+          },
+          {
+            "kind": "PROVISAO_LICENCA",
+            "rubricCodes": [
+              "VENCIMENTO",
+              "ATS"
+            ],
+            "rate": "5",
+            "employerRate": "22"
+          }
+        ]
+      }
+    },
+    {
+      "code": "MARGEM_CONSIGNAVEL",
+      "value": {
+        "origin": "MARGEM_CONSIGNAVEL",
+        "remunerationRubricCodes": [
+          "VENCIMENTO",
+          "ATS",
+          "EXTRA",
+          "VARIAVEL"
+        ],
+        "compulsoryDeductionRubricCodes": [
+          "PREVIDENCIA_RGPS_POC",
+          "IRRF"
+        ],
+        "consignmentRubricCodes": [
+          "CONSIGNADO"
+        ],
+        "legalReference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md."
+      }
+    },
+    {
+      "code": "MENSAGENS_RECIBO",
+      "value": {
+        "origin": "MENSAGENS_RECIBO",
+        "messages": [
+          {
+            "id": "POC_V1",
+            "text": "DEMONSTRAÇÃO POC — parâmetros documentais e estimados. Consulte o registro de substituição antes da implantação.",
+            "startsAt": "2020-01-01",
+            "endsAt": null,
+            "contractIds": [],
+            "regimeIds": [],
+            "payrollTypes": []
+          }
+        ]
+      }
+    },
+    {
+      "code": "POC_FONTES_E_ESTIMATIVAS",
+      "value": {
+        "version": 1,
+        "reference": "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md.",
+        "sourceIds": [
+          13,
+          39,
+          45,
+          58,
+          60,
+          88,
+          89,
+          90,
+          100,
+          105,
+          111,
+          128,
+          137
+        ],
+        "conventionModels": [
+          "REMESSA_SALARIAL_CSV_POC",
+          "CONSIGNACAO_CSV_POC",
+          "DIARIAS_SOLICITACAO_POC"
+        ],
+        "bankCodesForExamples": [
+          "001",
+          "104",
+          "237",
+          "341",
+          "756"
+        ]
+      }
+    }
+  ]
+}

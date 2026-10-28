@@ -6,11 +6,11 @@ import { PDFDocument } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { catLayoutFields, catLayoutProvenance, validateCatLayoutFields } from "../src/lib/sst/accident-layout-policy";
 import { loadOfficialCatTemplate, renderOfficialCatPdf } from "../src/lib/sst/accident-layout-pdf";
-import { saveCatLayout, readLatestCatLayout, readCatLayoutRegistration, type CatLayoutRow } from "../src/lib/sst/accident-layout-service";
+import { saveCatLayout, readLatestCatLayout, readCatLayoutRegistration } from "../src/lib/sst/accident-layout-service";
 import { configuredRestrictionEmailSender, restrictionCronAuthorized } from "../src/lib/sst/restriction-email-provider";
 import { runRestrictionExpiryCron, restrictionCronScope } from "../src/lib/sst/restriction-cron-service";
 import type { AppContext } from "../src/lib/platform/tenant-context";
-import type { PrismaClient } from "@prisma/client";
+import { createSstAccidentFixture } from "./helpers/sst-accident-fixture";
 
 test("official INSS source hash and all 64 fields match; filled draft preserves template and never invents registration", async () => {
   const template = await loadOfficialCatTemplate();
@@ -39,30 +39,40 @@ test("layout validates typed codes, dates, conditional death facts and administr
 });
 const user: AppContext["user"] = { id:"actor",name:"SST",email:"sst@example.invalid",firebaseUid:"actor",profileCode:"SST_OPERATOR",role:"SST",modulePermissions:[],allowedBudgetUnitIds:["ug"],employeeId:"employee",departmentId:null,secretariatId:null,permissions:JSON.stringify({modules:{SST:{blocked:false,create:true,issueReports:true}}}) };
 test("layout derives canonical identity, retries without duplicate revision, rejects clinical or cross-UG access", async () => {
-  const records: { id:string; version:number; requestHash:string; createdById:string; fields:Record<string,string> }[] = [];
-  const cat = { id:"cat",budgetUnitId:"ug",employeeId:"employee",kind:"TYPICAL",occurredAt:new Date("2026-10-01T12:00:00Z"),snapshot:{employeeName:"Canonical employee",registration:"123"},data:{generatingStatus:"INITIAL",location:"Oficina",agent:"Máquina",bodyParts:["Mão"]} };
-  const tx = {
-    employee:{findUniqueOrThrow:async () => ({id:"employee",name:"Employee",person:{id:"person",cpf:"12345678901",motherName:"Canonical mother",birthDate:new Date("1980-01-01")}})},
-    auditEvent:{create:async () => ({})},
-    $queryRaw:async (strings:TemplateStringsArray) => { const sql=strings.join("?"); return sql.includes('FROM "SstCat"') ? [cat] : sql.includes('MAX("version")') ? [{version:records.length}] : sql.includes('"submissionKey"') ? records.slice(0,1) : []; },
-    $executeRaw:async (strings:TemplateStringsArray,...values:unknown[]) => { if(strings.join("?").includes('INSERT INTO "SstCatLayoutVersion"')) records.push({id:String(values[0]),version:Number(values[2]),fields:JSON.parse(String(values[7])),createdById:String(values[10]),requestHash:String(values[12])});return 1; },
-  };
-  const context = {user:{...user},prisma:{...tx,$transaction:async (fn:(db:typeof tx)=>Promise<unknown>)=>fn(tx),sstAccessGrant:{findUnique:async()=>null}}} as unknown as AppContext;
-  const input = {catId:"cat",submissionKey:"779b172f-10c2-4325-bc32-d33cba4fdeaa",expectedVersion:0,mode:"DRAFT",fields:{employeeName:"Browser impostor"}};
-  assert.equal(await saveCatLayout(context,input),"cat"); assert.equal(await saveCatLayout(context,input),"cat");
-  assert.equal(records.length,1); assert.equal(records[0].fields.employeeName,"Canonical employee"); assert.equal(records[0].fields.motherName,"Canonical mother");
-  await assert.rejects(saveCatLayout(context,{...input,fields:{employerName:"Changed request"}}),/outros dados/);
-  await assert.rejects(readLatestCatLayout(context,"cat",true),/clínica/);
-  context.user.allowedBudgetUnitIds=[];
-  await assert.rejects(readLatestCatLayout(context,"cat"),/Unidade Gestora/);
+  const f=await createSstAccidentFixture();
+  try {
+    await f.seedCat(); await f.db.exec(`UPDATE "Person" SET "motherName"='Canonical mother',"birthDate"='1980-01-01' WHERE id='worker'`);
+    const input = {catId:"cat",submissionKey:"779b172f-10c2-4325-bc32-d33cba4fdeaa",expectedVersion:0,mode:"DRAFT",fields:{employeeName:"Browser impostor"}};
+    assert.equal(await saveCatLayout(f.context,input),"cat"); assert.equal(await saveCatLayout(f.context,input),"cat");
+    const record=await readLatestCatLayout(f.context,"cat"); assert.ok(record);
+    assert.equal(record.layout.fields.employeeName,"Canonical employee"); assert.equal(record.layout.fields.motherName,"Canonical mother");
+    assert.equal((await f.db.query('SELECT id FROM "SstCatLayoutVersion"')).rows.length,1);
+    await assert.rejects(saveCatLayout(f.context,{...input,fields:{employerName:"Changed request"}}),/outros dados/);
+    await f.db.exec('UPDATE "SstAccessGrant" SET "canReadClinical"=false');
+    await assert.rejects(readLatestCatLayout(f.context,"cat",true),/clínica/);
+    f.context.user.allowedBudgetUnitIds=[];
+    await assert.rejects(readLatestCatLayout(f.context,"cat"),/Unidade Gestora/);
+  } finally {await f.close();}
 });
 test("registration lookup requires accepted production evidence and exact layout snapshot, never a declared number", async () => {
-  const queries:string[]=[], values:unknown[][]=[];let counter=0;
-  const context={user:{...user},prisma:{$queryRaw:async(strings:TemplateStringsArray,...parameters:unknown[])=>{queries.push(strings.join("?"));values.push(parameters);counter++;return counter===1?[{id:"cat",budgetUnitId:"ug"}]:counter===2?[{available:true}]:[];}}} as unknown as AppContext;
-  const row={id:"layout",catId:"cat",requestHash:"exact-version",originalReceipt:"DECLARED-ORIGINAL-NUMBER"} as CatLayoutRow;
-  assert.equal(await readCatLayoutRegistration(context,row),null);
-  assert.match(queries[2],/PRODUCTION/);assert.match(queries[2],/ACCEPTED/);assert.match(queries[2],/sourceSnapshot.*catLayout.*requestHash/);
-  assert.ok(values[2].includes("exact-version"));assert.ok(!values[2].includes(row.originalReceipt));
+  const f=await createSstAccidentFixture();
+  try {
+    await f.seedCat();
+    await saveCatLayout(f.context,{catId:"cat",submissionKey:"779b172f-10c2-4325-bc32-d33cba4fdeaa",expectedVersion:0,mode:"DRAFT",fields:{},originalReceipt:"DECLARED-ORIGINAL-NUMBER"});
+    const latest=await readLatestCatLayout(f.context,"cat"); assert.ok(latest);
+    assert.equal(await readCatLayoutRegistration(f.context,latest.layout),null);
+    await f.db.exec(`CREATE TABLE "SstEsocialEvent" (id TEXT,"sourceId" TEXT,"budgetUnitId" TEXT,kind TEXT,environment TEXT,"sourceSnapshot" JSONB);
+      CREATE TABLE "SstEsocialEvidence" (id TEXT,"eventId" TEXT,environment TEXT,status TEXT,receipt TEXT,"processedAt" TIMESTAMP,"receivedAt" TIMESTAMP DEFAULT now());`);
+    await f.db.query(`INSERT INTO "SstEsocialEvent" VALUES ('event','cat','ug','S2210','PRODUCTION',$1)`,[JSON.stringify({catLayout:{layout:{requestHash:latest.layout.requestHash}}})]);
+    await f.db.exec(`INSERT INTO "SstEsocialEvidence" (id,"eventId",environment,status,receipt,"processedAt") VALUES ('evidence','event','TEST','ACCEPTED','receipt','2026-10-01')`);
+    assert.equal(await readCatLayoutRegistration(f.context,latest.layout),null);
+    await f.db.exec(`UPDATE "SstEsocialEvidence" SET environment='PRODUCTION',status='REJECTED'`);
+    assert.equal(await readCatLayoutRegistration(f.context,latest.layout),null);
+    await f.db.exec(`UPDATE "SstEsocialEvidence" SET status='ACCEPTED'`);
+    const accepted=await readCatLayoutRegistration(f.context,latest.layout); assert.ok(accepted);
+    assert.equal(accepted.receipt,"receipt");assert.equal(accepted.processedAt.toISOString(),"2026-10-01T00:00:00.000Z");
+    assert.equal(await readCatLayoutRegistration(f.context,{...latest.layout,requestHash:"other-version"}),null);
+  } finally {await f.close();}
 });
 test("additive layout migration freezes revisions, binds attendance to CAT and extends outbox without touching historical migration", async () => {
   const db=new PGlite();
@@ -96,24 +106,31 @@ test("cron secret and real provider configuration fail closed; HTTP sends use id
   await assert.rejects(bad({to:"responsible@example.invalid",subject:"Vencimento",text:"Ficha",idempotencyKey:"outbox"}));
 });
 test("cron claims scoped pending work, records accepted receipt and leaves unconfirmed sends FAILED", async () => {
-  let available=true;const statements:string[]=[];
-  const tx={$queryRaw:async()=>{if(!available)return [];available=false;return [{id:"mail",recipient:"responsible@example.invalid",restrictionId:"restriction",attempts:0}];},$executeRaw:async (strings:TemplateStringsArray)=>{statements.push(strings.join("?"));return 1;}};
-  const prisma={...tx,$transaction:async(fn:(db:typeof tx)=>Promise<unknown>)=>fn(tx),$queryRaw:async()=>[{count:0}]} as unknown as PrismaClient;
-  const scope={actorId:"actor",unitIds:["ug"]};
-  assert.equal((await runRestrictionExpiryCron(prisma,scope,async()=>({receipt:"provider-receipt"}))).sent,1);
-  assert.ok(statements.some(s=>s.includes("'SENDING'")));assert.ok(statements.some(s=>s.includes("'SENT'")));
-  available=true;statements.length=0;
-  const failed=await runRestrictionExpiryCron(prisma,scope,async()=>{throw new Error("Timeout");});
-  assert.equal(failed.sent,0);assert.equal(failed.failed,1);assert.ok(statements.some(s=>s.includes("'FAILED'")));assert.ok(!statements.some(s=>s.includes("'SENT'")));
+  const f=await createSstAccidentFixture();
+  try {
+    await f.seedRestriction(); const scope={actorId:"user",unitIds:["ug"]};
+    assert.equal((await runRestrictionExpiryCron(f.connection,scope,async()=>({receipt:"provider-receipt"}))).sent,1);
+    assert.deepEqual((await f.db.query('SELECT status,attempts,"providerReceipt" FROM "SstRestrictionEmailOutbox"')).rows,[{status:"SENT",attempts:1,providerReceipt:"provider-receipt"}]);
+    await f.db.exec(`UPDATE "SstRestrictionEmailOutbox" SET status='PENDING',"providerReceipt"=NULL,"sentAt"=NULL`);
+    const failed=await runRestrictionExpiryCron(f.connection,scope,async()=>{throw new Error("Timeout");});
+    assert.equal(failed.sent,0);assert.equal(failed.failed,1);
+    assert.deepEqual((await f.db.query('SELECT status,attempts,"providerReceipt" FROM "SstRestrictionEmailOutbox"')).rows,[{status:"FAILED",attempts:2,providerReceipt:null}]);
+  } finally {await f.close();}
 });
 test("scheduled actor is canonical and must have active module/profile and explicit clinical scope", async () => {
-  let active=true,grant=false;
-  const actor={id:"actor",nome:"Service account",email:"service@example.invalid",firebaseUid:"actual-firebase-link",ativo:true,perfil:{ativo:true,nome:"SST",codigo:"SST_OPERATOR",permissoes:user.permissions},employee:null,permissoesModulo:[],unidadesGestoras:[{budgetUnitId:"ug"}]};
-  const prisma={usuario:{findUnique:async()=>({...actor,ativo:active})},configuracaoModulo:{findUnique:async()=>({ativo:true})},$queryRaw:async()=>grant?[{budgetUnitId:"ug"}]:[]} as unknown as PrismaClient;
-  await assert.rejects(restrictionCronScope(prisma,undefined),/não configurado/);
-  active=false;await assert.rejects(restrictionCronScope(prisma,"actor"),/inativo/);
-  active=true;await assert.rejects(restrictionCronScope(prisma,"actor"),/explicitamente/);
-  grant=true;assert.deepEqual(await restrictionCronScope(prisma,"actor"),{actorId:"actor",unitIds:["ug"]});
+  const f=await createSstAccidentFixture();
+  try {
+    await f.db.query(`INSERT INTO "ConfiguracaoPerfil" (id,codigo,nome,permissoes,"updatedAt") VALUES ('profile','SST_OPERATOR','SST',$1,now())`,[user.permissions]);
+    await f.db.exec(`INSERT INTO "ConfiguracaoModulo" (id,codigo,nome,ativo,"updatedAt") VALUES ('sst','SST','SST',true,now());
+      INSERT INTO "UsuarioUnidadeGestora" (id,"usuarioId","budgetUnitId") VALUES ('binding','user','ug');
+      UPDATE "Usuario" SET "firebaseUid"='actual-firebase-link',ativo=false WHERE id='user'`);
+    await assert.rejects(restrictionCronScope(f.connection.db,undefined),/não configurado/);
+    await assert.rejects(restrictionCronScope(f.connection.db,"user"),/inativo/);
+    await f.db.exec(`UPDATE "Usuario" SET ativo=true; UPDATE "SstAccessGrant" SET "canAssess"=false`);
+    await assert.rejects(restrictionCronScope(f.connection.db,"user"),/explicitamente/);
+    await f.db.exec('UPDATE "SstAccessGrant" SET "canAssess"=true');
+    assert.deepEqual(await restrictionCronScope(f.connection.db,"user"),{actorId:"user",unitIds:["ug"]});
+  } finally {await f.close();}
 });
 test("secure cron HTTP route reports and logs configuration block before any delivery", async () => {
   const {GET}=await import("../src/app/api/sst/restricoes/expiracao/route");

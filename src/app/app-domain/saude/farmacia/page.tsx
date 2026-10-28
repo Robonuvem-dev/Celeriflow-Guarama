@@ -1,5 +1,6 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readPharmacyStockPage } from "@/db/repositories/health-pharmacy-pages/stock";
 import { Pill } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -10,36 +11,17 @@ import Link from "next/link";
 import { randomUUID } from "node:crypto";
 
 const input = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
-const PAGE_SIZE = 20;
 type Params = { q?: string | string[]; filter?: string | string[]; page?: string | string[] };
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
 const positivePage = (value: string | undefined) => value && /^\d+$/.test(value) && Number(value) > 0 ? Number(value) : 1;
 
 export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 120);
-  const stockWhere: Prisma.MaterialStockWhereInput = { material: { healthProfile: { isActive: true } }, warehouse: { healthUnitId: unitIds ? { in: unitIds } : { not: null }, ...(filter ? { name: filter } : {}) }, ...(q ? { OR: [{ material: { name: { contains: q, mode: "insensitive" } } }, { warehouse: { name: { contains: q, mode: "insensitive" } } }, { batchNumber: { contains: q, mode: "insensitive" } }] } : {}) };
-  const total = await prisma.materialStock.count({ where: stockWhere });
-  const page = Math.min(positivePage(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [stocks, stockOptions, warehouses, materials, suppliers, prescriptions, transfers, categories, units, medicines, patients, receipts, approvalPolicies] = await Promise.all([
-    prisma.materialStock.findMany({ where: stockWhere, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: [{ expirationDate: "asc" }, { createdAt: "desc" }], include: { material: true, warehouse: true } }),
-    prisma.materialStock.findMany({ where: { material: { healthProfile: { isActive: true } }, warehouse: { healthUnitId: unitIds ? { in: unitIds } : { not: null } } }, take: 500, orderBy: [{ expirationDate: "asc" }, { createdAt: "desc" }], include: { material: true, warehouse: true } }),
-    prisma.warehouse.findMany({ where: { isActive: true, healthUnitId: unitIds ? { in: unitIds } : { not: null } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.material.findMany({ where: { isActive: true, healthProfile: { isActive: true } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.supplier.findMany({ where: { status: "Ativo" }, take: 200, select: { id: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } } } }),
-    prisma.healthPrescriptionItem.findMany({ where: { medicine: { materialId: { not: null } }, ...(unitIds ? { prescription: { unitId: { in: unitIds } } } : {}) }, orderBy: { createdAt: "desc" }, take: 200, include: { prescription: { include: { patient: { include: { person: true } } } }, dispensations: { where: { status: "ACTIVE" } } } }),
-    prisma.healthStockTransfer.findMany({ where: { status: "IN_TRANSIT", ...(unitIds ? { OR: [{ originWarehouse: { healthUnitId: { in: unitIds } } }, { destinationWarehouse: { healthUnitId: { in: unitIds } } }] } : {}) }, orderBy: { createdAt: "desc" }, include: { originWarehouse: true, destinationWarehouse: true } }),
-    prisma.materialCategory.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.medicine.findMany({ where: { isActive: true, materialId: { not: null } }, orderBy: { name: "asc" } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, orderBy: { person: { fullName: "asc" } }, take: 500, include: { person: true } }),
-    prisma.healthStockReceipt.findMany({ where: { warehouse: { healthUnitId: unitIds ? { in: unitIds } : { not: null } } }, orderBy: { receivedAt: "desc" }, take: 30, include: { warehouse: { select: { name: true } }, items: { include: { material: { select: { name: true } } } } } }),
-    prisma.configuracaoParametroInstancia.findMany({ where: { chave: { startsWith: "HEALTH_STOCK_RECEIPT_APPROVAL:" } }, select: { chave: true, valor: true } }),
-  ]);
+  const { stocks, stockOptions, warehouses, materials, suppliers, prescriptions, transfers, categories, units, medicines, patients, receipts, approvalPolicies, total, page } = await readPharmacyStockPage(context.database ?? db, unitIds, { q, filter, requestedPage: positivePage(first(params.page)) });
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

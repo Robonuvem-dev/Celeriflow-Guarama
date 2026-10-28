@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { findPublicNoticeValidation } from "@/lib/transparencia/public-notices";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function PublicNoticeValidationPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   if (!/^CFN-[A-Z0-9]{20}$/.test(code)) notFound();
-  const notice = await findPublicNoticeValidation(prisma, code);
+  const notice = await findPublicNoticeValidation(db, code);
   if (!notice) notFound();
 
   return (

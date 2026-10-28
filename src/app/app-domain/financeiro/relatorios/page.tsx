@@ -1,6 +1,8 @@
 import { financialReportOptions } from "@/lib/financeiro/report-delivery";
 import { canIssueFinancialReports, getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import Link from "next/link";
+import { db } from "@/db/client";
+import { listFinancePageYears } from "@/db/repositories/finance-pages/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -8,11 +10,7 @@ const availableReportTypes = new Set(["BALANCETE", "CONCILIACAO_TESOURARIA", "BA
 
 export default async function FinanceiroRelatoriosPage() {
   const context = await getTenantContextForModule("FINANCEIRO");
-  const years = await context.prisma.financialYear.findMany({
-    where: isSystemAdministrator(context.user) ? {} : { governmentEntity: { is: { planningUnits: { some: { budgetUnitId: { in: context.user.allowedBudgetUnitIds } } } } } },
-    select: { id: true, year: true, status: true, governmentEntity: { select: { name: true } } },
-    orderBy: { year: "desc" },
-  });
+  const years = await listFinancePageYears(context.database ?? db, { allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
   const canIssue = canIssueFinancialReports(context.user);
   const reportOptions = financialReportOptions.filter((report) => availableReportTypes.has(report.type));
 

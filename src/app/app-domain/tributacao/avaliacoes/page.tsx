@@ -1,18 +1,22 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import ValuationClient from "./ValuationClient";
+import { db } from "@/db/client";
+import { listFiscalProperties } from "@/db/repositories/taxation-pages/lookups";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import { listPageValuationTaxes, listPageValuations } from "@/db/repositories/taxation-pages/fiscal-options";
 
 export const dynamic = "force-dynamic";
 
 export default async function ValuationPage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
   const unrestricted = isSystemAdministrator(user);
   const [taxes, rules, properties, valuations, memories] = await Promise.all([
-    prisma.tax.findMany({ where: { isActive: true, name: { in: ["IPTU", "ITBI"], mode: "insensitive" } }, include: { financialMapping: { include: { defaultBankAccount: true } } } }),
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "TAX", category: "PROPERTY_VALUATION_RULE" }, orderBy: { version: "desc" } }),
-    prisma.realEstate.findMany({ orderBy: { municipalInsc: "asc" }, select: { id: true, municipalInsc: true, landArea: true, builtArea: true }, take: 1000 }),
-    prisma.propertyValuation.findMany({ orderBy: { year: "desc" } }),
-    prisma.taxRegistryEntry.findMany({ where: { category: { in: ["CONFIGURED_VALUATION_IPTU", "CONFIGURED_VALUATION_ITBI"] } }, orderBy: { createdAt: "desc" }, take: 300 }),
+    listPageValuationTaxes(database),
+    listFiscalEntries(database, { entityType: "TAX", categories: ["PROPERTY_VALUATION_RULE"] }),
+    listFiscalProperties(database, { order: true, limit: 1000 }),
+    listPageValuations(database),
+    listFiscalEntries(database, { categories: ["CONFIGURED_VALUATION_IPTU", "CONFIGURED_VALUATION_ITBI"], order: "created", limit: 300 }),
   ]);
   const authorized = (data: unknown) => { const scope = taxScopeSnapshot(data as Parameters<typeof taxScopeSnapshot>[0]); return unrestricted || typeof scope.budgetUnitId === "string" && user.allowedBudgetUnitIds.includes(scope.budgetUnitId); };
   const latest = new Map<string, typeof rules[number]>();

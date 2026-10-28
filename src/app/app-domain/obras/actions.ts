@@ -1,13 +1,25 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
+import { and, eq, notInArray, sql } from "drizzle-orm";
+import { db, databaseConnection } from "@/db/client";
+import { getPostgresError } from "@/db/errors";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { infrastructureWorks, infrastructureMeasurements, infrastructureServices, infrastructureTeams, infrastructureServiceEmployees, infrastructureServiceTeams, infrastructureServiceEquipment, infrastructureServiceMaterials, infrastructureServicePurchases, infrastructureServiceDocuments } from "@/db/schema/infrastructure";
+import { assets } from "@/db/schema/assets";
+import { materialStocks } from "@/db/schema/assets-stock";
+import { departments, employees } from "@/db/schema/administration";
+import { documents } from "@/db/schema/registry";
 import { z } from "zod";
 import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
 import { applyStockMovement, StockServiceError } from "@/lib/patrimonio/stock-service";
 import { revalidatePath } from "next/cache";
 
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("OBRAS", operation)).prisma;
+async function authorize(operation: ModuleOperation) {
+  await getTenantContextForModuleOperation("OBRAS", operation);
+}
+
+function requireUpdated(rows: { id: string }[]) {
+  if (rows.length !== 1) throw new Error("Registro não encontrado.");
 }
 
 type ActionResult = { error?: string };
@@ -21,7 +33,7 @@ const positiveNumber = z.number().finite().min(0, "Informe um valor maior ou igu
 const inputDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida.").transform((value) => new Date(`${value}T12:00:00.000Z`));
 
 function errorMessage(error: unknown, fallback: string) {
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return "Já existe um registro com esses dados.";
+  if (getPostgresError(error)?.code === "23505") return "Já existe um registro com esses dados.";
   return fallback;
 }
 
@@ -33,11 +45,11 @@ function revalidate(path: string) {
 }
 
 export async function createObra(data: { numero: string; nome: string; descricao?: string; local?: string; tipo: string; valorEstimado: number }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("create");
+  await authorize("create");
   const parsed = z.object({ numero: text, nome: text, descricao: z.string().trim().optional(), local: z.string().trim().optional(), tipo: z.enum(obraTypes), valorEstimado: positiveNumber }).safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
-    await prisma.obrasObra.create({ data: { ...parsed.data, descricao: parsed.data.descricao || null, local: parsed.data.local || null, status: "Em Planejamento" } });
+    await db.insert(infrastructureWorks).values({ ...parsed.data, descricao: parsed.data.descricao || null, local: parsed.data.local || null, status: "Em Planejamento" });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível cadastrar a obra.") };
   }
@@ -46,11 +58,11 @@ export async function createObra(data: { numero: string; nome: string; descricao
 }
 
 export async function updateObra(id: string, data: { numero: string; nome: string; descricao?: string; local?: string; tipo: string; valorEstimado: number; status: string }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   const parsed = z.object({ id: text, numero: text, nome: text, descricao: z.string().trim().optional(), local: z.string().trim().optional(), tipo: z.enum(obraTypes), valorEstimado: positiveNumber, status: z.enum(obraStatuses) }).safeParse({ id, ...data });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
-    await prisma.obrasObra.update({ where: { id: parsed.data.id }, data: { numero: parsed.data.numero, nome: parsed.data.nome, descricao: parsed.data.descricao || null, local: parsed.data.local || null, tipo: parsed.data.tipo, valorEstimado: parsed.data.valorEstimado, status: parsed.data.status } });
+    requireUpdated(await db.update(infrastructureWorks).set({ numero: parsed.data.numero, nome: parsed.data.nome, descricao: parsed.data.descricao || null, local: parsed.data.local || null, tipo: parsed.data.tipo, valorEstimado: parsed.data.valorEstimado, status: parsed.data.status }).where(eq(infrastructureWorks.id, parsed.data.id)).returning({ id: infrastructureWorks.id }));
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível atualizar a obra.") };
   }
@@ -59,10 +71,10 @@ export async function updateObra(id: string, data: { numero: string; nome: strin
 }
 
 export async function inactivateObra(id: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   if (!text.safeParse(id).success) return { error: "Obra inválida." };
   try {
-    await prisma.obrasObra.update({ where: { id }, data: { active: false } });
+    requireUpdated(await db.update(infrastructureWorks).set({ active: false }).where(eq(infrastructureWorks.id, id)).returning({ id: infrastructureWorks.id }));
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível inativar a obra.") };
   }
@@ -71,14 +83,14 @@ export async function inactivateObra(id: string): Promise<ActionResult> {
 }
 
 export async function createMedicao(data: { numero: number; data: string; valorMedido: number; obraId: string }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("create");
+  await authorize("create");
   const parsed = z.object({ numero: z.number().int().positive("Informe um número de medição válido."), data: inputDate, valorMedido: positiveNumber, obraId: text }).safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const obra = await prisma.obrasObra.findUnique({ where: { id: parsed.data.obraId }, select: { active: true, status: true } });
+  const [obra] = await db.select({ active: infrastructureWorks.active, status: infrastructureWorks.status }).from(infrastructureWorks).where(eq(infrastructureWorks.id, parsed.data.obraId)).limit(1);
   if (!obra) return { error: "Obra não encontrada." };
   if (!obra.active || obra.status === "Concluída") return { error: "A obra não aceita novas medições." };
   try {
-    await prisma.obrasMedicao.create({ data: { ...parsed.data, status: "Em Análise" } });
+    await db.insert(infrastructureMeasurements).values({ ...parsed.data, status: "Em Análise" });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível cadastrar a medição.") };
   }
@@ -87,11 +99,11 @@ export async function createMedicao(data: { numero: number; data: string; valorM
 }
 
 export async function updateMedicao(id: string, data: { numero: number; data: string; valorMedido: number; status: string }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   const parsed = z.object({ id: text, numero: z.number().int().positive("Informe um número de medição válido."), data: inputDate, valorMedido: positiveNumber, status: z.enum(measurementStatuses) }).safeParse({ id, ...data });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
-    await prisma.obrasMedicao.update({ where: { id: parsed.data.id }, data: { numero: parsed.data.numero, data: parsed.data.data, valorMedido: parsed.data.valorMedido, status: parsed.data.status } });
+    requireUpdated(await db.update(infrastructureMeasurements).set({ numero: parsed.data.numero, data: parsed.data.data, valorMedido: parsed.data.valorMedido, status: parsed.data.status }).where(eq(infrastructureMeasurements.id, parsed.data.id)).returning({ id: infrastructureMeasurements.id }));
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível atualizar a medição.") };
   }
@@ -100,10 +112,10 @@ export async function updateMedicao(id: string, data: { numero: number; data: st
 }
 
 export async function inactivateMedicao(id: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   if (!text.safeParse(id).success) return { error: "Medição inválida." };
   try {
-    await prisma.obrasMedicao.update({ where: { id }, data: { active: false } });
+    requireUpdated(await db.update(infrastructureMeasurements).set({ active: false }).where(eq(infrastructureMeasurements.id, id)).returning({ id: infrastructureMeasurements.id }));
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível inativar a medição.") };
   }
@@ -112,11 +124,11 @@ export async function inactivateMedicao(id: string): Promise<ActionResult> {
 }
 
 export async function createServico(data: { protocolo: string; tipo: string; descricao: string; local: string }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("create");
+  await authorize("create");
   const parsed = z.object({ protocolo: text, tipo: text, descricao: text, local: text }).safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
-    await prisma.obrasServico.create({ data: { ...parsed.data, status: "Aberto" } });
+    await db.insert(infrastructureServices).values({ ...parsed.data, status: "Aberto" });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível cadastrar o serviço.") };
   }
@@ -125,11 +137,11 @@ export async function createServico(data: { protocolo: string; tipo: string; des
 }
 
 export async function updateServico(id: string, data: { protocolo: string; tipo: string; descricao: string; local: string; status: string }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   const parsed = z.object({ id: text, protocolo: text, tipo: text, descricao: text, local: text, status: z.enum(serviceStatuses) }).safeParse({ id, ...data });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
-    await prisma.obrasServico.update({ where: { id: parsed.data.id }, data: { protocolo: parsed.data.protocolo, tipo: parsed.data.tipo, descricao: parsed.data.descricao, local: parsed.data.local, status: parsed.data.status } });
+    requireUpdated(await db.update(infrastructureServices).set({ protocolo: parsed.data.protocolo, tipo: parsed.data.tipo, descricao: parsed.data.descricao, local: parsed.data.local, status: parsed.data.status }).where(eq(infrastructureServices.id, parsed.data.id)).returning({ id: infrastructureServices.id }));
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível atualizar o serviço.") };
   }
@@ -138,10 +150,10 @@ export async function updateServico(id: string, data: { protocolo: string; tipo:
 }
 
 export async function inactivateServico(id: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   if (!text.safeParse(id).success) return { error: "Serviço inválido." };
   try {
-    await prisma.obrasServico.update({ where: { id }, data: { active: false } });
+    requireUpdated(await db.update(infrastructureServices).set({ active: false }).where(eq(infrastructureServices.id, id)).returning({ id: infrastructureServices.id }));
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível inativar o serviço.") };
   }
@@ -159,7 +171,7 @@ export async function configureServicoIntegration(data: {
   scheduledFor?: string;
   estimatedCost?: number;
 }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   const parsed = z.object({
     serviceId: text,
     departmentId: z.string().trim().optional(),
@@ -173,11 +185,11 @@ export async function configureServicoIntegration(data: {
 
   const value = parsed.data;
   const [service, department, asset, appropriation, commitment] = await Promise.all([
-    prisma.obrasServico.findUnique({ where: { id: value.serviceId }, select: { id: true } }),
-    value.departmentId ? prisma.department.findUnique({ where: { id: value.departmentId }, select: { id: true } }) : null,
-    value.targetAssetId ? prisma.asset.findUnique({ where: { id: value.targetAssetId }, select: { id: true, status: true } }) : null,
-    value.budgetAppropriationId ? prisma.budgetAppropriation.findUnique({ where: { id: value.budgetAppropriationId }, select: { id: true } }) : null,
-    value.commitmentId ? prisma.commitment.findUnique({ where: { id: value.commitmentId }, select: { id: true, appropriationId: true, status: true } }) : null,
+    db.select({ id: infrastructureServices.id }).from(infrastructureServices).where(eq(infrastructureServices.id, value.serviceId)).limit(1).then(rows => rows[0]),
+    value.departmentId ? db.select({ id: departments.id }).from(departments).where(eq(departments.id, value.departmentId)).limit(1).then(rows => rows[0]) : null,
+    value.targetAssetId ? db.select({ id: assets.id, status: assets.status }).from(assets).where(eq(assets.id, value.targetAssetId)).limit(1).then(rows => rows[0]) : null,
+    value.budgetAppropriationId ? db.execute<{ id: string }>(sql`SELECT id FROM "BudgetAppropriation" WHERE id=${value.budgetAppropriationId}`).then(result => result.rows[0]) : null,
+    value.commitmentId ? db.execute<{ id: string; appropriationId: string; status: string }>(sql`SELECT id, "appropriationId", status FROM "Commitment" WHERE id=${value.commitmentId}`).then(result => result.rows[0]) : null,
   ]);
   if (!service) return { error: "Ordem de serviço não encontrada." };
   if (value.departmentId && !department) return { error: "Departamento não encontrado." };
@@ -189,17 +201,14 @@ export async function configureServicoIntegration(data: {
   }
 
   try {
-    await prisma.obrasServico.update({
-      where: { id: value.serviceId },
-      data: {
+    requireUpdated(await db.update(infrastructureServices).set({
         departmentId: value.departmentId || null,
         targetAssetId: value.targetAssetId || null,
         budgetAppropriationId: value.budgetAppropriationId || commitment?.appropriationId || null,
         commitmentId: value.commitmentId || null,
         scheduledFor: value.scheduledFor ? new Date(`${value.scheduledFor}T12:00:00.000Z`) : null,
         estimatedCost: value.estimatedCost ?? null,
-      },
-    });
+    }).where(eq(infrastructureServices.id, value.serviceId)).returning({ id: infrastructureServices.id }));
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível configurar as integrações da ordem.") };
   }
@@ -209,15 +218,15 @@ export async function configureServicoIntegration(data: {
 }
 
 export async function assignEmployeeToServico(serviceId: string, employeeId: string, role = "Executor"): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   if (!text.safeParse(serviceId).success || !text.safeParse(employeeId).success || !text.safeParse(role).success) return { error: "Dados de atribuição inválidos." };
   const [service, employee] = await Promise.all([
-    prisma.obrasServico.findFirst({ where: { id: serviceId, active: true }, select: { id: true } }),
-    prisma.employee.findFirst({ where: { id: employeeId, isActive: true }, select: { id: true } }),
+    db.select({ id: infrastructureServices.id }).from(infrastructureServices).where(and(eq(infrastructureServices.id, serviceId), eq(infrastructureServices.active, true))).limit(1).then(rows => rows[0]),
+    db.select({ id: employees.id }).from(employees).where(and(eq(employees.id, employeeId), eq(employees.isActive, true))).limit(1).then(rows => rows[0]),
   ]);
   if (!service || !employee) return { error: "Ordem de serviço ou servidor não disponível." };
   try {
-    await prisma.obrasServicoEmployee.upsert({ where: { obrasServicoId_employeeId: { obrasServicoId: serviceId, employeeId } }, create: { obrasServicoId: serviceId, employeeId, role }, update: { role, releasedAt: null } });
+    await db.insert(infrastructureServiceEmployees).values({ obrasServicoId: serviceId, employeeId, role }).onConflictDoUpdate({ target: [infrastructureServiceEmployees.obrasServicoId, infrastructureServiceEmployees.employeeId], set: { role, releasedAt: null } });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível atribuir o servidor.") };
   }
@@ -226,15 +235,15 @@ export async function assignEmployeeToServico(serviceId: string, employeeId: str
 }
 
 export async function assignTeamToServico(serviceId: string, teamId: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   if (!text.safeParse(serviceId).success || !text.safeParse(teamId).success) return { error: "Dados de equipe inválidos." };
   const [service, team] = await Promise.all([
-    prisma.obrasServico.findFirst({ where: { id: serviceId, active: true }, select: { id: true } }),
-    prisma.obrasEquipe.findFirst({ where: { id: teamId, isActive: true }, select: { id: true } }),
+    db.select({ id: infrastructureServices.id }).from(infrastructureServices).where(and(eq(infrastructureServices.id, serviceId), eq(infrastructureServices.active, true))).limit(1).then(rows => rows[0]),
+    db.select({ id: infrastructureTeams.id }).from(infrastructureTeams).where(and(eq(infrastructureTeams.id, teamId), eq(infrastructureTeams.isActive, true))).limit(1).then(rows => rows[0]),
   ]);
   if (!service || !team) return { error: "Ordem de serviço ou equipe não disponível." };
   try {
-    await prisma.obrasServicoEquipe.upsert({ where: { obrasServicoId_equipeId: { obrasServicoId: serviceId, equipeId: teamId } }, create: { obrasServicoId: serviceId, equipeId: teamId }, update: { releasedAt: null } });
+    await db.insert(infrastructureServiceTeams).values({ obrasServicoId: serviceId, equipeId: teamId }).onConflictDoUpdate({ target: [infrastructureServiceTeams.obrasServicoId, infrastructureServiceTeams.equipeId], set: { releasedAt: null } });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível atribuir a equipe.") };
   }
@@ -243,15 +252,15 @@ export async function assignTeamToServico(serviceId: string, teamId: string): Pr
 }
 
 export async function assignEquipmentToServico(serviceId: string, assetId: string): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   if (!text.safeParse(serviceId).success || !text.safeParse(assetId).success) return { error: "Dados de equipamento inválidos." };
   const [service, asset] = await Promise.all([
-    prisma.obrasServico.findFirst({ where: { id: serviceId, active: true }, select: { id: true } }),
-    prisma.asset.findFirst({ where: { id: assetId, status: { notIn: ["Baixado", "Inativo"] } }, select: { id: true } }),
+    db.select({ id: infrastructureServices.id }).from(infrastructureServices).where(and(eq(infrastructureServices.id, serviceId), eq(infrastructureServices.active, true))).limit(1).then(rows => rows[0]),
+    db.select({ id: assets.id }).from(assets).where(and(eq(assets.id, assetId), notInArray(assets.status, ["Baixado", "Inativo"]))).limit(1).then(rows => rows[0]),
   ]);
   if (!service || !asset) return { error: "Ordem de serviço ou equipamento não disponível." };
   try {
-    await prisma.obrasServicoEquipamento.upsert({ where: { obrasServicoId_assetId: { obrasServicoId: serviceId, assetId } }, create: { obrasServicoId: serviceId, assetId }, update: { releasedAt: null } });
+    await db.insert(infrastructureServiceEquipment).values({ obrasServicoId: serviceId, assetId }).onConflictDoUpdate({ target: [infrastructureServiceEquipment.obrasServicoId, infrastructureServiceEquipment.assetId], set: { releasedAt: null } });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível atribuir o equipamento.") };
   }
@@ -266,11 +275,10 @@ export async function issueMaterialToServico(data: { serviceId: string; stockId:
 
   try {
     const context = await getTenantContextForModuleOperation("OBRAS", "create");
-    const prisma = context.prisma;
-    await prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [service, stock] = await Promise.all([
-        tx.obrasServico.findFirst({ where: { id: parsed.data.serviceId, active: true }, select: { id: true, departmentId: true } }),
-        tx.materialStock.findUnique({ where: { id: parsed.data.stockId }, select: { id: true, materialId: true, warehouseId: true, batchNumber: true, unitCost: true } }),
+        tx.select({ id: infrastructureServices.id, departmentId: infrastructureServices.departmentId }).from(infrastructureServices).where(and(eq(infrastructureServices.id, parsed.data.serviceId), eq(infrastructureServices.active, true))).limit(1).then(rows => rows[0]),
+        tx.select({ id: materialStocks.id, materialId: materialStocks.materialId, warehouseId: materialStocks.warehouseId, batchNumber: materialStocks.batchNumber, unitCost: materialStocks.unitCost }).from(materialStocks).where(eq(materialStocks.id, parsed.data.stockId)).limit(1).then(rows => rows[0]),
       ]);
       if (!service) throw new Error("ORDER_NOT_FOUND");
       if (!stock) throw new Error("INSUFFICIENT_STOCK");
@@ -288,11 +296,8 @@ export async function issueMaterialToServico(data: { serviceId: string; stockId:
         actor: { usuarioId: context.user.id, employeeId: context.user.employeeId },
       });
 
-      await tx.obrasServicoMaterial.upsert({
-        where: { obrasServicoId_materialId: { obrasServicoId: service.id, materialId: stock.materialId } },
-        create: { obrasServicoId: service.id, materialId: stock.materialId, stockId: stock.id, quantityPlanned: parsed.data.quantity, quantityIssued: parsed.data.quantity, unitCost: stock.unitCost },
-        update: { stockId: stock.id, quantityIssued: { increment: parsed.data.quantity }, unitCost: stock.unitCost },
-      });
+      await tx.insert(infrastructureServiceMaterials).values({ obrasServicoId: service.id, materialId: stock.materialId, stockId: stock.id, quantityPlanned: parsed.data.quantity, quantityIssued: parsed.data.quantity, unitCost: stock.unitCost })
+        .onConflictDoUpdate({ target: [infrastructureServiceMaterials.obrasServicoId, infrastructureServiceMaterials.materialId], set: { stockId: stock.id, quantityIssued: sql`${infrastructureServiceMaterials.quantityIssued} + ${parsed.data.quantity}`, unitCost: stock.unitCost } });
     });
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") return { error: "Ordem de serviço não disponível." };
@@ -306,18 +311,18 @@ export async function issueMaterialToServico(data: { serviceId: string; stockId:
 }
 
 export async function linkPurchaseToServico(data: { serviceId: string; purchaseRequestId?: string; purchaseProcessId?: string; purpose?: string }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("create");
+  await authorize("create");
   const parsed = z.object({ serviceId: text, purchaseRequestId: z.string().trim().optional(), purchaseProcessId: z.string().trim().optional(), purpose: z.string().trim().optional() }).safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (!parsed.data.purchaseRequestId && !parsed.data.purchaseProcessId) return { error: "Informe uma solicitação ou processo de compra." };
   const [service, request, process] = await Promise.all([
-    prisma.obrasServico.findUnique({ where: { id: parsed.data.serviceId }, select: { id: true } }),
-    parsed.data.purchaseRequestId ? prisma.purchaseRequest.findUnique({ where: { id: parsed.data.purchaseRequestId }, select: { id: true } }) : null,
-    parsed.data.purchaseProcessId ? prisma.purchaseProcess.findUnique({ where: { id: parsed.data.purchaseProcessId }, select: { id: true } }) : null,
+    db.select({ id: infrastructureServices.id }).from(infrastructureServices).where(eq(infrastructureServices.id, parsed.data.serviceId)).limit(1).then(rows => rows[0]),
+    parsed.data.purchaseRequestId ? db.execute<{ id: string }>(sql`SELECT id FROM "PurchaseRequest" WHERE id=${parsed.data.purchaseRequestId}`).then(result => result.rows[0]) : null,
+    parsed.data.purchaseProcessId ? db.execute<{ id: string }>(sql`SELECT id FROM "PurchaseProcess" WHERE id=${parsed.data.purchaseProcessId}`).then(result => result.rows[0]) : null,
   ]);
   if (!service || (parsed.data.purchaseRequestId && !request) || (parsed.data.purchaseProcessId && !process)) return { error: "Referência de compra não encontrada." };
   try {
-    await prisma.obrasServicoCompra.create({ data: { obrasServicoId: service.id, purchaseRequestId: request?.id, purchaseProcessId: process?.id, purpose: parsed.data.purpose || "Material" } });
+    await db.insert(infrastructureServicePurchases).values({ obrasServicoId: service.id, purchaseRequestId: request?.id, purchaseProcessId: process?.id, purpose: parsed.data.purpose || "Material" });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível vincular a compra à ordem.") };
   }
@@ -326,16 +331,16 @@ export async function linkPurchaseToServico(data: { serviceId: string; purchaseR
 }
 
 export async function attachDocumentToServico(data: { serviceId: string; documentId: string; purpose?: string }): Promise<ActionResult> {
-  const prisma = await getTenantPrisma("update");
+  await authorize("update");
   const parsed = z.object({ serviceId: text, documentId: text, purpose: z.string().trim().optional() }).safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const [service, document] = await Promise.all([
-    prisma.obrasServico.findUnique({ where: { id: parsed.data.serviceId }, select: { id: true } }),
-    prisma.document.findUnique({ where: { id: parsed.data.documentId }, select: { id: true } }),
+    db.select({ id: infrastructureServices.id }).from(infrastructureServices).where(eq(infrastructureServices.id, parsed.data.serviceId)).limit(1).then(rows => rows[0]),
+    db.select({ id: documents.id }).from(documents).where(eq(documents.id, parsed.data.documentId)).limit(1).then(rows => rows[0]),
   ]);
   if (!service || !document) return { error: "Ordem de serviço ou documento GED não encontrado." };
   try {
-    await prisma.obrasServicoDocumento.upsert({ where: { obrasServicoId_documentId: { obrasServicoId: service.id, documentId: document.id } }, create: { obrasServicoId: service.id, documentId: document.id, purpose: parsed.data.purpose || "Comprovante" }, update: { purpose: parsed.data.purpose || "Comprovante" } });
+    await db.insert(infrastructureServiceDocuments).values({ obrasServicoId: service.id, documentId: document.id, purpose: parsed.data.purpose || "Comprovante" }).onConflictDoUpdate({ target: [infrastructureServiceDocuments.obrasServicoId, infrastructureServiceDocuments.documentId], set: { purpose: parsed.data.purpose || "Comprovante" } });
   } catch (error) {
     return { error: errorMessage(error, "Não foi possível vincular o documento GED.") };
   }

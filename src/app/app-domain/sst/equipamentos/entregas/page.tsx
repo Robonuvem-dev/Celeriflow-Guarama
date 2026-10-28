@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { listEquipmentDeliveries } from "@/lib/sst/equipment-queries";
-import type { Equipment } from "@/lib/sst/equipment-service";
+import { sstDatabase } from "@/lib/sst/database";
+import { readSstEquipmentDeliveryOptions, searchSstPageEquipment, readSstEquipmentLots, findSstEquipmentPolicy } from "@/db/repositories/sst-pages/equipment";
 import { EquipmentPagination as ErpPagination } from "../EquipmentPagination";
 import { SstForm } from "../../SstForm";
 import { saveEquipmentDelivery,saveEquipmentEvent } from "../actions";
@@ -10,13 +11,11 @@ import { EquipmentNav,EquipmentField,equipmentControl as control,equipmentDate }
 export default async function EquipmentDeliveriesPage({searchParams}:{searchParams:Promise<{budgetUnitId?:string;q?:string;employeeQ?:string;personQ?:string;equipmentQ?:string;page?:string;due?:string;warehouseId?:string}>}) {
   const context=await getTenantContextForModule("SST"); const params=await searchParams;
   const data=await listEquipmentDeliveries(context,params); const unit=data.units.find(u=>u.id===params.budgetUnitId);
-  const employees=unit && (params.employeeQ?.trim().length||0)>=3 ? await context.prisma.employee.findMany({where:{secretariatId:unit.secretariatId,isActive:true,name:{contains:params.employeeQ,mode:"insensitive"}},select:{id:true,name:true,registration:true},take:20,orderBy:[{name:"asc"},{id:"asc"}]}):[];
-  const people=(params.personQ?.trim().length||0)>=3 ? await context.prisma.person.findMany({where:{fullName:{contains:params.personQ,mode:"insensitive"}},select:{id:true,fullName:true},take:20,orderBy:[{fullName:"asc"},{id:"asc"}]}):[];
-  const equipment=unit ? await context.prisma.$queryRaw<Equipment[]>`SELECT e.*,m."name",m."code" FROM "SstEquipment" e JOIN "Material" m ON m."id"=e."materialId" WHERE e."budgetUnitId"=${unit.id} AND m."name" ILIKE ${`%${params.equipmentQ||""}%`} ORDER BY m."name",e."id" LIMIT 20`:[];
-  const warehouses=unit ? await context.prisma.warehouse.findMany({where:{isActive:true,costCenter:{isActive:true,secretariatId:unit.secretariatId}},select:{id:true,name:true},orderBy:[{name:"asc"},{id:"asc"}]}):[];
-  const warehouse=warehouses.find(w=>w.id===params.warehouseId);
-  const lots=warehouse ? await context.prisma.materialStock.findMany({where:{warehouseId:warehouse.id,quantity:{gt:0},blockedAt:null,OR:[{expirationDate:null},{expirationDate:{gt:new Date()}}]},include:{material:{select:{name:true}}},take:20,orderBy:[{materialId:"asc"},{batchNumber:"asc"},{id:"asc"}]}):[];
-  const [policy]=unit ? await context.prisma.$queryRaw<{integrateStock:boolean}[]>`SELECT "integrateStock" FROM "SstEquipmentPolicy" WHERE "budgetUnitId"=${unit.id}`:[];
+  const database=sstDatabase(context);
+  const {employees,people,warehouses,warehouse}=await readSstEquipmentDeliveryOptions(database,unit,params);
+  const equipment=unit ? await searchSstPageEquipment(database,unit.id,params.equipmentQ||""):[];
+  const lots=warehouse ? await readSstEquipmentLots(database,warehouse.id,new Date()):[];
+  const policy=unit ? await findSstEquipmentPolicy(database,unit.id):undefined;
   const href=(page:number)=>`/sst/equipamentos/entregas?${new URLSearchParams(Object.entries({...params,page:String(page)}).filter((entry):entry is [string,string]=>entry[1]!==undefined))}`;
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Entregas, baixas e revisões</h1><EquipmentNav/>
     <form className="grid gap-3 sm:grid-cols-3"><EquipmentField label="UG"><select name="budgetUnitId" defaultValue={params.budgetUnitId} className={control}><option value="">Todas autorizadas</option>{data.units.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></EquipmentField><EquipmentField label="Buscar entrega (servidor ou equipamento)"><input name="q" defaultValue={params.q} className={control}/></EquipmentField><EquipmentField label="Pendências"><select name="due" defaultValue={params.due} className={control}><option value="">Todas</option><option value="review">Revisão vencida</option><option value="expiry">Uso vencido</option></select></EquipmentField><EquipmentField label="Buscar servidores (3 letras, até 20)"><input name="employeeQ" defaultValue={params.employeeQ} className={control}/></EquipmentField><EquipmentField label="Buscar responsável Person (3 letras)"><input name="personQ" defaultValue={params.personQ} className={control}/></EquipmentField><EquipmentField label="Buscar equipamento (até 20)"><input name="equipmentQ" defaultValue={params.equipmentQ} className={control}/></EquipmentField><EquipmentField label="Depósito para carregar lotes"><select name="warehouseId" defaultValue={params.warehouseId} className={control}><option value="">Selecione</option>{warehouses.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select></EquipmentField><button className="self-end rounded border p-2">Consultar / carregar opções</button></form>

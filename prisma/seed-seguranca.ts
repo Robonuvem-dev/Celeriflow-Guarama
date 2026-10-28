@@ -1,50 +1,42 @@
 import "dotenv/config";
-import { prisma } from "../src/lib/prisma";
+import { asc, desc, eq, inArray } from "drizzle-orm";
+import { createDatabaseConnection } from "../src/db/connection";
+import { employees as employeeTable } from "../src/db/schema/administration";
+import { assets } from "../src/db/schema/assets";
+import { documents } from "../src/db/schema/registry";
+import { infrastructureServices } from "../src/db/schema/infrastructure";
+import { securityGuards, securityOccurrences, securityInfractions, mobilityRecords } from "../src/db/schema/security-mobility";
+
+const connection = createDatabaseConnection(process.env.DATABASE_URL!);
+const db = connection.db;
 
 async function main() {
-  const employees = await prisma.employee.findMany({ where: { isActive: true }, take: 3, orderBy: { name: "asc" } });
+  const employees = await db.select().from(employeeTable).where(eq(employeeTable.isActive, true)).limit(3).orderBy(asc(employeeTable.name));
   const guards = await Promise.all([
     { matricula: "GCM-2026-001", nome: employees[0]?.name ?? "Marcos Vinicius Almeida", tipo: "Guarda Municipal", equipe: "Patrulha Centro", employeeId: employees[0]?.id },
     { matricula: "GCM-2026-002", nome: employees[1]?.name ?? "Renata Souza Barros", tipo: "Agente de Transito", equipe: "Equipe de Transito", employeeId: employees[1]?.id },
     { matricula: "GCM-2026-003", nome: employees[2]?.name ?? "Daniela Ferreira Costa", tipo: "Defesa Civil", equipe: "Nucleo de Prevencao", employeeId: employees[2]?.id },
-  ].map((guard) => prisma.segurancaGuarda.upsert({
-    where: { matricula: guard.matricula },
-    update: { nome: guard.nome, tipo: guard.tipo, equipe: guard.equipe, employeeId: guard.employeeId },
-    create: { ...guard, status: "Ativo" },
-  })));
+  ].map(async (guard) => (await db.insert(securityGuards).values({ ...guard, status: "Ativo" }).onConflictDoUpdate({
+    target: securityGuards.matricula,
+    set: { nome: guard.nome, tipo: guard.tipo, equipe: guard.equipe, employeeId: guard.employeeId },
+  }).returning())[0]));
 
-  await prisma.segurancaOcorrencia.upsert({
-    where: { numero: "OC-2026-001" },
-    update: { responsavelGuardaId: guards[0].id },
-    create: {
+  await db.insert(securityOccurrences).values({
       numero: "OC-2026-001", tipo: "Acidente de Transito", descricao: "Apoio operacional em colisao sem vitimas na Avenida Central.",
       local: "Avenida Central, proximo ao Mercado Municipal", bairro: "Centro", prioridade: "Alta", status: "Resolvida", responsavelGuardaId: guards[1].id,
-    },
-  });
-  await prisma.segurancaOcorrencia.upsert({
-    where: { numero: "OC-2026-002" },
-    update: { responsavelGuardaId: guards[2].id },
-    create: {
+  }).onConflictDoUpdate({ target: securityOccurrences.numero, set: { responsavelGuardaId: guards[0].id } });
+  await db.insert(securityOccurrences).values({
       numero: "OC-2026-002", tipo: "Risco Estrutural", descricao: "Vistoria preventiva em muro com risco de desabamento apos chuvas intensas.",
       local: "Rua das Acacias, 142", bairro: "Vila Nova", prioridade: "Urgente", status: "Em Atendimento", responsavelGuardaId: guards[2].id,
-    },
-  });
+  }).onConflictDoUpdate({ target: securityOccurrences.numero, set: { responsavelGuardaId: guards[2].id } });
 
-  await prisma.segurancaInfracao.upsert({
-    where: { auto: "AIT-2026-0001" },
-    update: {},
-    create: { auto: "AIT-2026-0001", data: new Date("2026-06-12T10:30:00"), placa: "PES-4A21", tipo: "Estacionamento irregular", local: "Rua do Comercio", valor: 195.23, status: "Notificado" },
-  });
-  await prisma.segurancaInfracao.upsert({
-    where: { auto: "AIT-2026-0002" },
-    update: {},
-    create: { auto: "AIT-2026-0002", data: new Date("2026-06-14T16:10:00"), placa: "RKL-8B76", tipo: "Avanco de sinal", local: "Avenida Norte com Rua Sete de Setembro", valor: 293.47, status: "Em Recurso" },
-  });
+  await db.insert(securityInfractions).values({ auto: "AIT-2026-0001", data: new Date("2026-06-12T10:30:00"), placa: "PES-4A21", tipo: "Estacionamento irregular", local: "Rua do Comercio", valor: 195.23, status: "Notificado" }).onConflictDoNothing({ target: securityInfractions.auto });
+  await db.insert(securityInfractions).values({ auto: "AIT-2026-0002", data: new Date("2026-06-14T16:10:00"), placa: "RKL-8B76", tipo: "Avanco de sinal", local: "Avenida Norte com Rua Sete de Setembro", valor: 293.47, status: "Em Recurso" }).onConflictDoNothing({ target: securityInfractions.auto });
 
   const [asset, obrasServico, document] = await Promise.all([
-    prisma.asset.findFirst({ where: { status: { in: ["Ativo", "Em uso"] } }, orderBy: { createdAt: "asc" } }),
-    prisma.obrasServico.findFirst({ where: { active: true }, orderBy: { createdAt: "desc" } }),
-    prisma.document.findFirst({ orderBy: { createdAt: "desc" } }),
+    db.select().from(assets).where(inArray(assets.status, ["Ativo", "Em uso"])).orderBy(asc(assets.createdAt)).limit(1).then(rows => rows[0]),
+    db.select().from(infrastructureServices).where(eq(infrastructureServices.active, true)).orderBy(desc(infrastructureServices.createdAt)).limit(1).then(rows => rows[0]),
+    db.select().from(documents).orderBy(desc(documents.createdAt)).limit(1).then(rows => rows[0]),
   ]);
 
   const records = [
@@ -53,7 +45,7 @@ async function main() {
     { codigo: "DOC-2026-001", categoria: "Documento", tipo: "Relatorio Mensal", titulo: "Relatorio operacional de junho", local: "Coordenacao da Guarda", responsavel: guards[0].nome, prioridade: "Normal", status: "Publicado", dataInicio: new Date("2026-06-30T17:00:00"), documentId: document?.id },
   ];
   for (const record of records) {
-    await prisma.segurancaMobilidadeRegistro.upsert({ where: { codigo: record.codigo }, update: record, create: record });
+    await db.insert(mobilityRecords).values(record).onConflictDoUpdate({ target: mobilityRecords.codigo, set: record });
   }
   console.log("Seed de Seguranca e Mobilidade concluido.");
 }

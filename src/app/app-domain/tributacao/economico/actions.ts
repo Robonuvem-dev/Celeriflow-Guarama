@@ -4,6 +4,7 @@ import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib
 import { revalidatePath } from "next/cache";
 import { updateEconomicRegistrationWithHistory } from "@/lib/tributacao/economic-history";
 import { redirect } from "next/navigation";
+import { taxActionConnection } from "@/db/repositories/tax-actions/context";
 
 export async function createEconomicRegistration(data: {
   municipalInsc: string;
@@ -22,7 +23,7 @@ export async function updateEconomicRegistration(id: string, data: {
   taxRegime?: string | null;
 }) {
   const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
-  const result = await updateEconomicRegistrationWithHistory(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id, data);
+  const result = await updateEconomicRegistrationWithHistory(taxActionConnection(context), { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id, data);
 
   revalidatePath("/tributacao/economico");
   revalidatePath(`/tributacao/economico/${id}`);
@@ -31,7 +32,7 @@ export async function updateEconomicRegistration(id: string, data: {
 
 export async function deactivateEconomicRegistration(id: string) {
   const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
-  const result = await updateEconomicRegistrationWithHistory(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id, { status: "Inativo" });
+  const result = await updateEconomicRegistrationWithHistory(taxActionConnection(context), { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id, { status: "Inativo" });
 
   revalidatePath("/tributacao/economico");
   revalidatePath(`/tributacao/economico/${id}`);
@@ -40,7 +41,7 @@ export async function deactivateEconomicRegistration(id: string) {
 
 export async function activateEconomicRegistration(id: string) {
   const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
-  const result = await updateEconomicRegistrationWithHistory(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id, { status: "Ativo" });
+  const result = await updateEconomicRegistrationWithHistory(taxActionConnection(context), { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, id, { status: "Ativo" });
 
   revalidatePath("/tributacao/economico");
   revalidatePath(`/tributacao/economico/${id}`);

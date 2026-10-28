@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { Decimal as DecimalJs } from "decimal.js";
 import { z } from "zod";
 import { HR_PAYROLL_TYPES, payrollPeriod, type PayrollRubricInput } from "./calculation-engine";
 
@@ -27,16 +28,16 @@ export function countThirteenthAvos(admittedAt: Date, through: Date, endsAt: Dat
 }
 
 export function preparePocSpecialRubrics(input: {
-  payrollType: string; competence: string; salary: Prisma.Decimal.Value; admittedAt: Date; endsAt: Date | null;
+  payrollType: string; competence: string; salary: DecimalJs.Value; admittedAt: Date; endsAt: Date | null;
   parameters: z.infer<typeof pocSpecialParametersSchema>; rubrics: PayrollRubricInput[];
   history?: { gross: string; advance: string };
 }) {
   if (!(HR_PAYROLL_TYPES as readonly string[]).includes(input.payrollType) || input.payrollType === "Mensal") throw new Error("Tipo especial inválido.");
-  const p = input.parameters, D = (value: Prisma.Decimal.Value) => new Prisma.Decimal(value);
-  const base = D(input.salary).add(p.average), amounts: Record<string, Prisma.Decimal> = {};
+  const p = input.parameters, D = (value: DecimalJs.Value) => new Decimal(value);
+  const base = D(input.salary).add(p.average), amounts: Record<string, Decimal> = {};
   const formulas: Record<string, string> = {};
   const avos = p.avos ?? countThirteenthAvos(input.admittedAt, new Date(payrollPeriod(input.competence).end.toISOString().slice(0, 10)), input.endsAt);
-  const add = (code: string, value: Prisma.Decimal, formula: string) => { amounts[code] = value.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP); formulas[code] = formula; };
+  const add = (code: string, value: Decimal, formula: string) => { amounts[code] = value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP); formulas[code] = formula; };
   switch (input.payrollType) {
     case "Complementar": add("POC_COMPLEMENTO", D(p.variableAmount), "VALOR_COMPLEMENTAR_INFORMADO"); break;
     case "Adiantamento salarial": add("POC_ADIANTAMENTO", base.mul(p.advanceRate).div(100), "(SALARIO_BASE + MEDIA) * PERCENTUAL / 100"); break;
@@ -46,7 +47,7 @@ export function preparePocSpecialRubrics(input: {
       add("POC_ABATIMENTO", D(input.history?.advance ?? p.previousAdvance), input.history ? "ADIANTAMENTO_DA_EXECUCAO_VINCULADA" : "PARCELA_ANTERIOR_INFORMADA"); break;
     case "Diferença 13º":
       if (input.history) {
-        const difference = base.mul(avos).div(12).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP).sub(input.history.gross);
+        const difference = base.mul(avos).div(12).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).sub(input.history.gross);
         if (difference.lt(0)) throw new Error("Diferença negativa exige restituição/compensação própria.");
         add("POC_DECIMO_13", difference, "TOTAL_13_RECALCULADO - BRUTO_DA_EXECUCAO_VINCULADA");
       } else {

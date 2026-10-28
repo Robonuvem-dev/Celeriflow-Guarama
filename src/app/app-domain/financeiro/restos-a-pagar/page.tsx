@@ -3,39 +3,21 @@ import RestosAPagarClient from "./RestosAPagarClient";
 import NativeRapPaymentClient from "./NativeRapPaymentClient";
 import NativeRapSettlementClient from "./NativeRapSettlementClient";
 import CarryForwardTransportClient from "./CarryForwardTransportClient";
+import { db } from "@/db/client";
+import { listFinancePageYears } from "@/db/repositories/finance-pages/catalog";
+import { listFinancePageBankAccounts, listFinancePagePayments } from "@/db/repositories/finance-pages/banking";
+import { listFinancePageDocuments } from "@/db/repositories/finance-pages/operations";
+import { listFinancePagePayables, listFinancePageRapAuthors } from "@/db/repositories/finance-pages/payables";
 
 export const dynamic = "force-dynamic";
 
 export default async function RestosAPagarPage() {
   const context = await getTenantContextForModule("FINANCEIRO");
-  const appropriationFilter = isSystemAdministrator(context.user)
-    ? {}
-    : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } };
+  const executor = context.database ?? db;
+  const access = { allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds };
   const [payables, years, payments, banks, documents, authors] = await Promise.all([
-    context.prisma.payableCarryForward.findMany({
-      where: { commitment: { appropriation: appropriationFilter } },
-      include: {
-        financialYear: { select: { id: true, year: true, status: true, governmentEntityId: true, governmentEntity: { select: { name: true } } } },
-        originFinancialYear: { select: { id: true, year: true, governmentEntityId: true, governmentEntity: { select: { name: true } } } },
-        commitment: { select: { id: true, number: true, history: true, appropriation: { select: { budgetUnitId: true, resourceSourceId: true } }, settlements: { where: { status: "Liquidado" }, select: { id: true, date: true, valueDecimal: true, payableCarryForwardId: true } }, supplier: { select: { company: { select: { corporateName: true } }, person: { select: { fullName: true } } } } } },
-        previousPayableCarryForward: { select: { id: true, financialYear: { select: { year: true } } } },
-        successorPayableCarryForward: { select: { id: true, financialYear: { select: { year: true } } } },
-        events: { include: { actorUsuario: { select: { nome: true } }, payment: { select: { orderNumber: true } } }, orderBy: { createdAt: "desc" } },
-        inheritedSettlements: { where: { status: "ACTIVE", settlement: { status: "Liquidado" } }, include: { sourceFinancialYear: { select: { year: true } }, settlement: { select: { id: true, date: true, payments: { where: { status: { in: ["Emitida", "Paga"] } }, select: { payableCarryForwardId: true, valueDecimal: true } } } } } },
-      },
-      orderBy: [{ originFinancialYear: { year: "desc" } }, { createdAt: "desc" }],
-      take: 300,
-    }),
-    context.prisma.financialYear.findMany({ where: isSystemAdministrator(context.user) ? {} : { governmentEntity: { is: { planningUnits: { some: { budgetUnitId: { in: context.user.allowedBudgetUnitIds } } } } } }, orderBy: [{ year: "desc" }, { id: "asc" }], select: { id: true, year: true, status: true, governmentEntityId: true, governmentEntity: { select: { name: true } } } }),
-    context.prisma.payment.findMany({
-      where: { status: "Paga", commitment: { appropriation: appropriationFilter } },
-      select: { id: true, orderNumber: true, commitmentId: true, valueDecimal: true, value: true, date: true },
-      orderBy: { date: "desc" },
-      take: 300,
-    }),
-    context.prisma.bankAccount.findMany({ where: { isActive: true, ...(isSystemAdministrator(context.user) ? {} : { budgetUnitId: { in: context.user.allowedBudgetUnitIds } }) }, select: { id: true, bankName: true, agency: true, accountNumber: true, budgetUnitId: true, resourceSourceId: true, permittedSources: { where: { isActive: true }, select: { resourceSourceId: true } } } }),
-    context.prisma.document.findMany({ where: { status: "Válido" }, select: { id: true, title: true }, orderBy: { title: "asc" }, take: 300 }),
-    context.prisma.employee.findMany({ where: { isActive: true }, select: { id: true, person: { select: { fullName: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
+    listFinancePagePayables(executor, access), listFinancePageYears(executor, access), listFinancePagePayments(executor, access, true),
+    listFinancePageBankAccounts(executor, access, true), listFinancePageDocuments(executor, "rap"), listFinancePageRapAuthors(executor),
   ]);
 
   const nativePayables = payables.filter(payable => ["PROCESSADO", "NAO_PROCESSADO"].includes(payable.type) && ["PENDENTE", "PAGAMENTO_PARCIAL_RASTREADO"].includes(payable.status)).map(payable => {

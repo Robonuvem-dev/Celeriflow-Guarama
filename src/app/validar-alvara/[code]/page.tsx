@@ -1,18 +1,15 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { taxScopeSnapshot } from "@/lib/tributacao/scope";
+import { db } from "@/db/client";
+import { readTaxLicenseValidation } from "@/db/repositories/taxation/license-validation";
 import LicenseDocumentActions from "./LicenseDocumentActions";
 
 export const dynamic="force-dynamic";
 export default async function LicenseValidationPage({params}:{params:Promise<{code:string}>}) {
   const {code}=await params;
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(code)) notFound();
-  const license=await prisma.license.findFirst({where:{qrCode:code}});if(!license) notFound();
-  const entry=await prisma.taxRegistryEntry.findFirst({where:{entityType:"LICENSE",entityId:license.id,category:"LICENSE_ISSUANCE"}});if(!entry) notFound();
-  const data=taxScopeSnapshot(entry.data);
-  if(data.authCode!==code) notFound();
+  const validation=await readTaxLicenseValidation(db,code);if(!validation) notFound();
+  const {license,data,signature}=validation;
   const valid=license.status==="Emitido" && license.validUntil!==null && license.validUntil>=new Date();
-  const signature = await prisma.taxRegistryEntry.findFirst({ where: { entityType: "LICENSE", entityId: license.id, category: "LICENSE_SIGNATURE" }, select: { id: true } });
   return <main className="mx-auto max-w-3xl space-y-5 p-8">
     <LicenseDocumentActions code={code} signed={!!signature}/>
     <header><h1 className="text-2xl font-bold">{String(data.layoutTitle)}</h1><p className={`mt-3 rounded border p-3 font-semibold ${valid ? "text-emerald-800" : "text-red-800"}`}>{valid ? "Emissão registrada e vigente" : `Emissão sem vigência: ${license.status === "Emitido" ? "Vencido" : license.status}`}</p></header>

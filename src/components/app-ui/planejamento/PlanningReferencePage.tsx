@@ -4,7 +4,9 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import { getPlanningContext, canDecidePlanningLegally, planningEntityWhere } from "@/lib/planejamento/access";
+import { getPlanningContext, canDecidePlanningLegally } from "@/lib/planejamento/access";
+import { pageDatabase } from "@/db/repositories/planning-pages/shared";
+import { pageReferences } from "@/db/repositories/planning-pages/catalogs";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { planningBasePath, type PlanningJurisdiction } from "@/lib/planejamento/policy";
 import { PlanningForm } from "./PlanningForm";
@@ -12,16 +14,7 @@ import { PlanningForm } from "./PlanningForm";
 export async function PlanningReferencePage({ jurisdiction, filters }: { jurisdiction: PlanningJurisdiction; filters: { page?: string; q?: string; versionId?: string } }) {
   const context = await getPlanningContext(jurisdiction);
   const base = `${planningBasePath(jurisdiction)}/cadastros/versions`;
-  const requested = Math.max(1, Number(filters.page) || 1);
-  const where = { entries: { none: { kind: { startsWith: "MSC_" } } }, ...(filters.q ? { OR: [{ label: { contains: filters.q.slice(0, 200), mode: "insensitive" as const } }, { normativeReference: { contains: filters.q.slice(0, 200), mode: "insensitive" as const } }] } : {}) };
-  const total = await context.prisma.planningCatalogVersion.count({ where });
-  const page = Math.min(requested, Math.max(1, Math.ceil(total / 20)));
-  const versions = await context.prisma.planningCatalogVersion.findMany({ where, orderBy: [{ year: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
-  const selected = filters.versionId ? await context.prisma.planningCatalogVersion.findFirst({ where: { id: filters.versionId, entries: { none: { kind: { startsWith: "MSC_" } } } } }) : null;
-  const entriesTotal = selected ? await context.prisma.planningCatalogEntry.count({ where: { versionId: selected.id } }) : 0;
-  const entries = selected ? await context.prisma.planningCatalogEntry.findMany({ where: { versionId: selected.id }, orderBy: [{ kind: "asc" }, { code: "asc" }], take: 20, skip: (Math.min(requested, Math.max(1, Math.ceil(entriesTotal / 20))) - 1) * 20 }) : [];
-  const entities = await context.prisma.governmentEntity.findMany({ where: planningEntityWhere(context), select: { id: true } });
-  const relationships = await context.prisma.taxRegistryEntry.findMany({ where: { category: "MUNICIPAL_ACTIVITY_RELATION", entityType: "GOVERNMENT_ENTITY", entityId: { in: entities.map(entity => entity.id) } }, select: { id: true, title: true, effectiveFrom: true, effectiveUntil: true, version: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20 });
+  const { requested, total, page, versions, selected, entriesTotal, entries, relationships } = await pageReferences(pageDatabase(context), context, filters);
   return <PageFrame className="space-y-3 p-3"><PageHeader title="Catálogos normativos por exercício" /><p className="text-xs text-muted-foreground">Importação versionada e imutável após disponibilização. Referência normativa e hash do arquivo são preservados; disponibilizar um catálogo não homologa seus dados.</p>
     <form method="get" className="flex gap-2"><input aria-label="Buscar referência" name="q" defaultValue={filters.q} className="rounded border p-2" /><button className="rounded border p-2 text-xs">Consultar</button></form>
     <Card><CardContent className="pt-3"><Table><TableHeader><TableRow><TableHead>Exercício / versão</TableHead><TableHead>Referência</TableHead><TableHead>Situação</TableHead><TableHead>Ações</TableHead></TableRow></TableHeader><TableBody>{versions.map((version) => <TableRow key={version.id}><TableCell>{version.year} · {version.label}</TableCell><TableCell>{version.normativeReference}<p className="break-all text-xs">SHA-256 {version.sourceHash}</p></TableCell><TableCell>{version.status === "PUBLISHED" ? "Disponível e preservada" : "Em conferência"}</TableCell><TableCell><Link className="underline" href={`${base}?versionId=${version.id}`}>Consultar árvore</Link>{version.status === "DRAFT" && canDecidePlanningLegally(context) && <PlanningForm jurisdiction={jurisdiction} operation="catalogPublish" hidden={{ versionId: version.id }} fields={[]} />}</TableCell></TableRow>)}</TableBody></Table><ErpPagination page={page} total={total} previousHref={`${base}?page=${page - 1}`} nextHref={`${base}?page=${page + 1}`} /></CardContent></Card>

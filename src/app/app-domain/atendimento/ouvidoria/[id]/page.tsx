@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
-import { canViewOmbudsmanIdentity, getAttendanceContext, getOmbudsmanContextForProtocols, ombudsmanScope } from "@/lib/attendance/access";
+import { canViewOmbudsmanIdentity, getAttendanceContext, getOmbudsmanContextForProtocols } from "@/lib/attendance/access";
+import { asc, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { ombudsmanScopeCondition } from "@/db/repositories/attendance-portals/scope";
+import { readOmbudsmanDetail, readActiveProcessTypes } from "@/db/repositories/attendance-portals/queries";
+import { people } from "@/db/schema/people";
+import { departments as departmentTable } from "@/db/schema/administration";
+import { users as userTable } from "@/db/schema/identity";
+import { ombudsmanAuditLogs, ombudsmanAccessGrants } from "@/db/schema/attendance-portals";
 import DocumentUpload from "../../DocumentUpload";
 import { addOmbudsmanInteraction, concludeOmbudsman, createProcessFromOmbudsman, forwardOmbudsman, grantOmbudsmanAccess, respondOmbudsman, revokeOmbudsmanAccess, startOmbudsmanInvestigation, startOmbudsmanTriage } from "../../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
@@ -19,31 +27,20 @@ export async function OmbudsmanDetailView({
   returnTo?: string;
 }) {
   const context = origin === "protocolos" ? await getOmbudsmanContextForProtocols() : await getAttendanceContext();
-  const ombudsman = await context.prisma.ombudsman.findFirst({
-    where: { AND: [{ id }, ombudsmanScope(context)] },
-    include: {
-      channel: true, department: true, assignee: true, process: true,
-      identity: { select: { personId: true } },
-      accessGrants: { where: { userId: context.user.id }, select: { canViewIdentity: true } },
-      movements: { include: { fromDepartment: { select: { name: true } }, toDepartment: { select: { name: true } }, employee: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
-      interactions: { include: { employee: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
-      documents: { include: { document: true }, orderBy: { createdAt: "desc" } },
-      auditLogs: { include: { user: { select: { nome: true } } }, orderBy: { createdAt: "desc" }, take: 50 },
-    },
-  });
+  const ombudsman = await readOmbudsmanDetail(db, id, ombudsmanScopeCondition(context), context.user.id);
   if (!ombudsman) notFound();
   const identityAllowed = canViewOmbudsmanIdentity(context, ombudsman.isConfidential, ombudsman.accessGrants.some((grant) => grant.canViewIdentity));
   const identityId = ombudsman.identity?.personId || ombudsman.personId;
   const [identity, departments, processTypes, users, grants] = await Promise.all([
-    identityAllowed && identityId ? context.prisma.person.findUnique({ where: { id: identityId }, select: { fullName: true, cpf: true } }) : null,
-    context.prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    context.prisma.processType.findMany({ where: { isActive: true }, include: { subjects: { where: { isActive: true } } }, orderBy: { name: "asc" } }),
-    context.attendanceAccess.isAdmin && ombudsman.isConfidential ? context.prisma.usuario.findMany({ where: { ativo: true }, select: { id: true, nome: true, email: true }, orderBy: { nome: "asc" } }) : [],
-    context.attendanceAccess.isAdmin && ombudsman.isConfidential ? context.prisma.ombudsmanAccess.findMany({ where: { ombudsmanId: id }, include: { user: { select: { nome: true, email: true } } }, orderBy: { createdAt: "asc" } }) : [],
+    identityAllowed && identityId ? db.select({ fullName: people.fullName, cpf: people.cpf }).from(people).where(eq(people.id, identityId)).limit(1).then(rows => rows[0] ?? null) : null,
+    db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(eq(departmentTable.isActive, true)).orderBy(asc(departmentTable.name)),
+    readActiveProcessTypes(db),
+    context.attendanceAccess.isAdmin && ombudsman.isConfidential ? db.select({ id: userTable.id, nome: userTable.nome, email: userTable.email }).from(userTable).where(eq(userTable.ativo, true)).orderBy(asc(userTable.nome)) : [],
+    context.attendanceAccess.isAdmin && ombudsman.isConfidential ? db.select({ grant: ombudsmanAccessGrants, user: { nome: userTable.nome, email: userTable.email } }).from(ombudsmanAccessGrants).innerJoin(userTable, eq(userTable.id, ombudsmanAccessGrants.userId)).where(eq(ombudsmanAccessGrants.ombudsmanId, id)).orderBy(asc(ombudsmanAccessGrants.createdAt)).then(rows => rows.map(row => ({ ...row.grant, user: row.user }))) : [],
   ]);
-  await context.prisma.ombudsmanAuditLog.create({ data: { ombudsmanId: id, userId: context.user.id, employeeId: context.user.employeeId, action: "VIEWED", details: { confidential: ombudsman.isConfidential } } });
+  await db.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.user.employeeId, action: "VIEWED", details: { confidential: ombudsman.isConfidential } });
   if (identityAllowed && identityId) {
-    await context.prisma.ombudsmanAuditLog.create({ data: { ombudsmanId: id, userId: context.user.id, employeeId: context.user.employeeId, action: "IDENTITY_VIEWED" } });
+    await db.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.user.employeeId, action: "IDENTITY_VIEWED" });
   }
   const canManage = context.attendanceAccess.isOmbudsman && context.attendanceAccess.canUpdate;
   const canCreateProcess = canManage && canPerformModuleOperation(context.user, "PROCESSOS", "create");

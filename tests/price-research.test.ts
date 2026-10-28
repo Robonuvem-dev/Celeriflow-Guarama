@@ -1,276 +1,108 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { eq } from "drizzle-orm";
+import { createHistoricalProcurementWorkflowFixture } from "./helpers/procurement-workflow-fixture";
+import { getPostgresError } from "../src/db/errors";
+import { listPriceResearchSuppliers, loadPriceInvitation, loadPriceResearchDetail, loadPriceResearchSupplier } from "../src/db/repositories/procurement/price-research";
 import {
-  calculatePriceComparison,
-  createSupplierInvitationAccessKey,
-  getSupplierPriceResearchPortalAccess,
-  inviteSupplierToPriceResearch,
-  isPriceResearchResponseOpen,
-  isSupplierActiveForPriceResearch,
-  PriceResearchError,
-  priceQuoteStatuses,
-  priceResearchStatuses,
-  submitSupplierPriceQuote,
-  verifySupplierInvitationAccessKey,
+  calculatePriceComparison, closePriceResearch, createPriceResearch, createSupplierInvitationAccessKey,
+  deletePriceResearch, getSupplierPriceQuoteReportAccess, getSupplierPriceResearchPortalAccess,
+  inviteSupplierToPriceResearch, isPriceResearchResponseOpen, isSupplierActiveForPriceResearch,
+  PriceResearchError, priceQuoteStatuses, priceResearchStatuses, saveSupplierPriceQuoteDraft,
+  submitSupplierPriceQuote, updatePriceResearchDeadline, verifySupplierInvitationAccessKey,
 } from "../src/lib/compras/price-research";
+import { priceQuotes, priceResearches } from "../src/db/schema/procurement-core";
+import { procurementLifecycleEvents } from "../src/db/schema/procurement-requests";
+import { suppliers } from "../src/db/schema/registry";
 
 process.env.PRICE_RESEARCH_PORTAL_SECRET = "price-research-test-secret";
 
-type LifecycleEvent = {
-  eventType: string;
-  entityType: string;
-  entityId: string;
-  sourceType: string;
-  sourceId: string;
-  actorUsuarioId: string;
-  idempotencyKey: string;
-};
-
-function submissionDatabase(input: { deadlineAt: Date; supplierStatus?: string; quoteStatus?: string; quoteValue?: number; concurrentSubmittedValue?: number }) {
-  let quoteUpdates = 0;
-  let referenceValue: number | null = null;
-  const lifecycleEvents: LifecycleEvent[] = [];
-  const invitation = {
-    id: "quote-1",
-    researchId: "research-1",
-    supplierId: "supplier-1",
-    value: input.quoteValue ?? 0,
-    status: input.quoteStatus ?? priceQuoteStatuses.invitationPending,
-    date: new Date("2026-09-19T09:00:00.000Z"),
-    research: {
-      id: "research-1",
-      status: priceResearchStatuses.inProgress,
-      createdAt: new Date("2026-09-19T09:00:00.000Z"),
-      date: input.deadlineAt,
-    },
-    supplier: { id: "supplier-1", status: input.supplierStatus ?? "Ativo" },
-  };
-  const tx = {
-    priceQuote: {
-      findFirst: async () => invitation,
-      findUnique: async () => invitation,
-      update: async ({ data }: { data: Partial<typeof invitation> }) => {
-        quoteUpdates += 1;
-        Object.assign(invitation, data);
-        return { id: invitation.id, value: invitation.value, status: invitation.status, date: invitation.date };
-      },
-      updateMany: async ({ data }: { data: Partial<typeof invitation> }) => {
-        if (input.concurrentSubmittedValue !== undefined) {
-          Object.assign(invitation, { value: input.concurrentSubmittedValue, status: priceQuoteStatuses.submitted, date: new Date("2026-09-19T10:30:00.000Z") });
-          return { count: 0 };
-        }
-        quoteUpdates += 1;
-        Object.assign(invitation, data);
-        return { count: 1 };
-      },
-      findMany: async () => [{ id: invitation.id, supplierId: invitation.supplierId, value: invitation.value }],
-    },
-    priceResearch: {
-      update: async ({ data }: { data: { estimatedValue: number | null } }) => {
-        referenceValue = data.estimatedValue;
-        return { id: "research-1" };
-      },
-    },
-    procurementLifecycleEvent: {
-      create: async ({ data }: { data: LifecycleEvent }) => {
-        lifecycleEvents.push(data);
-        return { id: `event-${lifecycleEvents.length}` };
-      },
-    },
-  };
-  return {
-    db: { $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx) },
-    invitation,
-    quoteUpdates: () => quoteUpdates,
-    referenceValue: () => referenceValue,
-    lifecycleEvents: () => lifecycleEvents,
-  };
-}
-
-test("CLC-012 calculates a reference and marks every tied minimum without turning omissions into zero", () => {
+test("CLC-012 reference ignores omissions and preserves all minimum ties", () => {
   const comparison = calculatePriceComparison([
-    { id: "quote-a", supplierId: "supplier-a", value: 3700 },
-    { id: "quote-b", supplierId: "supplier-b", value: 3500 },
-    { id: "quote-c", supplierId: "supplier-c", value: 3500 },
-    { id: "draft", supplierId: "supplier-d", value: 0 },
+    { id: "a", supplierId: "a", value: 3700 }, { id: "b", supplierId: "b", value: 3500 },
+    { id: "c", supplierId: "c", value: 3500 }, { id: "draft", supplierId: "d", value: 0 },
   ]);
-
   assert.equal(comparison.minimumValue, 3500);
   assert.ok(Math.abs((comparison.referenceValue ?? 0) - (3700 + 3500 + 3500) / 3) < 0.000001);
-  assert.deepEqual(comparison.quoteIdsAtMinimum, ["quote-b", "quote-c"]);
+  assert.deepEqual(comparison.quoteIdsAtMinimum, ["b", "c"]);
 });
 
-test("CLC-017 uses an inclusive start and exclusive deadline", () => {
-  const research = {
-    status: priceResearchStatuses.inProgress,
-    createdAt: new Date("2026-09-19T10:00:00.000Z"),
-    date: new Date("2026-09-19T12:00:00.000Z"),
-  };
-
-  assert.equal(isPriceResearchResponseOpen(research, new Date("2026-09-19T10:00:00.000Z")), true);
-  assert.equal(isPriceResearchResponseOpen(research, new Date("2026-09-19T11:59:59.999Z")), true);
-  assert.equal(isPriceResearchResponseOpen(research, new Date("2026-09-19T12:00:00.000Z")), false);
-});
-
-test("CLC-013 signs each supplier invitation and rejects a modified scope", () => {
-  const accessKey = createSupplierInvitationAccessKey({ id: "quote-1", researchId: "research-1", supplierId: "supplier-1" });
-  assert.deepEqual(verifySupplierInvitationAccessKey(accessKey), { v: 1, i: "quote-1", r: "research-1", s: "supplier-1" });
-  assert.throws(() => verifySupplierInvitationAccessKey(`${accessKey}x`), PriceResearchError);
-});
-
-test("CLC-013 records a pending manual-delivery invitation with its responsible user", async () => {
-  const lifecycleEvents: LifecycleEvent[] = [];
-  const invitation = { id: "quote-1", researchId: "research-1", supplierId: "supplier-1", value: 0, status: priceQuoteStatuses.invitationPending };
-  const tx = {
-    priceResearch: {
-      findUnique: async () => ({ id: "research-1", status: priceResearchStatuses.inProgress, createdAt: new Date("2026-09-19T09:00:00.000Z"), date: new Date("2026-09-19T12:00:00.000Z") }),
-    },
-    supplier: {
-      findUnique: async () => ({ id: "supplier-1", status: "Ativo", person: { fullName: "Fornecedor A", email: "fornecedor@example.test" }, company: null }),
-    },
-    priceQuote: {
-      findFirst: async () => null,
-      create: async () => invitation,
-    },
-    procurementLifecycleEvent: {
-      create: async ({ data }: { data: LifecycleEvent }) => {
-        lifecycleEvents.push(data);
-        return { id: "event-1" };
-      },
-    },
-  };
-
-  const result = await inviteSupplierToPriceResearch({ $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx) } as never, {
-    researchId: "research-1",
-    supplierId: "supplier-1",
-    actorUsuarioId: "buyer-user-1",
-    now: new Date("2026-09-19T10:00:00.000Z"),
-  });
-
-  assert.equal(result.created, true);
-  assert.deepEqual(lifecycleEvents, [{
-    eventType: "PRICE_RESEARCH_INVITATION_PENDING_DELIVERY",
-    entityType: "PRICE_QUOTE",
-    entityId: "quote-1",
-    sourceType: "PRICE_RESEARCH",
-    sourceId: "research-1",
-    actorUsuarioId: "buyer-user-1",
-    idempotencyKey: "PRICE_RESEARCH:PRICE_QUOTE:quote-1:INVITATION_PENDING_DELIVERY",
-  }]);
-});
-
-test("CLC-014 isolates the supplier portal to the authenticated invitation contact", async () => {
-  const accessKey = createSupplierInvitationAccessKey({ id: "quote-1", researchId: "research-1", supplierId: "supplier-1" });
-  const database = {
-    priceQuote: {
-      findUnique: async () => ({
-        id: "quote-1",
-        researchId: "research-1",
-        supplierId: "supplier-1",
-        status: priceQuoteStatuses.invitationPending,
-        value: 0,
-        date: new Date("2026-09-19T09:00:00.000Z"),
-        supplier: { id: "supplier-1", status: "Ativo", person: { fullName: "Fornecedor A", email: "fornecedor@example.test" }, company: null },
-        research: {
-          status: priceResearchStatuses.inProgress,
-          createdAt: new Date("2026-09-19T09:00:00.000Z"),
-          date: new Date("2026-09-19T12:00:00.000Z"),
-          process: { number: "PROC-1", object: "Compra de teste", purchaseRequest: { number: "REQ-1" }, items: [] },
-        },
-      }),
-    },
-  };
-
-  await assert.rejects(
-    getSupplierPriceResearchPortalAccess(database as never, {
-      accessKey,
-      authenticatedEmail: "outro-fornecedor@example.test",
-      now: new Date("2026-09-19T10:00:00.000Z"),
-    }),
-    /não autorizado/,
-  );
-});
-
-test("CLC-017 rejects a direct quote submission at the deadline before persistence", async () => {
-  const database = submissionDatabase({ deadlineAt: new Date("2026-09-19T12:00:00.000Z") });
-
-  await assert.rejects(
-    submitSupplierPriceQuote(database.db as never, {
-      invitationId: "quote-1",
-      researchId: "research-1",
-      supplierId: "supplier-1",
-      actorUsuarioId: "supplier-user-1",
-      value: 3700,
-      now: new Date("2026-09-19T12:00:00.000Z"),
-    }),
-    PriceResearchError,
-  );
-  assert.equal(database.quoteUpdates(), 0);
-});
-
-test("CLC-018 persists the server presentation timestamp and refreshes the reference", async () => {
-  const database = submissionDatabase({ deadlineAt: new Date("2026-09-19T12:00:00.000Z") });
-  const presentedAt = new Date("2026-09-19T11:00:00.000Z");
-
-  const result = await submitSupplierPriceQuote(database.db as never, {
-    invitationId: "quote-1",
-    researchId: "research-1",
-    supplierId: "supplier-1",
-    actorUsuarioId: "supplier-user-1",
-    value: 3700,
-    now: presentedAt,
-  });
-
-  assert.equal(result.alreadySubmitted, false);
-  assert.equal(result.quote.date.getTime(), presentedAt.getTime());
-  assert.equal(database.invitation.status, priceQuoteStatuses.submitted);
-  assert.equal(database.referenceValue(), 3700);
-  assert.deepEqual(database.lifecycleEvents(), [{
-    eventType: "PRICE_QUOTE_PRESENTED",
-    entityType: "PRICE_QUOTE",
-    entityId: "quote-1",
-    sourceType: "PRICE_RESEARCH",
-    sourceId: "research-1",
-    actorUsuarioId: "supplier-user-1",
-    idempotencyKey: "PRICE_RESEARCH:PRICE_QUOTE:quote-1:PRESENTED",
-  }]);
-});
-
-test("CLC-018 preserves the first concurrent presentation instead of overwriting it", async () => {
-  const database = submissionDatabase({ deadlineAt: new Date("2026-09-19T12:00:00.000Z"), concurrentSubmittedValue: 3650 });
-
-  await assert.rejects(
-    submitSupplierPriceQuote(database.db as never, {
-      invitationId: "quote-1",
-      researchId: "research-1",
-      supplierId: "supplier-1",
-      actorUsuarioId: "supplier-user-1",
-      value: 3700,
-      now: new Date("2026-09-19T11:00:00.000Z"),
-    }),
-    /já foi apresentada/,
-  );
-  assert.equal(database.invitation.value, 3650);
-  assert.equal(database.invitation.status, priceQuoteStatuses.submitted);
-});
-
-test("CLC-019 accepts only active suppliers and blocks an inactive supplier before quote persistence", async () => {
+test("CLC-013 signature scope and CLC-017 inclusive opening / exclusive deadline", () => {
+  const key = createSupplierInvitationAccessKey({ id: "q", researchId: "r", supplierId: "s" });
+  assert.deepEqual(verifySupplierInvitationAccessKey(key), { v: 1, i: "q", r: "r", s: "s" });
+  assert.throws(() => verifySupplierInvitationAccessKey(`${key}x`), PriceResearchError);
+  const research = { status: priceResearchStatuses.inProgress, createdAt: new Date("2026-09-19T10:00Z"), date: new Date("2026-09-19T12:00Z") };
+  assert.equal(isPriceResearchResponseOpen(research, research.createdAt), true);
+  assert.equal(isPriceResearchResponseOpen(research, research.date), false);
   assert.equal(isSupplierActiveForPriceResearch("Ativo"), true);
-  assert.equal(isSupplierActiveForPriceResearch("Suspenso"), false);
-  assert.equal(isSupplierActiveForPriceResearch("Inativo"), false);
-  assert.equal(isSupplierActiveForPriceResearch("Bloqueado"), false);
+  for (const status of ["Suspenso", "Inativo", "Bloqueado"]) assert.equal(isSupplierActiveForPriceResearch(status), false);
+});
 
-  const database = submissionDatabase({ deadlineAt: new Date("2026-09-19T12:00:00.000Z"), supplierStatus: "Suspenso" });
-  await assert.rejects(
-    submitSupplierPriceQuote(database.db as never, {
-      invitationId: "quote-1",
-      researchId: "research-1",
-      supplierId: "supplier-1",
-      actorUsuarioId: "supplier-user-1",
-      value: 3700,
-      now: new Date("2026-09-19T11:00:00.000Z"),
-    }),
-    /inativo ou bloqueado/,
-  );
-  assert.equal(database.quoteUpdates(), 0);
+test("price research runs with the production driver: contacts, draft, replay, reference and rollback", async () => {
+  const f = await createHistoricalProcurementWorkflowFixture();
+  const now = new Date("2030-09-19T10:00Z");
+  const deadline = new Date("2030-09-19T12:00Z");
+  try {
+    await f.database.exec(`
+      INSERT INTO "Usuario" (id,nome,email,"perfilId","updatedAt") VALUES ('buyer','Comprador','buyer@example.test','procurement-workflow-profile','2026-10-19'),('supplier-user','Fornecedor autenticado','supplier-user@example.test','procurement-workflow-profile','2026-10-19');
+      INSERT INTO "Person" (id,"fullName",email,"updatedAt") VALUES ('p','Fornecedor PF','pf@example.test','2026-10-19');
+      INSERT INTO "Company" (id,"corporateName","tradeName",cnpj,"emailPrimary","updatedAt") VALUES ('c','Fornecedor PJ',NULL,'00000000000031','pj@example.test','2026-10-19'),('no-contact-company','PJ sem contato',NULL,'00000000000032',NULL,'2026-10-19');
+      INSERT INTO "Supplier" (id,"personId","companyId","updatedAt") VALUES ('pf','p',NULL,'2026-10-19'),('pj',NULL,'c','2026-10-19'),('no-contact',NULL,'no-contact-company','2026-10-19');
+      INSERT INTO "PurchaseRequest" (id,number,object,justification,"requesterId","departmentId","secretariatId","updatedAt") VALUES ('req','REQ-1','Compra','Pesquisa de preços','servidora-ana','setor','secretaria','2026-10-19');
+      INSERT INTO "PurchaseProcess" (id, number, object, type, "secretariatId", "purchaseRequestId", "updatedAt") VALUES ('proc', 'PROC-1', 'Compra', 'Comum', 'secretaria', 'req', now());
+      INSERT INTO "PurchaseProcessItem" (id, "purchaseProcessId", "customName", quantity, "updatedAt") VALUES ('item', 'proc', 'Serviço livre', 2, now());
+    `);
+    const research = await createPriceResearch(f.connection, { processId: "proc", deadlineAt: deadline, now });
+    await f.connection.db.update(priceResearches).set({ createdAt: now }).where(eq(priceResearches.id, research.id));
+    await updatePriceResearchDeadline(f.connection, { researchId: research.id, deadlineAt: deadline, now });
+    const pj = await loadPriceResearchSupplier(f.connection.db, "pj");
+    assert.ok(pj);
+    assert.equal(pj?.person, null);
+    assert.deepEqual(pj?.company, { corporateName: "Fornecedor PJ", tradeName: null, emailPrimary: "pj@example.test" });
+    assert.deepEqual((await listPriceResearchSuppliers(f.connection.db)).find(supplier => supplier.id === "pj")?.company, pj.company);
+    assert.equal((await loadPriceResearchSupplier(f.connection.db, "pf"))?.company, null);
+    await assert.rejects(inviteSupplierToPriceResearch(f.connection, { researchId: research.id, supplierId: "no-contact", actorUsuarioId: "buyer", now }), /precisa possuir e-mail cadastrado/);
+    const invitation = await inviteSupplierToPriceResearch(f.connection, { researchId: research.id, supplierId: "pf", actorUsuarioId: "buyer", now });
+    assert.equal(invitation.created, true);
+    assert.equal((await inviteSupplierToPriceResearch(f.connection, { researchId: research.id, supplierId: "pf", actorUsuarioId: "buyer", now })).created, false);
+    const key = createSupplierInvitationAccessKey(invitation.invitation);
+    await assert.rejects(getSupplierPriceResearchPortalAccess(f.connection.db, { accessKey: key, authenticatedEmail: "pj@example.test", now }), /não autorizado/);
+    const access = await getSupplierPriceResearchPortalAccess(f.connection.db, { accessKey: key, authenticatedEmail: " PF@example.test ", now });
+    assert.equal(access.process.purchaseRequestNumber, "REQ-1");
+    assert.equal(access.process.items[0].name, "Serviço livre");
+    const input = { invitationId: invitation.invitation.id, researchId: research.id, supplierId: "pf", actorUsuarioId: "supplier-user", value: 3700, now };
+    await saveSupplierPriceQuoteDraft(f.connection, input);
+    await assert.rejects(getSupplierPriceQuoteReportAccess(f.connection.db, { accessKey: key, authenticatedEmail: "pf@example.test", now }), /ainda não/);
+    await assert.rejects(submitSupplierPriceQuote(f.connection, { ...input, now: deadline }), /encerrada/);
+    await assert.rejects(submitSupplierPriceQuote(f.connection, { ...input, actorUsuarioId: "missing" }), error => {
+      const postgres = getPostgresError(error);
+      return postgres?.code === "23503" && postgres.constraint === "ProcurementLifecycleEvent_actorUsuarioId_fkey";
+    });
+    assert.equal((await f.connection.db.select().from(priceQuotes).where(eq(priceQuotes.id, input.invitationId)))[0].status, priceQuoteStatuses.draft, "event FK failure rolls back quote and reference");
+    assert.equal((await f.connection.db.select().from(priceResearches).where(eq(priceResearches.id, research.id)))[0].estimatedValue, null);
+    assert.equal((await f.connection.db.select().from(procurementLifecycleEvents)).length, 1);
+    const result = await submitSupplierPriceQuote(f.connection, input);
+    assert.equal(result.alreadySubmitted, false);
+    assert.equal(result.quote.date.getTime(), now.getTime());
+    assert.equal((await submitSupplierPriceQuote(f.connection, input)).alreadySubmitted, true);
+    await assert.rejects(submitSupplierPriceQuote(f.connection, { ...input, value: 3650 }), /já foi apresentada/);
+    await assert.rejects(saveSupplierPriceQuoteDraft(f.connection, input), /já foi apresentada/);
+    const second = await inviteSupplierToPriceResearch(f.connection, { researchId: research.id, supplierId: "pj", actorUsuarioId: "buyer", now });
+    assert.equal(second.supplierName, "Fornecedor PJ");
+    const pjKey = createSupplierInvitationAccessKey(second.invitation);
+    await assert.rejects(getSupplierPriceResearchPortalAccess(f.connection.db, { accessKey: pjKey, authenticatedEmail: "pf@example.test", now }), /não autorizado/);
+    const pjAccess = await getSupplierPriceResearchPortalAccess(f.connection.db, { accessKey: pjKey, authenticatedEmail: " PJ@example.test ", now });
+    assert.equal(pjAccess.supplierId, "pj"); assert.equal(pjAccess.supplierName, "Fornecedor PJ"); assert.equal(pjAccess.canRespond, true);
+    assert.deepEqual((await loadPriceInvitation(f.connection.db, { invitationId: second.invitation.id }))?.supplier.company, pj.company);
+    assert.deepEqual((await loadPriceResearchDetail(f.connection.db, research.id))?.quotes.find(quote => quote.id === second.invitation.id)?.supplier.company, pj.company);
+    await f.connection.db.update(suppliers).set({ status: "Suspenso" }).where(eq(suppliers.id, "pj"));
+    await assert.rejects(submitSupplierPriceQuote(f.connection, { ...input, invitationId: second.invitation.id, supplierId: "pj", value: 3500 }), /inativo ou bloqueado/);
+    await f.connection.db.update(suppliers).set({ status: "Ativo" }).where(eq(suppliers.id, "pj"));
+    await submitSupplierPriceQuote(f.connection, { ...input, invitationId: second.invitation.id, supplierId: "pj", value: 3500 });
+    assert.equal((await f.connection.db.select().from(priceResearches).where(eq(priceResearches.id, research.id)))[0].estimatedValue, 3600);
+    assert.equal((await f.connection.db.select().from(procurementLifecycleEvents)).length, 4);
+    await assert.rejects(deletePriceResearch(f.connection, research.id), /preservar o histórico/);
+    await closePriceResearch(f.connection, research.id);
+    assert.equal((await getSupplierPriceQuoteReportAccess(f.connection.db, { accessKey: key, authenticatedEmail: "pf@example.test", now })).quoteValue, 3700);
+  } finally { await f.close(); }
 });

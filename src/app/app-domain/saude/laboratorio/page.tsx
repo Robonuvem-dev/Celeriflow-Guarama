@@ -1,5 +1,15 @@
 import { FlaskConical } from "lucide-react";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { diagnosticLabOrders as ordersTable, diagnosticLabReports, diagnosticLabResults } from "@/db/schema/health-diagnostics";
+import { healthLabExamModels } from "@/db/schema/health-laboratory";
+import { healthExamRequests } from "@/db/schema/health-care";
+import { patients } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthUnits } from "@/db/schema/health-workforce";
+import { suppliers, companies, documents } from "@/db/schema/registry";
+import { materials as materialTable } from "@/db/schema/assets-stock";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -14,28 +24,30 @@ const positivePage = (value: string | undefined) => value && /^\d+$/.test(value)
 
 export default async function LaboratoryPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const db = context.database;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const orderScope: Prisma.HealthLabOrderWhereInput = unitIds ? { OR: [{ collectionUnitId: { in: unitIds } }, { collectionUnitId: null, requestUnitId: { in: unitIds } }] } : {};
+  const orderScope = unitIds ? or(inArray(ordersTable.collectionUnitId, unitIds), and(isNull(ordersTable.collectionUnitId), inArray(ordersTable.requestUnitId, unitIds))) : undefined;
+  const requestUnit = alias(healthUnits, "laboratory_request_unit"), collectionUnit = alias(healthUnits, "laboratory_collection_unit");
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
-  const orderFilters: Prisma.HealthLabOrderWhereInput[] = [orderScope];
-  if (filter) orderFilters.push({ status: filter });
-  if (q) orderFilters.push({ OR: [{ patient: { person: { fullName: { contains: q, mode: "insensitive" } } } }, { examRequest: { examName: { contains: q, mode: "insensitive" } } }, { examModel: { name: { contains: q, mode: "insensitive" } } }, { requestUnit: { name: { contains: q, mode: "insensitive" } } }, { collectionUnit: { name: { contains: q, mode: "insensitive" } } }] });
-  const orderWhere: Prisma.HealthLabOrderWhereInput = { AND: orderFilters };
-  const total = await prisma.healthLabOrder.count({ where: orderWhere });
+  const orderWhere = and(orderScope, filter ? eq(ordersTable.status, filter) : undefined, q ? or(ilike(people.fullName, `%${q}%`), ilike(healthExamRequests.examName, `%${q}%`), ilike(healthLabExamModels.name, `%${q}%`), ilike(requestUnit.name, `%${q}%`), ilike(collectionUnit.name, `%${q}%`)) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(ordersTable).innerJoin(patients, eq(patients.id, ordersTable.patientId)).innerJoin(people, eq(people.id, patients.personId)).leftJoin(healthExamRequests, eq(healthExamRequests.id, ordersTable.examRequestId)).leftJoin(healthLabExamModels, eq(healthLabExamModels.id, ordersTable.examModelId)).leftJoin(requestUnit, eq(requestUnit.id, ordersTable.requestUnitId)).leftJoin(collectionUnit, eq(collectionUnit.id, ordersTable.collectionUnitId)).where(orderWhere);
   const page = Math.min(positivePage(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [orders, orderOptions, units, providers, reports, examModels, materials, procedures] = await Promise.all([
-    prisma.healthLabOrder.findMany({ where: orderWhere, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { createdAt: "desc" }, include: { patient: { include: { person: true } }, examRequest: true, examModel: true, requestUnit: true, collectionUnit: true, results: { select: { status: true } } } }),
-    prisma.healthLabOrder.findMany({ where: orderScope, take: 500, orderBy: { createdAt: "desc" }, include: { patient: { include: { person: true } }, examRequest: true, examModel: true, results: { select: { status: true } } } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.supplier.findMany({ where: { status: "Ativo" }, take: 200, select: { id: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } } } }),
-    prisma.healthLabReport.findMany({ where: unitIds ? { order: orderScope } : {}, orderBy: { createdAt: "desc" }, include: { order: { include: { patient: { include: { person: true } }, examRequest: true } }, document: true } }),
-    prisma.healthLabExamModel.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.material.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, take: 500 }),
-    prisma.healthSusProcedure.findMany({ where: { isActive: true, isCurrent: true }, orderBy: { description: "asc" }, take: 500 }),
+  const orderQuery = (filtered: boolean) => db.select({ order: ordersTable, patient: patients, person: people, examRequest: healthExamRequests, examModel: healthLabExamModels, requestUnit, collectionUnit }).from(ordersTable).innerJoin(patients, eq(patients.id, ordersTable.patientId)).innerJoin(people, eq(people.id, patients.personId)).leftJoin(healthExamRequests, eq(healthExamRequests.id, ordersTable.examRequestId)).leftJoin(healthLabExamModels, eq(healthLabExamModels.id, ordersTable.examModelId)).leftJoin(requestUnit, eq(requestUnit.id, ordersTable.requestUnitId)).leftJoin(collectionUnit, eq(collectionUnit.id, ordersTable.collectionUnitId)).where(filtered ? orderWhere : orderScope).orderBy(desc(ordersTable.createdAt)).offset(filtered ? (page - 1) * PAGE_SIZE : 0).limit(filtered ? PAGE_SIZE : 500);
+  const [orderRows, optionRows, units, providers, reportRows, examModels, materials, procedures] = await Promise.all([
+    orderQuery(true), orderQuery(false),
+    db.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    db.select({ id: suppliers.id, person: { fullName: people.fullName }, company: { corporateName: companies.corporateName } }).from(suppliers).leftJoin(people, eq(people.id, suppliers.personId)).leftJoin(companies, eq(companies.id, suppliers.companyId)).where(eq(suppliers.status, "Ativo")).limit(200),
+    db.select({ report: diagnosticLabReports, order: ordersTable, patient: patients, person: people, examRequest: healthExamRequests, document: documents }).from(diagnosticLabReports).innerJoin(ordersTable, eq(ordersTable.id, diagnosticLabReports.orderId)).innerJoin(patients, eq(patients.id, ordersTable.patientId)).innerJoin(people, eq(people.id, patients.personId)).leftJoin(healthExamRequests, eq(healthExamRequests.id, ordersTable.examRequestId)).innerJoin(documents, eq(documents.id, diagnosticLabReports.documentId)).where(orderScope).orderBy(desc(diagnosticLabReports.createdAt)),
+    db.select().from(healthLabExamModels).where(eq(healthLabExamModels.isActive, true)).orderBy(asc(healthLabExamModels.name)),
+    db.select().from(materialTable).where(eq(materialTable.isActive, true)).orderBy(asc(materialTable.name)).limit(500),
+    db.select().from(healthSusProcedures).where(and(eq(healthSusProcedures.isActive, true), eq(healthSusProcedures.isCurrent, true))).orderBy(asc(healthSusProcedures.description)).limit(500),
   ]);
+  const results = await db.select({ orderId: diagnosticLabResults.orderId, status: diagnosticLabResults.status }).from(diagnosticLabResults).where(inArray(diagnosticLabResults.orderId, [...new Set([...orderRows, ...optionRows].map(row => row.order.id))]));
+  const shapeOrder = (row: (typeof orderRows)[number]) => ({ ...row.order, patient: { ...row.patient, person: row.person }, examRequest: row.examRequest, examModel: row.examModel, requestUnit: row.requestUnit, collectionUnit: row.collectionUnit, results: results.filter(result => result.orderId === row.order.id).map(({ status }) => ({ status })) });
+  const orders = orderRows.map(shapeOrder), orderOptions = optionRows.map(shapeOrder);
+  const reports = reportRows.map(row => ({ ...row.report, order: { ...row.order, patient: { ...row.patient, person: row.person }, examRequest: row.examRequest }, document: row.document }));
   const requested = orderOptions.filter(x => ["REQUESTED", "RECOLLECT"].includes(x.status));
   const scheduled = orderOptions.filter(x => ["SCHEDULED", "RECOLLECT"].includes(x.status));
   const collected = orderOptions.filter(x => ["COLLECTED", "RECEIVED", "ENTERED"].includes(x.status));

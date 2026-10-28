@@ -4,7 +4,12 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { addFamilyMemberAction, addVisitParticipantAction, createVisitAction, saveAreaAction, saveFamilyAction, saveHouseholdAction, saveMicroareaAction } from "./actions";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthHomeVisits, healthHomeVisitParticipants, healthTerritoryAreas, healthMicroareas, healthHouseholds, healthFamilies, healthFamilyMembers } from "@/db/schema/health-territory";
+import { healthUnits, healthTeams, healthProfessionals } from "@/db/schema/health-workforce";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
 const PAGE_SIZE = 20;
@@ -14,26 +19,29 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function TerritorioPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const database = context.database ?? db;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
-  const visitWhere: Prisma.HealthHomeVisitWhereInput = {
-    ...(q ? { OR: [{ actions: { contains: q, mode: "insensitive" } }, { family: { familyCode: { contains: q, mode: "insensitive" } } }] } : {}),
-  };
-  const total = await prisma.healthHomeVisit.count({ where: visitWhere });
+  const visitWhere = q ? or(sql`strpos(lower(${healthHomeVisits.actions}), lower(${q})) > 0`, sql`strpos(lower(${healthFamilies.familyCode}), lower(${q})) > 0`) : undefined;
+  const [{ total }] = await database.select({ total: count() }).from(healthHomeVisits).leftJoin(healthFamilies, eq(healthFamilies.id, healthHomeVisits.familyId)).where(visitWhere);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [visits, areas, microareas, households, families, units, teams, professionals, patients] = await Promise.all([
-    prisma.healthHomeVisit.findMany({ where: visitWhere, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { visitedAt: "desc" }, include: { family: true, household: true, professional: { select: { id: true } }, team: true, participants: { include: { person: { select: { fullName: true } } } } } }),
-    prisma.healthTerritoryArea.findMany({ where: unitIds ? { unitId: { in: unitIds } } : {}, orderBy: { code: "asc" }, include: { unit: true, team: true } }),
-    prisma.healthMicroarea.findMany({ orderBy: { code: "asc" }, take: 200, include: { area: true } }),
-    prisma.healthHousehold.findMany({ orderBy: { createdAt: "desc" }, take: 200, include: { microarea: { include: { area: true } } } }),
-    prisma.healthFamily.findMany({ orderBy: { createdAt: "desc" }, take: 200, include: { household: true, members: { include: { person: { select: { fullName: true } } } } } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthTeam.findMany({ where: { isActive: true, ...(unitIds ? { unitId: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.healthProfessional.findMany({ where: { isActive: true }, take: 200, orderBy: { id: "asc" } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, take: 300, orderBy: { person: { fullName: "asc" } }, include: { person: true } }),
+  const [visitRows, areas, microareas, households, familyRows, units, teams, professionals, patients] = await Promise.all([
+    database.select({ visit: healthHomeVisits, family: { familyCode: healthFamilies.familyCode }, household: { householdCode: healthHouseholds.householdCode }, team: { name: healthTeams.name } }).from(healthHomeVisits).leftJoin(healthFamilies, eq(healthFamilies.id, healthHomeVisits.familyId)).leftJoin(healthHouseholds, eq(healthHouseholds.id, healthHomeVisits.householdId)).leftJoin(healthTeams, eq(healthTeams.id, healthHomeVisits.teamId)).where(visitWhere).orderBy(desc(healthHomeVisits.visitedAt)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    database.select({ id: healthTerritoryAreas.id, code: healthTerritoryAreas.code, name: healthTerritoryAreas.name }).from(healthTerritoryAreas).where(unitIds ? inArray(healthTerritoryAreas.unitId, unitIds) : undefined).orderBy(asc(healthTerritoryAreas.code)),
+    database.select({ id: healthMicroareas.id, code: healthMicroareas.code, area: { code: healthTerritoryAreas.code } }).from(healthMicroareas).innerJoin(healthTerritoryAreas, eq(healthTerritoryAreas.id, healthMicroareas.areaId)).orderBy(asc(healthMicroareas.code)).limit(200),
+    database.select({ id: healthHouseholds.id, householdCode: healthHouseholds.householdCode }).from(healthHouseholds).orderBy(desc(healthHouseholds.createdAt)).limit(200),
+    database.select({ id: healthFamilies.id, familyCode: healthFamilies.familyCode }).from(healthFamilies).orderBy(desc(healthFamilies.createdAt)).limit(200),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    database.select({ id: healthTeams.id, name: healthTeams.name }).from(healthTeams).where(and(eq(healthTeams.isActive, true), unitIds ? inArray(healthTeams.unitId, unitIds) : undefined)).orderBy(asc(healthTeams.name)),
+    database.select({ id: healthProfessionals.id }).from(healthProfessionals).where(eq(healthProfessionals.isActive, true)).orderBy(asc(healthProfessionals.id)).limit(200),
+    database.select({ personId: patientTable.personId, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(and(eq(patientTable.status, "Ativo"), unitIds ? inArray(patientTable.referenceUnitId, unitIds) : undefined)).orderBy(asc(people.fullName)).limit(300),
   ]);
+  const [members, participants] = await Promise.all([
+    database.select({ id: healthFamilyMembers.id, familyId: healthFamilyMembers.familyId }).from(healthFamilyMembers).where(inArray(healthFamilyMembers.familyId, familyRows.map(row => row.id))),
+    database.select({ id: healthHomeVisitParticipants.id, visitId: healthHomeVisitParticipants.visitId }).from(healthHomeVisitParticipants).where(inArray(healthHomeVisitParticipants.visitId, visitRows.map(row => row.visit.id))),
+  ]);
+  const visits = visitRows.map(row => ({ ...row.visit, family: row.family, household: row.household, team: row.team, participants: participants.filter(participant => participant.visitId === row.visit.id) })), families = familyRows.map(row => ({ ...row, members: members.filter(member => member.familyId === row.id) }));
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

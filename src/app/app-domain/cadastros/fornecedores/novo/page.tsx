@@ -5,17 +5,13 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { createSupplier } from "../../actions";
 import NovoFornecedorForm from "./NovoFornecedorForm";
+import { db } from "@/db/client";
+import { listPersonOptions, listSupplierCompanyOptions } from "@/db/repositories/registry/queries";
 
 export default async function NovoFornecedorPage() {
-  const { prisma } = await getTenantContextForModuleOperation("CADASTROS", "create");
-  const persons = await prisma.person.findMany({
-    select: { id: true, fullName: true, cpf: true },
-    orderBy: { fullName: "asc" },
-  });
-  const companies = await prisma.company.findMany({
-    select: { id: true, corporateName: true, cnpj: true, companyType: true, primaryCnae: true, secondaryCnaes: true },
-    orderBy: { corporateName: "asc" },
-  });
+  const context = await getTenantContextForModuleOperation("CADASTROS", "create");
+  const persons = await listPersonOptions(context.database ?? db, true);
+  const companies = await listSupplierCompanyOptions(context.database ?? db);
 
   return (
     <PageFrame className="flex h-[calc(100vh-4rem)] max-w-4xl min-h-0 flex-col gap-2 overflow-hidden">

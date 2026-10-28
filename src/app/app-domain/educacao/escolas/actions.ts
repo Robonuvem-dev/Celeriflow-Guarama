@@ -3,13 +3,11 @@
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-async function getTenantPrisma() {
-  return (await getTenantContextForModuleOperation("EDUCACAO", "create")).prisma;
-}
+import { db } from "@/db/client";
+import { schools } from "@/db/schema/education-core";
 
 export async function createSchool(formData: FormData) {
-  const prisma = await getTenantPrisma();
+  await getTenantContextForModuleOperation("EDUCACAO", "create");
   const name = formData.get("name") as string;
   const inepCode = formData.get("inepCode") as string;
   const cnpj = formData.get("cnpj") as string;
@@ -22,8 +20,7 @@ export async function createSchool(formData: FormData) {
   }
 
   try {
-    await prisma.school.create({
-      data: {
+    await db.insert(schools).values({
         name,
         inepCode: inepCode || null,
         cnpj: cnpj || null,
@@ -31,7 +28,6 @@ export async function createSchool(formData: FormData) {
         directorId: directorId || null,
         realEstateId: realEstateId || null,
         isActive: true,
-      },
     });
   } catch (error) {
     console.error("Erro ao criar escola:", error);

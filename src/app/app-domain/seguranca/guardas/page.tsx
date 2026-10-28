@@ -2,6 +2,8 @@ import SegMobCrudClient from "../components/SegMobCrudClient";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { mapGuarda } from "../data";
 import type { SegMobPageConfig } from "../types";
+import { db } from "@/db/client";
+import { listSecurityGuards } from "@/db/repositories/security-mobility/queries";
 
 const config: SegMobPageConfig = {
   title: "Guarda Municipal, Agentes e Equipes",
@@ -18,7 +20,7 @@ const config: SegMobPageConfig = {
 };
 
 export default async function GuardasPage() {
-  const { prisma } = await getTenantContextForModule("SEGURANCA");
-  const guardas = await prisma.segurancaGuarda.findMany({ orderBy: { createdAt: "desc" } });
+  await getTenantContextForModule("SEGURANCA");
+  const guardas = await listSecurityGuards(db);
   return <SegMobCrudClient items={guardas.map(mapGuarda)} config={config} />;
 }

@@ -1,8 +1,7 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
+import { eq } from "drizzle-orm";
+import { createDatabaseConnection } from "../src/db/connection.ts";
+import { accessProfiles, users } from "../src/db/schema/identity.ts";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
@@ -29,52 +28,42 @@ async function main() {
   }
   const firebaseUser = await getAuth().getUserByEmail(email);
 
-  neonConfig.webSocketConstructor = ws;
-  const prisma = new PrismaClient({
-    adapter: new PrismaNeon({ connectionString: requiredEnvironment("DATABASE_URL") }),
-  });
+  const { db, pool } = createDatabaseConnection(requiredEnvironment("DATABASE_URL"));
 
   try {
-    const profile = await prisma.configuracaoPerfil.upsert({
-      where: { codigo: SYSTEM_ADMIN_PROFILE_CODE },
-      create: {
+    await db.insert(accessProfiles).values({
         id: "system-administrator",
         codigo: SYSTEM_ADMIN_PROFILE_CODE,
         nome: "Administrador",
         descricao: "Acesso administrativo inicial do sistema.",
         permissoes: JSON.stringify({ acesso: "total" }),
         ativo: true,
-      },
-      update: {
+      }).onConflictDoUpdate({ target: accessProfiles.codigo, set: {
         codigo: SYSTEM_ADMIN_PROFILE_CODE,
         nome: "Administrador",
         descricao: "Acesso administrativo inicial do sistema.",
         permissoes: JSON.stringify({ acesso: "total" }),
         ativo: true,
-      },
-    });
+      } });
+    const [profile] = await db.select({ id: accessProfiles.id }).from(accessProfiles).where(eq(accessProfiles.codigo, SYSTEM_ADMIN_PROFILE_CODE));
 
-    await prisma.usuario.upsert({
-      where: { email },
-      create: {
+    await db.insert(users).values({
         nome: name,
         email,
         senha: "firebase",
         firebaseUid: firebaseUser.uid,
         ativo: true,
         perfilId: profile.id,
-      },
-      update: {
+      }).onConflictDoUpdate({ target: users.email, set: {
         nome: name,
         firebaseUid: firebaseUser.uid,
         ativo: true,
         perfilId: profile.id,
-      },
-    });
+      } });
 
     console.log(`Administrador ${email} configurado.`);
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 

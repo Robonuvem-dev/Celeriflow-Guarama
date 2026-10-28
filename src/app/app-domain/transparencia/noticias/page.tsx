@@ -4,15 +4,17 @@ import { Newspaper } from "lucide-react";
 import NoticiasTable from "./NoticiasTable";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { desc, eq } from "drizzle-orm";
+import { portalNews } from "@/db/schema/portal-content";
+import { employees, secretariats } from "@/db/schema/administration";
 
 export const dynamic = "force-dynamic";
 
 export default async function NoticiasPage() {
-  const { prisma } = await getTenantContextForModule("TRANSPARENCIA");
-  const news = await prisma.portalNews.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { author: true, secretariat: true }
-  });
+  await getTenantContextForModule("TRANSPARENCIA");
+  const newsRows = await db.select({news:portalNews,author:{name:employees.name},secretariat:{name:secretariats.name}}).from(portalNews).leftJoin(employees,eq(employees.id,portalNews.authorId)).leftJoin(secretariats,eq(secretariats.id,portalNews.secretariatId)).orderBy(desc(portalNews.createdAt));
+  const news=newsRows.map(row=>({...row.news,author:row.author,secretariat:row.secretariat}));
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-1 overflow-hidden">

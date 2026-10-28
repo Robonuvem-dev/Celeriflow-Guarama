@@ -1,4 +1,6 @@
-import type { PrismaClient } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import type { DatabaseExecutor } from "../src/db/transaction";
+import { queryRows } from "./lib/cross-domain-database";
 import { cadastroPeople, cadastroRoles } from "./plausible-cadastro-data";
 import { payrollReferenceNames as payrollNames, payrollRuleReferenceNames as ruleNames } from "../src/lib/rh/payroll-labels";
 import { syntheticPersonName } from "../src/lib/poc/fixture-catalog";
@@ -12,10 +14,10 @@ export const referenceNames = {
   AccountingPlan: ["Disponibilidades em caixa", "Obrigações de pessoal", "Depósitos bancários", "Encargos sociais a recolher", "Créditos tributários", "Fornecedores a pagar", "Estoques de materiais", "Retenções a recolher", "Adiantamentos a responsáveis", "Consignações a recolher", "Bens móveis", "Restituições a pagar", "Bens imóveis", "Obrigações contratuais", "Investimentos permanentes", "Provisões trabalhistas", "Créditos administrativos", "Obrigações de convênios", "Direitos de curto prazo", "Obrigações de curto prazo", "Outros ativos patrimoniais"],
 } as const;
 
-export async function getMunicipalNameTargets(db: PrismaClient): Promise<MunicipalNameTarget[]> {
+export async function getMunicipalNameTargets(db: DatabaseExecutor): Promise<MunicipalNameTarget[]> {
   const targets: MunicipalNameTarget[] = [];
   const add = (model: string, id: string, values: Record<string, string>) => targets.push({ model, id, values });
-  const instance = await db.configuracaoInstancia.findUnique({ where: { id: "rh-poc-ibema-instance-v1" }, select: { id: true, cnpj: true, municipio: true } });
+  const [instance] = await queryRows<{ id: string; cnpj: string | null; municipio: string | null }>(db, sql`SELECT id,cnpj,municipio FROM "ConfiguracaoInstancia" WHERE id='rh-poc-ibema-instance-v1'`);
   if (instance) targets.push({ model: "ConfiguracaoInstancia", id: instance.id, values: instance.cnpj ? { nomePrefeitura: `Prefeitura Municipal de ${instance.municipio || "Ibema"}` } : { nomePrefeitura: "Prefeitura Municipal de Aurora das Veredas", municipio: "Aurora das Veredas", uf: "MG" }, expected: instance.cnpj ? {} : { municipio: "Ibema", uf: "PR" } });
   for (let i = 36; i < 60; i++) targets.push({ model: "Person", id: key("person", i), values: { fullName: systemPersonName(i) }, expected: { fullName: syntheticPersonName(i + 81) } });
   for (const i of [16, 17]) targets.push({ model: "Employee", id: key("employee", i), values: { name: systemPersonName(i + 20) }, expected: { name: syntheticPersonName(i + 101) } });
@@ -30,8 +32,10 @@ export async function getMunicipalNameTargets(db: PrismaClient): Promise<Municip
       add("CostCenter", `p0-current-${entity}-cc-${i}`, { code: `AV.${entity === "exe" ? "01" : "02"}.CC.${String(i).padStart(3, "0")}` });
     }
     add("MultiYearPlan", `p0-current-${entity}-ppa`, { name: `Plano Plurianual 2024–2027 — ${entity === "exe" ? "Executivo" : "Legislativo"}`, code: `AV.${entity.toUpperCase()}.2024-2027` });
-    const instruments = await db.planningInstrument.findMany({ where: { id: { startsWith: `p0-current-${entity}-piece-` }, OR: [{ multiYearPlan: { status: "DRAFT" } }, { budgetGuideline: { status: "DRAFT" } }, { annualBudgetLaw: { status: "DRAFT" } }] }, select: { id: true, kind: true, startYear: true, endYear: true } });
-    for (const row of instruments) add("PlanningInstrument", row.id, { title: `${{ PPA: "Plano Plurianual", LDO: "Diretrizes Orçamentárias", LOA: "Orçamento Anual" }[row.kind] || row.kind} ${row.startYear}${row.endYear !== row.startYear ? `–${row.endYear}` : ""}`, code: `AV-${row.kind}-${row.startYear}` });
+    const instruments = await queryRows<{ id: string; kind: string; startYear: number; endYear: number }>(db, sql`SELECT i.id,i.kind,i."startYear",i."endYear" FROM "PlanningInstrument" i WHERE starts_with(i.id,${`p0-current-${entity}-piece-`}) AND
+      (EXISTS(SELECT 1 FROM "MultiYearPlan" p WHERE p.id=i."multiYearPlanId" AND p.status='DRAFT') OR EXISTS(SELECT 1 FROM "BudgetGuideline" p WHERE p.id=i."budgetGuidelineId" AND p.status='DRAFT') OR EXISTS(SELECT 1 FROM "AnnualBudgetLaw" p WHERE p.id=i."annualBudgetLawId" AND p.status='DRAFT'))`);
+    const labels: Record<string, string> = { PPA: "Plano Plurianual", LDO: "Diretrizes Orçamentárias", LOA: "Orçamento Anual" };
+    for (const row of instruments) add("PlanningInstrument", row.id, { title: `${labels[row.kind] || row.kind} ${row.startYear}${row.endYear !== row.startYear ? `–${row.endYear}` : ""}`, code: `AV-${row.kind}-${row.startYear}` });
   }
   for (let i = 1; i <= 21; i++) {
     add("Taxpayer", `p0-current-taxpayer-${i}`, { municipalInsc: `AV.PF.${String(1000 + i)}`, fiscalNotes: "Cadastro municipal de referência, com identidade vinculada e documentação sujeita à conferência cadastral." });
@@ -54,26 +58,33 @@ export async function getMunicipalNameTargets(db: PrismaClient): Promise<Municip
   }
   add("TaxDeathCause", "cemetery-demo-cause", { code: "CAUSA-NAO-INFORMADA", description: "Causa não informada; depende de documentação do declarante." });
   for (const id of ["cemetery-demo-owner-taxpayer", "cemetery-demo-person-taxpayer"]) add("Taxpayer", id, { fiscalNotes: "Cadastro municipal de referência para atendimento funerário." });
-  const employees = await db.employee.findMany({ where: { id: { in: ["construction-demo-analyst", "construction-demo-manager", "construction-demo-inspector", "rh-poc-employee-v1-0", "rh-poc-employee-v1-1", "rh-poc-employee-v1-2"] } }, select: { id: true } });
+  const employees = await queryRows<{ id: string }>(db, sql`SELECT id FROM "Employee" WHERE id=ANY(${sql.param(["construction-demo-analyst", "construction-demo-manager", "construction-demo-inspector", "rh-poc-employee-v1-0", "rh-poc-employee-v1-1", "rh-poc-employee-v1-2"])}::text[])`);
   for (const [i, row] of employees.entries()) add("Employee", row.id, { registration: `AV-RH-${String(4101 + i)}` });
-  const sets = await db.hrPayrollRuleSet.findMany({ where: { code: "RH_POC_DOCUMENTAL_2026_V1" }, include: { rules: true, rubrics: true, socialSecuritySchemes: true, vacationPolicies: true, employmentRegimes: true } });
+  const sets = await queryRows<{ id: string }>(db, sql`SELECT id FROM "HrPayrollRuleSet" WHERE code='RH_POC_DOCUMENTAL_2026_V1'`);
   for (const set of sets) {
+    const rules = await queryRows<{ id: string; code: string }>(db, sql`SELECT id,code FROM "HrPayrollRule" WHERE "ruleSetId"=${set.id}`);
+    const rubrics = await queryRows<{ id: string; code: string }>(db, sql`SELECT id,code FROM "HrPayrollRubric" WHERE "ruleSetId"=${set.id}`);
+    const socialSecuritySchemes = await queryRows<{ id: string }>(db, sql`SELECT id FROM "HrSocialSecurityScheme" WHERE "ruleSetId"=${set.id}`);
+    const vacationPolicies = await queryRows<{ id: string }>(db, sql`SELECT id FROM "HrVacationPolicy" WHERE "ruleSetId"=${set.id}`);
+    const employmentRegimes = await queryRows<{ id: string; code: string; name: string }>(db, sql`SELECT id,code,name FROM "HrEmploymentRegime" WHERE "ruleSetId"=${set.id}`);
     add("HrPayrollRuleSet", set.id, { name: "Aurora das Veredas — parâmetros de pessoal e folha" });
-    for (const rule of set.rules) if (ruleNames[rule.code]) add("HrPayrollRule", rule.id, { name: ruleNames[rule.code] });
-    for (const rubric of set.rubrics) if (payrollNames[rubric.code]) {
-      const legacy = { VENCIMENTO: "Vencimento", CONSIGNADO: "Parcela consignada", POC_ABATIMENTO: "Abatimento de valores já adiantados" }[rubric.code] || rubric.code.replaceAll("POC_", "").replaceAll("_", " ");
+    for (const rule of rules) if (ruleNames[rule.code]) add("HrPayrollRule", rule.id, { name: ruleNames[rule.code] });
+    const legacyNames: Record<string, string> = { VENCIMENTO: "Vencimento", CONSIGNADO: "Parcela consignada", POC_ABATIMENTO: "Abatimento de valores já adiantados" };
+    for (const rubric of rubrics) if (payrollNames[rubric.code]) {
+      const legacy = legacyNames[rubric.code] || rubric.code.replaceAll("POC_", "").replaceAll("_", " ");
       targets.push({ model: "HrPayrollRubric", id: rubric.id, values: { name: payrollNames[rubric.code] }, expected: { name: legacy } });
     }
-    for (const row of set.socialSecuritySchemes) add("HrSocialSecurityScheme", row.id, { name: "Regime Geral de Previdência Social — referência 2026" });
-    for (const row of set.vacationPolicies) add("HrVacationPolicy", row.id, { name: "Férias anuais — aquisição e fracionamento" });
-    for (const row of set.employmentRegimes) add("HrEmploymentRegime", row.id, { name: { EFETIVO_POC: "Servidor efetivo", COMISSIONADO_POC: "Cargo em comissão", TEMPORARIO_POC: "Contratação temporária" }[row.code] || row.name });
+    for (const row of socialSecuritySchemes) add("HrSocialSecurityScheme", row.id, { name: "Regime Geral de Previdência Social — referência 2026" });
+    for (const row of vacationPolicies) add("HrVacationPolicy", row.id, { name: "Férias anuais — aquisição e fracionamento" });
+    const regimeNames: Record<string, string> = { EFETIVO_POC: "Servidor efetivo", COMISSIONADO_POC: "Cargo em comissão", TEMPORARIO_POC: "Contratação temporária" };
+    for (const row of employmentRegimes) add("HrEmploymentRegime", row.id, { name: regimeNames[row.code] || row.name });
   }
-  for (const event of await db.payrollEvent.findMany({ where: { code: { startsWith: "POC_" } }, select: { id: true, code: true } })) {
+  for (const event of await queryRows<{ id: string; code: string }>(db, sql`SELECT id,code FROM "PayrollEvent" WHERE starts_with(code,'POC_')`)) {
     const code = event.code.startsWith("POC_V1_") ? event.code.slice(7) : event.code;
     if (payrollNames[code]) add("PayrollEvent", event.id, { name: payrollNames[code] });
     else if (code.includes("PENSAO")) add("PayrollEvent", event.id, { name: "Pensão alimentícia" });
   }
-  for (const user of await db.usuario.findMany({ where: { id: { startsWith: "p0-current-" }, firebaseUid: null }, select: { id: true, nome: true, email: true } })) {
+  for (const user of await queryRows<{ id: string; nome: string; email: string }>(db, sql`SELECT id,nome,email FROM "Usuario" WHERE starts_with(id,'p0-current-') AND "firebaseUid" IS NULL`)) {
     const match = /^p0-current-(exe|leg)-(.+)$/.exec(user.id);
     if (!match) continue;
     const index = cadastroRoles.findIndex(([role]) => role === match[2]);

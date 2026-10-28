@@ -1,12 +1,14 @@
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { taxActionConnection } from "@/db/repositories/tax-actions/context";
+import { actionItbiDocument, actionTaxpayerParties } from "@/db/repositories/tax-actions/documents";
 export const dynamic = "force-dynamic";
 const esc = (value: unknown) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
-  const scope = isSystemAdministrator(user) ? {} : { OR: user.allowedBudgetUnitIds.map(budgetUnitId => ({ calculationSnapshot: { path: ["budgetUnitId"], equals: budgetUnitId } })) };
-  const item = await prisma.itbiDeclaration.findFirst({ where: { id, ...scope }, include: { transactionType: true, parties: true, events: { orderBy: { createdAt: "asc" } } } });
+  const { id } = await params; const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context;
+  const database = taxActionConnection(context).db;
+  const item = await actionItbiDocument(database, id, isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds);
   if (!item?.documentId) return new Response("Documento de ITBI não encontrado.", { status: 404 });
-  const taxpayers = await prisma.taxpayer.findMany({ where: { id: { in: item.parties.map((party) => party.taxpayerId) } }, include: { person: true, company: true } });
+  const taxpayers = await actionTaxpayerParties(database, item.parties.map(party => party.taxpayerId));
   const names = new Map(taxpayers.map((taxpayer) => [taxpayer.id, taxpayer.company?.corporateName ?? taxpayer.person?.fullName ?? taxpayer.id]));
   const rows = item.parties.map((party) => `<tr><td>${esc(party.role)}</td><td>${esc(names.get(party.taxpayerId))}</td><td>${esc(party.participationPercent ? `${party.participationPercent}%` : "—")}</td></tr>`).join("");
   const history = item.events.map((event) => `<li>${esc(event.createdAt.toLocaleString("pt-BR"))} — <b>${esc(event.eventType)}</b>: ${esc(event.description)}</li>`).join("");

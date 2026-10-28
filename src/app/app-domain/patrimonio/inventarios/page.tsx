@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import Link from "next/link";
 import { InventoryStartClient } from "./InventoryStartClient";
+import { asc, count, desc, eq, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { warehouses as warehouseTable, inventorySessions } from "@/db/schema/assets-stock";
+import { users } from "@/db/schema/identity";
 import {
   clampPatrimonioListPage,
   patrimonioListHref,
@@ -26,28 +30,18 @@ export default async function InventariosPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const { prisma } = await getTenantContextForModule("PATRIMONIO");
+  await getTenantContextForModule("PATRIMONIO");
   const params = await searchParams;
   const requestedPage = parsePatrimonioListPage(params?.page);
   const [warehouses, total] = await Promise.all([
-    prisma.warehouse.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    prisma.inventorySession.count(),
+    db.select({ id: warehouseTable.id, name: warehouseTable.name }).from(warehouseTable).where(eq(warehouseTable.isActive, true)).orderBy(asc(warehouseTable.name)),
+    db.select({ total: count() }).from(inventorySessions).then(rows => rows[0].total),
   ]);
   const page = clampPatrimonioListPage(requestedPage, total);
-  const sessions = await prisma.inventorySession.findMany({
-    skip: (page - 1) * PATRIMONIO_LIST_PAGE_SIZE,
-    take: PATRIMONIO_LIST_PAGE_SIZE,
-    orderBy: { startedAt: "desc" },
-    include: {
-      warehouse: { select: { name: true } },
-      createdByUsuario: { select: { nome: true } },
-      _count: { select: { items: true } },
-    },
-  });
+  const sessions = await db.select({ session: inventorySessions, warehouse: { name: warehouseTable.name }, createdByUsuario: { nome: users.nome }, items: sql<number>`(SELECT count(*)::int FROM "InventorySessionItem" WHERE "sessionId"=${inventorySessions.id})` }).from(inventorySessions)
+    .innerJoin(warehouseTable, eq(warehouseTable.id, inventorySessions.warehouseId)).innerJoin(users, eq(users.id, inventorySessions.createdByUsuarioId))
+    .orderBy(desc(inventorySessions.startedAt)).offset((page - 1) * PATRIMONIO_LIST_PAGE_SIZE).limit(PATRIMONIO_LIST_PAGE_SIZE)
+    .then(rows => rows.map(row => ({ ...row.session, warehouse: row.warehouse, createdByUsuario: row.createdByUsuario, _count: { items: row.items } })));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">

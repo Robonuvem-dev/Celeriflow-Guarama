@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, LockKeyhole, ReceiptText, SearchCheck } from "lucide-react";
 import { getCurrentTenantContext } from "@/lib/platform/tenant-context";
 import { getSupplierPriceResearchPortalAccess } from "@/lib/compras/price-research";
+import { db } from "@/db/client";
 import { SupplierQuoteForm } from "./SupplierQuoteForm";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export default async function SupplierPriceQuotePage({ params }: { params: Promi
   let access;
   try {
     const context = await getCurrentTenantContext();
-    access = await getSupplierPriceResearchPortalAccess(context.prisma, { accessKey: key, authenticatedEmail: context.user.email });
+    access = await getSupplierPriceResearchPortalAccess(context.database ?? db, { accessKey: key, authenticatedEmail: context.user.email });
   } catch {
     return <PortalUnavailable />;
   }

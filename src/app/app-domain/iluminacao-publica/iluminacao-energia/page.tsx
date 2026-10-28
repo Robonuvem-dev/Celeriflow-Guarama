@@ -1,25 +1,12 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { IluminacaoEnergiaClient } from "../../obras/components/IluminacaoEnergiaClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
+import { db } from "@/db/client";
+import { listInfrastructureServiceDetails } from "@/db/repositories/infrastructure/services";
 
 export default async function IluminacaoEnergiaPage() {
-  const { prisma } = await getTenantContextForModule("ILUMINACAO_PUBLICA");
-  const servicos = await prisma.obrasServico.findMany({
-    where: { tipo: "Iluminação" },
-    orderBy: { createdAt: "desc" },
-    include: {
-      targetAsset: { include: { realEstate: true } },
-      department: true,
-      budgetAppropriation: true,
-      commitment: true,
-      employees: { include: { employee: true } },
-      teams: { include: { equipe: true } },
-      equipment: { include: { asset: true } },
-      materials: { include: { material: true, stock: true } },
-      documents: { include: { document: true } },
-      purchases: { include: { purchaseRequest: true, purchaseProcess: true } },
-    },
-  });
+  await getTenantContextForModule("ILUMINACAO_PUBLICA");
+  const servicos = await listInfrastructureServiceDetails(db, "Iluminação");
 
   return <PageFrame className="px-1 py-1 md:px-2"><IluminacaoEnergiaClient servicos={servicos} /></PageFrame>;
 }

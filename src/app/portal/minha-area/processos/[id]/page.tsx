@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { readCitizenProcess } from "@/db/repositories/processes/citizen";
 import { getCitizenAccount, getCitizenProcessWhere } from "@/lib/portal-cidadao/access";
-import { citizenProcessSelect } from "@/lib/portal-cidadao/policy";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +10,7 @@ export default async function CitizenProcessPage({ params }: { params: Promise<{
   const { id } = await params;
   const account = await getCitizenAccount(`/portal/minha-area/processos/${encodeURIComponent(id)}`);
   const scope = await getCitizenProcessWhere(account.id);
-  const item = await prisma.process.findFirst({ where: { AND: [{ id }, scope] }, select: {
-    ...citizenProcessSelect,
-    movements: { orderBy: [{ movedAt: "asc" }, { id: "asc" }], select: { id: true, movedAt: true, receivedAt: true, fromDepartment: { select: { name: true } }, toDepartment: { select: { name: true } } } },
-  } });
+  const item = await readCitizenProcess(db, id, scope);
   if (!item) notFound();
   const date = (value: Date | null) => value?.toLocaleString("pt-BR") || "Não definido";
   return <main className="mx-auto max-w-5xl space-y-6 px-4 py-10 sm:px-6">

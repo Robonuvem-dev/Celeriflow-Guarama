@@ -4,17 +4,17 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { OperationForm } from "../../OperationForm";
 import { assertPayrollBudgetScope } from "@/lib/rh/payroll-access";
+import { db } from "@/db/client";
+import { readPersonnelPayrollRun, readRunStatementsPage } from "@/db/repositories/personnel-pages/workforce";
 
 export const dynamic = "force-dynamic";
 export default async function PayrollRunPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
   const context = await getTenantContextForModule("RH");
-  const { prisma } = context;
+  const database = context.database ?? db;
   const { id } = await params;
-  const run = await prisma.hrPayrollRun.findUniqueOrThrow({ where: { id }, include: { payroll: true } });
+  const run = await readPersonnelPayrollRun(database, id);
   await assertPayrollBudgetScope(context, run.payrollId);
-  const total = await prisma.hrPayrollStatement.count({ where: { runId: id } });
-  const page = Math.min(Math.max(1, Number.parseInt((await searchParams).page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const statements = await prisma.hrPayrollStatement.findMany({ where: { runId: id }, include: { contract: { include: { employee: true } } }, orderBy: { id: "asc" }, take: 20, skip: (page - 1) * 20 });
+  const { total, page, statements } = await readRunStatementsPage(database, id, (await searchParams).page);
   const hidden = { name: "runId", label: "Cálculo", value: id, type: "hidden" };
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title={`Cálculo ${run.payroll.competence}`} description={`${run.mode} · ${run.scope} · ${run.status}`} action={<Link href="/rh/operacoes?tab=calculos">Voltar</Link>} />

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { portalItbiOptions } from "@/db/repositories/portal-content/taxpayer";
 import { getCitizenAccount } from "@/lib/portal-cidadao/access";
 import { readPortalItbiChannel } from "@/lib/tributacao/itbi-process-channel";
 import ItbiChannelClient from "@/app/app-domain/tributacao/itbi/comunicacao/ItbiChannelClient";
@@ -8,10 +9,9 @@ import PortalItbiContestationClient from "./PortalItbiContestationClient";
 export const dynamic = "force-dynamic";
 export default async function PortalItbiPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const account = await getCitizenAccount("/portal/tributario/itbi"); const params = await searchParams; const now = new Date();
-  const grants = await prisma.processCitizenAccess.findMany({ where: { usuarioId: account.id, revokedAt: null, grantedAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }, select: { processId: true } });
-  const declarations = await prisma.itbiDeclaration.findMany({ where: { processId: { in: grants.map(row => row.processId) } }, select: { id: true, declarationNumber: true, protocolNumber: true, status: true }, orderBy: { createdAt: "desc" } });
+  const declarations = await portalItbiOptions(db, account.id, now);
   const selected = declarations.find(row => row.id === params.id);
-  const channel = selected ? await readPortalItbiChannel(prisma, account.id, selected.id) : null;
+  const channel = selected ? await readPortalItbiChannel(db, account.id, selected.id) : null;
   return <main className="mx-auto max-w-5xl space-y-4 p-6">
     <Link href="/portal/minha-area" className="text-sm text-emerald-700 underline">Minha área</Link>
     <h1 className="text-2xl font-bold">Processos ITBI · tabelionato e interessados</h1>

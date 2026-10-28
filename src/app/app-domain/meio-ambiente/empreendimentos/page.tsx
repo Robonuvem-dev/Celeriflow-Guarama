@@ -4,7 +4,8 @@ import { Building2, Search } from "lucide-react";
 import { NewEnterpriseSheet } from "../components/NewEnterpriseSheet";
 import { QuickFilters } from "../components/QuickFilters";
 import { EnterpriseRowActions } from "../components/EnterpriseRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { listEnterprises } from "@/db/repositories/environment/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -13,14 +14,9 @@ import { environmentPageHref, filterAndPaginate } from "../list-utils";
 export const dynamic = "force-dynamic";
 
 export default async function EmpreendimentosPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> | { [key: string]: string | undefined } }) {
-  const { prisma } = await getTenantContextForModule("MEIO_AMBIENTE");
+  const context = await getTenantContextForModule("MEIO_AMBIENTE");
   const searchParams = await Promise.resolve(props.searchParams || {});
-  const where: Prisma.EnvEnterpriseWhereInput = {};
-  if (searchParams.atividade) where.activityType = { contains: searchParams.atividade, mode: "insensitive" };
-  if (searchParams.risco) where.potentialRisk = searchParams.risco;
-  if (searchParams.status) where.status = searchParams.status;
-
-  const enterprises = await prisma.envEnterprise.findMany({ where, orderBy: { createdAt: "desc" } });
+  const enterprises = await listEnterprises(context.database ?? db, searchParams);
 
   const list = filterAndPaginate(enterprises, searchParams);
 

@@ -1,6 +1,13 @@
-import { Prisma } from "@prisma/client";
+import type { JsonValue } from "@/db/json";
+import { db } from "@/db/client";
+import { listPageTaxes, listPageAssessments, listPageGuides, listPageBenefitRules } from "@/db/repositories/taxation-pages/assessments";
+import { listPageParameters } from "@/db/repositories/taxation-pages/fiscal-options";
+import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import { listFiscalProcessOptions, listFiscalDocumentOptions, listFiscalPlanningUnits } from "@/db/repositories/taxation-pages/lookups";
+import { listPageIntegrationEvents } from "@/db/repositories/taxation-pages/integration-events";
+import { readPageAssessmentIds, readEngineTaxpayers, readPageCreditEvents, readPageCollectionAgreements, readPageReversibleMovements, readPageAccountingProfiles, readPagePublishedAccounts, readPageFinancialLabels } from "@/db/repositories/taxation-pages/fiscal-engine";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import { taxAssessmentAccessFilter, taxAssessmentCompensatedValue } from "@/lib/tributacao/scope";
+import { taxAssessmentCompensatedValue } from "@/lib/tributacao/scope";
 import MotorFiscalClient from "./MotorFiscalClient";
 import { CreditMovementReversalForm } from "./CreditMovementReversalForm";
 import { AuthorizedCompensationForm } from "./AuthorizedCompensationForm";
@@ -13,34 +20,32 @@ function taxpayerName(taxpayer: { person: { fullName: string } | null; company: 
   return taxpayer.company?.corporateName ?? taxpayer.person?.fullName ?? "Contribuinte sem nome";
 }
 
-function object(value: Prisma.JsonValue) { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, Prisma.JsonValue> : {}; }
+function object(value: JsonValue) { return value && typeof value === "object" && !Array.isArray(value) ? value : {}; }
 
 export default async function MotorFiscalPage() {
-  const { prisma, user } = await getTenantContextForModule("TRIBUTACAO");
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
-  const assessmentAccess = taxAssessmentAccessFilter(allowed);
-  const registryAccess: Prisma.TaxRegistryEntryWhereInput = allowed ? { OR: allowed.map((budgetUnitId) => ({ data: { path: ["budgetUnitId"], equals: budgetUnitId } })) } : {};
-  if (allowed && !allowed.length) registryAccess.id = { in: [] };
-  const assessmentIds = allowed ? (await prisma.taxAssessment.findMany({ where: assessmentAccess, select: { id: true } })).map((assessment) => assessment.id) : undefined;
+  const assessmentIds = allowed ? await readPageAssessmentIds(database, allowed) : undefined;
+  const financialLabels = readPageFinancialLabels(database, allowed);
   const [taxes, taxpayers, parameters, assessments, guides, events, creditEvents, credits, refunds, agreements, reconciliations, bankAccounts, revenueNatures, resourceSources, processes, documents] = await Promise.all([
-    prisma.tax.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.taxpayer.findMany({ where: { status: "Ativo" }, include: { person: true, company: true, realEstates: { select: { id: true, municipalInsc: true } }, economicRegistrations: { select: { id: true, municipalInsc: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
-    prisma.taxParameter.findMany({ include: { tax: true }, orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }], take: 200 }),
-    prisma.taxAssessment.findMany({ where: assessmentAccess, include: { tax: true, taxpayer: { include: { person: true, company: true } }, guides: { include: { payments: { where: { status: "Confirmado" } } } } }, orderBy: { createdAt: "desc" }, take: 300 }),
-    prisma.taxGuide.findMany({ where: { assessment: assessmentAccess }, include: { assessment: { include: { tax: true, taxpayer: { include: { person: true, company: true } } } }, payments: { where: { status: "Confirmado" } } }, orderBy: { createdAt: "desc" }, take: 300 }),
-    prisma.taxIntegrationEvent.findMany({ where: { integrationCode: { in: ["FISCAL_ENGINE", "PIX_ADAPTER", "BANK_RETURN", "ACCOUNTING", "TAX_CREDIT"] } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "TAX_ASSESSMENT", category: "CREDIT_EVENT", status: "ATIVO", ...(assessmentIds ? { entityId: { in: assessmentIds } } : {}) }, orderBy: { createdAt: "asc" } }),
-    prisma.taxRegistryEntry.findMany({ where: { ...registryAccess, category: "TAX_CREDIT" }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.taxRegistryEntry.findMany({ where: { ...registryAccess, category: "REFUND_REQUEST" }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.taxRegistryEntry.findMany({ where: { entityType: "COLLECTION_AGREEMENT", category: "AGREEMENT", status: "ATIVO" }, orderBy: { title: "asc" } }),
-    prisma.taxRegistryEntry.findMany({ where: { category: "RECONCILIATION" }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.bankAccount.findMany({ where: { isActive: true, ...(allowed ? { budgetUnitId: { in: allowed } } : {}) }, orderBy: { bankName: "asc" }, select: { id: true, bankName: true, agency: true, accountNumber: true } }),
-    prisma.revenueNature.findMany({ orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }),
-    prisma.resourceSource.findMany({ orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }),
-    prisma.process.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { id: true, protocolNumber: true } }),
-    prisma.document.findMany({ where: { status: "Válido" }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, title: true } }),
+    listPageTaxes(database),
+    readEngineTaxpayers(database),
+    listPageParameters(database, 200, true),
+    listPageAssessments(database, { allowedBudgetUnitIds: allowed, limit: 300 }),
+    listPageGuides(database, allowed, 300),
+    listPageIntegrationEvents(database, ["FISCAL_ENGINE", "PIX_ADAPTER", "BANK_RETURN", "ACCOUNTING", "TAX_CREDIT"]),
+    readPageCreditEvents(database, assessmentIds),
+    listFiscalEntries(database, { categories: ["TAX_CREDIT"], allowedBudgetUnitIds: allowed, order: "created", limit: 200 }),
+    listFiscalEntries(database, { categories: ["REFUND_REQUEST"], allowedBudgetUnitIds: allowed, order: "created", limit: 100 }),
+    readPageCollectionAgreements(database),
+    listFiscalEntries(database, { categories: ["RECONCILIATION"], order: "created", limit: 200 }),
+    financialLabels.then(result => result.bankAccounts),
+    financialLabels.then(result => result.revenueNatures),
+    financialLabels.then(result => result.resourceSources),
+    listFiscalProcessOptions(database, 100),
+    listFiscalDocumentOptions(database, 100, true),
   ]);
-  const compensated = new Map(await Promise.all(assessments.map(async (assessment) => [assessment.id, Number(await taxAssessmentCompensatedValue(prisma, assessment.id))] as const)));
+  const compensated = new Map(await Promise.all(assessments.map(async (assessment) => [assessment.id, Number(await taxAssessmentCompensatedValue(database, assessment.id))] as const)));
   const authorizedOrigins = new Set([...assessments.map((row) => row.id), ...guides.map((row) => row.id), ...credits.map((row) => row.id), ...refunds.map((row) => row.id)]);
   const scopedEvents = allowed ? events.filter((event) => {
     const payload = object(event.payload);
@@ -54,13 +59,13 @@ export default async function MotorFiscalPage() {
     const extinct = creditEvents.filter((entry) => entry.entityId === assessment.id).reduce((sum, entry) => { const data = object(entry.data); return data.reducesAssessmentValue !== true && ["EXTINCAO_NAO_FINANCEIRA", "COMPENSACAO"].includes(String(data.eventType)) ? sum + Number(data.amount ?? 0) : sum; }, compensated.get(assessment.id) ?? 0);
     return { id: assessment.id, number: assessment.assessmentNumber ?? assessment.id, taxId: assessment.taxId, tax: assessment.tax.name, taxpayerId: assessment.taxpayerId, taxpayer: taxpayerName(assessment.taxpayer), year: assessment.year, competence: assessment.competence?.toISOString() ?? null, base: Number(assessment.taxableBaseDecimal ?? 0), principal: Number(assessment.originalValueDecimal ?? assessment.originalValue), correction: Number(assessment.correctionValueDecimal ?? 0), interest: Number(assessment.interestValueDecimal ?? 0), penalty: Number(assessment.penaltyValueDecimal ?? 0), total, paid, balance: Math.max(total - paid - extinct, 0), status: assessment.status, realEstateId: assessment.realEstateId, economicRegistrationId: assessment.economicRegistrationId };
   });
-  const reversibleMovements = await prisma.taxRegistryEntry.findMany({ where: { AND: [registryAccess, { OR: [{ category: "CREDIT_MOVEMENT", status: "EFETIVADO" }, { category: "REFUND_REQUEST", status: { in: ["PENDENTE_APROVACAO", "APROVADA_AGUARDANDO_TESOURARIA", "RESTITUIDA"] } }] }] }, orderBy: { createdAt: "desc" }, take: 200 });
+  const reversibleMovements = await readPageReversibleMovements(database, allowed);
   const now = new Date();
-  const benefitRules = await prisma.taxBenefitRule.findMany({ where: { active: true, effectiveFrom: { lte: now }, OR: [{ effectiveUntil: null }, { effectiveUntil: { gte: now } }] }, orderBy: { code: "asc" } });
+  const benefitRules = await listPageBenefitRules(database, now);
   const [profileUnits, profileCatalogs, accountingProfiles] = await Promise.all([
-    prisma.planningEntityUnit.findMany({ where: allowed ? { budgetUnitId: { in: allowed } } : {}, include: { budgetUnit: true, governmentEntity: true }, orderBy: { budgetUnitId: "asc" } }),
-    prisma.planningCatalogVersion.findMany({ where: { status: "PUBLISHED" }, include: { entries: { where: { kind: "ACCOUNT", canonicalId: { not: "" }, NOT: { canonicalId: { startsWith: "UNMAPPED:" } } }, orderBy: { code: "asc" } } }, orderBy: { year: "desc" } }),
-    prisma.taxRegistryEntry.findMany({ where: { ...registryAccess, entityType: "TAX", category: { in: ["ACCOUNTING_PROFILE", "DEBT_ACCOUNTING_PROFILE"] }, status: "ATIVO" }, orderBy: [{ entityId: "asc" }, { version: "desc" }] }),
+    listFiscalPlanningUnits(database, allowed, "unit"),
+    readPagePublishedAccounts(database),
+    readPageAccountingProfiles(database, allowed),
   ]);
   return <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
     <TaxAccountingProfileForm taxes={taxes.map(item => ({ id: item.id, label: item.name }))} units={profileUnits.map(item => ({ id: item.budgetUnitId, label: `${item.governmentEntity.name} · ${item.budgetUnit.name}` }))} catalogs={profileCatalogs.map(item => ({ id: item.id, label: item.label, accounts: item.entries.filter(entry => { const attributes = object(entry.attributes); return attributes.operational === true && attributes.pocOnly === false && attributes.informationNature === "P" && attributes.postingAllowed === true; }).map(entry => ({ id: entry.canonicalId!, label: `${entry.code} · ${entry.name}`, nature: String(object(entry.attributes).balanceNature) })) })).filter(item => item.accounts.length > 0)} profiles={accountingProfiles.map(item => ({ id: item.id, category: item.category, label: `${item.title} · ${profileUnits.find(unit => unit.budgetUnitId === object(item.data).budgetUnitId)?.budgetUnit.name ?? object(item.data).budgetUnitId}`, taxId: item.entityId, budgetUnitId: String(object(item.data).budgetUnitId), from: item.effectiveFrom.toISOString().slice(0, 10), until: item.effectiveUntil?.toISOString().slice(0, 10) ?? null, version: item.version }))} />

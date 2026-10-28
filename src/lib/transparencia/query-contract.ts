@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import Decimal from "decimal.js";
 
 export const transparencySources = ["API_IBEMA", "NATIVO", "EXEMPLO", "DOCUMENTOS"] as const;
 export const transparencyEntities = ["prefeitura", "camara", "consolidado"] as const;
@@ -18,7 +18,7 @@ export function parseTransparencyQuery(params: URLSearchParams): TransparencyQue
   value.filters = Object.fromEntries([...params].filter(([key, item]) => key.startsWith("f.") && item !== "").map(([key, item]) => [key.slice(2), item]));
   return transparencyQuerySchema.parse(value);
 }
-const numeric = (value: PublicCell | undefined) => new Prisma.Decimal(value === null || value === undefined || value === "" ? "0" : String(value));
+const numeric = (value: PublicCell | undefined) => new Decimal(value === null || value === undefined || value === "" ? "0" : String(value));
 const text = (value: PublicCell | undefined) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 export function filterPublicDataset(collection: PublicCollection, dataset: PublicDataset, query: TransparencyQuery) {
   const permitted = new Set(collection.filters.map(filter => filter.key));
@@ -38,7 +38,7 @@ export function filterPublicDataset(collection: PublicCollection, dataset: Publi
   });
   const column = collection.columns.find(column => column.key === query.sort) || collection.columns[0];
   rows.sort((a, b) => { const left = a.values[column.key], right = b.values[column.key]; const order = column.kind === "money" || column.kind === "number" ? numeric(left).comparedTo(numeric(right)) : String(left ?? "").localeCompare(String(right ?? ""), "pt-BR", { numeric: true }); return (query.direction === "desc" ? -order : order) || a.key.localeCompare(b.key); });
-   const totals = Object.fromEntries(collection.amountFields.map(field => {const eligible=rows.filter(row=>!row.excludedFromTotals?.includes(field));return [field,dataset.status!=="AVAILABLE"||rows.length>0&&eligible.length===0||eligible.some(row=>row.values[field]===null||row.values[field]===undefined||row.values[field]==="")?null:eligible.reduce((sum,row)=>sum.add(numeric(row.values[field])),new Prisma.Decimal(0)).toFixed(2)];}));
+   const totals = Object.fromEntries(collection.amountFields.map(field => {const eligible=rows.filter(row=>!row.excludedFromTotals?.includes(field));return [field,dataset.status!=="AVAILABLE"||rows.length>0&&eligible.length===0||eligible.some(row=>row.values[field]===null||row.values[field]===undefined||row.values[field]==="")?null:eligible.reduce((sum,row)=>sum.add(numeric(row.values[field])),new Decimal(0)).toFixed(2)];}));
   const total = rows.length, page = Math.min(query.page, Math.max(1, Math.ceil(total / query.pageSize)));
   return { ...dataset, rows, records: rows.slice((page - 1) * query.pageSize, page * query.pageSize), totals, total, page, pageSize: query.pageSize };
 }

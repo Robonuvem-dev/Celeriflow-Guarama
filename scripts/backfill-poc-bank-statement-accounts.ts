@@ -1,31 +1,23 @@
 import dotenv from "dotenv";
+import { and, eq, isNull } from "drizzle-orm";
+import { bankStatementItems } from "../src/db/schema/finance-banking";
+import { listAutomationBankAccounts } from "../src/db/repositories/finance/bank-automation";
 
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
 
 async function main() {
-  const { prisma } = await import("../src/lib/prisma");
+  const { db, databaseConnection } = await import("../src/db/client");
   try {
-    const accounts = await prisma.bankAccount.findMany({
-      where: { bankName: "001 - Banco Virtual Robonuvem", isActive: true },
-      select: { id: true, bankName: true, agency: true, accountNumber: true },
-    });
+    const accounts = await listAutomationBankAccounts(db, { bankName: "001 - Banco Virtual Robonuvem" });
     let updated = 0;
     for (const account of accounts) {
-      const result = await prisma.bankStatementItem.updateMany({
-        where: {
-          bankAccountId: null,
-          banco: account.bankName,
-          agencia: account.agency,
-          contaNumero: account.accountNumber,
-        },
-        data: { bankAccountId: account.id },
-      });
-      updated += result.count;
+      const result = await db.update(bankStatementItems).set({ bankAccountId: account.id }).where(and(isNull(bankStatementItems.bankAccountId), eq(bankStatementItems.banco, account.bankName), eq(bankStatementItems.agencia, account.agency), eq(bankStatementItems.contaNumero, account.accountNumber))).returning({ id: bankStatementItems.id });
+      updated += result.length;
     }
     console.log({ updated, accounts: accounts.length });
   } finally {
-    await prisma.$disconnect();
+    await databaseConnection.pool.end();
   }
 }
 

@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
+import { portalServiceRequests } from "@/db/schema/portal-services";
+import { processes } from "@/db/schema/processes";
 import { getCitizenAccount } from "@/lib/portal-cidadao/access";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 
@@ -7,9 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function OwnServiceRequestsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
   const account = await getCitizenAccount("/portal/minha-area/solicitacoes"), query = await searchParams;
   const q = typeof query.q === "string" ? query.q.trim().slice(0, 100) : "", status = typeof query.status === "string" ? query.status : "";
-  const where = { actorId: account.id, ...(status ? { status } : {}), ...(q ? { process: { protocolNumber: { contains: q, mode: "insensitive" as const } } } : {}) };
-  const total = await prisma.portalServiceRequest.count({ where }), page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
-  const items = await prisma.portalServiceRequest.findMany({ where, select: { id: true, snapshot: true, status: true, createdAt: true, process: { select: { protocolNumber: true, expectedCompletionAt: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 20, skip: (page - 1) * 20 });
+  const where = and(eq(portalServiceRequests.actorId, account.id), status ? eq(portalServiceRequests.status, status) : undefined, q ? ilike(processes.protocolNumber, `%${q.replace(/[\\%_]/g, "\\$&")}%`) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(portalServiceRequests).innerJoin(processes, eq(processes.id, portalServiceRequests.processId)).where(where);
+  const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
+  const items = await db.select({ id: portalServiceRequests.id, snapshot: portalServiceRequests.snapshot, status: portalServiceRequests.status, createdAt: portalServiceRequests.createdAt, process: { protocolNumber: processes.protocolNumber, expectedCompletionAt: processes.expectedCompletionAt } }).from(portalServiceRequests).innerJoin(processes, eq(processes.id, portalServiceRequests.processId)).where(where).orderBy(desc(portalServiceRequests.createdAt), asc(portalServiceRequests.id)).limit(20).offset((page - 1) * 20);
   const href = (target: number) => `?${new URLSearchParams({ q, status, page: String(target) })}`;
   return <main className="mx-auto max-w-5xl space-y-6 px-4 py-10"><Link href="/portal/minha-area" className="text-sm font-semibold text-emerald-800">← Minha área</Link><div className="flex flex-wrap justify-between gap-3"><h1 className="text-3xl font-bold">Meus pedidos</h1><Link href="/portal/minha-area/servicos" className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Solicitar serviço</Link></div><form className="flex flex-wrap gap-3"><input name="q" aria-label="Protocolo" defaultValue={q} placeholder="Protocolo" maxLength={100} className="min-w-0 flex-1 rounded border p-3" /><select name="status" aria-label="Situação" defaultValue={status} className="rounded border p-3"><option value="">Todas as situações</option>{["RECEBIDO", "EM_ANALISE", "AGUARDANDO_COMPLEMENTO", "PROGRAMADO", "RESPONDIDO", "CONCLUIDO", "CANCELADO"].map((value) => <option key={value}>{value}</option>)}</select><button className="rounded bg-emerald-700 px-5 text-sm font-semibold text-white">Buscar</button></form><ul className="space-y-3">{items.map((item) => <li key={item.id} className="rounded-xl border bg-white p-5"><Link href={`/portal/minha-area/solicitacoes/${item.id}`} className="font-bold text-emerald-800 hover:underline">{item.process.protocolNumber} — {(item.snapshot as { name: string }).name}</Link><p className="mt-2 text-sm text-slate-600">{item.status} • Abertura: {item.createdAt.toLocaleDateString("pt-BR")} • Prazo: {item.process.expectedCompletionAt?.toLocaleDateString("pt-BR") || "Não definido"}</p></li>)}</ul>{!items.length && <p className="rounded border border-dashed p-6 text-sm text-slate-600">Nenhum pedido encontrado. Protocolos vinculados anteriormente continuam em “Meus processos”.</p>}<ErpPagination page={page} total={total} pageSize={20} previousHref={href(page - 1)} nextHref={href(page + 1)} label="pedidos" /><Link href="/portal-servidor/protocolos" className="text-sm font-semibold text-sky-800">Requerimentos funcionais: acompanhar no Portal do Servidor →</Link></main>;
 }

@@ -3,7 +3,10 @@ import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { databaseTimestamp } from "@/db/temporal";
+import { materials as materialTable, warehouses as warehouseTable, materialCategories, materialSubcategories, materialStocks } from "@/db/schema/assets-stock";
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { StockOperationsClient } from "../materiais/StockOperationsClient";
@@ -24,13 +27,13 @@ function getOrder(value?: string): MaterialOrder {
   return value === "code-desc" || value === "name-asc" || value === "name-desc" || value === "description-asc" || value === "description-desc" ? value : "code-asc";
 }
 
-function materialOrder(order: MaterialOrder): Prisma.MaterialOrderByWithRelationInput {
-  if (order === "code-desc") return { code: "desc" };
-  if (order === "name-asc") return { name: "asc" };
-  if (order === "name-desc") return { name: "desc" };
-  if (order === "description-asc") return { description: "asc" };
-  if (order === "description-desc") return { description: "desc" };
-  return { code: "asc" };
+function materialOrder(order: MaterialOrder) {
+  if (order === "code-desc") return desc(materialTable.code);
+  if (order === "name-asc") return asc(materialTable.name);
+  if (order === "name-desc") return desc(materialTable.name);
+  if (order === "description-asc") return asc(materialTable.description);
+  if (order === "description-desc") return desc(materialTable.description);
+  return asc(materialTable.code);
 }
 
 function currencyCost(stocks: { quantity: number; unitCost: number | null }[]) {
@@ -43,7 +46,6 @@ function currencyCost(stocks: { quantity: number; unitCost: number | null }[]) {
 
 export async function MaterialStockList({ searchParams, equipmentOnly = false }: { searchParams?: Promise<SearchParams>; equipmentOnly?: boolean }) {
   const context = await getTenantContextForModule("PATRIMONIO");
-  const { prisma } = context;
   const params = await searchParams;
   const q = params?.q?.trim() || "";
   const view: MaterialView = params?.view === "movimentar" ? "movimentar" : "catalogo";
@@ -54,30 +56,34 @@ export async function MaterialStockList({ searchParams, equipmentOnly = false }:
   const warehouseId = params?.warehouse || "";
   const order = getOrder(params?.order);
   const requestedPage = parsePatrimonioListPage(params?.page);
-  const whereParts: Prisma.MaterialWhereInput[] = [];
-  if (q) whereParts.push({ OR: [{ name: { contains: q, mode: "insensitive" } }, { code: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] });
-  if (type) whereParts.push({ type });
-  if (categoryId) whereParts.push({ categoryId });
-  if (status === "ATIVO") whereParts.push({ isActive: true });
-  if (status === "INATIVO") whereParts.push({ isActive: false });
-  if (status === "SEM_ESTOQUE") whereParts.push({ isActive: true, stocks: { none: warehouseId ? { warehouseId, quantity: { gt: 0 } } : { quantity: { gt: 0 } } } });
-  if (warehouseId && status !== "SEM_ESTOQUE") whereParts.push({ stocks: { some: { warehouseId } } });
-  const catalogWhere: Prisma.MaterialWhereInput = whereParts.length ? { AND: whereParts } : {};
+  const pattern = `%${q}%`;
+  const catalogWhere = and(
+    eq(materialTable.type, type), categoryId ? eq(materialTable.categoryId, categoryId) : undefined,
+    q ? or(ilike(materialTable.name, pattern), ilike(materialTable.code, pattern), ilike(materialTable.description, pattern)) : undefined,
+    status === "ATIVO" || status === "SEM_ESTOQUE" ? eq(materialTable.isActive, true) : status === "INATIVO" ? eq(materialTable.isActive, false) : undefined,
+    status === "SEM_ESTOQUE" ? sql`NOT EXISTS (SELECT 1 FROM "MaterialStock" s WHERE s."materialId"=${materialTable.id} AND s.quantity>0 ${warehouseId ? sql`AND s."warehouseId"=${warehouseId}` : sql``})` : undefined,
+    warehouseId && status !== "SEM_ESTOQUE" ? sql`EXISTS (SELECT 1 FROM "MaterialStock" s WHERE s."materialId"=${materialTable.id} AND s."warehouseId"=${warehouseId})` : undefined,
+  );
   const catalogValues = { q, type, category: categoryId, status, warehouse: warehouseId, order };
-  const catalogTotal = await prisma.material.count({ where: catalogWhere });
+  const [{ total: catalogTotal }] = await db.select({ total: count() }).from(materialTable).where(catalogWhere);
   const page = view === "movimentar" ? 1 : clampPatrimonioListPage(requestedPage, catalogTotal);
 
   const [materials, warehouses, categories, movementMaterials, settlements, subcategories] = await Promise.all([
-    view === "catalogo" ? prisma.material.findMany({
-      where: catalogWhere, skip: (page - 1) * PATRIMONIO_LIST_PAGE_SIZE, take: PATRIMONIO_LIST_PAGE_SIZE,
-      orderBy: [materialOrder(order), { id: "asc" }],
-      include: { category: { select: { id: true, name: true } }, subcategory: { select: { name: true } }, stocks: { select: { quantity: true, unitCost: true, expirationDate: true, warehouse: { select: { id: true, name: true } } } } },
-    }) : Promise.resolve([]),
-    prisma.warehouse.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.materialCategory.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    view === "movimentar" ? prisma.material.findMany({ where: { isActive: true, type }, take: 200, orderBy: { name: "asc" }, select: { id: true, code: true, name: true } }) : Promise.resolve([]),
-    view === "movimentar" ? prisma.settlement.findMany({ where: { status: "Liquidado" }, take: 100, orderBy: { date: "desc" }, select: { id: true, date: true, value: true, commitment: { select: { number: true } } } }) : Promise.resolve([]),
-    prisma.materialSubcategory.findMany({ where: { isActive: true, category: { isActive: true } }, select: { id: true, categoryId: true, name: true }, orderBy: { name: "asc" } }),
+    view === "catalogo" ? db.select({ material: materialTable, category: { id: materialCategories.id, name: materialCategories.name }, subcategory: { name: materialSubcategories.name } }).from(materialTable)
+      .innerJoin(materialCategories, eq(materialCategories.id, materialTable.categoryId)).leftJoin(materialSubcategories, eq(materialSubcategories.id, materialTable.subcategoryId))
+      .where(catalogWhere).orderBy(materialOrder(order), asc(materialTable.id)).offset((page - 1) * PATRIMONIO_LIST_PAGE_SIZE).limit(PATRIMONIO_LIST_PAGE_SIZE)
+      .then(async rows => {
+        const stocks = rows.length ? await db.select({ materialId: materialStocks.materialId, quantity: materialStocks.quantity, unitCost: materialStocks.unitCost, expirationDate: materialStocks.expirationDate, warehouse: { id: warehouseTable.id, name: warehouseTable.name } }).from(materialStocks)
+          .innerJoin(warehouseTable, eq(warehouseTable.id, materialStocks.warehouseId)).where(inArray(materialStocks.materialId, rows.map(row => row.material.id))) : [];
+        return rows.map(row => ({ ...row.material, category: row.category, subcategory: row.subcategory, stocks: stocks.filter(stock => stock.materialId === row.material.id) }));
+      }) : Promise.resolve([]),
+    db.select({ id: warehouseTable.id, name: warehouseTable.name }).from(warehouseTable).where(eq(warehouseTable.isActive, true)).orderBy(asc(warehouseTable.name)),
+    db.select({ id: materialCategories.id, name: materialCategories.name }).from(materialCategories).where(eq(materialCategories.isActive, true)).orderBy(asc(materialCategories.name)),
+    view === "movimentar" ? db.select({ id: materialTable.id, code: materialTable.code, name: materialTable.name }).from(materialTable).where(and(eq(materialTable.isActive, true), eq(materialTable.type, type))).orderBy(asc(materialTable.name)).limit(200) : Promise.resolve([]),
+    view === "movimentar" ? db.execute<{ id: string; date: string; value: number; number: string }>(sql`SELECT s.id, s.date, s.value, c.number FROM "Settlement" s JOIN "Commitment" c ON c.id=s."commitmentId" WHERE s.status='Liquidado' ORDER BY s.date DESC LIMIT 100`)
+      .then(result => result.rows.map(row => ({ id: row.id, date: databaseTimestamp(row.date), value: row.value, commitment: { number: row.number } }))) : Promise.resolve([]),
+    db.select({ id: materialSubcategories.id, categoryId: materialSubcategories.categoryId, name: materialSubcategories.name }).from(materialSubcategories).innerJoin(materialCategories, eq(materialCategories.id, materialSubcategories.categoryId))
+      .where(and(eq(materialSubcategories.isActive, true), eq(materialCategories.isActive, true))).orderBy(asc(materialSubcategories.name)),
   ]);
   const selectedWarehouse = warehouses.find(warehouse => warehouse.id === warehouseId);
   const canCreate = canPerformModuleOperation(context.user, "PATRIMONIO", "create");

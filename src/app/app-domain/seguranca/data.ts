@@ -1,10 +1,8 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import type { SegurancaGuarda, SegurancaInfracao, SegurancaMobilidadeRegistro, SegurancaOcorrencia } from "@prisma/client";
+import type { SecurityGuard as SegurancaGuarda, SecurityInfraction as SegurancaInfracao, MobilityRecord as SegurancaMobilidadeRegistro, SecurityOccurrence as SegurancaOcorrencia } from "@/lib/contracts/security-mobility";
+import { db } from "@/db/client";
+import { listMobilityRecords } from "@/db/repositories/security-mobility/queries";
 import type { SegMobItem } from "./types";
-
-async function getTenantPrisma() {
-  return (await getTenantContextForModule("SEGURANCA")).prisma;
-}
 
 export function mapGuarda(item: SegurancaGuarda): SegMobItem {
   return {
@@ -77,10 +75,7 @@ export function mapRegistro(item: SegurancaMobilidadeRegistro): SegMobItem {
 }
 
 export async function getRegistrosByCategorias(categories: string[]) {
-  const prisma = await getTenantPrisma();
-  const records = await prisma.segurancaMobilidadeRegistro.findMany({
-    where: { categoria: { in: categories } },
-    orderBy: { createdAt: "desc" },
-  });
+  await getTenantContextForModule("SEGURANCA");
+  const records = await listMobilityRecords(db, categories);
   return records.map(mapRegistro);
 }

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { accessiblePayrollWhere } from "@/lib/rh/payroll-access";
+import { db } from "@/db/client";
+import { readPocPage } from "@/db/repositories/personnel-pages/workforce";
 import { RH_POC_CODE } from "@/lib/rh/poc-bootstrap";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { OperationForm } from "../operacoes/OperationForm";
@@ -11,11 +12,7 @@ export default async function RhPocPage({ searchParams }: { searchParams: Promis
   const context = await getTenantContextForModule("RH");
   const value = (await searchParams).competence;
   const competence = value && /^(0[1-9]|1[0-2])\/2026$/.test(value) ? value : "10/2026";
-  const set = await context.prisma.hrPayrollRuleSet.findFirst({ where: { code: RH_POC_CODE, scope: "DEMONSTRACAO", isDemo: true }, include: { rules: { orderBy: { code: "asc" } } } });
-  const payrolls = await context.prisma.payroll.findMany({ where: { AND: [accessiblePayrollWhere(context.user), { competence, id: { startsWith: "rh-poc-payroll-v1-" } }] }, orderBy: { id: "asc" } });
-  const regimes = set ? await context.prisma.hrEmploymentRegime.findMany({ where: { ruleSetId: set.id }, select: { id: true } }) : [];
-  const contracts = set ? await context.prisma.hrEmploymentContract.findMany({ where: { regimeId: { in: regimes.map(regime => regime.id) }, details: { path: ["pocPackage"], equals: RH_POC_CODE } }, include: { employee: true }, orderBy: { registration: "asc" } }) : [];
-  const sources = await context.prisma.hrPayrollRun.findMany({ where: { scope: "DEMONSTRACAO", mode: "OFICIAL", status: "FECHADA", ruleSetId: set?.id ?? "", payroll: { AND: [accessiblePayrollWhere(context.user), { type: { in: ["1ª parcela 13º", "13º"] } }] } }, include: { payroll: true }, orderBy: { createdAt: "desc" }, take: 30 });
+  const { set, payrolls, contracts, sources } = await readPocPage(context.database ?? db, context.user, competence, RH_POC_CODE);
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
     <ErpPageTitle title="RH/Folha — demonstração documental POC" description="Modelos municipais, regras de referência e parâmetros estimados com memória persistida." action={<Link href="/rh/operacoes">Operações</Link>} />
     <p className="rounded border bg-blue-50 p-3 text-sm">Pacote versionado: três pessoas fictícias, referências salariais, RGPS/IRRF 2026 e nove tipos de folha. O modo OFICIAL permite fechar e publicar o cálculo dentro do escopo DEMONSTRAÇÃO.</p>

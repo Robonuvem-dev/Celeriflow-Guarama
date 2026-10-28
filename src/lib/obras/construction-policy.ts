@@ -1,5 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { ConstructionDepartmentFilter } from "@/lib/contracts/construction-scopes";
 import { z } from "zod";
+import type { ConstructionAccess } from "@/lib/contracts/construction";
+export type { ConstructionAccess } from "@/lib/contracts/construction";
 
 export const constructionCatalogs = { PERMIT_TYPE: "Tipos de alvará", PURPOSE: "Finalidades", CONSTRUCTION_TYPE: "Tipos construtivos", SUBDIVISION_TYPE: "Parcelamentos", INSPECTION_TYPE: "Tipos de vistoria" } as const;
 export const constructionRoles = { ANALYST: "Analista", INSPECTOR: "Fiscal", MANAGER: "Gestor" } as const;
@@ -18,13 +21,12 @@ export const constructionCaseSchema = areas.extend({ requestKey: z.uuid(), confi
 export function calculateConstructionArea(input: unknown, rule: unknown) {
   const values = areas.parse(input);
   const weights = weightsSchema.parse(rule);
-  const total = areaKeys.reduce((sum, key) => sum.plus(new Prisma.Decimal(values[key]).mul(weights[key])), new Prisma.Decimal(0));
+  const total = areaKeys.reduce((sum, key) => sum.plus(new Decimal(values[key]).mul(weights[key])), new Decimal(0));
   if (total.lessThan(0) || total.greaterThan("9999999999.9999")) throw new Error("A regra resulta em área negativa ou superior ao limite permitido.");
   return { total: total.toFixed(4), memory: { areas: values, weights, total: total.toFixed(4), unit: "m²", formula: "Soma dos componentes multiplicados pelos coeficientes publicados" } };
 }
 
-export type ConstructionAccess = { administrator: boolean; employeeId: string | null; departmentId: string | null; roles: string[] };
-export function constructionCaseWhere(access: ConstructionAccess): Prisma.ConstructionCaseWhereInput {
+export function constructionCaseWhere(access: ConstructionAccess): ConstructionDepartmentFilter {
   if (access.administrator) return {};
   if (!access.departmentId || !access.roles.length) return { id: { in: [] } };
   return { process: { currentDepartmentId: access.departmentId } };

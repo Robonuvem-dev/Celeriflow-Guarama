@@ -1,13 +1,16 @@
 import PDFDocument from "pdfkit";
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { readEconomicLicenseByCode } from "@/db/repositories/tax-economic/licenses";
+import { readLicenseIssuance } from "@/db/repositories/tax-economic/registry";
+import { readEconomicOrigin } from "@/db/repositories/tax-economic/registrations";
 import { taxScopeSnapshot } from "./scope";
 
-export async function renderConfiguredLicensePdf(db: PrismaClient, code: string) {
+export async function renderConfiguredLicensePdf(db: DatabaseExecutor, code: string) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(code)) throw new Error("Código inválido.");
-  const license = await db.license.findFirstOrThrow({ where: { qrCode: code } });
-  const entry = await db.taxRegistryEntry.findFirstOrThrow({ where: { entityType: "LICENSE", entityId: license.id, category: "LICENSE_ISSUANCE" } });
+  const license = await readEconomicLicenseByCode(db, code);
+  const entry = await readLicenseIssuance(db, license.id);
   const data = taxScopeSnapshot(entry.data); if (data.authCode !== code) throw new Error("Emissão não conciliada.");
-  const binding = typeof data.budgetUnitId === "string" ? await db.planningEntityUnit.findFirst({ where: { budgetUnitId: data.budgetUnitId, governmentEntityId: String(data.governmentEntityId) }, include: { governmentEntity: true, budgetUnit: true } }) : null;
+  const binding = typeof data.budgetUnitId === "string" ? await readEconomicOrigin(db, String(data.governmentEntityId), data.budgetUnitId) : null;
   const valid = license.status === "Emitido" && license.validUntil !== null && license.validUntil >= new Date();
   return new Promise<Uint8Array>((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 44, info: { Title: String(data.layoutTitle), Author: binding?.governmentEntity.name ?? "Administração municipal" } });

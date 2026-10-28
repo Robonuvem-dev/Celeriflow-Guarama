@@ -3,14 +3,14 @@
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { assertPersonnelActNotIntegrated } from "@/lib/rh/functional-occurrences";
-
-async function getTenantPrisma(operation: "create" | "update" | "delete") {
-  return (await getTenantContextForModuleOperation("RH", operation)).prisma;
-}
+import { eq } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { personnelActs } from "@/db/schema/personnel-records";
 
 export async function saveAtoPessoal(formData: FormData) {
   const id = formData.get("id") as string | null;
-  const prisma = await getTenantPrisma(id ? "update" : "create");
+  await getTenantContextForModuleOperation("RH", id ? "update" : "create");
   try {
     const employeeId = formData.get("employeeId") as string;
     const type = formData.get("type") as string;
@@ -31,14 +31,13 @@ export async function saveAtoPessoal(formData: FormData) {
     };
 
     if (id) {
-      await prisma.$transaction(async tx => {
+      await withDatabaseTransaction(databaseConnection, async tx => {
         await assertPersonnelActNotIntegrated(tx, id);
-        await tx.personnelAct.update({ where: { id }, data });
+        const [updated] = await tx.update(personnelActs).set(data).where(eq(personnelActs.id, id)).returning({ id: personnelActs.id });
+        if (!updated) throw new Error("Ato de pessoal não encontrado.");
       });
     } else {
-      await prisma.personnelAct.create({
-        data,
-      });
+      await databaseConnection.db.insert(personnelActs).values(data);
     }
 
     revalidatePath("/rh/atos");
@@ -50,11 +49,12 @@ export async function saveAtoPessoal(formData: FormData) {
 }
 
 export async function deleteAtoPessoal(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  await getTenantContextForModuleOperation("RH", "delete");
   try {
-    await prisma.$transaction(async tx => {
+    await withDatabaseTransaction(databaseConnection, async tx => {
       await assertPersonnelActNotIntegrated(tx, id);
-      await tx.personnelAct.delete({ where: { id } });
+      const [removed] = await tx.delete(personnelActs).where(eq(personnelActs.id, id)).returning({ id: personnelActs.id });
+      if (!removed) throw new Error("Ato de pessoal não encontrado.");
     });
     revalidatePath("/rh/atos");
     return { success: true };

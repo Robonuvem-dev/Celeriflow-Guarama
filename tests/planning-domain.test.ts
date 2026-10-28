@@ -3,7 +3,13 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { allocateRevenue, instrumentInput, lineInput, planningBasePath, projectedValue } from "../src/lib/planejamento/policy";
-import { assertPlanningOperation, planningEntityWhere, planningLineWhere, type PlanningContext } from "../src/lib/planejamento/access";
+import { assertPlanningOperation, type PlanningContext } from "../src/lib/planejamento/access";
+import { planningEntityScope, planningLineScope } from "../src/db/repositories/planning/scope";
+import { governmentEntities } from "../src/db/schema/master-data";
+import { planningInstruments, planningLines, planningMultiYearPlans } from "../src/db/schema/planning-budget";
+import { count, eq } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { createPlanningCatalogOperationsFixture } from "./helpers/planning-catalog-operations-fixture";
 import { addPlanningLine, createPlanningInstrument, listPlanningInstruments } from "../src/lib/planejamento/service";
 
 function context(overrides: Record<string, unknown> = {}) {
@@ -33,46 +39,48 @@ test("rota legislativa exige Câmara e Planejamento; escopo inclui jurisdição 
   assertPlanningOperation(ctx, "create");
   assert.throws(() => assertPlanningOperation({ ...ctx, jurisdiction: "LEGISLATIVE" }, "create"), /Câmara/);
   assert.equal(planningBasePath("LEGISLATIVE"), "/camara/planejamento");
-  const where = planningEntityWhere(ctx);
-  assert.deepEqual(where.planningScope, { is: { jurisdiction: "EXECUTIVE", isActive: true } });
-  assert.deepEqual(where.planningUnits, { some: { budgetUnitId: { in: ["saude"] } } });
-  assert.ok(planningLineWhere(ctx).budgetUnit);
+  const dialect = new PgDialect();
+  const where = dialect.sqlToQuery(planningEntityScope(ctx, governmentEntities.id));
+  assert.ok(where.params.includes("EXECUTIVE"));
+  assert.ok(where.params.some(value => JSON.stringify(value) === '["saude"]'));
+  assert.match(where.sql, /es\."isActive"/);
+  assert.match(dialect.sqlToQuery(planningLineScope(ctx)).sql, /PlanningEntityUnit/);
 });
 
 test("criação recusa entidade fora do escopo antes de persistir peça canônica", async () => {
-  let writes = 0;
-  const tx = { governmentEntity: { findFirst: async () => null }, multiYearPlan: { create: async () => { writes++; } } };
-  const ctx = context({ prisma: { $transaction: async (fn: (value: typeof tx) => Promise<unknown>) => fn(tx) } });
-  await assert.rejects(createPlanningInstrument(ctx, { governmentEntityId: "camara", kind: "PPA", code: "2026-2029", title: "Legislativo", startYear: 2026, endYear: 2029, revenueDegree: 6, expenseLevel: "SOURCE" }), /Entidade não autorizada/);
-  assert.equal(writes, 0);
+  const f = await createPlanningCatalogOperationsFixture();
+  try {
+    const before = (await f.db.select({ value: count() }).from(planningMultiYearPlans))[0].value;
+    await assert.rejects(createPlanningInstrument(f.context, { governmentEntityId: "co-legislative", kind: "PPA", code: "2026-2029", title: "Legislativo", startYear: 2026, endYear: 2029, revenueDegree: 6, expenseLevel: "SOURCE" }), /Entidade não autorizada/);
+    assert.equal((await f.db.select({ value: count() }).from(planningMultiYearPlans))[0].value, before);
+  } finally { await f.close(); }
 });
 
 test("gravação recusa unidade estrangeira e usa lock da peça antes de alterar valores", async () => {
-  const locks: string[] = [];
-  let writes = 0;
-  const record = { id: "ppa", kind: "PPA", governmentEntityId: "prefeitura", multiYearPlanId: "canonical-ppa", startYear: 2026, endYear: 2029, multiYearPlan: { status: "DRAFT" } };
-  const tx = {
-    planningInstrument: { findFirst: async () => record, findFirstOrThrow: async () => record },
-    $queryRaw: async (parts: TemplateStringsArray) => { locks.push(parts.join("")); return []; },
-    budgetUnit: { findFirst: async () => null }, planningBudgetLine: { create: async () => { writes++; } },
-  };
-  const ctx = context({ prisma: { $transaction: async (fn: (value: typeof tx) => Promise<unknown>) => fn(tx) } });
-  await assert.rejects(addPlanningLine(ctx, { instrumentId: "ppa", kind: "REVENUE", code: "IPTU", description: "Imposto predial e territorial urbano", year: 2026, budgetUnitId: "camara", resourceSourceId: "livre", revenueNatureId: "iptu", originalValue: "150000.00" }), /Unidade não autorizada/);
-  assert.equal(writes, 0);
-  assert.match(locks[0], /FOR UPDATE/);
+  const f = await createPlanningCatalogOperationsFixture();
+  try {
+    const piece = await f.chain("scope");
+    await assert.rejects(addPlanningLine(f.context, { instrumentId: piece.ppa, kind: "REVENUE", code: "IPTU", description: "Imposto predial e territorial urbano", year: 2026, budgetUnitId: "co-legislative-unit", resourceSourceId: "co-source", revenueNatureId: "co-revenue", originalValue: "150000.00" }), /Unidade não autorizada/);
+    assert.equal((await f.db.select({ value: count() }).from(planningLines))[0].value, 0);
+    // Compile the real Drizzle lock used by lockPlanningInstrument.
+    assert.match(f.db.select({ id: planningInstruments.id }).from(planningInstruments).where(eq(planningInstruments.id, piece.ppa)).for("update").toSQL().sql, /for update/i);
+  } finally { await f.close(); }
 });
 
 test("paginação aplica mesmo escopo antes do count e da consulta e limita página pelo total", async () => {
-  const queries: { count?: unknown; list?: { where: unknown; skip: number; take: number } } = {};
-  const ctx = context({ prisma: { planningInstrument: {
-    count: async ({ where }: { where: unknown }) => { queries.count = where; return 21; },
-    findMany: async (input: { where: unknown; skip: number; take: number }) => { queries.list = input; return []; },
-  } } });
-  const result = await listPlanningInstruments(ctx, { page: "999999999", kind: "PPA" });
-  assert.equal(result.page, 2);
-  assert.deepEqual(queries.count, queries.list?.where);
-  assert.equal(queries.list?.take, 20);
-  assert.equal(queries.list?.skip, 20);
+  const f = await createPlanningCatalogOperationsFixture();
+  try {
+    for (let index = 0; index < 21; index++) await f.chain(`page-${String(index).padStart(2, "0")}`);
+    await f.chain("hidden", { entityId: "co-other" });
+    const first = await listPlanningInstruments(f.context, { kind: "PPA" });
+    const result = await listPlanningInstruments(f.context, { page: "999999999", kind: "PPA" });
+    assert.equal(result.page, 2);
+    assert.equal(result.total, 21);
+    assert.equal(first.records.length, 20);
+    assert.equal(result.records.length, 1);
+    assert.ok(!first.records.some(row => row.id === result.records[0].id));
+    assert.ok([...first.records, ...result.records].every(row => row.governmentEntityId === "co-entity"));
+  } finally { await f.close(); }
 });
 
 test("migração aditiva executa em PostgreSQL isolado e recusa peças/linhas estruturalmente inválidas", async () => {

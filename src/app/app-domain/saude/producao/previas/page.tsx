@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { employees } from "@/db/schema/administration";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { healthBillingPreview, healthPatientConsumptionCost } from "@/lib/saude/billing-report-service";
 
@@ -9,12 +15,13 @@ export default async function BillingPreviewPage({ searchParams }: { searchParam
   const text = (value: unknown) => typeof value === "string" ? value.trim().slice(0, 200) : "";
   const input = { period: text(params.period) || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7), unitId: text(params.unitId), professionalId: text(params.professionalId), patientId: text(params.patientId), groupBy: params.groupBy === "PROFESSIONAL" || params.groupBy === "GENERAL" ? params.groupBy : "UNIT" };
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
+  const database = context.database ?? db;
   const [preview, cost, units, professionals, patients] = await Promise.all([
     healthBillingPreview(context, input),
     input.patientId ? healthPatientConsumptionCost(context, { period: input.period, unitId: input.unitId, patientId: input.patientId }) : null,
-    context.prisma.healthUnit.findMany({ where: unitIds ? { id: { in: unitIds } } : {}, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    context.prisma.healthProfessional.findMany({ where: { healthProductionFacts: { some: { period: input.period, ...(unitIds ? { unitId: { in: unitIds } } : {}) } } }, orderBy: { employee: { name: "asc" } }, select: { id: true, employee: { select: { name: true } } } }),
-    context.prisma.patient.findMany({ where: unitIds ? { OR: [{ referenceUnitId: { in: unitIds } }, { records: { some: { unitId: { in: unitIds } } } }] } : {}, orderBy: { person: { fullName: "asc" } }, take: 500, select: { id: true, person: { select: { fullName: true } } } }),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(unitIds ? inArray(healthUnits.id, unitIds) : undefined).orderBy(asc(healthUnits.name)),
+    database.select({ id: healthProfessionals.id, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(sql`EXISTS (SELECT 1 FROM "HealthProductionFact" f WHERE f."professionalId"=${healthProfessionals.id} AND f.period=${input.period} AND ${unitIds ? inArray(sql`f."unitId"`, unitIds) : sql`true`})`).orderBy(asc(employees.name)),
+    database.select({ id: patientTable.id, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(unitIds ? or(inArray(patientTable.referenceUnitId, unitIds), sql`EXISTS (SELECT 1 FROM "MedicalRecord" r WHERE r."patientId"=${patientTable.id} AND ${inArray(sql`r."unitId"`, unitIds)})`) : undefined).orderBy(asc(people.fullName)).limit(500),
   ]);
   const page = Math.min(Math.max(1, /^\d+$/.test(params.page || "") ? Number(params.page) : 1), Math.max(1, Math.ceil(preview.rows.length / 100)));
   const visible = preview.rows.slice((page - 1) * 100, page * 100);

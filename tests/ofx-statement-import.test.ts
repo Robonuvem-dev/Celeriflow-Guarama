@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createHash } from "node:crypto";
+import { count, eq } from "drizzle-orm";
+import { bankStatementImports, bankStatementItems } from "../src/db/schema/finance-banking";
+import { reconciliationBankAccounts } from "../src/db/schema/finance-reconciliation";
+import { banks } from "../src/db/schema/master-data";
 import { parseOfxStatement } from "../src/lib/financeiro/ofx-parser";
 import { importBankStatementOfc, importBankStatementOfx } from "../src/lib/financeiro/ofx-import";
 import { parseOfcStatement } from "../src/lib/financeiro/ofc-parser";
-import { importBankStatementCsv } from "../src/lib/financeiro";
+import { importBankStatementCsv } from "../src/lib/financeiro/csv-import";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
 import { renderBankStatementPdf } from "../src/lib/financeiro/statement-print";
+import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 
 const transaction = (id = "FIT-001", amount = "150.25", memo = "Receita &amp; taxas") => `<STMTTRN><TRNTYPE>${amount.startsWith("-") ? "DEBIT" : "CREDIT"}\n<DTPOSTED>20261002120000[-3:BRT]\n<TRNAMT>${amount}\n<FITID>${id}\n<MEMO>${memo}\n</STMTTRN>`;
 const file = (items = transaction(), account = "1000-1") => Buffer.from(`OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nENCODING:USASCII\nCHARSET:1252\n\n<OFX><BANKMSGSRSV1><STMTTRNRS><STATUS><CODE>0\n</STATUS><STMTRS><CURDEF>BRL\n<BANKACCTFROM><BANKID>001\n<BRANCHID>0001\n<ACCTID>${account}\n</BANKACCTFROM><BANKTRANLIST><DTSTART>20261001\n<DTEND>20261031\n${items}</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`, "latin1");
@@ -33,32 +38,34 @@ test("OFC nativo lê ACCTFROM, tipos numéricos, vírgula, CPAGE e CHKNUM sem fa
 
 test("OFC conserva bytes e hash, replay concorrente e sobreposição OFX sem duplicar; conflito e falha revertem o lote", async () => {
   const f = await createPlanningExecutionFixture();
+  const transport = await connectFinanceDrizzleFixture(f.pg);
   try {
-    await f.db.bank.create({ data: { id: "banco-compe", compe: "001", ispb: "00000000", name: "Banco do Brasil", shortName: "BB" } });
-    await f.db.bankAccount.update({ where: { id: "banco" }, data: { bankId: "banco-compe" } });
+    const db = transport.connection.db;
+    await db.insert(banks).values({ id: "banco-compe", compe: "001", ispb: "00000000", name: "Banco do Brasil", shortName: "BB" });
+    await db.update(reconciliationBankAccounts).set({ bankId: "banco-compe" }).where(eq(reconciliationBankAccounts.id, "banco"));
     const input = { bankAccountId: "banco", bytes: ofcFile(), fileName: "extrato.ofc" };
-    await assert.rejects(importBankStatementOfc(f.db, { ...f.actor, allowedBudgetUnitIds: ["ug-restrita"] }, input), /autorizadas/);
-    await assert.rejects(importBankStatementOfc(f.db, f.actor, { ...input, bytes: ofcFile(ofcTransaction(), "OUTRA") }), /conta\/agência/);
-    const [first, replay] = await Promise.all([importBankStatementOfc(f.db, f.actor, input), importBankStatementOfc(f.db, f.actor, input)]);
+    await assert.rejects(importBankStatementOfc(transport.connection, { ...f.actor, allowedBudgetUnitIds: ["ug-restrita"] }, input), /autorizadas/);
+    await assert.rejects(importBankStatementOfc(transport.connection, f.actor, { ...input, bytes: ofcFile(ofcTransaction(), "OUTRA") }), /conta\/agência/);
+    const [first, replay] = await Promise.all([importBankStatementOfc(transport.connection, f.actor, input), importBankStatementOfc(transport.connection, f.actor, input)]);
     assert.equal(first.id, replay.id);
     assert.equal(first.format, "OFC");
     assert.equal(first.checksum, createHash("sha256").update(input.bytes).digest("hex"));
     assert.deepEqual(Buffer.from(first.originalBytes!), input.bytes);
-    const overlapping = await importBankStatementOfx(f.db, f.actor, { ...input, bytes: file(transaction() + transaction("FIT-002", "-10.10", "Tarifa")), fileName: "extrato.ofx" });
+    const overlapping = await importBankStatementOfx(transport.connection, f.actor, { ...input, bytes: file(transaction() + transaction("FIT-002", "-10.10", "Tarifa")), fileName: "extrato.ofx" });
     assert.equal((overlapping.processingSnapshot as { imported: number }).imported, 1);
-    const repeated = await importBankStatementOfc(f.db, f.actor, { ...input, bytes: ofcFile(ofcTransaction() + ofcTransaction("FIT-002", "-10.10", "Tarifa")) });
+    const repeated = await importBankStatementOfc(transport.connection, f.actor, { ...input, bytes: ofcFile(ofcTransaction() + ofcTransaction("FIT-002", "-10.10", "Tarifa")) });
     assert.equal((repeated.processingSnapshot as { imported: number }).imported, 0);
-    assert.equal(await f.db.bankStatementItem.count({ where: { bankAccountId: "banco" } }), 2);
+    assert.equal((await db.select({ total: count() }).from(bankStatementItems).where(eq(bankStatementItems.bankAccountId, "banco")))[0].total, 2);
     const pdf = await renderBankStatementPdf(repeated, { bankName: "Banco do Brasil", agency: "0001", accountNumber: "1000-1" }, []);
     assert.equal(pdf.subarray(0, 4).toString(), "%PDF");
-    const count = await f.db.bankStatementImport.count();
-    await assert.rejects(importBankStatementOfc(f.db, f.actor, { ...input, bytes: ofcFile(ofcTransaction("FIT-001", "151,25")) }), /divergente/);
-    assert.equal(await f.db.bankStatementImport.count(), count);
+    const importCount = (await db.select({ total: count() }).from(bankStatementImports))[0].total;
+    await assert.rejects(importBankStatementOfc(transport.connection, f.actor, { ...input, bytes: ofcFile(ofcTransaction("FIT-001", "151,25")) }), /divergente/);
+    assert.equal((await db.select({ total: count() }).from(bankStatementImports))[0].total, importCount);
     await f.pg.exec(`CREATE FUNCTION reject_ofc_item() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'ofc rollback'; END $$; CREATE TRIGGER reject_ofc_item BEFORE INSERT ON "BankStatementItem" FOR EACH ROW EXECUTE FUNCTION reject_ofc_item();`);
-    await assert.rejects(importBankStatementOfc(f.db, f.actor, { ...input, bytes: ofcFile(ofcTransaction("FIT-003")) }), /ofc rollback/);
-    assert.equal(await f.db.bankStatementImport.count(), count);
-    assert.equal(await f.db.bankStatementItem.count({ where: { bankAccountId: "banco" } }), 2);
-  } finally { await f.close(); }
+    await assert.rejects(importBankStatementOfc(transport.connection, f.actor, { ...input, bytes: ofcFile(ofcTransaction("FIT-003")) }), error => error instanceof Error && error.cause instanceof Error && /ofc rollback/.test(error.cause.message));
+    assert.equal((await db.select({ total: count() }).from(bankStatementImports))[0].total, importCount);
+    assert.equal((await db.select({ total: count() }).from(bankStatementItems).where(eq(bankStatementItems.bankAccountId, "banco")))[0].total, 2);
+  } finally { try { await transport.close(); } finally { await f.close(); } }
 });
 
 test("OFX SGML conserva centavos e dia bancário; rejeita registro inválido, correção e FITID duplicado", () => {
@@ -84,40 +91,44 @@ test("OFX XML e encoding declarado são aceitos; moedas e documentos incompletos
 
 test("OFX persiste original, serializa replays, deduplica extratos sobrepostos e recusa conflito sem gravação parcial", async () => {
   const f = await createPlanningExecutionFixture();
+  const transport = await connectFinanceDrizzleFixture(f.pg);
   try {
-    await f.db.bank.create({ data: { id: "banco-compe", compe: "001", ispb: "00000000", name: "Banco do Brasil", shortName: "BB" } });
-    await f.db.bankAccount.update({ where: { id: "banco" }, data: { bankId: "banco-compe" } });
+    const db = transport.connection.db;
+    await db.insert(banks).values({ id: "banco-compe", compe: "001", ispb: "00000000", name: "Banco do Brasil", shortName: "BB" });
+    await db.update(reconciliationBankAccounts).set({ bankId: "banco-compe" }).where(eq(reconciliationBankAccounts.id, "banco"));
     const input = { bankAccountId: "banco", bytes: file(), fileName: "extrato.ofx" };
-    await assert.rejects(importBankStatementOfx(f.db, { ...f.actor, allowedBudgetUnitIds: ["ug-restrita"] }, input), /autorizadas/);
-    await assert.rejects(importBankStatementOfx(f.db, f.actor, { ...input, bytes: file(transaction(), "OUTRA") }), /conta\/agência/);
-    const [first, replay] = await Promise.all([importBankStatementOfx(f.db, f.actor, input), importBankStatementOfx(f.db, f.actor, input)]);
+    await assert.rejects(importBankStatementOfx(transport.connection, { ...f.actor, allowedBudgetUnitIds: ["ug-restrita"] }, input), /autorizadas/);
+    await assert.rejects(importBankStatementOfx(transport.connection, f.actor, { ...input, bytes: file(transaction(), "OUTRA") }), /conta\/agência/);
+    const [first, replay] = await Promise.all([importBankStatementOfx(transport.connection, f.actor, input), importBankStatementOfx(transport.connection, f.actor, input)]);
     assert.equal(first.id, replay.id);
     assert.equal(first.checksum, createHash("sha256").update(input.bytes).digest("hex"));
     assert.deepEqual(Buffer.from(first.originalBytes!), input.bytes);
-    const overlapping = await importBankStatementOfx(f.db, f.actor, { ...input, bytes: file(transaction() + transaction("FIT-002", "-10.10", "Tarifa")) });
+    const overlapping = await importBankStatementOfx(transport.connection, f.actor, { ...input, bytes: file(transaction() + transaction("FIT-002", "-10.10", "Tarifa")) });
     assert.equal((overlapping.processingSnapshot as { imported: number }).imported, 1);
-    assert.equal(await f.db.bankStatementItem.count({ where: { bankAccountId: "banco" } }), 2);
-    const pdf = await renderBankStatementPdf(overlapping, { bankName: "Banco do Brasil", agency: "0001", accountNumber: "1000-1" }, await f.db.bankStatementItem.findMany({ where: { statementImportId: overlapping.id } }));
+    assert.equal((await db.select({ total: count() }).from(bankStatementItems).where(eq(bankStatementItems.bankAccountId, "banco")))[0].total, 2);
+    const pdf = await renderBankStatementPdf(overlapping, { bankName: "Banco do Brasil", agency: "0001", accountNumber: "1000-1" }, await db.select().from(bankStatementItems).where(eq(bankStatementItems.statementImportId, overlapping.id)));
     assert.equal(pdf.subarray(0, 4).toString(), "%PDF");
-    const count = await f.db.bankStatementImport.count();
-    await assert.rejects(importBankStatementOfx(f.db, f.actor, { ...input, bytes: file(transaction("FIT-001", "151.25")) }), /divergente/);
-    assert.equal(await f.db.bankStatementImport.count(), count);
-    assert.equal(await f.db.bankStatementItem.count({ where: { bankAccountId: "banco" } }), 2);
-  } finally { await f.close(); }
+    const importCount = (await db.select({ total: count() }).from(bankStatementImports))[0].total;
+    await assert.rejects(importBankStatementOfx(transport.connection, f.actor, { ...input, bytes: file(transaction("FIT-001", "151.25")) }), /divergente/);
+    assert.equal((await db.select({ total: count() }).from(bankStatementImports))[0].total, importCount);
+    assert.equal((await db.select({ total: count() }).from(bankStatementItems).where(eq(bankStatementItems.bankAccountId, "banco")))[0].total, 2);
+  } finally { try { await transport.close(); } finally { await f.close(); } }
 });
 
 test("falha de persistência OFX reverte lote, itens e original; CSV conserva BOM e CRLF originais", async () => {
   const f = await createPlanningExecutionFixture();
+  const transport = await connectFinanceDrizzleFixture(f.pg);
   try {
-    await f.db.bank.create({ data: { id: "banco-compe", compe: "001", ispb: "00000000", name: "Banco do Brasil", shortName: "BB" } });
-    await f.db.bankAccount.update({ where: { id: "banco" }, data: { bankId: "banco-compe" } });
+    const db = transport.connection.db;
+    await db.insert(banks).values({ id: "banco-compe", compe: "001", ispb: "00000000", name: "Banco do Brasil", shortName: "BB" });
+    await db.update(reconciliationBankAccounts).set({ bankId: "banco-compe" }).where(eq(reconciliationBankAccounts.id, "banco"));
     await f.pg.exec(`CREATE FUNCTION reject_statement_item() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'statement rollback'; END $$; CREATE TRIGGER reject_statement_item BEFORE INSERT ON "BankStatementItem" FOR EACH ROW EXECUTE FUNCTION reject_statement_item();`);
-    await assert.rejects(importBankStatementOfx(f.db, f.actor, { bankAccountId: "banco", bytes: file(), fileName: "extrato.ofx" }), /statement rollback/);
-    assert.equal(await f.db.bankStatementImport.count(), 0);
+    await assert.rejects(importBankStatementOfx(transport.connection, f.actor, { bankAccountId: "banco", bytes: file(), fileName: "extrato.ofx" }), error => error instanceof Error && error.cause instanceof Error && /statement rollback/.test(error.cause.message));
+    assert.equal((await db.select({ total: count() }).from(bankStatementImports))[0].total, 0);
     await f.pg.exec('DROP TRIGGER reject_statement_item ON "BankStatementItem"; DROP FUNCTION reject_statement_item();');
     const bytes = Buffer.from("\uFEFFdate;description;amount\r\n2026-10-02;Receita;150,25\r\n", "utf8");
-    const csv = await importBankStatementCsv(f.db, f.actor, { bankAccountId: "banco", originalBytes: bytes, content: new TextDecoder().decode(bytes), fileName: "extrato.csv" });
+    const csv = await importBankStatementCsv(transport.connection, f.actor, { bankAccountId: "banco", originalBytes: bytes, content: new TextDecoder().decode(bytes), fileName: "extrato.csv" });
     assert.deepEqual(Buffer.from(csv.originalBytes!), bytes);
     assert.equal(csv.checksum, createHash("sha256").update(bytes).digest("hex"));
-  } finally { await f.close(); }
+  } finally { try { await transport.close(); } finally { await f.close(); } }
 });

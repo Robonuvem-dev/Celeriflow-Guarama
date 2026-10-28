@@ -1,4 +1,7 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { insertLegacyWaterReading } from "@/db/repositories/sanitation/legacy-billing";
+import type { LegacyWaterReading } from "@/lib/contracts/sanitation";
 
 export interface WaterBillingCalculationResult {
   leituraAnterior: number;
@@ -59,7 +62,7 @@ export function calculateWaterBilling(
 }
 
 export async function processWaterReadingAndBill(
-  prisma: PrismaClient,
+  db: DatabaseExecutor,
   input: {
     codigoMatricula: string;
     nomeConsumidor: string;
@@ -69,24 +72,22 @@ export async function processWaterReadingAndBill(
     leituraAtual: number;
     tipoTarifa?: "RESIDENCIAL" | "COMERCIAL" | "INDUSTRIAL";
   }
-) {
+): Promise<{ record: LegacyWaterReading; billing: WaterBillingCalculationResult }> {
   const billing = calculateWaterBilling(input.leituraAnterior, input.leituraAtual, input.tipoTarifa || "RESIDENCIAL");
 
-  const record = await prisma.waterMeterReading.create({
-    data: {
-      codigoMatricula: input.codigoMatricula,
-      nomeConsumidor: input.nomeConsumidor,
-      endereco: input.endereco,
-      numeroHidrometro: input.numeroHidrometro,
-      leituraAnterior: input.leituraAnterior,
-      leituraAtual: input.leituraAtual,
-      consumoM3: billing.consumoM3,
-      valorFatura: new Prisma.Decimal(billing.valorTotalFatura),
-      tipoTarifa: input.tipoTarifa || "RESIDENCIAL",
-      statusFatura: "EMITIDA",
-      linhaDigitavel: billing.linhaDigitavel,
-      qrCodePix: billing.qrCodePix,
-    },
+  const record = await insertLegacyWaterReading(db, {
+    codigoMatricula: input.codigoMatricula,
+    nomeConsumidor: input.nomeConsumidor,
+    endereco: input.endereco,
+    numeroHidrometro: input.numeroHidrometro,
+    leituraAnterior: input.leituraAnterior,
+    leituraAtual: input.leituraAtual,
+    consumoM3: billing.consumoM3,
+    valorFatura: new Decimal(billing.valorTotalFatura),
+    tipoTarifa: input.tipoTarifa || "RESIDENCIAL",
+    statusFatura: "EMITIDA",
+    linhaDigitavel: billing.linhaDigitavel,
+    qrCodePix: billing.qrCodePix,
   });
 
   return { record, billing };

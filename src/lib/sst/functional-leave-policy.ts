@@ -1,7 +1,7 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { z } from "zod";
 
-export const LeaveExactDecimal = Prisma.Decimal.clone({ precision: 48 });
+export const LeaveExactDecimal = Decimal.clone({ precision: 48 });
 export const leaveMonetaryCalculation = z.object({
   version: z.literal(1), mode: z.literal("RATE_PER_ATTESTED_MINUTE"), currency: z.literal("BRL"),
   rateBRLPerMinute: z.string().regex(/^\d{1,10}(\.\d{1,8})?$/).refine((v) => new LeaveExactDecimal(v).gt(0), "Tarifa deve ser positiva e explicitamente aprovada."),

@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { and, count, eq, inArray, type SQL } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
+import { hrIntegrationEvents, hrPayrollRuns, hrPayrollStatements, payrolls } from "@/db/schema/personnel-workforce";
+import { findHrIntegrationEvent, lockPersonnel } from "@/db/repositories/personnel/integration";
+import { requirePayrollRule } from "@/db/repositories/personnel/workforce";
 import { z } from "zod";
 import { buildObligationHistory, obligationHistoryInputSchema } from "./obligation-history";
 import { enqueueHrIntegration } from "./workforce-service";
@@ -34,7 +40,7 @@ export function renderObligationExport(history: Awaited<ReturnType<typeof buildO
     if (field.transform === "SEM_ACENTOS_MAIUSCULO") value = value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
     if (field.transform === "CENTAVOS" && value) {
       if (!/^-?\d+(?:\.\d{1,2})?$/.test(value)) throw new Error(`Valor monetário inválido em ${field.name}.`);
-      value = new Prisma.Decimal(value).mul(100).toFixed(0);
+      value = new Decimal(value).mul(100).toFixed(0);
     }
     if (field.required && !value.trim()) throw new Error(`Transformação esvaziou campo obrigatório ${field.name}.`);
     if (/[\r\n\x00]/.test(value)) throw new Error(`Quebra de linha ou NUL em ${field.name}.`);
@@ -52,9 +58,9 @@ export function renderObligationExport(history: Awaited<ReturnType<typeof buildO
   return { bytes, fileSha256: createHash("sha256").update(bytes).digest("hex"), count: rows.length, extension: policy.format === "CSV" ? "csv" : "txt", policy };
 }
 
-export async function generateObligationExport(db: PrismaClient, actorId: string, raw: unknown, payrollScope: Prisma.PayrollWhereInput = {}) {
+export async function generateObligationExport(db: DatabaseConnection, actorId: string, raw: unknown, payrollScope?: SQL) {
   const input = obligationHistoryInputSchema.extend({ ruleId: z.string().min(1) }).strict().parse(raw);
-  const rule = await db.hrPayrollRule.findUniqueOrThrow({ where: { id: input.ruleId }, include: { ruleSet: true } });
+  const rule = await requirePayrollRule(db.db, input.ruleId);
   const set = rule.ruleSet;
   if (!rule.isActive || set.status !== "ATIVA" || set.scope !== input.scope || set.effectiveFrom > new Date(Date.UTC(input.year, 0, 1)) || (set.effectiveUntil && set.effectiveUntil < new Date(Date.UTC(input.year, 11, 31)))) throw new Error("Layout ativo deve cobrir o ano/escopo solicitado.");
   if (set.scope === "PRODUCAO" && (set.isDemo || !set.approvedAt || set.approvedAt > new Date() || !set.legalReference)) throw new Error("Exportação de produção exige parâmetros oficiais aprovados.");
@@ -62,21 +68,22 @@ export async function generateObligationExport(db: PrismaClient, actorId: string
   const output = renderObligationExport(history, rule.value);
   const policyHash = createHash("sha256").update(JSON.stringify(output.policy)).digest("hex");
   const sourceKey = `OBRIGACAO:EXPORT:${rule.id}:${history.contentSha256}:${policyHash}`;
-  const event = await db.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:${sourceKey}`}))`;
-    const previous = await tx.hrIntegrationEvent.findUnique({ where: { sourceKey } });
+  const event = await withDatabaseTransaction(db, async tx => {
+    await lockPersonnel(tx, sourceKey);
+    const previous = await findHrIntegrationEvent(tx, sourceKey);
     if (previous) return previous;
     return enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: input.scope, eventType: "OBRIGACAO_ARQUIVO_GERADO", payload: { ruleId: rule.id, policy: output.policy, input, historySha256: history.contentSha256, fileSha256: output.fileSha256, count: output.count, fileBase64: output.bytes.toString("base64"), statementIds: history.records.map(row => row.statementId), officialLayout: false, actorId } });
-  }, { timeout: 60000 });
+  }, { timeoutMs: 60000 });
   return { ...output, eventId: event.id, officialLayout: false };
 }
 
-export async function readObligationExport(db: PrismaClient, eventId: string, payrollScope: Prisma.PayrollWhereInput) {
-  const event = await db.hrIntegrationEvent.findUniqueOrThrow({ where: { id: eventId } });
+export async function readObligationExport(db: DatabaseExecutor, eventId: string, payrollScope?: SQL) {
+  const [event] = await db.select().from(hrIntegrationEvents).where(eq(hrIntegrationEvents.id, eventId)).limit(1);
+  if (!event) throw new Error("Arquivo de obrigação indisponível.");
   if (event.eventType !== "OBRIGACAO_ARQUIVO_GERADO") throw new Error("Arquivo de obrigação indisponível.");
   const memory = z.object({ policy: obligationExportPolicySchema, input: obligationHistoryInputSchema.extend({ ruleId: z.string() }), fileBase64: z.string(), fileSha256: z.string().regex(/^[a-f0-9]{64}$/), statementIds: z.array(z.string()) }).parse(event.payload);
   const ids = [...new Set(memory.statementIds)];
-  const accessible = await db.hrPayrollStatement.count({ where: { id: { in: ids }, run: { payroll: payrollScope } } });
+  const [{ accessible }] = await db.select({ accessible: count() }).from(hrPayrollStatements).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(and(inArray(hrPayrollStatements.id, ids), payrollScope));
   if (accessible !== ids.length) throw new Error("Arquivo contém folha fora do acesso orçamentário.");
   const bytes = Buffer.from(memory.fileBase64, "base64");
   if (createHash("sha256").update(bytes).digest("hex") !== memory.fileSha256) throw new Error("Hash do arquivo preservado diverge da evidência.");

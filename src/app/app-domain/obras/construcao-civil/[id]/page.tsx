@@ -5,7 +5,11 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { getTenantContextForModule, canViewModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { areaKeys, areaLabels, constructionCaseWhere } from "@/lib/obras/construction-policy";
+import { areaKeys, areaLabels } from "@/lib/obras/construction-policy";
+import { db } from "@/db/client";
+import { findPageCaseDetail, listPageAnalysts, listPageProcessDocuments, loadPageEvaluations, loadPageMessages, loadPageReplacements, loadPageReviews, pageProcessScope } from "@/db/repositories/works-pages/cases";
+import { latestPageDefinition, listPageCatalogNames } from "@/db/repositories/works-pages/settings";
+import { pageEmployeeNames } from "@/db/repositories/works-pages/shared";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import ConstructionViabilityClient from "./ConstructionViabilityClient";
 import ConstructionReviewClient from "./ConstructionReviewClient";
@@ -17,34 +21,25 @@ export default async function ConstructionCasePage({ params, searchParams }: { p
   const { id } = await params;
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
-  const item = await context.prisma.constructionCase.findFirst({ where: { AND: [{ id }, constructionCaseWhere(access)] }, include: { process: { select: { id: true, protocolNumber: true, status: true, description: true, person: { select: { fullName: true } }, company: { select: { corporateName: true } }, currentDepartment: { select: { name: true } } } }, configuration: true, properties: { select: { id: true, realEstateId: true, cadastralSnapshot: true } } } });
+  const database = context.database ?? db;
+  const item = await findPageCaseDetail(database, access, id);
   if (!item) notFound();
   const query = await searchParams;
-  const total = await context.prisma.constructionViabilityResult.count({ where: { caseId: item.id } });
-  const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
-  const evaluations = await context.prisma.constructionViabilityResult.findMany({ where: { caseId: item.id }, select: { id: true, outcome: true, calculationSnapshot: true, createdAt: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 });
-  const reviewTotal = await context.prisma.constructionReview.count({ where: { caseId: item.id } });
-  const reviewPage = Math.min(Math.max(1, Math.ceil(reviewTotal / 20)), Math.max(1, Number.parseInt(query.reviewPage || "1", 10) || 1));
-  const [reviews, checklist, documents, inspectionTypes] = await Promise.all([
-    context.prisma.constructionReview.findMany({ where: { caseId: item.id }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (reviewPage - 1) * 20, take: 20 }),
-    context.prisma.constructionDefinitionVersion.findFirst({ where: { kind: "PERMIT" }, orderBy: { version: "desc" } }),
-    context.prisma.document.findMany({ where: { processDocuments: { some: { processId: item.process.id } }, status: { in: ["Válido", "Assinado"] }, versions: { some: { status: { in: ["FINAL", "SIGNED"] } } } }, select: { id: true, title: true }, orderBy: { title: "asc" } }),
-    context.prisma.constructionCatalogEntry.findMany({ where: { kind: "INSPECTION_TYPE", isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  const { total, page, evaluations } = await loadPageEvaluations(database, item.id, query.page);
+  const { reviewTotal, reviewPage, reviews } = await loadPageReviews(database, item.id, query.reviewPage);
+  const [checklist, documents, inspectionTypes] = await Promise.all([
+    latestPageDefinition(database, "PERMIT"),
+    listPageProcessDocuments(database, item.process.id, true, true),
+    listPageCatalogNames(database, "INSPECTION_TYPE"),
   ]);
-  const processScope = await context.prisma.process.findUniqueOrThrow({ where: { id: item.process.id }, select: { currentDepartmentId: true } });
+  const processScope = await pageProcessScope(database, item.process.id);
   const canAssign = access.administrator || access.roles.includes("MANAGER");
   const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
-  const assignmentTotal = await context.prisma.constructionAnalystReplacement.count({ where: { caseId: item.id } });
-  const assignmentPage = Math.min(Math.max(1, Math.ceil(assignmentTotal / 20)), Math.max(1, Number.parseInt(query.assignmentPage || "1", 10) || 1));
-  const [employees, replacements] = await Promise.all([
-    canAssign ? context.prisma.employee.findMany({ where: { isActive: true, departmentId: processScope.currentDepartmentId || "", department: { isActive: true }, constructionStaff: { some: { departmentId: processScope.currentDepartmentId || "", role: { in: ["ANALYST", "MANAGER"] }, isActive: true, startsAt: { lte: today }, OR: [{ endsAt: null }, { endsAt: { gte: today } }] } } }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : [],
-    context.prisma.constructionAnalystReplacement.findMany({ where: { caseId: item.id }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (assignmentPage - 1) * 20, take: 20 }),
-  ]);
+  const { assignmentTotal, assignmentPage, replacements } = await loadPageReplacements(database, item.id, query.assignmentPage);
+  const employees = canAssign ? await listPageAnalysts(database, processScope.currentDepartmentId || "", today) : [];
   const staffIds = [...new Set([item.firstAnalystId, item.assignedEmployeeId, ...replacements.flatMap((replacement) => [replacement.previousAnalystId, replacement.replacementEmployeeId])].filter((value): value is string => Boolean(value)))];
-  const staffNames = new Map((await context.prisma.employee.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true } })).map((employee) => [employee.id, employee.name]));
-   const messageTotal = await context.prisma.constructionMessage.count({ where: { caseId: item.id } });
-   const messagePage = Math.min(Math.max(1, Math.ceil(messageTotal / 20)), Math.max(1, Number.parseInt(query.messagePage || "1", 10) || 1));
-   const conversation = await context.prisma.constructionMessage.findMany({ where: { caseId: item.id }, select: { id: true, content: true, createdAt: true, identityId: true, documentId: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (messagePage - 1) * 20, take: 20 });
+  const staffNames = new Map((await pageEmployeeNames(database, staffIds)).map((employee) => [employee.id, employee.name]));
+  const { messageTotal, messagePage, conversation } = await loadPageMessages(database, item.id, query.messagePage);
   return <PageFrame className="space-y-3 p-3"><PageHeader title={`Construção Civil — ${item.process.protocolNumber}`} icon={<HardHat className="size-4" />} />
     <div className="flex flex-wrap gap-3 text-xs"><Link href="/obras/construcao-civil" className="text-blue-700 underline">Voltar às solicitações</Link>{canViewModule(context.user, "PROCESSOS") && <Link href={`/protocolos/processos/${item.process.id}`} className="text-blue-700 underline">Abrir protocolo vinculado</Link>}<Link href={`/obras/construcao-civil/${item.id}/documentos`} className="text-blue-700 underline">Emissão e anotação PDF</Link><Link href={`/obras/construcao-civil/${item.id}/ciclo`} className="text-blue-700 underline">Início, vistorias e conclusão</Link><Link href={`/obras/construcao-civil/${item.id}/pranchas`} className="text-blue-700 underline">Extração de pranchas</Link></div>
     <section className="grid gap-2 rounded-lg border p-3 text-xs sm:grid-cols-2"><p><strong>Requerente:</strong> {item.process.person?.fullName || item.process.company?.corporateName}</p><p><strong>Setor responsável:</strong> {item.process.currentDepartment?.name || "—"}</p><p><strong>Situação do protocolo:</strong> {item.process.status}</p><p><strong>Categoria:</strong> {item.category === "BUILDING" ? "Obra" : "Parcelamento do solo"} — {item.locationType === "URBAN" ? "Urbana" : "Rural"}</p><p><strong>Modalidade:</strong> {item.regularization ? "Regularização" : "Normal"}</p><p><strong>Configuração preservada:</strong> v{item.configuration.version}</p><p className="whitespace-pre-wrap sm:col-span-2"><strong>Descrição:</strong> {item.process.description}</p></section>

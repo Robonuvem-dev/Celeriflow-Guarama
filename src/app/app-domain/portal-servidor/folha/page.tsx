@@ -5,7 +5,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { arePortalPayrollStatementsEnabled } from "@/lib/rh/payroll-configuration";
 import { ownReleasedStatementIds } from "@/lib/portal-servidor/payroll-publication";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
 import { FileText, Search, WalletCards } from "lucide-react";
 import Link from "next/link";
 
@@ -93,51 +95,20 @@ export default async function FolhaPortalPage({ searchParams }: { searchParams: 
   const access = await getEmployeePortalAccess();
   if (access.status !== "AVAILABLE") return <PortalUnavailable />;
 
-  if (!await arePortalPayrollStatementsEnabled(access.context.prisma)) {
+  if (!await arePortalPayrollStatementsEnabled(access.context.database ?? db)) {
     return <PayrollStatementsDisabled />;
   }
 
   const params = await searchParams;
   const competence = parseCompetence(params.competence);
   const { context, employee } = access;
-  const payrollWhere: Prisma.PayrollWhereInput = {};
-
-  if (competence) payrollWhere.competence = competence;
-
-  const where: Prisma.PayrollItemWhereInput = {
-    employeeId: employee.id,
-    payroll: payrollWhere,
-    hrOrigin: { is: { statementId: { in: await ownReleasedStatementIds(context.prisma, employee.id, competence || undefined) } } },
-  };
-  const total = await context.prisma.payrollItem.count({ where });
+  const executor = context.database ?? db;
+  const statementIds = await ownReleasedStatementIds(executor, employee.id, competence || undefined);
+  const where = sql`i."employeeId"=${employee.id} ${competence ? sql`AND p.competence=${competence}` : sql``} AND EXISTS(SELECT 1 FROM "HrPayrollItemOrigin" o WHERE o."payrollItemId"=i.id AND o."statementId"=ANY(${sql.param(statementIds)}::text[]))`;
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "PayrollItem" i JOIN "Payroll" p ON p.id=i."payrollId" WHERE ${where}`);
   const page = resolvePage(params.page, total);
-  const items = await context.prisma.payrollItem.findMany({
-    where,
-    select: {
-      id: true,
-      value: true,
-      reference: true,
-      createdAt: true,
-      payroll: {
-        select: {
-          competence: true,
-          type: true,
-          status: true,
-          createdAt: true,
-        },
-      },
-      event: {
-        select: {
-          code: true,
-          name: true,
-          type: true,
-        },
-      },
-    },
-    orderBy: [{ payroll: { createdAt: "desc" } }, { createdAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const itemRows = await portalRows<{ id: string; value: number; reference: string | null; createdAt: Date; competence: string; payrollType: string; payrollStatus: string; payrollCreatedAt: Date; code: string; eventName: string; eventType: string }>(executor, sql`SELECT i.id,i.value,i.reference,i."createdAt",p.competence,p.type AS "payrollType",p.status AS "payrollStatus",p."createdAt" AS "payrollCreatedAt",e.code,e.name AS "eventName",e.type AS "eventType" FROM "PayrollItem" i JOIN "Payroll" p ON p.id=i."payrollId" JOIN "PayrollEvent" e ON e.id=i."eventId" WHERE ${where} ORDER BY p."createdAt" DESC,i."createdAt" DESC,i.id DESC LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
+  const items = itemRows.map(({ competence, payrollType, payrollStatus, payrollCreatedAt, code, eventName, eventType, ...row }) => ({ ...row, payroll: { competence, type: payrollType, status: payrollStatus, createdAt: payrollCreatedAt }, event: { code, name: eventName, type: eventType } }));
 
   const pageTotals = items.reduce(
     (totals, item) => {

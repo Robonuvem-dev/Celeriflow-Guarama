@@ -1,4 +1,6 @@
-import type { Prisma } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { departments, employees } from "@/db/schema/administration";
 import { AccessError, canEditModule, canPerformModuleOperation, getTenantContextForModule, getTenantContextForModuleEdit, getTenantContextForModuleOperation, isSystemAdministrator, type AppContext, type ModuleOperation } from "@/lib/platform/tenant-context";
 
 export type AttendanceContext = AppContext & {
@@ -88,30 +90,12 @@ async function getOperationalContext(context: AttendanceContext) {
   if (!context.user.employeeId) {
     throw new Error("Seu usuario precisa estar vinculado a um servidor para realizar esta operacao.");
   }
-  const employee = await context.prisma.employee.findUnique({
-    where: { id: context.user.employeeId },
-    include: { department: true },
-  });
+  const [row] = await db.select({ employee: employees, department: departments }).from(employees).leftJoin(departments, eq(departments.id, employees.departmentId)).where(eq(employees.id, context.user.employeeId)).limit(1);
+  const employee = row ? { ...row.employee, department: row.department } : null;
   if (!employee?.isActive || !employee.departmentId || !employee.department?.isActive) {
     throw new Error("Seu vinculo operacional nao esta ativo ou nao possui departamento.");
   }
   return { ...context, employee, departmentId: employee.departmentId };
-}
-
-export function ticketScope(context: AttendanceContext): Prisma.TicketWhereInput {
-  if (context.attendanceAccess.isAdmin || context.attendanceAccess.isManager) return {};
-  return context.user.departmentId ? { departmentId: context.user.departmentId } : { id: "__sem-departamento__" };
-}
-
-export function ombudsmanScope(context: AttendanceContext): Prisma.OmbudsmanWhereInput {
-  if (context.attendanceAccess.isAdmin || context.attendanceAccess.isOmbudsman) return {};
-  const departmentScope = context.user.departmentId ? { departmentId: context.user.departmentId } : { id: "__sem-departamento__" };
-  return {
-    OR: [
-      { AND: [{ isConfidential: false }, departmentScope] },
-      { isConfidential: true, accessGrants: { some: { userId: context.user.id } } },
-    ],
-  };
 }
 
 export function canViewOmbudsmanIdentity(context: AttendanceContext, isConfidential: boolean, hasIdentityGrant = false) {

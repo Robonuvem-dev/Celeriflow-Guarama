@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { and, eq, sql } from "drizzle-orm";
+import type { DatabaseTransaction } from "@/db/transaction";
+import { cemeteryChangeHistory } from "@/db/schema/cemeteries";
 import { TributarioS9Error } from "../tributacao/s9-engine";
 import { z } from "zod";
 
@@ -8,25 +10,27 @@ export function workflowPage(value?: string) {
   return parsed.success ? parsed.data : 1;
 }
 
-export async function lockWorkflowRows(tx: Prisma.TransactionClient, table: "TaxDeceased" | "CemeteryProcess" | "TaxGrave" | "CemeteryLot" | "CemeteryOssuary" | "Taxpayer" | "TaxBurialMovement" | "TaxGraveConcession", ids: (string | null | undefined)[]) {
+export async function lockWorkflowRows(tx: DatabaseTransaction, table: "TaxDeceased" | "CemeteryProcess" | "TaxGrave" | "CemeteryLot" | "CemeteryOssuary" | "Taxpayer" | "TaxBurialMovement" | "TaxGraveConcession", ids: (string | null | undefined)[]) {
+  if (!["TaxDeceased", "CemeteryProcess", "TaxGrave", "CemeteryLot", "CemeteryOssuary", "Taxpayer", "TaxBurialMovement", "TaxGraveConcession"].includes(table)) throw new Error("Tabela de workflow inválida.");
   for (const id of [...new Set(ids.filter((id): id is string => Boolean(id)))].sort()) {
-    await tx.$queryRaw(Prisma.sql`SELECT id FROM ${Prisma.raw(`"${table}"`)} WHERE id = ${id} FOR UPDATE`);
+    await tx.execute(sql`SELECT id FROM ${sql.identifier(table)} WHERE id = ${id} FOR UPDATE`);
   }
 }
 
-export async function workflowRequest(tx: Prisma.TransactionClient, operation: string, requestKey: string | undefined, input: unknown) {
+export async function workflowRequest(tx: DatabaseTransaction, operation: string, requestKey: string | undefined, input: unknown) {
   if (!requestKey) return { replayId: null, record: async (id: string, actor: string) => { void id; void actor; } };
   if (!requestKey.trim() || requestKey.length > 200) throw new TributarioS9Error("Chave da solicitação inválida.");
   const targetId = `${operation}:${requestKey}`;
   const fingerprint = createHash("sha256").update(JSON.stringify(input)).digest("hex");
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${targetId}))`;
-  const prior = await tx.cemeteryChangeHistory.findFirst({ where: { targetType: "WORKFLOW_REQUEST", targetId, fieldName: "requestKey" } });
-  const value = prior?.newValue as { id?: string; fingerprint?: string } | undefined;
-  if (value && value.fingerprint !== fingerprint) throw new TributarioS9Error("A chave da solicitação já foi usada com outros dados.");
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${targetId}))`);
+  const [prior] = await tx.select().from(cemeteryChangeHistory).where(and(eq(cemeteryChangeHistory.targetType, "WORKFLOW_REQUEST"), eq(cemeteryChangeHistory.targetId, targetId), eq(cemeteryChangeHistory.fieldName, "requestKey"))).limit(1);
+  const stored = prior?.newValue;
+  const value = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : undefined;
+  if (stored && (!value || value.fingerprint !== fingerprint)) throw new TributarioS9Error("A chave da solicitação já foi usada com outros dados.");
   return {
-    replayId: value?.id ?? null,
+    replayId: typeof value?.id === "string" ? value.id : null,
     record: async (id: string, actorUsuarioId: string) => {
-      await tx.cemeteryChangeHistory.create({ data: { targetType: "WORKFLOW_REQUEST", targetId, fieldName: "requestKey", newValue: { id, fingerprint }, actorUsuarioId } });
+      await tx.insert(cemeteryChangeHistory).values({ targetType: "WORKFLOW_REQUEST", targetId, fieldName: "requestKey", newValue: { id, fingerprint }, actorUsuarioId });
     },
   };
 }

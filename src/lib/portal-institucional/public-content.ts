@@ -1,5 +1,6 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { getPostgresError } from "@/db/errors";
+import { countPublishedNews, readInstitutionalContact, readPublishedNews, readPublishedNewsBySlug, readPublishedPageBySlug, readPublishedPages } from "@/db/repositories/portal-content/public";
 import {
   LEGACY_MUNICIPALITY_PATTERN,
   MUNICIPALITY_ADDRESS,
@@ -32,8 +33,6 @@ export type PublicPortalPage = {
   content: string;
 };
 
-type PortalNewsRecord = Omit<PublicPortalNews, "publishedAt"> & { publishedAt: Date | null };
-
 const defaultInstitution: InstitutionalContact = {
   name: MUNICIPALITY_INSTITUTION_NAME,
   address: MUNICIPALITY_ADDRESS,
@@ -59,7 +58,7 @@ function publicInstitutionOrFallback(institution: InstitutionalContact | null) {
 }
 
 function isUnavailablePortalSchema(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && ["P2021", "P2022"].includes(error.code);
+  return ["42P01", "42703"].includes(getPostgresError(error)?.code ?? "");
 }
 
 async function publishedDataOrFallback<T>(query: () => Promise<T>, fallback: T): Promise<T> {
@@ -71,56 +70,19 @@ async function publishedDataOrFallback<T>(query: () => Promise<T>, fallback: T):
   }
 }
 
-function publishedNewsWhere(now: Date) {
-  return {
-    status: "Publicado",
-    publishedAt: { lte: now },
-  };
-}
-
-function toPublicNews(record: PortalNewsRecord): PublicPortalNews | null {
-  return record.publishedAt ? { ...record, publishedAt: record.publishedAt } : null;
-}
-
 export async function getInstitutionalPortalHome() {
   const now = new Date();
   const [institution, latestNews, pages] = await Promise.all([
     publishedDataOrFallback(
-      () => prisma.institution.findFirst({
-        select: {
-          name: true,
-          address: true,
-          city: true,
-          state: true,
-          phone: true,
-          email: true,
-          website: true,
-        },
-      }),
+      () => readInstitutionalContact(db),
       null,
     ),
     publishedDataOrFallback<PublicPortalNews[]>(
-      async () => {
-        const records = await prisma.portalNews.findMany({
-          where: publishedNewsWhere(now),
-          select: { title: true, subtitle: true, slug: true, content: true, publishedAt: true },
-          orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-          take: 3,
-        });
-        return records.flatMap((record) => {
-          const news = toPublicNews(record);
-          return news ? [news] : [];
-        });
-      },
+      () => readPublishedNews(db, now, 3),
       [],
     ),
     publishedDataOrFallback(
-      () => prisma.portalPage.findMany({
-        where: { status: "Publicado" },
-        select: { title: true, slug: true, content: true },
-        orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
-        take: 6,
-      }),
+      () => readPublishedPages(db),
       [] as PublicPortalPage[],
     ),
   ]);
@@ -134,17 +96,7 @@ export async function getInstitutionalPortalHome() {
 
 export async function getInstitutionalContact(): Promise<InstitutionalContact> {
   try {
-    const institution = await prisma.institution.findFirst({
-      select: {
-        name: true,
-        address: true,
-        city: true,
-        state: true,
-        phone: true,
-        email: true,
-        website: true,
-      },
-    });
+    const institution = await readInstitutionalContact(db);
     return publicInstitutionOrFallback(institution);
   } catch {
     return defaultInstitution;
@@ -154,23 +106,12 @@ export async function getInstitutionalContact(): Promise<InstitutionalContact> {
 export async function getPublishedNewsPage(requestedPage: number, pageSize = 12) {
   const now = new Date();
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const where = publishedNewsWhere(now);
   const result = await publishedDataOrFallback<{ items: PublicPortalNews[]; total: number; currentPage: number; totalPages: number }>(
     async () => {
-      const total = await prisma.portalNews.count({ where });
+      const total = await countPublishedNews(db, now);
       const totalPages = Math.max(1, Math.ceil(total / pageSize));
       const currentPage = Math.min(page, totalPages);
-      const records = await prisma.portalNews.findMany({
-        where,
-        select: { title: true, subtitle: true, slug: true, content: true, publishedAt: true },
-        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-        skip: (currentPage - 1) * pageSize,
-        take: pageSize,
-      });
-      const items = records.flatMap((record) => {
-        const news = toPublicNews(record);
-        return news ? [news] : [];
-      });
+      const items = await readPublishedNews(db, now, pageSize, (currentPage - 1) * pageSize);
       return { items, total, currentPage, totalPages };
     },
     { items: [] as PublicPortalNews[], total: 0, currentPage: 1, totalPages: 1 },
@@ -181,27 +122,14 @@ export async function getPublishedNewsPage(requestedPage: number, pageSize = 12)
 
 export async function getPublishedNewsBySlug(slug: string) {
   return publishedDataOrFallback<PublicPortalNews | null>(
-    async () => {
-      const record = await prisma.portalNews.findFirst({
-        where: {
-          slug,
-          status: "Publicado",
-          publishedAt: { lte: new Date() },
-        },
-        select: { title: true, subtitle: true, slug: true, content: true, publishedAt: true },
-      });
-      return record ? toPublicNews(record) : null;
-    },
+    () => readPublishedNewsBySlug(db, slug, new Date()),
     null,
   );
 }
 
 export async function getPublishedPortalPageBySlug(slug: string) {
   return publishedDataOrFallback(
-    () => prisma.portalPage.findFirst({
-      where: { slug, status: "Publicado" },
-      select: { title: true, slug: true, content: true },
-    }),
+    () => readPublishedPageBySlug(db, slug),
     null,
   );
 }

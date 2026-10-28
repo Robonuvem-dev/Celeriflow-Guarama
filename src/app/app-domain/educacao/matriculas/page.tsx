@@ -1,5 +1,7 @@
 import { Users } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { db } from "@/db/client";
+import { listEducationClasses, listEducationEnrollments, listEducationStudents } from "@/db/repositories/education/core";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { EducationListClient } from "../EducationListClient";
@@ -8,11 +10,11 @@ import { createEnrollmentAction, moveEnrollmentAction } from "../s1-actions";
 
 export const dynamic = "force-dynamic";
 export default async function MatriculasPage() {
-  const { prisma } = await getTenantContextForModule("EDUCACAO");
+  await getTenantContextForModule("EDUCACAO");
   const [students, classes, enrollments] = await Promise.all([
-    prisma.student.findMany({ where: { status: "Ativo" }, include: { person: true }, orderBy: { person: { fullName: "asc" } } }),
-    prisma.schoolClass.findMany({ where: { status: "Aberta" }, include: { school: true, _count: { select: { enrollments: { where: { status: "Matriculado" } } } } }, orderBy: [{ school: { name: "asc" } }, { name: "asc" }] }),
-    prisma.enrollment.findMany({ include: { student: { include: { person: true } }, school: true, schoolClass: true, period: true, movements: { orderBy: { effectiveDate: "desc" } } }, orderBy: { enrollmentDate: "desc" } }),
+    listEducationStudents(db, true),
+    listEducationClasses(db, true),
+    listEducationEnrollments(db),
   ]);
   const classOptions = classes.map((item) => ({ value: item.id, label: `${item.school.name} · ${item.name} (${item._count.enrollments}/${item.capacity})` }));
   return <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">

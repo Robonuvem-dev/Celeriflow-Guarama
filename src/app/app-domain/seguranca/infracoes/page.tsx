@@ -3,6 +3,8 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { mapInfracao } from "../data";
 import type { SegMobPageConfig } from "../types";
 import { InfracoesInteractiveClient } from "./InfracoesInteractiveClient";
+import { db } from "@/db/client";
+import { listSecurityInfractions } from "@/db/repositories/security-mobility/queries";
 
 const config: SegMobPageConfig = {
   title: "Autos de Infracao",
@@ -22,8 +24,8 @@ const config: SegMobPageConfig = {
 };
 
 export default async function InfracoesPage() {
-  const { prisma } = await getTenantContextForModule("SEGURANCA");
-  const infracoes = await prisma.segurancaInfracao.findMany({ orderBy: { createdAt: "desc" } });
+  await getTenantContextForModule("SEGURANCA");
+  const infracoes = await listSecurityInfractions(db);
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       <details className="shrink-0 rounded-lg border border-cyan-900 bg-slate-950 text-white"><summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-cyan-200">Emissão instantânea de auto de infração</summary><InfracoesInteractiveClient /></details>

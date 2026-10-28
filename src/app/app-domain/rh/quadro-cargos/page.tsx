@@ -3,15 +3,17 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { inspectPositionPlan } from "@/lib/rh/position-plan";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { db } from "@/db/client";
+import { readPositionPlanRules } from "@/db/repositories/personnel-pages/catalog";
 
 export const dynamic = "force-dynamic";
 export default async function PositionPlanPage({ searchParams }: { searchParams: Promise<{ ruleId?: string; q?: string; page?: string }> }) {
-  const { prisma } = await getTenantContextForModule("RH"); const params = await searchParams;
-  const rules = await prisma.hrPayrollRule.findMany({ where: { code: "QUADRO_CARGOS" }, include: { ruleSet: { select: { name: true, scope: true } } }, orderBy: { id: "asc" } });
+   const context = await getTenantContextForModule("RH"); const database = context.database ?? db; const params = await searchParams;
+   const rules = await readPositionPlanRules(database);
   const ruleId = params.ruleId || rules[0]?.id;
   let data: Awaited<ReturnType<typeof inspectPositionPlan>> | undefined;
   let error = "";
-  if (ruleId) try { data = await inspectPositionPlan(prisma, ruleId); } catch (failure) { error = failure instanceof Error ? failure.message : "Falha na conferência do quadro."; }
+   if (ruleId) try { data = await inspectPositionPlan(database, ruleId); } catch (failure) { error = failure instanceof Error ? failure.message : "Falha na conferência do quadro."; }
   const names = new Map(data?.roles.map(role => [role.id, role.name]) || []);
   const q = (params.q || "").trim().toLocaleLowerCase("pt-BR");
   const filtered = (data?.rows || []).filter(row => !q || `${names.get(row.roleId) || row.roleId} ${row.startsAt}`.toLocaleLowerCase("pt-BR").includes(q));

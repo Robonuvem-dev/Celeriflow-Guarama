@@ -1,38 +1,34 @@
 import "dotenv/config";
 import { createHash } from "crypto";
 import { pocBankAccountExternalId, isPocVirtualBank } from "../src/lib/poc/poc-config";
+import { and, asc, eq, isNotNull, or } from "drizzle-orm";
+import { users } from "../src/db/schema/identity";
+import { payments } from "../src/db/schema/finance-payments";
+import { reconciliationBankAccounts } from "../src/db/schema/finance-reconciliation";
+import { suppliers, companies } from "../src/db/schema/registry";
+import { findFinancePayment } from "../src/db/repositories/finance/payments";
 
 function stringValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
 async function main() {
-  const [{ prisma }, { BankIntegrationClient }, { updatePaymentStatus, reversePayment }] = await Promise.all([
-    import("../src/lib/prisma"),
+  const [{ db, databaseConnection }, { BankIntegrationClient }, { updatePaymentStatus, reversePayment }] = await Promise.all([
+    import("../src/db/client"),
     import("../src/lib/financeiro/bank-integration-client"),
     import("../src/lib/financeiro"),
   ]);
-  const actor = await prisma.usuario.findFirst({
-    where: { ativo: true, employeeId: { not: null } },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, employeeId: true },
-  });
+  const [actor] = await db.select({ id: users.id, employeeId: users.employeeId }).from(users).where(and(eq(users.ativo, true), isNotNull(users.employeeId))).orderBy(asc(users.createdAt)).limit(1);
   if (!actor?.employeeId) throw new Error("A sincronizacao exige um usuario ativo vinculado a servidor.");
 
   const client = new BankIntegrationClient();
-  const emittedPayments = await prisma.payment.findMany({
-    where: { status: "Emitida", bankAccount: { isActive: true } },
-    include: {
-      bankAccount: { select: { bankName: true, agency: true, accountNumber: true } },
-      supplier: { include: { company: { select: { corporateName: true, cnpj: true } } } },
-    },
-  });
+  const emittedPayments = await db.select({ payment: payments, bankAccount: { bankName: reconciliationBankAccounts.bankName, agency: reconciliationBankAccounts.agency, accountNumber: reconciliationBankAccounts.accountNumber }, company: { corporateName: companies.corporateName, cnpj: companies.cnpj } }).from(payments).innerJoin(reconciliationBankAccounts, eq(reconciliationBankAccounts.id, payments.bankAccountId)).innerJoin(suppliers, eq(suppliers.id, payments.supplierId)).leftJoin(companies, eq(companies.id, suppliers.companyId)).where(and(eq(payments.status, "Emitida"), eq(reconciliationBankAccounts.isActive, true)));
 
   let submitted = 0;
-  for (const payment of emittedPayments) {
-    if (!isPocVirtualBank(payment.bankAccount.bankName)) continue;
-    const externalAccountId = pocBankAccountExternalId(payment.bankAccount.accountNumber);
-    if (!externalAccountId) throw new Error(`Conta ${payment.bankAccount.accountNumber} nao pertence a matriz bancária da POC.`);
+  for (const { payment, bankAccount, company } of emittedPayments) {
+    if (!isPocVirtualBank(bankAccount.bankName)) continue;
+    const externalAccountId = pocBankAccountExternalId(bankAccount.accountNumber);
+    if (!externalAccountId) throw new Error(`Conta ${bankAccount.accountNumber} nao pertence a matriz bancária da POC.`);
     const paymentOrderExternalId = payment.orderNumber.startsWith("OP-") ? payment.orderNumber : `OP-${payment.orderNumber}`;
     const integrationEventId = `EVT-PAY-${payment.id}`;
     await client.submitPaymentOrder({
@@ -40,7 +36,7 @@ async function main() {
       integrationEventId,
       bankAccountExternalId: externalAccountId,
       clientReference: paymentOrderExternalId,
-      beneficiary: { name: payment.supplier.company?.corporateName ?? `FORNECEDOR-${payment.supplierId}`, document: payment.supplier.company?.cnpj },
+      beneficiary: { name: company?.corporateName ?? `FORNECEDOR-${payment.supplierId}`, document: company?.cnpj },
       amount: Number(payment.netValueDecimal ?? payment.valueDecimal ?? payment.value),
       scheduledDate: payment.date,
       paymentMethod: payment.paymentMethod,
@@ -64,21 +60,21 @@ async function main() {
       continue;
     }
     const orderNumber = paymentOrderExternalId.replace(/^OP-/, "");
-    const payment = await prisma.payment.findFirst({ where: { OR: [{ orderNumber }, { orderNumber: paymentOrderExternalId }] }, select: { id: true, status: true } });
+    const [payment] = await db.select({ id: payments.id, status: payments.status }).from(payments).where(or(eq(payments.orderNumber, orderNumber), eq(payments.orderNumber, paymentOrderExternalId))).limit(1);
     if (!payment) {
       await client.acknowledgeInteraction(event.externalId, "FAILED", `Pagamento ${paymentOrderExternalId} nao encontrado.`);
       continue;
     }
     if (bankStatus === "SETTLED" && payment.status === "Emitida") {
-      await updatePaymentStatus(prisma, { usuarioId: actor.id, employeeId: actor.employeeId }, payment.id, "Paga");
+      await updatePaymentStatus(databaseConnection, { usuarioId: actor.id, employeeId: actor.employeeId }, payment.id, "Paga");
       settled += 1;
     } else if (bankStatus === "REJECTED") {
       rejected += 1;
     } else if (bankStatus === "REVERSED") {
-      if (payment.status === "Emitida") await updatePaymentStatus(prisma, { usuarioId: actor.id, employeeId: actor.employeeId }, payment.id, "Paga");
-      const current = await prisma.payment.findUnique({ where: { id: payment.id }, select: { status: true } });
+      if (payment.status === "Emitida") await updatePaymentStatus(databaseConnection, { usuarioId: actor.id, employeeId: actor.employeeId }, payment.id, "Paga");
+      const current = await findFinancePayment(db, payment.id);
       if (current?.status === "Paga") {
-        await reversePayment(prisma, { usuarioId: actor.id, employeeId: actor.employeeId }, payment.id, `Estorno confirmado pelo Banco Virtual: ${paymentOrderExternalId}`);
+        await reversePayment(databaseConnection, { usuarioId: actor.id, employeeId: actor.employeeId }, payment.id, `Estorno confirmado pelo Banco Virtual: ${paymentOrderExternalId}`);
         reversed += 1;
       }
     }
@@ -88,7 +84,10 @@ async function main() {
   console.log(JSON.stringify({ submitted, settled, rejected, reversed, pendingEvents: events.length }));
 }
 
-main().catch((error) => {
+main().finally(async () => {
+  const { databaseConnection } = await import("../src/db/client");
+  await databaseConnection.pool.end();
+}).catch((error) => {
   console.error(error);
   process.exit(1);
 });

@@ -1,26 +1,32 @@
 import { AlertTriangle, Archive, ClipboardList, FileBox, FileCheck2, FileText, MessageSquareWarning, Timer } from "lucide-react";
 import Link from "next/link";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { getProtocolContext, protocolScope } from "@/lib/protocols/access";
-import { getOmbudsmanContextForProtocols, ombudsmanScope } from "@/lib/attendance/access";
+import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
+import { getOmbudsmanContextForProtocols } from "@/lib/attendance/access";
+import { ombudsmanScopeCondition } from "@/db/repositories/attendance-portals/scope";
+import { db } from "@/db/client";
+import { and, count, eq, gte, inArray, lt, lte, ne, notInArray } from "drizzle-orm";
+import { processes } from "@/db/schema/processes";
+import { ombudsmans } from "@/db/schema/attendance-portals";
+import { publicNotices } from "@/db/schema/transparency";
+import { countProcesses } from "@/db/repositories/processes/listing";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProtocolosDashboardPage() {
   const context = await getProtocolContext();
-  const { prisma } = context;
-  const scope = protocolScope(context);
+  const scope = protocolScopeCondition(context);
   const ombudsmanContext = await getOmbudsmanContextForProtocols();
   const now = new Date();
   const [totalProcesses, awaitingReceipt, inProgressProcesses, archivedProcesses, dueSoon, overdue, pendingOmbudsman, publishedProcessNotices] = await Promise.all([
-    prisma.process.count({ where: scope }),
-    prisma.process.count({ where: { ...scope, status: "Aguardando Recebimento" } }),
-    prisma.process.count({ where: { ...scope, status: { in: ["Recebido", "Em Analise", "Reaberto"] } } }),
-    prisma.process.count({ where: { ...scope, status: "Arquivado" } }),
-    prisma.process.count({ where: { ...scope, expectedCompletionAt: { gte: now, lte: new Date(now.getTime() + 3 * 86_400_000) }, status: { notIn: ["Concluido", "Arquivado", "Cancelado"] } } }),
-    prisma.process.count({ where: { ...scope, expectedCompletionAt: { lt: now }, status: { notIn: ["Concluido", "Arquivado", "Cancelado"] } } }),
-    ombudsmanContext.prisma.ombudsman.count({ where: { AND: [ombudsmanScope(ombudsmanContext), { status: { not: "Concluída" } }] } }),
-    prisma.publicNotice.count({ where: { sourceModule: "PROCESSOS" } }),
+    countProcesses(db, scope),
+    countProcesses(db, and(scope, eq(processes.status, "Aguardando Recebimento"))),
+    countProcesses(db, and(scope, inArray(processes.status, ["Recebido", "Em Analise", "Reaberto"]))),
+    countProcesses(db, and(scope, eq(processes.status, "Arquivado"))),
+    countProcesses(db, and(scope, gte(processes.expectedCompletionAt, now), lte(processes.expectedCompletionAt, new Date(now.getTime() + 3 * 86_400_000)), notInArray(processes.status, ["Concluido", "Arquivado", "Cancelado"]))),
+    countProcesses(db, and(scope, lt(processes.expectedCompletionAt, now), notInArray(processes.status, ["Concluido", "Arquivado", "Cancelado"]))),
+    db.select({ total: count() }).from(ombudsmans).where(and(ombudsmanScopeCondition(ombudsmanContext), ne(ombudsmans.status, "Concluída"))).then(rows => rows[0].total),
+    db.select({ total: count() }).from(publicNotices).where(eq(publicNotices.sourceModule, "PROCESSOS")).then(rows => rows[0].total),
   ]);
 
   const stats = [

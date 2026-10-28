@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { and, asc, count, eq, gt, inArray, type SQL } from "drizzle-orm";
+import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { hrPayrollRuns, hrPayrollStatements, payrolls } from "@/db/schema/personnel-workforce";
 import { z } from "zod";
 
 export const obligationHistoryInputSchema = z.object({
@@ -23,17 +27,18 @@ const digest = (value: unknown) => createHash("sha256").update(canonical(value))
 
 /** Internal historical evidence for obligation preparation, without inferring
  * fiscal classifications, payment dates or an official external layout. */
-export async function buildObligationHistory(db: PrismaClient, raw: unknown, payrollScope: Prisma.PayrollWhereInput = {}) {
+export async function buildObligationHistory(db: DatabaseConnection, raw: unknown, payrollScope?: SQL) {
   const input = obligationHistoryInputSchema.parse(raw);
   const competences = Array.from({ length: 12 }, (_, month) => `${String(month + 1).padStart(2, "0")}/${String(input.year).padStart(4, "0")}`);
-  return db.$transaction(async tx => {
-    const where: Prisma.HrPayrollStatementWhereInput = { run: { mode: "OFICIAL", status: "FECHADA", scope: input.scope, payroll: { AND: [payrollScope, { competence: { in: competences } }] } } };
-    const total = await tx.hrPayrollStatement.count({ where });
+  return withDatabaseTransaction(db, async tx => {
+    const where = and(eq(hrPayrollRuns.mode, "OFICIAL"), eq(hrPayrollRuns.status, "FECHADA"), eq(hrPayrollRuns.scope, input.scope), inArray(payrolls.competence, competences), payrollScope);
+    const [{ total }] = await tx.select({ total: count() }).from(hrPayrollStatements).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(where);
     const records = [];
     let cursor: string | undefined;
-    let gross = new Prisma.Decimal(0); let deductions = new Prisma.Decimal(0); let net = new Prisma.Decimal(0); let employer = new Prisma.Decimal(0);
+    let gross = new Decimal(0); let deductions = new Decimal(0); let net = new Decimal(0); let employer = new Decimal(0);
     for (;;) {
-      const batch = await tx.hrPayrollStatement.findMany({ where, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), take: 200, orderBy: { id: "asc" }, include: { run: { select: { id: true, ruleSetId: true, approvedAt: true, payroll: { select: { id: true, competence: true, type: true } } } } } });
+      const batchRows = await tx.select({ statement: hrPayrollStatements, run: { id: hrPayrollRuns.id, ruleSetId: hrPayrollRuns.ruleSetId, approvedAt: hrPayrollRuns.approvedAt }, payroll: { id: payrolls.id, competence: payrolls.competence, type: payrolls.type } }).from(hrPayrollStatements).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(and(where, cursor ? gt(hrPayrollStatements.id, cursor) : undefined)).orderBy(asc(hrPayrollStatements.id)).limit(200);
+      const batch = batchRows.map(row => ({ ...row.statement, run: { ...row.run, payroll: row.payroll } }));
       if (!batch.length) break;
       for (const statement of batch) {
         const snapshot = snapshotSchema.parse(statement.snapshot);
@@ -46,5 +51,5 @@ export async function buildObligationHistory(db: PrismaClient, raw: unknown, pay
     if (records.length !== total) throw new Error("Exportação histórica incompleta.");
     const content = { format: "RH_OBRIGACOES_HISTORICO_V1", officialLayout: false, basis: "COMPETENCIA_CALCULADA_NAO_DATA_DE_PAGAMENTO", filters: input, count: records.length, totals: { gross: gross.toFixed(2), deductions: deductions.toFixed(2), net: net.toFixed(2), employer: employer.toFixed(2) }, records };
     return { ...content, contentSha256: digest(content) };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 60000 });
+  }, { isolationLevel: "repeatable read", timeoutMs: 60000 });
 }

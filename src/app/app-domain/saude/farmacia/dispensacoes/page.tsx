@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readPharmacyDispensationsPage } from "@/db/repositories/health-pharmacy-pages/dispensations";
 import { z } from "zod";
 import { assertHealthUnitAccess, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { dispenseFromManagerAction, dispenseManualAction } from "./actions";
@@ -14,21 +15,11 @@ export default async function DispensationsPage({ searchParams }: { searchParams
   const context = await getTenantContextForModule("SAUDE");
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   if (params.unitId) assertHealthUnitAccess(context.user, params.unitId);
-  const unitScope = params.unitId ? { unitId: params.unitId } : unitIds ? { unitId: { in: unitIds } } : {};
   const from = z.iso.date().safeParse(params.from), to = z.iso.date().safeParse(params.to);
-  const prescriptions = await context.prisma.healthPrescription.findMany({ where: { ...unitScope, ...(params.patientId ? { patientId: params.patientId } : {}), ...(params.barcode ? { OR: [{ barcode: { equals: params.barcode.trim(), mode: "insensitive" } }, { id: { equals: params.barcode.trim(), mode: "insensitive" } }] } : params.patientId ? {} : { id: "__SELECIONE_PACIENTE_OU_RECEITA__" }) }, include: { patient: { include: { person: true } }, items: { include: { medicine: true, dispensations: { where: { status: "ACTIVE" }, select: { quantity: true } } } } }, orderBy: { date: "desc" }, take: 100 });
-  const patientId = params.patientId || prescriptions[0]?.patientId;
-  const where: Prisma.MedicineDispensationWhereInput = { ...unitScope, ...(patientId ? { patientId } : {}), ...(params.status === "ALL" ? {} : { status: params.status === "CANCELLED" ? "CANCELLED" : "ACTIVE" }), ...(from.success || to.success ? { date: { ...(from.success ? { gte: new Date(`${from.data}T00:00:00-03:00`) } : {}), ...(to.success ? { lt: new Date(new Date(`${to.data}T00:00:00-03:00`).valueOf() + 86400000) } : {}) } } : {}), ...(params.q ? { patient: { person: { fullName: { contains: params.q.trim(), mode: "insensitive" } } } } : {}) };
-  const total = await context.prisma.medicineDispensation.count({ where });
-  const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const [dispensations, patients, stocks, units, professionals, people] = await Promise.all([
-    context.prisma.medicineDispensation.findMany({ where, include: { patient: { include: { person: true } }, medicine: true, stock: true, unit: true, receiverPerson: true, kitDeliveryItem: { select: { deliveryId: true } }, events: { orderBy: { createdAt: "desc" } } }, orderBy: [{ date: "desc" }, { id: "desc" }], take: 20, skip: (page - 1) * 20 }),
-    context.prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}), ...(params.q ? { person: { fullName: { contains: params.q.trim(), mode: "insensitive" } } } : {}) }, include: { person: true }, orderBy: { person: { fullName: "asc" } }, take: 200 }),
-    context.prisma.materialStock.findMany({ where: { quantity: { gt: 0 }, blockedAt: null, OR: [{ expirationDate: null }, { expirationDate: { gte: new Date() } }], warehouse: { isActive: true, healthUnitId: unitIds ? { in: unitIds } : { not: null } }, material: { medicine: { isActive: true } } }, include: { material: true, warehouse: true }, orderBy: [{ material: { name: "asc" } }, { expirationDate: "asc" }], take: 1000 }),
-    context.prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, select: { id: true, name: true } }),
-    context.prisma.healthProfessional.findMany({ where: { isActive: true }, include: { employee: { select: { name: true } } }, orderBy: { employee: { name: "asc" } } }),
-    params.receiverQ ? context.prisma.person.findMany({ where: { status: "Ativo", fullName: { contains: params.receiverQ.trim(), mode: "insensitive" } }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" }, take: 50 }) : [],
-  ]);
+  const { prescriptions, patientId, total, page, dispensations, patients, stocks, units, professionals, people } = await readPharmacyDispensationsPage(context.database ?? db, unitIds, params, {
+    from: from.success ? new Date(`${from.data}T00:00:00-03:00`) : undefined,
+    to: to.success ? new Date(new Date(`${to.data}T00:00:00-03:00`).valueOf() + 86400000) : undefined,
+  });
   const receivers = <><label className="grid gap-1 text-sm">Quem retira<select name="receiverPersonId" className={field}><option value="">Próprio paciente</option>{people.map(person => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label><Input name="receiverRelationship" label="Vínculo do retirante com o paciente" /></>;
   const stockOptions = (materialId?: string | null) => stocks.filter(stock => !materialId || stock.materialId === materialId).map(stock => <option key={stock.id} value={stock.id}>{stock.material.name} · {stock.warehouse.name} · lote {stock.batchNumber} · saldo {stock.quantity}</option>);
   const shared = <>{receivers}<Input name="quantity" label="Quantidade" type="number" required /><Input name="nextWithdrawalAt" label="Próxima retirada" type="date" /><Input name="observation" label="Observação" /></>;

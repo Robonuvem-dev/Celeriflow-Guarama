@@ -4,13 +4,14 @@ import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { listFunctionalServices } from "@/lib/portal-servidor/service-catalog";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { FunctionalRequestForm } from "./FunctionalRequestForm";
+import { db } from "@/db/client";
 
 export const dynamic = "force-dynamic";
 export default async function FunctionalServicesPage({ searchParams }: { searchParams: Promise<{ q?: string; service?: string }> }) {
   const access = await getEmployeePortalAccess();
   if (access.status !== "AVAILABLE") return <p className="p-4">Acesso funcional indisponível.</p>;
   const params = await searchParams;
-  const services = await listFunctionalServices(access.context.prisma, access.employee.id);
+  const services = await listFunctionalServices(access.context.database ?? db, access.employee.id);
   const selected = services.find(service => service.id === params.service);
   const q = (params.q || "").slice(0, 200).trim().toLocaleLowerCase("pt-BR");
   const filtered = services.filter(service => `${service.name} ${service.description} ${service.configuration.group}`.toLocaleLowerCase("pt-BR").includes(q));

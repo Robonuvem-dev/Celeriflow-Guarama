@@ -3,14 +3,17 @@ import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform
 import { functionalServiceSchema } from "@/lib/portal-servidor/service-catalog";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ServiceConfigurationForm } from "./ServiceConfigurationForm";
+import { db } from "@/db/client";
+import { readPortalRules, readActiveRuleSets } from "@/db/repositories/personnel-pages/catalog";
+import { readPublicServiceDescriptions } from "@/db/repositories/personnel-pages/requests";
 
 export const dynamic = "force-dynamic";
 export default async function FunctionalServiceAdministration({ searchParams }: { searchParams: Promise<{ edit?: string; new?: string }> }) {
   const context = await getTenantContextForModule("RH"), params = await searchParams;
-  const rules = await context.prisma.hrPayrollRule.findMany({ where: { category: "PORTAL", valueType: "JSON", code: { startsWith: "PORTAL_SERVICO_" } }, orderBy: [{ name: "asc" }, { id: "asc" }] });
+  const rules = await readPortalRules(context.database ?? db, "service");
   const configured = rules.flatMap(rule => { const parsed = functionalServiceSchema.safeParse(rule.value); return parsed.success && (isSystemAdministrator(context.user) || context.user.allowedBudgetUnitIds.includes(parsed.data.budgetUnitId)) ? [{ rule, configuration: parsed.data }] : []; });
-  const descriptions = await context.prisma.publicService.findMany({ where: { id: { in: configured.map(item => item.configuration.publicServiceId) } } });
-  const ruleSets = await context.prisma.hrPayrollRuleSet.findMany({ where: { status: "ATIVA" }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+  const descriptions = await readPublicServiceDescriptions(context.database ?? db, configured.map(item => item.configuration.publicServiceId));
+  const ruleSets = await readActiveRuleSets(context.database ?? db);
   const selected = configured.find(item => item.rule.id === params.edit), common = selected && descriptions.find(item => item.id === selected.configuration.publicServiceId);
   const configuration = selected ? { budgetUnitId: selected.configuration.budgetUnitId, group: selected.configuration.group, processTypeId: selected.configuration.processTypeId, subjectId: selected.configuration.subjectId, operation: selected.configuration.operation, employeeIds: selected.configuration.employeeIds, fields: selected.configuration.fields, requiredDocuments: selected.configuration.requiredDocuments, acceptance: selected.configuration.acceptance } : undefined;
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"><ErpPageTitle title="Serviços funcionais do Portal" description="Catálogo comum, formulários, documentos e roteiros dos requerimentos internos." action={<Link href="?new=1">Novo serviço</Link>} />

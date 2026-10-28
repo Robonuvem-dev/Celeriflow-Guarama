@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { z } from "zod";
 
 const id = z.string().trim().min(1);
@@ -16,7 +16,7 @@ export const definitionSchema = z.object({ fields: z.array(fieldDefinitionSchema
 export const definitionKinds = { FORM: "Formulário de abertura", VIABILITY: "Viabilidade", PERMIT: "Análise de alvará", INSPECTION: "Vistoria", COMPLETION: "Conclusão" } as const;
 export const definitionPublicationSchema = z.object({ kind: z.enum(["FORM", "VIABILITY", "PERMIT", "INSPECTION", "COMPLETION"]), definition: definitionSchema });
 export const distributionSchema = z.object({ departmentId: id, strategy: z.enum(["SECTOR", "USER", "MANAGER", "LOWEST_LOAD"]), employeeId: z.string() }).refine((value) => value.strategy !== "USER" || Boolean(value.employeeId), "Selecione o usuário responsável.");
-export const zoneSchema = z.object({ code: z.string().trim().min(2).max(60).transform((value) => value.toUpperCase()), name: z.string().trim().min(2).max(160), legalBasis: z.string().trim().min(3).max(2000), startsAt: constructionDate, endsAt: optionalDate, allowedPurposeIds: z.array(id).min(1).max(100), allowedCategories: z.array(z.enum(["BUILDING", "SUBDIVISION"])).min(1), minimumLandArea: area, maxFloorAreaRatio: z.string().regex(/^\d{1,6}(\.\d{1,4})?$/).refine((value) => new Prisma.Decimal(value).greaterThan(0)), automatic: z.boolean() }).refine((value) => !value.endsAt || value.endsAt >= value.startsAt, "Vigência invertida.");
+export const zoneSchema = z.object({ code: z.string().trim().min(2).max(60).transform((value) => value.toUpperCase()), name: z.string().trim().min(2).max(160), legalBasis: z.string().trim().min(3).max(2000), startsAt: constructionDate, endsAt: optionalDate, allowedPurposeIds: z.array(id).min(1).max(100), allowedCategories: z.array(z.enum(["BUILDING", "SUBDIVISION"])).min(1), minimumLandArea: area, maxFloorAreaRatio: z.string().regex(/^\d{1,6}(\.\d{1,4})?$/).refine((value) => new Decimal(value).greaterThan(0)), automatic: z.boolean() }).refine((value) => !value.endsAt || value.endsAt >= value.startsAt, "Vigência invertida.");
 
 export function validateConstructionFields(definition: unknown, values: unknown): Record<string, string> {
   const form = definitionSchema.parse(definition);
@@ -37,8 +37,8 @@ export function validateConstructionFields(definition: unknown, values: unknown)
 
 export function evaluateConstructionViability(input: { category: string; purposeId: string; landArea: string; proposedArea: string; today: string }, rawRule: unknown) {
   const rule = zoneSchema.parse(rawRule);
-  const land = new Prisma.Decimal(area.parse(input.landArea));
-  const proposed = new Prisma.Decimal(area.parse(input.proposedArea));
+  const land = new Decimal(area.parse(input.landArea));
+  const proposed = new Decimal(area.parse(input.proposedArea));
   constructionDate.parse(input.today);
   const reasons: string[] = [];
   const limit = land.mul(rule.maxFloorAreaRatio);

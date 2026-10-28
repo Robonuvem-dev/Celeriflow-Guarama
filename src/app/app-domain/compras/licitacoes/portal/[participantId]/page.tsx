@@ -3,6 +3,8 @@ import { LockKeyhole } from "lucide-react";
 import { getCurrentTenantContext } from "@/lib/platform/tenant-context";
 import { isBiddingBidSubmissionOpen, isBiddingParticipantEligible } from "@/lib/compras/bidding-workflow";
 import { SupplierBiddingPortal } from "./SupplierBiddingPortal";
+import { databaseConnection } from "@/db/client";
+import { loadSupplierBiddingParticipation } from "@/db/repositories/procurement/bidding";
 
 export const dynamic = "force-dynamic";
 
@@ -20,55 +22,7 @@ function PortalUnavailable() {
 async function loadSupplierPortal(participantId: string) {
   try {
     const context = await getCurrentTenantContext();
-    const participant = await context.prisma.biddingParticipant.findFirst({
-      where: {
-        id: participantId,
-        supplier: {
-          is: {
-            status: "Ativo",
-            supplierPortalIdentities: { some: { usuarioId: context.user.id, status: "Ativo" } },
-          },
-        },
-      },
-      include: {
-        supplier: {
-          select: {
-            company: { select: { corporateName: true, tradeName: true } },
-            person: { select: { fullName: true } },
-          },
-        },
-        bidding: {
-          include: {
-            process: { select: { number: true, object: true } },
-            biddingLots: {
-              orderBy: { number: "asc" },
-              include: {
-                items: {
-                  include: {
-                    purchaseProcessItem: {
-                      include: {
-                        catalogItem: { select: { name: true, unit: true } },
-                        material: { select: { name: true, unitOfMeasure: true } },
-                      },
-                    },
-                  },
-                },
-                eligibilityDecisions: {
-                  where: { participantId },
-                  orderBy: [{ decidedAt: "desc" }, { createdAt: "desc" }],
-                  take: 1,
-                },
-                bids: {
-                  where: { participantId },
-                  orderBy: { sequence: "desc" },
-                  select: { id: true, sequence: true, totalValueDecimal: true, status: true, submittedAt: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const participant = await loadSupplierBiddingParticipation(databaseConnection.db, participantId, context.user.id);
     if (!participant) return null;
 
     const now = new Date();

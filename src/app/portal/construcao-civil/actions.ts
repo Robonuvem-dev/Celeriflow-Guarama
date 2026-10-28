@@ -1,24 +1,29 @@
 "use server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { constructionTerms, constructionTermAcceptances } from "@/db/schema/construction-portal";
+import { findConstructionCaseForPortal } from "@/db/repositories/infrastructure/construction-access";
+import { constructionActionMessage } from "@/lib/obras/construction-errors";
 import { getConstructionPortalIdentity } from "@/lib/obras/construction-portal-access";
-import { constructionMessageSchema, constructionPortalCaseWhere } from "@/lib/obras/construction-portal-policy";
+import { constructionMessageSchema } from "@/lib/obras/construction-portal-policy";
 import { appendConstructionMessage } from "@/lib/obras/construction-conversation";
 import { assertConstructionExternalCompany } from "@/lib/obras/construction-external-company";
 import { notifyConstructionMessageDepartment } from "@/lib/obras/construction-message-notifications";
 
-function message(error: unknown) { return error instanceof z.ZodError ? error.issues[0].message : error instanceof Error && !error.name.startsWith("Prisma") ? error.message : "Não foi possível concluir a operação."; }
+function message(error: unknown) { return constructionActionMessage(error, "Não foi possível concluir a operação."); }
 export async function acceptConstructionTerm(input: unknown) {
   try {
     const data = z.object({ caseId: z.string().min(1), termId: z.string().min(1) }).parse(input);
     const identity = await getConstructionPortalIdentity();
-    await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "ConstructionCase" WHERE "id"=${data.caseId} FOR UPDATE`;
-      if (!await tx.constructionCase.findFirst({ where: { AND: [{ id: data.caseId }, constructionPortalCaseWhere(identity.id)] }, select: { id: true } })) throw new Error("Solicitação indisponível para sua conta.");
-      const term = await tx.constructionTermVersion.findFirst({ orderBy: { version: "desc" }, select: { id: true } });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      await tx.execute(sql`SELECT "id" FROM "ConstructionCase" WHERE "id"=${data.caseId} FOR UPDATE`);
+      if (!await findConstructionCaseForPortal(tx, data.caseId, identity.id)) throw new Error("Solicitação indisponível para sua conta.");
+      const [term] = await tx.select({ id: constructionTerms.id }).from(constructionTerms).orderBy(desc(constructionTerms.version)).limit(1);
       if (term?.id !== data.termId) throw new Error("O termo mudou. Atualize e leia a versão vigente.");
-      await tx.constructionTermAcceptance.upsert({ where: { caseId_identityId_termId: { ...data, identityId: identity.id } }, create: { ...data, identityId: identity.id }, update: {}, select: { id: true } });
+      await tx.insert(constructionTermAcceptances).values({ ...data, identityId: identity.id }).onConflictDoNothing({ target: [constructionTermAcceptances.caseId, constructionTermAcceptances.identityId, constructionTermAcceptances.termId] });
     });
     revalidatePath(`/portal/construcao-civil/${data.caseId}`); return { success: true };
   } catch (error) { return { error: message(error) }; }
@@ -27,8 +32,8 @@ export async function sendConstructionPortalMessage(input: unknown) {
   try {
     const data = constructionMessageSchema.parse(input);
     const identity = await getConstructionPortalIdentity();
-    await prisma.$transaction(async (tx) => {
-      const record = await tx.constructionCase.findFirst({ where: { AND: [{ id: data.caseId }, constructionPortalCaseWhere(identity.id)] }, select: { process: { select: { companyId: true } } } });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const record = await findConstructionCaseForPortal(tx, data.caseId, identity.id);
       if (!record) throw new Error("Solicitação indisponível para sua conta.");
       await assertConstructionExternalCompany(tx, identity.id, record.process.companyId);
       const id = await appendConstructionMessage(tx, { identityId: identity.id }, data);

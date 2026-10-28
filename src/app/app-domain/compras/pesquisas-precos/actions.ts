@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { db, databaseConnection } from "@/db/client";
+import { loadPriceInvitation } from "@/db/repositories/procurement/price-research";
 import { getCurrentTenantContext, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import {
   closePriceResearch,
@@ -48,8 +50,8 @@ function internalError(error: unknown, fallback: string) {
 
 export async function createPriceResearchAction(input: { processId: string; deadlineAt: string }): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("COMPRAS", "create");
-    const research = await createPriceResearch(context.prisma, { processId: input.processId, deadlineAt: parseDeadline(input.deadlineAt) });
+    await getTenantContextForModuleOperation("COMPRAS", "create");
+    const research = await createPriceResearch(databaseConnection, { processId: input.processId, deadlineAt: parseDeadline(input.deadlineAt) });
     researchPaths(research.id);
     return { researchId: research.id };
   } catch (error) {
@@ -59,8 +61,8 @@ export async function createPriceResearchAction(input: { processId: string; dead
 
 export async function updatePriceResearchDeadlineAction(input: { researchId: string; deadlineAt: string }): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("COMPRAS", "update");
-    await updatePriceResearchDeadline(context.prisma, { researchId: input.researchId, deadlineAt: parseDeadline(input.deadlineAt) });
+    await getTenantContextForModuleOperation("COMPRAS", "update");
+    await updatePriceResearchDeadline(databaseConnection, { researchId: input.researchId, deadlineAt: parseDeadline(input.deadlineAt) });
     researchPaths(input.researchId);
     return { researchId: input.researchId };
   } catch (error) {
@@ -70,8 +72,8 @@ export async function updatePriceResearchDeadlineAction(input: { researchId: str
 
 export async function closePriceResearchAction(researchId: string): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("COMPRAS", "update");
-    await closePriceResearch(context.prisma, researchId);
+    await getTenantContextForModuleOperation("COMPRAS", "update");
+    await closePriceResearch(databaseConnection, researchId);
     researchPaths(researchId);
     return { researchId };
   } catch (error) {
@@ -81,8 +83,8 @@ export async function closePriceResearchAction(researchId: string): Promise<Acti
 
 export async function deletePriceResearchAction(researchId: string): Promise<ActionResult> {
   try {
-    const context = await getTenantContextForModuleOperation("COMPRAS", "delete");
-    await deletePriceResearch(context.prisma, researchId);
+    await getTenantContextForModuleOperation("COMPRAS", "delete");
+    await deletePriceResearch(databaseConnection, researchId);
     researchPaths();
     return { researchId };
   } catch (error) {
@@ -93,7 +95,7 @@ export async function deletePriceResearchAction(researchId: string): Promise<Act
 export async function inviteSupplierToPriceResearchAction(input: { researchId: string; supplierId: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("COMPRAS", "create");
-    const result = await inviteSupplierToPriceResearch(context.prisma, { ...input, actorUsuarioId: context.user.id });
+    const result = await inviteSupplierToPriceResearch(databaseConnection, { ...input, actorUsuarioId: context.user.id });
     const accessKey = createSupplierInvitationAccessKey(result.invitation);
     researchPaths(input.researchId);
     return {
@@ -111,10 +113,7 @@ export async function inviteSupplierToPriceResearchAction(input: { researchId: s
 export async function getSupplierInvitationLinkAction(input: { researchId: string; invitationId: string }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("COMPRAS", "update");
-    const invitation = await context.prisma.priceQuote.findFirst({
-      where: { id: input.invitationId, researchId: input.researchId },
-      select: { id: true, researchId: true, supplierId: true, status: true },
-    });
+    const invitation = await loadPriceInvitation(context.database ?? db, { invitationId: input.invitationId, researchId: input.researchId });
     if (!invitation || invitation.status === "CONVITE_CANCELADO") throw new PriceResearchError("Convite de cotação não encontrado.");
 
     const accessKey = createSupplierInvitationAccessKey(invitation);
@@ -126,7 +125,7 @@ export async function getSupplierInvitationLinkAction(input: { researchId: strin
 
 async function supplierPortalContext(accessKey: string) {
   const context = await getCurrentTenantContext();
-  const access = await getSupplierPriceResearchPortalAccess(context.prisma, {
+  const access = await getSupplierPriceResearchPortalAccess(context.database ?? db, {
     accessKey,
     authenticatedEmail: context.user.email,
   });
@@ -135,8 +134,8 @@ async function supplierPortalContext(accessKey: string) {
 
 export async function saveSupplierPriceQuoteDraftAction(input: { accessKey: string; value: number }): Promise<ActionResult> {
   try {
-    const { context, access } = await supplierPortalContext(input.accessKey);
-    await saveSupplierPriceQuoteDraft(context.prisma, {
+    const { access } = await supplierPortalContext(input.accessKey);
+    await saveSupplierPriceQuoteDraft(databaseConnection, {
       invitationId: access.invitationId,
       researchId: access.researchId,
       supplierId: access.supplierId,
@@ -152,7 +151,7 @@ export async function saveSupplierPriceQuoteDraftAction(input: { accessKey: stri
 export async function submitSupplierPriceQuoteAction(input: { accessKey: string; value: number }): Promise<ActionResult> {
   try {
     const { context, access } = await supplierPortalContext(input.accessKey);
-    const result = await submitSupplierPriceQuote(context.prisma, {
+    const result = await submitSupplierPriceQuote(databaseConnection, {
       invitationId: access.invitationId,
       researchId: access.researchId,
       supplierId: access.supplierId,

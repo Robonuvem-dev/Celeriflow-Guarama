@@ -3,24 +3,14 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import AssinaturasClient from "./AssinaturasClient";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listPendingDocumentSignatures } from "@/db/repositories/documents/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AssinaturasPage() {
-  const { prisma, user } = await getTenantContextForModule("DOCUMENTOS");
-  const pendingSignatures = await prisma.documentSignature.findMany({
-    where: {
-      signerUsuarioId: user.id,
-      status: "PENDING",
-      documentVersion: { status: "PENDING_SIGNATURE" },
-    },
-    orderBy: { requestedAt: "asc" },
-    select: {
-      documentId: true,
-      requestedAt: true,
-      document: { select: { title: true, documentType: true, status: true } },
-    },
-  });
+  const { user } = await getTenantContextForModule("DOCUMENTOS");
+  const pendingSignatures = await listPendingDocumentSignatures(db, user.id);
   const documents = pendingSignatures.map((signature) => ({
     id: signature.documentId,
     title: signature.document.title,

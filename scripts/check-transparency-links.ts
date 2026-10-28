@@ -3,13 +3,13 @@ config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
 async function main() {
-  const { prisma } = await import("../src/lib/prisma");
+  const { db, databaseConnection } = await import("../src/db/client");
   try {
     const { getTransparencySettings } = await import("../src/lib/transparencia/presentation-settings");
     const { publishedTransparencyCatalog } = await import("../src/lib/transparencia/consultation-service");
     const { buildTransparencyDiscovery } = await import("../src/lib/transparencia/discovery");
     const { getDiscoverySettings, applyDiscoverySettings, publicPortalOrigin } = await import("../src/lib/transparencia/discovery-settings");
-    const [portal, presentation] = await Promise.all([getTransparencySettings(prisma), getDiscoverySettings(prisma)]);
+    const [portal, presentation] = await Promise.all([getTransparencySettings(db), getDiscoverySettings(db)]);
     const origin = process.env.TRANSPARENCY_CHECK_ORIGIN || publicPortalOrigin(presentation);
     const sections = applyDiscoverySettings(buildTransparencyDiscovery(publishedTransparencyCatalog(portal), portal), presentation);
     let failed = 0;
@@ -25,6 +25,6 @@ async function main() {
     }
     console.log(JSON.stringify({ failed, checkedAt: new Date().toISOString() }));
     if (failed) process.exitCode = 1;
-  } finally { await prisma.$disconnect(); }
+  } finally { await databaseConnection.pool.end(); }
 }
 main().catch(error => { console.error(error instanceof Error ? error.message : "Falha ao verificar destinos."); process.exitCode = 1; });

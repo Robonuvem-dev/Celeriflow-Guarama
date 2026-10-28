@@ -128,3 +128,12 @@ test("attestation keeps physical execution auditable and does not reopen finaliz
   assert.throws(() => assertMeasurementStatusTransition("Cancelada", "Atestada"), /não pode ser reaberta/i);
   assert.doesNotThrow(() => assertMeasurementStatusTransition("Rascunho", "Atestada"));
 });
+
+test("measurement attestation preserves the one-cent tolerance above the safe integer limit", () => {
+  const measurement = { quantity: null, unit: null, value: "90071992547409.93", itemCount: 2 };
+  assert.doesNotThrow(() => assertMeasurementCanBeAttested({ ...measurement, itemValueTotal: "90071992547409.93" }));
+  assert.doesNotThrow(() => assertMeasurementCanBeAttested({ ...measurement, itemValueTotal: "90071992547409.94" }));
+  assert.doesNotThrow(() => assertMeasurementCanBeAttested({ ...measurement, itemValueTotal: "90071992547409.92" }));
+  assert.throws(() => assertMeasurementCanBeAttested({ ...measurement, itemValueTotal: "90071992547409.95" }), /soma de seus itens/i);
+  assert.throws(() => assertMeasurementCanBeAttested({ ...measurement, itemValueTotal: "90071992547409.91" }), /soma de seus itens/i);
+});

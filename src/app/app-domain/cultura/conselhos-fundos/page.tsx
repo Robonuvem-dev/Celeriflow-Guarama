@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { listCulturalCouncilsAndFunds } from "@/db/repositories/culture/queries";
 import { Coins, FileText, Landmark, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
@@ -13,84 +14,14 @@ type ConselhosFundosPageProps = {
 export default async function ConselhosFundosPage({
   searchParams,
 }: ConselhosFundosPageProps) {
-  const { prisma } = await getTenantContextForModule("CULTURA");
+  await getTenantContextForModule("CULTURA");
   const params = await searchParams;
   const q = params?.q?.trim() ?? "";
   const tipo = params?.tipo === "conselhos" || params?.tipo === "fundos" ? params.tipo : "";
   const showConselhos = tipo !== "fundos";
   const showFundos = tipo !== "conselhos";
 
-  const conselhoWhere: Prisma.CulturaConselhoWhereInput = q
-    ? {
-        OR: [
-          { nome: { contains: q, mode: "insensitive" } },
-          { tipo: { contains: q, mode: "insensitive" } },
-          { status: { contains: q, mode: "insensitive" } },
-          { responsavel: { contains: q, mode: "insensitive" } },
-          {
-            documentos: {
-              some: {
-                OR: [
-                  { purpose: { contains: q, mode: "insensitive" } },
-                  { document: { title: { contains: q, mode: "insensitive" } } },
-                ],
-              },
-            },
-          },
-        ],
-      }
-    : {};
-
-  const fundoWhere: Prisma.CulturaFundoWhereInput = q
-    ? {
-        OR: [
-          { nome: { contains: q, mode: "insensitive" } },
-          { status: { contains: q, mode: "insensitive" } },
-          { descricao: { contains: q, mode: "insensitive" } },
-          {
-            appropriation: {
-              is: { code: { contains: q, mode: "insensitive" } },
-            },
-          },
-        ],
-      }
-    : {};
-
-  const [conselhos, fundos] = await Promise.all([
-    showConselhos
-      ? prisma.culturaConselho.findMany({
-          where: conselhoWhere,
-          include: {
-            documentos: {
-              orderBy: { createdAt: "desc" },
-              include: {
-                document: {
-                  select: { title: true, documentType: true },
-                },
-              },
-            },
-          },
-          orderBy: { nome: "asc" },
-        })
-      : Promise.resolve([]),
-    showFundos
-      ? prisma.culturaFundo.findMany({
-          where: fundoWhere,
-          include: {
-            appropriation: {
-              select: {
-                code: true,
-                financialYear: { select: { year: true } },
-                budgetUnit: { select: { code: true, name: true } },
-                resourceSource: { select: { code: true, name: true } },
-                expenseNature: { select: { code: true, name: true } },
-              },
-            },
-          },
-          orderBy: { nome: "asc" },
-        })
-      : Promise.resolve([]),
-  ]);
+  const [conselhos, fundos] = await listCulturalCouncilsAndFunds(db, q, showConselhos, showFundos);
 
   const hasFilters = Boolean(q || tipo);
 

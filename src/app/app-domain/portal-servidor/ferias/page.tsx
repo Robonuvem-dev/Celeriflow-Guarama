@@ -4,7 +4,10 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { buttonVariants } from "@/components/ui/button";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
-import type { Prisma } from "@prisma/client";
+import { sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
+import type { PortalLeave, PortalVacation } from "@/db/repositories/portal-servidor/reports";
 import { CalendarDays, FileClock } from "lucide-react";
 import Link from "next/link";
 
@@ -190,34 +193,20 @@ export default async function FeriasPortalPage({ searchParams }: { searchParams:
   const view = parseView(params.view);
   const status = parseStatus(params.status, view);
   const { context, employee } = access;
+  const executor = context.database ?? db;
+  const where = sql`"employeeId"=${employee.id} ${status ? sql`AND status=${status}` : sql``}`;
 
   if (view === "afastamentos") {
-    const where: Prisma.LeaveWhereInput = { employeeId: employee.id };
-    if (status) where.status = status;
-    const total = await context.prisma.leave.count({ where });
+    const total = await portalCount(executor, sql`SELECT count(*) FROM "Leave" WHERE ${where}`);
     const page = resolvePage(params.page, total);
-    const records = await context.prisma.leave.findMany({
-      where,
-      select: { id: true, startDate: true, endDate: true, status: true },
-      orderBy: [{ startDate: "desc" }, { id: "desc" }],
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    });
+    const records = await portalRows<PortalLeave>(executor, sql`SELECT * FROM "Leave" WHERE ${where} ORDER BY "startDate" DESC,id DESC LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
 
     return <PortalListLayout view={view} status={status} total={total} page={page}><LeaveResults records={records} /></PortalListLayout>;
   }
 
-  const where: Prisma.VacationWhereInput = { employeeId: employee.id };
-  if (status) where.status = status;
-  const total = await context.prisma.vacation.count({ where });
+  const total = await portalCount(executor, sql`SELECT count(*) FROM "Vacation" WHERE ${where}`);
   const page = resolvePage(params.page, total);
-  const records = await context.prisma.vacation.findMany({
-    where,
-    select: { id: true, acquisitionStart: true, acquisitionEnd: true, enjoymentStart: true, enjoymentEnd: true, days: true, status: true },
-    orderBy: [{ acquisitionStart: "desc" }, { id: "desc" }],
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+  const records = await portalRows<PortalVacation>(executor, sql`SELECT * FROM "Vacation" WHERE ${where} ORDER BY "acquisitionStart" DESC,id DESC LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
 
   return <PortalListLayout view={view} status={status} total={total} page={page}><VacationResults records={records} /></PortalListLayout>;
 }

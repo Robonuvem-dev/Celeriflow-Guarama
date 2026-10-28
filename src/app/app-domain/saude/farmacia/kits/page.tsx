@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { readPharmacyKitsPage } from "@/db/repositories/health-pharmacy-pages/kits";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { KitCompositionForm } from "./KitCompositionForm";
 import { CareProgramForms } from "./CareProgramForms";
@@ -9,23 +10,9 @@ const field = "min-w-0 rounded border bg-white p-2 text-sm";
 const states: Record<string, string> = { GENERATED: "Gerado, sem baixa de estoque", DELIVERED: "Entregue", NOT_COLLECTED: "Não retirado", RETURNED: "Retornado" };
 const groups = { ANY: "Todas as ações", PREGNANCY: "Acompanhamento gestacional", HYPERTENSION: "Hipertensão", DIABETES: "Diabetes", CHRONIC: "Condições crônicas" };
 export default async function PharmacyKitsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string; receiver?: string; deliveryId?: string }> }) {
-  const params = await searchParams, context = await getTenantContextForModule("SAUDE"), { prisma } = context;
+  const params = await searchParams, context = await getTenantContextForModule("SAUDE");
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
-  const where: Prisma.HealthPharmacyKitDeliveryWhereInput = { ...(unitIds ? { warehouse: { healthUnitId: { in: unitIds } } } : {}), ...(params.deliveryId ? { id: params.deliveryId } : {}), ...(states[params.status || ""] ? { status: params.status } : {}), ...(params.q ? { patient: { person: { fullName: { contains: params.q, mode: "insensitive" } } } } : {}) };
-  const total = await prisma.healthPharmacyKitDelivery.count({ where }), page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(total / 20)));
-  const [kits, deliveries, patients, warehouses, products, neighborhoods, stocks, people, programs, enrollments, units] = await Promise.all([
-    prisma.healthPharmacyKit.findMany({ where: { isActive: true }, include: { items: { include: { material: true } } }, orderBy: { name: "asc" } }),
-    prisma.healthPharmacyKitDelivery.findMany({ where, include: { kit: true, patient: { include: { person: true } }, warehouse: true, receiverPerson: true, items: { include: { material: true, stock: true, dispensation: true } }, events: { orderBy: { createdAt: "desc" } } }, orderBy: { createdAt: "desc" }, take: 20, skip: (page - 1) * 20 }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}), ...(params.q ? { person: { fullName: { contains: params.q, mode: "insensitive" } } } : {}) }, include: { person: true }, orderBy: { person: { fullName: "asc" } }, take: 200 }),
-    prisma.warehouse.findMany({ where: { isActive: true, healthUnitId: unitIds ? { in: unitIds } : { not: null } }, select: { id: true, name: true } }),
-    prisma.material.findMany({ where: { isActive: true, healthProfile: { isActive: true } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.neighborhood.findMany({ where: { status: "Ativo" }, select: { id: true, name: true, city: true }, orderBy: { name: "asc" } }),
-    prisma.materialStock.findMany({ where: { quantity: { gt: 0 }, blockedAt: null, OR: [{ expirationDate: null }, { expirationDate: { gte: new Date() } }], warehouse: { healthUnitId: unitIds ? { in: unitIds } : { not: null } } }, select: { id: true, warehouseId: true, materialId: true, batchNumber: true, quantity: true }, take: 1000 }),
-    params.receiver ? prisma.person.findMany({ where: { status: "Ativo", fullName: { contains: params.receiver, mode: "insensitive" } }, select: { id: true, fullName: true }, take: 50 }) : [],
-    prisma.healthCareProgram.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.healthCareProgramEnrollment.findMany({ where: { ...(unitIds ? { unitId: { in: unitIds } } : {}), ...(params.q ? { patient: { person: { fullName: { contains: params.q, mode: "insensitive" } } } } : {}) }, include: { program: true, patient: { select: { person: { select: { fullName: true } } } }, unit: { select: { name: true } } }, orderBy: { startsAt: "desc" }, take: 200 }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, select: { id: true, name: true } }),
-  ]);
+  const { total, page, kits, deliveries, patients, warehouses, products, neighborhoods, stocks, people, programs, enrollments, units } = await readPharmacyKitsPage(context.database ?? db, unitIds, { ...params, status: states[params.status || ""] ? params.status : undefined });
   const pagination = (next: number) => `/saude/farmacia/kits?${new URLSearchParams({ q: params.q || "", status: params.status || "", receiver: params.receiver || "", page: String(next) })}`;
   return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"><header className="flex flex-wrap justify-between gap-3"><h1 className="font-semibold">Kits farmacêuticos e entregas</h1><Link href="/saude/farmacia" className="text-sm underline">Farmácia</Link></header>
     <form className="flex flex-wrap items-end gap-3"><label className="grid gap-1 text-sm">Pesquisar paciente<input name="q" defaultValue={params.q} className={field} /></label><label className="grid gap-1 text-sm">Pesquisar pessoa retirante<input name="receiver" defaultValue={params.receiver} className={field} /></label><select name="status" defaultValue={params.status || ""} className={field}><option value="">Todas as situações</option>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button className={field}>Pesquisar</button></form>

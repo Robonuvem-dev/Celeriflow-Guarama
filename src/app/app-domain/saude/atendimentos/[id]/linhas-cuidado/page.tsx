@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { db } from "@/db/client";
+import { findHealthCareRecord } from "@/db/repositories/health/care";
+import { healthPregnancies, healthPregnancyVisits, healthPostpartumVisits, healthChronicAssessments, healthClinicalScreenings, healthDentalMarks, specializedTherapeuticPlans, healthTherapySessions } from "@/db/schema/health-care-lines";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
+import { healthExamRequests } from "@/db/schema/health-care";
 import { assertHealthUnitAccess, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { pregnancyDating } from "@/lib/saude/care-lines-policy";
 import { ClinicalDictation } from "../ClinicalDictation";
@@ -17,18 +23,25 @@ function datingForDisplay(pregnancy: Parameters<typeof pregnancyDating>[0], date
 export default async function CareLinesPage({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id);
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
-  const record = await prisma.medicalRecord.findUniqueOrThrow({ where: { id }, include: { patient: { include: { person: true } } } });
+   const database = context.database ?? db;
+   const record = await findHealthCareRecord(database, id);
+   if (!record) throw new Error("Atendimento não encontrado.");
   assertHealthUnitAccess(context.user, record.unitId);
-  const [pregnancies, chronic, screenings, marks, procedures, plans, exams] = await Promise.all([
-    prisma.healthPregnancy.findMany({ where: { patientId: record.patientId }, include: { visits: { orderBy: { occurredAt: "asc" } }, postpartumVisits: true }, orderBy: { createdAt: "desc" } }),
-    prisma.healthChronicAssessment.findMany({ where: { patientId: record.patientId }, orderBy: { assessedAt: "desc" } }),
-    prisma.healthClinicalScreening.findMany({ where: { patientId: record.patientId }, orderBy: { requestedAt: "desc" } }),
-    prisma.healthDentalMark.findMany({ where: { patientId: record.patientId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] }),
-    prisma.healthSusProcedure.findMany({ where: { isActive: true, isCurrent: true }, orderBy: { code: "asc" }, select: { id: true, code: true, description: true } }),
-    prisma.specializedTherapeuticPlan.findMany({ where: { patientId: record.patientId, unitId: record.unitId }, include: { sessions: { orderBy: { sessionNumber: "asc" } } } }),
-    prisma.healthExamRequest.findMany({ where: { patientId: record.patientId }, select: { id: true, examName: true } }),
-  ]);
+   const [pregnancyRows, chronic, screenings, marks, procedures, planRows, exams] = await Promise.all([
+     database.select().from(healthPregnancies).where(eq(healthPregnancies.patientId, record.patientId)).orderBy(desc(healthPregnancies.createdAt)),
+     database.select().from(healthChronicAssessments).where(eq(healthChronicAssessments.patientId, record.patientId)).orderBy(desc(healthChronicAssessments.assessedAt)),
+     database.select().from(healthClinicalScreenings).where(eq(healthClinicalScreenings.patientId, record.patientId)).orderBy(desc(healthClinicalScreenings.requestedAt)),
+     database.select().from(healthDentalMarks).where(eq(healthDentalMarks.patientId, record.patientId)).orderBy(desc(healthDentalMarks.createdAt), desc(healthDentalMarks.id)),
+     database.select({ id: healthSusProcedures.id, code: healthSusProcedures.code, description: healthSusProcedures.description }).from(healthSusProcedures).where(and(eq(healthSusProcedures.isActive, true), eq(healthSusProcedures.isCurrent, true))).orderBy(asc(healthSusProcedures.code)),
+     database.select().from(specializedTherapeuticPlans).where(and(eq(specializedTherapeuticPlans.patientId, record.patientId), eq(specializedTherapeuticPlans.unitId, record.unitId))),
+     database.select({ id: healthExamRequests.id, examName: healthExamRequests.examName }).from(healthExamRequests).where(eq(healthExamRequests.patientId, record.patientId)),
+   ]);
+   const [visits, postpartumVisits, sessions] = await Promise.all([
+     database.select().from(healthPregnancyVisits).where(inArray(healthPregnancyVisits.pregnancyId, pregnancyRows.map(row => row.id))).orderBy(asc(healthPregnancyVisits.occurredAt)),
+     database.select().from(healthPostpartumVisits).where(inArray(healthPostpartumVisits.pregnancyId, pregnancyRows.map(row => row.id))),
+     database.select().from(healthTherapySessions).where(inArray(healthTherapySessions.planId, planRows.map(row => row.id))).orderBy(asc(healthTherapySessions.sessionNumber)),
+   ]);
+   const pregnancies = pregnancyRows.map(row => ({ ...row, visits: visits.filter(visit => visit.pregnancyId === row.id), postpartumVisits: postpartumVisits.filter(visit => visit.pregnancyId === row.id) })), plans = planRows.map(row => ({ ...row, sessions: sessions.filter(session => session.planId === row.id) }));
   const origin = <input type="hidden" name="medicalRecordId" value={record.id} />;
   const active = pregnancies.find(pregnancy => pregnancy.status === "ACTIVE");
   return <div data-health-clinical-record="true" className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">

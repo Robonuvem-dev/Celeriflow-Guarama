@@ -6,6 +6,8 @@ import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { ErpStatusBadge, ErpTableContainer, ErpTableTd, ErpTableTh, ErpTableThead, ErpTableTr } from "@/components/app-ui/erp/ErpTable";
 import { BulkTaxpayerUpdate } from "./BulkTaxpayerUpdate";
+import { db } from "@/db/client";
+import { readFiscalPeoplePage } from "@/db/repositories/taxation-pages/cadastral-details";
 
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 20;
@@ -14,18 +16,8 @@ export default async function PessoasFiscaisPage({ searchParams }: { searchParam
   const params = await searchParams;
   const q = String(params.q ?? "").trim();
   const page = Math.max(1, Number(params.page) || 1);
-  const { prisma } = await getTenantContextForModule("TRIBUTACAO");
-  const where = q ? { OR: [
-    { municipalInsc: { contains: q, mode: "insensitive" as const } },
-    { person: { is: { fullName: { contains: q, mode: "insensitive" as const } } } },
-    { person: { is: { cpf: { contains: q.replace(/\D/g, "") } } } },
-    { company: { is: { corporateName: { contains: q, mode: "insensitive" as const } } } },
-    { company: { is: { cnpj: { contains: q.replace(/[^A-Za-z0-9]/g, "") } } } },
-  ] } : {};
-  const [total, taxpayers] = await Promise.all([
-    prisma.taxpayer.count({ where }),
-    prisma.taxpayer.findMany({ where, include: { person: { include: { addresses: true } }, company: { include: { addresses: true } }, _count: { select: { realEstates: true, economicRegistrations: true, taxCaseLinks: true } } }, orderBy: { updatedAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
-  ]);
+  const context = await getTenantContextForModule("TRIBUTACAO");
+  const { total, taxpayers } = await readFiscalPeoplePage(context.database ?? db, q, page);
   const query = new URLSearchParams(); if (q) query.set("q", q);
   const href = (target: number) => { const next = new URLSearchParams(query); next.set("page", String(target)); return `/tributacao/pessoas?${next}`; };
 

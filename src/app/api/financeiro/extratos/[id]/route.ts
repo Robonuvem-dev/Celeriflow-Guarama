@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AccessError, getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { downloadFilename, getFile } from "@/lib/platform/blob";
+import { db } from "@/db/client";
+import { findArchivedStatementAccount, readAutomatedStatementDownload } from "@/db/repositories/finance/bank-statements";
+import { financialAuditLogs } from "@/db/schema/finance-identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,12 +12,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   try {
     const { id } = await params;
     const context = await getTenantContextForModule("FINANCEIRO");
-    const download = await context.prisma.automatedBankDownload.findUnique({ where: { id } });
+    const executor = context.database ?? db;
+    const download = await readAutomatedStatementDownload(executor, id);
     if (!download) return NextResponse.json({ error: "Extrato não encontrado." }, { status: 404 });
-    const account = await context.prisma.bankAccount.findFirst({
-      where: { bankName: download.banco, agency: download.agencia, accountNumber: download.contaNumero },
-      select: { budgetUnitId: true },
-    });
+    const account = await findArchivedStatementAccount(executor, { bankName: download.banco, agency: download.agencia, accountNumber: download.contaNumero });
     if (!isSystemAdministrator(context.user) && (!account?.budgetUnitId || !context.user.allowedBudgetUnitIds.includes(account.budgetUnitId))) {
       throw new AccessError("Acesso negado à unidade gestora do extrato bancário.", 403);
     }
@@ -22,13 +23,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const file = await getFile(download.caminhoDestino);
     if (!file?.stream) return NextResponse.json({ error: "Arquivo de extrato não encontrado." }, { status: 404 });
 
-    await context.prisma.financialAuditLog.create({
-      data: {
-        action: "CONSULTA_ARQUIVO_EXTRATO",
-        entityType: "AutomatedBankDownload",
-        entityId: download.id,
-        authorUsuarioId: context.user.id,
-      },
+    await executor.insert(financialAuditLogs).values({
+      action: "CONSULTA_ARQUIVO_EXTRATO",
+      entityType: "AutomatedBankDownload",
+      entityId: download.id,
+      authorUsuarioId: context.user.id,
     });
 
     return new NextResponse(file.stream, {

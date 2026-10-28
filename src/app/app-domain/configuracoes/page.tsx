@@ -4,14 +4,13 @@ import Link from "next/link";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { loadConfigurationTotals } from "@/db/repositories/platform/instance-configuration";
 
 export default async function ConfiguracoesDashboard() {
-  const { prisma, user } = await getTenantContextForModule("CONFIGURACOES");
-  const [instancias, totalModulosAtivos, totalPerfis] = await Promise.all([
-    prisma.configuracaoInstancia.count(),
-    prisma.configuracaoModulo.count({ where: { ativo: true, codigo: { not: "DOCUMENTOS" } } }),
-    prisma.configuracaoPerfil.count()
-  ]);
+  const context = await getTenantContextForModule("CONFIGURACOES");
+  const { user } = context;
+  const { instancias, totalModulosAtivos, totalPerfis } = await loadConfigurationTotals(context.database ?? db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

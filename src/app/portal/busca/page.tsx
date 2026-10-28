@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, asc, desc, eq, like, lte, or } from "drizzle-orm";
+import { portalNews, portalPages } from "@/db/schema/portal-content";
 import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell";
 import { MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipality-identity";
 
@@ -22,31 +24,11 @@ export default async function PortalSearchPage({ searchParams }: { searchParams:
   let pages: { title: string; slug: string }[] = [];
 
   if (query) {
+    const pattern=`%${query.replace(/[\\%_]/g,"\\$&")}%`;
     try {
       const [foundNews, foundPages] = await Promise.all([
-        prisma.portalNews.findMany({
-          where: {
-            status: "Publicado",
-            publishedAt: { lte: new Date() },
-            OR: [
-              { title: { contains: query } },
-              { subtitle: { contains: query } },
-              { content: { contains: query } },
-            ],
-          },
-          select: { title: true, slug: true, subtitle: true },
-          orderBy: { publishedAt: "desc" },
-          take: 20,
-        }),
-        prisma.portalPage.findMany({
-          where: {
-            status: "Publicado",
-            OR: [{ title: { contains: query } }, { content: { contains: query } }],
-          },
-          select: { title: true, slug: true },
-          orderBy: { title: "asc" },
-          take: 20,
-        }),
+        db.select({title:portalNews.title,slug:portalNews.slug,subtitle:portalNews.subtitle}).from(portalNews).where(and(eq(portalNews.status,"Publicado"),lte(portalNews.publishedAt,new Date()),or(like(portalNews.title,pattern),like(portalNews.subtitle,pattern),like(portalNews.content,pattern)))).orderBy(desc(portalNews.publishedAt)).limit(20),
+        db.select({title:portalPages.title,slug:portalPages.slug}).from(portalPages).where(and(eq(portalPages.status,"Publicado"),or(like(portalPages.title,pattern),like(portalPages.content,pattern)))).orderBy(asc(portalPages.title)).limit(20),
       ]);
       news = foundNews;
       pages = foundPages;

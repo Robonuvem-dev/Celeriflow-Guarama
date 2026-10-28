@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
+import { db } from "@/db/client";
+import { findConstructionPlanExtraction } from "@/db/repositories/infrastructure/construction-integrations";
 import { getTenantContextForModule, AccessError } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
 import { getFile, downloadFilename } from "@/lib/platform/blob";
 import { PLAN_MAX_BYTES } from "@/lib/obras/construction-extraction";
 
@@ -10,7 +11,7 @@ export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params; const context = await getTenantContextForModule("OBRAS"); const access = await resolveConstructionAccess(context);
-    const row = await context.prisma.constructionPlanExtraction.findFirst({ where: { id, case: constructionCaseWhere(access) } });
+    const row = await findConstructionPlanExtraction(db, access, id);
     if (!row) throw new AccessError("Prancha indisponível.", 404);
     const file = await getFile(row.sourceUrl);
     if (!file?.stream) throw new AccessError("Arquivo indisponível.", 404);

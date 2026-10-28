@@ -1,8 +1,7 @@
 import { config } from "dotenv";
-import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
+import { sql } from "drizzle-orm";
+import { createDatabaseConnection } from "../src/db/connection.ts";
+import { createId } from "../src/db/ids.ts";
 
 config({ path: ".env.local" });
 config();
@@ -10,45 +9,23 @@ config();
 const connectionString = process.env.DATABASE_URL?.trim();
 if (!connectionString) throw new Error("DATABASE_URL nao configurada.");
 
-neonConfig.webSocketConstructor = ws;
-const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString }) });
+const connection = createDatabaseConnection(connectionString);
+const db = connection.db;
 
 async function main() {
-  const suppliers = await prisma.supplier.findMany({
-    include: { person: true, company: true },
-  });
+  const suppliers = (await db.execute(sql`SELECT s.id,s.status,s."personId",s."companyId",p.id AS "personRecordId",p."fullName",p.cpf,c."corporateName",c.cnpj FROM "Supplier" s LEFT JOIN "Person" p ON p.id=s."personId" LEFT JOIN "Company" c ON c.id=s."companyId"`)).rows;
   let created = 0;
 
   for (const supplier of suppliers) {
-    const name = supplier.company?.corporateName ?? supplier.person?.fullName;
-    const document = supplier.company?.cnpj ?? supplier.person?.cpf;
+    const name = supplier.corporateName ?? supplier.fullName;
+    const document = supplier.cnpj ?? (supplier.personRecordId ? supplier.cpf : undefined);
     if (!name) continue;
 
-    const existing = await prisma.creditor.findFirst({
-      where: {
-        OR: [
-          { supplierId: supplier.id },
-          ...(supplier.personId ? [{ personId: supplier.personId }] : []),
-          ...(supplier.companyId ? [{ companyId: supplier.companyId }] : []),
-        ],
-      },
-    });
+    const [existing] = (await db.execute(sql`SELECT id FROM "Creditor" WHERE "supplierId"=${supplier.id} ${supplier.personId ? sql`OR "personId"=${supplier.personId}` : sql``} ${supplier.companyId ? sql`OR "companyId"=${supplier.companyId}` : sql``} LIMIT 1`)).rows;
     if (existing) {
-      await prisma.creditor.update({
-        where: { id: existing.id },
-        data: { supplierId: supplier.id, name, document, status: supplier.status },
-      });
+      await db.execute(sql`UPDATE "Creditor" SET "supplierId"=${supplier.id},name=${name},status=${supplier.status},"updatedAt"=${new Date()} ${document === undefined ? sql`` : sql`,document=${document}`} WHERE id=${existing.id}`);
     } else {
-      await prisma.creditor.create({
-        data: {
-          supplierId: supplier.id,
-          name,
-          document,
-          status: supplier.status,
-          personId: supplier.personId ?? undefined,
-          companyId: supplier.companyId ?? undefined,
-        },
-      });
+      await db.execute(sql`INSERT INTO "Creditor" (id,"supplierId",name,document,status,"personId","companyId","updatedAt") VALUES (${createId()},${supplier.id},${name},${document ?? null},${supplier.status},${supplier.personId},${supplier.companyId},${new Date()})`);
       created += 1;
     }
   }
@@ -57,7 +34,7 @@ async function main() {
 }
 
 main()
-  .finally(async () => prisma.$disconnect())
+  .finally(async () => connection.pool.end())
   .catch((error) => {
     console.error(error);
     process.exit(1);

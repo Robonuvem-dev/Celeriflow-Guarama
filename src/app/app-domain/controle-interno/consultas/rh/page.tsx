@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { canViewModule, getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { readControlWorkforceStatistics, workforceStatisticsInput } from "@/lib/c7/workforce-statistics";
+import { db, databaseConnection } from "@/db/client";
+import { modules } from "@/db/schema/identity";
+import { and, eq } from "drizzle-orm";
+import { listControlWorkforceYears } from "@/db/repositories/internal-control/workforce";
 
 export default async function ControlWorkforceConsultation({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { prisma, user } = await getTenantContextForModule("ADMINISTRACAO");
-  if (!canViewModule(user, "RH") || !await prisma.configuracaoModulo.count({ where: { codigo: "RH", ativo: true } })) return <p className="p-5">Estatísticas funcionais exigem RH ativo e leitura autorizada.</p>;
+  const { user } = await getTenantContextForModule("ADMINISTRACAO");
+  if (!canViewModule(user, "RH") || !(await db.select({ id: modules.id }).from(modules).where(and(eq(modules.codigo, "RH"), eq(modules.ativo, true))).limit(1)).length) return <p className="p-5">Estatísticas funcionais exigem RH ativo e leitura autorizada.</p>;
   const actor = { usuarioId: user.id, allowedBudgetUnitIds: isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds };
-  const years = await prisma.financialYear.findMany({ where: { governmentEntity: { planningUnits: { some: actor.allowedBudgetUnitIds ? { budgetUnitId: { in: actor.allowedBudgetUnitIds } } : {} } } }, select: { id: true, year: true, governmentEntity: { select: { name: true } } }, orderBy: [{ year: "desc" }, { id: "asc" }] });
+  const years = await listControlWorkforceYears(db, actor.allowedBudgetUnitIds);
   if (!years.length) return <p className="p-5">Sem exercício municipal autorizado.</p>;
   const raw = await searchParams;
   const values = Object.fromEntries(Object.entries(raw).filter(([, value]) => typeof value === "string" && value !== ""));
@@ -14,7 +18,7 @@ export default async function ControlWorkforceConsultation({ searchParams }: { s
   const input = workforceStatisticsInput.safeParse({ financialYearId: selectedYear.id, referenceDate: `${selectedYear.year}-12-31`, ...values });
   if (!input.success) return <p className="p-5">{input.error.issues[0]?.message ?? "Filtros inválidos."}</p>;
   if (!years.some(year => year.id === input.data.financialYearId) || !input.data.referenceDate.startsWith(`${selectedYear.year}-`)) return <p className="p-5">Exercício ou referência fora do escopo selecionado.</p>;
-  const data = await readControlWorkforceStatistics(prisma, actor, input.data);
+  const data = await readControlWorkforceStatistics(databaseConnection, actor, input.data);
   const exportQuery = new URLSearchParams(Object.entries(input.data).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]));
   return <section className="space-y-4 p-5">
     <h1 className="text-xl font-semibold">Controle Interno — estatísticas funcionais por referência</h1>

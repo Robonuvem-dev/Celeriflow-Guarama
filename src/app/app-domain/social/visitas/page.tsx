@@ -4,16 +4,13 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { VisitasClient } from "./VisitasClient";
 import { resolveSocialAccess } from "@/lib/social/access-policy";
+import { db } from "@/db/client";
+import { listSocialVisits } from "@/db/repositories/social/queries";
 
 export default async function SocialVisitasPage() {
   const context = await getTenantContextForModule("SOCIAL");
-  const { prisma } = context;
   const access = await resolveSocialAccess(context);
-  const visits = await prisma.socialVisit.findMany({
-    where: access.administrator ? {} : { professionalId: access.employeeId || "", unitId: { in: access.links.map((link) => link.unitId) } },
-    include: { family: { include: { representative: true, address: true } }, professional: { include: { person: true } } },
-    orderBy: { scheduledDate: "asc" },
-  });
+  const visits = await listSocialVisits(context.database ?? db, access);
   const rows = visits.map((visit) => ({
     id: visit.id,
     date: visit.scheduledDate.toISOString(),

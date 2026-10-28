@@ -1,13 +1,14 @@
 import { config } from "dotenv";
-import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { createDatabaseConnection } from "../src/db/connection";
+import { withDatabaseTransaction } from "../src/db/transaction";
+import { departments, employees, roles, secretariats } from "../src/db/schema/administration";
+import { accessProfiles, users } from "../src/db/schema/identity";
+import { auditEvents } from "../src/db/schema/audit";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolveSecretariatManager } from "../src/lib/administration/secretariat-manager";
 
 config({ path: ".env.local", quiet: true }); config({ quiet: true });
-neonConfig.webSocketConstructor = ws;
 const prefix = "aurora-leadership-v1";
 // Appoint existing fictional employees; preserve their canonical person records,
 // salary, payroll items and other operational history.
@@ -28,37 +29,51 @@ const appointments = [
 ] as const;
 
 async function main() {
-  const db = new PrismaClient({ adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL! }), transactionOptions: { timeout: 120000 } });
+  const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL não configurada.");
+  const connection = createDatabaseConnection(connectionString);
+  const db = connection.db;
   try {
-    const preview = await Promise.all(appointments.map(async ([secretariatId, employeeId, role]) => ({ secretariat: await db.secretariat.findUniqueOrThrow({ where: { id: secretariatId }, select: { id: true, name: true, managerId: true } }), employee: await db.employee.findUniqueOrThrow({ where: { id: employeeId }, select: { id: true, name: true, secretariatId: true, departmentId: true, unitId: true, roleId: true } }), role })));
+    const preview = await Promise.all(appointments.map(async ([secretariatId, employeeId, role]) => {
+      const [[secretariat], [employee]] = await Promise.all([
+        db.select({ id: secretariats.id, name: secretariats.name, managerId: secretariats.managerId }).from(secretariats).where(eq(secretariats.id, secretariatId)).limit(1),
+        db.select({ id: employees.id, name: employees.name, secretariatId: employees.secretariatId, departmentId: employees.departmentId, unitId: employees.unitId, roleId: employees.roleId }).from(employees).where(eq(employees.id, employeeId)).limit(1),
+      ]);
+      if (!secretariat || !employee) throw new Error(`Secretaria ou servidor não encontrado para ${secretariatId}.`);
+      return { secretariat, employee, role };
+    }));
     if (!process.argv.includes("--apply")) { console.log(JSON.stringify({ mode: "PREVIEW", appointments: preview }, null, 2)); return; }
-    const actor = await db.usuario.findFirstOrThrow({ where: { ativo: true, perfil: { codigo: "SYSTEM_ADMINISTRATOR" } }, select: { id: true } });
+    const [actor] = await db.select({ id: users.id }).from(users).innerJoin(accessProfiles, eq(users.perfilId, accessProfiles.id)).where(and(eq(users.ativo, true), eq(accessProfiles.codigo, "SYSTEM_ADMINISTRATOR"))).limit(1);
+    if (!actor) throw new Error("Administrador ativo não encontrado.");
     mkdirSync(".next/cache/data-review", { recursive: true });
     const snapshotPath = `.next/cache/data-review/leadership-before-${Date.now()}.json`;
     writeFileSync(snapshotPath, JSON.stringify(preview, null, 2));
-    await db.$transaction(async tx => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${prefix}))`;
+    await withDatabaseTransaction(connection, async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${prefix}))`);
       for (const [index, appointment] of preview.entries()) {
         const { secretariat, employee, role } = appointment;
         const marker = `${prefix}:${index}`;
-        if (await tx.auditEvent.findUnique({ where: { id: marker } })) continue;
+        if ((await tx.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.id, marker)).limit(1)).length) continue;
         if (secretariat.managerId) continue; // Preserve any manager already assigned by the user.
-        const roleRecord = await tx.role.findFirst({ where: { name: role, isActive: true }, select: { id: true } }) || await tx.role.create({ data: { id: `${prefix}:role:${index}`, name: role, level: "Agente político / Direção", description: "Nomeação fictícia para a base de demonstração municipal." } });
+        const [existingRole] = await tx.select({ id: roles.id }).from(roles).where(and(eq(roles.name, role), eq(roles.isActive, true))).limit(1);
+        const roleRecord = existingRole || (await tx.insert(roles).values({ id: `${prefix}:role:${index}`, name: role, level: "Agente político / Direção", description: "Nomeação fictícia para a base de demonstração municipal." }).returning({ id: roles.id }))[0];
         let departmentId = employee.departmentId;
         let unitId = employee.unitId;
         if (employee.secretariatId !== secretariat.id) {
-          const department = await tx.department.findFirst({ where: { secretariatId: secretariat.id, isActive: true }, select: { id: true } }) || await tx.department.create({ data: { id: `${prefix}:department:${index}`, name: secretariat.id === "p0-current-secretariat-leg" ? "Diretoria Administrativa" : "Gabinete da Secretaria", secretariatId: secretariat.id } });
+          const [existingDepartment] = await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.secretariatId, secretariat.id), eq(departments.isActive, true))).limit(1);
+          const department = existingDepartment || (await tx.insert(departments).values({ id: `${prefix}:department:${index}`, name: secretariat.id === "p0-current-secretariat-leg" ? "Diretoria Administrativa" : "Gabinete da Secretaria", secretariatId: secretariat.id }).returning({ id: departments.id }))[0];
           departmentId = department.id;
           unitId = null;
         }
-        await tx.employee.update({ where: { id: employee.id }, data: { roleId: roleRecord.id, secretariatId: secretariat.id, departmentId, unitId } });
+        await tx.update(employees).set({ roleId: roleRecord.id, secretariatId: secretariat.id, departmentId, unitId }).where(eq(employees.id, employee.id));
         const manager = await resolveSecretariatManager(tx, secretariat.id, employee.id);
-        await tx.secretariat.update({ where: { id: secretariat.id }, data: manager });
-        await tx.auditEvent.create({ data: { id: marker, eventType: "ADMINISTRATIVE_MUTATION", targetType: "SECRETARIAT", targetId: secretariat.id, actorUsuarioId: actor.id } });
+        await tx.update(secretariats).set(manager).where(eq(secretariats.id, secretariat.id));
+        await tx.insert(auditEvents).values({ id: marker, eventType: "ADMINISTRATIVE_MUTATION", targetType: "SECRETARIAT", targetId: secretariat.id, actorUsuarioId: actor.id });
       }
-    });
-    const result = await db.secretariat.findMany({ select: { name: true, managerId: true, manager: { select: { name: true, isActive: true, role: { select: { name: true } }, secretariatId: true } } }, orderBy: { name: "asc" } });
+    }, { timeoutMs: 120_000 });
+    const rows = await db.select({ name: secretariats.name, managerId: secretariats.managerId, manager: { name: employees.name, isActive: employees.isActive, secretariatId: employees.secretariatId }, role: { name: roles.name } }).from(secretariats).leftJoin(employees, eq(secretariats.managerId, employees.id)).leftJoin(roles, eq(employees.roleId, roles.id)).orderBy(asc(secretariats.name));
+    const result = rows.map(({ manager, role, ...row }) => ({ ...row, manager: manager ? { ...manager, role } : null }));
     console.log(JSON.stringify({ mode: "APPLIED", snapshotPath, result }, null, 2));
-  } finally { await db.$disconnect(); }
+  } finally { await connection.pool.end(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Decimal } from "@/db/decimal";
 import { preventionLabels } from "@/lib/sst/prevention-fields";
 import { preventionKinds, type PreventionPayload } from "@/lib/sst/prevention-policy";
 import type { MeetingArtifact } from "@/lib/sst/prevention-service";
@@ -15,6 +15,6 @@ function Content({ value, names, name = "" }: { value: unknown; names: Record<st
   return <span>{translations[String(value)] || String(value)}</span>;
 }
 export function PreventionDocument({ title, payload, names, meeting }: { title: string; payload: PreventionPayload; names: Record<string, string>; meeting?: MeetingArtifact }) {
-  const cost = payload.kind === "SIPAT" ? payload.activities.reduce((sum, a) => sum.plus(a.cost), new Prisma.Decimal(0)).toFixed(2) : null;
+  const cost = payload.kind === "SIPAT" ? payload.activities.reduce((sum, a) => sum.plus(a.cost), new Decimal(0)).toFixed(2) : null;
   return <article className="space-y-5 rounded border bg-white p-5 text-sm text-slate-900"><h1 className="text-xl font-semibold">{title}</h1><h2>{preventionKinds[payload.kind]}</h2>{cost && <p className="font-semibold">Custo total da programação: R$ {cost.replace(".", ",")}</p>}<Content value={payload} names={names} />{meeting && <section className="space-y-3 border-t pt-4"><h2 className="text-lg font-semibold">Ata, presenças e adiamentos</h2><p>Data original: {new Date(meeting.originalAt).toLocaleString("pt-BR")}</p><p>Data vigente: {new Date(meeting.at).toLocaleString("pt-BR")}</p>{meeting.postponements.map((p, i) => <p key={i}>Adiado de {new Date(p.from).toLocaleString("pt-BR")} para {new Date(p.to).toLocaleString("pt-BR")}: {p.reason}</p>)}<ul>{meeting.participants.map(p => <li key={p.employeeId}>{p.name} — {p.function}: {p.present === null ? "Presença pendente" : p.present ? "Presente" : "Ausente"}</li>)}</ul><p className="whitespace-pre-wrap">{meeting.minutes || "Ata pendente."}</p></section>}</article>;
 }

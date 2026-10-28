@@ -2,13 +2,12 @@ import { Mic } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listHearings } from "@/db/repositories/chamber/queries";
 
 export default async function AudienciasPage() {
-  const { prisma } = await getTenantContextForModule("CAMARA");
-  const audiencias = await prisma.camAudiencia.findMany({
-    include: { sessao: true, legislatura: true },
-    orderBy: { data: "desc" },
-  });
+  await getTenantContextForModule("CAMARA");
+  const audiencias = await listHearings(db);
 
   return (
     <PageFrame className="space-y-3 px-1 py-1 md:px-2">

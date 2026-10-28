@@ -5,7 +5,15 @@ import { z } from "zod";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { assertSocialUnitAccess, resolveSocialAccess, socialHistoryWhere } from "@/lib/social/access-policy";
 import { factSchema, financialEntrySchema, socialDateSchema } from "@/lib/social/history-input";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { getPostgresError } from "@/db/errors";
+import { Decimal } from "@/db/decimal";
+import { and, eq, isNull } from "drizzle-orm";
+import { people } from "@/db/schema/people";
+import { socialCatalogEntries, socialUnits, socialPersonFacts, socialFinancialEntries, socialPersonProfiles } from "@/db/schema/social";
 
 function refresh(personId: string) {
   revalidatePath(`/social/pessoas/${personId}`);
@@ -13,8 +21,8 @@ function refresh(personId: string) {
 }
 function errorMessage(error: unknown) {
   if (error instanceof z.ZodError) return error.issues[0].message;
-  if (error instanceof Error && error.name.startsWith("Prisma")) return "Não foi possível salvar. Confira duplicidades e integridade dos dados.";
-  return error instanceof Error && !error.message.includes("prisma") ? error.message : "Não foi possível salvar o registro.";
+  if (getPostgresError(error)) return "Não foi possível salvar. Confira duplicidades e integridade dos dados.";
+  return error instanceof Error ? error.message : "Não foi possível salvar o registro.";
 }
 
 export async function registerSocialFact(input: unknown) {
@@ -23,17 +31,17 @@ export async function registerSocialFact(input: unknown) {
     const context = await getTenantContextForModuleOperation("SOCIAL", "create");
     const access = await resolveSocialAccess(context);
     assertSocialUnitAccess(access, data.unitId);
-    await context.prisma.$transaction(async (tx) => {
-      const [catalog, unit, person] = await Promise.all([
-        tx.socialCatalogEntry.findFirst({ where: { id: data.catalogId, kind: data.kind, isActive: true } }),
-        tx.socialUnit.findFirst({ where: { id: data.unitId, isActive: true } }),
-        tx.person.findFirst({ where: { id: data.personId, status: "Ativo" } }),
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [[catalog], [unit], [person]] = await Promise.all([
+        tx.select().from(socialCatalogEntries).where(and(eq(socialCatalogEntries.id, data.catalogId), eq(socialCatalogEntries.kind, data.kind), eq(socialCatalogEntries.isActive, true))),
+        tx.select().from(socialUnits).where(and(eq(socialUnits.id, data.unitId), eq(socialUnits.isActive, true))),
+        tx.select({ id: people.id }).from(people).where(and(eq(people.id, data.personId), eq(people.status, "Ativo"))),
       ]);
       if (!catalog || !unit || !person) throw new Error("Selecione pessoa, equipamento e classificação ativos.");
       if (catalog.allowedUnitTypes.length && !catalog.allowedUnitTypes.includes(unit.type)) throw new Error("Este tipo de equipamento não pode identificar esta classificação.");
-      if (await tx.socialPersonFact.findFirst({ where: { personId: data.personId, catalogId: data.catalogId, unitId: data.unitId, endedAt: null } })) throw new Error("Já existe identificação ativa desta classificação no equipamento.");
-      const record = await tx.socialPersonFact.create({ data: { ...data, identifiedAt: new Date(`${data.identifiedAt}T00:00:00Z`), createdBy: context.user.id } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialPersonFact", targetId: record.id });
+      if ((await tx.select({ id: socialPersonFacts.id }).from(socialPersonFacts).where(and(eq(socialPersonFacts.personId, data.personId), eq(socialPersonFacts.catalogId, data.catalogId), eq(socialPersonFacts.unitId, data.unitId), isNull(socialPersonFacts.endedAt))).limit(1)).length) throw new Error("Já existe identificação ativa desta classificação no equipamento.");
+      const [record] = await tx.insert(socialPersonFacts).values({ ...data, identifiedAt: new Date(`${data.identifiedAt}T00:00:00Z`), createdBy: context.user.id }).returning({ id: socialPersonFacts.id });
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialPersonFact", targetId: record.id });
     });
     refresh(data.personId);
     return { success: true };
@@ -45,14 +53,14 @@ export async function endSocialFact(input: unknown) {
     const data = z.object({ id: z.string().min(1), endedAt: socialDateSchema, reason: z.string().trim().min(3).max(2000) }).parse(input);
     const context = await getTenantContextForModuleOperation("SOCIAL", "update");
     const access = await resolveSocialAccess(context);
-    const record = await context.prisma.$transaction(async (tx) => {
-      const current = await tx.socialPersonFact.findFirst({ where: { id: data.id, ...socialHistoryWhere(access) } });
+    const record = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [current] = await tx.select().from(socialPersonFacts).where(and(eq(socialPersonFacts.id, data.id), socialHistoryWhere(access)));
       if (!current) throw new Error("Registro não encontrado.");
       assertSocialUnitAccess(access, current.unitId);
       if (data.endedAt < current.identifiedAt.toISOString().slice(0, 10)) throw new Error("Encerramento anterior à identificação.");
-      const result = await tx.socialPersonFact.updateMany({ where: { id: current.id, endedAt: null }, data: { endedAt: new Date(`${data.endedAt}T00:00:00Z`), endingReason: data.reason, endedBy: context.user.id } });
-      if (result.count !== 1) throw new Error("Registro já encerrado. Atualize a página.");
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialPersonFact", targetId: current.id });
+      const result = await tx.update(socialPersonFacts).set({ endedAt: new Date(`${data.endedAt}T00:00:00Z`), endingReason: data.reason, endedBy: context.user.id }).where(and(eq(socialPersonFacts.id, current.id), isNull(socialPersonFacts.endedAt))).returning({ id: socialPersonFacts.id });
+      if (result.length !== 1) throw new Error("Registro já encerrado. Atualize a página.");
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialPersonFact", targetId: current.id });
       return current;
     });
     refresh(record.personId);
@@ -66,13 +74,13 @@ export async function registerSocialFinancialEntry(input: unknown) {
     const context = await getTenantContextForModuleOperation("SOCIAL", "create");
     const access = await resolveSocialAccess(context);
     assertSocialUnitAccess(access, data.unitId);
-    await context.prisma.$transaction(async (tx) => {
-      const catalog = await tx.socialCatalogEntry.findFirst({ where: { id: data.catalogId, kind: data.kind, isActive: true } });
-      const person = await tx.person.findFirst({ where: { id: data.personId, status: "Ativo" }, select: { id: true } });
-      const unit = await tx.socialUnit.findFirst({ where: { id: data.unitId, isActive: true }, select: { id: true } });
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [catalog] = await tx.select({ id: socialCatalogEntries.id }).from(socialCatalogEntries).where(and(eq(socialCatalogEntries.id, data.catalogId), eq(socialCatalogEntries.kind, data.kind), eq(socialCatalogEntries.isActive, true)));
+      const [person] = await tx.select({ id: people.id }).from(people).where(and(eq(people.id, data.personId), eq(people.status, "Ativo")));
+      const [unit] = await tx.select({ id: socialUnits.id }).from(socialUnits).where(and(eq(socialUnits.id, data.unitId), eq(socialUnits.isActive, true)));
       if (!catalog || !person || !unit) throw new Error("Pessoa, equipamento ou classificação inativa/inexistente.");
-      const entry = await tx.socialFinancialEntry.create({ data: { ...data, competence: new Date(`${data.competence}-01T00:00:00Z`), createdBy: context.user.id } });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialFinancialEntry", targetId: entry.id });
+      const [entry] = await tx.insert(socialFinancialEntries).values({ ...data, value: new Decimal(data.value), competence: new Date(`${data.competence}-01T00:00:00Z`), createdBy: context.user.id }).returning({ id: socialFinancialEntries.id });
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialFinancialEntry", targetId: entry.id });
     });
     refresh(data.personId);
     return { success: true };
@@ -84,13 +92,13 @@ export async function cancelSocialFinancialEntry(input: unknown) {
     const data = z.object({ id: z.string().min(1), reason: z.string().trim().min(3).max(2000) }).parse(input);
     const context = await getTenantContextForModuleOperation("SOCIAL", "update");
     const access = await resolveSocialAccess(context);
-    const record = await context.prisma.$transaction(async (tx) => {
-      const current = await tx.socialFinancialEntry.findFirst({ where: { id: data.id, ...socialHistoryWhere(access) } });
+    const record = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [current] = await tx.select().from(socialFinancialEntries).where(and(eq(socialFinancialEntries.id, data.id), socialHistoryWhere(access, socialFinancialEntries)));
       if (!current) throw new Error("Registro não encontrado.");
       assertSocialUnitAccess(access, current.unitId);
-      const result = await tx.socialFinancialEntry.updateMany({ where: { id: current.id, cancelledAt: null }, data: { cancelledAt: new Date(), cancellationReason: data.reason, cancelledBy: context.user.id } });
-      if (result.count !== 1) throw new Error("Registro já cancelado. Atualize a página.");
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialFinancialEntry", targetId: current.id });
+      const result = await tx.update(socialFinancialEntries).set({ cancelledAt: new Date(), cancellationReason: data.reason, cancelledBy: context.user.id }).where(and(eq(socialFinancialEntries.id, current.id), isNull(socialFinancialEntries.cancelledAt))).returning({ id: socialFinancialEntries.id });
+      if (result.length !== 1) throw new Error("Registro já cancelado. Atualize a página.");
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialFinancialEntry", targetId: current.id });
       return current;
     });
     refresh(record.personId);
@@ -105,11 +113,11 @@ export async function saveSocialPersonProfile(input: unknown) {
     const context = await getTenantContextForModuleOperation("SOCIAL", "update");
     const access = await resolveSocialAccess(context);
     if (!access.administrator && !access.links.length) throw new Error("É necessário vínculo social vigente.");
-    await context.prisma.$transaction(async (tx) => {
-      if (!await tx.person.findUnique({ where: { id: data.personId }, select: { id: true } })) throw new Error("Pessoa não encontrada.");
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      if (!(await tx.select({ id: people.id }).from(people).where(eq(people.id, data.personId))).length) throw new Error("Pessoa não encontrada.");
       const values = { nis: data.nis || null, genderIdentity: data.genderIdentity || null, sexualOrientation: data.sexualOrientation || null, workSituation: data.workSituation || null, occupation: data.occupation || null, workplace: data.workplace || null, admittedAt: data.admittedAt ? new Date(`${data.admittedAt}T00:00:00Z`) : null, lastReviewedAt: new Date() };
-      const profile = await tx.socialPersonProfile.upsert({ where: { personId: data.personId }, create: { personId: data.personId, ...values }, update: values });
-      await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialPersonProfile", targetId: profile.id });
+      const [profile] = await tx.insert(socialPersonProfiles).values({ personId: data.personId, ...values }).onConflictDoUpdate({ target: socialPersonProfiles.personId, set: values }).returning({ id: socialPersonProfiles.id });
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "SocialPersonProfile", targetId: profile.id });
     });
     refresh(data.personId);
     return { success: true };

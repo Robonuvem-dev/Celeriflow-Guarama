@@ -2,25 +2,37 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import { auditEventTypes, writeAuditEvent } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { asc, eq, sql } from "drizzle-orm";
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { materialCategories, materialSubcategories } from "@/db/schema/assets-stock";
+import { activeMaterialCategory } from "@/db/repositories/assets/material-catalog";
 
 const subclassInput = z.object({ id: z.string().optional(), categoryId: z.string().min(1), code: z.string().trim().min(1).max(80), name: z.string().trim().min(1).max(300), isActive: z.boolean() });
 export default async function MaterialSubcategoriesPage() {
-  const { prisma } = await getTenantContextForModule("PATRIMONIO");
-  const [categories, subclasses] = await Promise.all([prisma.materialCategory.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }), prisma.materialSubcategory.findMany({ include: { category: true, _count: { select: { materials: true } } }, orderBy: [{ categoryId: "asc" }, { code: "asc" }] })]);
+  await getTenantContextForModule("PATRIMONIO");
+  const [categories, subclasses] = await Promise.all([
+    db.select().from(materialCategories).where(eq(materialCategories.isActive, true)).orderBy(asc(materialCategories.code)),
+    db.select({ subcategory: materialSubcategories, category: materialCategories, materials: sql<number>`(SELECT count(*)::int FROM "Material" WHERE "subcategoryId"=${materialSubcategories.id})` }).from(materialSubcategories)
+      .innerJoin(materialCategories, eq(materialCategories.id, materialSubcategories.categoryId)).orderBy(asc(materialSubcategories.categoryId), asc(materialSubcategories.code))
+      .then(rows => rows.map(row => ({ ...row.subcategory, category: row.category, _count: { materials: row.materials } }))),
+  ]);
   async function save(form: FormData): Promise<void> {
     "use server";
     const input = subclassInput.parse({ id: form.get("id") || undefined, categoryId: form.get("categoryId"), code: form.get("code"), name: form.get("name"), isActive: form.get("isActive") === "on" });
     const context = await getTenantContextForModuleOperation("PATRIMONIO", input.id ? "update" : "create");
-    await context.prisma.$transaction(async tx => {
-      await tx.$queryRaw`SELECT id FROM "MaterialCategory" WHERE id=${input.categoryId} FOR SHARE`;
-      if (!await tx.materialCategory.count({ where: { id: input.categoryId, isActive: true } })) throw new Error("Selecione classe ativa.");
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      await tx.execute(sql`SELECT id FROM "MaterialCategory" WHERE id=${input.categoryId} FOR SHARE`);
+      if (!await activeMaterialCategory(tx, input.categoryId)) throw new Error("Selecione classe ativa.");
       let id: string;
       if (input.id) {
-        const previous = await tx.materialSubcategory.findUniqueOrThrow({ where: { id: input.id } });
+        const [previous] = await tx.select().from(materialSubcategories).where(eq(materialSubcategories.id, input.id)).limit(1);
+        if (!previous) throw new Error("Subclasse não encontrada.");
         if (previous.categoryId !== input.categoryId || previous.code !== input.code) throw new Error("Classe/código da subclasse são permanentes; altere descrição ou situação.");
-        id = (await tx.materialSubcategory.update({ where: { id: previous.id }, data: { name: input.name, isActive: input.isActive } })).id;
-      } else id = (await tx.materialSubcategory.create({ data: { categoryId: input.categoryId, code: input.code, name: input.name, isActive: input.isActive } })).id;
+        id = (await tx.update(materialSubcategories).set({ name: input.name, isActive: input.isActive }).where(eq(materialSubcategories.id, previous.id)).returning({ id: materialSubcategories.id }))[0].id;
+      } else id = (await tx.insert(materialSubcategories).values({ categoryId: input.categoryId, code: input.code, name: input.name, isActive: input.isActive }).returning({ id: materialSubcategories.id }))[0].id;
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "MATERIAL_SUBCATEGORY", targetId: id });
     });
     revalidatePath("/patrimonio/materiais/subclasses"); revalidatePath("/patrimonio/materiais"); revalidatePath("/patrimonio/materiais/novo"); revalidatePath("/financeiro/custos");

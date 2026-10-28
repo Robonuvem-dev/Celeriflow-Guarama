@@ -1,6 +1,10 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+import { and, count, desc, eq, gte, ilike, inArray, lt, or, sql } from "drizzle-orm";
+import type { DatabaseExecutor as Db } from "@/db/transaction";
+import { Decimal } from "@/db/decimal";
+import { publicCommitments, publicAppropriations, publicBudgetUnits, publicExpenseNatures, publicResourceSources, publicRevenues } from "@/db/schema/transparency-financial";
+import { transparencyRevenueNatures } from "@/db/schema/transparency-planning";
+import { reconciliationBankAccounts } from "@/db/schema/finance-reconciliation";
+import { readPublicCommitments } from "@/db/repositories/transparency/financial";
 
 function maskDocument(doc?: string | null): string {
   if (!doc) return "NÃO INFORMADO";
@@ -68,11 +72,6 @@ export function parsePublicDataFilter(searchParams: URLSearchParams): PublicData
   };
 }
 
-function publicDateFilter(year?: number) {
-  if (!year) return {};
-  return { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) };
-}
-
 function normalizePublicFilter(filter: PublicDataFilter = {}) {
   const page = Math.max(1, Math.floor(filter.page ?? 1));
   const pageSize = Math.min(100, Math.max(1, Math.floor(filter.pageSize ?? 50)));
@@ -100,74 +99,24 @@ function publicSupplier(
 
 export async function getPublicExpenses(db: Db, filter?: PublicDataFilter) {
   const normalized = normalizePublicFilter(filter);
-  const where: Prisma.CommitmentWhereInput = {
-    AND: [
-      { status: { in: ["Emitido", "Liquidado", "Pago"] } },
-      ...(normalized.year ? [{ date: publicDateFilter(normalized.year) }] : []),
-      ...(normalized.budgetUnitCode ? [{ appropriation: { budgetUnit: { code: normalized.budgetUnitCode } } }] : []),
-      ...(normalized.resourceSourceCode ? [{ appropriation: { resourceSource: { code: normalized.resourceSourceCode } } }] : []),
-      ...(normalized.expenseNatureCode ? [{ appropriation: { expenseNature: { code: normalized.expenseNatureCode } } }] : []),
-      ...(normalized.search
-        ? [{
-            OR: [
-              { number: { contains: normalized.search, mode: "insensitive" as const } },
-              { appropriation: { budgetUnit: { name: { contains: normalized.search, mode: "insensitive" as const } } } },
-              { appropriation: { expenseNature: { name: { contains: normalized.search, mode: "insensitive" as const } } } },
-              { appropriation: { resourceSource: { name: { contains: normalized.search, mode: "insensitive" as const } } } },
-            ],
-          }]
-        : []),
-    ],
-  };
-
-  const [total, commitments] = await Promise.all([
-    db.commitment.count({ where }),
-    db.commitment.findMany({
-      where,
-      include: {
-        creditor: true,
-        supplier: {
-          include: {
-            person: { select: { cpf: true } },
-            company: { select: { corporateName: true, cnpj: true } },
-          },
-        },
-        process: { select: { protocolNumber: true } },
-        purchaseProcess: { select: { number: true, modality: true } },
-        contract: { select: { number: true } },
-        purchaseReceipt: { select: { number: true, receivedAt: true } },
-        covenant: { select: { number: true } },
-        appropriation: {
-          include: {
-            budgetUnit: true,
-            expenseNature: true,
-            resourceSource: true,
-            programPPA: true,
-            actionPPA: true,
-          },
-        },
-        settlements: {
-          where: { status: "Liquidado" },
-          include: { payments: { where: { status: { in: ["Pago", "Paga"] } } } },
-        },
-        payments: { where: { status: { in: ["Pago", "Paga"] } } },
-      },
-      orderBy: { date: "desc" },
-      skip: (normalized.page - 1) * normalized.pageSize,
-      take: normalized.pageSize,
-    }),
+  const pattern=`%${(normalized.search||"").replace(/[\\%_]/g,"\\$&")}%`;
+  const appropriationCriteria=and(eq(publicAppropriations.id,publicCommitments.appropriationId),normalized.budgetUnitCode?eq(publicBudgetUnits.code,normalized.budgetUnitCode):undefined,normalized.resourceSourceCode?eq(publicResourceSources.code,normalized.resourceSourceCode):undefined,normalized.expenseNatureCode?eq(publicExpenseNatures.code,normalized.expenseNatureCode):undefined,normalized.search?or(ilike(publicCommitments.number,pattern),ilike(publicBudgetUnits.name,pattern),ilike(publicExpenseNatures.name,pattern),ilike(publicResourceSources.name,pattern)):undefined);
+  const where=and(inArray(publicCommitments.status,["Emitido","Liquidado","Pago"]),normalized.year?and(gte(publicCommitments.date,new Date(Date.UTC(normalized.year,0,1))),lt(publicCommitments.date,new Date(Date.UTC(normalized.year+1,0,1)))):undefined,sql`EXISTS(SELECT 1 FROM ${publicAppropriations} JOIN ${publicBudgetUnits} ON ${publicBudgetUnits.id}=${publicAppropriations.budgetUnitId} JOIN ${publicExpenseNatures} ON ${publicExpenseNatures.id}=${publicAppropriations.expenseNatureId} JOIN ${publicResourceSources} ON ${publicResourceSources.id}=${publicAppropriations.resourceSourceId} WHERE ${appropriationCriteria})`);
+  const [[{total}], commitments] = await Promise.all([
+    db.select({total:count()}).from(publicCommitments).where(where),
+    readPublicCommitments(db,where,{offset:(normalized.page-1)*normalized.pageSize,limit:normalized.pageSize}),
   ]);
 
   const data = commitments.map((c) => {
-    const value = Number(c.valueDecimal ?? c.value);
+    const value = new Decimal(c.valueDecimal ?? c.value).toNumber();
     const supplier = publicSupplier(c.creditor, c.supplier);
 
     const totalSettled = c.settlements.reduce(
-      (sum, s) => sum + Number(s.valueDecimal ?? s.value),
-      0,
-    );
+      (sum, s) => sum.add(s.valueDecimal ?? s.value),
+      new Decimal(0),
+    ).toNumber();
 
-    const totalPaid = c.payments.reduce((sum, payment) => sum + Number(payment.valueDecimal ?? payment.value), 0);
+    const totalPaid = c.payments.reduce((sum, payment) => sum.add(payment.valueDecimal ?? payment.value), new Decimal(0)).toNumber();
     const latestSettlementDate = c.settlements.reduce<Date | null>(
       (latest, settlement) => !latest || settlement.date > latest ? settlement.date : latest,
       null,
@@ -225,39 +174,13 @@ export async function getPublicExpenses(db: Db, filter?: PublicDataFilter) {
 
 export async function getPublicRevenues(db: Db, filter?: PublicDataFilter) {
   const normalized = normalizePublicFilter(filter);
-  const where: Prisma.RevenueWhereInput = {
-    AND: [
-      { stage: "ARRECADADA" },
-      ...(normalized.year ? [{ date: publicDateFilter(normalized.year) }] : []),
-      ...(normalized.resourceSourceCode ? [{ resourceSource: { code: normalized.resourceSourceCode } }] : []),
-      ...(normalized.budgetUnitCode ? [{ bankAccount: { budgetUnit: { code: normalized.budgetUnitCode } } }] : []),
-      ...(normalized.revenueClassification ? [{ classification: normalized.revenueClassification }] : []),
-      ...(normalized.search
-        ? [{
-            OR: [
-              { revenueNature: { code: { contains: normalized.search, mode: "insensitive" as const } } },
-              { revenueNature: { name: { contains: normalized.search, mode: "insensitive" as const } } },
-              { resourceSource: { code: { contains: normalized.search, mode: "insensitive" as const } } },
-              { resourceSource: { name: { contains: normalized.search, mode: "insensitive" as const } } },
-            ],
-          }]
-        : []),
-    ],
-  };
-  const [total, revenues] = await Promise.all([
-    db.revenue.count({ where }),
-    db.revenue.findMany({
-      where,
-      include: {
-        revenueNature: true,
-        resourceSource: true,
-        bankAccount: { include: { budgetUnit: true } },
-      },
-      orderBy: { date: "desc" },
-      skip: (normalized.page - 1) * normalized.pageSize,
-      take: normalized.pageSize,
-    }),
+  const pattern=`%${(normalized.search||"").replace(/[\\%_]/g,"\\$&")}%`;
+  const where=and(eq(publicRevenues.stage,"ARRECADADA"),normalized.year?and(gte(publicRevenues.date,new Date(Date.UTC(normalized.year,0,1))),lt(publicRevenues.date,new Date(Date.UTC(normalized.year+1,0,1)))):undefined,normalized.resourceSourceCode?eq(publicResourceSources.code,normalized.resourceSourceCode):undefined,normalized.budgetUnitCode?eq(publicBudgetUnits.code,normalized.budgetUnitCode):undefined,normalized.revenueClassification?eq(publicRevenues.classification,normalized.revenueClassification):undefined,normalized.search?or(ilike(transparencyRevenueNatures.code,pattern),ilike(transparencyRevenueNatures.name,pattern),ilike(publicResourceSources.code,pattern),ilike(publicResourceSources.name,pattern)):undefined);
+  const [[{total}],revenueRows]=await Promise.all([
+    db.select({total:count()}).from(publicRevenues).innerJoin(transparencyRevenueNatures,eq(transparencyRevenueNatures.id,publicRevenues.revenueNatureId)).innerJoin(publicResourceSources,eq(publicResourceSources.id,publicRevenues.resourceSourceId)).leftJoin(reconciliationBankAccounts,eq(reconciliationBankAccounts.id,publicRevenues.bankAccountId)).leftJoin(publicBudgetUnits,eq(publicBudgetUnits.id,reconciliationBankAccounts.budgetUnitId)).where(where),
+    db.select({revenue:publicRevenues,revenueNature:transparencyRevenueNatures,resourceSource:publicResourceSources,budgetUnit:publicBudgetUnits}).from(publicRevenues).innerJoin(transparencyRevenueNatures,eq(transparencyRevenueNatures.id,publicRevenues.revenueNatureId)).innerJoin(publicResourceSources,eq(publicResourceSources.id,publicRevenues.resourceSourceId)).leftJoin(reconciliationBankAccounts,eq(reconciliationBankAccounts.id,publicRevenues.bankAccountId)).leftJoin(publicBudgetUnits,eq(publicBudgetUnits.id,reconciliationBankAccounts.budgetUnitId)).where(where).orderBy(desc(publicRevenues.date)).offset((normalized.page-1)*normalized.pageSize).limit(normalized.pageSize),
   ]);
+  const revenues=revenueRows.map(row=>({...row.revenue,revenueNature:row.revenueNature,resourceSource:row.resourceSource,bankAccount:{budgetUnit:row.budgetUnit}}));
 
   const data = revenues.map((r) => ({
     date: r.date,
@@ -271,7 +194,7 @@ export async function getPublicRevenues(db: Db, filter?: PublicDataFilter) {
     budgetUnitName: r.bankAccount?.budgetUnit?.name ?? null,
     classification: r.classification,
     description: r.history || "Arrecadação de Receita Pública",
-    value: Number(r.valueDecimal ?? r.value),
+    value: new Decimal(r.valueDecimal ?? r.value).toNumber(),
     status: r.status,
   }));
   const updatedAt = revenues.reduce<Date | null>(

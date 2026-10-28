@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { prisma } from "@/lib/prisma";
+import { databaseConnection } from "@/db/client";
 import { processControlAgendaCron } from "@/lib/c7/control-agenda-cron";
 import { C7OperationError } from "@/lib/c7/operations-service";
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const expected = Buffer.from(`Bearer ${secret}`);
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return Response.json({ error: "Não autorizado." }, { status: 401 });
   try {
-    const result = await processControlAgendaCron(prisma, process.env.CONTROL_AGENDA_ACTOR_USER_ID);
+    const result = await processControlAgendaCron(databaseConnection, process.env.CONTROL_AGENDA_ACTOR_USER_ID);
     if (result.failedPlanIds.length) console.error("CONTROL_AGENDA_PROCESSING_FAILED", { planIds: result.failedPlanIds });
     return Response.json({ status: result.failedPlanIds.length ? "ATTENTION" : "PROCESSED", ...result }, { status: result.failedPlanIds.length ? 503 : 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

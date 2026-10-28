@@ -1,184 +1,74 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  getProcurementExportDownload,
-  queueProcurementExport,
-  recordProcurementExportOutcome,
-} from "../src/lib/integrations/procurement-exports.ts";
-
-type MemoryRun = {
-  id: string;
-  connectionId: string;
-  operation: string;
-  environment: string;
-  status: string;
-  message: string;
-  externalId: string | null;
-  payload: Record<string, unknown>;
-  createdAt: Date;
-};
-
-function memoryDatabase(input: { connectionStatus?: string; resultReady?: boolean } = {}) {
-  const runs: MemoryRun[] = [];
-  const auditEvents: Array<Record<string, unknown>> = [];
-  const connection = {
-    id: "pncp-connection",
-    code: "PNCP",
-    environment: "MOCK",
-    status: input.connectionStatus ?? "ATIVA",
-    credentialReference: "secret://integracoes/pncp",
-    configuration: {
-      layout: {
-        code: "PNCP-CONTRATACOES",
-        version: "2026.1",
-        specificationReference: "https://example.test/pncp/contract",
-      },
-      operations: ["PROCUREMENT", "PROCEDURE_RESULT", "CONTRACT"],
-    },
-  };
-  const updatedAt = new Date("2026-09-19T12:00:00.000Z");
-  const currentResults = input.resultReady ? [{
-    id: "result-1",
-    status: "HOMOLOGADO",
-    totalValueDecimal: { toString: () => "1000.00" },
-    unitValueDecimal: { toString: () => "10.00" },
-    decidedAt: updatedAt,
-    participant: { id: "participant-1", displayCode: "SUPPLIER-1", supplierId: "supplier-1" },
-  }] : [];
-  const bidding = {
-    id: "bidding-1",
-    number: "LIC-2026-001",
-    modality: "PREGAO",
-    status: "HOMOLOGADA",
-    publicationDate: null,
-    sessionDate: null,
-    updatedAt,
-    process: {
-      id: "process-1",
-      number: "PROC-2026-001",
-      object: "Aquisicao POC",
-      type: "COMPRA",
-      modality: "PREGAO",
-      estimatedValue: 1000,
-      updatedAt,
-      items: [],
-    },
-    biddingLots: [{
-      id: "lot-1",
-      number: 1,
-      description: "Lote POC",
-      status: "HOMOLOGADO",
-      estimatedValueDecimal: { toString: () => "1000.00" },
-      results: currentResults,
-    }],
-  };
-  const auditEvent = {
-    create: async ({ data }: { data: Record<string, unknown> }) => {
-      auditEvents.push(data);
-    },
-  };
-  const tx = {
-    integrationRun: {
-      create: async ({ data }: { data: Omit<MemoryRun, "id" | "createdAt" | "externalId"> }) => {
-        const run: MemoryRun = {
-          ...data,
-          id: `run-${runs.length + 1}`,
-          createdAt: new Date("2026-09-19T12:01:00.000Z"),
-          externalId: null,
-        };
-        runs.push(run);
-        return run;
-      },
-      update: async ({ where, data }: { where: { id: string }; data: Partial<MemoryRun> }) => {
-        const run = runs.find((candidate) => candidate.id === where.id);
-        if (!run) throw new Error("Run not found");
-        Object.assign(run, data);
-        return run;
-      },
-    },
-    auditEvent,
-  };
-  const db = {
-    bidding: { findUnique: async () => bidding },
-    contract: { findUnique: async () => null },
-    integrationConnection: { findUnique: async () => connection },
-    integrationRun: {
-      findMany: async () => runs,
-      findUnique: async ({ where }: { where: { id: string } }) => {
-        const run = runs.find((candidate) => candidate.id === where.id);
-        return run ? { ...run, connection: { code: connection.code } } : null;
-      },
-    },
-    auditEvent,
-    $transaction: async <T>(operation: (transaction: typeof tx) => Promise<T>) => operation(tx),
-  };
-  return { db, connection, runs, auditEvents };
-}
+import { getProcurementExportDownload, listProcurementExportBoard, queueProcurementExport, recordProcurementExportOutcome } from "../src/lib/integrations/procurement-exports.ts";
+import { createProcurementDrizzleFixture } from "./helpers/procurement-drizzle-fixture";
 
 test("queued procurement packages are downloadable, audited, and manually confirmed without a network dispatch", async () => {
-  const memory = memoryDatabase();
-  const queued = await queueProcurementExport(memory.db as never, {
-    packageCode: "PNCP_PROCUREMENT",
-    targetId: "bidding-1",
-    actorUsuarioId: "buyer-1",
-  });
-
-  assert.equal(queued.status, "QUEUED");
-  assert.equal(memory.runs[0].payload.state, "QUEUED");
-  assert.deepEqual((memory.runs[0].payload.exportPackage as { delivery: unknown }).delivery, {
-    state: "QUEUED",
-    mode: "MANUAL_EXTERNAL_HANDOFF",
-    note: "Pacote POC preparado para o operador. Nenhuma transmissao de rede ou confirmacao externa foi executada por este fluxo.",
-  });
-
-  const download = await getProcurementExportDownload(memory.db as never, queued.runId, "buyer-1");
-  assert.match(download.filename, /^pncp_procurement-LIC-2026-001-run-1\.json$/);
-  assert.match(download.content, /MANUAL_EXTERNAL_HANDOFF/);
-
-  const confirmed = await recordProcurementExportOutcome(memory.db as never, {
-    runId: queued.runId,
-    status: "CONFIRMED",
-    externalReference: "PROTOCOLO-2026-001",
-    actorUsuarioId: "buyer-1",
-  });
-  assert.equal(confirmed.status, "CONFIRMED");
-  assert.equal(memory.runs[0].payload.state, "CONFIRMED");
-  const outcome = memory.runs[0].payload.outcome as { reference: string; recordedAt: string; source: string };
-  assert.equal(outcome.reference, "PROTOCOLO-2026-001");
-  assert.equal(outcome.source, "EXTERNAL_OPERATOR_RECORD");
-  assert.match(outcome.recordedAt, /^\d{4}-\d{2}-\d{2}T/);
-  assert.equal(memory.auditEvents.length, 3);
+  const f = await createProcurementDrizzleFixture({ resultReady: true });
+  try {
+    const input = { packageCode: "PNCP_PROCUREMENT" as const, targetId: "bidding-1", actorUsuarioId: "buyer-1" };
+    const queued = await queueProcurementExport(f.connection, input);
+    assert.equal(queued.status, "QUEUED");
+    assert.equal((await queueProcurementExport(f.connection, input)).runId, queued.runId);
+    assert.equal((await f.runs()).length, 1);
+    const [run] = await f.runs();
+    assert.equal(run.payload.state, "QUEUED");
+    assert.deepEqual((run.payload.exportPackage as { delivery: unknown }).delivery, {
+      state: "QUEUED", mode: "MANUAL_EXTERNAL_HANDOFF",
+      note: "Pacote POC preparado para o operador. Nenhuma transmissao de rede ou confirmacao externa foi executada por este fluxo.",
+    });
+    const board = await listProcurementExportBoard(f.connection.db);
+    assert.equal(board.find(row => row.packageCode === "PNCP_PROCUREMENT")?.runId, queued.runId);
+    const download = await getProcurementExportDownload(f.connection.db, queued.runId, "buyer-1");
+    assert.equal(download.filename, `pncp_procurement-LIC-2026-001-${queued.runId}.json`);
+    assert.match(download.content, /MANUAL_EXTERNAL_HANDOFF/);
+    const outcomeInput = { runId: queued.runId, status: "CONFIRMED" as const, externalReference: "PROTOCOLO-2026-001", actorUsuarioId: "buyer-1" };
+    const confirmed = await recordProcurementExportOutcome(f.connection, outcomeInput);
+    assert.equal(confirmed.status, "CONFIRMED");
+    assert.equal((await recordProcurementExportOutcome(f.connection, outcomeInput)).reused, true);
+    await assert.rejects(recordProcurementExportOutcome(f.connection, { ...outcomeInput, status: "REJECTED" }), /terminal/);
+    const payload = (await f.runs())[0].payload;
+    assert.equal(payload.state, "CONFIRMED");
+    const outcome = payload.outcome as { reference: string; recordedAt: string; source: string };
+    assert.equal(outcome.reference, "PROTOCOLO-2026-001");
+    assert.equal(outcome.source, "EXTERNAL_OPERATOR_RECORD");
+    assert.match(outcome.recordedAt, /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal((await f.audits()).length, 3);
+  } finally { await f.close(); }
 });
 
 test("configuration and source validation persist explicit pending and rejected package states", async () => {
-  const pendingMemory = memoryDatabase({ connectionStatus: "CONFIGURANDO" });
-  const pending = await queueProcurementExport(pendingMemory.db as never, {
-    packageCode: "PNCP_PROCUREMENT",
-    targetId: "bidding-1",
-    actorUsuarioId: "buyer-1",
-  });
-  assert.equal(pending.status, "PENDING_CONFIGURATION");
-  assert.equal(pendingMemory.runs[0].payload.exportPackage, undefined);
+  const f = await createProcurementDrizzleFixture({ connectionStatus: "CONFIGURANDO" });
+  try {
+    const input = { packageCode: "PNCP_PROCUREMENT" as const, targetId: "bidding-1", actorUsuarioId: "buyer-1" };
+    const pending = await queueProcurementExport(f.connection, input);
+    assert.equal(pending.status, "PENDING_CONFIGURATION");
+    assert.equal((await f.runs())[0].payload.exportPackage, undefined);
+    await f.pg.exec(`UPDATE "IntegrationConnection" SET status='ATIVA'`);
+    assert.equal((await queueProcurementExport(f.connection, input)).status, "QUEUED");
+    assert.equal((await f.runs()).length, 2);
+    const rejected = await queueProcurementExport(f.connection, { ...input, packageCode: "PNCP_PROCEDURE_RESULT" });
+    assert.equal(rejected.status, "REJECTED");
+    const run = (await f.runs()).find(row => row.id === rejected.runId)!;
+    assert.equal(run.payload.exportPackage, undefined);
+    assert.deepEqual(run.payload.validation, {
+      code: "CURRENT_RESULT_REQUIRED", message: "O pacote de procedimento e resultado exige resultado atual para todos os lotes da licitacao.",
+    });
+  } finally { await f.close(); }
+});
 
-  pendingMemory.connection.status = "ATIVA";
-  const released = await queueProcurementExport(pendingMemory.db as never, {
-    packageCode: "PNCP_PROCUREMENT",
-    targetId: "bidding-1",
-    actorUsuarioId: "buyer-1",
-  });
-  assert.equal(released.status, "QUEUED");
-  assert.equal(pendingMemory.runs.length, 2);
-
-  const rejectedMemory = memoryDatabase({ resultReady: false });
-  const rejected = await queueProcurementExport(rejectedMemory.db as never, {
-    packageCode: "PNCP_PROCEDURE_RESULT",
-    targetId: "bidding-1",
-    actorUsuarioId: "buyer-1",
-  });
-  assert.equal(rejected.status, "REJECTED");
-  assert.equal(rejectedMemory.runs[0].payload.exportPackage, undefined);
-  assert.deepEqual(rejectedMemory.runs[0].payload.validation, {
-    code: "CURRENT_RESULT_REQUIRED",
-    message: "O pacote de procedimento e resultado exige resultado atual para todos os lotes da licitacao.",
-  });
+test("procurement package and outcome roll back together with their audit evidence", async () => {
+  const f = await createProcurementDrizzleFixture();
+  try {
+    const input = { packageCode: "PNCP_PROCUREMENT" as const, targetId: "bidding-1", actorUsuarioId: "buyer-1" };
+    await f.pg.exec(`CREATE FUNCTION fail_export_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'export audit rollback'; END $$; CREATE TRIGGER fail_export_audit BEFORE INSERT ON "AuditEvent" FOR EACH ROW EXECUTE FUNCTION fail_export_audit()`);
+    await assert.rejects(queueProcurementExport(f.connection, input), error => error instanceof Error && error.cause instanceof Error && /export audit rollback/.test(error.cause.message));
+    assert.equal((await f.runs()).length, 0);
+    await f.pg.exec('DROP TRIGGER fail_export_audit ON "AuditEvent"');
+    const queued = await queueProcurementExport(f.connection, input);
+    await f.pg.exec('CREATE TRIGGER fail_export_audit BEFORE INSERT ON "AuditEvent" FOR EACH ROW EXECUTE FUNCTION fail_export_audit()');
+    await assert.rejects(recordProcurementExportOutcome(f.connection, { runId: queued.runId, status: "CONFIRMED", externalReference: "EXTERNAL-1", actorUsuarioId: "buyer-1" }), error => error instanceof Error && error.cause instanceof Error && /export audit rollback/.test(error.cause.message));
+    assert.equal((await f.runs())[0].payload.state, "QUEUED");
+    assert.equal((await f.audits()).length, 1);
+  } finally { await f.close(); }
 });

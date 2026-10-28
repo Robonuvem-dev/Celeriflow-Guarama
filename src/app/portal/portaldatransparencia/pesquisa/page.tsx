@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FileText, Search } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { getTransparencySettings } from "@/lib/transparencia/presentation-settings";
 import { publishedTransparencyCatalog } from "@/lib/transparencia/consultation-service";
 import { buildTransparencyDiscovery, searchTransparencyDiscovery } from "@/lib/transparencia/discovery";
@@ -19,7 +19,7 @@ const field = "mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-
 export default async function TransparencySearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const raw = await searchParams;
   const query = typeof raw.q === "string" ? raw.q.trim().slice(0, 200) : "";
-  const [settings, presentation] = await Promise.all([getTransparencySettings(prisma), getDiscoverySettings(prisma)]);
+  const [settings, presentation] = await Promise.all([getTransparencySettings(db), getDiscoverySettings(db)]);
   const catalog = publishedTransparencyCatalog(settings);
   const sections = applyDiscoverySettings(buildTransparencyDiscovery(catalog, settings), presentation);
   const results = searchTransparencyDiscovery(sections, query);
@@ -27,7 +27,7 @@ export default async function TransparencySearchPage({ searchParams }: { searchP
   let documents: Awaited<ReturnType<typeof searchPublishedDocuments>> | null = null;
   let documentError = "";
   if (parsed.success) {
-    try { documents = await searchPublishedDocuments(prisma, settings, parsed.data); }
+    try { documents = await searchPublishedDocuments(db, settings, parsed.data); }
     catch { documentError = "Não foi possível consultar os documentos com esses filtros. Revise a seleção ou tente novamente."; }
   } else documentError = "Os filtros informados não são válidos. Selecione um exercício, entidade e assunto disponíveis.";
   const documentHref = (page: number) => `${publicTransparencyPath}/pesquisa?${new URLSearchParams({ q: query, year: parsed.success ? parsed.data.year : "", entity: parsed.success ? parsed.data.entity : "", collection: parsed.success ? parsed.data.collection : "", page: String(page) })}#documentos-publicados`;

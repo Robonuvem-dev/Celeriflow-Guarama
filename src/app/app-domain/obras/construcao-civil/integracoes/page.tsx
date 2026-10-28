@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { loadPageExports } from "@/db/repositories/works-pages/integrations";
+import { listPageCaseOptions } from "@/db/repositories/works-pages/cases";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { constructionCaseWhere } from "@/lib/obras/construction-policy";
 import ConstructionIntegrationsClient from "./ConstructionIntegrationsClient";
 
 export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<{ q?: string; period?: string; kind?: string; receipt?: string; page?: string }> }) {
@@ -16,15 +17,9 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
   const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(query.period || "") ? query.period! : "";
   const kind = query.kind === "initial" || query.kind === "rectification" ? query.kind : "all";
   const receipt = query.receipt === "with" || query.receipt === "without" ? query.receipt : "all";
-  const scope: Prisma.ConstructionFederalExportWhereInput = access.administrator ? {} : { scope: access.departmentId || "", items: { every: { case: constructionCaseWhere(access) } } };
-  const where: Prisma.ConstructionFederalExportWhereInput = { AND: [scope, ...(q ? [{ OR: [{ id: { contains: q, mode: "insensitive" as const } }, { hashSha256: { contains: q, mode: "insensitive" as const } }, { reason: { contains: q, mode: "insensitive" as const } }, { items: { some: { case: { process: { protocolNumber: { contains: q, mode: "insensitive" as const } } } } } }] }] : [])], ...(period ? { period } : {}), ...(kind === "initial" ? { rectifiesId: null } : kind === "rectification" ? { rectifiesId: { not: null } } : {}), ...(receipt === "with" ? { receipts: { some: {} } } : receipt === "without" ? { receipts: { none: {} } } : {}) };
-  const total = await context.prisma.constructionFederalExport.count({ where });
-  const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
-  const [cases, batches, rectificationOptions] = await Promise.all([
-    context.prisma.constructionCase.findMany({ where: constructionCaseWhere(access), select: { id: true, process: { select: { protocolNumber: true } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
-    context.prisma.constructionFederalExport.findMany({ where, include: { receipts: { orderBy: { createdAt: "desc" } } }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 }),
-    context.prisma.constructionFederalExport.findMany({ where: access.administrator ? { scope: "GLOBAL" } : scope, select: { id: true, scope: true, period: true, version: true }, distinct: ["scope", "period"], orderBy: [{ scope: "asc" }, { period: "desc" }, { version: "desc" }] }),
-  ]);
+  const database = context.database ?? db;
+  const { total, page, batches, rectificationOptions } = await loadPageExports(database, access, { q, period, kind, receipt, page: query.page });
+  const cases = await listPageCaseOptions(database, access, { stable: true });
   const href = (target: number) => `?${new URLSearchParams({ q, period, kind, receipt, page: String(target) })}`;
   return <PageFrame className="space-y-4 p-4">
     <Link href="/obras/construcao-civil" className="text-sm underline">Construção Civil</Link>

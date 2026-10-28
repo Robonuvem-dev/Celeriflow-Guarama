@@ -1,8 +1,11 @@
-import { Prisma } from "@prisma/client";
+import { and, eq, sql } from "drizzle-orm";
+import type { JsonObject, JsonValue } from "@/db/json";
+import type { DatabaseExecutor } from "@/db/transaction";
+import { planningCatalogEntries, planningCatalogVersions } from "@/db/schema/planning-legal";
 
-type Entry = { id: string; kind: string; code: string; canonicalId: string; parentCode: string | null; degree: number; attributes: Prisma.JsonValue; version: { year: number } };
+type Entry = { id: string; kind: string; code: string; canonicalId: string; parentCode: string | null; degree: number; attributes: JsonValue; version: { year: number } };
 const metadata = new Set(["presentationPredecessorEntryId", "presentationPredecessorVersionId", "presentationEffectiveFrom"]);
-function object(value: Prisma.JsonValue): Prisma.JsonObject { return value && typeof value === "object" && !Array.isArray(value) ? value as Prisma.JsonObject : {}; }
+function object(value: JsonValue): JsonObject { return value && typeof value === "object" && !Array.isArray(value) ? value : {}; }
 function stable(value: unknown): string { if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`; if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`).join(",")}}`; return JSON.stringify(value); }
 
 /** Name-only revisions cannot change authority, posting permissions, scope or validity. */
@@ -15,7 +18,7 @@ export function currentPresentationEntries<T extends Entry>(entries: T[], day: s
     const previous = entries.find(row => row.id === attributes.presentationPredecessorEntryId);
     if (!previous) continue;
     const old = object(previous.attributes);
-    const strip = (value: Prisma.JsonObject) => Object.fromEntries(Object.entries(value).filter(([key]) => !metadata.has(key)));
+    const strip = (value: JsonObject) => Object.fromEntries(Object.entries(value).filter(([key]) => !metadata.has(key)));
     if (entry.kind !== previous.kind || entry.code !== previous.code || entry.canonicalId !== previous.canonicalId || entry.parentCode !== previous.parentCode || entry.degree !== previous.degree || entry.version.year !== previous.version.year || stable(strip(attributes)) !== stable(strip(old))) throw new Error("Revisão de nomes alterou a semântica da classificação; concilie a edição.");
     // A real municipal adoption already superseding this reference also supersedes its name-only copy.
     const adopted = entries.some(row => { const attrs = object(row.attributes); return attrs.operational === true && attrs.pocOnly === false && attrs.predecessorEntryId === previous.id; });
@@ -25,8 +28,8 @@ export function currentPresentationEntries<T extends Entry>(entries: T[], day: s
 }
 
 /** Historical editions remain addressable by ID; ordinary selectors show their current revision. */
-export async function supersededPresentationVersionIds(db: Pick<Prisma.TransactionClient, "planningCatalogEntry">, day: string): Promise<string[]> {
-  const revisions = await db.planningCatalogEntry.findMany({ where: { version: { status: "PUBLISHED" }, attributes: { path: ["presentationPredecessorVersionId"], not: Prisma.JsonNull } }, select: { attributes: true } });
+export async function supersededPresentationVersionIds(db: DatabaseExecutor, day: string): Promise<string[]> {
+  const revisions = await db.select({ attributes: planningCatalogEntries.attributes }).from(planningCatalogEntries).innerJoin(planningCatalogVersions, eq(planningCatalogVersions.id, planningCatalogEntries.versionId)).where(and(eq(planningCatalogVersions.status, "PUBLISHED"), sql`${planningCatalogEntries.attributes}->'presentationPredecessorVersionId' <> 'null'::jsonb`));
   return [...new Set(revisions.flatMap(row => {
     const attrs = object(row.attributes);
     return typeof attrs.presentationPredecessorVersionId === "string" && typeof attrs.presentationEffectiveFrom === "string" && attrs.presentationEffectiveFrom <= day ? [attrs.presentationPredecessorVersionId] : [];

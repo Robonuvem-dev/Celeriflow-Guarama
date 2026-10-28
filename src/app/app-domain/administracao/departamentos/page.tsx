@@ -4,21 +4,15 @@ import DepartamentosClient from "./DepartamentosClient";
 import { Network } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { listActiveSecretariatOptions, listDepartmentDetails } from "@/db/repositories/administration/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DepartamentosPage() {
-  const { prisma } = await getTenantContextForModule("ADMINISTRACAO");
-  const departments = await prisma.department.findMany({
-    orderBy: { name: 'asc' },
-    include: { secretariat: true }
-  });
-
-  const secretariats = await prisma.secretariat.findMany({
-    where: { isActive: true },
-    orderBy: { name: 'asc' },
-    select: { id: true, name: true }
-  });
+  const context = await getTenantContextForModule("ADMINISTRACAO");
+  const departments = await listDepartmentDetails(context.database ?? db);
+  const secretariats = await listActiveSecretariatOptions(context.database ?? db, true);
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col">

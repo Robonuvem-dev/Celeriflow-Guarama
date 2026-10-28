@@ -5,7 +5,11 @@ import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-contex
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
 import { constructionMessageSchema } from "@/lib/obras/construction-portal-policy";
 import { appendConstructionMessage } from "@/lib/obras/construction-conversation";
-import { writeAuditEvent, auditEventTypes } from "@/lib/platform/audit-evidence";
+import { auditEventTypes } from "@/lib/platform/audit-evidence";
+import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { constructionActionMessage } from "@/lib/obras/construction-errors";
 
 export async function sendConstructionInternalMessage(input: unknown) {
   try {
@@ -14,10 +18,10 @@ export async function sendConstructionInternalMessage(input: unknown) {
     const access = await resolveConstructionAccess(context);
     if (!access.employeeId || (!access.administrator && !access.roles.length)) throw new Error("Mensagem exige servidor e papel urbanístico vigente.");
     const employeeId = access.employeeId;
-    await context.prisma.$transaction(async (tx) => {
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
       const id = await appendConstructionMessage(tx, { employeeId, access }, data);
       await writeAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "ConstructionMessage", targetId: id });
     });
     revalidatePath(`/portal/construcao-civil/${data.caseId}`); revalidatePath(`/obras/construcao-civil/${data.caseId}`); return { success: true };
-  } catch (error) { return { error: error instanceof z.ZodError ? error.issues[0].message : error instanceof Error && !error.name.startsWith("Prisma") ? error.message : "Não foi possível enviar a mensagem." }; }
+  } catch (error) { return { error: constructionActionMessage(error, "Não foi possível enviar a mensagem.") }; }
 }

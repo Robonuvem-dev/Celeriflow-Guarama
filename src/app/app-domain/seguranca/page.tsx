@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { db } from "@/db/client";
+import { getSecurityOverview } from "@/db/repositories/security-mobility/queries";
 
 const quickLinks = [
   { title: "Guarda e Equipes", href: "/seguranca/guardas", icon: Users, text: "Efetivo, agentes de transito e equipes de escala." },
@@ -16,15 +18,8 @@ const quickLinks = [
 ];
 
 export default async function SegurancaDashboard() {
-  const { prisma } = await getTenantContextForModule("SEGURANCA");
-  const [guardas, ocorrencias, infracoes, registros, urgentes, recentes] = await Promise.all([
-    prisma.segurancaGuarda.count({ where: { isActive: true } }),
-    prisma.segurancaOcorrencia.count({ where: { isActive: true } }),
-    prisma.segurancaInfracao.count({ where: { isActive: true } }),
-    prisma.segurancaMobilidadeRegistro.count({ where: { isActive: true } }),
-    prisma.segurancaMobilidadeRegistro.count({ where: { isActive: true, prioridade: { in: ["Alta", "Urgente"] } } }),
-    prisma.segurancaMobilidadeRegistro.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-  ]);
+  await getTenantContextForModule("SEGURANCA");
+  const [guardas, ocorrencias, infracoes, registros, urgentes, recentes] = await getSecurityOverview(db);
 
   return (
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">

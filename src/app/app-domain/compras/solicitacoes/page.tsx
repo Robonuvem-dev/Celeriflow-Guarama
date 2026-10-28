@@ -1,18 +1,13 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { canManagePurchaseRequest } from "@/lib/compras/purchase-request-policy";
+import { db } from "@/db/client";
+import { listPurchaseRequests } from "@/db/repositories/procurement/purchase-requests";
 import { SolicitacoesListClient } from "./SolicitacoesListClient";
 
 export default async function SolicitacoesPage() {
-  const { prisma, user } = await getTenantContextForModule("COMPRAS");
-  const solicitacoes = await prisma.purchaseRequest.findMany({
-    include: {
-      secretariat: true,
-      department: true,
-      requester: true,
-      _count: { select: { items: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  }).catch(() => []);
+  const context = await getTenantContextForModule("COMPRAS");
+  const { user } = context;
+  const solicitacoes = await listPurchaseRequests(context.database ?? db).catch(() => []);
 
   return <SolicitacoesListClient requests={solicitacoes.map((request) => ({
     id: request.id,

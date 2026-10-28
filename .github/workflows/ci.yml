@@ -24,7 +24,7 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,7 +32,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma validate
+      - run: npm run db:migrate:verify
+      - run: npm run verify:database-migration
       - run: npm run test:unit
       - run: npm run build:check
       - run: npm audit --omit=dev --audit-level=high

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { exportPublicDataCSV } from "@/lib/transparencia/portal-fiscal";
 import { getPublicBiddings } from "@/lib/transparencia/portal-public";
 
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const format = request.nextUrl.searchParams.get("format");
   if (format && format !== "csv") return NextResponse.json({ error: "Parâmetro format inválido." }, { status: 400 });
   try {
-    const data = await getPublicBiddings(prisma);
+    const data = await getPublicBiddings(db);
     if (format === "csv") {
       return new NextResponse(exportPublicDataCSV(data), {
         headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=licitacoes-publicas.csv", "Cache-Control": "no-store" },

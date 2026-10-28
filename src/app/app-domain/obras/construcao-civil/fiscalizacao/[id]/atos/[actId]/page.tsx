@@ -2,7 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
-import { enforcementCaseWhere, enforcementActLabels, enforcementServiceLabels } from "@/lib/obras/construction-enforcement-policy";
+import { enforcementActLabels, enforcementServiceLabels } from "@/lib/obras/construction-enforcement-policy";
+import { db } from "@/db/client";
+import { findPageEnforcementPrint } from "@/db/repositories/works-pages/enforcement";
+import { pageEmployeeNames } from "@/db/repositories/works-pages/shared";
 import { EnforcementPrintButton } from "../../../EnforcementPrintButton";
 
 const date = (value: Date) => value.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -10,10 +13,11 @@ export default async function ConstructionEnforcementActPrint({ params }: { para
   const { id, actId } = await params;
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
-  const item = await context.prisma.constructionEnforcementCase.findFirst({ where: { AND: [{ id }, enforcementCaseWhere(access)] }, include: { process: { select: { protocolNumber: true } }, acts: { where: { id: actId }, include: { relatedAct: { select: { number: true } }, evidence: true, acknowledgements: { include: { evidence: true }, orderBy: { acknowledgedAt: "asc" } } } } } });
+  const database = context.database ?? db;
+  const item = await findPageEnforcementPrint(database, access, id, actId);
   const act = item?.acts[0];
   if (!item || !act) notFound();
-  const fiscal = await context.prisma.employee.findUnique({ where: { id: act.employeeId }, select: { name: true } });
+  const fiscal = (await pageEmployeeNames(database, [act.employeeId]))[0] ?? null;
   const property = item.cadastralSnapshot as Record<string, unknown>;
   const title = enforcementActLabels[act.kind as keyof typeof enforcementActLabels];
   return <main className="mx-auto max-w-3xl space-y-4 p-6 text-sm"><div className="flex items-center justify-between print:hidden"><Link href={`/obras/construcao-civil/fiscalizacao/${id}`} className="text-blue-700 underline">Voltar à fiscalização</Link><EnforcementPrintButton /></div>

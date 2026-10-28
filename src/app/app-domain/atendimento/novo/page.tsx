@@ -5,15 +5,19 @@ import { createTicket } from "../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import NovoChamadoForm from "./NovoChamadoForm";
+import { asc, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { supportChannels, serviceSubjects } from "@/db/schema/attendance-portals";
+import { departments as departmentTable } from "@/db/schema/administration";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovoChamadoPage() {
-  const { prisma } = await getAttendanceContext("edit");
+  await getAttendanceContext("edit");
   const [channels, departments, subjects] = await Promise.all([
-    prisma.supportChannel.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-    prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.serviceSubject.findMany({ where: { isActive: true }, select: { id: true, name: true, defaultDepartmentId: true, defaultPriority: true, defaultDueDays: true }, orderBy: { name: "asc" } }),
+    db.select().from(supportChannels).where(eq(supportChannels.isActive, true)).orderBy(asc(supportChannels.sortOrder), asc(supportChannels.name)),
+    db.select({ id: departmentTable.id, name: departmentTable.name }).from(departmentTable).where(eq(departmentTable.isActive, true)).orderBy(asc(departmentTable.name)),
+    db.select({ id: serviceSubjects.id, name: serviceSubjects.name, defaultDepartmentId: serviceSubjects.defaultDepartmentId, defaultPriority: serviceSubjects.defaultPriority, defaultDueDays: serviceSubjects.defaultDueDays }).from(serviceSubjects).where(eq(serviceSubjects.isActive, true)).orderBy(asc(serviceSubjects.name)),
   ]);
 
   return (

@@ -6,3 +6,10 @@ test("aplica o cenário obrigatório de produtividade e o ajuste autorizado", ()
 test("calcula obrigação principal com multa, acréscimos e desconto só sobre multa", () => { const result = calculateFiscalAssessment({ originalBase: 9_000, assessedBase: 10_000, rate: 3, penaltyRate: 50, interestRate: 2, correctionRate: 1, discountRate: 20 }); assert.equal(result.principal.toFixed(2), "30.00"); assert.equal(result.penalty.toFixed(2), "15.00"); assert.equal(result.discount.toFixed(2), "3.00"); assert.equal(result.total.toFixed(2), "42.90"); });
 test("seleciona uma única faixa de pontos nos limites", () => { const ranges=[{min:0,max:100,points:5},{min:100.01,max:null,points:8}]; assert.equal(pointsForValue({value:100,defaultPoints:0,ranges}).toFixed(2),"5.00"); assert.equal(pointsForValue({value:101,defaultPoints:0,ranges}).toFixed(2),"8.00"); });
 test("malha registra indício e não afirma fraude", () => { const result=classifyFiscalFinding({observed:10_000,declared:9_000,rate:3}); assert.equal(result.difference.toFixed(2),"1000.00"); assert.equal(result.potentialTax.toFixed(2),"30.00"); assert.equal(result.status,"INDICIO"); });
+
+test("malha conserva centavos de fontes numeric acima da precisão binária", () => {
+  const result = classifyFiscalFinding({ observed: "1234567890123456.78", declared: "1234567890123456.77", rate: "100" });
+  assert.equal(result.observed.toFixed(2), "1234567890123456.78");
+  assert.equal(result.difference.toFixed(2), "0.01");
+  assert.equal(result.potentialTax.toFixed(2), "0.01");
+});

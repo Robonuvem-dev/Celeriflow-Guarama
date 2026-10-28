@@ -4,7 +4,8 @@ import { Sprout, Search } from "lucide-react";
 import { NewGreenAreaSheet } from "../components/NewGreenAreaSheet";
 import { QuickFilters } from "../components/QuickFilters";
 import { GreenAreaRowActions } from "../components/GreenAreaRowActions";
-import type { Prisma } from "@prisma/client";
+import { db } from "@/db/client";
+import { listGreenAreas } from "@/db/repositories/environment/queries";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
@@ -13,12 +14,9 @@ import { environmentPageHref, filterAndPaginate } from "../list-utils";
 export const dynamic = "force-dynamic";
 
 export default async function AreasVerdesPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> | { [key: string]: string | undefined } }) {
-  const { prisma } = await getTenantContextForModule("MEIO_AMBIENTE");
+  const context = await getTenantContextForModule("MEIO_AMBIENTE");
   const searchParams = await Promise.resolve(props.searchParams || {});
-  const where: Prisma.EnvGreenAreaWhereInput = {};
-  if (searchParams.status) where.status = searchParams.status;
-
-  const greenAreas = await prisma.envGreenArea.findMany({ where, orderBy: { name: "asc" } });
+  const greenAreas = await listGreenAreas(context.database ?? db, searchParams);
 
   const list = filterAndPaginate(greenAreas, searchParams);
 

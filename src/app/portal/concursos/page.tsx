@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { AccessError, getCurrentTenantContext } from "@/lib/platform/tenant-context";
 import { listPublicRecruitmentNotices, readOwnRecruitmentApplications } from "@/lib/rh/recruitment-service";
 import { RecruitmentApplicationForm } from "./ApplicationForm";
@@ -7,7 +7,7 @@ import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell"
 
 export const dynamic = "force-dynamic";
 export default async function RecruitmentPortalPage() {
-  const notices = await listPublicRecruitmentNotices(prisma), now = new Date();
+  const notices = await listPublicRecruitmentNotices(db), now = new Date();
   const context = await getCurrentTenantContext().catch(error => { if (error instanceof AccessError) return null; throw error; });
   const applications = context ? await readOwnRecruitmentApplications(context) : [];
   return <main className="mx-auto max-w-5xl space-y-5 px-4 py-8"><PortalBreadcrumb current="Concursos e processos seletivos" /><h1 className="text-3xl font-bold">Concursos e processos seletivos</h1><p className="text-sm text-slate-600">Consulte os editais e inscreva-se com sua conta verificada. O candidato não precisa possuir vínculo de servidor.</p>

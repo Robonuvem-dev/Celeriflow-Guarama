@@ -1,24 +1,27 @@
+import "./helpers/fleet-test-environment";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Prisma } from "@prisma/client";
-import type { AppContext } from "../src/lib/platform/tenant-context";
+import { Decimal } from "../src/db/decimal";
+import { fleetConsumptions, fleetExpenses, fleetUnits } from "../src/db/schema/fleet";
 import { getFleetExpenseIndicators } from "../src/lib/frotas/indicators";
+import { createFleetTestDatabase, fleetTestContext } from "./fleet-fixture";
 
-test("BI de Frotas usa apenas a projeção canônica, recorte de setor e cobertura de valores", async () => {
-  const calls: { where: unknown }[] = [];
-  const context = { user: { id: "u", profileCode: "ANALISTA", departmentId: "saude", modulePermissions: [{ code: "FROTAS", canView: true, canEdit: false }] }, prisma: {
-    $transaction: async (run: (tx: unknown) => Promise<unknown>, options: unknown) => { assert.deepEqual(options, { isolationLevel: "RepeatableRead" }); return run({ fleetExpense: {
-      count: async (input: { where: unknown }) => { calls.push(input); return calls.length === 1 ? 3 : 1; },
-      aggregate: async (input: { where: unknown }) => { calls.push(input); return { _sum: { amount: new Prisma.Decimal("123.45") } }; },
-      groupBy: async (input: { where: unknown }) => { calls.push(input); return [{ nature: "COMBUSTIVEL", _sum: { amount: new Prisma.Decimal("123.45") }, _count: { _all: 3 } }]; },
-    } }); },
-  } } as unknown as AppContext;
-  const from = new Date("2026-01-01"), to = new Date("2026-09-30");
-  const result = await getFleetExpenseIndicators(context, from, to);
-  assert.equal(result.knownAmount, "123.45"); assert.equal(result.missing, 1); assert.equal(result.complete, false);
-  const where = { unit: { departmentId: "saude" }, occurredAt: { gte: from, lte: to } };
-  assert.deepEqual(calls[0].where, where); assert.deepEqual(calls[1].where, where);
-  assert.deepEqual(calls[2].where, { AND: [where, { amount: null }] }); assert.deepEqual(calls[3].where, where);
-  await assert.rejects(getFleetExpenseIndicators({ ...context, user: { ...context.user, modulePermissions: [] } }, from, to), /perfil/);
-  await assert.rejects(getFleetExpenseIndicators(context, to, from), /Período/);
+test("BI de Frotas usa apenas a projeção canônica, recorte de setor e cobertura de valores", { timeout: 180000 }, async () => {
+  const fixture = await createFleetTestDatabase(), { connection } = fixture, db = connection.db;
+  try {
+    const context = fleetTestContext(db, { id: "u", profileCode: "ANALISTA", departmentId: "saude", modulePermissions: [{ code: "FROTAS", canView: true, canEdit: false }] });
+    await db.insert(fleetUnits).values([
+      { id: "health", code: "BI-HEALTH", name: "Saúde", category: "VEICULO", departmentId: "saude", createdById: "u" },
+      { id: "works", code: "BI-WORKS", name: "Obras", category: "MAQUINA", departmentId: "obras", createdById: "u" },
+    ]);
+    const expense = (id: string, unitId: string, amount: string | null, date = "2026-04-10") => ({ id, unitId, amount: amount === null ? null : new Decimal(amount), occurredAt: new Date(`${date}T00:00:00Z`), nature: "COMBUSTIVEL", description: "Projeção canônica", sourceType: "CONSUMO", sourceId: id, sourceKey: id, createdById: "u" });
+    await db.insert(fleetExpenses).values([expense("a", "health", "100.01"), expense("b", "health", "23.44"), expense("c", "health", null), expense("other-sector", "works", "999.99"), expense("outside-period", "health", "500.00", "2025-12-31")]);
+    await db.insert(fleetConsumptions).values({ unitId: "health", type: "COMBUSTIVEL", origin: "TERCEIRO", occurredAt: new Date("2026-04-10T00:00:00Z"), material: "Gasolina", quantity: new Decimal("1.001"), measurementUnit: "L", cost: new Decimal("100.01"), createdById: "u" });
+    const from = new Date("2026-01-01T00:00:00Z"), to = new Date("2026-09-30T00:00:00Z");
+    const result = await getFleetExpenseIndicators(context, from, to, connection);
+    assert.equal(result.total, 3); assert.equal(result.knownAmount, "123.45"); assert.equal(result.missing, 1); assert.equal(result.complete, false);
+    assert.deepEqual(result.groups, [{ nature: "COMBUSTIVEL", amount: "123.45", count: 3 }]);
+    await assert.rejects(getFleetExpenseIndicators({ ...context, user: { ...context.user, modulePermissions: [] } }, from, to, connection), /perfil/);
+    await assert.rejects(getFleetExpenseIndicators(context, to, from, connection), /Período/);
+  } finally { await fixture.close(); }
 });

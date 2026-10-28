@@ -1,32 +1,13 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import CulturaProjetosClient, { type CulturaProjetoListItem } from "../components/CulturaProjetosClient";
+import { db } from "@/db/client";
+import { listCulturalProjects } from "@/db/repositories/culture/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function FomentoProjetosPage() {
-  const { prisma } = await getTenantContextForModule("CULTURA");
-  const projetos = await prisma.culturaProjeto.findMany({
-    include: {
-      agente: {
-        include: {
-          person: true,
-          company: true,
-        },
-      },
-      appropriation: true,
-      commitment: true,
-      purchaseProcess: true,
-      contract: true,
-      documentos: {
-        select: {
-          id: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  await getTenantContextForModule("CULTURA");
+  const projetos = await listCulturalProjects(db);
 
   const projetosParaExibicao: CulturaProjetoListItem[] = projetos.map((projeto) => ({
     id: projeto.id,

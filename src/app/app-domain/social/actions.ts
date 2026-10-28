@@ -1,31 +1,32 @@
 "use server";
 
-import { getTenantContextForModuleOperation, type ModuleOperation } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { parseSocialUnitInput, type SocialUnitInput } from "@/lib/social/unit-input";
 import { ZodError } from "zod";
-import { assertSocialUnitAccess, resolveSocialAccess, socialAttendanceWhere } from "@/lib/social/access-policy";
+import { assertSocialUnitAccess, resolveSocialAccess } from "@/lib/social/access-policy";
 import { SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
-
-async function getTenantPrisma(operation: ModuleOperation) {
-  return (await getTenantContextForModuleOperation("SOCIAL", operation)).prisma;
-}
+import { db, databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { and, eq } from "drizzle-orm";
+import { employees } from "@/db/schema/administration";
+import { socialAttendances, socialBenefits, socialPrograms, socialUnits } from "@/db/schema/social";
+import { createLegacyExpenseInTransaction } from "@/lib/financeiro/legacy-expense";
+import { findAccessibleSocialAttendance, findSocialAttendanceMutationResult, findSocialUnitDetails, saveSocialFamilyInTransaction, setSocialFamilyStatusInTransaction } from "@/db/repositories/social/operations";
 
 export async function createSocialUnit(data: SocialUnitInput) {
   try {
     const context = await getTenantContextForModuleOperation("SOCIAL", "create");
-    const { prisma } = context;
+    const database = context.database ?? db;
     const values = parseSocialUnitInput(data);
     if (values.isConfidential && context.user.profileCode !== SYSTEM_ADMIN_PROFILE_CODE) throw new Error("Somente o administrador configura sigilo de equipamento.");
-    const unit = await prisma.socialUnit.create({
-      data: {
+    const [created] = await database.insert(socialUnits).values({
         ...values,
         addressId: data.addressId,
         realEstateId: data.realEstateId || null,
         managerId: data.managerId || null,
-      },
-      include: { realEstate: true, manager: true }
-    });
+    }).returning({ id: socialUnits.id });
+    const unit = await findSocialUnitDetails(database, created.id);
     revalidatePath("/social/unidades");
     return { success: true, data: unit };
   } catch (error) {
@@ -38,21 +39,19 @@ export async function createSocialUnit(data: SocialUnitInput) {
 export async function updateSocialUnit(id: string, data: SocialUnitInput) {
   try {
     const context = await getTenantContextForModuleOperation("SOCIAL", "update");
-    const { prisma } = context;
+    const database = context.database ?? db;
     const values = parseSocialUnitInput(data);
     if (values.isConfidential !== undefined && context.user.profileCode !== SYSTEM_ADMIN_PROFILE_CODE) {
-      const current = await prisma.socialUnit.findUnique({ where: { id }, select: { isConfidential: true } });
+      const [current] = await database.select({ isConfidential: socialUnits.isConfidential }).from(socialUnits).where(eq(socialUnits.id, id));
       if (!current || current.isConfidential !== values.isConfidential) throw new Error("Somente o administrador configura sigilo de equipamento.");
     }
-    const unit = await prisma.socialUnit.update({
-      where: { id },
-      data: {
+    const updated = await database.update(socialUnits).set({
         ...values,
         realEstateId: data.realEstateId || null,
         managerId: data.managerId || null,
-      },
-      include: { realEstate: true, manager: true }
-    });
+    }).where(eq(socialUnits.id, id)).returning({ id: socialUnits.id });
+    if (!updated.length) throw new Error("Equipamento inexistente.");
+    const unit = await findSocialUnitDetails(database, id);
     revalidatePath("/social/unidades");
     return { success: true, data: unit };
   } catch (error) {
@@ -63,13 +62,12 @@ export async function updateSocialUnit(id: string, data: SocialUnitInput) {
 }
 
 export async function toggleSocialUnitStatus(id: string, isActive: boolean) {
-  const prisma = await getTenantPrisma("update");
+  const context = await getTenantContextForModuleOperation("SOCIAL", "update");
+  const database = context.database ?? db;
   try {
-    const unit = await prisma.socialUnit.update({
-      where: { id },
-      data: { isActive },
-      include: { realEstate: true, manager: true }
-    });
+    const updated = await database.update(socialUnits).set({ isActive }).where(eq(socialUnits.id, id)).returning({ id: socialUnits.id });
+    if (!updated.length) throw new Error("Equipamento inexistente.");
+    const unit = await findSocialUnitDetails(database, id);
     revalidatePath("/social/unidades");
     return { success: true, data: unit };
   } catch (error) {
@@ -79,36 +77,9 @@ export async function toggleSocialUnitStatus(id: string, isActive: boolean) {
 }
 
 export async function createFamily(data: { representativeId: string; nis?: string; familyCode?: string; income?: number; perCapitaIncome?: number; vulnerabilities?: string }) {
-  const prisma = await getTenantPrisma("create");
+  await getTenantContextForModuleOperation("SOCIAL", "create");
   try {
-    const familyCode = data.familyCode?.trim() || null;
-    const family = await prisma.$transaction(async (tx) => {
-      const person = await tx.person.findFirst({ where: { id: data.representativeId, status: { not: "Inativo" } }, select: { id: true } });
-      if (!person) throw new Error("Responsável não encontrado ou inativo.");
-      const existingMaster = familyCode ? await tx.family.findUnique({ where: { code: familyCode }, include: { socialProfile: { select: { id: true } } } }) : null;
-      if (existingMaster?.socialProfile) throw new Error("O código familiar já está vinculado a outro cadastro social.");
-      if (existingMaster?.responsiblePersonId && existingMaster.responsiblePersonId !== data.representativeId) throw new Error("O código familiar pertence a outro responsável.");
-      const masterFamily = existingMaster
-        ? await tx.family.update({ where: { id: existingMaster.id }, data: { responsiblePersonId: data.representativeId, status: "ATIVA" } })
-        : await tx.family.create({ data: { code: familyCode, responsiblePersonId: data.representativeId } });
-      await tx.familyMember.upsert({
-        where: { familyId_personId: { familyId: masterFamily.id, personId: data.representativeId } },
-        update: { isRepresentative: true, status: "ATIVO", leftAt: null },
-        create: { familyId: masterFamily.id, personId: data.representativeId, kinship: "RESPONSAVEL", isRepresentative: true },
-      });
-      return tx.socialFamily.create({
-        data: {
-          representativeId: data.representativeId,
-          masterFamilyId: masterFamily.id,
-          nis: data.nis,
-          familyCode,
-          income: data.income ? Number(data.income) : null,
-          perCapitaIncome: data.perCapitaIncome ? Number(data.perCapitaIncome) : null,
-          vulnerabilities: data.vulnerabilities,
-        },
-        include: { representative: true, members: true },
-      });
-    });
+    const family = await withDatabaseTransaction(databaseConnection, tx => saveSocialFamilyInTransaction(tx, data));
     revalidatePath("/app-domain/social/familias");
     revalidatePath("/app-domain/cadastros/familias");
     return { success: true, data: family };
@@ -119,44 +90,9 @@ export async function createFamily(data: { representativeId: string; nis?: strin
 }
 
 export async function updateFamily(id: string, data: { representativeId: string; nis?: string; familyCode?: string; income?: number; perCapitaIncome?: number; vulnerabilities?: string }) {
-  const prisma = await getTenantPrisma("update");
+  await getTenantContextForModuleOperation("SOCIAL", "update");
   try {
-    const familyCode = data.familyCode?.trim() || null;
-    const family = await prisma.$transaction(async (tx) => {
-      const current = await tx.socialFamily.findUnique({ where: { id }, select: { masterFamilyId: true } });
-      if (!current) throw new Error("Família não encontrada.");
-      const person = await tx.person.findFirst({ where: { id: data.representativeId, status: { not: "Inativo" } }, select: { id: true } });
-      if (!person) throw new Error("Responsável não encontrado ou inativo.");
-      let masterFamilyId = current.masterFamilyId;
-      if (!masterFamilyId && familyCode) {
-        const candidate = await tx.family.findUnique({ where: { code: familyCode }, include: { socialProfile: { select: { id: true } } } });
-        if (candidate?.socialProfile && candidate.socialProfile.id !== id) throw new Error("O código familiar já está vinculado a outro cadastro social.");
-        if (candidate?.responsiblePersonId && candidate.responsiblePersonId !== data.representativeId) throw new Error("O código familiar pertence a outro responsável.");
-        masterFamilyId = candidate?.id || null;
-      }
-      const masterFamily = masterFamilyId
-        ? await tx.family.update({ where: { id: masterFamilyId }, data: { code: familyCode, responsiblePersonId: data.representativeId, status: "ATIVA" } })
-        : await tx.family.create({ data: { code: familyCode, responsiblePersonId: data.representativeId } });
-      await tx.familyMember.updateMany({ where: { familyId: masterFamily.id, isRepresentative: true, personId: { not: data.representativeId } }, data: { isRepresentative: false } });
-      await tx.familyMember.upsert({
-        where: { familyId_personId: { familyId: masterFamily.id, personId: data.representativeId } },
-        update: { isRepresentative: true, status: "ATIVO", leftAt: null },
-        create: { familyId: masterFamily.id, personId: data.representativeId, kinship: "RESPONSAVEL", isRepresentative: true },
-      });
-      return tx.socialFamily.update({
-        where: { id },
-        data: {
-          representativeId: data.representativeId,
-          masterFamilyId: masterFamily.id,
-          nis: data.nis,
-          familyCode,
-          income: data.income ? Number(data.income) : null,
-          perCapitaIncome: data.perCapitaIncome ? Number(data.perCapitaIncome) : null,
-          vulnerabilities: data.vulnerabilities,
-        },
-        include: { representative: true, members: true },
-      });
-    });
+    const family = await withDatabaseTransaction(databaseConnection, tx => saveSocialFamilyInTransaction(tx, data, id));
     revalidatePath("/app-domain/social/familias");
     revalidatePath("/app-domain/cadastros/familias");
     return { success: true, data: family };
@@ -167,21 +103,10 @@ export async function updateFamily(id: string, data: { representativeId: string;
 }
 
 export async function toggleFamilyStatus(id: string, status: string) {
-  const prisma = await getTenantPrisma("update");
+  await getTenantContextForModuleOperation("SOCIAL", "update");
   try {
     if (!["Ativo", "Inativo"].includes(status)) throw new Error("Status familiar inválido.");
-    const family = await prisma.$transaction(async (tx) => {
-      const updated = await tx.socialFamily.update({
-        where: { id },
-        data: { status },
-        include: { representative: true, members: true, masterFamily: { select: { id: true, healthProfile: { select: { isActive: true } } } } },
-      });
-      if (updated.masterFamily) {
-        const keepActive = status === "Ativo" || updated.masterFamily.healthProfile?.isActive === true;
-        await tx.family.update({ where: { id: updated.masterFamily.id }, data: { status: keepActive ? "ATIVA" : "INATIVA" } });
-      }
-      return updated;
-    });
+    const family = await withDatabaseTransaction(databaseConnection, tx => setSocialFamilyStatusInTransaction(tx, id, status));
     revalidatePath("/app-domain/social/familias");
     revalidatePath("/app-domain/cadastros/familias");
     return { success: true, data: family };
@@ -194,16 +119,15 @@ export async function toggleFamilyStatus(id: string, status: string) {
 export async function createAttendance(data: { familyId: string; unitId: string; professionalId: string; type: string; description: string; secrecyLevel?: string; personId?: string }) {
   try {
     const context = await getTenantContextForModuleOperation("SOCIAL", "create");
-    const { prisma } = context;
+    const database = context.database ?? db;
     const access = await resolveSocialAccess(context);
     assertSocialUnitAccess(access, data.unitId);
     if (!access.administrator && data.professionalId !== access.employeeId) throw new Error("Profissional inválido para o usuário autenticado.");
     if (!data.type.trim() || !data.description.trim()) throw new Error("Tipo e relato são obrigatórios.");
     if (!["Normal", "Restrito", "CREAS"].includes(data.secrecyLevel || "Normal")) throw new Error("Nível de sigilo inválido.");
-    if (!await prisma.socialUnit.findFirst({ where: { id: data.unitId, isActive: true } })) throw new Error("Equipamento inativo ou inexistente.");
-    if (!await prisma.employee.findFirst({ where: { id: data.professionalId, isActive: true } })) throw new Error("Profissional inativo ou inexistente.");
-    const attendance = await prisma.socialAttendance.create({
-      data: {
+    if (!(await database.select({ id: socialUnits.id }).from(socialUnits).where(and(eq(socialUnits.id, data.unitId), eq(socialUnits.isActive, true)))).length) throw new Error("Equipamento inativo ou inexistente.");
+    if (!(await database.select({ id: employees.id }).from(employees).where(and(eq(employees.id, data.professionalId), eq(employees.isActive, true)))).length) throw new Error("Profissional inativo ou inexistente.");
+    const [created] = await database.insert(socialAttendances).values({
         familyId: data.familyId,
         unitId: data.unitId,
         professionalId: data.professionalId,
@@ -212,9 +136,8 @@ export async function createAttendance(data: { familyId: string; unitId: string;
         secrecyLevel: data.secrecyLevel || "Normal",
         personId: data.personId || null,
         isActive: true,
-      },
-      include: { family: true, person: true, professional: true, unit: true }
-    });
+    }).returning({ id: socialAttendances.id });
+    const attendance = await findSocialAttendanceMutationResult(database, created.id);
     revalidatePath("/social/prontuario");
     revalidatePath("/social/atendimentos");
     return { success: true, data: attendance };
@@ -227,18 +150,16 @@ export async function createAttendance(data: { familyId: string; unitId: string;
 export async function updateAttendance(id: string, data: { familyId: string; unitId: string; professionalId: string; type: string; description: string; secrecyLevel?: string; personId?: string }) {
   try {
     const context = await getTenantContextForModuleOperation("SOCIAL", "update");
-    const { prisma } = context;
+    const database = context.database ?? db;
     const access = await resolveSocialAccess(context);
-    const current = await prisma.socialAttendance.findFirst({ where: { AND: [{ id }, socialAttendanceWhere(access)] } });
+    const current = await findAccessibleSocialAttendance(database, access, id);
     if (!current) throw new Error("Atendimento não encontrado ou fora do seu acesso.");
     assertSocialUnitAccess(access, current.unitId);
     assertSocialUnitAccess(access, data.unitId);
     if (!access.administrator && (current.professionalId !== access.employeeId || data.professionalId !== access.employeeId)) throw new Error("Somente o profissional responsável pode alterar este atendimento.");
     if (!data.type.trim() || !data.description.trim()) throw new Error("Tipo e relato são obrigatórios.");
     if (!["Normal", "Restrito", "CREAS"].includes(data.secrecyLevel || "Normal")) throw new Error("Nível de sigilo inválido.");
-    const attendance = await prisma.socialAttendance.update({
-      where: { id },
-      data: {
+    await database.update(socialAttendances).set({
         familyId: data.familyId,
         unitId: data.unitId,
         professionalId: data.professionalId,
@@ -246,9 +167,8 @@ export async function updateAttendance(id: string, data: { familyId: string; uni
         description: data.description,
         secrecyLevel: data.secrecyLevel || "Normal",
         personId: data.personId || null,
-      },
-      include: { family: true, person: true, professional: true, unit: true }
-    });
+    }).where(eq(socialAttendances.id, id));
+    const attendance = await findSocialAttendanceMutationResult(database, id);
     revalidatePath("/social/prontuario");
     revalidatePath("/social/atendimentos");
     return { success: true, data: attendance };
@@ -259,23 +179,12 @@ export async function updateAttendance(id: string, data: { familyId: string; uni
 }
 
 export async function createSocialBenefit(data: { name: string; description?: string; isRecurrent: boolean; expense?: { description: string; value: number; appropriationId: string; secretariatId: string } }) {
-  const prisma = await getTenantPrisma("create");
+  await getTenantContextForModuleOperation("SOCIAL", "create");
   try {
-    const benefit = await prisma.socialBenefit.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        isRecurrent: data.isRecurrent,
-        expenses: data.expense ? {
-          create: {
-            description: data.expense.description,
-            value: Number(data.expense.value),
-            appropriationId: data.expense.appropriationId,
-            secretariatId: data.expense.secretariatId,
-            status: "Empenhada",
-          }
-        } : undefined
-      },
+    const benefit = await withDatabaseTransaction(databaseConnection, async tx => {
+      const [created] = await tx.insert(socialBenefits).values({ name: data.name, description: data.description, isRecurrent: data.isRecurrent }).returning();
+      if (data.expense) await createLegacyExpenseInTransaction(tx, { ...data.expense, socialBenefitId: created.id });
+      return created;
     });
     revalidatePath("/social/beneficios");
     return { success: true, data: benefit };
@@ -286,23 +195,12 @@ export async function createSocialBenefit(data: { name: string; description?: st
 }
 
 export async function createSocialProgram(data: { name: string; sphere: string; description?: string; expense?: { description: string; value: number; appropriationId: string; secretariatId: string } }) {
-  const prisma = await getTenantPrisma("create");
+  await getTenantContextForModuleOperation("SOCIAL", "create");
   try {
-    const program = await prisma.socialProgram.create({
-      data: {
-        name: data.name,
-        sphere: data.sphere,
-        description: data.description,
-        expenses: data.expense ? {
-          create: {
-            description: data.expense.description,
-            value: Number(data.expense.value),
-            appropriationId: data.expense.appropriationId,
-            secretariatId: data.expense.secretariatId,
-            status: "Empenhada",
-          }
-        } : undefined
-      },
+    const program = await withDatabaseTransaction(databaseConnection, async tx => {
+      const [created] = await tx.insert(socialPrograms).values({ name: data.name, sphere: data.sphere, description: data.description }).returning();
+      if (data.expense) await createLegacyExpenseInTransaction(tx, { ...data.expense, socialProgramId: created.id });
+      return created;
     });
     revalidatePath("/social/beneficios");
     return { success: true, data: program };
@@ -314,17 +212,14 @@ export async function createSocialProgram(data: { name: string; sphere: string; 
 export async function toggleAttendanceStatus(id: string, isActive: boolean) {
   try {
     const context = await getTenantContextForModuleOperation("SOCIAL", "update");
-    const { prisma } = context;
+    const database = context.database ?? db;
     const access = await resolveSocialAccess(context);
-    const current = await prisma.socialAttendance.findFirst({ where: { AND: [{ id }, socialAttendanceWhere(access)] } });
+    const current = await findAccessibleSocialAttendance(database, access, id);
     if (!current) throw new Error("Atendimento não encontrado ou fora do seu acesso.");
     assertSocialUnitAccess(access, current.unitId);
     if (!access.administrator && current.professionalId !== access.employeeId) throw new Error("Somente o profissional responsável pode inativar este atendimento.");
-    const attendance = await prisma.socialAttendance.update({
-      where: { id },
-      data: { isActive },
-      include: { family: true, person: true, professional: true, unit: true }
-    });
+    await database.update(socialAttendances).set({ isActive }).where(eq(socialAttendances.id, id));
+    const attendance = await findSocialAttendanceMutationResult(database, id);
     revalidatePath("/social/prontuario");
     return { success: true, data: attendance };
   } catch (error) {

@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
+import { and, count, ilike } from "drizzle-orm";
+import { processes } from "@/db/schema/processes";
+import { listCitizenProcesses } from "@/db/repositories/processes/citizen";
 import { getCitizenAccount, getCitizenProcessWhere } from "@/lib/portal-cidadao/access";
-import { citizenProcessSelect } from "@/lib/portal-cidadao/policy";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +13,10 @@ export default async function CitizenProcessesPage({ searchParams }: { searchPar
   const q = typeof query.q === "string" ? query.q.trim().slice(0, 100) : "";
   const account = await getCitizenAccount(`/portal/minha-area/processos?${new URLSearchParams({ q, page: typeof query.page === "string" ? query.page : "1" })}`);
   const scope = await getCitizenProcessWhere(account.id);
-  const where = { AND: [scope, ...(q ? [{ protocolNumber: { contains: q, mode: "insensitive" as const } }] : [])] };
-  const total = await prisma.process.count({ where });
+  const where = and(scope, q ? ilike(processes.protocolNumber, `%${q.replace(/[\\%_]/g, "\\$&")}%`) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(processes).where(where);
   const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
-  const items = await prisma.process.findMany({ where, select: citizenProcessSelect, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (page - 1) * 20, take: 20 });
+  const items = await listCitizenProcesses(db, where, { limit: 20, offset: (page - 1) * 20 });
   const href = (target: number) => `?${new URLSearchParams({ q, page: String(target) })}`;
   return <main className="mx-auto max-w-6xl space-y-6 px-4 py-10 sm:px-6">
     <Link href="/portal/minha-area" className="text-sm font-semibold text-emerald-800 hover:underline">← Minha área</Link>
