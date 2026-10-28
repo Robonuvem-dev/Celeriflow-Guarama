@@ -1,5 +1,7 @@
 import { and, asc, eq, getTableColumns, gte, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../transaction";
+import type { QueryResultRow } from "@neondatabase/serverless";
+import { databaseTimestamp } from "../../temporal";
 import { hrPayrollRules, hrPayrollRuleSets } from "../../schema/personnel-configuration";
 import { employees } from "../../schema/administration";
 import { employeePortalRequests } from "../../schema/employee-portal";
@@ -7,7 +9,7 @@ import type { PortalIntegrationEvent, PortalPolicy, PortalRequest } from "@/lib/
 import type { JsonValue } from "../../json";
 
 /** SQL result helpers only: callers supply explicit, parameterized SQL and DTOs. */
-export async function portalRows<T extends Record<string, unknown>>(db: DatabaseExecutor, query: SQL) {
+export async function portalRows<T extends QueryResultRow>(db: DatabaseExecutor, query: SQL) {
   // Neon/Drizzle intentionally leaves SQL date/timestamp OIDs as text for raw
   // execution. Decode only physical temporal columns using driver metadata;
   // JSON strings (including ISO strings inside payloads) remain untouched.
@@ -15,14 +17,14 @@ export async function portalRows<T extends Record<string, unknown>>(db: Database
   const temporal = result.fields.filter(field => [1082, 1114, 1184].includes(field.dataTypeID));
   for (const row of result.rows) for (const field of temporal) {
     const value = row[field.name];
-    if (typeof value === "string") Reflect.set(row, field.name, new Date(field.dataTypeID === 1082 ? `${value}T00:00:00.000Z` : field.dataTypeID === 1114 ? `${value.replace(" ", "T")}Z` : value));
+    if (typeof value === "string" || value instanceof Date) Reflect.set(row, field.name, databaseTimestamp(value));
   }
   return result.rows;
 }
-export async function portalFirst<T extends Record<string, unknown>>(db: DatabaseExecutor, query: SQL) {
+export async function portalFirst<T extends QueryResultRow>(db: DatabaseExecutor, query: SQL) {
   return (await portalRows<T>(db, query))[0] ?? null;
 }
-export async function portalRequired<T extends Record<string, unknown>>(db: DatabaseExecutor, query: SQL) {
+export async function portalRequired<T extends QueryResultRow>(db: DatabaseExecutor, query: SQL) {
   const row = await portalFirst<T>(db, query);
   if (!row) throw new Error("Registro não encontrado.");
   return row;

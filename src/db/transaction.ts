@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core";
 import type { Database, DatabaseConnection } from "./connection";
 import { PersistenceError } from "./errors";
+import { inDatabaseTransactionScope, scopedDatabaseTransaction } from "./transaction-scope";
 
 export type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 export type DatabaseExecutor = Pick<Database, "select" | "selectDistinct" | "selectDistinctOn" | "insert" | "update" | "delete" | "execute">;
@@ -21,6 +22,10 @@ export async function withDatabaseTransaction<T>(
   operation: (tx: DatabaseTransaction) => Promise<T>,
   options: TransactionOptions = {},
 ): Promise<T> {
+  const parent = scopedDatabaseTransaction(connection);
+  if (parent) {
+    return parent.transaction(tx => inDatabaseTransactionScope(connection, tx, () => operation(tx)));
+  }
   const { timeoutMs = 30_000, lockTimeoutMs = 10_000, ...configuration } = options;
   const timeout = milliseconds(timeoutMs);
   const lockTimeout = milliseconds(lockTimeoutMs);

@@ -11,10 +11,11 @@ import { people } from "../../schema/people";
 import { suppliers, companies } from "../../schema/registry";
 import { instanceParameters } from "../../schema/instance-configuration";
 import { managementStockReceipts as receipts, managementStockReceiptItems as receiptItems, managementStockTransfers as transfers } from "../../schema/health-management-operations";
-import { pharmacyPageReceiptDetails as receiptDetails, pharmacyPageReceiptItemDetails as itemDetails } from "../../schema/health-pharmacy-pages";
+import { pharmacyPageReceiptDetails, pharmacyPageReceiptItemDetails } from "../../schema/health-pharmacy-pages";
 import { pharmacyIds, pharmacyPatients, pharmacyProducts, pharmacyUnits, pharmacyUnitScope, pharmacyWarehouses, pharmacyWarehouseScope } from "./common";
 
 const origin = alias(warehouses, "pharmacy_page_origin"), destination = alias(warehouses, "pharmacy_page_destination");
+const receiptDetails = alias(pharmacyPageReceiptDetails, "pharmacy_receipt_details"), itemDetails = alias(pharmacyPageReceiptItemDetails, "pharmacy_receipt_item_details");
 
 async function stockPrescriptions(db: DatabaseExecutor, units: PharmacyPageUnits) {
   const rows = await db.select({ item: healthPrescriptionItems, prescription: healthPrescriptions, patient: patients, person: people }).from(healthPrescriptionItems)

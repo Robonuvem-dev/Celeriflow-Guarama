@@ -1,15 +1,14 @@
 import { types } from "@neondatabase/serverless";
 import { createDatabaseConnection } from "../src/db/connection";
 import { Decimal } from "../src/db/decimal";
+import { databaseTimestamp } from "../src/db/temporal";
 
 /** Decode physical output fields only; JSON payloads are deliberately opaque. */
 export function sqlOracleValue(oid: number, value: unknown): unknown {
   if (typeof value !== "string") return value;
   if (oid === 1700) return new Decimal(value);
   if (oid === 20) return BigInt(value);
-  if (oid === 1082) return new Date(`${value}T00:00:00.000Z`);
-  if (oid === 1114) return new Date(`${value.replace(" ", "T")}Z`);
-  if (oid === 1184) return new Date(value);
+  if ([1082, 1114, 1184].includes(oid)) return databaseTimestamp(value);
   return value;
 }
 

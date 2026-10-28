@@ -6,6 +6,7 @@ const roots = [
   "src/lib/portal-servidor", "src/db/repositories/portal-servidor", "src/db/schema/employee-portal.ts", "src/lib/contracts/employee-portal.ts",
   "src/app/app-domain/portal-servidor", "src/app/api/portal-servidor", "src/app/portal-servidor", "src/app/api/auth/portal-servidor/session/route.ts",
   "src/app/portal/concursos", "src/app/portal/convenentes", "src/app/portal/departamentos", "src/app/api/portal/concursos", "src/app/api/portal/convenentes", "src/app/api/portal/departamentos",
+  "src/app/portal/tributario/page.tsx", "src/app/api/portal/tributos/guias/[id]/route.ts", "src/app/api/portal/tributos/documentos/[id]/route.ts",
   "src/app/validar-emissao", "src/app/validar-recibo", "tests/employee-portal-login.test.ts", "tests/employee-portal-final-services.test.ts", "tests/employee-portal-routes.test.ts", "tests/helpers/employee-portal-fixture.ts",
 ];
 const baselineIndex = process.argv.indexOf("--baseline-dir"), baseline = baselineIndex < 0 ? null : process.argv[baselineIndex + 1];

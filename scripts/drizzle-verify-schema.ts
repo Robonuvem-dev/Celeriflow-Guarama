@@ -9,7 +9,7 @@ type PhysicalColumn = { schema: string; table_name: string; name: string; type: 
 type PhysicalConstraint = { schema: string; table_name: string; name: string; type: string; definition: string };
 type PhysicalIndex = { schema: string; table_name: string; name: string; definition: string };
 type PhysicalEnum = { schema: string; name: string; label: string; position: number };
-const { catalog } = JSON.parse(readFileSync(".agent/drizzle/database-before-2026-10-28T01-26-00.861Z/catalog.json", "utf8")) as {
+const { catalog } = JSON.parse(readFileSync(new URL("../tests/fixtures/installed-physical-catalog.json", import.meta.url), "utf8")) as {
   catalog: { columns: PhysicalColumn[]; constraints: PhysicalConstraint[]; indexes: PhysicalIndex[]; enums: PhysicalEnum[] };
 };
 const compactType = (value: string) => value.replace(/\s+/g, " ").replace(/\s+\(/g, "(").replace(/,\s+/g, ",").replace(" without time zone", "");

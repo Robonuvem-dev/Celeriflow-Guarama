@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test, describe } from "node:test";
-import { and, count, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import type { DatabaseConnection } from "@/db/connection";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { createFinanceLegacyStoriesFixture } from "../../../../tests/helpers/finance-legacy-stories-fixture";
@@ -76,7 +76,7 @@ describe("Lagoa Seca/PB - Validação Integrada e Regras Fiscais/Financeiras Est
     return {
       usuarioId: user?.id ?? "usr-admin-lagoaseca",
       employeeId: emp?.id ?? "emp-servidor-lagoaseca",
-      allowedBudgetUnitIds: [],
+      allowedBudgetUnitIds: ["budget-unit-fin-01"],
     };
   }
 
@@ -473,7 +473,7 @@ describe("Lagoa Seca/PB - Validação Integrada e Regras Fiscais/Financeiras Est
   });
 
   test("4. Deve validar integridade e alinhamento dos dados da seed da POC", async () => {
-    const [year] = await db.select().from(financialYears).where(and(eq(financialYears.year, 2026), isNull(financialYears.governmentEntityId))).limit(1);
+    const [year] = await db.select().from(financialYears).where(and(eq(financialYears.year, 2026), eq(financialYears.governmentEntityId, "finance-stories-entity"))).limit(1);
     assert.ok(year, "Exercício 2026 deve existir");
 
     const [bankAccPref] = await db.select().from(reconciliationBankAccounts).where(eq(reconciliationBankAccounts.id, "poc-robonuvem-revenue-20001"));
@@ -590,7 +590,7 @@ describe("Lagoa Seca/PB - Validação Integrada e Regras Fiscais/Financeiras Est
   });
 
   test("5. Deve gerar RREO, RGF, Balanço Orçamentário e Balanço Patrimonial sem inconsistências", async () => {
-    const [year] = await db.select().from(financialYears).where(and(eq(financialYears.year, 2026), isNull(financialYears.governmentEntityId))).limit(1);
+    const [year] = await db.select().from(financialYears).where(and(eq(financialYears.year, 2026), eq(financialYears.governmentEntityId, "finance-stories-entity"))).limit(1);
     assert.ok(year);
 
     const filter = { financialYearId: year.id };

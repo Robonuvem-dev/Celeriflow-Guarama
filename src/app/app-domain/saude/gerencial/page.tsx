@@ -6,6 +6,23 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { listPatientTimeline } from "@/lib/saude/patient-timeline-service";
 import { tfdTripAccessWhere } from "@/lib/saude/tfd-service";
 import { db } from "@/db/client";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, lt, or, type AnyColumn } from "drizzle-orm";
+import { healthAppointments, healthTriages } from "@/db/schema/health-agenda";
+import { medicalRecords } from "@/db/schema/health-care";
+import { medicineDispensations } from "@/db/schema/health-pharmacy";
+import { vaccinationRecords } from "@/db/schema/health-vaccination";
+import { healthLabOrders } from "@/db/schema/health-laboratory";
+import { healthRegulationRequests } from "@/db/schema/health-regulation";
+import { healthTfdTrips } from "@/db/schema/health-tfd";
+import { healthProductionFacts } from "@/db/schema/health-production";
+import { healthEsusForms } from "@/db/schema/health-territory";
+import { specializedTherapeuticPlans } from "@/db/schema/health-care-lines";
+import { auditEvents } from "@/db/schema/audit";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { healthSpecialties } from "@/db/schema/health-administration";
+import { users } from "@/db/schema/identity";
 
 const card = "rounded border bg-white p-2";
 const kpi = "text-lg font-bold tabular-nums";
@@ -14,7 +31,7 @@ const first = (v: string | string[] | undefined) => Array.isArray(v) ? v[0] : v;
 
 export default async function GerencialPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const database = context.database ?? db;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const period = (first(params.period) || "").trim().slice(0, 7);
@@ -23,36 +40,38 @@ export default async function GerencialPage({ searchParams }: { searchParams: Pr
   const specialtyFilter = (first(params.specialty) || "").trim().slice(0, 64);
   const patientFilter = (first(params.patient) || "").trim().slice(0, 64);
   if (unitFilter) assertHealthUnitAccess(context.user, unitFilter);
-  const auditScope = isSystemAdministrator(context.user) ? {} : { actorUsuarioId: context.user.id };
+  const auditScope = isSystemAdministrator(context.user) ? undefined : eq(auditEvents.actorUsuarioId, context.user.id);
   const range = /^\d{4}-\d{2}$/.test(period) ? { gte: new Date(`${period}-01T00:00:00`), lt: new Date(`${period}-01T00:00:00`).getMonth() === 11 ? new Date(`${Number(period.slice(0, 4)) + 1}-01-01T00:00:00`) : new Date(`${period.slice(0, 4)}-${String(Number(period.slice(5, 7)) + 1).padStart(2, "0")}-01T00:00:00`) } : undefined;
-  const unitScope = unitFilter ? { unitId: unitFilter } : unitIds ? { unitId: { in: unitIds } } : {};
+  const unitScope = (column: AnyColumn) => unitFilter ? eq(column, unitFilter) : unitIds ? inArray(column, unitIds) : undefined;
+  const dateScope = (column: AnyColumn) => range ? and(gte(column, range.gte), lt(column, range.lt)) : undefined;
+  const auditWhere = and(auditScope, dateScope(auditEvents.createdAt));
   const [
     appointments, appointmentsDone, records, triages, dispensations, vaccinations,
     labOrders, regulations, trips, facts, esusForms, plans, accesses, patients, units, professionals, specialties,
   ] = await Promise.all([
-    prisma.healthAppointment.count({ where: { ...(range ? { date: range } : {}), ...unitScope, ...(professionalFilter ? { professionalId: professionalFilter } : {}), ...(specialtyFilter ? { specialtyId: specialtyFilter } : {}) } }),
-    prisma.healthAppointment.count({ where: { status: "Atendido", ...(range ? { date: range } : {}), ...unitScope } }),
-    prisma.medicalRecord.count({ where: { completedAt: { not: null }, ...(range ? { date: range } : {}), ...unitScope, ...(professionalFilter ? { professionalId: professionalFilter } : {}) } }),
-    prisma.healthTriage.count({ where: { ...(range ? { createdAt: range } : {}), ...(unitIds || unitFilter ? { appointment: unitScope } : {}) } }),
-    prisma.medicineDispensation.count({ where: { status: "ACTIVE", ...(range ? { date: range } : {}), ...(unitFilter ? { unitId: unitFilter } : unitIds ? { unitId: { in: unitIds } } : {}) } }),
-    prisma.vaccinationRecord.count({ where: { ...(range ? { date: range } : {}), ...(unitFilter ? { unitId: unitFilter } : unitIds ? { unitId: { in: unitIds } } : {}) } }),
-    prisma.healthLabOrder.groupBy({ by: ["status"], where: { ...(range ? { createdAt: range } : {}), ...(unitIds || unitFilter ? { OR: [{ requestUnitId: unitFilter || { in: unitIds! } }, { collectionUnitId: unitFilter || { in: unitIds! } }] } : {}) }, _count: true }),
-    prisma.healthRegulationRequest.groupBy({ by: ["status"], where: { ...(range ? { createdAt: range } : {}), ...(unitFilter ? { requestUnitId: unitFilter } : unitIds ? { requestUnitId: { in: unitIds } } : {}) }, _count: true }),
-    prisma.healthTfdTrip.count({ where: { AND: [tfdTripAccessWhere(context.user)], ...(range ? { date: { gte: range.gte, lt: range.lt } } : {}) } }),
-    prisma.healthProductionFact.groupBy({ by: ["status"], where: { ...(period ? { period } : {}), ...(unitFilter ? { unitId: unitFilter } : unitIds ? { unitId: { in: unitIds } } : {}) }, _count: true }),
-    prisma.healthEsusForm.count({ where: { status: "FINALIZADA", ...(period ? { period } : {}), ...(unitFilter ? { unitId: unitFilter } : unitIds ? { unitId: { in: unitIds } } : {}) } }),
-    prisma.specializedTherapeuticPlan.count({ where: { status: "ACTIVE", ...(unitFilter ? { unitId: unitFilter } : unitIds ? { unitId: { in: unitIds } } : {}) } }),
-    prisma.auditEvent.groupBy({ by: ["eventType"], where: { ...auditScope, ...(range ? { createdAt: range } : {}) }, _count: true, orderBy: { _count: { eventType: "desc" } }, take: 20 }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, take: 300, orderBy: { person: { fullName: "asc" } }, select: { id: true, referenceUnitId: true, person: { select: { fullName: true } } } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.healthProfessional.findMany({ where: { isActive: true }, take: 200, select: { id: true, cbo: true } }),
-    prisma.healthSpecialty.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    database.select({ total: count() }).from(healthAppointments).where(and(dateScope(healthAppointments.date), unitScope(healthAppointments.unitId), professionalFilter ? eq(healthAppointments.professionalId, professionalFilter) : undefined, specialtyFilter ? eq(healthAppointments.specialtyId, specialtyFilter) : undefined)).then(([r]) => r.total),
+    database.select({ total: count() }).from(healthAppointments).where(and(eq(healthAppointments.status, "Atendido"), dateScope(healthAppointments.date), unitScope(healthAppointments.unitId))).then(([r]) => r.total),
+    database.select({ total: count() }).from(medicalRecords).where(and(isNotNull(medicalRecords.completedAt), dateScope(medicalRecords.date), unitScope(medicalRecords.unitId), professionalFilter ? eq(medicalRecords.professionalId, professionalFilter) : undefined)).then(([r]) => r.total),
+    database.select({ total: count() }).from(healthTriages).leftJoin(healthAppointments, eq(healthAppointments.id, healthTriages.appointmentId)).where(and(dateScope(healthTriages.createdAt), unitScope(healthAppointments.unitId))).then(([r]) => r.total),
+    database.select({ total: count() }).from(medicineDispensations).where(and(eq(medicineDispensations.status, "ACTIVE"), dateScope(medicineDispensations.date), unitScope(medicineDispensations.unitId))).then(([r]) => r.total),
+    database.select({ total: count() }).from(vaccinationRecords).where(and(dateScope(vaccinationRecords.date), unitScope(vaccinationRecords.unitId))).then(([r]) => r.total),
+    database.select({ status: healthLabOrders.status, _count: count() }).from(healthLabOrders).where(and(dateScope(healthLabOrders.createdAt), or(unitScope(healthLabOrders.requestUnitId), unitScope(healthLabOrders.collectionUnitId)))).groupBy(healthLabOrders.status),
+    database.select({ status: healthRegulationRequests.status, _count: count() }).from(healthRegulationRequests).where(and(dateScope(healthRegulationRequests.createdAt), unitScope(healthRegulationRequests.requestUnitId))).groupBy(healthRegulationRequests.status),
+    database.select({ total: count() }).from(healthTfdTrips).where(and(tfdTripAccessWhere(context.user), dateScope(healthTfdTrips.date))).then(([r]) => r.total),
+    database.select({ status: healthProductionFacts.status, _count: count() }).from(healthProductionFacts).where(and(period ? eq(healthProductionFacts.period, period) : undefined, unitScope(healthProductionFacts.unitId))).groupBy(healthProductionFacts.status),
+    database.select({ total: count() }).from(healthEsusForms).where(and(eq(healthEsusForms.status, "FINALIZADA"), period ? eq(healthEsusForms.period, period) : undefined, unitScope(healthEsusForms.unitId))).then(([r]) => r.total),
+    database.select({ total: count() }).from(specializedTherapeuticPlans).where(and(eq(specializedTherapeuticPlans.status, "ACTIVE"), unitScope(specializedTherapeuticPlans.unitId))).then(([r]) => r.total),
+    database.select({ eventType: auditEvents.eventType, _count: count() }).from(auditEvents).where(auditWhere).groupBy(auditEvents.eventType).orderBy(desc(count())).limit(20),
+    database.select({ id: patientTable.id, referenceUnitId: patientTable.referenceUnitId, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(and(eq(patientTable.status, "Ativo"), unitIds ? inArray(patientTable.referenceUnitId, unitIds) : undefined)).orderBy(asc(people.fullName)).limit(300),
+    database.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    database.select({ id: healthProfessionals.id, cbo: healthProfessionals.cbo }).from(healthProfessionals).where(eq(healthProfessionals.isActive, true)).limit(200),
+    database.select({ id: healthSpecialties.id, name: healthSpecialties.name }).from(healthSpecialties).where(eq(healthSpecialties.isActive, true)).orderBy(asc(healthSpecialties.name)),
   ]);
 
   let timeline: Awaited<ReturnType<typeof listPatientTimeline>> = [];
   let timelinePatient: string | null = null;
   if (patientFilter) {
-    const target = await prisma.patient.findUnique({ where: { id: patientFilter }, select: { id: true, referenceUnitId: true, person: { select: { fullName: true } } } });
+    const [target] = await database.select({ id: patientTable.id, referenceUnitId: patientTable.referenceUnitId, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(eq(patientTable.id, patientFilter)).limit(1);
     if (target) {
       if (target.referenceUnitId) assertHealthUnitAccess(context.user, target.referenceUnitId);
       else if (context.user.hasHealthAccessScope) throw new Error("Paciente sem unidade de referência acessível.");
@@ -60,8 +79,8 @@ export default async function GerencialPage({ searchParams }: { searchParams: Pr
       timelinePatient = target.person.fullName;
     }
   }
-  const accessByUser = await prisma.auditEvent.groupBy({ by: ["actorUsuarioId"], where: { ...auditScope, ...(range ? { createdAt: range } : {}) }, _count: true, orderBy: { _count: { actorUsuarioId: "desc" } }, take: 20 });
-  const actorNames = await prisma.usuario.findMany({ where: { id: { in: accessByUser.map(a => a.actorUsuarioId) } }, select: { id: true, nome: true } });
+  const accessByUser = await database.select({ actorUsuarioId: auditEvents.actorUsuarioId, _count: count() }).from(auditEvents).where(auditWhere).groupBy(auditEvents.actorUsuarioId).orderBy(desc(count())).limit(20);
+  const actorNames = await database.select({ id: users.id, nome: users.nome }).from(users).where(inArray(users.id, accessByUser.map(a => a.actorUsuarioId)));
   const actorName = new Map(actorNames.map(a => [a.id, a.nome]));
 
   const kpis: Array<{ label: string; value: string; href: string }> = [

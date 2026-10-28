@@ -2,13 +2,17 @@
 
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { createId } from "@/db/ids";
+import { sstPayrollBenefits } from "@/db/schema/sst-benefits";
 
-async function getTenantPrisma(operation: "create" | "delete") {
-  return (await getTenantContextForModuleOperation("RH", operation)).prisma;
+async function getTenantDatabase(operation: "create" | "delete") {
+  return (await getTenantContextForModuleOperation("RH", operation)).database ?? db;
 }
 
 export async function addBenefitToEmployee(formData: FormData) {
-  const prisma = await getTenantPrisma("create");
+  const database = await getTenantDatabase("create");
   try {
     const employeeId = formData.get("employeeId") as string;
     const benefitConfigId = formData.get("benefitConfigId") as string;
@@ -20,12 +24,11 @@ export async function addBenefitToEmployee(formData: FormData) {
 
     const customValue = customValueStr ? parseFloat(customValueStr) : null;
 
-    await prisma.payrollBenefit.create({
-      data: {
+    await database.insert(sstPayrollBenefits).values({
+         id: createId(),
         employeeId,
         benefitConfigId,
         customValue,
-      }
     });
 
     revalidatePath(`/rh/servidores/${employeeId}/editar`);
@@ -37,11 +40,10 @@ export async function addBenefitToEmployee(formData: FormData) {
 }
 
 export async function removeBenefitFromEmployee(benefitId: string, employeeId: string) {
-  const prisma = await getTenantPrisma("delete");
+  const database = await getTenantDatabase("delete");
   try {
-    await prisma.payrollBenefit.delete({
-      where: { id: benefitId }
-    });
+    const rows = await database.delete(sstPayrollBenefits).where(eq(sstPayrollBenefits.id, benefitId)).returning({ id: sstPayrollBenefits.id });
+    if (!rows.length) throw new Error("Benefício do servidor não encontrado.");
     revalidatePath(`/rh/servidores/${employeeId}/editar`);
     return { success: true };
   } catch (error) {

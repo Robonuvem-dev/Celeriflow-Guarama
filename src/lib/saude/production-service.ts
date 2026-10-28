@@ -91,7 +91,7 @@ type ClinicalReader = DatabaseExecutor;
 async function clinicalContextForRecord(tx: ClinicalReader, medicalRecordId: string | null): Promise<ClinicalContext> {
   const empty = { cidReferenceId: null, municipality: null, state: null, billingContext: null };
   if (!medicalRecordId) return empty;
-  const [record] = await tx.select({ appointment: { municipalitySnapshot: healthAppointments.municipalitySnapshot, stateSnapshot: healthAppointments.stateSnapshot, billingContextSnapshot: healthAppointments.billingContextSnapshot } }).from(medicalRecords).leftJoin(healthAppointments, eq(healthAppointments.id, medicalRecords.appointmentId)).where(eq(medicalRecords.id, medicalRecordId)).limit(1);
+  const [record] = await tx.select({ appointment: { id: healthAppointments.id, municipalitySnapshot: healthAppointments.municipalitySnapshot, stateSnapshot: healthAppointments.stateSnapshot, billingContextSnapshot: healthAppointments.billingContextSnapshot } }).from(medicalRecords).leftJoin(healthAppointments, eq(healthAppointments.id, medicalRecords.appointmentId)).where(eq(medicalRecords.id, medicalRecordId)).limit(1);
   if (!record) return empty;
   const [diagnosis] = await tx.select({ cidReferenceId: healthDiagnoses.cidReferenceId }).from(healthDiagnoses).where(eq(healthDiagnoses.medicalRecordId, medicalRecordId)).orderBy(desc(healthDiagnoses.isPrimary), asc(healthDiagnoses.id)).limit(1);
   const billing = appointmentBillingContextSchema.safeParse(record.appointment?.billingContextSnapshot);

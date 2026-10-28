@@ -2,7 +2,7 @@ import { and, count, desc, eq, getTableColumns, ilike, isNotNull, isNull, or, sq
 import { alias } from "drizzle-orm/pg-core";
 import type { DatabaseExecutor } from "../../transaction";
 import type { PharmacyPageUnits, PharmacyRequestSearch } from "../../../lib/contracts/health-pharmacy-pages";
-import { pharmacyRequests as requests, pharmacyRequestItems as items, pharmacyRequestEvents as events, pharmacyRequestFulfillments as fulfillments, pharmacyStockTransferItems as transferLinks } from "../../schema/health-pharmacy";
+import { pharmacyRequests as requests, pharmacyRequestItems as items, pharmacyRequestEvents as events, pharmacyRequestFulfillments as fulfillments, pharmacyStockTransferItems } from "../../schema/health-pharmacy";
 import { managementStockTransfers as transfers, managementStockTransferItems as transferItems } from "../../schema/health-management-operations";
 import { warehouses, materials, materialMovements as movements, materialStocks } from "../../schema/assets-stock";
 import { medicines } from "../../schema/health-prescriptions";
@@ -10,6 +10,7 @@ import { patients } from "../../schema/health-registration";
 import { people } from "../../schema/people";
 import { pharmacyAvailableStocks, pharmacyIds, pharmacyPageNumber, pharmacyPatients, pharmacyPeople, pharmacyPrescriptionOptions, pharmacyProducts, pharmacyProfessionals, pharmacyWarehouses, pharmacyWarehouseScope } from "./common";
 const origin = alias(warehouses, "pharmacy_request_origin"), destination = alias(warehouses, "pharmacy_request_destination"), receiver = alias(people, "pharmacy_request_receiver");
+const transferLinks = alias(pharmacyStockTransferItems, "pharmacy_request_transfer_links");
 
 export async function readPharmacyRequestsPage(db: DatabaseExecutor, units: PharmacyPageUnits, search: PharmacyRequestSearch) {
   const where = and(pharmacyWarehouseScope(destination.healthUnitId, units), search.materialId ? sql`EXISTS (SELECT 1 FROM ${items} WHERE ${items.requestId} = ${requests.id} AND ${items.materialId} = ${search.materialId})` : undefined,

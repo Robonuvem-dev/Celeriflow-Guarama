@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import type { DatabaseConnection } from "@/db/connection";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { createFinanceLegacyStoriesFixture } from "../../../../tests/helpers/finance-legacy-stories-fixture";
@@ -40,7 +40,7 @@ test("enforces the expense nature procurement-origin policy on commitments", asy
   const [[user], [employee], [year], [budgetUnit], [resourceSource], [secretariat], [alternateSupplier]] = await Promise.all([
     db.select({ id: users.id }).from(users).limit(1),
     db.select({ id: employees.id }).from(employees).limit(1),
-    db.select({ id: financialYears.id }).from(financialYears).where(and(eq(financialYears.year, 2026), isNull(financialYears.governmentEntityId))).limit(1),
+    db.select({ id: financialYears.id }).from(financialYears).where(and(eq(financialYears.year, 2026), eq(financialYears.governmentEntityId, "finance-stories-entity"))).limit(1),
     db.select({ id: planningBudgetUnits.id }).from(planningBudgetUnits).limit(1),
     db.select({ id: planningResourceSources.id }).from(planningResourceSources).limit(1),
     db.select({ id: secretariats.id }).from(secretariats).limit(1),

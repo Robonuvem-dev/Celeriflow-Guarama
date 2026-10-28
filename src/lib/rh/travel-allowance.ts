@@ -6,7 +6,7 @@ import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction
 import { hrIntegrationEvents, hrPortalRequests } from "@/db/schema/personnel-workforce";
 import { costCenters } from "@/db/schema/master-data";
 import { documents } from "@/db/schema/registry";
-import { findHrIntegrationEvent, requireHrIntegrationEvent, lockPersonnel, personnelJson as json } from "@/db/repositories/personnel/integration";
+import { findHrIntegrationEvent, requireHrIntegrationEvent, findActiveTravelAllowanceReport, lockPersonnel, personnelJson as json } from "@/db/repositories/personnel/integration";
 import { requireEmploymentRegime, requireEmploymentIdentityHistory, requireHrPortalRequest, requirePayrollRule } from "@/db/repositories/personnel/workforce";
 import { requirePersonnelEntityUnit, listPersonnelAllowancePayments, listPersonnelAllowanceRefunds, requirePersonnelPayment, requirePersonnelTreasuryMovement } from "@/db/repositories/personnel/finance";
 import { z } from "zod";
@@ -116,8 +116,7 @@ export async function accountForTravelAllowance(db: DatabaseConnection, actorId:
     const memory = request.payload as { input: z.infer<typeof inputSchema>; assessment: ReturnType<typeof calculateTravelAllowance> };
     await assertTravelReportOperationDate(tx, request.id, input.reportDate);
     if (input.reportDate < new Date(memory.input.returnAt).toISOString().slice(0, 10) || new Decimal(input.returnedAmount).gt(memory.assessment.amountBRL)) throw new Error("Data/valor de restituição incompatíveis com a viagem.");
-    const sourceKey = `DIARIA:PRESTACAO:${request.id}`;
-    const previous = await findHrIntegrationEvent(tx, sourceKey);
+    const previous = await findActiveTravelAllowanceReport(tx, request.id);
     if (previous) {
       const stored = (previous.payload as { input: typeof input }).input;
       if (Object.entries(input).some(([key, value]) => stored[key as keyof typeof input] !== value)) throw new Error("Prestação já registrada com outros valores/atividades.");
@@ -156,6 +155,8 @@ export async function accountForTravelAllowance(db: DatabaseConnection, actorId:
       }
     }
     if (previous) return previous;
+    const reports = await tx.select({ id: hrIntegrationEvents.id }).from(hrIntegrationEvents).where(and(eq(hrIntegrationEvents.eventType, "DIARIA_PRESTACAO_REGISTRADA"), sql`${hrIntegrationEvents.payload} #>> '{input,requestId}' = ${request.id}`));
+    const sourceKey = `DIARIA:PRESTACAO:${request.id}${reports.length ? `:CICLO:${reports.length}` : ""}`;
     return enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: request.kind === "DIARIA" ? "PRODUCAO" : "DEMONSTRACAO", eventType: "DIARIA_PRESTACAO_REGISTRADA", payload: { input, actorId, spentAmount: new Decimal(memory.assessment.amountBRL).sub(input.returnedAmount).toFixed(2), financialSettlement: request.kind === "DIARIA", paymentIds } });
   });
 }
@@ -175,14 +176,15 @@ export async function reopenTravelAllowanceReport(connection: DatabaseConnection
       if (Object.entries(input).some(([field, value]) => stored[field as keyof typeof stored] !== value)) throw new Error("Regularização já registrada com outros dados.");
       return previous;
     }
-    const report = await requireHrIntegrationEvent(tx, `DIARIA:PRESTACAO:${request.id}`);
+    const report = await findActiveTravelAllowanceReport(tx, request.id);
+    if (!report) throw new Error("Prestação indisponível ou já estornada.");
     const memory = z.object({ actorId: z.string(), input: z.object({ reportDate: z.iso.date() }) }).parse(report.payload);
     if (report.status === "ESTORNADA" || request.status !== "DEFERIDA" || input.date < memory.input.reportDate) throw new Error("Prestação indisponível ou data anterior à apresentação.");
     if (context.user.id === memory.actorId || context.user.id === request.actorId || context.user.employeeId === request.employeeId) throw new Error("Regularização exige responsável independente do beneficiário/apresentante.");
     const [document] = await tx.select().from(documents).where(eq(documents.id, input.documentId)).limit(1);
     if (!document) throw new Error("Documento GED não encontrado.");
     if (document.status !== "Válido") throw new Error("Regularização exige parecer GED válido.");
-    await tx.update(hrIntegrationEvents).set({ sourceKey: `${report.sourceKey}:HISTORICO:${report.id}`, status: "ESTORNADA" }).where(eq(hrIntegrationEvents.id, report.id));
+    await tx.update(hrIntegrationEvents).set({ status: "ESTORNADA" }).where(eq(hrIntegrationEvents.id, report.id));
     const event = await enqueueHrIntegration(tx, { sourceKey: key, domain: "AUDITORIA", environment: "PRODUCAO", eventType: "DIARIA_PRESTACAO_REABERTA", payload: { input, previousReportId: report.id, actorId: context.user.id } });
     const [updated] = await tx.update(hrIntegrationEvents).set({ status: "CONCLUIDA" }).where(eq(hrIntegrationEvents.id, event.id)).returning();
     return updated;
@@ -202,7 +204,8 @@ export async function buildTravelAllowanceDocument(db: DatabaseExecutor, request
     rows.push(["Autorização", decision.authorizationNumber], ["Decisão", decision.decision], ["Responsável ID", request.decidedBy || ""], ["Data da decisão", request.decidedAt?.toISOString() || ""]);
   }
   if (type === "PRESTACAO") {
-    const event = await requireHrIntegrationEvent(db, `DIARIA:PRESTACAO:${request.id}`);
+    const event = await findActiveTravelAllowanceReport(db, request.id);
+    if (!event) throw new Error("Prestação ativa não encontrada.");
     const report = event.payload as { input: { activities: string; reportDate: string; returnedAmount: string; documentId?: string; restitutionRevenueId?: string }; spentAmount: string };
     rows.push(["Atividades", report.input.activities], ["Data da prestação", report.input.reportDate], ["Restituição BRL", report.input.returnedAmount], ["Valor utilizado BRL", report.spentAmount], ["Relatório GED", report.input.documentId ?? ""], ["Referências de devolução", report.input.restitutionRevenueId ?? ""]);
   }

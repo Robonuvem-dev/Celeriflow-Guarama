@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
 import { Decimal } from "../src/db/decimal";
 import type { MasterDataCatalog } from "../src/app/app-domain/cadastros/master-data-types";
 import { literalContains, sqlOracleValue } from "./sql-oracle";
@@ -79,6 +80,18 @@ test("diagnostic errors do not expose URL, credentials, account or raw message",
   assert.doesNotMatch(JSON.stringify(safe), /secret|password|host\.invalid|account@example/);
   assert.equal(profileDiagnosticError({ name: "postgresql://secret", code: "account@example.invalid" }).name, undefined);
   assert.equal(profileDiagnosticError(null).query, "FAILED");
+});
+
+test("standalone profile diagnostic sanitizes configuration failure before any pool is created", () => {
+  const child = spawnSync(process.execPath, ["--import", "tsx", "scripts/diagnose-profile-page.ts", "private-account@example.invalid"], {
+    env: { ...process.env, DATABASE_URL: "not-a-url-with-private-password" }, encoding: "utf8", timeout: 15_000,
+  });
+  assert.equal(child.error, undefined);
+  assert.equal(child.status, 1);
+  assert.equal(child.stdout, "");
+  const result = JSON.parse(child.stderr.trim());
+  assert.deepEqual(result, { query: "FAILED", name: "TypeError", code: "ERR_INVALID_URL" });
+  assert.doesNotMatch(child.stderr, /private-account|private-password|DATABASE_URL|node_modules/);
 });
 
 test("all 14 live metadata catalogs agree with frozen fields/columns/option keys", () => {

@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createTaxChainDatabase, firstTaxRow } from "./tax-chain-database";
 import { taxpayers } from "../../src/db/schema/registry";
 import { taxes } from "../../src/db/schema/taxation-core";

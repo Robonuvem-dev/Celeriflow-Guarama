@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { assertHealthUnitAccess, type AppContext } from "@/lib/platform/tenant-context";
 import { and, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
-import { db, databaseConnection } from "@/db/client";
+import { db } from "@/db/client";
+import { healthDatabaseConnection } from "./health-transaction";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { healthCarePrograms, healthCareProgramEnrollments } from "@/db/schema/health-programs";
 import type { HealthCareProgramRecord, HealthCareProgramEnrollmentRecord } from "@/lib/contracts/health-programs";
@@ -15,7 +16,7 @@ export async function enrollInHealthCareProgram(context: AppContext, raw: unknow
   const input = z.object({ programId: z.string().min(1), patientId: z.string().min(1), unitId: z.string().min(1), startsAt: z.coerce.date(), endsAt: z.coerce.date().nullable(), reason: z.string().trim().min(1).max(2000) }).strict().parse(raw);
   assertHealthUnitAccess(context.user, input.unitId);
   if (input.endsAt && input.endsAt < input.startsAt) throw new Error("O encerramento do vínculo não pode anteceder o início.");
-  return withDatabaseTransaction(databaseConnection, async tx => {
+  return withDatabaseTransaction(healthDatabaseConnection(context), async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`HEALTH_PROGRAM:${input.patientId}:${input.programId}`}))`);
     const [program] = await tx.select({ id: healthCarePrograms.id }).from(healthCarePrograms).where(and(eq(healthCarePrograms.id, input.programId), eq(healthCarePrograms.isActive, true)));
     const unit = (await tx.execute<{ id: string }>(sql`SELECT id FROM "HealthUnit" WHERE id=${input.unitId} AND "isActive"=true LIMIT 1`)).rows[0];
@@ -31,7 +32,7 @@ export async function enrollInHealthCareProgram(context: AppContext, raw: unknow
 }
 export async function closeHealthCareProgramEnrollment(context: AppContext, raw: unknown): Promise<HealthCareProgramEnrollmentRecord> {
   const input = z.object({ enrollmentId: z.string().min(1), reason: z.string().trim().min(1).max(2000) }).strict().parse(raw);
-  return withDatabaseTransaction(databaseConnection, async tx => {
+  return withDatabaseTransaction(healthDatabaseConnection(context), async tx => {
     await tx.execute(sql`SELECT id FROM "HealthCareProgramEnrollment" WHERE id=${input.enrollmentId} FOR UPDATE`);
     const [current] = await tx.select().from(healthCareProgramEnrollments).where(eq(healthCareProgramEnrollments.id, input.enrollmentId));
     if (!current) throw new Error("Vínculo com ação programática não encontrado.");

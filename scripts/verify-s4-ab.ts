@@ -1,37 +1,48 @@
 import { config } from "dotenv";
+import { and, count, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { users } from "../src/db/schema/identity";
+import { employees } from "../src/db/schema/administration";
+import { suppliers } from "../src/db/schema/registry";
+import { fleetUnits } from "../src/db/schema/fleet";
+import { healthUnits, healthProfessionals } from "../src/db/schema/health-workforce";
+import { healthSpecialties } from "../src/db/schema/health-administration";
+import { patients } from "../src/db/schema/health-registration";
+import { healthRegulationRequests, healthRegulationEvents, healthRegulationQuotas } from "../src/db/schema/health-regulation";
+import { healthTfdPassengers, healthTfdTrips, healthTfdRequests } from "../src/db/schema/health-tfd";
+import { healthProductionFacts, healthProductionCriticisms } from "../src/db/schema/health-production";
 import type { AppContext } from "../src/lib/platform/tenant-context";
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
 async function main() {
-  const { prisma } = await import("../src/lib/prisma");
+  const { db, databaseConnection } = await import("../src/db/client");
   const { saveRegulationQuota, createRegulationRequest, transitionRegulationRequest } = await import("../src/lib/saude/regulation-service");
   const { createTfdRequest, authorizeTfdRequest, createTfdTrip, addPassenger, updateTripStatus } = await import("../src/lib/saude/tfd-service");
   try {
-    const usuario = await prisma.usuario.findFirst({ where: { employeeId: { not: null } }, include: { employee: true } });
+    const [usuario] = await db.select().from(users).where(isNotNull(users.employeeId)).limit(1);
     if (!usuario?.employeeId) throw new Error("Usuario com employee não encontrado");
-    const ctx: AppContext = { prisma, user: { id: usuario.id, firebaseUid: usuario.firebaseUid || "", email: usuario.email, name: usuario.nome, role: "admin", profileCode: "ADMIN", modulePermissions: [], allowedBudgetUnitIds: [], allowedHealthUnitIds: [], hasHealthAccessScope: false, employeeId: usuario.employeeId, departmentId: null, secretariatId: null } };
-    const unit = await prisma.healthUnit.findFirst({ where: { isActive: true } });
-    const patient = await prisma.patient.findFirst({ where: { status: "Ativo" } });
-    const patient2 = await prisma.patient.findFirst({ where: { status: "Ativo", id: { not: patient!.id } } });
-    const supplier = await prisma.supplier.findFirst({ where: { status: "Ativo" } });
-    const specialty = await prisma.healthSpecialty.findFirst({ where: { isActive: true } });
-    let fleet = await prisma.fleetUnit.findFirst({ where: { category: "VEICULO" } });
+    const ctx: AppContext = { database: db, user: { id: usuario.id, firebaseUid: usuario.firebaseUid || "", email: usuario.email, name: usuario.nome, role: "admin", profileCode: "ADMIN", modulePermissions: [], allowedBudgetUnitIds: [], allowedHealthUnitIds: [], hasHealthAccessScope: false, employeeId: usuario.employeeId, departmentId: null, secretariatId: null } };
+    const [unit] = await db.select().from(healthUnits).where(eq(healthUnits.isActive,true)).limit(1);
+    const [patient] = await db.select().from(patients).where(eq(patients.status,"Ativo")).limit(1);
+    const [patient2] = await db.select().from(patients).where(and(eq(patients.status,"Ativo"),ne(patients.id,patient!.id))).limit(1);
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.status,"Ativo")).limit(1);
+    const [specialty] = await db.select().from(healthSpecialties).where(eq(healthSpecialties.isActive,true)).limit(1);
+    let [fleet] = await db.select().from(fleetUnits).where(eq(fleetUnits.category,"VEICULO")).limit(1);
     if (!fleet) {
-      fleet = await prisma.fleetUnit.create({ data: { code: `TFD-${Date.now()}`, name: "Veículo TFD 01", category: "VEICULO", plate: `TST${Date.now().toString().slice(-4)}`, createdById: usuario.id } });
+      [fleet] = await db.insert(fleetUnits).values({code:`TFD-${Date.now()}`,name:"Veículo TFD 01",category:"VEICULO",plate:`TST${Date.now().toString().slice(-4)}`,createdById:usuario.id}).returning();
     }
-    const driver = await prisma.employee.findFirst({ where: { isActive: true } });
-    const professional = await prisma.healthProfessional.findFirst({ where: { isActive: true }, select: { id: true } });
+    const [driver] = await db.select().from(employees).where(eq(employees.isActive,true)).limit(1);
+    const [professional] = await db.select({id:healthProfessionals.id}).from(healthProfessionals).where(eq(healthProfessionals.isActive,true)).limit(1);
     if (!unit || !patient || !supplier || !fleet) throw new Error("Massa mínima ausente para S4");
     // Cleanup previous test data
-    await prisma.healthTfdPassenger.deleteMany({ where: { patientId: patient.id } });
-    await prisma.healthTfdTrip.deleteMany({ where: { fleetUnitId: fleet.id } });
-    await prisma.healthTfdRequest.deleteMany({ where: { patientId: patient.id } });
-    await prisma.healthRegulationEvent.deleteMany({ where: { request: { patientId: patient.id } } });
-    await prisma.healthRegulationRequest.deleteMany({ where: { patientId: patient.id } });
-    await prisma.healthRegulationQuota.deleteMany({ where: { providerSupplierId: supplier.id, period: "2026-09" } });
-    await prisma.healthProductionCriticism.deleteMany({ where: { fact: { patientId: patient.id, originType: "REGULATION" } } });
-    await prisma.healthProductionFact.deleteMany({ where: { patientId: patient.id, originType: "REGULATION" } });
+    await db.delete(healthTfdPassengers).where(eq(healthTfdPassengers.patientId,patient.id));
+    await db.delete(healthTfdTrips).where(eq(healthTfdTrips.fleetUnitId,fleet.id));
+    await db.delete(healthTfdRequests).where(eq(healthTfdRequests.patientId,patient.id));
+    await db.delete(healthRegulationEvents).where(inArray(healthRegulationEvents.requestId,db.select({id:healthRegulationRequests.id}).from(healthRegulationRequests).where(eq(healthRegulationRequests.patientId,patient.id))));
+    await db.delete(healthRegulationRequests).where(eq(healthRegulationRequests.patientId,patient.id));
+    await db.delete(healthRegulationQuotas).where(and(eq(healthRegulationQuotas.providerSupplierId,supplier.id),eq(healthRegulationQuotas.period,"2026-09")));
+    await db.delete(healthProductionCriticisms).where(inArray(healthProductionCriticisms.factId,db.select({id:healthProductionFacts.id}).from(healthProductionFacts).where(and(eq(healthProductionFacts.patientId,patient.id),eq(healthProductionFacts.originType,"REGULATION")))));
+    await db.delete(healthProductionFacts).where(and(eq(healthProductionFacts.patientId,patient.id),eq(healthProductionFacts.originType,"REGULATION")));
 
     console.log("Creating quota 10");
     const quota = await saveRegulationQuota(ctx, { providerSupplierId: supplier.id, unitId: unit.id, specialtyId: specialty?.id || null, period: "2026-09", totalQuantity: 10 });
@@ -43,26 +54,26 @@ async function main() {
 
     console.log("Authorize");
     await transitionRegulationRequest(ctx, req.id, "AUTORIZADA", { quotaId: quota.id });
-    let q = await prisma.healthRegulationQuota.findUnique({ where: { id: quota.id } });
+    let [q] = await db.select().from(healthRegulationQuotas).where(eq(healthRegulationQuotas.id,quota.id));
     console.log("after authorize", q);
     if (q!.reservedQuantity !== 1) throw new Error("Reserva falhou");
 
     console.log("Execute");
     await transitionRegulationRequest(ctx, req.id, "EXECUTADA", {});
-    q = await prisma.healthRegulationQuota.findUnique({ where: { id: quota.id } });
+    [q] = await db.select().from(healthRegulationQuotas).where(eq(healthRegulationQuotas.id,quota.id));
     console.log("after exec", q);
     if (q!.reservedQuantity !== 0 || q!.realizedQuantity !== 1) throw new Error("Consumo falhou");
 
     console.log("Cancel test");
     const req2 = await createRegulationRequest(ctx, { patientId: patient.id, requestUnitId: unit.id, professionalId: professional?.id || null, priority: "Normal", description: "Avaliação de retorno" });
     await transitionRegulationRequest(ctx, req2.id, "AUTORIZADA", { quotaId: quota.id });
-    q = await prisma.healthRegulationQuota.findUnique({ where: { id: quota.id } });
+    [q] = await db.select().from(healthRegulationQuotas).where(eq(healthRegulationQuotas.id,quota.id));
     console.log("after 2nd authorize", q);
     await transitionRegulationRequest(ctx, req2.id, "CANCELADA", {});
-    q = await prisma.healthRegulationQuota.findUnique({ where: { id: quota.id } });
+    [q] = await db.select().from(healthRegulationQuotas).where(eq(healthRegulationQuotas.id,quota.id));
     console.log("after cancel", q);
     if (q!.reservedQuantity !== 0) throw new Error("Devolução falhou");
-    const guide = await prisma.healthRegulationRequest.findUnique({ where: { id: req.id }, select: { guideNumber: true } });
+    const [guide] = await db.select({guideNumber:healthRegulationRequests.guideNumber}).from(healthRegulationRequests).where(eq(healthRegulationRequests.id,req.id));
     console.log("guide", guide);
     if (!guide?.guideNumber) throw new Error("Guia não gerada");
 
@@ -75,7 +86,7 @@ async function main() {
     await addPassenger(ctx, { tripId: trip.id, patientId: patient.id, tfdRequestId: tfd.id, kind: "PACIENTE" });
     // companion for same patient counts as second seat
     await addPassenger(ctx, { tripId: trip.id, patientId: patient.id, companionName: "Acompanhante familiar", kind: "ACOMPANHANTE" });
-    const cnt = await prisma.healthTfdPassenger.count({ where: { tripId: trip.id } });
+    const [{value:cnt}] = await db.select({value:count()}).from(healthTfdPassengers).where(eq(healthTfdPassengers.tripId,trip.id));
     console.log("passengers", cnt);
     if (cnt !== 2) throw new Error("Passageiros incorretos");
     try {
@@ -93,7 +104,7 @@ async function main() {
 
     console.log(JSON.stringify({ status: "S4-AB READY", quota: q, guide: guide.guideNumber }, null, 2));
   } finally {
-    await prisma.$disconnect();
+    await databaseConnection.pool.end();
   }
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });

@@ -80,6 +80,14 @@ export async function createFinanceLegacyStoriesFixture() {
     const seed = readFileSync(join("tests", "fixtures", "finance-legacy-stories.sql"), "utf8");
     await withDatabaseTransaction(local.connection, async tx => {
       await tx.execute(sql.raw(seed));
+      const scope = await tx.execute<{ entityId: string; budgetUnitId: string; yearEntityId: string }>(sql`
+        SELECT u."governmentEntityId" AS "entityId", u."budgetUnitId", y."governmentEntityId" AS "yearEntityId"
+        FROM "PlanningEntityUnit" u
+        JOIN "BudgetAppropriation" a ON a."budgetUnitId" = u."budgetUnitId"
+        JOIN "FinancialYear" y ON y.id = a."financialYearId"
+        WHERE a.id = 'appropriation-finance-test-01'
+      `);
+      assert.deepEqual(scope.rows, [{ entityId: "finance-stories-entity", budgetUnitId: "budget-unit-fin-01", yearEntityId: "finance-stories-entity" }]);
     }, { timeoutMs: 120_000, lockTimeoutMs: 120_000 });
     const opened = local;
     let closing: Promise<void> | undefined;

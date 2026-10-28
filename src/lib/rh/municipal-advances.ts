@@ -9,7 +9,7 @@ import { costCenters } from "@/db/schema/master-data";
 import { documents } from "@/db/schema/registry";
 import { financialYears } from "@/db/schema/finance-years";
 import { accountingEvents, accountingPlans, accountingRules } from "@/db/schema/finance-accounting";
-import { findHrIntegrationEvent, requireHrIntegrationEvent, lockPersonnel, personnelJson } from "@/db/repositories/personnel/integration";
+import { findHrIntegrationEvent, requireHrIntegrationEvent, findActiveTravelAllowanceReport, lockPersonnel, personnelJson } from "@/db/repositories/personnel/integration";
 import { requireEmploymentRegime, requireEmploymentHolderHistory, requireHrPortalRequest } from "@/db/repositories/personnel/workforce";
 import { requirePersonnelEntityUnit, listPersonnelEntityUnits, requirePersonnelFinancialYear, requirePersonnelBank, requirePersonnelPayment, listPersonnelAllowancePayments, listPersonnelAllowanceRefunds, requirePersonnelRevenue, requirePersonnelTreasuryMovement, requirePersonnelAccountingTransaction, requirePersonnelCommitment } from "@/db/repositories/personnel/finance";
 import { z } from "zod";
@@ -115,7 +115,7 @@ async function receivePriorYearAllowanceRefund(connection: DatabaseConnection, c
     }
     if (request.kind !== kind || request.status !== "DEFERIDA") throw new Error("Restituição exige concessão autorizada antes da apresentação da prestação.");
     if (kind === "DIARIA") await assertTravelReportOperationDate(tx, request.id, input.date);
-    const activeTravelReport = kind === "DIARIA" ? await findHrIntegrationEvent(tx, `DIARIA:PRESTACAO:${request.id}`) : null;
+    const activeTravelReport = kind === "DIARIA" ? await findActiveTravelAllowanceReport(tx, request.id) : null;
     if (activeTravelReport && activeTravelReport.status !== "ESTORNADA") throw new Error("Regularize a prestação ativa da diária antes de receber nova restituição.");
     const date = new Date(`${input.date}T12:00:00Z`);
     const amount = new Decimal(input.amount);
@@ -166,7 +166,7 @@ export async function assertAdvanceRefundReversalAllowed(tx: DatabaseTransaction
   if (revenue.sourceType === "TRAVEL_ALLOWANCE_REFUND") {
     const unit = z.object({ input: z.object({ budgetUnitId: z.string() }) }).parse(request.payload).input.budgetUnitId;
     if (request.kind !== "DIARIA" || unit !== revenue.budgetUnitId || actor.allowedBudgetUnitIds && !actor.allowedBudgetUnitIds.includes(unit)) throw new Error("Estorno da restituição fora da origem/UG da diária.");
-    const report = await findHrIntegrationEvent(tx, `DIARIA:PRESTACAO:${request.id}`);
+    const report = await findActiveTravelAllowanceReport(tx, request.id);
     if (report && report.status !== "ESTORNADA") throw new Error("Regularize a prestação ativa da diária antes de estornar o recebimento.");
     return;
   }
@@ -364,7 +364,7 @@ export async function reverseAdvanceCommitmentControl(tx: DatabaseTransaction, a
     const request = await requireHrPortalRequest(tx, expense.sourceId);
     const unit = z.object({ scope: z.literal("PRODUCAO"), input: z.object({ budgetUnitId: z.string() }) }).parse(request.payload).input.budgetUnitId;
     if (request.kind !== "DIARIA" || actor.allowedBudgetUnitIds && !actor.allowedBudgetUnitIds.includes(unit)) throw new Error("Cancelamento fora da origem/UG da diária.");
-    const report = await findHrIntegrationEvent(tx, `DIARIA:PRESTACAO:${request.id}`);
+    const report = await findActiveTravelAllowanceReport(tx, request.id);
     if (report && report.status !== "ESTORNADA") throw new Error("Regularize a prestação ativa antes de cancelar a diária.");
     await tx.update(hrPortalRequests).set({ status: "CANCELADA" }).where(eq(hrPortalRequests.id, request.id));
     const cancellation = await enqueueHrIntegration(tx, { sourceKey: `DIARIA:ANULACAO:${commitmentId}`, domain: "FINANCEIRO", environment: "PRODUCAO", eventType: "DIARIA_CONCESSAO_ANULADA", payload: { requestId: request.id, commitmentId, actorId: actor.usuarioId, date: date.toISOString(), reason } });

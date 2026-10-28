@@ -2,14 +2,16 @@
 
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
+import { eq, inArray, sql } from "drizzle-orm";
+import { databaseConnection } from "@/db/client";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { attendanceRecords } from "@/db/schema/personnel-records";
+import { hrIntegrationEvents } from "@/db/schema/personnel-workforce";
 
-async function getTenantPrisma(operation: "create" | "update" | "delete") {
-  return (await getTenantContextForModuleOperation("RH", operation)).prisma;
-}
 
 export async function savePonto(formData: FormData) {
   const id = formData.get("id") as string | null;
-  const prisma = await getTenantPrisma(id ? "update" : "create");
+  await getTenantContextForModuleOperation("RH", id ? "update" : "create");
   try {
     const employeeId = formData.get("employeeId") as string;
     const dateStr = formData.get("date") as string;
@@ -65,15 +67,16 @@ export async function savePonto(formData: FormData) {
       bankHours,
     };
 
-    await prisma.$transaction(async tx => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${employeeId}`}))`;
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${employeeId}`}))`);
       if (id) {
-        await tx.$queryRaw`SELECT id FROM "AttendanceRecord" WHERE id=${id} FOR UPDATE`;
-        const previous = await tx.attendanceRecord.findUniqueOrThrow({ where: { id } });
+        const [previous] = await tx.select().from(attendanceRecords).where(eq(attendanceRecords.id, id)).for("update");
+        if (!previous) throw new Error("Ponto não encontrado.");
         if (previous.employeeId !== employeeId) throw new Error("Não é permitido trocar o titular do ponto.");
-        if (await tx.hrIntegrationEvent.findFirst({ where: { sourceKey: { in: [`PONTO:HORAS_EXTRAS:${id}`, `PONTO:BANCO_HORAS:${id}`] } } })) throw new Error("Ponto com reflexo na folha/direitos exige ajuste compensatório, preservando a origem.");
-        await tx.attendanceRecord.update({ where: { id }, data });
-      } else await tx.attendanceRecord.create({ data });
+        const [integration] = await tx.select({ id: hrIntegrationEvents.id }).from(hrIntegrationEvents).where(inArray(hrIntegrationEvents.sourceKey, [`PONTO:HORAS_EXTRAS:${id}`, `PONTO:BANCO_HORAS:${id}`])).limit(1);
+        if (integration) throw new Error("Ponto com reflexo na folha/direitos exige ajuste compensatório, preservando a origem.");
+        await tx.update(attendanceRecords).set(data).where(eq(attendanceRecords.id, id));
+      } else await tx.insert(attendanceRecords).values(data);
     });
 
     revalidatePath("/rh/ponto");
@@ -85,14 +88,17 @@ export async function savePonto(formData: FormData) {
 }
 
 export async function deletePonto(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  await getTenantContextForModuleOperation("RH", "delete");
   try {
-    await prisma.$transaction(async tx => {
-      const previous = await tx.attendanceRecord.findUniqueOrThrow({ where: { id } });
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${previous.employeeId}`}))`;
-      await tx.$queryRaw`SELECT id FROM "AttendanceRecord" WHERE id=${id} FOR UPDATE`;
-      if (await tx.hrIntegrationEvent.findFirst({ where: { sourceKey: { in: [`PONTO:HORAS_EXTRAS:${id}`, `PONTO:BANCO_HORAS:${id}`] } } })) throw new Error("Ponto com reflexo na folha/direitos não pode ser excluído.");
-      await tx.attendanceRecord.delete({ where: { id } });
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const [previous] = await tx.select().from(attendanceRecords).where(eq(attendanceRecords.id, id)).limit(1);
+      if (!previous) throw new Error("Ponto não encontrado.");
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${previous.employeeId}`}))`);
+      await tx.select({ id: attendanceRecords.id }).from(attendanceRecords).where(eq(attendanceRecords.id, id)).for("update");
+      const [integration] = await tx.select({ id: hrIntegrationEvents.id }).from(hrIntegrationEvents).where(inArray(hrIntegrationEvents.sourceKey, [`PONTO:HORAS_EXTRAS:${id}`, `PONTO:BANCO_HORAS:${id}`])).limit(1);
+      if (integration) throw new Error("Ponto com reflexo na folha/direitos não pode ser excluído.");
+      const deleted = await tx.delete(attendanceRecords).where(eq(attendanceRecords.id, id)).returning({ id: attendanceRecords.id });
+      if (!deleted.length) throw new Error("Ponto não encontrado.");
     });
     revalidatePath("/rh/ponto");
     return { success: true };

@@ -21,11 +21,14 @@ INSERT INTO "Usuario" (id, nome, email, senha, ativo, "perfilId", "employeeId", 
   ('finance-test-user-04', 'Finance Test User 04', 'finance-test-user-04@example.test', 'fixture-only-no-login', true, 'finance-legacy-profile', 'emp-finance-test-04', CURRENT_TIMESTAMP),
   ('finance-test-user-05', 'Finance Test User 05', 'finance-test-user-05@example.test', 'fixture-only-no-login', true, 'finance-legacy-profile', 'emp-finance-test-05', CURRENT_TIMESTAMP);
 
--- These stories explicitly select the NULL-entity legacy exercise.
+INSERT INTO "GovernmentEntity" (id, code, name, type, status, "updatedAt") VALUES
+  ('finance-stories-entity', 'FIN', 'Prefeitura das histórias financeiras', 'PREFEITURA', 'ATIVA', CURRENT_TIMESTAMP);
+INSERT INTO "PlanningEntityScope" ("governmentEntityId", jurisdiction) VALUES ('finance-stories-entity', 'EXECUTIVE');
 INSERT INTO "FinancialYear" (id, year, "governmentEntityId", status, "startDate", "endDate", "updatedAt") VALUES
-  ('financial-year-2026', 2026, NULL, 'Aberto', TIMESTAMP '2026-01-01 00:00:00.000', TIMESTAMP '2026-12-31 23:59:59.999', CURRENT_TIMESTAMP);
+  ('financial-year-2026', 2026, 'finance-stories-entity', 'Aberto', TIMESTAMP '2026-01-01 00:00:00.000', TIMESTAMP '2026-12-31 23:59:59.999', CURRENT_TIMESTAMP);
 INSERT INTO "BudgetUnit" (id, code, name, "secretariatId", "updatedAt") VALUES
   ('budget-unit-fin-01', '0101', 'Prefeitura Municipal - Teste', 'sec-fin-01', CURRENT_TIMESTAMP);
+INSERT INTO "PlanningEntityUnit" ("budgetUnitId", "governmentEntityId") VALUES ('budget-unit-fin-01', 'finance-stories-entity');
 INSERT INTO "ResourceSource" (id, code, name, "updatedAt") VALUES
   ('resource-source-15000000', '15000000', 'Recursos nao vinculados de impostos', CURRENT_TIMESTAMP),
   ('resource-source-15010000', '15010000', 'Outros recursos nao vinculados', CURRENT_TIMESTAMP);
@@ -47,29 +50,35 @@ INSERT INTO "Creditor" (id, "supplierId", "companyId", name, document, status, "
 INSERT INTO "Document" (id, title, "documentType", "fileUrl", status, "companyId", "updatedAt") VALUES
   ('doc-nf-lagoaseca-01', 'Nota fiscal de teste', 'Nota Fiscal', 'https://example.test/doc-nf-lagoaseca-01.pdf', 'Válido', 'company-lagoaseca-01', CURRENT_TIMESTAMP);
 
--- Exactly two analytic accounts and one active reference rule per original event.
+-- Analytic accounts, including a distinct account per bank (historical UNIQUE).
 INSERT INTO "AccountingPlan" (id, code, name, type, "updatedAt") VALUES
   ('accounting-plan-debit-test', '1.1.1.1.1.00.01', 'Conta de debito de teste', 'Ativo', CURRENT_TIMESTAMP),
-  ('accounting-plan-credit-test', '2.1.1.1.1.00.01', 'Conta de credito de teste', 'Passivo', CURRENT_TIMESTAMP);
+  ('accounting-plan-credit-test', '2.1.1.1.1.00.01', 'Conta de credito de teste', 'Passivo', CURRENT_TIMESTAMP),
+  ('accounting-plan-revenue-bank-test', '1.1.1.1.1.00.02', 'Conta bancaria de receitas', 'Ativo', CURRENT_TIMESTAMP);
 INSERT INTO "AccountingEventCatalog" (id, code, name, description, "isActive", "updatedAt") VALUES
   ('accounting-event-empenho_emitido', 'EMPENHO_EMITIDO', 'Empenho emitido', 'Regra exclusiva da fixture de integracao', true, CURRENT_TIMESTAMP),
   ('accounting-event-liquidacao_registrada', 'LIQUIDACAO_REGISTRADA', 'Liquidacao registrada', 'Regra exclusiva da fixture de integracao', true, CURRENT_TIMESTAMP),
   ('accounting-event-pagamento_efetivado', 'PAGAMENTO_EFETIVADO', 'Pagamento efetivado', 'Regra exclusiva da fixture de integracao', true, CURRENT_TIMESTAMP),
   ('accounting-event-retencao_recolhida', 'RETENCAO_RECOLHIDA', 'Retencao recolhida', 'Regra exclusiva da fixture de integracao', true, CURRENT_TIMESTAMP),
-  ('accounting-event-pagamento_estornado', 'PAGAMENTO_ESTORNADO', 'Pagamento estornado', 'Regra exclusiva da fixture de integracao', true, CURRENT_TIMESTAMP);
+  ('accounting-event-pagamento_estornado', 'PAGAMENTO_ESTORNADO', 'Pagamento estornado', 'Regra exclusiva da fixture de integracao', true, CURRENT_TIMESTAMP),
+  ('accounting-event-transferencia', 'TRANSFERENCIA_BANCARIA', 'Transferencia bancaria', 'Regra exclusiva da fixture de integracao', true, CURRENT_TIMESTAMP);
 INSERT INTO "AccountingPostingRule" (id, "eventId", "debitAccountId", "creditAccountId", description, "isActive", "isReference", "updatedAt") VALUES
   ('posting-rule-empenho_emitido', 'accounting-event-empenho_emitido', 'accounting-plan-debit-test', 'accounting-plan-credit-test', 'Regra de teste', true, true, CURRENT_TIMESTAMP),
   ('posting-rule-liquidacao_registrada', 'accounting-event-liquidacao_registrada', 'accounting-plan-debit-test', 'accounting-plan-credit-test', 'Regra de teste', true, true, CURRENT_TIMESTAMP),
   ('posting-rule-pagamento_efetivado', 'accounting-event-pagamento_efetivado', 'accounting-plan-debit-test', 'accounting-plan-credit-test', 'Regra de teste', true, true, CURRENT_TIMESTAMP),
   ('posting-rule-retencao_recolhida', 'accounting-event-retencao_recolhida', 'accounting-plan-debit-test', 'accounting-plan-credit-test', 'Regra de teste', true, true, CURRENT_TIMESTAMP),
-  ('posting-rule-pagamento_estornado', 'accounting-event-pagamento_estornado', 'accounting-plan-debit-test', 'accounting-plan-credit-test', 'Regra de teste', true, true, CURRENT_TIMESTAMP);
+  ('posting-rule-pagamento_estornado', 'accounting-event-pagamento_estornado', 'accounting-plan-debit-test', 'accounting-plan-credit-test', 'Regra de teste', true, true, CURRENT_TIMESTAMP),
+  ('posting-rule-transferencia', 'accounting-event-transferencia', 'accounting-plan-credit-test', 'accounting-plan-debit-test', 'Regra de transferencia', true, true, CURRENT_TIMESTAMP);
 INSERT INTO "RetentionRule" (id, code, type, description, "calculationBasePercentage", "ratePercentage", "beneficiaryName", "beneficiaryDocument", "financialYearId", "effectiveFrom", "effectiveTo", "dueDays", "isActive", "updatedAt") VALUES
   ('retention-rule-inss-11', 'INSS_11', 'INSS', 'Retencao INSS 11%', 100.0000, 11.0000, 'Instituto Nacional do Seguro Social', '29979036000140', 'financial-year-2026', TIMESTAMP '2026-01-01 00:00:00.000', TIMESTAMP '2026-12-31 23:59:59.999', 20, true, CURRENT_TIMESTAMP);
 
-INSERT INTO "BankAccount" (id, "bankName", agency, "accountNumber", "accountType", "currentBalance", "currentBalanceDecimal", "resourceSourceId", "budgetUnitId", "externalId", purpose, "isActive", "updatedAt") VALUES
-  ('poc-robonuvem-checking-10001', '001 - Banco Virtual Robonuvem', '0001', '10001-0', 'Movimento', 300000, 300000.00, 'resource-source-15000000', 'budget-unit-fin-01', 'TEST-BA-001', 'Pagamentos de teste', true, CURRENT_TIMESTAMP),
-  ('poc-robonuvem-revenue-20001', '001 - Banco Virtual Robonuvem', '0001', '20001-1', 'Arrecadacao', 150000, 150000.00, 'resource-source-15000000', 'budget-unit-fin-01', 'TEST-BA-002', 'Receitas de teste', true, CURRENT_TIMESTAMP),
-  ('poc-robonuvem-investment-90001', '001 - Banco Virtual Robonuvem', '0001', '90001-4', 'Aplicacao', 200000, 200000.00, 'resource-source-15000000', 'budget-unit-fin-01', 'TEST-BA-003', 'Aplicacoes de teste', true, CURRENT_TIMESTAMP);
+INSERT INTO "BankAccount" (id, "bankName", agency, "accountNumber", "accountType", "currentBalance", "currentBalanceDecimal", "resourceSourceId", "budgetUnitId", "externalId", purpose, "isActive", "updatedAt", "accountingPlanId") VALUES
+  ('poc-robonuvem-checking-10001', '001 - Banco Virtual Robonuvem', '0001', '10001-0', 'Movimento', 300000, 300000.00, 'resource-source-15000000', 'budget-unit-fin-01', 'TEST-BA-001', 'Pagamentos de teste', true, CURRENT_TIMESTAMP, 'accounting-plan-debit-test'),
+  ('poc-robonuvem-revenue-20001', '001 - Banco Virtual Robonuvem', '0001', '20001-1', 'Arrecadacao', 150000, 150000.00, 'resource-source-15000000', 'budget-unit-fin-01', 'TEST-BA-002', 'Receitas de teste', true, CURRENT_TIMESTAMP, 'accounting-plan-revenue-bank-test'),
+  ('poc-robonuvem-investment-90001', '001 - Banco Virtual Robonuvem', '0001', '90001-4', 'Aplicacao', 200000, 200000.00, 'resource-source-15000000', 'budget-unit-fin-01', 'TEST-BA-003', 'Aplicacoes de teste', true, CURRENT_TIMESTAMP, 'accounting-plan-credit-test');
+INSERT INTO "BankAccountResourceSource" ("bankAccountId", "resourceSourceId") VALUES
+  ('poc-robonuvem-revenue-20001', 'resource-source-15000000'),
+  ('poc-robonuvem-revenue-20001', 'resource-source-15010000');
 -- Freeze the documentary resource source on every opening movement. Merely
 -- copying BankAccount.currentBalance does not fund the source-specific ledger.
 INSERT INTO "TreasuryMovement" (id, date, type, direction, "valueDecimal", history, "bankAccountId", "financialYearId", "resourceSourceId", "sourceModule", "sourceType", "sourceId", "eventType", "idempotencyKey") VALUES

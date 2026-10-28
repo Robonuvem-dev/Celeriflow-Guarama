@@ -19,6 +19,7 @@ import { insertFinancePayment, readFinancePayment } from "@/db/repositories/fina
 import { insertFinanceCommitmentMovement } from "@/db/repositories/finance/budget-execution";
 import { insertTreasuryMovement } from "@/db/repositories/finance/treasury";
 import { financialDocuments } from "@/db/schema/finance-documents";
+import { findActiveTravelAllowanceReport } from "@/db/repositories/personnel/integration";
 
 const schema = z.object({ requestId: z.string().min(1), requestKey: z.string().trim().min(1).max(120), paymentId: z.string().min(1), date: z.iso.date(), amount: z.string().regex(/^\d{1,12}(?:\.\d{1,2})?$/), documentId: z.string().min(1), reason: z.string().trim().min(10).max(3000) }).strict();
 const positionSchema = z.object({ input: schema, originalPaymentId: z.string(), originalSettlementId: z.string(), commitmentId: z.string(), correctionPaymentId: z.string(), correctionSettlementId: z.string(), movementId: z.string(), treasuryMovementId: z.string(), transactionIds: z.array(z.string()).length(3), budgetUnitId: z.string(), governmentEntityId: z.string(), financialYearId: z.string() });
@@ -30,7 +31,7 @@ export async function assertCurrentRefundPaymentMutationAllowed(tx: DatabaseTran
   if (expense?.sourceModule === "RH" && ["TRAVEL_ALLOWANCE", "ADVANCE_ALLOWANCE"].includes(expense.sourceType ?? "") && expense.sourceId) {
     await tx.execute(sql`SELECT id FROM "HrPortalRequest" WHERE id=${expense.sourceId} FOR UPDATE`);
     if (kind === "PAYMENT" && expense.sourceType === "TRAVEL_ALLOWANCE") {
-      const report = await findRefundIntegrationEvent(tx, `DIARIA:PRESTACAO:${expense.sourceId}`);
+      const report = await findActiveTravelAllowanceReport(tx, expense.sourceId);
       if (report && report.status !== "ESTORNADA") throw new FinanceError("Regularize a prestação ativa antes de estornar o pagamento da diária.");
       const refunds = await hasCollectedTravelRefunds(tx, expense.sourceId);
       if (refunds) throw new FinanceError("Estorne as restituições anteriores da diária antes de estornar o pagamento.");
@@ -86,7 +87,7 @@ async function receiveCurrentYearAllowanceRefund(connection: DatabaseConnection,
     }
     if (request.kind !== kind || request.status !== "DEFERIDA") throw new Error("Restituição exige concessão autorizada antes da prestação.");
     if (kind === "DIARIA") await assertTravelReportOperationDate(tx, request.id, input.date);
-    const report = kind === "DIARIA" ? await findRefundIntegrationEvent(tx, `DIARIA:PRESTACAO:${request.id}`) : null;
+    const report = kind === "DIARIA" ? await findActiveTravelAllowanceReport(tx, request.id) : null;
     if (report && report.status !== "ESTORNADA") throw new Error("Regularize a prestação ativa da diária antes de receber nova devolução.");
     const origin = await readFinancePayment(tx, input.paymentId);
     await tx.execute(sql`SELECT id FROM "Commitment" WHERE id=${origin.commitmentId} FOR UPDATE`);
@@ -165,7 +166,7 @@ async function reverseCurrentYearAllowanceRefund(connection: DatabaseConnection,
     }
     if (request.status !== "DEFERIDA" || event.status !== "CONCLUIDA" || input.date < position.input.date) throw new Error("Regularize a prestação ativa antes de estornar a restituição.");
     if (kind === "DIARIA") await assertTravelReportOperationDate(tx, request.id, input.date);
-    const report = kind === "DIARIA" ? await findRefundIntegrationEvent(tx, `DIARIA:PRESTACAO:${request.id}`) : null;
+    const report = kind === "DIARIA" ? await findActiveTravelAllowanceReport(tx, request.id) : null;
     if (report && report.status !== "ESTORNADA") throw new Error("Regularize a prestação ativa da diária antes de estornar a restituição.");
     await tx.execute(sql`SELECT id FROM "Commitment" WHERE id=${position.commitmentId} FOR UPDATE`);
     const originalPayment = await readAllowanceRefundPayment(tx, position.originalPaymentId);

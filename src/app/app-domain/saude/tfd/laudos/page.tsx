@@ -1,22 +1,28 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { healthTfdRequests, healthTfdClinicalReports } from "@/db/schema/health-tfd";
+import { patients } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthUnits, healthProfessionals } from "@/db/schema/health-workforce";
+import { employees } from "@/db/schema/administration";
+import { healthSusProcedures } from "@/db/schema/health-catalogs";
 
 export default async function TfdReportsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), params = await searchParams;
   const q = typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
   const status = typeof params.status === "string" ? params.status.slice(0, 30) : "";
-  const where = {
-    ...(context.user.hasHealthAccessScope ? { originUnitId: { in: context.user.allowedHealthUnitIds || [] } } : {}),
-    ...(status ? { status } : {}),
-    ...(q ? { OR: [{ destination: { contains: q, mode: "insensitive" as const } }, { patient: { person: { fullName: { contains: q, mode: "insensitive" as const } } } }] } : {}),
-  };
-  const total = await context.prisma.healthTfdRequest.count({ where });
+  const db = context.database, unitsScope = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
+  const scope = unitsScope ? inArray(healthTfdRequests.originUnitId, unitsScope) : undefined;
+  const where = and(scope, status ? eq(healthTfdRequests.status, status) : undefined, q ? or(ilike(healthTfdRequests.destination, `%${q}%`), ilike(people.fullName, `%${q}%`)) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(healthTfdRequests).innerJoin(patients, eq(patients.id, healthTfdRequests.patientId)).innerJoin(people, eq(people.id, patients.personId)).where(where);
   const page = Math.min(Math.max(1, Number(params.page) || 1), Math.max(1, Math.ceil(total / 30)));
-  const requests = await context.prisma.healthTfdRequest.findMany({ where, orderBy: { createdAt: "desc" }, skip: (Math.floor(page) - 1) * 30, take: 30, include: { patient: { include: { person: { select: { fullName: true } } } }, originUnit: true, clinicalReport: { select: { version: true, diagnosis: true } } } });
+  const requestRows = await db.select({ request: healthTfdRequests, patient: patients, person: { fullName: people.fullName }, originUnit: healthUnits, clinicalReport: { version: healthTfdClinicalReports.version, diagnosis: healthTfdClinicalReports.diagnosis } }).from(healthTfdRequests).innerJoin(patients, eq(patients.id, healthTfdRequests.patientId)).innerJoin(people, eq(people.id, patients.personId)).leftJoin(healthUnits, eq(healthUnits.id, healthTfdRequests.originUnitId)).leftJoin(healthTfdClinicalReports, eq(healthTfdClinicalReports.requestId, healthTfdRequests.id)).where(where).orderBy(desc(healthTfdRequests.createdAt)).offset((Math.floor(page) - 1) * 30).limit(30);
+  const requests = requestRows.map(row => ({ ...row.request, patient: { ...row.patient, person: row.person }, originUnit: row.originUnit, clinicalReport: row.clinicalReport }));
   const [units, professionals, procedures] = await Promise.all([
-    context.prisma.healthUnit.findMany({ where: { ...(context.user.hasHealthAccessScope ? { id: { in: context.user.allowedHealthUnitIds || [] } } : {}) }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    context.prisma.healthProfessional.findMany({ where: { tfdClinicalReports: { some: { request: { ...(context.user.hasHealthAccessScope ? { originUnitId: { in: context.user.allowedHealthUnitIds || [] } } : {}) } } } }, orderBy: { employee: { name: "asc" } }, select: { id: true, employee: { select: { name: true } } } }),
-    context.prisma.healthSusProcedure.findMany({ where: { tfdClinicalReports: { some: { request: { ...(context.user.hasHealthAccessScope ? { originUnitId: { in: context.user.allowedHealthUnitIds || [] } } : {}) } } } }, orderBy: { code: "asc" }, select: { id: true, code: true, description: true } }),
+    db.select({ id: healthUnits.id, name: healthUnits.name }).from(healthUnits).where(unitsScope ? inArray(healthUnits.id, unitsScope) : undefined).orderBy(asc(healthUnits.name)),
+    db.select({ id: healthProfessionals.id, employee: { name: employees.name } }).from(healthProfessionals).innerJoin(employees, eq(employees.id, healthProfessionals.employeeId)).where(sql`EXISTS (SELECT 1 FROM ${healthTfdClinicalReports} JOIN ${healthTfdRequests} ON ${healthTfdRequests.id}=${healthTfdClinicalReports.requestId} WHERE ${healthTfdClinicalReports.professionalId}=${healthProfessionals.id} AND ${scope ?? sql`true`})`).orderBy(asc(employees.name)),
+    db.select({ id: healthSusProcedures.id, code: healthSusProcedures.code, description: healthSusProcedures.description }).from(healthSusProcedures).where(sql`EXISTS (SELECT 1 FROM ${healthTfdClinicalReports} JOIN ${healthTfdRequests} ON ${healthTfdRequests.id}=${healthTfdClinicalReports.requestId} WHERE ${healthTfdClinicalReports.procedureId}=${healthSusProcedures.id} AND ${scope ?? sql`true`})`).orderBy(asc(healthSusProcedures.code)),
   ]);
   const pageUrl = (next: number) => `/saude/tfd/laudos?${new URLSearchParams({ q, status, page: String(next) })}`;
   return <main className="space-y-4 p-4">

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { createTaxChainDatabase, countTaxRows, firstTaxRow, readTaxChainRegistry, taxChainObject } from "./helpers/tax-chain-database";
+import { createTaxChainDatabase, countTaxRows, firstTaxRow, readTaxChainRegistry, taxChainObject, taxChainDatabaseFailure } from "./helpers/tax-chain-database";
 import { Decimal } from "../src/db/decimal";
 import { taxes, economicRegistrations, taxAssessments, taxGuides } from "../src/db/schema/taxation-core";
 import { taxpayers, realEstates } from "../src/db/schema/registry";
@@ -45,7 +45,7 @@ test("IPTU/ITBI: avaliação Decimal, regras independentes, concorrência, memó
     await saveConfiguredPropertyValuation(f.connection, f.actor, { ...valuationInput, ruleId: itbiRule.id });
     assert.equal(firstTaxRow(await f.db.select().from(pageValuations).where(eq(pageValuations.id, value.id))).venalValueDecimal.toFixed(2), "350.00");
     assert.equal(await countTaxRows(f.db, "TaxRegistryEntry", sql`category='CONFIGURED_VALUATION_ITBI'`), 1);
-    await assert.rejects(f.db.update(taxRegistryEntries).set({ data: {} }).where(eq(taxRegistryEntries.id, rule.id)), /imutável/);
+    await assert.rejects(f.db.update(taxRegistryEntries).set({ data: {} }).where(eq(taxRegistryEntries.id, rule.id)), taxChainDatabaseFailure(/imutável/));
     await publishPropertyValuationRule(f.connection, f.actor, { ...input, expectedVersion: 1, globalFactor: "2" });
     await assert.rejects(saveConfiguredPropertyValuation(f.connection, f.actor, { ...valuationInput, expectedValuationUpdatedAt: value.updatedAt.toISOString() }), /substituída/);
     assert.throws(() => evaluatePropertyValuation(input, { landArea: "NaN", builtArea: "1" }));
@@ -69,7 +69,7 @@ test("ISS: histórico completo serializa mudanças e não reconstrói passado de
     await updateEconomicRegistrationWithHistory(f.connection, legacyActor, row.id, { status: "Suspenso" });
     assert.equal(await countTaxRows(f.db, "TaxRegistryEntry", sql`"entityId"=${row.id} AND category='CADASTRAL_HISTORY'`), 3);
     await f.database.exec(`CREATE FUNCTION fail_economic_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."category"='CADASTRAL_HISTORY' THEN RAISE EXCEPTION 'history rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_economic_history BEFORE INSERT ON "TaxRegistryEntry" FOR EACH ROW EXECUTE FUNCTION fail_economic_history();`);
-    await assert.rejects(updateEconomicRegistrationWithHistory(f.connection, legacyActor, row.id, { status: "Ativo" }), /history rollback/);
+    await assert.rejects(updateEconomicRegistrationWithHistory(f.connection, legacyActor, row.id, { status: "Ativo" }), taxChainDatabaseFailure(/history rollback/));
     assert.equal(firstTaxRow(await f.db.select().from(economicRegistrations).where(eq(economicRegistrations.id, row.id))).status, "Suspenso");
     await f.database.exec('DROP TRIGGER fail_economic_history ON "TaxRegistryEntry"; DROP FUNCTION fail_economic_history();');
     const importInput = { sourceType: "PERIODOS_OPCAO", fileName: "periodos-opcao.json", competence: "10/2026", rows: [{ taxpayerId: "payer", regime: "SIMEI", startDate: "2026-10-01" }] };
@@ -78,7 +78,7 @@ test("ISS: histórico completo serializa mudanças e não reconstrói passado de
     assert.equal(await countTaxRows(f.db, "TaxRegistryEntry", sql`"entityId"=${row.id} AND category='CADASTRAL_HISTORY'`), 4);
     assert.equal((await importSimplesBatch(f.connection, legacyActor, importInput)).id, imported.id);
     assert.equal(await countTaxRows(f.db, "TaxRegistryEntry", sql`"entityId"=${row.id} AND category='CADASTRAL_HISTORY'`), 4);
-    await assert.rejects(f.db.delete(taxRegistryEntries).where(eq(taxRegistryEntries.id, positions[0].id)), /imutável/);
+    await assert.rejects(f.db.delete(taxRegistryEntries).where(eq(taxRegistryEntries.id, positions[0].id)), taxChainDatabaseFailure(/imutável/));
     await f.db.insert(economicRegistrations).values({ id: "legacy", municipalInsc: "LEGACY", taxpayerId: "payer" });
     await updateEconomicRegistrationWithHistory(f.connection, legacyActor, "legacy", { status: "Inativo" });
     const baseline = await readTaxChainRegistry(f.db, sql`"entityId"='legacy' AND category='CADASTRAL_HISTORY' AND version=1`);
@@ -115,7 +115,7 @@ test("ITBI: devedor e vencimento documentados; alteração de modalidade não re
     assert.equal(evaluated.taxAmount.toFixed(2), "60.00");
     await transmitItbiDeclaration(f.connection, f.actor, evaluated.id);
     await f.database.exec(`CREATE FUNCTION reject_itbi_document() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."documentType"='ITBI' THEN RAISE EXCEPTION 'itbi document rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_itbi_document BEFORE INSERT ON "Document" FOR EACH ROW EXECUTE FUNCTION reject_itbi_document();`);
-    await assert.rejects(confirmItbiWithDocuments(f.connection, f.actor, { declarationId: evaluated.id, notes: "Aprovação coordenada" }), /itbi document rollback/);
+    await assert.rejects(confirmItbiWithDocuments(f.connection, f.actor, { declarationId: evaluated.id, notes: "Aprovação coordenada" }), taxChainDatabaseFailure(/itbi document rollback/));
     const rolledBack = firstTaxRow(await f.db.select().from(itbiDeclarations).where(eq(itbiDeclarations.id, evaluated.id)));
     assert.equal(rolledBack.status, "PROTOCOLADA");
     assert.equal(rolledBack.assessmentId, null);

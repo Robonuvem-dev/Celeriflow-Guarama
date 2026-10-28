@@ -1,8 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
-import { sql, type SQL } from "drizzle-orm";
+import { eq, sql, type SQL } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../src/db/transaction";
 import type { JsonValue } from "../../src/db/json";
 import { taxRegistryEntries } from "../../src/db/schema/taxation-registry";
+import { planningCatalogEntries, planningCatalogVersions } from "../../src/db/schema/planning-catalog";
 import type { PlanningContext } from "../../src/lib/planejamento/access";
 import type { TaxActor } from "../../src/lib/tributacao";
 import { createLocalDrizzleDatabase } from "./local-drizzle-database";
@@ -30,6 +31,12 @@ export async function readTaxChainRegistry(database: DatabaseExecutor, predicate
 export function taxChainObject(value: JsonValue | null | undefined): { [key: string]: JsonValue } {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Objeto JSON esperado na memória tributária.");
   return value;
+}
+
+/** Drizzle retains PostgreSQL trigger messages in Error.cause. The expected
+ * message must occur in that causal chain; an unrelated rejection cannot pass. */
+export function taxChainDatabaseFailure(pattern: RegExp): (error: unknown) => boolean {
+  return (error: unknown): boolean => error instanceof Error && (pattern.test(error.message) || taxChainDatabaseFailure(pattern)(error.cause));
 }
 
 /** Independent historical DDL and explicit municipal seed. Await close() before
@@ -66,18 +73,19 @@ export async function createTaxChainDatabase(jurisdiction: "EXECUTIVE" | "LEGISL
       INSERT INTO "PlanningEntityUnit" ("budgetUnitId","governmentEntityId") VALUES ('ug','ente'),('ug-restrita','ente');
       INSERT INTO "FinancialYear" (id,year,"governmentEntityId",status,"startDate","endDate","updatedAt") VALUES ('ano',2026,'ente','Aberto','2026-01-01','2026-12-31T23:59:59.999',CURRENT_TIMESTAMP);
     `);
+    await db.insert(planningCatalogVersions).values({ id: "chain-account-catalog", year: 2026, label: "Contas da cadeia tributária isolada", normativeReference: "Matriz explícita da fixture histórica", sourceHash: "chain-account-catalog-v1", status: "DRAFT", createdById: "ana" });
+    await db.insert(planningCatalogEntries).values(["debito", "credito"].map((id, index) => ({ versionId: "chain-account-catalog", kind: "ACCOUNT", degree: 7, code: index ? "ISOLATED.C" : "ISOLATED.D", name: id, canonicalId: id, attributes: { operational: true, pocOnly: false, postingAllowed: true, informationNature: "P", balanceNature: index ? "C" : "D", effectiveFrom: "2026-01-01", effectiveUntil: "2026-12-31" } })));
+    await db.update(planningCatalogVersions).set({ status: "PUBLISHED" }).where(eq(planningCatalogVersions.id, "chain-account-catalog"));
     for (const code of ["TAX_COLLECTION_EXCESS", "TAX_CREDIT_REFUNDED", "TAX_CREDIT_COMPENSATED", "EMPENHO_EMITIDO", "LIQUIDACAO_REGISTRADA", "PAGAMENTO_EFETIVADO", "PAGAMENTO_ESTORNADO", "RECEITA_LANCADA", "RECEITA_ARRECADADA", "RECEITA_ESTORNADA", "RECEITA_REDISTRIBUIDA_FONTE"]) {
       await db.execute(sql`INSERT INTO "AccountingEventCatalog" (id,code,name,"updatedAt") VALUES (${code},${code},${code},CURRENT_TIMESTAMP)`);
       const debit = code === "TAX_COLLECTION_EXCESS" || !code.startsWith("TAX_") ? "debito" : "credito";
-      await db.execute(sql`INSERT INTO "AccountingPostingRule" (id,"eventId","debitAccountId","creditAccountId","isReference","updatedAt") VALUES (${`rule:${code}`},${code},${debit},${debit === "debito" ? "credito" : "debito"},true,CURRENT_TIMESTAMP)`);
+      await db.execute(sql`INSERT INTO "AccountingPostingRule" (id,"eventId","debitAccountId","creditAccountId","isReference","updatedAt") VALUES (${`rule:${code}`},${code},${debit},${debit === "debito" ? "credito" : "debito"},false,CURRENT_TIMESTAMP)`);
     }
     const actor: TaxActor = { usuarioId: "ana", employeeId: "servidora-ana", allowedBudgetUnitIds: ["ug"] };
     const context: PlanningContext = {
       database: db, connection: local.connection, jurisdiction,
       user: { id: "ana", firebaseUid: "chain-ana", email: "ana.martins@example.org", name: "Ana Paula Martins", role: "Administrador da fixture", profileCode: "SYSTEM_ADMINISTRATOR", permissions: "{}", modulePermissions: [], allowedBudgetUnitIds: ["ug"], employeeId: "servidora-ana", departmentId: null, secretariatId: null },
-      get prisma(): never { throw new Error("Tax chain reached the legacy database context."); },
     };
-    Object.defineProperty(context, "prisma", { enumerable: false });
     return { ...local, db, actor, context, year: 2026 };
   } catch (error) { await local.close(); throw error; }
 }

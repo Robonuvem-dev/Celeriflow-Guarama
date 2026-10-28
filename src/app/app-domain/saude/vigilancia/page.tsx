@@ -4,7 +4,11 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { issueLicenseAction, saveComplaintAction, saveEstablishmentAction, saveInspectionAction, transitionComplaintAction, transitionInspectionAction, transitionLicenseAction } from "./actions";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, or } from "drizzle-orm";
+import { managementVigilanceEstablishments as establishmentTable, managementVigilanceComplaints, managementVigilanceInspections, managementVigilanceInspectionItems, managementVigilanceLicenses } from "@/db/schema/health-management-operations";
+import { healthProfessionals } from "@/db/schema/health-workforce";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
 const PAGE_SIZE = 20;
@@ -14,24 +18,27 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function VigilanciaPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const db = context.database;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
-  const where: Prisma.HealthVigilanceEstablishmentWhereInput = {
-    ...(filter ? { status: filter } : {}),
-    ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { document: { contains: q, mode: "insensitive" } }, { cnae: { contains: q, mode: "insensitive" } }] } : {}),
-  };
-  const total = await prisma.healthVigilanceEstablishment.count({ where });
+  const where = and(filter ? eq(establishmentTable.status, filter) : undefined, q ? or(ilike(establishmentTable.name, `%${q}%`), ilike(establishmentTable.document, `%${q}%`), ilike(establishmentTable.cnae, `%${q}%`)) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(establishmentTable).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [establishments, complaints, inspections, licenses, professionals, patients] = await Promise.all([
-    prisma.healthVigilanceEstablishment.findMany({ where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { name: "asc" }, include: { licenses: { where: { status: "Válido" }, take: 1, select: { licenseNumber: true, validUntil: true } } } }),
-    prisma.healthVigilanceComplaint.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { establishment: { select: { name: true } } } }),
-    prisma.healthVigilanceInspection.findMany({ orderBy: { inspectedAt: "desc" }, take: 100, include: { establishment: { select: { name: true } }, items: true } }),
-    prisma.healthVigilanceLicense.findMany({ orderBy: { validUntil: "desc" }, take: 100, include: { establishment: { select: { name: true } } } }),
-    prisma.healthProfessional.findMany({ where: { isActive: true }, take: 200, select: { id: true } }),
-    prisma.patient.findMany({ where: { status: "Ativo" }, take: 200, orderBy: { person: { fullName: "asc" } }, select: { personId: true, person: { select: { fullName: true } } } }),
+  const [establishmentRows, complaints, inspectionRows, licenses, professionals, patients] = await Promise.all([
+    db.select().from(establishmentTable).where(where).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).orderBy(asc(establishmentTable.name)),
+    db.select({ ...getTableColumns(managementVigilanceComplaints), establishment: { name: establishmentTable.name } }).from(managementVigilanceComplaints).leftJoin(establishmentTable, eq(establishmentTable.id, managementVigilanceComplaints.establishmentId)).orderBy(desc(managementVigilanceComplaints.createdAt)).limit(100),
+    db.select({ ...getTableColumns(managementVigilanceInspections), establishment: { name: establishmentTable.name } }).from(managementVigilanceInspections).innerJoin(establishmentTable, eq(establishmentTable.id, managementVigilanceInspections.establishmentId)).orderBy(desc(managementVigilanceInspections.inspectedAt)).limit(100),
+    db.select({ ...getTableColumns(managementVigilanceLicenses), establishment: { name: establishmentTable.name } }).from(managementVigilanceLicenses).innerJoin(establishmentTable, eq(establishmentTable.id, managementVigilanceLicenses.establishmentId)).orderBy(desc(managementVigilanceLicenses.validUntil)).limit(100),
+    db.select({ id: healthProfessionals.id }).from(healthProfessionals).where(eq(healthProfessionals.isActive, true)).limit(200),
+    db.select({ personId: patientTable.personId, person: { fullName: people.fullName } }).from(patientTable).innerJoin(people, eq(people.id, patientTable.personId)).where(eq(patientTable.status, "Ativo")).orderBy(asc(people.fullName)).limit(200),
   ]);
+  const [validLicenses, inspectionItems] = await Promise.all([
+    db.select({ establishmentId: managementVigilanceLicenses.establishmentId, licenseNumber: managementVigilanceLicenses.licenseNumber, validUntil: managementVigilanceLicenses.validUntil }).from(managementVigilanceLicenses).where(and(eq(managementVigilanceLicenses.status, "Válido"), inArray(managementVigilanceLicenses.establishmentId, establishmentRows.map(row => row.id)))),
+    db.select().from(managementVigilanceInspectionItems).where(inArray(managementVigilanceInspectionItems.inspectionId, inspectionRows.map(row => row.id))),
+  ]);
+  const establishments = establishmentRows.map(row => ({ ...row, licenses: validLicenses.filter(item => item.establishmentId === row.id).slice(0, 1) }));
+  const inspections = inspectionRows.map(row => ({ ...row, items: inspectionItems.filter(item => item.inspectionId === row.id) }));
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

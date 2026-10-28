@@ -1,10 +1,11 @@
 import { sql, type SQL } from "drizzle-orm";
 import { Decimal } from "../../decimal";
 import type { DatabaseExecutor } from "../../transaction";
+import { databaseTimestamp } from "../../temporal";
 
 // Explicit read projections for RH's native finance integration. All writes
 // remain in Finance's transactional writers, on the caller's same connection.
-const at = (value: Date | string) => value instanceof Date ? value : new Date(value);
+const at = databaseTimestamp;
 const amount = (value: string | null) => value === null ? null : new Decimal(value);
 
 export async function requirePersonnelAppropriation(db: DatabaseExecutor, id: string) {

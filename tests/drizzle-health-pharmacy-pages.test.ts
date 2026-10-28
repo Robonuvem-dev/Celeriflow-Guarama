@@ -81,7 +81,7 @@ async function fixture() {
       INSERT INTO "PharmacyRequest" (id,"patientId","destinationWarehouseId","createdByUsuarioId",notes,"updatedAt") VALUES ('hpp-request','hpp-p1','hpp-w1','hpp-user','Demanda nominal',now()),('hpp-warehouse-request',NULL,'hpp-w1','hpp-user','Transferência nominal',now()),('hpp-other-request','hpp-p2','hpp-w2','hpp-user','Outra unidade',now()),('hpp-generic-request','hpp-p1','hpp-w-generic','hpp-user','Estoque geral',now());
       INSERT INTO "PharmacyRequestItem" (id,"requestId","materialId","requestedQuantity","fulfilledQuantity") VALUES ('hpp-request-item','hpp-request','hpp-m1',5.125,1.125),('hpp-warehouse-item','hpp-warehouse-request','hpp-m1',8,0);
       INSERT INTO "HealthStockTransferItem" (id,"transferId","materialId","batchNumber",quantity,"pharmacyRequestItemId") VALUES ('hpp-transfer-item','hpp-transfer','hpp-m1','OUTRA-UNIDADE',2.125,'hpp-warehouse-item');
-      INSERT INTO "MaterialMovement" (id,type,quantity,"warehouseId","materialId","stockId","quantityDecimal","unitValueDecimal","totalValueDecimal","updatedAt") VALUES ('hpp-movement','Saída',1.125,'hpp-w1','hpp-m1','hpp-stock-future',1.125,999999999999.123456,4.00,now());
+      INSERT INTO "MaterialMovement" (id,type,quantity,"warehouseId","materialId","stockId","quantityDecimal","unitValueDecimal","totalValueDecimal","updatedAt") VALUES ('hpp-movement','Saída',1.125,'hpp-w1','hpp-m1','hpp-stock-future',1.125,999999999999.123456,1124999999999.01,now());
       INSERT INTO "PharmacyRequestFulfillment" (id,"requestItemId",quantity,"movementId",reason,"actorUsuarioId") VALUES ('hpp-fulfillment','hpp-request-item',1.125,'hpp-movement','Entrega nominal','hpp-user');
       INSERT INTO "PharmacyRequestEvent" (id,"requestId",status,reason,"actorUsuarioId") VALUES ('hpp-request-event','hpp-request','OPEN','Abertura nominal','hpp-user');
       INSERT INTO "HealthCallPanel" (id,"unitId",sector,title,"callMessage",news,"updatedAt") VALUES ('hpp-panel1','hpp-u1','FARMACIA','Farmácia A','Retire o medicamento','Notícia',now()),('hpp-panel2','hpp-u2','FARMACIA','Farmácia B','Aguarde','Notícia',now());
@@ -204,7 +204,7 @@ test("Pharmacy pages: full historical replay, independent SQL oracles and real N
       const item = request.items[0]; assert.equal(item.material.medicine?.id, "hpp-medicine");
       assert.equal(item.fulfillments[0].movement.stock?.batchNumber, "FUTURO");
       assert.equal(item.fulfillments[0].movement.unitValueDecimal?.toFixed(6), "999999999999.123456");
-      assert.equal(item.fulfillments[0].movement.totalValueDecimal?.toFixed(2), "4.00");
+      assert.equal(item.fulfillments[0].movement.totalValueDecimal?.toFixed(2), "1124999999999.01");
       assert.equal(item.requestedQuantity, 5.125); assert.equal(item.fulfilledQuantity, 1.125);
       const warehouse = page.requests.find(row => row.id === "hpp-warehouse-request"); assert.ok(warehouse);
       assert.equal(warehouse.patient, null); assert.equal(warehouse.items[0].transfers[0].quantity, 2.125);

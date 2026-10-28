@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
-import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 import type { DatabaseConnection } from "@/db/connection";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { createFinanceLegacyStoriesFixture } from "../../../../tests/helpers/finance-legacy-stories-fixture";
@@ -46,9 +46,9 @@ describe("accounting close workflow", () => {
     assert.equal(activeUsers.length, 2, "A base de teste deve possuir dois usuarios ativos");
     requester = { usuarioId: activeUsers[0].id, employeeId: activeUsers[0].employeeId };
     authorizer = { usuarioId: activeUsers[1].id, employeeId: activeUsers[1].employeeId };
-    const existing = await db.select({ id: financialYears.id }).from(financialYears).where(and(eq(financialYears.year, yearNumber), isNull(financialYears.governmentEntityId))).limit(1);
+    const existing = await db.select({ id: financialYears.id }).from(financialYears).where(and(eq(financialYears.year, yearNumber), eq(financialYears.governmentEntityId, "finance-stories-entity"))).limit(1);
     assert.equal(existing.length, 0, `O exercicio de teste ${yearNumber} ja existe`);
-    const [year] = await db.insert(financialYears).values({ year: yearNumber, status: "Aberto", startDate: new Date(`${yearNumber}-01-01T00:00:00.000Z`), endDate: new Date(`${yearNumber}-12-31T23:59:59.999Z`) }).returning();
+    const [year] = await db.insert(financialYears).values({ year: yearNumber, governmentEntityId: "finance-stories-entity", status: "Aberto", startDate: new Date(`${yearNumber}-01-01T00:00:00.000Z`), endDate: new Date(`${yearNumber}-12-31T23:59:59.999Z`) }).returning();
     financialYearId = year.id;
     const january = new Date(`${yearNumber}-01-01T00:00:00.000Z`);
 
@@ -94,7 +94,7 @@ describe("accounting close workflow", () => {
     assert.ok(commitment, "A base de teste deve possuir um empenho para a relação do RAP");
     const paymentCount = async () => (await db.select({ total: count() }).from(payments).where(eq(payments.commitmentId, commitment.id)))[0].total;
     const paymentCountBefore = await paymentCount();
-    const [targetYear] = await db.insert(financialYears).values({ year: 2100, status: "Aberto", startDate: new Date("2100-01-01T00:00:00.000Z"), endDate: new Date("2100-12-31T23:59:59.999Z") }).returning();
+    const [targetYear] = await db.insert(financialYears).values({ year: 2100, governmentEntityId: "finance-stories-entity", status: "Aberto", startDate: new Date("2100-01-01T00:00:00.000Z"), endDate: new Date("2100-12-31T23:59:59.999Z") }).returning();
     reregisteredFinancialYearId = targetYear.id;
     const [cancelledCandidate, reregisteredCandidate] = await db.insert(payableCarryForwards).values([
       { financialYearId, originFinancialYearId: financialYearId, commitmentId: commitment.id, valueDecimal: new Decimal("10.00"), type: "PROCESSADO" },

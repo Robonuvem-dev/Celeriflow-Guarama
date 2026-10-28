@@ -4,20 +4,26 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { followupContractLabels, followupContractNames, followupSchemaVersion } from "@/lib/saude/followup-contract";
 import { followupStatusNames } from "@/lib/saude/followup-presentation";
 import { configureFollowupAction, generateFollowupAction } from "./actions";
+import { and, asc, count, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
+import { healthFollowupBindings as links, healthFollowupBatches as remittances, healthFollowupReceivers as receivers, healthFollowupReceipts as receipts, healthFollowupBatchItems as items } from "@/db/schema/health-followup";
+import { healthUnits as unitTable } from "@/db/schema/health-workforce";
+import { integrationConnections } from "@/db/schema/integrations";
 
 const field = "w-full rounded border bg-white p-2 text-sm";
 export default async function FollowupPage({ searchParams }: { searchParams: Promise<{ binding?: string; page?: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), query = await searchParams;
   const units = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const bindingId = typeof query.binding === "string" ? query.binding.slice(0, 200) : "";
-  const where = { binding: { ...(units ? { unitId: { in: units } } : {}), ...(bindingId ? { id: bindingId } : {}) } };
-  const total = await context.prisma.healthFollowupBatch.count({ where });
+  const scope = units ? inArray(links.unitId, units) : undefined;
+  const where = and(scope, bindingId ? eq(links.id, bindingId) : undefined);
+  const [{ total }] = await context.database.select({ total: count() }).from(remittances).innerJoin(links, eq(links.id, remittances.bindingId)).where(where);
   const page = Math.min(Math.max(1, /^\d+$/.test(query.page || "") ? Number(query.page) : 1), Math.max(1, Math.ceil(total / 30)));
-  const [bindings, batches, healthUnits] = await Promise.all([
-    context.prisma.healthFollowupBinding.findMany({ where: units ? { unitId: { in: units } } : {}, include: { unit: { select: { name: true } }, connection: { select: { code: true, status: true } }, receiver: { select: { id: true, name: true, code: true } } }, orderBy: [{ unitId: "asc" }, { contractName: "asc" }] }),
-    context.prisma.healthFollowupBatch.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * 30, take: 30, include: { binding: { include: { unit: { select: { name: true } }, receiver: { select: { name: true } } } }, receipt: { select: { protocol: true, accepted: true, rejected: true, unchanged: true } }, _count: { select: { items: true } } } }),
-    context.prisma.healthUnit.findMany({ where: { isActive: true, ...(units ? { id: { in: units } } : {}) }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  const [bindings, batchRows, healthUnits] = await Promise.all([
+    context.database.select({ ...getTableColumns(links), unit: { name: unitTable.name }, connection: { code: integrationConnections.code, status: integrationConnections.status }, receiver: { id: receivers.id, name: receivers.name, code: receivers.code } }).from(links).innerJoin(unitTable, eq(unitTable.id, links.unitId)).innerJoin(integrationConnections, eq(integrationConnections.id, links.connectionId)).innerJoin(receivers, eq(receivers.id, links.receiverId)).where(scope).orderBy(asc(links.unitId), asc(links.contractName)),
+    context.database.select({ batch: remittances, unitName: unitTable.name, receiverName: receivers.name, receipt: { protocol: receipts.protocol, accepted: receipts.accepted, rejected: receipts.rejected, unchanged: receipts.unchanged }, itemCount: sql<number>`(SELECT count(*)::integer FROM ${items} WHERE ${items.batchId}=${remittances.id})`.mapWith(Number) }).from(remittances).innerJoin(links, eq(links.id, remittances.bindingId)).innerJoin(unitTable, eq(unitTable.id, links.unitId)).innerJoin(receivers, eq(receivers.id, links.receiverId)).leftJoin(receipts, eq(receipts.batchId, remittances.id)).where(where).orderBy(desc(remittances.createdAt), desc(remittances.id)).offset((page - 1) * 30).limit(30),
+    context.database.select({ id: unitTable.id, name: unitTable.name }).from(unitTable).where(and(eq(unitTable.isActive, true), units ? inArray(unitTable.id, units) : undefined)).orderBy(asc(unitTable.name)),
   ]);
+  const batches = batchRows.map(row => ({ ...row.batch, binding: { unit: { name: row.unitName }, receiver: { name: row.receiverName } }, receipt: row.receipt, _count: { items: row.itemCount } }));
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   const pageUrl = (value: number) => `/saude/acompanhamento?${new URLSearchParams({ binding: bindingId, page: String(value) })}`;
   return <main className="space-y-4 p-4"><header><Link href="/saude/integracoes" className="text-sm underline">Integrações da Saúde</Link><h1 className="text-xl font-semibold">Acompanhamento gestacional, crônicos e regulação</h1><p className="text-sm">Remessas e receptores de acompanhamento, com origem clínica, versão de contrato e protocolo de processamento identificado.</p></header>

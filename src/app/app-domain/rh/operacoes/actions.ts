@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireValidCpf } from "@/lib/identifiers/brazilian-identifiers";
-import { getTenantContextForModuleOperation, assertBudgetUnitAccess, canViewModule, canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation, canViewModule, canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { calculatePayrollRun, cancelPayrollRun, closePayrollRun, publishPayrollStatements, recordHrRightEntry, saveEmploymentContract, savePayrollMovement } from "@/lib/rh/workforce-service";
 import { acquireVacationRights, cancelVacationReservation, reserveVacationRight } from "@/lib/rh/vacation-rights";
 import { reserveMultipleVacationPeriods, cancelMultipleVacationPeriods } from "@/lib/rh/vacation-multiple-periods";
@@ -40,7 +40,13 @@ import { receiveCurrentYearAdvanceRefund, reverseCurrentYearAdvanceRefund, recei
 import { reverseRevenue } from "@/lib/financeiro";
 import { databaseConnection } from "@/db/client";
 import { requireHrIntegrationEvent } from "@/db/repositories/personnel/integration";
-import { requirePayrollRun } from "@/db/repositories/personnel/workforce";
+import { requirePayrollRun, requirePayroll, requireRightEntry, requireHrPortalRequest } from "@/db/repositories/personnel/workforce";
+import { eq, sql } from "drizzle-orm";
+import { withDatabaseTransaction } from "@/db/transaction";
+import { employees } from "@/db/schema/administration";
+import { people } from "@/db/schema/people";
+import { revenues } from "@/db/schema/finance-revenues";
+import { hrConsignmentAgreements, hrConsignmentInstallments } from "@/db/schema/personnel-consignment";
 
 export async function executeWorkforceOperation(command: string, values: Record<string, string>) {
   if (command === "diaria-estornar-restituicao-anterior") {
@@ -48,9 +54,10 @@ export async function executeWorkforceOperation(command: string, values: Record<
       const context = await getTenantContextForModuleOperation("RH", "update");
       if (!canPerformModuleOperation(context.user, "FINANCEIRO", "create") || !canPerformModuleOperation(context.user, "FINANCEIRO", "update")) throw new Error("Estorno exige criação e alteração no Financeiro.");
       const input = z.object({ revenueId: z.string().min(1), date: z.iso.date(), justification: z.string().trim().min(10).max(3000) }).strict().parse(values);
-      const revenue = await context.prisma.revenue.findUniqueOrThrow({ where: { id: input.revenueId } });
+      const [revenue] = await (context.database ?? databaseConnection.db).select().from(revenues).where(eq(revenues.id, input.revenueId)).limit(1);
+      if (!revenue) throw new Error("Receita não encontrada.");
       if (revenue.sourceModule !== "RH" || revenue.sourceType !== "TRAVEL_ALLOWANCE_REFUND") throw new Error("Selecione restituição de exercício anterior de diária.");
-      const result = await reverseRevenue(context.prisma, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, { ...input, date: new Date(`${input.date}T12:00:00Z`) });
+      const result = await reverseRevenue(databaseConnection, { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds }, { ...input, date: new Date(`${input.date}T12:00:00Z`) });
       revalidatePath("/rh/diarias"); revalidatePath("/financeiro/receitas"); revalidatePath("/financeiro/contabilidade");
       return { id: result.id, message: "Restituição anterior estornada com origem e histórico preservados.", error: "" };
     } catch (error) { return { error: error instanceof Error ? error.message : "Falha no estorno da restituição anterior." }; }
@@ -58,7 +65,7 @@ export async function executeWorkforceOperation(command: string, values: Record<
   if (["diaria-restituir-corrente", "diaria-restituir-anterior", "diaria-estornar-restituicao-corrente", "diaria-reabrir"].includes(command)) {
     try {
       const context = await getTenantContextForModuleOperation("RH", "update");
-      const result = command === "diaria-restituir-corrente" ? await receiveCurrentYearTravelRefund(context, values) : command === "diaria-restituir-anterior" ? await receivePriorYearTravelRefund(databaseConnection, context, values) : command === "diaria-reabrir" ? await reopenTravelAllowanceReport(databaseConnection, context, values) : await reverseCurrentYearTravelRefund(context, values);
+      const result = command === "diaria-restituir-corrente" ? await receiveCurrentYearTravelRefund(databaseConnection, context, values) : command === "diaria-restituir-anterior" ? await receivePriorYearTravelRefund(databaseConnection, context, values) : command === "diaria-reabrir" ? await reopenTravelAllowanceReport(databaseConnection, context, values) : await reverseCurrentYearTravelRefund(databaseConnection, context, values);
       revalidatePath("/rh/diarias"); revalidatePath("/financeiro/contabilidade"); revalidatePath("/financeiro/pagamentos");
       return { id: command === "diaria-restituir-corrente" ? `DESPESA:${result.id}` : result.id, message: "Operação financeira da diária registrada. Referência:", error: "" };
     } catch (error) { return { error: error instanceof Error ? error.message : "Falha na restituição/regularização da diária." }; }
@@ -66,7 +73,7 @@ export async function executeWorkforceOperation(command: string, values: Record<
   if (["adiantamento-solicitar", "adiantamento-prestar", "adiantamento-revisar", "adiantamento-reabrir", "adiantamento-restituir-anterior", "adiantamento-restituir-corrente", "adiantamento-estornar-restituicao-corrente"].includes(command)) {
     try {
       const context = await getTenantContextForModuleOperation("RH", "update");
-      const result = command === "adiantamento-solicitar" ? await requestMunicipalAdvance(databaseConnection, context, values) : command === "adiantamento-prestar" ? await submitAdvanceReport(databaseConnection, context, values) : command === "adiantamento-reabrir" ? await reopenAdvanceReport(databaseConnection, context, values) : command === "adiantamento-restituir-anterior" ? await receivePriorYearAdvanceRefund(databaseConnection, context, values) : command === "adiantamento-restituir-corrente" ? await receiveCurrentYearAdvanceRefund(context, values) : command === "adiantamento-estornar-restituicao-corrente" ? await reverseCurrentYearAdvanceRefund(context, values) : await reviewAdvanceReport(databaseConnection, context, values);
+      const result = command === "adiantamento-solicitar" ? await requestMunicipalAdvance(databaseConnection, context, values) : command === "adiantamento-prestar" ? await submitAdvanceReport(databaseConnection, context, values) : command === "adiantamento-reabrir" ? await reopenAdvanceReport(databaseConnection, context, values) : command === "adiantamento-restituir-anterior" ? await receivePriorYearAdvanceRefund(databaseConnection, context, values) : command === "adiantamento-restituir-corrente" ? await receiveCurrentYearAdvanceRefund(databaseConnection, context, values) : command === "adiantamento-estornar-restituicao-corrente" ? await reverseCurrentYearAdvanceRefund(databaseConnection, context, values) : await reviewAdvanceReport(databaseConnection, context, values);
       revalidatePath("/rh/adiantamentos"); revalidatePath("/financeiro/contabilidade");
       return { id: command === "adiantamento-restituir-corrente" ? `DESPESA:${result.id}` : result.id, message: ["adiantamento-restituir-anterior", "adiantamento-restituir-corrente"].includes(command) ? "Restituição recebida. Referência financeira para a prestação:" : "Operação de adiantamento registrada.", error: "" };
     } catch (error) { return { error: error instanceof Error ? error.message : "Falha na operação de adiantamento." }; }
@@ -149,7 +156,7 @@ export async function executeWorkforceOperation(command: string, values: Record<
     let id = "";
     let message = "Operação registrada.";
     if (command === "poc-pagamento") {
-      const run = await context.prisma.hrPayrollRun.findUniqueOrThrow({ where: { id: values.runId } });
+      const run = await requirePayrollRun(context.database ?? databaseConnection.db, values.runId);
       await assertPayrollBudgetScope(context, run.payrollId);
       id = (await registerPocPayment(databaseConnection, context.user.id, values)).id;
       message = "Pagamento demonstrativo registrado por data, disponível no informe anual POC.";
@@ -158,19 +165,19 @@ export async function executeWorkforceOperation(command: string, values: Record<
     if (command === "diaria-decidir") id = (await decideTravelAllowance(databaseConnection, context.user.id, values, context)).id;
     if (command === "diaria-prestar") id = (await accountForTravelAllowance(databaseConnection, context.user.id, values, context)).id;
     if (command === "poc-parametros") {
-      const result = await installDocumentaryPocParameters(context.prisma, context.user.id);
+      const result = await installDocumentaryPocParameters(databaseConnection, context.user.id);
       id = result.ruleSetId; message = "Parâmetros documentais POC instalados. Valores e origens disponíveis em Parametrizações.";
     }
     if (command === "poc-preparar") {
-      const result = await prepareDocumentaryPocDataset(context.prisma, context.user.id, values.competence);
+      const result = await prepareDocumentaryPocDataset(databaseConnection, context.user.id, values.competence);
       id = result.contractIds.join(", "); message = "Base preparada: três titulares fictícios, contratos temporais e nove tipos de folha. Repetição preserva cadastros e cálculos.";
     }
     if (command === "calcular-poc") {
       await assertPayrollBudgetScope(context, values.payrollId);
-      const payroll = await context.prisma.payroll.findUniqueOrThrow({ where: { id: values.payrollId } });
+      const payroll = await requirePayroll(context.database ?? databaseConnection.db, values.payrollId);
       const specialParameters = payroll.type !== "Mensal" ? JSON.parse(values.parameters || "{}") : undefined;
       if (specialParameters?.sourceRunId) {
-        const source = await context.prisma.hrPayrollRun.findUniqueOrThrow({ where: { id: specialParameters.sourceRunId } });
+        const source = await requirePayrollRun(context.database ?? databaseConnection.db, specialParameters.sourceRunId);
         await assertPayrollBudgetScope(context, source.payrollId);
       }
       const result = await calculatePayrollRun(databaseConnection, context.user.id, { payrollId: values.payrollId, requestKey: values.requestKey, mode: values.mode, scope: "DEMONSTRACAO", contractIds: values.contractIds.split(/[\s,;]+/).filter(Boolean), ...(specialParameters ? { specialParameters } : { monthlyProration: values.monthlyProration === "SIM" }) });
@@ -187,8 +194,8 @@ export async function executeWorkforceOperation(command: string, values: Record<
       revalidatePath("/portal-servidor/banco-horas");
     }
     if (command === "provisionar" || command === "estornar-provisao") {
-      const runId = command === "provisionar" ? values.runId : z.object({ runId: z.string() }).parse((await context.prisma.hrRightEntry.findUniqueOrThrow({ where: { id: values.entryId } })).details).runId;
-      const run = await context.prisma.hrPayrollRun.findUniqueOrThrow({ where: { id: runId } });
+      const runId = command === "provisionar" ? values.runId : z.object({ runId: z.string() }).parse((await requireRightEntry(context.database ?? databaseConnection.db, values.entryId)).details).runId;
+      const run = await requirePayrollRun(context.database ?? databaseConnection.db, runId);
       await assertPayrollBudgetScope(context, run.payrollId);
       id = command === "provisionar" ? (await postPayrollProvisions(databaseConnection, context.user.id, values)).entryIds.join(", ") : (await reversePayrollProvision(databaseConnection, context.user.id, values, canPerformModuleOperation(context.user, "FINANCEIRO", "update") ? { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } : undefined)).id;
       message = "Ledger de provisões atualizado com memória por rubrica. Consulte os saldos no relatório de direitos.";
@@ -196,7 +203,7 @@ export async function executeWorkforceOperation(command: string, values: Record<
     if (command === "averbar-tempo") id = (await registerServiceTimeCredit(databaseConnection, context.user.id, values)).id;
     if (command === "estornar-averbacao") id = (await reverseServiceTimeCredit(databaseConnection, context.user.id, values)).id;
     if (command === "apurar-ats" || command === "estornar-ats") {
-      const payrollId = command === "apurar-ats" ? values.payrollId : z.object({ input: z.object({ payrollId: z.string() }) }).parse((await context.prisma.hrIntegrationEvent.findUniqueOrThrow({ where: { sourceKey: values.originalSourceKey } })).payload).input.payrollId;
+      const payrollId = command === "apurar-ats" ? values.payrollId : z.object({ input: z.object({ payrollId: z.string() }) }).parse((await requireHrIntegrationEvent(context.database ?? databaseConnection.db, values.originalSourceKey)).payload).input.payrollId;
       await assertPayrollBudgetScope(context, payrollId);
       id = (command === "apurar-ats" ? await postServiceTimeAllowance(databaseConnection, context.user.id, values) : await reverseServiceTimeAllowance(databaseConnection, context.user.id, values)).movementId;
       message = "ATS registrado com memória temporal. Recalcule a folha para incorporar o movimento.";
@@ -237,9 +244,9 @@ export async function executeWorkforceOperation(command: string, values: Record<
       revalidatePath("/portal-servidor/banco-horas");
     }
     if (command === "decidir-credito") {
-      const request = await context.prisma.hrPortalRequest.findUniqueOrThrow({ where: { id: values.requestId } });
+      const request = await requireHrPortalRequest(context.database ?? databaseConnection.db, values.requestId);
       const sourceRunId = z.object({ input: z.object({ sourceRunId: z.string() }) }).parse(request.payload).input.sourceRunId;
-      const run = await context.prisma.hrPayrollRun.findUniqueOrThrow({ where: { id: sourceRunId } });
+      const run = await requirePayrollRun(context.database ?? databaseConnection.db, sourceRunId);
       await assertPayrollBudgetScope(context, run.payrollId);
       id = (await decideEmployeeCreditRequest(databaseConnection, context.user.id, values)).id;
       revalidatePath("/rh/solicitacoes"); revalidatePath("/rh/consignacoes"); revalidatePath("/portal-servidor/solicitacoes-rh"); revalidatePath("/portal-servidor/consignacoes");
@@ -255,8 +262,13 @@ export async function executeWorkforceOperation(command: string, values: Record<
       revalidatePath("/rh/ocorrencias");
     }
     if (command.startsWith("consignacao-")) {
-      const sourceRunId = command === "consignacao-reservar" ? values.sourceRunId : (await context.prisma.hrConsignmentInstallment.findUniqueOrThrow({ where: { id: values.installmentId }, include: { agreement: true } })).agreement.sourceRunId;
-      const sourceRun = await context.prisma.hrPayrollRun.findUniqueOrThrow({ where: { id: sourceRunId } });
+      let sourceRunId = values.sourceRunId;
+      if (command !== "consignacao-reservar") {
+        const [row] = await (context.database ?? databaseConnection.db).select({ sourceRunId: hrConsignmentAgreements.sourceRunId }).from(hrConsignmentInstallments).innerJoin(hrConsignmentAgreements, eq(hrConsignmentAgreements.id, hrConsignmentInstallments.agreementId)).where(eq(hrConsignmentInstallments.id, values.installmentId)).limit(1);
+        if (!row) throw new Error("Parcela da consignação não encontrada.");
+        sourceRunId = row.sourceRunId;
+      }
+      const sourceRun = await requirePayrollRun(context.database ?? databaseConnection.db, sourceRunId);
       await assertPayrollBudgetScope(context, sourceRun.payrollId);
       if (command === "consignacao-reservar") id = (await reserveConsignmentAgreement(databaseConnection, context.user.id, values)).id;
       if (command === "consignacao-lancar") {
@@ -268,9 +280,8 @@ export async function executeWorkforceOperation(command: string, values: Record<
       revalidatePath("/portal-servidor/margem");
     }
     if (["calcular", "simular-especial", "fechar", "cancelar", "publicar"].includes(command)) {
-      const payrollId = ["calcular", "simular-especial"].includes(command) ? values.payrollId : (await context.prisma.hrPayrollRun.findUniqueOrThrow({ where: { id: values.runId } })).payrollId;
-      const scope = await context.prisma.sstBenefitPayrollScope.findUnique({ where: { payrollId } });
-      if (scope) assertBudgetUnitAccess(context.user, scope.budgetUnitId);
+      const payrollId = ["calcular", "simular-especial"].includes(command) ? values.payrollId : (await requirePayrollRun(context.database ?? databaseConnection.db, values.runId)).payrollId;
+      await assertPayrollBudgetScope(context, payrollId);
     }
     if (command === "contrato") {
       const entries = Object.entries(values);
@@ -283,7 +294,7 @@ export async function executeWorkforceOperation(command: string, values: Record<
     if (command === "aquisitivos") id = (await acquireVacationRights(databaseConnection, context.user.id, values.contractId, values.asOf)).join(", ");
     if (command === "reservar-ferias") id = (await reserveVacationRight(databaseConnection, context.user.id, values)).id;
     if (command === "cancelar-ferias") id = (await cancelVacationReservation(databaseConnection, context.user.id, values)).id;
-    if (command === "beneficio") id = (await generateBenefitMovement(context.prisma, context.user.id, values)).id;
+    if (command === "beneficio") id = (await generateBenefitMovement(databaseConnection, context.user.id, values)).id;
     if (command === "ponto-horas-extras") {
       const result = await generateAttendanceOvertime(databaseConnection, context.user.id, values);
       message = `${result.records} registros de ponto conciliados; ${result.movements.length} movimentos vinculados.`;
@@ -332,7 +343,7 @@ export async function executeWorkforceOperation(command: string, values: Record<
       message = `${result.applied ? "Alterações aplicadas" : "Prévia sem gravação; copie o hash para aplicar"}: ${JSON.stringify(result.rows)}`;
     }
     if (command === "importar") {
-      const result = await importPayrollMovements(context.prisma, context.user.id, values);
+      const result = await importPayrollMovements(databaseConnection, context.user.id, values);
       message = `${result.mode === "PREVIA" ? "Prévia validada; nenhum movimento gravado" : "Lote aplicado"}: ${result.lines} linhas, ${result.created} novos e ${result.reused} já existentes.`;
       id = result.hash;
     }
@@ -346,14 +357,15 @@ export async function executeWorkforceOperation(command: string, values: Record<
     if (command === "publicar") id = (await publishPayrollStatements(databaseConnection, context.user.id, values.runId, new Date(values.releaseAt))).id;
     if (command === "vincular") {
       const input = z.object({ employeeId: z.string().min(1), personId: z.string().min(1) }).strict().parse(values);
-      await context.prisma.$transaction(async tx => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${input.employeeId}`}))`;
-        const employee = await tx.employee.findUniqueOrThrow({ where: { id: input.employeeId } });
-        const person = await tx.person.findUniqueOrThrow({ where: { id: input.personId } });
+      await withDatabaseTransaction(databaseConnection, async tx => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:employee:${input.employeeId}`}))`);
+        const [employee] = await tx.select().from(employees).where(eq(employees.id, input.employeeId)).limit(1);
+        const [person] = await tx.select().from(people).where(eq(people.id, input.personId)).limit(1);
+        if (!employee || !person) throw new Error("Servidor ou pessoa física não encontrado.");
         if (employee.personId && employee.personId !== person.id) throw new Error("Servidor já vinculado a outra pessoa física.");
         const cpf = requireValidCpf(person.cpf);
         if (employee.cpf && employee.cpf.replace(/\D/g, "") !== cpf) throw new Error("CPF do servidor difere do cadastro central. Faça o saneamento antes de vincular.");
-        await tx.employee.update({ where: { id: employee.id }, data: { personId: person.id, name: person.fullName, cpf } });
+        await tx.update(employees).set({ personId: person.id, name: person.fullName, cpf }).where(eq(employees.id, employee.id));
       });
       id = input.employeeId;
     }

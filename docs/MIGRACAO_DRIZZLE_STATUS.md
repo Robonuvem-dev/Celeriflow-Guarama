@@ -1,5 +1,21 @@
 # Migração integral para Drizzle — situação
 
+## Retomada para sincronização de `main` e `feat` — 28/10/2026
+
+- Ponto de partida: `97b3460` em `feat/migracao-integral-drizzle`, árvore limpa e commit já publicado nessa branch. `git fetch origin` e `git pull --ff-only origin feat/migracao-integral-drizzle` confirmaram sincronismo; `origin/main` em `d0c851e` é ancestral, três commits atrás.
+- O build obrigatório foi executado e reprovou no gate de conclusão: 3.778 fontes, 113 arquivos e 2.015 ocorrências legadas. O preview Vercel de `97b3460` também está em falha; não representa publicação aprovada.
+- Correções finais distribuídas entre núcleo fiscal, Planejamento, Saúde, RH, Portal/scripts e regressões fiscais/financeiras. Integração, instalação limpa, validação global e publicação permanecem centralizadas.
+- Removido o cliente Prisma de `AppContext` e da construção do contexto autenticado, preservando `database` Drizzle e as funções de autorização. Validação dirigida: 23 testes aprovados, zero falhas/skip.
+- Remediação auditada aplicada ao manifest/lock: zero dependências Prisma; audit de produção aprovado com zero high/critical e oito moderate. A instalação limpa e os testes funcionais dessas versões ainda são necessários.
+- Verificação SQL offline aprovada: 156 históricos preservados e dois futuros, mantendo a diferença clínica explicitamente não recuperada. Quatorze testes adicionais de gate/proveniência/baseline/replay aprovados, zero falhas/skip. A baseline Neon já inicializada não foi repetida.
+- O verificador físico global agora lê o catálogo público versionado de testes, em vez de depender do arquivo privado `.agent`; comparação aprovada. Novas declarações das frentes finais exigem nova comparação.
+- Identidade local e credencial GitHub/API confirmadas como `Robonuvem-dev`. Nenhum commit/push desta retomada; sincronização/publicação da `main` depende do build final aprovado.
+- Regressões residuais fiscais/financeiras entregues: 27 casos aprovados, zero skips (11 fiscais e 16 financeiros), com autorização UG/ente, RAP, contas analíticas, multifonte, concorrência e rollback. Handoff `drizzle-regressions-final-progress.md`; TypeScript/ESLint do recorte aprovados. Núcleo fiscal entregue em `drizzle-tax-core-final-progress.md`, com a execução integral final ainda em andamento no momento do handoff.
+- Bootstrap TEST ajustado para conferir os 156 históricos e todos os SQLs futuros, incluindo os nomes/checksums exatos dos recibos: sete testes aprovados, zero falhas/skip. Não se alterou a autoridade ou o histórico SQL para acomodar o teste.
+- TypeScript isolado do contexto de plataforma: 952 fontes no grafo, zero diagnósticos. Novo ensaio read-only Neon em 2026-10-28T20:56:51.377Z confirmou backends distintos, sessão transacional estável, contenção/liberação do lock e todos os timeouts esperados.
+- Instalação limpa isolada do candidato: 981 pacotes, exit 0. Smokes de imagens/Unicode DOCX-XLSX/XML/Zod/Firebase e gRPC 1.13.6/1.14.5 aprovados, incluindo leitura pelo cliente real Firestore contra servidor local. Detalhes e limites em `drizzle-dependencies-final-progress.md`; instalação da raiz ainda pendente.
+- Next 16.4.3 do candidato gerou os tipos de rotas da árvore atual com sucesso; o planejador de checagem preserva cobertura de 3.130 fontes/937 validações/14 partições. Essa geração e o plano não são aprovação de typecheck/build integrado.
+
 ## Base e decisões
 
 - Plano: [planejamento integral](<Docs nao precisa subir/PLANEJAMENTO_MIGRACAO_PRISMA_PARA_DRIZZLE.md>), realocado pela nova `main`.

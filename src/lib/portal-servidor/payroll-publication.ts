@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Decimal } from "@/db/decimal";
+import type DecimalJs from "decimal.js";
 import type { JsonValue } from "@/db/json";
 import { eq, sql } from "drizzle-orm";
 import { db, databaseConnection } from "@/db/client";
@@ -20,12 +21,12 @@ type Db = DatabaseExecutor;
 export const portalPayrollPublicationPolicySchema = z.object({ origin: z.literal("DISPONIBILIZACAO_FOLHA_FUNCIONAL"), budgetUnitId: z.string().min(1), payrollTypes: z.array(z.string().min(1)).min(1), regimeIds: z.array(z.string().min(1)).min(1), scopes: z.array(z.enum(["PRODUCAO", "HOMOLOGACAO", "DEMONSTRACAO"])).min(1), allowBeforeClosure: z.boolean() }).strict();
 const proofSchema = z.object({ statementId: z.string(), employeeId: z.string(), policyId: z.string(), actorId: z.string(), releaseAt: z.iso.datetime(), allowBeforeClosure: z.boolean(), snapshotHash: z.string() });
 
-export function payrollSnapshotHash(statement: { snapshot: JsonValue; gross: Decimal.Value; deductions: Decimal.Value; net: Decimal.Value; employer: Decimal.Value }) {
+export function payrollSnapshotHash(statement: { snapshot: JsonValue; gross: DecimalJs.Value; deductions: DecimalJs.Value; net: DecimalJs.Value; employer: DecimalJs.Value }) {
   const normalize = (value: unknown): unknown => Array.isArray(value) ? value.map(normalize) : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, child]) => [key, normalize(child)])) : value;
   return createHash("sha256").update(JSON.stringify({ snapshot: normalize(statement.snapshot), gross: new Decimal(statement.gross).toString(), deductions: new Decimal(statement.deductions).toString(), net: new Decimal(statement.net).toString(), employer: new Decimal(statement.employer).toString() })).digest("hex");
 }
 
-export async function personalStatementPublicationAllowed(db: Db, statement: { id: string; snapshot: JsonValue; gross: Decimal.Value; deductions: Decimal.Value; net: Decimal.Value; employer: Decimal.Value; releaseAt: Date | null; revokedAt: Date | null; run: { mode: string; status: string } }, employeeId: string) {
+export async function personalStatementPublicationAllowed(db: Db, statement: { id: string; snapshot: JsonValue; gross: DecimalJs.Value; deductions: DecimalJs.Value; net: DecimalJs.Value; employer: DecimalJs.Value; releaseAt: Date | null; revokedAt: Date | null; run: { mode: string; status: string } }, employeeId: string) {
   if (!await arePortalPayrollStatementsEnabled(db) || !statement.releaseAt || statement.releaseAt > new Date() || statement.revokedAt || statement.run.mode !== "OFICIAL") return false;
   if (!["FECHADA", "CALCULADA"].includes(statement.run.status)) return false;
   const proof = await portalEvent(db, sql`"sourceKey"=${`PORTAL:PUBLICACAO_DEMONSTRATIVO:${statement.id}`}`);

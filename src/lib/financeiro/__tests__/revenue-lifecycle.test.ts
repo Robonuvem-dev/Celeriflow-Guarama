@@ -55,6 +55,7 @@ test("revenue lifecycle keeps launch, collection, source redistribution and reve
 
   try {
     const launched = await launchRevenue(databaseConnection, actor, {
+      budgetUnitId: "budget-unit-fin-01",
       date,
       value: "100.00",
       revenueNatureId: nature.id,

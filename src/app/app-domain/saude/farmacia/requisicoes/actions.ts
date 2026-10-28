@@ -3,6 +3,10 @@ import { revalidatePath } from "next/cache";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { cancelPharmacyProductFulfillment, cancelPharmacyStockRequest, createPharmacyStockRequest, fulfillPatientPharmacyRequest } from "@/lib/saude/pharmacy-request-service";
 import { dispatchHealthStockTransfer, receiveHealthStockTransfer } from "@/lib/saude/health-stock-service";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { pharmacyRequestItems, pharmacyRequests } from "@/db/schema/health-pharmacy";
+import { pharmacyRecord, readPharmacyStock } from "@/db/repositories/health-pharmacy/records";
 const text = (data: FormData, key: string) => String(data.get(key) || "").trim();
 function refresh() { for (const path of ["/saude/farmacia/requisicoes", "/saude/farmacia", "/saude/farmacia/dispensacoes", "/saude/relatorios"]) revalidatePath(path); }
 export async function createPharmacyRequestManagerAction(data: FormData): Promise<void> {
@@ -11,9 +15,10 @@ export async function createPharmacyRequestManagerAction(data: FormData): Promis
 }
 export async function dispatchRequestedProductsAction(data: FormData): Promise<void> {
   const context = await getTenantContextForModuleOperation("SAUDE", "create");
-  const item = await context.prisma.pharmacyRequestItem.findUniqueOrThrow({ where: { id: text(data, "itemId") }, include: { request: true } });
-  const stock = await context.prisma.materialStock.findUniqueOrThrow({ where: { id: text(data, "stockId") } });
-  await dispatchHealthStockTransfer(context, { originWarehouseId: stock.warehouseId, destinationWarehouseId: item.request.destinationWarehouseId, idempotencyKey: text(data, "idempotencyKey"), items: [{ pharmacyRequestItemId: item.id, materialId: item.materialId, batchNumber: stock.batchNumber, quantity: Number(text(data, "quantity")) }] }); refresh();
+  const database = context.database ?? db;
+  const row = pharmacyRecord((await database.select({ item: pharmacyRequestItems, request: pharmacyRequests }).from(pharmacyRequestItems).innerJoin(pharmacyRequests, eq(pharmacyRequests.id, pharmacyRequestItems.requestId)).where(eq(pharmacyRequestItems.id, text(data, "itemId"))).limit(1))[0]);
+  const stock = await readPharmacyStock(database, text(data, "stockId"));
+  await dispatchHealthStockTransfer(context, { originWarehouseId: stock.warehouseId, destinationWarehouseId: row.request.destinationWarehouseId, idempotencyKey: text(data, "idempotencyKey"), items: [{ pharmacyRequestItemId: row.item.id, materialId: row.item.materialId, batchNumber: stock.batchNumber, quantity: Number(text(data, "quantity")) }] }); refresh();
 }
 export async function receiveRequestedProductsAction(data: FormData): Promise<void> {
   const context = await getTenantContextForModuleOperation("SAUDE", "update");

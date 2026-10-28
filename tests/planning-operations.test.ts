@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Prisma } from "@prisma/client";
+import { Decimal } from "../src/db/decimal";
 import { distributePlanningMonths } from "../src/lib/planejamento/scheduling";
 import { contentHash } from "../src/lib/planejamento/operations-core";
 import { parsePlanningItems } from "../src/lib/planejamento/amendments";
@@ -12,7 +12,7 @@ import type { InternalReportDataset } from "../src/lib/financeiro/report-deliver
 test("distribuição mensal conserva centavos em todos os métodos de pesos e rejeita zero/negativos", () => {
   for (const weights of [Array(12).fill("1"), ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"], ["0", "0", "100", ...Array(9).fill("0")]]) {
     const values = distributePlanningMonths("123456789012.05", weights);
-    assert.equal(values.reduce((sum, row) => sum.plus(row), new Prisma.Decimal(0)).toFixed(2), "123456789012.05");
+    assert.equal(values.reduce((sum, row) => sum.plus(row), new Decimal(0)).toFixed(2), "123456789012.05");
     assert.ok(values.every((value) => value.greaterThanOrEqualTo(0) && value.decimalPlaces() <= 2));
   }
   assert.throws(() => distributePlanningMonths("12", Array(12).fill("0")), /maior que zero/);

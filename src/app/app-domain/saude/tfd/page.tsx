@@ -5,7 +5,15 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
 import { addPassengerAction, authorizeTfdAction, confirmPassengerRemovalAction, createTfdRequestAction, createTripAction, movePassengerAction, requestPassengerRemovalAction, updateTripStatusAction } from "./actions";
-import type { Prisma } from "@prisma/client";
+import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { healthTfdTrips, healthTfdRequests, healthTfdPassengers, healthTfdPassengerRemovals } from "@/db/schema/health-tfd";
+import { patients as patientTable } from "@/db/schema/health-registration";
+import { people } from "@/db/schema/people";
+import { healthUnits } from "@/db/schema/health-workforce";
+import { fleetUnits as fleetUnitTable } from "@/db/schema/fleet";
+import { employees as employeeTable } from "@/db/schema/administration";
+import { healthRegulationRequests } from "@/db/schema/health-regulation";
+import { pharmacyPatients } from "@/db/repositories/health-pharmacy-pages/common";
 import { activeTfdPassengerWhere, tfdTripAccessWhere } from "@/lib/saude/tfd-service";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
@@ -16,29 +24,32 @@ const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? N
 
 export default async function TfdPage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("SAUDE");
-  const { prisma } = context;
+  const db = context.database;
   const unitIds = context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined;
   const params = await searchParams;
   const q = (first(params.q) || "").trim().slice(0, 120);
   const filter = (first(params.filter) || "").trim().slice(0, 40);
-  const where: Prisma.HealthTfdTripWhereInput = {
-    AND: [tfdTripAccessWhere(context.user)],
-    ...(filter ? { status: filter } : {}),
-    ...(q ? { OR: [{ origin: { contains: q, mode: "insensitive" } }, { destination: { contains: q, mode: "insensitive" } }] } : {}),
-  };
-  const total = await prisma.healthTfdTrip.count({ where });
+  const access = tfdTripAccessWhere(context.user);
+  const where = and(access, filter ? eq(healthTfdTrips.status, filter) : undefined, q ? or(ilike(healthTfdTrips.origin, `%${q}%`), ilike(healthTfdTrips.destination, `%${q}%`)) : undefined);
+  const [{ total }] = await db.select({ total: count() }).from(healthTfdTrips).where(where);
   const page = Math.min(num(first(params.page)), Math.max(1, Math.ceil(total / PAGE_SIZE)));
-  const [trips, requests, patients, units, fleetUnits, employees, passengers, removals, regulationRequests] = await Promise.all([
-    prisma.healthTfdTrip.findMany({ where, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, orderBy: { date: "desc" }, include: { fleetUnit: true, driverEmployee: true, passengers: { where: activeTfdPassengerWhere, include: { patient: { include: { person: true } } } } } }),
-    prisma.healthTfdRequest.findMany({ where: unitIds ? { originUnitId: { in: unitIds } } : {}, orderBy: { createdAt: "desc" }, take: 500, include: { patient: { include: { person: true } }, originUnit: true } }),
-    prisma.patient.findMany({ where: { status: "Ativo", ...(unitIds ? { referenceUnitId: { in: unitIds } } : {}) }, take: 500, orderBy: { person: { fullName: "asc" } }, include: { person: true } }),
-    prisma.healthUnit.findMany({ where: { isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) }, orderBy: { name: "asc" } }),
-    prisma.fleetUnit.findMany({ where: { category: "VEICULO", status: "ATIVO" }, take: 200, orderBy: { name: "asc" } }),
-    prisma.employee.findMany({ where: { isActive: true }, take: 200, orderBy: { name: "asc" } }),
-    prisma.healthTfdPassenger.findMany({ where: { ...activeTfdPassengerWhere, trip: tfdTripAccessWhere(context.user) }, take: 200, orderBy: { createdAt: "desc" }, include: { trip: true, patient: { include: { person: true } } } }),
-    prisma.healthTfdPassengerRemoval.findMany({ where: { status: "Pendente", passenger: { trip: tfdTripAccessWhere(context.user) } }, take: 100, include: { passenger: { include: { patient: { include: { person: true } } } } } }),
-    prisma.healthRegulationRequest.findMany({ where: unitIds ? { requestUnitId: { in: unitIds } } : {}, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, description: true, patient: { select: { person: { select: { fullName: true } } } } } }),
+  const [tripRows, requestRows, patients, units, fleetUnits, employees, passengerRows, removalRows, regulationRows] = await Promise.all([
+    db.select({ trip: healthTfdTrips, fleetUnit: fleetUnitTable, driverEmployee: employeeTable }).from(healthTfdTrips).innerJoin(fleetUnitTable, eq(fleetUnitTable.id, healthTfdTrips.fleetUnitId)).leftJoin(employeeTable, eq(employeeTable.id, healthTfdTrips.driverEmployeeId)).where(where).orderBy(desc(healthTfdTrips.date)).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE),
+    db.select({ request: healthTfdRequests, patient: patientTable, person: people, originUnit: healthUnits }).from(healthTfdRequests).innerJoin(patientTable, eq(patientTable.id, healthTfdRequests.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).leftJoin(healthUnits, eq(healthUnits.id, healthTfdRequests.originUnitId)).where(unitIds ? inArray(healthTfdRequests.originUnitId, unitIds) : undefined).orderBy(desc(healthTfdRequests.createdAt)).limit(500),
+    pharmacyPatients(db, unitIds, undefined, 500),
+    db.select().from(healthUnits).where(and(eq(healthUnits.isActive, true), unitIds ? inArray(healthUnits.id, unitIds) : undefined)).orderBy(asc(healthUnits.name)),
+    db.select().from(fleetUnitTable).where(and(eq(fleetUnitTable.category, "VEICULO"), eq(fleetUnitTable.status, "ATIVO"))).orderBy(asc(fleetUnitTable.name)).limit(200),
+    db.select().from(employeeTable).where(eq(employeeTable.isActive, true)).orderBy(asc(employeeTable.name)).limit(200),
+    db.select({ passenger: healthTfdPassengers, trip: healthTfdTrips, patient: patientTable, person: people }).from(healthTfdPassengers).innerJoin(healthTfdTrips, eq(healthTfdTrips.id, healthTfdPassengers.tripId)).innerJoin(patientTable, eq(patientTable.id, healthTfdPassengers.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(and(activeTfdPassengerWhere, access)).orderBy(desc(healthTfdPassengers.createdAt)).limit(200),
+    db.select({ removal: healthTfdPassengerRemovals, passenger: healthTfdPassengers, patient: patientTable, person: people }).from(healthTfdPassengerRemovals).innerJoin(healthTfdPassengers, eq(healthTfdPassengers.id, healthTfdPassengerRemovals.passengerId)).innerJoin(healthTfdTrips, eq(healthTfdTrips.id, healthTfdPassengers.tripId)).innerJoin(patientTable, eq(patientTable.id, healthTfdPassengers.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(and(eq(healthTfdPassengerRemovals.status, "Pendente"), access)).limit(100),
+    db.select({ id: healthRegulationRequests.id, description: healthRegulationRequests.description, fullName: people.fullName }).from(healthRegulationRequests).innerJoin(patientTable, eq(patientTable.id, healthRegulationRequests.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(unitIds ? inArray(healthRegulationRequests.requestUnitId, unitIds) : undefined).orderBy(desc(healthRegulationRequests.createdAt)).limit(100),
   ]);
+  const manifestRows = await db.select({ passenger: healthTfdPassengers, patient: patientTable, person: people }).from(healthTfdPassengers).innerJoin(patientTable, eq(patientTable.id, healthTfdPassengers.patientId)).innerJoin(people, eq(people.id, patientTable.personId)).where(and(inArray(healthTfdPassengers.tripId, tripRows.map(row => row.trip.id)), activeTfdPassengerWhere));
+  const trips = tripRows.map(row => ({ ...row.trip, fleetUnit: row.fleetUnit, driverEmployee: row.driverEmployee, passengers: manifestRows.filter(item => item.passenger.tripId === row.trip.id).map(item => ({ ...item.passenger, patient: { ...item.patient, person: item.person } })) }));
+  const requests = requestRows.map(row => ({ ...row.request, patient: { ...row.patient, person: row.person }, originUnit: row.originUnit }));
+  const passengers = passengerRows.map(row => ({ ...row.passenger, trip: row.trip, patient: { ...row.patient, person: row.person } }));
+  const removals = removalRows.map(row => ({ ...row.removal, passenger: { ...row.passenger, patient: { ...row.patient, person: row.person } } }));
+  const regulationRequests = regulationRows.map(row => ({ id: row.id, description: row.description, patient: { person: { fullName: row.fullName } } }));
 
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

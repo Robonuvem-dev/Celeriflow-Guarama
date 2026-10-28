@@ -1,7 +1,5 @@
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
 import { getIdTokenPrincipal, getSessionPrincipal, SESSION_COOKIE_NAME, type SessionPrincipal } from "@/lib/platform/session";
-import type { PrismaClient } from "@prisma/client";
 import { SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
 import { db } from "@/db/client";
 import type { Database } from "@/db/connection";
@@ -21,7 +19,6 @@ export { AccessError } from "./access-error";
 export type AppContext = {
   user: PermissionUser;
   database?: Database;
-  prisma: PrismaClient;
 };
 
 type RolePermissions = {
@@ -186,7 +183,6 @@ async function resolveUser(principal: SessionPrincipal | null): Promise<AppConte
 function buildAppContext(user: AppContext["user"]): AppContext {
   return {
     user,
-    prisma,
     database: db,
   };
 }

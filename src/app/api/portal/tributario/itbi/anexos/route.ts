@@ -1,6 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db/client";
 import { getCitizenApiAccount, portalApiError } from "@/lib/portal-cidadao/api-access";
 import { validPortalUploadPath } from "@/lib/portal-cidadao/evidence-policy";
 import { isSameOriginRequest } from "@/lib/transparencia/request-origin";
@@ -11,7 +11,7 @@ import { itbiUploadPrefix, itbiUploadLimit, itbiUploadTypes, registerItbiPortalU
 export const runtime = "nodejs";
 const payloadSchema = z.object({ declarationId: z.string().min(1), filename: z.string().trim().min(1).max(240) }).strict();
 export async function GET(request: Request) {
-  try { const account = await getCitizenApiAccount(); const id = new URL(request.url).searchParams.get("declarationId") ?? ""; await assertPortalItbiAccess(prisma, account.id, id); return Response.json({ prefix: itbiUploadPrefix(account.id, id), maximumSize: itbiUploadLimit }, { headers: { "Cache-Control": "private, no-store" } }); }
+  try { const account = await getCitizenApiAccount(); const id = new URL(request.url).searchParams.get("declarationId") ?? ""; await assertPortalItbiAccess(db, account.id, id); return Response.json({ prefix: itbiUploadPrefix(account.id, id), maximumSize: itbiUploadLimit }, { headers: { "Cache-Control": "private, no-store" } }); }
   catch (error) { return portalApiError(error); }
 }
 export async function POST(request: Request) {
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         if (!isSameOriginRequest(request)) throw new Error("Origem inválida.");
         const account = await getCitizenApiAccount(); const input = payloadSchema.parse(JSON.parse(clientPayload || "{}"));
-        await assertPortalItbiAccess(prisma, account.id, input.declarationId);
+        await assertPortalItbiAccess(db, account.id, input.declarationId);
         if (!checkRateLimit(`itbi-upload:${account.id}`).allowed) throw new Error("Aguarde antes de enviar novamente.");
         if (!validPortalUploadPath(pathname, itbiUploadPrefix(account.id, input.declarationId))) throw new Error("Destino de upload inválido.");
         return { allowedContentTypes: itbiUploadTypes, maximumSizeInBytes: itbiUploadLimit, addRandomSuffix: true, tokenPayload: JSON.stringify({ ...input, usuarioId: account.id }) };

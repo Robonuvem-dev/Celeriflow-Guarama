@@ -3,6 +3,9 @@ import { revalidatePath } from "next/cache";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { addVaccineAdverseConduct, configureVaccineStock, recordVaccinationCardEvent, recordVaccineAdverseEvent, revokeVaccinationCardEvent, saveVaccinationCampaign, saveVaccineCalendarRule, saveVaccineCodeMapping, saveVaccineInteraction, saveVaccineManufacturer } from "@/lib/saude/vaccination-registry-service";
 import { configureVaccineLot, prepareVaccineVial, receiveVaccineVials, reconcileOpenedVaccineVial, registerExistingOpenedVaccineVial } from "@/lib/saude/vaccination-stock-service";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { healthVaccineAdverseEvents } from "@/db/schema/health-vaccination";
 const text = (data: FormData, key: string) => String(data.get(key) || "").trim();
 const nullable = (data: FormData, key: string) => text(data, key) || null;
 const numberOrNull = (data: FormData, key: string) => text(data, key) ? Number(text(data, key)) : null;
@@ -74,6 +77,7 @@ export async function vaccineAdverseEventAction(data: FormData): Promise<void> {
 }
 export async function vaccineAdverseConductAction(data: FormData): Promise<void> {
   const context = await getTenantContextForModuleOperation("SAUDE", "update");
-  const event = await context.prisma.healthVaccineAdverseEvent.findUniqueOrThrow({ where: { id: text(data, "eventId") }, select: { patientId: true } });
+  const [event] = await (context.database ?? db).select({ patientId: healthVaccineAdverseEvents.patientId }).from(healthVaccineAdverseEvents).where(eq(healthVaccineAdverseEvents.id, text(data, "eventId"))).limit(1);
+  if (!event) throw new Error("Evento adverso não encontrado.");
   await addVaccineAdverseConduct(context, { eventId: text(data, "eventId"), occurredAt: localDate(data, "occurredAt"), professionalId: nullable(data, "professionalId"), conduct: text(data, "conduct"), narrative: text(data, "narrative") }); refresh(event.patientId);
 }

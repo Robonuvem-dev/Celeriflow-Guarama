@@ -8,6 +8,7 @@ import { queryRows } from "../scripts/lib/cross-domain-database";
 import { resolveBootstrapTestTarget } from "../scripts/lib/cross-domain-bootstrap-test-target";
 import { resetBootstrapTestSchema } from "../scripts/lib/cross-domain-bootstrap-test-reset.mjs";
 import { bootstrapTestDatabaseMain } from "../scripts/bootstrap-test-database.mjs";
+import { loadMigrationSet } from "../scripts/database-migrate-files.mjs";
 import { seedBootstrapTestFixture } from "../prisma/bootstrap-test/seed";
 
 test("bootstrap dedicado exige TEST, rejeita alias operacional e não aceita redirecionamento", () => {
@@ -24,7 +25,9 @@ test("bootstrap dedicado exige TEST, rejeita alias operacional e não aceita red
   assert.deepEqual(resolveBootstrapTestTarget({ TEST_DATABASE_URL: dedicated.replace("ep-test.", "ep-test-pooler."), TEST_DATABASE_URL_UNPOOLED: unpooled, DATABASE_URL: production }), { connectionString: unpooled, databaseName: "neondb" });
 });
 
-test("bootstrap TEST real: reset público, replay de 156 históricos e fixture Drizzle", { timeout: 300_000 }, async t => {
+test("bootstrap TEST real: reset público, replay de 156 históricos e SQLs futuros, fixture Drizzle", { timeout: 300_000 }, async t => {
+  const migrations = loadMigrationSet();
+  assert.equal(migrations.historical.length, 156);
   const fixture = await createLocalDrizzleDatabase();
   const { db } = fixture.connection;
   const url = fixture.connection.pool.options.connectionString;
@@ -46,14 +49,16 @@ test("bootstrap TEST real: reset público, replay de 156 históricos e fixture D
     const permissions = await queryRows(db, sql`SELECT a.grantee,a.privilege_type,a.is_grantable FROM pg_namespace n CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a WHERE n.nspname='public' ORDER BY a.grantee,a.privilege_type,a.is_grantable`);
     const result = await bootstrapTestDatabaseMain(environment);
     assert.equal(result.result, "PASS");
-    assert.equal(result.migrations, 156);
+    assert.equal(result.migrations, migrations.migrations.length);
     assert.equal(result.origin, "replayed");
 
     await t.test("recibos representam execução real; roles e guards históricos sobrevivem", async () => {
       assert.equal((await queryRows(db, sql`SELECT to_regclass('public.bootstrap_reset_sentinel') IS NULL AS absent`))[0].absent, true);
       assert.equal((await queryRows(db, sql`SELECT to_regclass('public._prisma_migrations') IS NULL AS absent`))[0].absent, true);
       const [receipts] = await queryRows<{ count: number; executed: number }>(db, sql`SELECT count(*)::integer AS count,count(*) FILTER (WHERE origin='executed' AND legacy_row IS NULL)::integer AS executed FROM public._celeriflow_sql_migrations`);
-      assert.deepEqual(receipts, { count: 156, executed: 156 });
+      assert.deepEqual(receipts, { count: migrations.migrations.length, executed: migrations.migrations.length });
+      const applied = await queryRows<{ name: string; checksum: string }>(db, sql`SELECT name,checksum FROM public._celeriflow_sql_migrations ORDER BY name`);
+      assert.deepEqual(applied, migrations.migrations.map(({ name, checksum }: { name: string; checksum: string }) => ({ name, checksum })));
       const [after] = await queryRows<{ owner: string; roles: string }>(db, sql`SELECT pg_get_userbyid(nspowner) AS owner,(SELECT count(*)::text FROM pg_roles) AS roles FROM pg_namespace WHERE nspname='public'`);
       assert.deepEqual(after, ownership);
       assert.deepEqual(await queryRows(db, sql`SELECT a.grantee,a.privilege_type,a.is_grantable FROM pg_namespace n CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a WHERE n.nspname='public' ORDER BY a.grantee,a.privilege_type,a.is_grantable`), permissions);

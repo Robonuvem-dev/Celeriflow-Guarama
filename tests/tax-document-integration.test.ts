@@ -8,7 +8,7 @@ import { taxAssessments } from "../src/db/schema/taxation-core";
 import { taxPayments } from "../src/db/schema/tax-accounting";
 import { realEstates } from "../src/db/schema/registry";
 import { itbiDeclarations, itbiParties, itbiTransactionTypes } from "../src/db/schema/tax-itbi";
-import { countTaxRows, firstTaxRow, readTaxChainRecord, readTaxChainRegistry, taxChainObject } from "./helpers/tax-chain-database";
+import { countTaxRows, firstTaxRow, readTaxChainRecord, readTaxChainRegistry, taxChainObject, taxChainDatabaseFailure } from "./helpers/tax-chain-database";
 import { createTaxDocumentFixture } from "./helpers/tax-document-fixture";
 import { emitNfse, substituteNfse, cancelNfse, createDeductionCredit, createDmsDeclaration, approveOccasionalRequest, createOccasionalRequest, releaseOccasionalRequest } from "../src/lib/tributacao/s4-service";
 import { createTaxAssessment, generateTaxGuide, confirmTaxPayment, enrollAssessmentInActiveDebt } from "../src/lib/tributacao";
@@ -25,7 +25,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
     try {
       const credit = await createDeductionCredit(f.db, f.actor, { taxpayerId: "seller", economicRegistrationId: "document-registration", creditType: "MATERIAIS", originDocument: "GED-01", amount: 10 });
       const input = { providerId: "seller", takerId: "buyer-one", economicRegistrationId: "document-registration", serviceActivityId: "document-activity", competence: "09/2026", serviceDescription: "Serviço municipal documentado", serviceValue: "100.00", manualDeductions: "10.00", retained: false, creditUsages: [{ creditId: credit.id, amount: "10.00" }] };
-      await assert.rejects(emitNfse(f.db, { ...f.actor, allowedBudgetUnitIds: [] }, input), /autorizadas/);
+      await assert.rejects(emitNfse(f.connection, { ...f.actor, allowedBudgetUnitIds: [] }, input), /autorizadas/);
       const invoice = await emitNfse(f.connection, f.actor, input);
       const assessment = firstTaxRow(await f.db.select().from(taxAssessments).where(sql`${taxAssessments.calculationSnapshot}->>'invoiceId'=${invoice.id}`));
       assert.equal(assessment.finalValueDecimal!.toFixed(2), "4.00");
@@ -35,7 +35,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       const replacement = { invoiceId: invoice.id, reason: "Substituição fundamentada do documento fiscal", serviceDescription: "Serviço corrigido", serviceValue: 120, deductions: 20, retained: false };
       const before = await countTaxRows(f.db, "AccountingTransaction");
       await f.database.exec(`CREATE FUNCTION fail_nfse_substitution() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."eventType"='SUBSTITUIDA' THEN RAISE EXCEPTION 'nfse substitution rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_nfse_substitution BEFORE INSERT ON "NfseEvent" FOR EACH ROW EXECUTE FUNCTION fail_nfse_substitution();`);
-      await assert.rejects(substituteNfse(f.connection, f.actor, replacement), /nfse substitution rollback/);
+      await assert.rejects(substituteNfse(f.connection, f.actor, replacement), taxChainDatabaseFailure(/nfse substitution rollback/));
       assert.equal(await countTaxRows(f.db, "Invoice"), 1);
       assert.equal(await countTaxRows(f.db, "AccountingTransaction"), before);
       assert.equal(firstTaxRow(await f.db.select().from(taxAssessments).where(eq(taxAssessments.id, assessment.id))).finalValueDecimal!.toFixed(2), "4.00");
@@ -83,7 +83,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       assert.equal(firstTaxRow(await f.db.select().from(realEstates).where(eq(realEstates.id, "property"))).taxpayerId, "seller");
       await f.database.exec(`CREATE FUNCTION fail_itbi_transfer() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.category='FISCAL_OWNERSHIP' THEN RAISE EXCEPTION 'itbi transfer rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_itbi_transfer BEFORE INSERT ON "TaxRegistryEntry" FOR EACH ROW EXECUTE FUNCTION fail_itbi_transfer();`);
       const finalPayment = { ...payment, idempotencyKey: "itbi-second-half" };
-      await assert.rejects(confirmTaxPayment(f.connection, f.actor, finalPayment), /itbi transfer rollback/);
+      await assert.rejects(confirmTaxPayment(f.connection, f.actor, finalPayment), taxChainDatabaseFailure(/itbi transfer rollback/));
       assert.equal(await countTaxRows(f.db, "TaxPayment"), 1);
       assert.equal(await countTaxRows(f.db, "Revenue"), 1);
       await f.database.exec('DROP TRIGGER fail_itbi_transfer ON "TaxRegistryEntry"; DROP FUNCTION fail_itbi_transfer();');

@@ -2,14 +2,18 @@
 
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
+import { eq, count } from "drizzle-orm";
+import { db } from "@/db/client";
+import { createId } from "@/db/ids";
+import { sstBenefitConfigs, sstPayrollBenefits } from "@/db/schema/sst-benefits";
 
-async function getTenantPrisma(operation: "create" | "update" | "delete") {
-  return (await getTenantContextForModuleOperation("RH", operation)).prisma;
+async function getTenantDatabase(operation: "create" | "update" | "delete") {
+  return (await getTenantContextForModuleOperation("RH", operation)).database ?? db;
 }
 
 export async function saveBeneficio(formData: FormData) {
   const id = formData.get("id") as string;
-  const prisma = await getTenantPrisma(id ? "update" : "create");
+  const database = await getTenantDatabase(id ? "update" : "create");
   try {
     const name = formData.get("name") as string;
     const type = formData.get("type") as string;
@@ -30,14 +34,10 @@ export async function saveBeneficio(formData: FormData) {
     };
 
     if (id) {
-      await prisma.benefitConfig.update({
-        where: { id },
-        data,
-      });
+      const rows = await database.update(sstBenefitConfigs).set(data).where(eq(sstBenefitConfigs.id, id)).returning({ id: sstBenefitConfigs.id });
+      if (!rows.length) throw new Error("Benefício não encontrado.");
     } else {
-      await prisma.benefitConfig.create({
-        data,
-      });
+      await database.insert(sstBenefitConfigs).values({ id: createId(), ...data });
     }
 
     revalidatePath("/rh/beneficios");
@@ -49,12 +49,10 @@ export async function saveBeneficio(formData: FormData) {
 }
 
 export async function toggleBeneficioStatus(id: string, isActive: boolean) {
-  const prisma = await getTenantPrisma("update");
+  const database = await getTenantDatabase("update");
   try {
-    await prisma.benefitConfig.update({
-      where: { id },
-      data: { isActive },
-    });
+    const rows = await database.update(sstBenefitConfigs).set({ isActive }).where(eq(sstBenefitConfigs.id, id)).returning({ id: sstBenefitConfigs.id });
+    if (!rows.length) throw new Error("Benefício não encontrado.");
     revalidatePath("/rh/beneficios");
     return { success: true };
   } catch (error) {
@@ -64,17 +62,16 @@ export async function toggleBeneficioStatus(id: string, isActive: boolean) {
 }
 
 export async function deleteBeneficio(id: string) {
-  const prisma = await getTenantPrisma("delete");
+  const database = await getTenantDatabase("delete");
   try {
     // Should check if it has payroll benefits linked before deleting
-    const count = await prisma.payrollBenefit.count({ where: { benefitConfigId: id } });
-    if (count > 0) {
+    const [linked] = await database.select({ count: count() }).from(sstPayrollBenefits).where(eq(sstPayrollBenefits.benefitConfigId, id));
+    if (linked.count > 0) {
       return { success: false, error: "Este benefício já está vinculado a servidores e não pode ser excluído. Inative-o em vez disso." };
     }
 
-    await prisma.benefitConfig.delete({
-      where: { id },
-    });
+    const rows = await database.delete(sstBenefitConfigs).where(eq(sstBenefitConfigs.id, id)).returning({ id: sstBenefitConfigs.id });
+    if (!rows.length) throw new Error("Benefício não encontrado.");
     revalidatePath("/rh/beneficios");
     return { success: true };
   } catch (error) {

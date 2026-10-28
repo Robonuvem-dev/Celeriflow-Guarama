@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../transaction";
 import { hrIntegrationEvents } from "../../schema/personnel-workforce";
 import type { JsonValue } from "../../json";
@@ -20,6 +20,15 @@ export async function requireHrIntegrationEvent(database: DatabaseExecutor, sour
   const event = await findHrIntegrationEvent(database, sourceKey);
   if (!event) throw new Error("Origem da integração não encontrada.");
   return event;
+}
+/** Reports keep their immutable origin keys across reopening cycles. */
+export async function findActiveTravelAllowanceReport(database: DatabaseExecutor, requestId: string) {
+  const [report] = await database.select().from(hrIntegrationEvents).where(and(
+    eq(hrIntegrationEvents.eventType, "DIARIA_PRESTACAO_REGISTRADA"),
+    sql`${hrIntegrationEvents.payload} #>> '{input,requestId}' = ${requestId}`,
+    ne(hrIntegrationEvents.status, "ESTORNADA"),
+  )).orderBy(desc(hrIntegrationEvents.createdAt), desc(hrIntegrationEvents.id)).limit(1);
+  return report ?? null;
 }
 /** The caller supplies its transaction; no connection or nested transaction is opened here. */
 export async function enqueueHrIntegration(tx: DatabaseExecutor, input: { sourceKey: string; domain: string; environment: string; eventType: string; payload: unknown }) {
