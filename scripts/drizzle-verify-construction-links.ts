@@ -10,7 +10,7 @@ async function expectedUpdates(oracle: SqlOracle, access: ConstructionAccess, qu
   const search = (query.q || "").trim().slice(0, 160), status = ["PENDING", "APPLIED"].includes(query.status || "") ? query.status : null;
   const from = `FROM "ConstructionPropertyUpdate" u JOIN "Process" p ON p.id=u."processId" JOIN "ConstructionCompletion" c ON c.id=u."completionId" WHERE ($1::boolean OR p."currentDepartmentId"=$2) AND ($3::text IS NULL OR u.status=$3) AND ($4::text IS NULL OR p."protocolNumber" ILIKE $4 OR c.number ILIKE $4)`;
   const values = [access.administrator, access.departmentId || "__NONE__", status, search ? literalContains(search) : null];
-  const total = await oracle.count(`SELECT count(*)::int AS count ${from}`, values);
+  const total = await oracle.scalarCount(`SELECT count(*)::int AS count ${from}`, values);
   const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
   const rows = await oracle.rows<Omit<ConstructionPropertyUpdateRecord, "completion"> & { completionNumber: string; completionKind: string }>(`SELECT u.*,c.number AS "completionNumber",c.kind AS "completionKind" ${from} ORDER BY u."createdAt" DESC,u.id ASC LIMIT 20 OFFSET $5`, [...values, (page - 1) * 20]);
   const updates = rows.map(({ completionNumber, completionKind, ...row }) => ({ ...row, completion: { number: completionNumber, kind: completionKind } }));

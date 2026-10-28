@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { sql } from "drizzle-orm";
@@ -15,6 +16,7 @@ test("Health page projections match the versioned installed public metadata", ()
   };
   assert.equal(snapshot.sourceSha256, "bc2cd102e4627e250d00af1420cef46d95dbd954477202044024fdccceca729d");
   assert.equal(snapshot.catalogSha256, "1b6ca54c94a3aa6638ad61324483b32773ceb45efbd90020a49e6dce9b5497cb");
+  assert.equal(createHash("sha256").update(JSON.stringify(snapshot.catalog)).digest("hex"), snapshot.catalogSha256);
   for (const table of [pageEsusBatches, pageLaboratoryConfigurations]) {
     const config = getTableConfig(table);
     for (const column of config.columns) {
@@ -120,10 +122,15 @@ test("Health pages: historical SQL, independent oracles and real Neon/Drizzle re
       assert.equal(Object.hasOwn(laboratory.configurations[0], "createdByUsuarioId"), false);
       const imports = await healthSusImportPageRows(db);
       assert.equal(imports[0].startedAt.toISOString(), "2026-01-31T12:34:56.789Z"); assert.equal(imports[0].completedAt, null);
-      assert.deepEqual(imports[0].issues.map(row => row.id), ["hpg-issue-a", "hpg-issue-b"]);
-      const integrations = await healthIntegrationPageData(db, ["MS_RENAME"]);
-      assert.equal(integrations.connections.length, 1);
-      assert.deepEqual(integrations.connections[0].runs.map(row => row.operation), ["Operação 7", "Operação 6", "Operação 5", "Operação 4", "Operação 3"]);
+      assert.deepEqual(imports.map(row => row.id), ["hpg-import", "hpg-import-older"]);
+      assert.equal(imports[0].issues.length, 100);
+      assert.deepEqual(imports[0].issues.slice(0, 2).map(row => row.id), ["hpg-issue-a", "hpg-issue-b"]);
+      assert.equal(imports[0].issues.at(-1)?.rowNumber, 100);
+      assert.deepEqual(imports[1].issues.map(row => row.id), ["hpg-older-issue-a", "hpg-older-issue-b"]);
+      const integrations = await healthIntegrationPageData(db, ["MS_RENAME", "MS_CNES"]);
+      assert.deepEqual(integrations.connections.map(row => row.code), ["MS_CNES", "MS_RENAME"]);
+      assert.deepEqual(integrations.connections[0].runs.map(row => row.operation), ["Segunda operação 7", "Segunda operação 6", "Segunda operação 5", "Segunda operação 4", "Segunda operação 3"]);
+      assert.deepEqual(integrations.connections[1].runs.map(row => row.operation), ["Operação 7", "Operação 6", "Operação 5", "Operação 4", "Operação 3"]);
       assert.ok(integrations.connections[0].runs[0].createdAt instanceof Date);
       assert.equal(integrations.files[0].createdAt.toISOString(), "2026-01-31T12:34:56.789Z");
       assert.equal(integrations.batches[0].createdAt.toISOString(), "2026-01-31T12:34:56.789Z");
@@ -135,6 +142,11 @@ test("Health pages: historical SQL, independent oracles and real Neon/Drizzle re
         const oracle = await tx.execute<{ id: string }>(sql`SELECT id FROM "HealthUnit" WHERE NOT "isActive" AND name ILIKE '%Paginação%' ORDER BY name,id LIMIT 20 OFFSET 20`);
         assert.equal(page.total, 23); assert.equal(page.page, 2); assert.equal(page.unitRows.length, 3);
         assert.deepEqual(page.unitRows.map(row => row.id), oracle.rows.map(row => row.id));
+        await tx.execute(sql`INSERT INTO "HealthLaboratoryConfiguration" (id,"unitId","laboratoryName","collectionStartTime","collectionEndTime","resultReleaseDays","effectiveFrom","createdByUsuarioId","createdAt") SELECT 'hpg-lab-page-'||n,'hpg-b','Laboratório nominal '||n,'08:00','12:00',2,'2026-01-01','hpg-user',timestamp '2026-03-01'+n*interval '1 day' FROM generate_series(1,23) n`);
+        const laboratory = await healthLaboratoryConfigurationPage(tx, "hpg-b", 999);
+        const laboratoryOracle = await tx.execute<{ id: string }>(sql`SELECT id FROM "HealthLaboratoryConfiguration" WHERE "unitId"='hpg-b' ORDER BY "isActive" DESC,"createdAt" DESC LIMIT 20 OFFSET 20`);
+        assert.equal(laboratory.total, 23); assert.equal(laboratory.page, 2); assert.equal(laboratory.configurations.length, 3);
+        assert.deepEqual(laboratory.configurations.map(row => row.id), laboratoryOracle.rows.map(row => row.id));
         throw new Error("hpg-pagination-rollback");
       }), /hpg-pagination-rollback/);
     });

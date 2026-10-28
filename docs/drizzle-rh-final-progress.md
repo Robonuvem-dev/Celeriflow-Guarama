@@ -1,6 +1,6 @@
 # RH residual — progresso e handoff
 
-**Resultado: INCOMPLETE** — pendência principal em `hr-workforce-service.test.ts` e validação dos cenários de viagens ainda em curso.
+**Resultado: validação runtime final pendente** — a auditoria atual de `hr-workforce-service.test.ts` confirma consultas Drizzle nativas e 412 asserts; os cenários de workforce e viagens aguardam a rodada centralizada do parent.
 
 ## Estado atual
 
@@ -23,23 +23,16 @@
 - `payroll-provision-accounting`: a mesma execução reportou os dois casos (Executivo/Legislativo) aprovados, preservando rollback, replay, pagamento e baixa por componente.
 - A fixture compartilhada passou a executar todo o histórico SQL. Removido de `hr-role-legal-history` o antigo drop/replay redundante que tentava recriar a função de integridade já instalada; os asserts de imutabilidade continuam no teste.
 - Após essa correção, `hr-role-legal-history` reportou **1/1 aprovado**.
-- `municipal-travel-allowance`: adicionada a instância municipal referenciada pela política; a fixture relaxada anterior não impunha essa FK. Validação após esse ajuste ainda em curso.
+- `municipal-travel-allowance`: adicionada a instância municipal referenciada pela política; a fixture relaxada anterior não impunha essa FK. Na retomada de 28/10, o workflow passou a ser criado em `DRAFT`, seguido das etapas e da publicação com `publishedAt` e `publishedByUsuarioId`, conforme schema e guards históricos. Validação runtime após esses ajustes pendente.
 - Execuções sequenciais completas ultrapassaram 600 s sob pressão da máquina compartilhada; o caso isolado de restituição ultrapassou 300 s. Esses comandos não representam aprovação dos cenários de viagens.
 
-## Pendência explícita
+## Retomada de 28/10 — estado conferido na main
 
-`tests/hr-workforce-service.test.ts` está parcialmente convertido. O bootstrap usa `createSpecializedDrizzleFixture` (histórico SQL completo e conexão Neon/Drizzle real) e `tests/fixtures/personnel-workforce.sql`; a remoção dos delegates restantes ainda exige conclusão. Não considerar o escopo RH integralmente concluído enquanto esse arquivo permanecer legado.
-
-Pontos específicos desse arquivo: a fixture atual cria projeções relaxadas via DMMF; não trocar por replay completo sem preparar os registros relacionados e os `updatedAt` dos INSERTs SQL. Há IDs próprios (`instance`, `employee`, `year`, `ug`, `source`) que colidem com parte da fixture financeira compartilhada. Os leitores `getPayrollStatement`, `buildHrReport`, `listServiceRightLedger` e `calculateRemunerationAverage` recebem executor; operações transacionais recebem conexão. Os filtros antigos `{ id: ... }` das leituras com escopo precisam virar predicados SQL equivalentes, sem retirar os asserts de autorização.
-
-Nenhum build, commit ou push executado.
-
-## Retomada de 28/10 — bloqueio de escrita concorrente
-
-- Foram observadas regravações concorrentes do próprio `tests/hr-workforce-service.test.ts`: alterações aplicadas e verificadas (incluindo `historyScope`, cleanup via `fixture.close()` e consultas nativas da parte final) desapareceram em leituras posteriores. Houve uma leitura com zero delegates, seguida por outra com 74 chamadas legadas. É necessário coordenar um único escritor desse arquivo antes de consolidar e declarar a conversão concluída.
-- Última auditoria direta do disco às `2026-10-28T22:38:21Z`: 74 chamadas `db.<delegate>.<operação>`, referências `Prisma.Decimal`, leitores recebendo conexão em lugar de executor, filtros de acesso ainda em objetos e cleanup legado. Esse número é um retrato da árvore em edição, não um inventário final.
-- A seed histórica observada inclui instância, perfil/usuários, secretaria, fonte, pessoa/servidor/cargo, parâmetros da folha e cadeia clínica real (`Patient`, `HealthProfessional`, `HealthUnit`, `MedicalRecord`), com `updatedAt` explícito. Preservar esses registros ao consolidar.
-- Comparação AST com `HEAD` preservou as 410 chamadas de assert: 244 `equal`, 132 `rejects`, 20 `deepEqual`, 7 `ok`, 4 `match`, 1 `doesNotMatch`, 2 `throws`; parser sem erros. Repetir a auditoria na versão consolidada, incluindo os argumentos esperados e filtros de autorização.
-- Checks leves executados: `node --max-old-space-size=256 node_modules/eslint/bin/eslint.js tests/hr-workforce-service.test.ts` (última execução sem avisos/erros) e `git diff --check -- tests/hr-workforce-service.test.ts tests/fixtures/personnel-workforce.sql docs/drizzle-rh-final-progress.md` (passou). Esses resultados antecedem novas regravações e não validam a versão final.
-- Nesta retomada não foram executados testes de banco/PDF, `tsc`, build, instalação, commit ou push.
-- Após consolidar, o parent deve executar centralmente, após sua instalação: `node --max-old-space-size=512 --v8-pool-size=1 --conditions=react-server --import tsx --test --test-isolation=none tests/hr-workforce-service.test.ts`; executar `municipal-travel-allowance.test.ts` e `travel-refunds.test.ts` separadamente com os mesmos limites. Todos permanecem pendentes de aprovação runtime nesta retomada.
+- A auditoria atual substitui o retrato anterior de edição concorrente: `tests/hr-workforce-service.test.ts` importa tabelas e operadores Drizzle, usa `createSpecializedDrizzleFixture`, carrega `tests/fixtures/personnel-workforce.sql` e encerra com `fixture.close()`. O arquivo não foi alterado nesta retomada.
+- Auditoria AST: parser sem erros; 412 chamadas de assert — 246 `equal`, 132 `rejects`, 20 `deepEqual`, 7 `ok`, 4 `match`, 1 `doesNotMatch`, 2 `throws`. Nenhuma chamada `db/executor.<delegate>.<operação>` detectada, nem tokens `@prisma`, `Prisma.`, `$transaction`, `$queryRaw` ou `$executeRaw`. Esses checks não equivalem a aprovação funcional ou comparação dos argumentos de todos os asserts.
+- A fixture de viagens agora respeita a imutabilidade das etapas publicadas e as evidências obrigatórias de publicação, com usuário existente da fixture. Nenhuma constraint ou assert foi relaxado.
+- ESLint de `tests/helpers/planning-postgres-backend.ts` e `tests/municipal-travel-allowance.test.ts`: passou. Importação do backend via TSX e rejeição de host/banco fora da whitelist: passaram, sem conexão de banco.
+- Comparação AST da fixture de viagens com `HEAD`: as 95 chamadas de assert e seus argumentos são idênticos; parser sem erros. `git diff --check` dos quatro arquivos exclusivos desta retomada passou.
+- O backend compartilhado deixou de importar o pacote ausente `pg`; usa `Client` Neon com configuração por cliente e ponte WebSocket → TCP loopback. Ver detalhes em `docs/drizzle-planning-core-final-progress.md`.
+- O parent deve executar centralmente: `node --max-old-space-size=512 --v8-pool-size=1 --conditions=react-server --import tsx --test --test-isolation=none tests/hr-workforce-service.test.ts`; executar `municipal-travel-allowance.test.ts` e `travel-refunds.test.ts` separadamente com os mesmos limites. Os três permanecem pendentes de aprovação runtime nesta retomada.
+- Nesta retomada não foram executados testes SQL pesados, `tsc` global, build, instalação, commit ou push.

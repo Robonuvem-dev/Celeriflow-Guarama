@@ -8,6 +8,7 @@
     "build": "node scripts/build.mjs",
     "build:check": "node scripts/build.mjs",
     "typecheck": "node scripts/build.mjs --typecheck",
+    "typecheck:auxiliary": "node scripts/typecheck-auxiliary.mjs",
     "start": "next start",
     "lint": "eslint",
     "test:unit": "node scripts/run-group-a-tests.mjs",

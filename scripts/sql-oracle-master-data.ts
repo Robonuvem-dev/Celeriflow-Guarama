@@ -80,7 +80,7 @@ const catalogs: Record<MasterDataCatalog, CatalogSql> = {
 export async function expectedMasterData(oracle: SqlOracle, catalog: MasterDataCatalog, query: string, page: number): Promise<MasterDataPageData> {
   const spec = catalogs[catalog], values = [query ? `%${query}%` : null];
   const where = `($1::text IS NULL OR (${spec.search}))`;
-  const total = await oracle.count(`SELECT count(*)::int AS count FROM ${spec.from} WHERE ${where}`, values);
+  const total = await oracle.scalarCount(`SELECT count(*)::int AS count FROM ${spec.from} WHERE ${where}`, values);
   const rows = await oracle.rows<MasterDataPageData["rows"][number]>(`SELECT r.id,${spec.active} AS active,json_build_object(${spec.values}) AS values FROM ${spec.from} WHERE ${where} ORDER BY ${spec.order} LIMIT 20 OFFSET $2`, [...values, (page - 1) * 20]);
   const options: Record<string, MasterDataOption[]> = {};
   for (const [key, sql] of Object.entries(spec.options || {})) options[key] = await oracle.rows<MasterDataOption>(sql);

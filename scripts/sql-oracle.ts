@@ -37,12 +37,12 @@ export function openReadOnlySqlOracle(connectionString: string) {
   async function first<T extends Record<string, unknown> = Record<string, unknown>>(text: string, values: readonly unknown[] = []): Promise<T | null> {
     return (await rows<T>(text, values))[0] ?? null;
   }
-  async function count(text: string, values: readonly unknown[] = []): Promise<number> {
+  async function scalarCount(text: string, values: readonly unknown[] = []): Promise<number> {
     const row = await first<{ count: number }>(text, values);
     if (!row || typeof row.count !== "number") throw new Error("O oráculo exige count(*)::int AS count.");
     return row.count;
   }
-  return { ...connection, rows, first, count };
+  return { ...connection, rows, first, scalarCount };
 }
 export type SqlOracle = ReturnType<typeof openReadOnlySqlOracle>;
 

@@ -14,7 +14,7 @@ async function main() {
       for (const options of [{}, { sourceModule: "PROCESSOS" }, { sourceModule: "SOCIAL", take: 10 }, { sourceModule: "ABSENT", take: 20 }]) {
         assert.deepEqual(await listInternalNotifications(connection.db, user.id, options), await connection.rows('SELECT * FROM "ProtocolNotification" WHERE "userId"=$1 AND ($2::text IS NULL OR "sourceModule"=$2) ORDER BY "createdAt" DESC LIMIT $3', [user.id, options.sourceModule || null, options.take ?? 50])); comparisons++;
       }
-      assert.equal(await countUnreadInternalNotifications(connection.db, user.id), await connection.count('SELECT count(*)::int AS count FROM "ProtocolNotification" WHERE "userId"=$1 AND "readAt" IS NULL', [user.id])); comparisons++;
+      assert.equal(await countUnreadInternalNotifications(connection.db, user.id), await connection.scalarCount('SELECT count(*)::int AS count FROM "ProtocolNotification" WHERE "userId"=$1 AND "readAt" IS NULL', [user.id])); comparisons++;
     }
     const processIds = (await connection.rows<{ id: string }>('SELECT id FROM "Process" LIMIT 50')).map(row => row.id);
     const departments = await connection.rows<{ id: string }>('SELECT id FROM "Department" LIMIT 5');

@@ -1,5 +1,14 @@
 # Migração integral para Drizzle — situação
 
+## Consolidação final após revisão da `main` — 28/10/2026
+
+- Base desta rodada: `main` em `aeccb6c`. O proprietário autorizou corrigir as pendências conhecidas antes de uma rodada integrada principal, mantendo apenas checks leves durante a edição. Sem repetir suíte/build a cada handoff.
+- Alterações locais de Saúde já existentes foram preservadas: SISAB, páginas TFD e fixture/teste de readers administrativos. As três frentes atuais têm arquivos exclusivos (oráculos, Aurora Compras, fixtures RH/Planejamento); integração e validação pesada centralizadas.
+- Ajustes centrais: snapshot de `ExpenseNature` volta a carregar `procurementOriginPolicy` físico; leitor de consistência aceita executor de leitura; JSON de versão é validado antes do filtro por UG, preservando campos adicionais. Nenhum DDL novo para esses ajustes.
+- `npm run typecheck:auxiliary` passa a cobrir scripts/testes excluídos do build de produção, em partições sequenciais, com manifesto em `.next/cache/auxiliary-typecheck`; incluído no CI. O comando substitui a dependência operacional do checker privado `.agent`.
+- Ensaio de savepoints/rollback restaurado como teste versionado; métricas opcionais de processos disponíveis por preload `scripts/lib/process-metrics.cjs`, registrando heap/RSS amostrados e maxRSS do SO. Amostras não são picos certificados de todas as alocações.
+- Aceite integrado, memória fria/com cache, homologação HTTP e deploy permanecem pendentes até os respectivos resultados. Os registros seguintes são histórico; não representam aprovação da árvore final.
+
 ## Retomada para sincronização de `main` e `feat` — 28/10/2026
 
 - Ponto de partida: `97b3460` em `feat/migracao-integral-drizzle`, árvore limpa e commit já publicado nessa branch. `git fetch origin` e `git pull --ff-only origin feat/migracao-integral-drizzle` confirmaram sincronismo; `origin/main` em `d0c851e` é ancestral, três commits atrás.

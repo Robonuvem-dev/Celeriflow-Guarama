@@ -3,8 +3,9 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { tfdRequestForActor } from "@/lib/saude/tfd-clinical-service";
 import { authorizeTfdReportAction, requestTfdBenefitAction, saveTfdReportAction, supplementTfdReportAction, transitionTfdBenefitAction, transitionTfdReportAction } from "../actions";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { db as defaultDatabase, databaseConnection } from "@/db/client";
+import { db as defaultDatabase } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
+import { healthDatabaseConnection } from "@/lib/saude/health-transaction";
 import { healthTfdRequestEvents, healthTfdBenefits, healthTfdReportRevisions, healthTfdReportSupplements } from "@/db/schema/health-tfd";
 import { healthProfessionals } from "@/db/schema/health-workforce";
 import { employees } from "@/db/schema/administration";
@@ -15,7 +16,7 @@ const field = "w-full rounded border border-slate-300 bg-white p-2 text-sm";
 
 export default async function TfdReportPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), id = decodeURIComponent((await params).id);
-  const request = await withDatabaseTransaction(databaseConnection, tx => tfdRequestForActor(tx, context, id));
+  const request = await withDatabaseTransaction(healthDatabaseConnection(context), tx => tfdRequestForActor(tx, context, id));
   const report = request.clinicalReport;
   const db = context.database ?? defaultDatabase;
   const [events, benefits, revisions, supplements, professionalRows, records, procedures] = await Promise.all([

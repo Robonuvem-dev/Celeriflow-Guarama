@@ -48,9 +48,9 @@ async function main() {
     };
     assert.deepEqual(await readCanonicalDatabaseIdentityIssues(db), expectedCanonicalIssues(identity)); comparisons++;
     const tables = ["Person", "Company", "Supplier", "RealEstate", "Family", "GovernmentEntity", "CostCenter", "City", "LegalText", "Bank", "Currency", "CatalogItem"];
-    const totals = await Promise.all(tables.map(table => connection.count(`SELECT count(*)::int AS count FROM "${table}"`)));
+    const totals = await Promise.all(tables.map(table => connection.scalarCount(`SELECT count(*)::int AS count FROM "${table}"`)));
     const latest = await connection.first<{ id: string }>('SELECT id FROM "MasterDataConsistencyRun" WHERE area=$1 AND status=$2 ORDER BY "startedAt" DESC LIMIT 1', ["CADASTROS", "CONCLUIDA"]);
-    const qualidade = latest ? await connection.count('SELECT count(*)::int AS count FROM "MasterDataConsistencyIssue" WHERE "runId"=$1 AND status=$2', [latest.id, "ABERTA"]) : 0;
+    const qualidade = latest ? await connection.scalarCount('SELECT count(*)::int AS count FROM "MasterDataConsistencyIssue" WHERE "runId"=$1 AND status=$2', [latest.id, "ABERTA"]) : 0;
     assert.deepEqual(await loadRegistryDashboard(db), { persons: totals[0], companies: totals[1], suppliers: totals[2], realEstates: totals[3], geral: totals[4] + totals[5], estrutura: totals[6] + totals[7], referencias: totals[8] + totals[9] + totals[10] + totals[11], qualidade }); comparisons++;
     const secretariats = await connection.rows<SecretariatRecord>('SELECT * FROM "Secretariat" ORDER BY name ASC');
     const departments = await connection.rows<DepartmentRecord>('SELECT * FROM "Department" ORDER BY name ASC');
@@ -59,13 +59,13 @@ async function main() {
     assert.deepEqual(await loadRegistryOrganogram(db), expectedOrganogram); comparisons++;
     for (const requested of [undefined, "missing-drizzle-master-fixture"]) {
       const runRows = await connection.rows<ConsistencyRunRecord>('SELECT * FROM "MasterDataConsistencyRun" WHERE area=$1 ORDER BY "startedAt" DESC LIMIT 8', ["CADASTROS"]);
-      const runs = await Promise.all(runRows.map(async row => ({ ...row, _count: { issues: await connection.count('SELECT count(*)::int AS count FROM "MasterDataConsistencyIssue" WHERE "runId"=$1', [row.id]) } })));
+      const runs = await Promise.all(runRows.map(async row => ({ ...row, _count: { issues: await connection.scalarCount('SELECT count(*)::int AS count FROM "MasterDataConsistencyIssue" WHERE "runId"=$1', [row.id]) } })));
       const selectedRun = await connection.first<{ id: string }>('SELECT id FROM "MasterDataConsistencyRun" WHERE area=$1 AND ($2::text IS NULL OR id=$2) ORDER BY "startedAt" DESC LIMIT 1', ["CADASTROS", requested || null]);
       assert.deepEqual(await loadConsistencyRuns(db, requested), { runs, selectedRun });
       for (const page of [1, 2]) {
         const runId = selectedRun?.id || "__none__";
         const issues = await connection.rows('SELECT * FROM "MasterDataConsistencyIssue" WHERE area=$1 AND "runId"=$2 ORDER BY severity ASC,"detectedAt" DESC LIMIT 20 OFFSET $3', ["CADASTROS", runId, (page - 1) * 20]);
-        const total = await connection.count('SELECT count(*)::int AS count FROM "MasterDataConsistencyIssue" WHERE area=$1 AND "runId"=$2', ["CADASTROS", runId]);
+        const total = await connection.scalarCount('SELECT count(*)::int AS count FROM "MasterDataConsistencyIssue" WHERE area=$1 AND "runId"=$2', ["CADASTROS", runId]);
         assert.deepEqual(await loadConsistencyIssues(db, runId, page), { issues, total }); comparisons++;
       }
       comparisons++;

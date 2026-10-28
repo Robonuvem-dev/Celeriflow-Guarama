@@ -5,8 +5,9 @@ import { activeTfdPassengerWhere, tfdTripAccessWhere } from "@/lib/saude/tfd-ser
 import { createBookedTfdTripAction } from "./actions";
 import { tfdRequestForActor } from "@/lib/saude/tfd-clinical-service";
 import { and, asc, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
-import { db as defaultDatabase, databaseConnection } from "@/db/client";
+import { db as defaultDatabase } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
+import { healthDatabaseConnection } from "@/lib/saude/health-transaction";
 import { fleetRoutes, fleetUnits, fleetBookings } from "@/db/schema/fleet";
 import { employees as employeeTable } from "@/db/schema/administration";
 import { healthTfdTrips, healthTfdPassengers } from "@/db/schema/health-tfd";
@@ -14,7 +15,7 @@ import { healthTfdTrips, healthTfdPassengers } from "@/db/schema/health-tfd";
 export default async function TfdTripsPage({ searchParams }: { searchParams: Promise<{ destination?: string; requestId?: string }> }) {
   const context = await getTenantContextForModule("SAUDE"), scope = healthTransportFleetScope(context);
   const params = await searchParams, requestId = typeof params.requestId === "string" ? params.requestId.slice(0, 200) : "";
-  const selectedRequest = requestId ? await withDatabaseTransaction(databaseConnection, tx => tfdRequestForActor(tx, context, requestId)) : null;
+  const selectedRequest = requestId ? await withDatabaseTransaction(healthDatabaseConnection(context), tx => tfdRequestForActor(tx, context, requestId)) : null;
   if (selectedRequest && selectedRequest.status !== "AUTORIZADA") throw new Error("A seleção contextual de transporte exige tratamento autorizado.");
   const destination = typeof params.destination === "string" ? params.destination.slice(0, 200) : selectedRequest?.destination || "";
   const db = context.database ?? defaultDatabase;

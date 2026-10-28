@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, lte, ne, sql } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
-import { withDatabaseTransaction } from "@/db/transaction";
+import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
 import { planningAppropriations, planningBudgetLaws, planningEntityUnits, planningGuidelines, planningInstruments, planningLines, planningMovements, planningMultiYearPlans } from "@/db/schema/planning-budget";
 import { planningActions, planningFixations, planningForecasts, planningIntegrationCommands, planningLegislativeLinks, planningPhysicalEvents, planningPrograms, planningRevenueAllocations, planningRevenueNatures, planningVersions } from "@/db/schema/planning-legal";
 import { financialAuditLogs } from "@/db/schema/finance-identity";
@@ -19,7 +19,7 @@ import { copyPlanningYearConfiguration } from "./year-rollover";
 import { deliverPlanningAccountingCommand } from "./accounting-bridge";
 
 export type PlanningCriticism = { code: string; severity: "ERROR" | "WARNING"; reference: string; message: string };
-export async function inspectPlanningPiece(tx: PlanningTx, context: PlanningContext, instrumentId: string, asOf = new Date()) {
+export async function inspectPlanningPiece(tx: DatabaseExecutor, context: PlanningContext, instrumentId: string, asOf = new Date()) {
   const piece = await readPlanningInstrument(tx, instrumentId, context);
   if (!piece) throw new AccessError("Peça não encontrada neste escopo.", 404);
   const rows = await tx.select({ line: planningLines, action: planningActions, program: planningPrograms, revenueNature: planningRevenueNatures }).from(planningLines).leftJoin(planningActions, eq(planningActions.id, planningLines.actionId)).leftJoin(planningPrograms, eq(planningPrograms.id, planningLines.programId)).leftJoin(planningRevenueNatures, eq(planningRevenueNatures.id, planningLines.revenueNatureId)).where(and(eq(planningLines.instrumentId, instrumentId), planningLineScope(context)));
@@ -269,9 +269,14 @@ export async function updatePlanningPhysical(context: PlanningContext, raw: unkn
   });
 }
 
+const versionSnapshot = z.object({
+  piece: z.record(z.string(), z.unknown()),
+  lines: z.array(z.object({ budgetUnitId: z.string() }).passthrough()),
+}).passthrough();
+
 export async function readPlanningVersion(context: PlanningContext, instrumentId: string, number: number) {
   const [version] = await planningDatabase(context).select().from(planningVersions).where(and(eq(planningVersions.instrumentId, instrumentId), eq(planningVersions.number, number), planningInstrumentScope(context, planningVersions.instrumentId))).limit(1);
   if (!version) throw new AccessError("Versão não encontrada neste escopo.", 404);
-  const snapshot = version.snapshot as unknown as { piece: Record<string, unknown>; lines: { budgetUnitId: string; [key: string]: unknown }[] };
+  const snapshot = versionSnapshot.parse(version.snapshot);
   return { ...version, snapshot: { ...snapshot, lines: snapshot.lines.filter((line) => isSystemAdministrator(context.user) || context.user.allowedBudgetUnitIds.includes(line.budgetUnitId)) } };
 }

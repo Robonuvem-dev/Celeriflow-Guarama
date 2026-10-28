@@ -86,8 +86,9 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     for (const id of ["travel-rh", "travel-finance"]) await db.insert(departments).values({ id, name: id, secretariatId: "secretaria", isActive: true });
     await db.insert(processTypes).values({ id: "travel-process-type", name: "Viagens municipais", genericWorkflowEnabled: true });
     await db.insert(processSubjects).values({ id: "travel-subject", processTypeId: "travel-process-type", name: "Diária municipal" });
-    await db.insert(genericWorkflowDefinitions).values({ id: "travel-definition", processTypeId: "travel-process-type", version: 1, status: "PUBLISHED" });
+    await db.insert(genericWorkflowDefinitions).values({ id: "travel-definition", processTypeId: "travel-process-type", version: 1, status: "DRAFT" });
     await db.insert(genericWorkflowStages).values([{ definitionId: "travel-definition", position: 1, label: "Revisão RH", departmentId: "travel-rh", slaCalendarDays: 3 }, { definitionId: "travel-definition", position: 2, label: "Liberação financeira", departmentId: "travel-finance", slaCalendarDays: 3 }]);
+    await db.update(genericWorkflowDefinitions).set({ status: "PUBLISHED", publishedAt: new Date("2026-09-01T00:00:00Z"), publishedByUsuarioId: context.user.id }).where(eq(genericWorkflowDefinitions.id, "travel-definition"));
     const routed = await requestTravelAllowance(connection, "ana", { ...input, requestKey: "routed-trip" }, context);
     const routeInput = { requestId: routed.id, processTypeId: "travel-process-type", subjectId: "travel-subject", appropriationId: f.appropriationId, supplierId: "fornecedor", secretariatId: "secretaria", date: "2026-09-01" };
     const route = await openTravelAllowanceProcess(connection, context, routeInput);

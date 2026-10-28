@@ -59,14 +59,14 @@ async function main() {
       }
       const { where, values } = auditPredicate(query.filters);
       const expectedSummary = {
-        total: await connection.count(`SELECT count(*)::int AS count FROM "AuditEvent" a WHERE ${where}`, values),
-        recent: await connection.count(`SELECT count(*)::int AS count FROM "AuditEvent" a WHERE ${where} AND a."createdAt">=$${values.length + 1}::timestamp`, [...values, last24Hours.toISOString()]),
+        total: await connection.scalarCount(`SELECT count(*)::int AS count FROM "AuditEvent" a WHERE ${where}`, values),
+        recent: await connection.scalarCount(`SELECT count(*)::int AS count FROM "AuditEvent" a WHERE ${where} AND a."createdAt">=$${values.length + 1}::timestamp`, [...values, last24Hours.toISOString()]),
         eventGroups: await connection.rows(`SELECT a."eventType",json_build_object('_all',count(*)::int) AS "_count" FROM "AuditEvent" a WHERE ${where} GROUP BY a."eventType"`, values),
         targetGroups: await connection.rows(`SELECT a."targetType",json_build_object('_all',count(*)::int) AS "_count" FROM "AuditEvent" a WHERE ${where} GROUP BY a."targetType"`, values),
       };
       assert.deepEqual(await loadAuditEventSummary(connection.db, query.filters, last24Hours), expectedSummary); comparisons++;
     }
-    assert.deepEqual(await loadAuditUsageSummary(connection.db, last24Hours), { totalEvents: await connection.count('SELECT count(*)::int AS count FROM "AuditEvent"'), eventsLast24Hours: await connection.count('SELECT count(*)::int AS count FROM "AuditEvent" WHERE "createdAt">=$1::timestamp', [last24Hours.toISOString()]), activeUsers: await connection.rows('SELECT "actorUsuarioId" FROM "AuditEvent" WHERE "createdAt">=$1::timestamp GROUP BY "actorUsuarioId"', [last24Hours.toISOString()]) }); comparisons++;
+    assert.deepEqual(await loadAuditUsageSummary(connection.db, last24Hours), { totalEvents: await connection.scalarCount('SELECT count(*)::int AS count FROM "AuditEvent"'), eventsLast24Hours: await connection.scalarCount('SELECT count(*)::int AS count FROM "AuditEvent" WHERE "createdAt">=$1::timestamp', [last24Hours.toISOString()]), activeUsers: await connection.rows('SELECT "actorUsuarioId" FROM "AuditEvent" WHERE "createdAt">=$1::timestamp GROUP BY "actorUsuarioId"', [last24Hours.toISOString()]) }); comparisons++;
     console.log(JSON.stringify({ result: "PASS", mode: "READ ONLY SQL ORACLE", comparisons, scope: "Audit page DTOs, bidirectional keyset pagination, inclusive dates, filtered distributions and usage summary" }, null, 2));
   } finally { await connection.pool.end(); }
 }

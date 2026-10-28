@@ -19,7 +19,7 @@ async function main() {
   try {
     const enterprises = await oracle.rows<EnvironmentEnterprise>('SELECT * FROM "EnvEnterprise"');
     const enterprise = (id: string | null) => enterprises.find(row => row.id === id) ?? null;
-    assert.deepEqual(await queries.getEnvironmentTotals(db), { totalEnterprises: await oracle.count('SELECT count(*)::int AS count FROM "EnvEnterprise"'), totalLicenses: await oracle.count('SELECT count(*)::int AS count FROM "EnvLicense"'), totalComplaints: await oracle.count('SELECT count(*)::int AS count FROM "EnvComplaint"'), totalGreenAreas: await oracle.count('SELECT count(*)::int AS count FROM "EnvGreenArea"') });
+    assert.deepEqual(await queries.getEnvironmentTotals(db), { totalEnterprises: await oracle.scalarCount('SELECT count(*)::int AS count FROM "EnvEnterprise"'), totalLicenses: await oracle.scalarCount('SELECT count(*)::int AS count FROM "EnvLicense"'), totalComplaints: await oracle.scalarCount('SELECT count(*)::int AS count FROM "EnvComplaint"'), totalGreenAreas: await oracle.scalarCount('SELECT count(*)::int AS count FROM "EnvGreenArea"') });
     comparisons++;
     orderedRows(await queries.listEnterpriseOptions(db), await oracle.rows<{ id: string; name: string }>('SELECT id,name FROM "EnvEnterprise" ORDER BY name ASC'), "name", "Enterprise options");
     for (const filters of [{}, { atividade: "com", risco: "Baixo", status: "Ativo" }, { atividade: "%_", risco: "Alto" }]) {

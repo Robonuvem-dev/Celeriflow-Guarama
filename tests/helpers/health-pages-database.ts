@@ -78,9 +78,13 @@ export async function createHealthPagesDatabase() {
         ('hpg-lab-active','hpg-a','Laboratório A','08:00','12:00',2,'2026-01-01','hpg-user',true,'2026-01-31 12:34:56.789'),
         ('hpg-lab-off','hpg-a','Laboratório anterior','08:00','12:00',3,'2025-01-01','hpg-user',false,'2026-02-01');
       INSERT INTO "HealthSusImportBatch" (id,source,competence,origin,"fileName","fileFormat","contractVersion",checksum,"actorUsuarioId","startedAt","completedAt") VALUES
-        ('hpg-import','SIGTAP','2026-01','Origem nominal','sigtap.csv','CSV','1','hpg-checksum','hpg-user','2026-01-31 12:34:56.789',NULL);
+        ('hpg-import','SIGTAP','2026-01','Origem nominal','sigtap.csv','CSV','1','hpg-checksum','hpg-user','2026-01-31 12:34:56.789',NULL),
+        ('hpg-import-older','SIGTAP','2025-12','Origem anterior','sigtap-anterior.csv','CSV','1','hpg-older-checksum','hpg-user','2025-12-01',NULL);
       INSERT INTO "HealthSusImportIssue" (id,"batchId","rowNumber","entityType",reason) VALUES
-        ('hpg-issue-b','hpg-import',2,'PROCEDURE','Linha dois'),('hpg-issue-a','hpg-import',1,'PROCEDURE','Linha um');
+        ('hpg-issue-b','hpg-import',2,'PROCEDURE','Linha dois'),('hpg-issue-a','hpg-import',1,'PROCEDURE','Linha um'),
+        ('hpg-older-issue-b','hpg-import-older',2,'PROCEDURE','Outra linha dois'),('hpg-older-issue-a','hpg-import-older',1,'PROCEDURE','Outra linha um');
+      INSERT INTO "HealthSusImportIssue" (id,"batchId","rowNumber","entityType",reason)
+        SELECT 'hpg-issue-'||n,'hpg-import',n,'PROCEDURE','Linha nominal '||n FROM generate_series(3,103) n;
       INSERT INTO "HealthSusProcedure" (id,source,competence,code,description,financing,"sourceBatchId","updatedAt") VALUES
         ('hpg-procedure','SIGTAP','2026-01','HPG0001','Procedimento nominal','MAC','hpg-import',now());
       INSERT INTO "HealthProductionCompetence" (id,period,"createdByUsuarioId","updatedAt") VALUES ('hpg-competence','2026-01','hpg-user',now());
@@ -89,9 +93,13 @@ export async function createHealthPagesDatabase() {
       INSERT INTO "HealthEsusBatch" (id,competence,"fileContent",hash,total,"createdByUsuarioId","createdAt") VALUES
         ('hpg-esus','2026-01','Lote nominal','hpg-esus-hash',1,'hpg-user','2026-01-31 12:34:56.789');
       INSERT INTO "IntegrationConnection" (id,code,name,category,provider,"updatedAt") VALUES
-        ('hpg-connection','MS_RENAME','Conector nominal','SAUDE','Nominal',now()),('hpg-other-connection','HPG_OTHER','Outro conector','OUTRO','Nominal',now());
+        ('hpg-connection','MS_RENAME','Conector nominal','SAUDE','Nominal',now()),
+        ('hpg-second-connection','MS_CNES','Segundo conector nominal','SAUDE','Nominal',now()),
+        ('hpg-other-connection','HPG_OTHER','Outro conector','OUTRO','Nominal',now());
       INSERT INTO "IntegrationRun" (id,"connectionId",operation,environment,status,message,"createdAt")
         SELECT 'hpg-run-'||n,'hpg-connection','Operação '||n,'TEST','SUCCESS','Execução nominal',timestamp '2026-01-01 00:00:00.123'+n*interval '1 day' FROM generate_series(1,7) n;
+      INSERT INTO "IntegrationRun" (id,"connectionId",operation,environment,status,message,"createdAt")
+        SELECT 'hpg-second-run-'||n,'hpg-second-connection','Segunda operação '||n,'TEST','SUCCESS','Segunda execução nominal',timestamp '2026-02-01 00:00:00.123'+n*interval '1 day' FROM generate_series(1,7) n;
     `);
     await fixture.connection.db.execute(sql`UPDATE "Usuario" SET email=${process.env.SYSTEM_ADMIN_EMAIL?.trim().toLowerCase() || "admin@email.com"} WHERE id='hpg-admin-email'`);
     return fixture;

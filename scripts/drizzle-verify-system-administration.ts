@@ -29,7 +29,7 @@ async function main() {
     const normalize = (profiles: Awaited<ReturnType<typeof listProfilesWithLegacyUsers>>) => profiles.map(profile => ({ ...profile, usuarios: profile.usuarios.map(user => ({ permissoesModulo: user.permissoesModulo.toSorted((a, b) => a.id.localeCompare(b.id)) })).toSorted((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) }));
     equal(normalize(await listProfilesWithLegacyUsers(connection.db, administratorCode)), normalize(await expectedProfiles(connection, administratorCode)));
     equal(await listSystemModules(connection.db), await connection.rows('SELECT * FROM "ConfiguracaoModulo" WHERE codigo<>$1 ORDER BY nome ASC', ["DOCUMENTOS"]));
-    equal(await loadConfigurationTotals(connection.db), { instancias: await connection.count('SELECT count(*)::int AS count FROM "ConfiguracaoInstancia"'), totalModulosAtivos: await connection.count('SELECT count(*)::int AS count FROM "ConfiguracaoModulo" WHERE ativo AND codigo<>$1', ["DOCUMENTOS"]), totalPerfis: allProfiles.length });
+    equal(await loadConfigurationTotals(connection.db), { instancias: await connection.scalarCount('SELECT count(*)::int AS count FROM "ConfiguracaoInstancia"'), totalModulosAtivos: await connection.scalarCount('SELECT count(*)::int AS count FROM "ConfiguracaoModulo" WHERE ativo AND codigo<>$1', ["DOCUMENTOS"]), totalPerfis: allProfiles.length });
     const record = await connection.first<SystemInstanceRecord>('SELECT * FROM "ConfiguracaoInstancia" ORDER BY "createdAt" ASC LIMIT 1');
     const instance = record ? { ...record, parametros: await connection.rows<{ chave: string; valor: unknown }>('SELECT chave,valor FROM "ConfiguracaoParametroInstancia" WHERE "configuracaoInstanciaId"=$1', [record.id]) } : null;
     const actualInstance = await findOperationalInstance(connection.db);
@@ -39,7 +39,7 @@ async function main() {
     for (const scope of ["GLOBAL", "missing-migration-template"]) equal(await findReportTemplate(connection.db, scope), await connection.first('SELECT * FROM "ReportTemplate" WHERE scope=$1', [scope]));
     for (const id of [...allProfiles.map(row => row.id), "missing-migration-profile"]) {
       for (const activeOnly of [false, true]) equal(await findAccessProfile(connection.db, id, activeOnly), await connection.first('SELECT * FROM "ConfiguracaoPerfil" WHERE id=$1 AND (NOT $2::boolean OR ativo)', [id, activeOnly]));
-      equal(await countProfileUsers(connection.db, id), await connection.count('SELECT count(*)::int AS count FROM "Usuario" WHERE "perfilId"=$1', [id]));
+      equal(await countProfileUsers(connection.db, id), await connection.scalarCount('SELECT count(*)::int AS count FROM "Usuario" WHERE "perfilId"=$1', [id]));
     }
     for (const name of [...allProfiles.map(row => row.nome.toUpperCase()), "%", "_", "literal' OR 1=1 --", "absent-migration-name"]) {
       for (const exceptId of [undefined, allProfiles[0]?.id]) {
@@ -59,7 +59,7 @@ async function main() {
       equal(await findManagedUserLink(connection.db, "email", user.email), await connection.first('SELECT id FROM "Usuario" WHERE email=$1', [user.email]));
       if (user.employeeId) equal(await findManagedUserLink(connection.db, "employeeId", user.employeeId), await connection.first('SELECT id FROM "Usuario" WHERE "employeeId"=$1', [user.employeeId]));
     }
-    for (const code of [administratorCode, "missing-migration-code"]) equal(await countSystemAdministrators(connection.db, code), await connection.count('SELECT count(*)::int AS count FROM "Usuario" u JOIN "ConfiguracaoPerfil" p ON p.id=u."perfilId" WHERE u.ativo AND p.codigo=$1', [code]));
+    for (const code of [administratorCode, "missing-migration-code"]) equal(await countSystemAdministrators(connection.db, code), await connection.scalarCount('SELECT count(*)::int AS count FROM "Usuario" u JOIN "ConfiguracaoPerfil" p ON p.id=u."perfilId" WHERE u.ativo AND p.codigo=$1', [code]));
     for (const employee of [...servidores.slice(0, 20), { id: "missing-migration-employee" }]) equal(await findActiveUserEmployee(connection.db, employee.id), await connection.first('SELECT id,"secretariatId" FROM "Employee" WHERE id=$1 AND "isActive"', [employee.id]));
     console.log(JSON.stringify({ result: "PASS", mode: "READ ONLY SQL ORACLE", comparisons, scope: "Users, profiles, historical ACLs, modules, operational instance/JSON parameters, case-insensitive duplicate lookup and hierarchy selectors" }, null, 2));
   } finally { await connection.pool.end(); }

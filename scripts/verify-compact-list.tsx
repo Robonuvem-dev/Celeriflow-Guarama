@@ -74,7 +74,7 @@ async function main() {
       assert.equal(firstPage.rows, 20); assert.equal(firstPage.scroll, 0); assert.ok(firstPage.maxRow <= 24, `${kind}: ${JSON.stringify(firstPage)}`);
       await page.getByRole("button", { name: "Próxima", exact: true }).click();
       await page.waitForFunction(() => document.querySelector("tbody")?.textContent?.includes("20"));
-      assert.equal(await page.locator("tbody tr").count(), 20);
+      assert.equal(await page.evaluate(() => document.querySelectorAll("tbody tr").length), 20);
       await page.getByRole("button", { name: "Próxima", exact: true }).click();
       await page.waitForFunction(() => document.querySelectorAll("tbody tr").length === 2);
       await page.locator("section input").first().fill(kind === "pj" ? "Empresa 07" : "Pessoa 07");

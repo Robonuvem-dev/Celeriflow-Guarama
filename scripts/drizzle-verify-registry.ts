@@ -102,7 +102,7 @@ async function main() {
         const p = person(personId), c = company(companyId);
         return { ...row, person: p ? { fullName: p.fullName, cpf: p.cpf, documents: evidenceFor("personId", p.id) } : null, company: c ? { corporateName: c.corporateName, tradeName: c.tradeName, cnpj: c.cnpj, companyType: c.companyType, primaryCnae: c.primaryCnae, secondaryCnaes: c.secondaryCnaes, documents: evidenceFor("companyId", c.id) } : null };
       });
-      const total = await oracle.count(`SELECT count(*)::int AS count ${from}`, values);
+      const total = await oracle.scalarCount(`SELECT count(*)::int AS count ${from}`, values);
       assert.equal(await countSupplierRows(db, filters, reference), total);
       assert.deepEqual(await loadSupplierRows(db, filters, reference), expected);
       const pageCount = Math.ceil(total / 20), page = total ? Math.min(filters.page, pageCount) : 1;

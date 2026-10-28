@@ -36,6 +36,8 @@
 - Leituras recebem executor; mutações Financeiro/Compras recebem conexão. Não foi criada camada de emulação dos delegates Prisma.
 - `PlanningContext` aceita executor transacional por meio de `PlanningDatabaseContext`; `planningConnection` resolve a conexão de mutações.
 - As fixtures preservam `pg` para SQL de seeds, triggers e testes de integridade. `prisma/migrations-ibema` é o histórico SQL reproduzido, não uma dependência do cliente Prisma.
+- Nesse contrato, `pg` é o campo da fixture, não uma dependência do pacote `pg`. O backend externo usa agora `Client` de `@neondatabase/serverless`, com `client.neonConfig` e ponte WebSocket → TCP local; não altera a configuração global Neon. Mantidos `schema`, `connectionString`, `exec`, `query` e `close` para o consumidor direto `planning-accounting-fixture.ts` e para a ponte financeira.
+- A whitelist continua exigindo `127.0.0.1` e `/planning_s2`; cada backend cria schema `planning_` com UUID sem hífens e configura o `search_path`. Cleanup idempotente remove o schema, encerra o cliente e destrói sockets/servidor, inclusive em falha de inicialização; falhas de cleanup junto da inicialização são preservadas em `AggregateError`.
 - Cenários de corrupção contábil suspendem e restauram triggers explicitamente apenas ao injetar dados inválidos.
 - Asserts de falhas PostgreSQL injetadas em Compras verificam a causa nativa encapsulada pelo Drizzle com `financeDatabaseError`, mantendo a mensagem esperada e os asserts de rollback.
 - Seeds numéricos exatos usam `Decimal`; JSON heterogêneo e storage fake foram ajustados ao contrato tipado real.
@@ -63,6 +65,7 @@ Validação final pendente para o parent:
 - Integração PostgreSQL F4–F8 após correção dos imports de `catalogImportBatches`/`catalogAmendmentItems`.
 - Execução: confirmação tributária e orçamento adotado sem conexão; testes concorrentes externos condicionais.
 - Validação integrada após `npm ci` centralizado. Os resultados acima são evidências locais anteriores à instalação centralizada, não aprovação do estado global pós-instalação.
+- Backend PostgreSQL externo após substituir o import do pacote ausente `pg`: importação via TSX e guards de host/banco passaram; o transporte real, replay e cleanup de schema aguardam validação centralizada com o servidor isolado. ESLint do backend e da fixture de diária passou nesta retomada, sem executar SQL pesado.
 
 ### Comandos para validação centralizada (não executados novamente nesta entrega)
 

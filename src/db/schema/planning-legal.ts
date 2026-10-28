@@ -1,4 +1,4 @@
-import { boolean, date, doublePrecision, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { date, doublePrecision, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { Decimal, exactNumeric } from "../decimal";
 import { createId } from "../ids";
 import type { JsonValue } from "../json";
@@ -32,4 +32,5 @@ export const planningLegislativeLinks = pgTable("PlanningLegislativeLink", { id:
 export const planningRevenueAllocations = pgTable("PlanningRevenueAllocation", { id: id(), revenueNatureId: text("revenueNatureId").notNull(), resourceSourceId: text("resourceSourceId").notNull(), percentage: exactNumeric("percentage", { precision: 12, scale: 6 }).notNull() }, t => [uniqueIndex("PlanningRevenueAllocation_revenueNatureId_resourceSourceId_key").on(t.revenueNatureId, t.resourceSourceId)]);
 export const planningResourceSources = pgTable("ResourceSource", { id: id(), code: text("code").notNull(), name: text("name").notNull(), tceCode: text("tceCode"), stnGroup: text("stnGroup"), stnSpecification: text("stnSpecification"), stnDetail: text("stnDetail"), referenceYear: integer("referenceYear"), createdAt: createdAt(), updatedAt: updatedAt() }, t => [uniqueIndex("ResourceSource_code_key").on(t.code)]);
 export const planningRevenueNatures = pgTable("RevenueNature", { id: id(), code: text("code").notNull(), name: text("name").notNull(), degree: integer("degree"), shortCode: text("shortCode"), referenceYear: integer("referenceYear"), createdAt: createdAt(), updatedAt: updatedAt() }, t => [uniqueIndex("RevenueNature_code_key").on(t.code)]);
-export const planningExpenseNatures = pgTable("ExpenseNature", { id: id(), code: text("code").notNull(), name: text("name").notNull(), createdAt: createdAt(), updatedAt: updatedAt() }, t => [uniqueIndex("ExpenseNature_code_key").on(t.code)]);
+const planningProcurementOriginPolicy = pgEnum("ProcurementOriginPolicy", ["NONE", "PROCUREMENT_SOURCE", "CONTRACT"]);
+export const planningExpenseNatures = pgTable("ExpenseNature", { id: id(), code: text("code").notNull(), name: text("name").notNull(), procurementOriginPolicy: planningProcurementOriginPolicy("procurementOriginPolicy").notNull().default("NONE"), createdAt: createdAt(), updatedAt: updatedAt() }, t => [uniqueIndex("ExpenseNature_code_key").on(t.code)]);
