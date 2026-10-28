@@ -11,11 +11,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { updateConsumerUnit } from "../actions";
+import { getUnitAddress } from "@/lib/saneamento/unit-address";
+import styles from "./sanitation.module.css";
 
 type Unit = {
   id: string;
   code: string;
   address: string;
+  streetAddress?: string | null;
+  neighborhood?: string | null;
+  postalCode?: string | null;
   category: string;
   status: string;
   ownerName: string | null;
@@ -24,6 +29,7 @@ type Unit = {
 export function EditUnitSheet({ unit }: { unit: Unit }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const address = getUnitAddress(unit);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,8 +38,10 @@ export function EditUnitSheet({ unit }: { unit: Unit }) {
 
     try {
       const result = await updateConsumerUnit(unit.id, {
-        code: formData.get("code") as string,
-        address: formData.get("address") as string,
+        address: [formData.get("streetAddress"), formData.get("neighborhood"), formData.get("postalCode")].join(", "),
+        streetAddress: formData.get("streetAddress") as string,
+        neighborhood: formData.get("neighborhood") as string,
+        postalCode: formData.get("postalCode") as string,
         category: formData.get("category") as string,
         ownerName: formData.get("ownerName") as string,
         status: formData.get("status") as string,
@@ -55,7 +63,7 @@ export function EditUnitSheet({ unit }: { unit: Unit }) {
       <SheetTrigger render={<button className="p-1.5 text-slate-400 hover:text-[#0284C7] hover:bg-blue-50 rounded transition-colors" title="Editar" />}>
         <Pencil className="h-3.5 w-3.5" />
       </SheetTrigger>
-      <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+      <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>
           <SheetTitle>Editar Unidade Consumidora</SheetTitle>
           <SheetDescription>
@@ -65,22 +73,31 @@ export function EditUnitSheet({ unit }: { unit: Unit }) {
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 pb-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Código (Ligação)</label>
+            <label htmlFor={`identifier-${unit.id}`} className="text-sm font-medium">Identificador</label>
             <input
-              name="code"
-              required
-              defaultValue={unit.code}
+              id={`identifier-${unit.id}`}
+              readOnly
+              value={unit.code}
               className="w-full p-2 border rounded-md text-sm"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Endereço</label>
+            <label htmlFor={`street-${unit.id}`} className="text-sm font-medium">Rua e número</label>
             <input
-              name="address"
+              id={`street-${unit.id}`}
+              name="streetAddress"
               required
-              defaultValue={unit.address}
+              defaultValue={address.streetAddress}
               className="w-full p-2 border rounded-md text-sm"
             />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor={`neighborhood-${unit.id}`} className="text-sm font-medium">Bairro</label>
+            <input id={`neighborhood-${unit.id}`} name="neighborhood" required defaultValue={address.neighborhood} className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor={`postal-${unit.id}`} className="text-sm font-medium">CEP</label>
+            <input id={`postal-${unit.id}`} name="postalCode" defaultValue={address.postalCode} inputMode="numeric" pattern="([0-9]{5}-?[0-9]{3})?" placeholder="00000-000" className="w-full p-2 border rounded-md text-sm" />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
@@ -96,8 +113,10 @@ export function EditUnitSheet({ unit }: { unit: Unit }) {
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
               <select name="status" required defaultValue={unit.status} className="w-full p-2 border rounded-md text-sm">
-                <option value="Ativa">Ativa</option>
-                <option value="Inativa">Inativa</option>
+                 <option value="Ativa">Ativa</option>
+                 <option value="Inativa">Inativa</option>
+                 <option value="Cortada">Cortada</option>
+                 <option value="Suspensa">Suspensa</option>
               </select>
             </div>
           </div>

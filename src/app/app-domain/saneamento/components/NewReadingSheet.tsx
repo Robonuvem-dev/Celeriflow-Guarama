@@ -11,8 +11,11 @@ import {
   SheetTrigger 
 } from "@/components/ui/sheet";
 import { createMeterReading } from "../actions";
+import { ConsumerUnitPicker } from "./ConsumerUnitPicker";
+import { CompetencePicker } from "./CompetencePicker";
+import styles from "./sanitation.module.css";
 
-export function NewReadingSheet({ units }: { units: { id: string; code: string; address: string }[] }) {
+export function NewReadingSheet() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +50,7 @@ export function NewReadingSheet({ units }: { units: { id: string; code: string; 
         <FileText className="h-5 w-5" />
         Nova Leitura
       </SheetTrigger>
-      <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+      <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>
           <SheetTitle>Registrar Leitura</SheetTitle>
           <SheetDescription>
@@ -56,26 +59,8 @@ export function NewReadingSheet({ units }: { units: { id: string; code: string; 
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 pb-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Unidade Consumidora</label>
-            <select name="unitId" required className="w-full p-2 border rounded-md">
-              <option value="">Selecione...</option>
-              {units.map(unit => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.code} - {unit.address}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Competência (Mês/Ano)</label>
-            <input
-              name="competence"
-              required
-              className="w-full p-2 border rounded-md"
-              placeholder="Ex: 08/2026"
-            />
-          </div>
+          <ConsumerUnitPicker required activeOnly />
+          <CompetencePicker />
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Leitura Anterior</label>

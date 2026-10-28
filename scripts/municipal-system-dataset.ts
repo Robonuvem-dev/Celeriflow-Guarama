@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { seedSanitationCity } from "./sanitation-city-dataset";
 import { syntheticCpf, syntheticCnpj, syntheticPersonName, syntheticPhone, syntheticAddress, syntheticWorkName, syntheticCulturalProjectName } from "../src/lib/poc/fixture-catalog";
 
 export const systemDataset = "aurora-system-v1";
@@ -86,11 +87,7 @@ export async function seedEnvironmentSanitation({ tx }: Context) {
   await save("EnvRequest", tx.envRequest.createMany({ skipDuplicates: true, data: Array.from({ length: 6 }, (_, i) => ({ id: key("env-request", i), requestType: "Poda", description: "Avaliar interferência de galhos no passeio e programar manejo da arborização urbana.", address: syntheticAddress(i), requesterName: syntheticPersonName(i + 81) })) }));
   await save("EnvInspection", tx.envInspection.createMany({ skipDuplicates: true, data: Array.from({ length: 6 }, (_, i) => ({ id: key("env-inspection", i), enterpriseId: key("enterprise", i), dateScheduled: date(`2026-11-${String(4 + i).padStart(2, "0")}`), inspector: syntheticPersonName(107), status: "Agendada" })) }));
   await save("EnvEduProgram", tx.envEduProgram.createMany({ skipDuplicates: true, data: ["Veredas sem Resíduos", "Nascentes Vivas", "Horta na Escola"].map((title, i) => ({ id: key("env-program", i), title, description: "Oficinas de educação ambiental, coleta seletiva e cuidado dos espaços comunitários.", targetAudience: "Comunidade escolar e moradores", startDate: date("2026-11-05"), participantsCount: 60 + i * 20 })) }));
-  await save("SanConsumerUnit", tx.sanConsumerUnit.createMany({ skipDuplicates: true, data: Array.from({ length: 20 }, (_, i) => ({ id: key("water-unit", i), code: `AV-UC-${8101 + i}`, address: syntheticAddress(i), ownerName: syntheticPersonName(i + 81), ownerDocument: syntheticCpf(8000 + i).replace(/\D/g, ""), category: "Residencial" })) }));
-  await save("SanWaterMeter", tx.sanWaterMeter.createMany({ skipDuplicates: true, data: Array.from({ length: 20 }, (_, i) => ({ id: key("water-meter", i), meterNumber: `AV26${8101 + i}`, unitId: key("water-unit", i), installation: date("2026-01-15") })) }));
-  await save("SanMeterReading", tx.sanMeterReading.createMany({ skipDuplicates: true, data: Array.from({ length: 20 }, (_, i) => ({ id: key("water-reading", i), competence: "10/2026", unitId: key("water-unit", i), meterId: key("water-meter", i), previousValue: 120 + i * 10, currentValue: 132 + i * 10 + i % 6, consumption: 12 + i % 6, readingDate: date("2026-10-13"), readerName: syntheticPersonName(107) })) }));
-  await save("SanServiceOrder", tx.sanServiceOrder.createMany({ skipDuplicates: true, data: Array.from({ length: 5 }, (_, i) => ({ id: key("water-order", i), orderNumber: `SA-2026-${8101 + i}`, orderType: "Manutenção", description: "Conferência do abrigo do hidrômetro e vistoria de possível vazamento no ramal.", unitId: key("water-unit", i), technician: syntheticPersonName(107) })) }));
-  return stats;
+  return { ...stats, ...await seedSanitationCity(tx) };
 }
 
 export async function seedCultureWorksSecurity({ tx }: Context) {

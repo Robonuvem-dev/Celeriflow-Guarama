@@ -28,7 +28,6 @@ export default async function QualidadePage() {
   return (
     <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
       <PageHeader title="Esgoto e Qualidade" icon={<Droplet className="size-4 shrink-0 text-cyan-500" />} className="dark:border-gray-700 dark:bg-gray-800 dark:[&>h1]:text-white" />
-      <p className="px-1 text-xs text-gray-500 dark:text-gray-400">{analyses.length} análise{analyses.length !== 1 ? "s" : ""} registrada{analyses.length !== 1 ? "s" : ""}</p>
       <div className="min-h-0 flex-1"><QualityClient analyses={serializedAnalyses} /></div>
     </PageFrame>
   );

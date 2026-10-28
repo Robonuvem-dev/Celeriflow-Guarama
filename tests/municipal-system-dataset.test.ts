@@ -33,6 +33,17 @@ test("carga municipal preserva cadastros, integra pessoas e repete sem duplicaç
     assert.equal(patient.person.id, student.guardians[0].person.id);
     const meter = await db.sanMeterReading.findUniqueOrThrow({ where: { id: key("water-reading") }, include: { meter: true, unit: true } });
     assert.equal(meter.currentValue - meter.previousValue, meter.consumption); assert.equal(meter.meter!.unitId, meter.unitId);
+    assert.equal(await db.sanConsumerUnit.count(), 18500);
+    assert.equal(await db.sanWaterMeter.count(), 18500);
+    assert.equal(await db.sanMeterReading.count(), 55500);
+    assert.equal(await db.sanInvoice.count(), 55500);
+    assert.equal(await db.sanWaterQualityAnalysis.count(), 720);
+    assert.equal(await db.sanPortalRequest.count(), 900);
+    assert.equal(await db.sanSavedReport.count(), 36);
+    assert.match(meter.unit.code, /^202601\d{5}$/);
+    assert.ok(meter.unit.postalCode);
+    const previousReading = await db.sanMeterReading.findUniqueOrThrow({ where: { unitId_competence: { unitId: meter.unitId, competence: "09/2026" } } });
+    assert.equal(previousReading.currentValue, meter.previousValue, "Histórico mensal contínuo");
     const councilor = await db.camVereador.findUniqueOrThrow({ where: { id: key("councilor") }, include: { person: true } });
     assert.equal(councilor.nomeCompleto, councilor.person!.fullName);
     for (const operation of operations) {

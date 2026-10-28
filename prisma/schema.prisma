@@ -14465,6 +14465,9 @@ model SanConsumerUnit {
   id            String   @id @default(cuid())
   code          String   @unique
   address       String
+  streetAddress String?
+  neighborhood  String?
+  postalCode    String?
   category      String   @default("Residencial") // Residencial, Comercial, Industrial, Rural, PÃºblica
   status        String   @default("Ativa") // Ativa, Inativa, Cortada, Suspensa
   ownerName     String?
@@ -14476,6 +14479,8 @@ model SanConsumerUnit {
   readings      SanMeterReading[]
   invoices      SanInvoice[]
   serviceOrders SanServiceOrder[]
+
+  @@index([createdAt, id])
 }
 
 model SanWaterMeter {
@@ -14510,6 +14515,7 @@ model SanMeterReading {
   updatedAt DateTime @updatedAt
 
   @@unique([unitId, competence])
+  @@index([readingDate, id])
 }
 
 model SanInvoice {
@@ -14525,6 +14531,8 @@ model SanInvoice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([dueDate, id])
 }
 
 model SanServiceOrder {
@@ -14541,6 +14549,8 @@ model SanServiceOrder {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([createdAt, id])
 }
 
 model SanWaterQualityAnalysis {

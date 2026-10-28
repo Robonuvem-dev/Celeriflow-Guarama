@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { Filter, Pencil, PowerOff, Search } from "lucide-react";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { SanitationTable, SanitationPagination } from "./SanitationTable";
+import styles from "./sanitation.module.css";
 import {
   Sheet,
   SheetContent,
@@ -54,7 +55,8 @@ export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
   });
   const pageSize = 20;
   const pageCount = Math.max(1, Math.ceil(filteredAnalyses.length / pageSize));
-  const pagedAnalyses = filteredAnalyses.slice((page - 1) * pageSize, page * pageSize);
+  const currentPage = Math.min(page, pageCount);
+  const pagedAnalyses = filteredAnalyses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   async function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,22 +144,13 @@ export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
       </div>
 
       {filteredAnalyses.length === 0 ? (
-        <div className="p-10 text-center text-sm text-gray-400">Nenhuma análise encontrada.</div>
+        <div className="min-h-0 flex-1 p-10 text-center text-sm text-gray-400">Nenhuma análise encontrada.</div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <table className="w-full table-fixed text-left">
-            <thead className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50 text-xs font-semibold uppercase text-gray-500 dark:border-gray-700 dark:bg-gray-800">
-              <tr>
-                <th className="px-3 py-2">Ponto</th>
-                <th className="px-3 py-2">Coleta</th>
-                <th className="px-3 py-2">Parâmetro</th>
-                <th className="px-3 py-2">Resultado</th>
-                <th className="px-3 py-2">Limite</th>
-                <th className="px-3 py-2">Conformidade</th>
-                <th className="px-3 py-2">Situação</th>
-                <th className="px-3 py-2 text-right">Ações</th>
-              </tr>
-            </thead>
+        <SanitationTable columns={[
+          { label: "Ponto", width: 20 }, { label: "Coleta", width: 12 }, { label: "Parâmetro", width: 16 },
+          { label: "Resultado", width: 10 }, { label: "Limite", width: 12 }, { label: "Conformidade", width: 13 },
+          { label: "Situação", width: 9 }, { label: "Ações", width: 8, align: "right" },
+        ]}>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
               {pagedAnalyses.map((analysis) => (
                 <tr key={analysis.id} className="h-[38px] text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/40">
@@ -192,12 +185,11 @@ export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </SanitationTable>
       )}
 
       <Sheet open={editingAnalysis !== null} onOpenChange={(open) => !open && setEditingAnalysis(null)}>
-        <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+        <SheetContent side="right" className={styles.sheet}>
           <SheetHeader>
             <SheetTitle>Editar Análise de Qualidade</SheetTitle>
             <SheetDescription>Atualize os dados da análise selecionada.</SheetDescription>
@@ -245,7 +237,7 @@ export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
           )}
         </SheetContent>
       </Sheet>
-      <ErpPagination page={Math.min(page, pageCount)} total={filteredAnalyses.length} pageSize={pageSize} previousHref="#" nextHref="#" onPageChange={setPage} />
+      <SanitationPagination page={currentPage} total={filteredAnalyses.length} pageSize={pageSize} onPageChange={setPage} />
     </section>
   );
 }

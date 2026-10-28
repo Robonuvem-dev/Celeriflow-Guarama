@@ -12,10 +12,9 @@ export default async function RelatoriosPage() {
   });
 
   return (
-    <PageFrame className="space-y-2 px-1 py-1 md:px-2">
+    <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
       <PageHeader title="Relatórios Gerenciais" icon={<BarChart3 className="size-4 shrink-0 text-pink-500" />} className="dark:border-gray-700 dark:bg-gray-800 dark:[&>h1]:text-white" />
-      <p className="px-1 text-xs text-gray-500 dark:text-gray-400">{reports.length} {reports.length === 1 ? "relatório disponível" : "relatórios disponíveis"}</p>
-      <ReportsClient reports={reports} />
+      <div className="min-h-0 flex-1"><ReportsClient reports={reports} /></div>
     </PageFrame>
   );
 }

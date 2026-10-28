@@ -11,6 +11,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { inactivateSavedReport, updateSavedReport } from "../actions";
+import { SanitationTable, SanitationPagination } from "./SanitationTable";
+import styles from "./sanitation.module.css";
 
 type Report = {
   id: string;
@@ -24,6 +26,7 @@ type Report = {
 export function ReportsClient({ reports }: { reports: Report[] }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState("Todos");
   const [activeFilter, setActiveFilter] = useState("Ativos");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -39,6 +42,9 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     const matchesActive = activeFilter === "Todos" || (activeFilter === "Ativos" ? report.active : !report.active);
     return matchesSearch && matchesType && matchesActive;
   });
+  const pageSize = 20;
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filteredReports.length / pageSize)));
+  const paged = filteredReports.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   function closeSheet() {
     setSelectedReport(null);
@@ -83,7 +89,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="Lista de relatórios">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="Lista de relatórios">
       <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           <div className="relative w-full sm:w-64">
@@ -92,17 +98,17 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
               type="search"
               placeholder="Buscar relatório..."
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               className="h-9 w-full rounded-md border bg-white py-1.5 pr-3 pl-8 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white"
             />
           </div>
           <div className="flex items-center gap-1">
             <Filter className="h-3.5 w-3.5 text-gray-400" />
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="Filtrar relatórios por tipo" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
+            <select value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }} aria-label="Filtrar relatórios por tipo" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
               {types.map((type) => <option key={type}>{type}</option>)}
             </select>
           </div>
-          <select value={activeFilter} onChange={(event) => setActiveFilter(event.target.value)} aria-label="Filtrar relatórios por situação" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
+          <select value={activeFilter} onChange={(event) => { setActiveFilter(event.target.value); setPage(1); }} aria-label="Filtrar relatórios por situação" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
             <option>Ativos</option>
             <option>Inativos</option>
             <option>Todos</option>
@@ -114,18 +120,17 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       {error && <div className="mx-3 mt-3 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}</div>}
 
       {filteredReports.length === 0 ? (
-        <div className="p-10 text-center text-sm text-gray-400">
+        <div className="min-h-0 flex-1 p-10 text-center text-sm text-gray-400">
           <FileText className="mx-auto mb-3 h-10 w-10 text-gray-200" />
           Nenhum relatório encontrado.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-100 bg-gray-50 text-xs font-semibold uppercase text-gray-500 dark:border-gray-700 dark:bg-gray-800">
-              <tr><th className="px-3 py-2">Relatório</th><th className="px-3 py-2">Tipo</th><th className="px-3 py-2">Período</th><th className="px-3 py-2">Formato</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Ações</th></tr>
-            </thead>
+        <SanitationTable columns={[
+          { label: "Relatório", width: 35 }, { label: "Tipo", width: 20 }, { label: "Período", width: 15 },
+          { label: "Formato", width: 10 }, { label: "Status", width: 12 }, { label: "Ações", width: 8, align: "right" },
+        ]}>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {filteredReports.map((report) => (
+              {paged.map((report) => (
                 <tr key={report.id} className="text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
                   <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{report.name}</td>
                   <td className="px-3 py-2">{report.type}</td>
@@ -139,12 +144,11 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </SanitationTable>
       )}
 
       <Sheet open={selectedReport !== null} onOpenChange={(open) => !open && closeSheet()}>
-        <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+        <SheetContent side="right" className={styles.sheet}>
           <SheetHeader>
             <SheetTitle>Editar Relatório</SheetTitle>
             <SheetDescription>Atualize os dados do relatório salvo.</SheetDescription>
@@ -159,6 +163,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
           </form>}
         </SheetContent>
       </Sheet>
+      <SanitationPagination page={currentPage} total={filteredReports.length} pageSize={pageSize} onPageChange={setPage} />
     </section>
   );
 }

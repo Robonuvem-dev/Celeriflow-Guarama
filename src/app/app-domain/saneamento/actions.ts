@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { z } from "zod";
+import { getUnitAddress } from "@/lib/saneamento/unit-address";
+import { formatConsumerUnitIdentifier, reserveConsumerUnitIdentifiers } from "@/lib/saneamento/unit-identifier";
 
 async function getTenantPrisma(operation: ModuleOperation) {
   return (await getTenantContextForModuleOperation("SANEAMENTO", operation)).prisma;
@@ -13,7 +15,7 @@ async function getTenantPrisma(operation: ModuleOperation) {
 type ActionResult = { error?: string };
 
 const unitCategories = ["Residencial", "Comercial", "Industrial", "Pública", "Rural"] as const;
-const unitStatuses = ["Ativa", "Inativa"] as const;
+const unitStatuses = ["Ativa", "Inativa", "Cortada", "Suspensa"] as const;
 const readingStatuses = ["Registrada", "Revisada", "Estimada"] as const;
 const orderTypes = ["Vazamento", "Religação", "Corte", "Manutenção", "Troca de Hidrômetro"] as const;
 const orderPriorities = ["Normal", "Alta", "Urgente"] as const;
@@ -40,16 +42,20 @@ function revalidateOperationalPaths(path: string) {
 
 // --- Unidades Consumidoras ---
 export async function createConsumerUnit(data: {
-  code: string;
   address: string;
+  streetAddress?: string;
+  neighborhood?: string;
+  postalCode?: string;
   category: string;
   ownerName: string;
   ownerDocument: string;
 }): Promise<ActionResult> {
   const prisma = await getTenantPrisma("create");
   const parsed = z.object({
-    code: requiredText,
     address: requiredText,
+    streetAddress: requiredText.optional(),
+    neighborhood: requiredText.optional(),
+    postalCode: z.string().trim().regex(/^\d{5}-?\d{3}$/, "Informe um CEP válido.").optional(),
     category: z.enum(unitCategories),
     ownerName: requiredText,
     ownerDocument: requiredText,
@@ -58,7 +64,14 @@ export async function createConsumerUnit(data: {
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
-    await prisma.sanConsumerUnit.create({ data: { ...parsed.data, status: "Ativa" } });
+    const createdAt = new Date();
+    await prisma.$transaction(async (tx) => {
+      const { period, start } = await reserveConsumerUnitIdentifiers(tx, createdAt);
+      await tx.sanConsumerUnit.create({ data: {
+        ...parsed.data, ...getUnitAddress(parsed.data),
+        code: formatConsumerUnitIdentifier(period, start), createdAt, status: "Ativa",
+      } });
+    });
   } catch (error) {
     return { error: databaseErrorMessage(error, "Não foi possível cadastrar a unidade consumidora.") };
   }
@@ -70,8 +83,10 @@ export async function createConsumerUnit(data: {
 export async function updateConsumerUnit(
   id: string,
   data: {
-    code?: string;
     address?: string;
+    streetAddress?: string;
+    neighborhood?: string;
+    postalCode?: string;
     category?: string;
     ownerName?: string;
     ownerDocument?: string;
@@ -81,8 +96,10 @@ export async function updateConsumerUnit(
   const prisma = await getTenantPrisma("update");
   const parsed = z.object({
     id: requiredText,
-    code: requiredText,
     address: requiredText,
+    streetAddress: requiredText.optional(),
+    neighborhood: requiredText.optional(),
+    postalCode: z.string().trim().regex(/^(\d{5}-?\d{3})?$/, "Informe um CEP válido.").optional(),
     category: z.enum(unitCategories),
     ownerName: requiredText,
     ownerDocument: requiredText.optional(),
@@ -95,8 +112,8 @@ export async function updateConsumerUnit(
     await prisma.sanConsumerUnit.update({
       where: { id: parsed.data.id },
       data: {
-        code: parsed.data.code,
         address: parsed.data.address,
+        ...getUnitAddress(parsed.data),
         category: parsed.data.category,
         ownerName: parsed.data.ownerName,
         status: parsed.data.status,

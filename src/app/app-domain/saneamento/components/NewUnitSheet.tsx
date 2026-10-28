@@ -11,6 +11,7 @@ import {
   SheetTrigger 
 } from "@/components/ui/sheet";
 import { createConsumerUnit } from "../actions";
+import styles from "./sanitation.module.css";
 
 export function NewUnitSheet() {
   const [open, setOpen] = useState(false);
@@ -23,8 +24,10 @@ export function NewUnitSheet() {
     
     try {
       const result = await createConsumerUnit({
-        code: formData.get("code") as string,
-        address: formData.get("address") as string,
+        address: [formData.get("streetAddress"), formData.get("neighborhood"), formData.get("postalCode")].join(", "),
+        streetAddress: formData.get("streetAddress") as string,
+        neighborhood: formData.get("neighborhood") as string,
+        postalCode: formData.get("postalCode") as string,
         category: formData.get("category") as string,
         ownerName: formData.get("ownerName") as string,
         ownerDocument: formData.get("ownerDocument") as string,
@@ -47,7 +50,7 @@ export function NewUnitSheet() {
         <Droplets className="h-5 w-5" />
         Nova Unidade Consumidora
       </SheetTrigger>
-      <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+      <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>
           <SheetTitle>Cadastrar Unidade</SheetTitle>
           <SheetDescription>
@@ -57,22 +60,31 @@ export function NewUnitSheet() {
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 pb-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Código (Ligação)</label>
+            <label className="text-sm font-medium" htmlFor="new-unit-identifier">Identificador</label>
             <input
-              name="code"
-              required
+              id="new-unit-identifier"
+              readOnly
               className="w-full p-2 border rounded-md"
-              placeholder="Ex: LIG-12345"
+              value="Automático: AAAAMMXXXXX"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Endereço</label>
+            <label className="text-sm font-medium" htmlFor="new-unit-street">Rua e número</label>
             <input
-              name="address"
+              id="new-unit-street"
+              name="streetAddress"
               required
               className="w-full p-2 border rounded-md"
-              placeholder="Rua, Número, Bairro"
+              placeholder="Rua das Veredas, 100"
             />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="new-unit-neighborhood" className="text-sm font-medium">Bairro</label>
+            <input id="new-unit-neighborhood" name="neighborhood" required className="w-full p-2 border rounded-md" />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="new-unit-postal" className="text-sm font-medium">CEP</label>
+            <input id="new-unit-postal" name="postalCode" required inputMode="numeric" pattern="[0-9]{5}-?[0-9]{3}" placeholder="00000-000" className="w-full p-2 border rounded-md" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Categoria</label>

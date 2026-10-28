@@ -39,6 +39,7 @@
     "frotas:ctb:fetch": "node scripts/fetch-fleet-ctb.mjs",
     "frotas:fipe:fetch": "node scripts/fetch-fleet-fipe.mjs",
     "seed:frotas:poc": "node --conditions=react-server --import tsx scripts/seed-fleet-poc.ts",
+    "seed:saneamento": "node --import tsx scripts/seed-sanitation-city.ts",
     "test:education-s1": "node --import tsx --test tests/education-s1.test.ts"
   },
   "dependencies": {

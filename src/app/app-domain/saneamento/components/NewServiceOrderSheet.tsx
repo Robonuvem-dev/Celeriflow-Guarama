@@ -11,8 +11,10 @@ import {
   SheetTrigger 
 } from "@/components/ui/sheet";
 import { createServiceOrder } from "../actions";
+import { ConsumerUnitPicker } from "./ConsumerUnitPicker";
+import styles from "./sanitation.module.css";
 
-export function NewServiceOrderSheet({ units }: { units: { id: string; code: string; address: string }[] }) {
+export function NewServiceOrderSheet() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +49,7 @@ export function NewServiceOrderSheet({ units }: { units: { id: string; code: str
         <Wrench className="h-5 w-5" />
         Nova OS
       </SheetTrigger>
-      <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+      <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>
           <SheetTitle>Abrir Ordem de Serviço</SheetTitle>
           <SheetDescription>
@@ -66,17 +68,7 @@ export function NewServiceOrderSheet({ units }: { units: { id: string; code: str
               <option value="Troca de Hidrômetro">Troca de Hidrômetro</option>
             </select>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Unidade Consumidora (Opcional)</label>
-            <select name="unitId" className="w-full p-2 border rounded-md">
-              <option value="">Serviço na rede pública (sem unidade)</option>
-              {units.map(unit => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.code} - {unit.address}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ConsumerUnitPicker />
           <div className="space-y-2">
             <label className="text-sm font-medium">Prioridade</label>
             <select name="priority" required className="w-full p-2 border rounded-md">

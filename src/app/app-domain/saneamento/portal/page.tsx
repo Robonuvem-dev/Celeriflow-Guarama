@@ -27,7 +27,6 @@ export default async function PortalPage() {
   return (
     <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
       <PageHeader title="Portal do Consumidor" icon={<Globe className="size-4 shrink-0 text-indigo-500" />} className="dark:border-gray-700 dark:bg-gray-800 dark:[&>h1]:text-white" />
-      <p className="px-1 text-xs text-gray-500 dark:text-gray-400">{requests.length} {requests.length === 1 ? "solicitação registrada" : "solicitações registradas"}</p>
       <div className="min-h-0 flex-1"><PortalClient requests={serializedRequests} /></div>
     </PageFrame>
   );

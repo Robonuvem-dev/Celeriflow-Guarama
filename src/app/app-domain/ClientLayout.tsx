@@ -92,7 +92,7 @@ export default function ClientLayout({
     "/meio-ambiente/educacao", "/meio-ambiente/empreendimentos", "/meio-ambiente/fiscalizacao",
     "/meio-ambiente/licenciamento", "/meio-ambiente/residuos", "/meio-ambiente/solicitacoes",
   ];
-  const isFixedLote2Workspace = fixedLote2Routes.includes(pathname);
+  const isFixedLote2Workspace = fixedLote2Routes.includes(pathname) || pathname === "/saneamento" || pathname.startsWith("/saneamento/");
   const fixedLote3Routes = [
     "/administracao/calendario", "/administracao/cargos", "/administracao/demandas",
     "/administracao/departamentos", "/administracao/secretarias", "/administracao/servidores",

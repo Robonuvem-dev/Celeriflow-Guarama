@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { SanitationTable, SanitationPagination } from "./SanitationTable";
+import styles from "./sanitation.module.css";
 import { Filter, Globe, Pencil, PowerOff, Search } from "lucide-react";
 import {
   Sheet,
@@ -56,7 +57,8 @@ export function PortalClient({ requests }: { requests: PortalRequest[] }) {
   }, [activeFilter, requests, search, statusFilter]);
   const pageSize = 20;
   const pageCount = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
-  const paged = filteredRequests.slice((page - 1) * pageSize, page * pageSize);
+  const currentPage = Math.min(page, pageCount);
+  const paged = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -128,13 +130,13 @@ export function PortalClient({ requests }: { requests: PortalRequest[] }) {
       </div>
 
       {filteredRequests.length === 0 ? (
-        <div className="p-10 text-center text-sm text-gray-400"><Globe className="mx-auto mb-3 h-10 w-10 text-gray-200" />Nenhuma solicitação encontrada.</div>
+        <div className="min-h-0 flex-1 p-10 text-center text-sm text-gray-400"><Globe className="mx-auto mb-3 h-10 w-10 text-gray-200" />Nenhuma solicitação encontrada.</div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <table className="w-full table-fixed text-left">
-            <thead className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50 text-xs font-semibold uppercase text-gray-500 dark:border-gray-700 dark:bg-gray-800">
-              <tr><th className="px-3 py-2">Solicitação</th><th className="px-3 py-2">Solicitante</th><th className="px-3 py-2">Data</th><th className="px-3 py-2">Origem</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-center">Situação</th><th className="px-3 py-2 text-right">Ações</th></tr>
-            </thead>
+        <SanitationTable columns={[
+          { label: "Solicitação", width: 24 }, { label: "Solicitante", width: 22 }, { label: "Data", width: 12 },
+          { label: "Origem", width: 13 }, { label: "Status", width: 13 }, { label: "Situação", width: 8, align: "center" },
+          { label: "Ações", width: 8, align: "right" },
+        ]}>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
               {paged.map((request) => (
                 <tr key={request.id} className="h-[38px] text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/40">
@@ -144,12 +146,11 @@ export function PortalClient({ requests }: { requests: PortalRequest[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </SanitationTable>
       )}
 
       <Sheet open={editingRequest !== null} onOpenChange={(open) => !open && setEditingRequest(null)}>
-        <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+        <SheetContent side="right" className={styles.sheet}>
           <SheetHeader>
             <SheetTitle>Editar Solicitação</SheetTitle>
             <SheetDescription>Atualize os dados da solicitação do portal.</SheetDescription>
@@ -167,7 +168,7 @@ export function PortalClient({ requests }: { requests: PortalRequest[] }) {
         </SheetContent>
       </Sheet>
 
-      <ErpPagination page={Math.min(page, pageCount)} total={filteredRequests.length} pageSize={pageSize} previousHref="#" nextHref="#" onPageChange={setPage} />
+      <SanitationPagination page={currentPage} total={filteredRequests.length} pageSize={pageSize} onPageChange={setPage} />
 </section>
   );
 }

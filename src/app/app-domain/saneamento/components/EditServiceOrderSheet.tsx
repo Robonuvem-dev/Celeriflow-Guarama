@@ -11,6 +11,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { updateServiceOrder } from "../actions";
+import styles from "./sanitation.module.css";
 
 type ServiceOrder = {
   id: string;
@@ -56,7 +57,7 @@ export function EditServiceOrderSheet({ order }: { order: ServiceOrder }) {
       <SheetTrigger render={<button className="p-1.5 text-slate-400 hover:text-[#0284C7] hover:bg-blue-50 rounded transition-colors" title="Editar OS" />}>
         <Pencil className="h-3.5 w-3.5" />
       </SheetTrigger>
-      <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
+      <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>
           <SheetTitle>Editar Ordem de Serviço</SheetTitle>
           <SheetDescription>
