@@ -15,6 +15,7 @@
     "scripts",
     "prisma",
     "src/**/__tests__/**",
+    "src/**/test-fixture.ts",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     "src/**/*.spec.ts",

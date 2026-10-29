@@ -19,6 +19,7 @@
 # Tests and their artifacts are not part of the production build.
 /tests/
 **/__tests__/
+**/test-fixture.ts
 **/*.test.ts
 **/*.test.tsx
 **/*.spec.ts
