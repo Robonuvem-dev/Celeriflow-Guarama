@@ -1,4 +1,6 @@
-export const PATRIMONIO_LIST_PAGE_SIZE = 20;
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+
+export const PATRIMONIO_LIST_PAGE_SIZE = OPERATIONAL_PAGE_SIZE;
 
 export function parsePatrimonioListPage(value: string | undefined) {
   const page = Number.parseInt(value ?? "1", 10);

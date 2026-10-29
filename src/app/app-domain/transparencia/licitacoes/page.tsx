@@ -1,9 +1,8 @@
-import { Gavel } from "lucide-react";
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import UploadLicitacoesForm from "./UploadLicitacoesForm";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { LicitacoesClient, type BiddingRow } from "./LicitacoesClient";
 import { db } from "@/db/client";
 import { desc, eq } from "drizzle-orm";
@@ -34,14 +33,9 @@ export default async function LicitacoesPage() {
   });
 
   return (
-    <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-      <PageHeader
-        title="Licitações abertas"
-        icon={<Gavel className="size-4 shrink-0 text-blue-600" />}
-        action={<Link href="/compras" className="rounded-md bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-700">Nova licitação</Link>}
-      />
-      <div className="mb-1 flex shrink-0 justify-end"><UploadLicitacoesForm /></div>
+    <>
+      <OperationalHeaderActions><Link href="/compras" className={styles.newButton}>Nova licitação</Link><UploadLicitacoesForm /></OperationalHeaderActions>
       <LicitacoesClient rows={rows} />
-    </PageFrame>
+    </>
   );
 }

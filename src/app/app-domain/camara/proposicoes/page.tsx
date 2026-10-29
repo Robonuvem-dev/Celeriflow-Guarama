@@ -1,8 +1,6 @@
-import { FileText } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { NewProposicaoSheet } from "../components/NewProposicaoSheet";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
 import { ProposicoesClient } from "./ProposicoesClient";
 import { db } from "@/db/client";
 import { listPropositions, listServingCouncilors } from "@/db/repositories/chamber/queries";
@@ -22,5 +20,5 @@ export default async function ProposicoesPage() {
     data: proposicao.createdAt.toISOString(),
     status: proposicao.status,
   }));
-  return <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2 sm:p-3"><PageHeader title="Proposições Legislativas" icon={<FileText className="size-4 shrink-0 text-[#9333EA]" />} action={<NewProposicaoSheet vereadores={vereadores} />} /><ProposicoesClient rows={rows} /></PageFrame>;
+  return <><OperationalHeaderActions><NewProposicaoSheet vereadores={vereadores} /></OperationalHeaderActions><ProposicoesClient rows={rows} /></>;
 }

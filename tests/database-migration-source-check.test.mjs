@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { findLegacyDatabaseReferences } from "../scripts/lib/database-migration-source-check.mjs";
 
@@ -80,4 +81,76 @@ test("completion gate catches model delegates hidden behind fixture aliases and 
     await fixture.database.select({ total: count() }).from(families).groupBy(families.id);
     await withDatabaseTransaction(fixture.connection, tx => tx.insert(families).values(data));
   `), []);
+});
+
+test("completion gate recognizes Locator selector chains, declared aliases and simple locator factories", () => {
+  for (const selector of ["locator", "getByRole", "getByLabel", "getByText", "getByTestId", "getByPlaceholder", "getByAltText", "getByTitle"]) {
+    assert.deepEqual(inspect(`
+      export {};
+      const panel = page.${selector}("button");
+      const rows = panel.locator("tr").filter({ hasText: "Membro" });
+      const alias = rows;
+      await alias.first().last().nth(0).count();
+      await page["${selector}"]("button")["count"]();
+      await (alias as Locator)!.count();
+      await Promise.all([alias.count(), panel.count()]);
+    `), [], selector);
+  }
+  assert.deepEqual(inspect(`
+    const next = page => page.getByRole("button", { name: "Próxima parte", exact: true });
+    const factory = next;
+    function findRows(page) { return page.frameLocator("iframe").getByLabel("Membro"); }
+    await next(page).count();
+    await factory(page)["count"]();
+    const rows = findRows(page);
+    await rows.and(page.locator("input")).or(page.getByText("Outro")).count();
+  `), []);
+});
+
+test("completion gate retains Prisma count detection without imports, for no args, array args, brackets and aliases", () => {
+  for (const text of [
+    'await client.person.count();',
+    'await client.person.count([]);',
+    'await client.person.count([{ where: filter }]);',
+    'await client.person.count(...args);',
+    'await client["person"]["count"]();',
+    'await client.locator.count();',
+    'await client.getByRole.count();',
+    'const alias = client; const model = alias.person; await model.count();',
+    'const alias = context.database; await alias["person"].count({ where });',
+    'const rows = client.person; await rows.count();',
+    'const rows = client.person as Locator; await rows.count();',
+    'const rows = client.person.filter({ active: true }); await rows.first().count();',
+    'const next = () => client.person; await next().count();',
+    'const next = flag => flag ? page.locator("tr") : client.person; await next(flag).count();',
+    'const rows = page.locator("tr"); await rows.count({ where });',
+    'await page.getByRole("button")["count"]([]);',
+    'await unknown.count();',
+  ]) assert.ok(inspect(text).some(match => match.kind === "legacy-delegate" && match.symbol === "count"), text);
+});
+
+test("locator aliases cannot hide shadowed, reassigned, destructured or cyclic database receivers", () => {
+  for (const text of [
+    'const rows = page.locator("tr"); { const rows = client.person; await rows.count(); } await rows.count();',
+    'const rows = page.locator("tr"); async function inspect(rows) { await rows.count(); }',
+    'const rows = page.locator("tr"); { const { rows } = client; await rows.count(); }',
+    'let rows = page.locator("tr"); rows = client.person; await rows.count();',
+    'let rows = page.locator("tr"); ({ rows } = client); await rows.count();',
+    'const rows = alias; const alias = rows; await rows.count();',
+    'function rows() { return rows(); } await rows().count();',
+    'const next = page => page.locator("tr"); { const next = () => client.person; await next().count(); }',
+  ]) assert.equal(inspect(text).filter(match => match.kind === "legacy-delegate" && match.symbol === "count").length, 1, text);
+});
+
+test("the actual browser harnesses pass source inspection while appended Prisma access is still detected", () => {
+  for (const path of [
+    "../scripts/verify-operational-browser.mjs",
+    "../scripts/verify-operational-routes.mjs",
+    "../src/app/app-domain/compras/_tests/editable-search.browser.test.mjs",
+    "./operational-filters.browser.test.mjs",
+  ]) {
+    const text = readFileSync(new URL(path, import.meta.url), "utf8");
+    assert.deepEqual(inspect(text), [], path);
+    assert.deepEqual(inspect(text + '\nconst databaseAlias = removedClient; await databaseAlias.person["count"]();').map(({ kind, symbol }) => ({ kind, symbol })), [{ kind: "legacy-delegate", symbol: "count" }], path);
+  }
 });

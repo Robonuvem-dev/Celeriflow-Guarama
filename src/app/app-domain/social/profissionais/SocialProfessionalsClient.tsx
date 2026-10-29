@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation";
 import { UserRoundCog, Plus } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { SocialOperationalList } from "../OperationalList";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { saveSocialProfessionalLink } from "./actions";
 
 type Link = { id: string; employeeId: string; unitId: string; jobTitle: string; specialty: string | null; startsAt: string; endsAt: string; isActive: boolean; individualScope: string; familyScope: string; workStart: string; workEnd: string; workingDays: number[]; includeInRma: boolean; employee: { name: string }; unit: { name: string } };
 type Option = { id: string; name: string };
 const defaults = { id: undefined as string | undefined, employeeId: "", unitId: "", jobTitle: "", specialty: "", startsAt: "", endsAt: "", isActive: true, individualScope: "UNIT", familyScope: "UNIT", workStart: "08:00", workEnd: "17:00", workingDays: [1, 2, 3, 4, 5], includeInRma: true };
-const field = "h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900";
+const field = "h-7 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900";
 const scopes = { OWN: "Somente próprios registros", UNIT: "Registros do equipamento", MUNICIPAL: "Registros municipais não sigilosos" };
 
 export default function SocialProfessionalsClient({ links, employees, units }: { links: Link[]; employees: Option[]; units: Option[] }) {
@@ -25,7 +26,7 @@ export default function SocialProfessionalsClient({ links, employees, units }: {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const rows = links.filter((link) => [link.employee.name, link.unit.name, link.jobTitle].some((value) => value.toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR"))) && (status === "Todos" || link.isActive === (status === "Ativos")));
-  const activePage = Math.min(page, Math.max(1, Math.ceil(rows.length / 20)));
+  const activePage = Math.min(page, Math.max(1, Math.ceil(rows.length / OPERATIONAL_PAGE_SIZE)));
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setPending(true); setError("");
     try {
@@ -34,14 +35,12 @@ export default function SocialProfessionalsClient({ links, employees, units }: {
       setOpen(false); router.refresh();
     } catch { setError("Falha de comunicação. Tente novamente."); } finally { setPending(false); }
   }
-  return <PageFrame className="space-y-2 p-3">
+   return <PageFrame className="flex h-full min-h-0 flex-col gap-1">
     <PageHeader title="Profissionais e vínculos SUAS" icon={<UserRoundCog className="size-4" />} action={<button onClick={() => { setForm(defaults); setError(""); setOpen(true); }} className="inline-flex h-8 items-center gap-2 rounded-md bg-blue-600 px-3 text-xs font-semibold text-white"><Plus className="size-4" />Novo vínculo</button>} />
-    <section className="min-w-0 rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="grid gap-2 border-b p-2 sm:grid-cols-[1fr_10rem]"><input aria-label="Buscar profissional, equipamento ou cargo" type="search" className={field} placeholder="Buscar profissional, equipamento ou cargo..." value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /><select aria-label="Situação" className={field} value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option>Todos</option><option>Ativos</option><option>Inativos</option></select></div>
-      <table className="w-full table-fixed text-left text-xs"><thead className="bg-slate-100 text-[10px] uppercase text-slate-500 dark:bg-slate-800"><tr><th className="p-2">Profissional</th><th className="p-2">Equipamento</th><th className="hidden p-2 md:table-cell">Cargo</th><th className="hidden p-2 lg:table-cell">Expediente</th><th className="w-20 p-2">Situação</th><th className="w-16 p-2 text-right">Ação</th></tr></thead><tbody>{rows.slice((activePage - 1) * 20, activePage * 20).map((link) => <tr key={link.id} className="h-9 border-t hover:bg-slate-50 dark:hover:bg-slate-800"><td className="truncate p-2" title={link.employee.name}>{link.employee.name}</td><td className="truncate p-2" title={link.unit.name}>{link.unit.name}</td><td className="hidden truncate p-2 md:table-cell" title={link.jobTitle}>{link.jobTitle}</td><td className="hidden p-2 lg:table-cell">{link.workStart}–{link.workEnd}</td><td className="p-2">{link.isActive ? "Ativo" : "Inativo"}</td><td className="p-2 text-right"><button className="text-blue-700 underline" onClick={() => { setForm({ ...link, specialty: link.specialty || "" }); setError(""); setOpen(true); }}>Editar</button></td></tr>)}</tbody></table>
-      {!rows.length && <p className="p-6 text-center text-xs text-slate-500">Nenhum vínculo encontrado.</p>}
-      <div className="border-t px-3 py-2"><ErpPagination page={activePage} total={rows.length} pageSize={20} previousHref="#" nextHref="#" onPageChange={setPage} label="vínculos" /></div>
-    </section>
+    <SocialOperationalList id="profissionais" page={activePage} total={rows.length} onPageChange={setPage}
+      toolbar={<div className="flex w-full gap-2"><input aria-label="Buscar profissional, equipamento ou cargo" type="search" className={field} placeholder="Buscar profissional, equipamento ou cargo..." value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /><select aria-label="Situação" className={field} value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option>Todos</option><option>Ativos</option><option>Inativos</option></select></div>}
+      columns={[["name", "Profissional", 200, 110, "identifier"], ["unit", "Equipamento", 200, 110], ["job", "Cargo", 170, 100], ["hours", "Expediente", 120, 100], ["status", "Situação", 100, 80, "status"], ["actions", "Ação", 70, 70, "actions"]]}
+      rows={rows.slice((activePage - 1) * OPERATIONAL_PAGE_SIZE, activePage * OPERATIONAL_PAGE_SIZE).map((link) => ({ id: link.id, label: link.employee.name, values: { name: link.employee.name, unit: link.unit.name, job: link.jobTitle, hours: `${link.workStart}–${link.workEnd}`, status: link.isActive ? "Ativo" : "Inativo" }, actions: <button className="text-blue-700 underline" onClick={() => { setForm({ ...link, specialty: link.specialty || "" }); setError(""); setOpen(true); }}>Editar</button> }))} />
     <Dialog open={open} onOpenChange={(value) => { if (!pending) setOpen(value); }}><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>{form.id ? "Editar vínculo profissional" : "Novo vínculo profissional"}</DialogTitle><DialogDescription>Controle de acesso ao prontuário, vínculo e expediente. Registro restrito à administração do sistema.</DialogDescription></DialogHeader>
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs">Profissional<select required disabled={pending} className={field} value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}><option value="">Selecione</option>{employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

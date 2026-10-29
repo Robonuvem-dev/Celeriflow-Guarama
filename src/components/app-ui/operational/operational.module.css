@@ -31,7 +31,7 @@
 .iconButton svg { width: 16px; height: 16px; }
 .iconButton:hover { background: #eaf2f8; color: #075985; }
 .iconButton:focus-visible, .header a:focus-visible, .footer input:focus-visible, .searchInput:focus-visible { outline: 2px solid var(--op-accent); outline-offset: -2px; }
-.iconButton:disabled { opacity: .35; cursor: default; }
+.iconButton:disabled, .iconButton[aria-disabled="true"] { opacity: .35; cursor: default; }
 .content { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
 .sidebarSlot { position: relative; flex: 0 0 56px; width: 56px; min-height: 0; }
 .sidebarSlot[data-collapsed="false"] { flex-basis: 208px; width: 208px; }
@@ -89,8 +89,13 @@
 .status[data-value="Inativa"] { color: #64748b; }
 .status[data-value="Cortada"] { color: #be123c; }
 .status[data-value="Suspensa"] { color: #a16207; }
+.status[data-value="Ativo"] { color: #047857; }
+.status[data-value="Inativo"] { color: #64748b; }
+.status[data-value="Sem estoque"] { color: #a16207; }
 .resize { position: absolute; z-index: 2; top: 0; right: -12px; bottom: 0; width: 24px; padding: 0; border: 0; background: transparent; cursor: col-resize; touch-action: none; }
 .resize::after { position: absolute; top: 0; bottom: 0; left: 11px; width: 1px; background: #a9b8c7; content: ""; pointer-events: none; }
+.table th:last-child .resize { right: 0; width: 12px; }
+.table th:last-child .resize::after { left: auto; right: 0; }
 .resize:hover, .resize:focus-visible { background: #bae6fd55; outline: 2px solid #0284c7; outline-offset: -2px; }
 .rowActions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; height: var(--op-row); }
 .rowActions > button { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border-radius: 4px; }
@@ -116,6 +121,16 @@
 .filterFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .filterFields label { display: grid; gap: 6px; }
 .filterFields select { height: 32px; min-width: 0; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 6px; font: inherit; }
+.filtersDialog[data-slot="dialog-content"] { display: flex; flex-direction: column; min-height: 0; }
+.filterContent { min-height: 0; overflow-wrap: anywhere; }
+.toolbar > select, .toolbar select { min-width: 0; max-width: 16rem; height: 28px; font: inherit; }
+.table input:not([type="checkbox"]):not([type="radio"]), .table select { width: 100%; min-width: 0; max-width: 100%; height: 22px; padding: 0 2px; font: inherit; }
+.table input[type="checkbox"], .table input[type="radio"] { vertical-align: middle; }
+.table button, .table a { font-size: inherit; }
+.preview > a { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.preview > input, .preview > select { display: block; }
+.table td[style*="right"] .cell, .table th[style*="right"] .cell { text-align: right; }
+.table td[style*="center"] .cell, .table th[style*="center"] .cell { text-align: center; }
 .menuList { display: grid; gap: 4px; }
 .menuList a { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: 4px; color: #334155; text-decoration: none; }
 .menuList a:hover, .menuList a[aria-current="page"] { background: #e0f2fe; color: #075985; }
@@ -136,6 +151,16 @@
 .workspace[data-device="phone"] .newLabel { display: none; }
 .workspace[data-device="phone"] .newButton { width: 28px; padding: 0; }
 .dialog[data-device="phone"] { overflow-y: auto; }
+.workspace[data-device="tablet"] { height: auto; min-height: 100dvh; overflow: visible; }
+.workspace[data-device="tablet"] .content { min-height: calc(100dvh - 36px); }
+.workspace[data-device="tablet"] .header { position: sticky; top: 0; z-index: 30; background: inherit; }
+.workspace[data-device="tablet"] .sidebarSlot { position: sticky; top: 36px; align-self: flex-start; height: calc(100dvh - 36px); }
+.workspace[data-device="tablet"] .list { min-height: calc(100dvh - 36px); grid-template-rows: 32px minmax(min-content, 1fr) 28px; }
+.workspace:is([data-device="tablet"], [data-device="phone"]) .viewport { min-height: calc(21 * var(--op-row)); overflow-x: auto; overflow-y: hidden; }
+.surface[data-device="tablet"], .surface[data-device="phone"] { height: 100dvh; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.surface:is([data-device="tablet"], [data-device="phone"]) .main { display: block; flex: 1 0 auto; }
+.surface[data-device="phone"] .list { min-height: calc(100dvh - 36px); }
+.dialog[data-device="tablet"] { overflow-y: auto; }
 @media (max-width: 900px) {
   .newLabel { display: none; }
   .newButton { width: 28px; padding: 0; }

@@ -1,8 +1,6 @@
-import { Trophy } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import AtividadesEsporteLazerClient from "../components/AtividadesEsporteLazerClient";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
 import { db } from "@/db/client";
 import { listCulturalActivities } from "@/db/repositories/culture/queries";
 
@@ -71,11 +69,9 @@ export default async function EsporteLazerPage() {
   }));
 
   return (
-    <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2 sm:p-3">
-      <PageHeader title="Esporte e Lazer" icon={<Trophy className="size-4 shrink-0 text-rose-600 dark:text-rose-300" />} className="dark:border-slate-700 dark:bg-slate-800 dark:[&>h1]:text-white" />
-      <p className="shrink-0 text-xs text-slate-500">Atividades: {activities.length} · Ativas: {activeActivities.length} · Modalidades: {activeModalities.size} · Espaços: {usedSpaces.size}</p>
-
+    <>
+      <OperationalHeaderActions><span className="text-[13px]">Atividades: {activities.length} · Ativas: {activeActivities.length} · Modalidades: {activeModalities.size} · Espaços: {usedSpaces.size}</span></OperationalHeaderActions>
       <AtividadesEsporteLazerClient activities={serializedActivities} />
-    </PageFrame>
+    </>
   );
 }

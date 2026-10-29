@@ -1,7 +1,7 @@
 "use client";
 
 import { Edit, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import Link from "next/link";
 import { deleteAtoPessoal } from "./actions";
 import type { PersonnelAct } from "@/lib/contracts/personnel-pages";
@@ -17,20 +17,17 @@ export function AtoRowActions({ ato }: { ato: PersonnelAct }) {
   };
 
   return (
-    <div className="flex items-center justify-end space-x-2">
-      <Link href={`/rh/atos/${ato.id}/editar`}>
-        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-          <Edit className="h-4 w-4" />
-        </Button>
+    <div className={styles.rowActions}>
+      <Link href={`/rh/atos/${ato.id}/editar`} className={styles.iconButton} aria-label={`Editar ato ${ato.actNumber || ato.id}`} title="Editar ato">
+        <Edit className="h-4 w-4" />
       </Link>
-      <Button 
-        variant="ghost" 
-        size="sm" 
+      <button type="button"
+        aria-label={`Excluir ato ${ato.actNumber || ato.id}`} title="Excluir ato"
         onClick={handleDelete}
-        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        className={styles.iconButton}
       >
         <Trash2 className="h-4 w-4" />
-      </Button>
+      </button>
     </div>
   );
 }

@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { transportAnnualExtraNotes, undoAnnualExtraNotes } from "../actions";
+import FinanceTablePanel from "../../FinanceTablePanel";
+import { financeColumn } from "../../operational-columns";
 
 type Year = { id: string; year: number; status: string; governmentEntityId: string; entityName: string };
 type Stage = { id: string; year: number; reason: string; total: string; undone: boolean; notes: { id: string; title: string; value: string; sourceId: string; resourceSourceId: string; budgetUnitId: string }[] };
@@ -24,6 +26,10 @@ export default function ExtraNoteTransportClient({ years, stages }: { years: Yea
       setNotice(result.error ?? "Transporte extraorçamentário desmovimentado, com documentos preservados.");
       if (!result.error) router.refresh();
     }); }}><fieldset disabled={pending} className="contents"><label className="grid gap-1 text-sm">Edição para desmovimentar<select required name="stageId" className="rounded border p-2"><option value="">Selecione</option>{stages.filter(stage => !stage.undone).map(stage => <option key={stage.id} value={stage.id}>{stage.year} · {stage.id}</option>)}</select></label><label className="grid gap-1 text-sm">Justificativa<input required name="reason" className="rounded border p-2" /></label><button className="w-fit rounded border border-amber-700 px-3 py-2 text-sm">Desmovimentar notas separadamente</button></fieldset></form>
-    <div className="space-y-2">{stages.map(stage => <details key={stage.id} className="rounded border p-3 text-sm"><summary>{stage.year} · R$ {stage.total} · {stage.undone ? "Desmovimentada" : "Transportada"} · {stage.id}</summary><p>{stage.reason}</p><table className="mt-2 w-full text-left"><thead><tr><th>Nota no destino</th><th>Obrigação canônica</th><th>UG / fonte</th><th>Valor transportado</th></tr></thead><tbody>{stage.notes.map(note => <tr key={note.id}><td>{note.title} · {note.id}</td><td>{note.sourceId}</td><td>{note.budgetUnitId} / {note.resourceSourceId}</td><td>R$ {note.value}</td></tr>)}</tbody></table></details>)}</div><a href="/financeiro/pagamentos" className="text-sm font-semibold text-emerald-800 underline">Recolher retenções na obrigação original</a>
+    <div className="space-y-2">{stages.map(stage => <details key={stage.id} className="rounded border p-3 text-sm"><summary>{stage.year} · R$ {stage.total} · {stage.undone ? "Desmovimentada" : "Transportada"} · {stage.id}</summary><p>{stage.reason}</p>
+      <FinanceTablePanel label="Notas extraorçamentárias transportadas" description={`${stage.year} · ${stage.id} · R$ ${stage.total}`} preferenceId="financeiro-notas-transportadas" resetKey={stage.id}
+        columns={[financeColumn("title", "Nota no destino", 100, 230), financeColumn("id", "ID da nota", 80, 150, "identifier"), financeColumn("source", "Obrigação canônica", 90, 180, "identifier"), financeColumn("unit", "UG", 80, 150, "identifier"), financeColumn("resource", "Fonte", 80, 150, "identifier"), financeColumn("value", "Valor transportado", 90, 150, "text", "right")]}
+        rows={stage.notes.map(note => ({ id: note.id, label: note.title, values: { title: note.title, id: note.id, source: note.sourceId, unit: note.budgetUnitId, resource: note.resourceSourceId, value: `R$ ${note.value}` } }))} />
+    </details>)}</div><a href="/financeiro/pagamentos" className="text-sm font-semibold text-emerald-800 underline">Recolher retenções na obrigação original</a>
   </section>;
 }

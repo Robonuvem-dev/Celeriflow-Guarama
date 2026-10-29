@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import FinanceTablePanel from "../FinanceTablePanel";
+import { financeColumn } from "../operational-columns";
 import { createTreasuryTransferAction } from "./actions";
 
 type BankAccountOption = {
@@ -109,33 +110,9 @@ export default function TreasuryTransferSection({ accounts, transfers, sources }
           </div>
         </form>
 
-        <div className="space-y-3">
-          <h3 className="font-semibold">Transferências recentes</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Origem</TableHead>
-                <TableHead>Destino</TableHead>
-                <TableHead>Histórico</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transfers.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="h-20 text-center text-muted-foreground">Nenhuma transferência registrada.</TableCell></TableRow>
-              ) : transfers.map((transfer) => (
-                <TableRow key={transfer.id}>
-                  <TableCell>{new Date(transfer.date).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</TableCell>
-                  <TableCell>{accountLabel(transfer.sourceBankAccount)}</TableCell>
-                  <TableCell>{accountLabel(transfer.destinationBankAccount)}</TableCell>
-                  <TableCell>{transfer.history || "-"}</TableCell>
-                  <TableCell className="text-right font-medium">{formatMoney(transfer.value)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <FinanceTablePanel label="Transferências recentes" preferenceId="financeiro-transferencias"
+          columns={[financeColumn("date", "Data", 80, 110), financeColumn("origin", "Origem", 100, 260), financeColumn("destination", "Destino", 100, 260), financeColumn("history", "Histórico", 100, 280), financeColumn("value", "Valor", 90, 140, "text", "right")]}
+          rows={transfers.map(transfer => ({ id: transfer.id, label: transfer.history || transfer.id, values: { date: new Date(transfer.date).toLocaleDateString("pt-BR", { timeZone: "UTC" }), origin: accountLabel(transfer.sourceBankAccount), destination: accountLabel(transfer.destinationBankAccount), history: transfer.history || "—", value: formatMoney(transfer.value) } }))} />
       </CardContent>
     </Card>
   );

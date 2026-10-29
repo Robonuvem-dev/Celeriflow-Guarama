@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { issueScheduledGuidesAction } from "./actions";
 import type { FiscalPaymentOption } from "@/lib/tributacao/fiscal-payment-option-schema";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { TaxOperationalTable } from "../TaxOperationalTable";
 
 type Assessment = { id: string; label: string; updatedAt: string; amount: string; activeGuides: number; paymentOptions: FiscalPaymentOption[]; schedule: { number: number; amount: string; dueDate: string }[] };
 export default function ScheduledGuidesClient({ assessments }: { assessments: Assessment[] }) {
@@ -15,13 +17,13 @@ export default function ScheduledGuidesClient({ assessments }: { assessments: As
   const row = assessments.find(row => row.id === id);
   const option = row?.paymentOptions.find(item => item.code === optionCode);
   const field = "mt-1 w-full rounded border p-2 text-xs";
-  return <div className="h-full space-y-4 overflow-auto p-4">
-    <h1 className="text-lg font-bold">Calendário anual · cota única e parcelas</h1>
-    {notice && <p role="status" className="rounded border bg-amber-50 p-2 text-sm">{notice}</p>}
-    <label className="block text-xs">Lançamento<select value={id} onChange={event => { setId(event.target.value); setOptionCode(""); setGuides([]); }} className={field}><option value="">Selecione</option>{assessments.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
+  return <TaxOperationalTable id="calendarios" resetKey={id}
+    columns={[["number", "Parcela", 80, 100], ["amount", "Valor", 120, 170, "text", "right"], ["due", "Vencimento congelado no lançamento", 260, 350]]}
+    rows={(row?.schedule ?? []).map(item => ({ id: String(item.number), label: `Parcela ${item.number}`, values: { number: String(item.number), amount: item.amount, due: item.dueDate || "Não configurado" } }))}
+    toolbar={<><label className="flex min-w-0 flex-1 items-center gap-2 text-[13px]">Lançamento<select value={id} onChange={event => { setId(event.target.value); setOptionCode(""); setGuides([]); }} className="h-7 min-w-0 flex-1 rounded border"><option value="">Selecione</option>{assessments.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label><OperationalFilters label="Emitir calendário e guias">
+    {notice && <p role="status">{notice}</p>}
     {row && <section className="space-y-3 rounded border bg-white p-3">
       <p className="text-sm">Valor líquido R$ {row.amount} · {row.activeGuides} guias vigentes</p>
-      <table className="w-full text-left text-xs"><thead><tr><th>Parcela</th><th>Valor</th><th>Vencimento congelado no lançamento</th></tr></thead><tbody>{row.schedule.map(item => <tr key={item.number}><td>{item.number}</td><td>{item.amount}</td><td>{item.dueDate || "Não configurado"}</td></tr>)}</tbody></table>
       <form action={form => startTransition(async () => {
         const result = await issueScheduledGuidesAction({ assessmentId: row.id, expectedUpdatedAt: row.updatedAt, mode, singleDueDate: mode === "SINGLE" ? option?.dueDate ?? String(form.get("date") ?? "") : null, paymentOptionCode: mode === "SINGLE" && optionCode ? optionCode : undefined, reason: String(form.get("reason") ?? "") });
         if ("error" in result) { setNotice(result.error); setGuides([]); return; }
@@ -34,5 +36,5 @@ export default function ScheduledGuidesClient({ assessments }: { assessments: As
       </form>
     </section>}
     <nav className="space-y-2 text-xs">{guides.map(id => <a key={id} href={`/tributacao/guias/${id}`} target="_blank" rel="noreferrer" className="block text-emerald-700 underline">Abrir DAM {id}</a>)}</nav>
-  </div>;
+  </OperationalFilters></>} />;
 }

@@ -12,20 +12,20 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { createServico, inactivateServico, updateServico } from "../actions";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { operationalColumns } from "../../patrimonio/_components/operational-columns";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 type SheetMode = "create" | "edit" | null;
 
 const serviceStatuses = ["Aberto", "Em Andamento", "Concluído", "Cancelado"];
 const inputClassName = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none transition-colors focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
-const PAGE_SIZE = 20;
-
-function statusClassName(status: string) {
-  if (status === "Concluído") return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800";
-  if (status === "Em Andamento") return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:border-amber-800";
-  if (status === "Cancelado") return "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:border-rose-800";
-  return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300";
-}
+const columns = operationalColumns([
+  ["protocol", "Protocolo", 150, 110, "identifier"], ["service", "Serviço", 300, 160], ["location", "Local", 220, 120],
+  ["type", "Tipo", 150, 100], ["status", "Situação", 150, 110, "status"], ["actions", "Ações", 80, 80, "actions", "right"],
+]);
 
 export function ServicosUrbanosClient({ servicos }: { servicos: ObrasServico[] }) {
   const router = useRouter();
@@ -132,24 +132,12 @@ export function ServicosUrbanosClient({ servicos }: { servicos: ObrasServico[] }
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
-        <div>
-          <h1 className="text-base font-bold text-slate-900 dark:text-white">Serviços Urbanos</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Zeladoria da cidade, vias, praças e cemitérios.</p>
-        </div>
-        <button type="button" onClick={openCreateSheet} className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-emerald-700">
-          <Plus className="h-4 w-4" />
-          Novo Serviço
-        </button>
-      </div>
-
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800" aria-label="Lista de serviços urbanos">
-        <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-md">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" placeholder="Buscar protocolo, serviço ou local..." className="h-8 w-full rounded border border-slate-200 bg-white pl-9 pr-2 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+      <OperationalListFrame actions={<><button type="button" onClick={openCreateSheet} className={styles.newButton}><Plus />Novo serviço</button>{actionError && <OperationalFilters label="Erro na operação"><p role="alert">{actionError}</p></OperationalFilters>}</>} toolbar={<>
+          <div className={styles.searchForm}>
+            <Search aria-hidden="true" />
+            <input aria-label="Buscar protocolo, serviço ou local" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" placeholder="Buscar protocolo, serviço ou local..." className={styles.searchInput} />
           </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
+          <OperationalFilters activeCount={[typeFilter, statusFilter, activeFilter].filter(value => value !== "all").length}><div className={styles.filterFields}>
             <select value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }} aria-label="Filtrar por tipo" className="h-8 rounded border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none">
               <option value="all">Todos os tipos</option>
               {types.map((type) => <option key={type} value={type}>{type}</option>)}
@@ -163,35 +151,12 @@ export function ServicosUrbanosClient({ servicos }: { servicos: ObrasServico[] }
               <option value="active">Ativos</option>
               <option value="inactive">Inativos</option>
             </select>
-          </div>
-        </div>
-
-        {actionError && <p role="alert" className="border-b border-rose-200 bg-rose-50 px-6 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">{actionError}</p>}
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <table className="w-full table-fixed border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-100">
-              <tr className="text-[10px] uppercase tracking-wider text-slate-500">
-                <th className="p-2 font-medium">Protocolo</th><th className="p-2 font-medium">Serviço</th><th className="hidden p-2 font-medium md:table-cell">Local</th><th className="hidden p-2 font-medium lg:table-cell">Tipo</th><th className="p-2 font-medium">Situação</th><th className="p-2 text-right font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm dark:divide-slate-700">
-              {visibleServicos.map((servico) => (
-                <tr key={servico.id} className="h-9 hover:bg-slate-50">
-                  <td className="truncate p-2 font-medium text-slate-900">{servico.protocolo}</td><td className="truncate p-2 font-semibold text-slate-900" title={servico.descricao}>{servico.descricao}</td><td className="hidden truncate p-2 md:table-cell" title={servico.local}>{servico.local}</td><td className="hidden truncate p-2 lg:table-cell">{servico.tipo}</td><td className="p-2"><span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${statusClassName(servico.status)}`}>{servico.active ? servico.status : "Inativo"}</span></td>
-                  <td className="p-2 text-right"><div className="flex justify-end gap-0.5">
-                      <button type="button" onClick={() => openEditSheet(servico)} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-900/30" title="Editar serviço" aria-label={`Editar ${servico.protocolo}`}><Pencil className="h-4 w-4" /></button>
-                      {servico.active && <button type="button" onClick={() => handleInactivate(servico)} disabled={inactivatingId === servico.id} className="rounded-md p-2 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-rose-900/30" title="Inativar serviço" aria-label={`Inativar ${servico.protocolo}`}><Power className="h-4 w-4" /></button>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredServicos.length === 0 && <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Nenhum serviço encontrado para os filtros selecionados.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        <div className="shrink-0 border-t border-slate-200 px-3 py-1.5"><ErpPagination page={activePage} total={filteredServicos.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="serviços" onPageChange={setPage} /></div>
-      </section>
+          </div></OperationalFilters>
+        </>} pagination={<OperationalPagination page={activePage} total={filteredServicos.length} onPageChange={setPage} />}>
+        <OperationalTable columns={columns} preferenceId="obras-servicos-urbanos" caption="Serviços urbanos" emptyMessage="Nenhum serviço encontrado para os filtros selecionados." rows={visibleServicos.map(servico => ({ id: servico.id, label: servico.protocolo, values: {
+          protocol: servico.protocolo, service: servico.descricao, location: servico.local, type: servico.tipo, status: servico.active ? servico.status : "Inativo",
+        }, actions: <div className={styles.rowActions}><button type="button" onClick={() => openEditSheet(servico)} className={styles.iconButton} aria-label={`Editar ${servico.protocolo}`}><Pencil /></button>{servico.active && <button type="button" onClick={() => handleInactivate(servico)} disabled={inactivatingId === servico.id} className={styles.iconButton} aria-label={`Inativar ${servico.protocolo}`}><Power /></button>}</div> }))} />
+      </OperationalListFrame>
 
       <Sheet open={sheetMode !== null} onOpenChange={(open) => !open && closeSheet()}>
         <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">

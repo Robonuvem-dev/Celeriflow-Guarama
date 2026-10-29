@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ArrowRightLeft, RotateCcw, WalletCards } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { collectRevenueAction, launchRevenueAction, recordRevenueCollectionAction, redistributeRevenueResourceSourceAction, reverseRevenueAction } from "./actions";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import FinanceOperationalList from "../FinanceOperationalList";
+import { financeColumn } from "../operational-columns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 type Revenue = {
   id: string; date: string; value: number; stage: "LANCADA" | "ARRECADADA" | "ESTORNADA"; classification: "ORCAMENTARIA" | "INTRAORCAMENTARIA" | "REDUTORA"; history: string | null;
@@ -21,6 +23,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const stageLabel = { LANCADA: "Lancada", ARRECADADA: "Arrecadada", ESTORNADA: "Estornada" };
 const classificationLabel = { ORCAMENTARIA: "Orcamentaria", INTRAORCAMENTARIA: "Intraorcamentaria", REDUTORA: "Redutora" };
+const columns = [financeColumn("date", "Data", 90), financeColumn("nature", "Natureza", 180, 280), financeColumn("source", "Fonte", 90), financeColumn("value", "Valor", 110, 140, "text", "right"), financeColumn("stage", "Situação", 100, 120, "status"), financeColumn("classification", "Classificação", 135), financeColumn("actions", "Ações", 64, 64, "actions")];
 
 export default function ReceitasClient({ revenues, revenueNatures, resourceSources, bankAccounts, budgetUnits }: {
   revenues: Revenue[];
@@ -30,7 +33,7 @@ export default function ReceitasClient({ revenues, revenueNatures, resourceSourc
   budgetUnits: { id: string; name: string; governmentEntityName: string }[];
 }) {
   const [mode, setMode] = useState<"LANCAR" | "ARRECADAR">("ARRECADAR");
-  const [page, setPage] = useState(1);
+  const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [pending, setPending] = useState(false);
   const [form, setForm] = useState({ date: today(), value: 0, revenueNatureId: "", resourceSourceId: "", budgetUnitId: "", classification: "ORCAMENTARIA" as Revenue["classification"], bankAccountId: "", history: "" });
@@ -70,12 +73,8 @@ export default function ReceitasClient({ revenues, revenueNatures, resourceSourc
 
   const compatibleAccounts = bankAccounts.filter((account) => account.isActive && account.resourceSourceId === form.resourceSourceId);
   const filteredRevenues = revenues.filter((revenue) => [revenue.history, revenue.revenueNature.code, revenue.revenueNature.name, revenue.resourceSource.code].some((value) => (value ?? "").toLowerCase().includes(search.toLowerCase())));
-  const pageSize = 20;
-  const pageCount = Math.max(1, Math.ceil(filteredRevenues.length / pageSize));
-  const pagedRevenues = filteredRevenues.slice((page - 1) * pageSize, page * pageSize);
-  return <main className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 sm:px-2">
-    <header className="border-b border-slate-300 bg-white px-3 py-2 shadow-sm"><h1 className="text-sm font-bold tracking-tight text-slate-900">Receitas</h1><p className="text-xs text-muted-foreground">Lançamento, arrecadação, classificação e controles internos por fonte.</p></header>
-    <details className="shrink-0 rounded-md border border-slate-200 bg-white"><summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-slate-700">Registrar nova receita</summary><Card size="sm" className="border-0 rounded-md shadow-none">
+  return <>
+    <Dialog open={formOpen} onOpenChange={setFormOpen}><DialogContent className="sm:max-w-3xl"><DialogHeader><DialogTitle>Registrar nova receita</DialogTitle></DialogHeader><Card size="sm" className="border-0 rounded-md shadow-none">
       <CardHeader className="border-b pb-2"><CardTitle>Registro de Receita</CardTitle><CardDescription>Lance ou arrecade valores com a fonte e conta bancária compatíveis.</CardDescription></CardHeader>
       <CardContent className="space-y-3 pt-3">
         <div className="flex flex-wrap gap-1.5"><Button size="sm" variant={mode === "ARRECADAR" ? "default" : "outline"} onClick={() => setMode("ARRECADAR")}>Arrecadar agora</Button><Button size="sm" variant={mode === "LANCAR" ? "default" : "outline"} onClick={() => setMode("LANCAR")}>Lancamento previo</Button></div>
@@ -91,7 +90,13 @@ export default function ReceitasClient({ revenues, revenueNatures, resourceSourc
         <div><Label>Historico</Label><Input value={form.history} onChange={(event) => setForm({ ...form, history: event.target.value })} /></div>
         <Button disabled={pending} onClick={submit}>{pending ? "Registrando..." : mode === "LANCAR" ? "Lancar receita" : "Arrecadar receita"}</Button>
       </CardContent>
-    </Card></details>
-    <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md shadow-none"><CardHeader className="shrink-0 border-b pb-2"><Input className="h-8 max-w-64" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar receita..." /><CardTitle>Últimas receitas</CardTitle><CardDescription>Estornos preservam a receita de origem; redistribuições não alteram o caixa.</CardDescription></CardHeader><CardContent className="min-h-0 flex-1 overflow-y-auto pt-0"><table className="w-full table-fixed text-xs"><thead className="sticky top-0 z-10 bg-white"><tr className="border-b text-left"><th className="p-2">Data</th><th className="p-2">Natureza</th><th className="p-2">Fonte</th><th className="p-2">Valor</th><th className="p-2">Situacao</th><th className="p-2">Acoes</th></tr></thead><tbody>{pagedRevenues.map((revenue) => <tr key={revenue.id} className="h-[38px] border-b"><td className="p-2">{new Date(revenue.date).toLocaleDateString("pt-BR")}</td><td className="p-2">{revenue.revenueNature.code} - {revenue.revenueNature.name}</td><td className="p-2">{revenue.resourceSource.code}</td><td className="p-2">{currency.format(revenue.value)}</td><td className="p-2"><Badge variant="outline">{stageLabel[revenue.stage]}</Badge> <span className="text-muted-foreground">{classificationLabel[revenue.classification]}</span></td><td className="flex gap-1 p-2">{revenue.stage === "LANCADA" && <Button size="sm" variant="outline" onClick={() => collect(revenue)}><WalletCards className="mr-1 h-3 w-3" />Arrecadar</Button>}{revenue.stage === "ARRECADADA" && <><Button size="sm" variant="outline" onClick={() => redistribute(revenue)}><ArrowRightLeft className="mr-1 h-3 w-3" />Fonte</Button><Button size="sm" variant="outline" disabled={revenue.redistributedValue > 0} onClick={() => reverse(revenue)}><RotateCcw className="mr-1 h-3 w-3" />Estornar</Button></>}</td></tr>)}</tbody></table></CardContent><ErpPagination page={Math.min(page, pageCount)} total={filteredRevenues.length} pageSize={pageSize} previousHref="#" nextHref="#" onPageChange={setPage} /></Card>
-  </main>;
+    </Card></DialogContent></Dialog>
+    <FinanceOperationalList label="Receitas" preferenceId="financeiro-receitas" columns={columns} searchable={false} resetKey={search}
+      actions={<button className={styles.newButton} onClick={() => setFormOpen(true)}>Registrar receita</button>}
+      toolbar={<><input aria-label="Buscar receita" className={styles.searchInput} value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar receita…" /><span title="Estornos preservam a receita de origem; redistribuições não alteram o caixa.">Lançamentos e arrecadações</span></>}
+      rows={filteredRevenues.map(revenue => ({ id: revenue.id, label: `${revenue.revenueNature.code} / ${revenue.date}`, values: { date: new Date(revenue.date).toLocaleDateString("pt-BR"), nature: `${revenue.revenueNature.code} - ${revenue.revenueNature.name}`, source: revenue.resourceSource.code, value: currency.format(revenue.value), stage: stageLabel[revenue.stage], classification: classificationLabel[revenue.classification] }, actions: <div className={styles.rowActions}>
+        {revenue.stage === "LANCADA" && <button className={styles.iconButton} aria-label="Arrecadar receita" title="Arrecadar" onClick={() => void collect(revenue)}><WalletCards /></button>}
+        {revenue.stage === "ARRECADADA" && <><button className={styles.iconButton} aria-label="Redistribuir fonte" title="Redistribuir fonte" onClick={() => void redistribute(revenue)}><ArrowRightLeft /></button><button className={styles.iconButton} aria-label="Estornar receita" title="Estornar" disabled={revenue.redistributedValue > 0} onClick={() => void reverse(revenue)}><RotateCcw /></button></>}
+      </div> }))} />
+  </>;
 }

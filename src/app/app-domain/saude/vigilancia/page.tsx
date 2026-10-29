@@ -4,6 +4,7 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
+import { HealthPageTools, HealthListRegion } from "../HealthPageTools";
 import { issueLicenseAction, saveComplaintAction, saveEstablishmentAction, saveInspectionAction, transitionComplaintAction, transitionInspectionAction, transitionLicenseAction } from "./actions";
 import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, or } from "drizzle-orm";
 import { managementVigilanceEstablishments as establishmentTable, managementVigilanceComplaints, managementVigilanceInspections, managementVigilanceInspectionItems, managementVigilanceLicenses } from "@/db/schema/health-management-operations";
@@ -12,7 +13,7 @@ import { patients as patientTable } from "@/db/schema/health-registration";
 import { people } from "@/db/schema/people";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
-const PAGE_SIZE = 20;
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
 type Params = { q?: string | string[]; filter?: string | string[]; page?: string | string[] };
 const first = (v: string | string[] | undefined) => Array.isArray(v) ? v[0] : v;
 const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? Number(v) : 1;
@@ -42,9 +43,9 @@ export default async function VigilanciaPage({ searchParams }: { searchParams: P
   const inspections = inspectionRows.map(row => ({ ...row, items: inspectionItems.filter(item => item.inspectionId === row.id) }));
 
   return (
-    <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
+    <PageFrame className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PageHeader title="Vigilância em Saúde" icon={<ShieldCheck className="size-4 text-rose-700" />} />
-      <div className="grid shrink-0 gap-2 lg:grid-cols-4">
+      <HealthPageTools>
         <details className="rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Estabelecimento</summary><form action={saveEstablishmentAction} className="mt-2 grid gap-1"><input name="name" required placeholder="Nome/razão" className={field} /><input name="document" placeholder="CNPJ/CPF" className={field} /><input name="cnae" placeholder="CNAE" className={field} /><input name="activity" placeholder="Atividade" className={field} /><input name="riskLevel" placeholder="Risco configurado (Baixo/Médio/Alto)" className={field} /><button className="h-8 rounded bg-rose-700 font-semibold text-white">Salvar</button></form></details>
         <details className="rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Denúncia</summary><form action={saveComplaintAction} className="mt-2 grid gap-1"><select name="establishmentId" className={field}><option value="">Estabelecimento</option>{establishments.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select><input name="place" placeholder="Local (se sem estabelecimento)" className={field} /><textarea name="description" required placeholder="Descrição" className="min-h-12 rounded border p-2" /><label className="flex items-center gap-2"><input type="checkbox" name="isAnonymous" defaultChecked /> Anônima</label><select name="reporterPersonId" className={field}><option value="">Denunciante (se identificada)</option>{patients.map(p => <option key={p.personId} value={p.personId}>{p.person.fullName}</option>)}</select><button className="h-8 rounded bg-rose-700 font-semibold text-white">Registrar</button></form>
           <form action={transitionComplaintAction} className="mt-2 grid gap-1 border-t pt-2"><select name="complaintId" required className={field}><option value="">Denúncia</option>{complaints.map(c => <option key={c.id} value={c.id}>{c.establishment?.name || c.place} · {c.status}</option>)}</select><select name="status" required className={field}><option>Recebida</option><option>Em apuração</option><option>Encerrada</option></select><button className="h-7 rounded border px-2">Atualizar situação</button></form></details>
@@ -52,11 +53,11 @@ export default async function VigilanciaPage({ searchParams }: { searchParams: P
           <form action={transitionInspectionAction} className="mt-2 grid gap-1 border-t pt-2"><select name="inspectionId" required className={field}><option value="">Inspeção</option>{inspections.map(i => <option key={i.id} value={i.id}>{i.establishment.name} · {i.inspectedAt.toLocaleDateString("pt-BR")}</option>)}</select><select name="status" required className={field}><option>Agendada</option><option>Realizada</option><option>Com pendências</option><option>Encerrada</option></select><button className="h-7 rounded border px-2">Atualizar situação</button></form></details>
         <details className="rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Alvará</summary><form action={issueLicenseAction} className="mt-2 grid gap-1"><select name="establishmentId" required className={field}><option value="">Estabelecimento</option>{establishments.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select><input name="licenseNumber" required placeholder="Número do alvará" className={field} /><input name="validFrom" type="date" required className={field} /><input name="validUntil" type="date" required className={field} /><button className="h-8 rounded bg-rose-700 font-semibold text-white">Emitir alvará</button></form>
           <form action={transitionLicenseAction} className="mt-2 grid gap-1 border-t pt-2"><select name="licenseId" required className={field}><option value="">Alvará</option>{licenses.map(l => <option key={l.id} value={l.id}>{l.licenseNumber} · {l.status}</option>)}</select><select name="status" required className={field}><option>Válido</option><option>Vencido</option><option>Suspenso</option><option>Cancelado</option></select><button className="h-7 rounded border px-2">Atualizar situação</button></form></details>
-      </div>
-      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[2fr_1fr]">
+      </HealthPageTools>
+      <HealthListRegion>
         <HealthSimpleListClient rows={establishments.map(e => ({ id: e.id, cells: { name: e.name, document: e.document || "-", cnae: e.cnae || "-", risk: e.riskLevel || "-", license: e.licenses[0] ? `${e.licenses[0].licenseNumber} até ${e.licenses[0].validUntil.toLocaleDateString("pt-BR")}` : "Sem alvará válido", status: e.status } }))} columns={[{ key: "name", label: "Estabelecimento" }, { key: "document", label: "Documento", responsive: "sm", width: "medium" }, { key: "cnae", label: "CNAE", responsive: "md", width: "narrow" }, { key: "risk", label: "Risco", width: "narrow" }, { key: "license", label: "Alvará", responsive: "lg" }, { key: "status", label: "Situação", width: "medium" }]} label="estabelecimentos" searchPlaceholder="Buscar nome, documento ou CNAE" filterKey="status" filterLabel="Todos" serverPagination={{ page, total, pathname: "/app-domain/saude/vigilancia", search: q, filter, filterOptions: ["Ativo", "Inativo", "Interditado"] }} />
         <div className="min-h-0 overflow-y-auto rounded border bg-white p-2"><h2 className="sticky top-0 bg-white pb-2 text-xs font-bold uppercase text-slate-500">Denúncias e inspeções</h2>{complaints.slice(0, 30).map(c => <article key={c.id} className="mb-1 rounded border p-2 text-xs"><strong>Denúncia · {c.establishment?.name || c.place}</strong><p className="text-slate-500">{c.isAnonymous ? "Anônima" : "Identificada"} · {c.status}</p></article>)}{inspections.slice(0, 30).map(i => <article key={i.id} className="mb-1 rounded border p-2 text-xs"><strong>Inspeção · {i.establishment.name}</strong><p className="text-slate-500">{i.inspectedAt.toLocaleDateString("pt-BR")} · {i.status} · {i.items.filter(it => it.result === "Não conforme").length} não conformidades</p></article>)}</div>
-      </div>
+      </HealthListRegion>
     </PageFrame>
   );
 }

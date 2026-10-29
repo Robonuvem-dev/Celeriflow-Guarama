@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import * as OperationalWorkspaceApi from "@/components/app-ui/operational/OperationalWorkspace";
 import { 
   ShoppingCart, 
   FileText,
@@ -30,11 +31,19 @@ const sidebarNavItems = [
   { title: "Catálogo de Itens", href: "/compras/catalogo", icon: FileText },
 ];
 
+// The integration owner supplies this hook; retain the existing layout until it is available.
+const useComprasOperationalWorkspace = (OperationalWorkspaceApi as typeof OperationalWorkspaceApi & {
+  useOptionalOperationalWorkspace?: () => unknown;
+}).useOptionalOperationalWorkspace ?? (() => null);
+
 export default function ComprasLayout({ children }: { children: React.ReactNode }) {
+  const workspace = useComprasOperationalWorkspace();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
   const isSupplierPortal = pathname.includes("/compras/pesquisas-precos/portal/");
+
+  if (workspace) return children;
 
   if (isSupplierPortal) {
     return <main className="min-h-0 flex-1 bg-slate-50">{children}</main>;

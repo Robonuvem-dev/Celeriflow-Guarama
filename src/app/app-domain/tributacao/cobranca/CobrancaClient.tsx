@@ -1,11 +1,13 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { TaxOperationalTable } from "../TaxOperationalTable";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import {
   Award,
   BadgePercent,
   CreditCard,
-  HandCoins,
   UserRoundCheck,
 } from "lucide-react";
 import {
@@ -147,19 +149,12 @@ export default function CobrancaClient({ data }: { data: Data }) {
       e.preventDefault();
       handler(new FormData(e.currentTarget));
     };
+  const listView = tab === "ranking" || tab === "beneficios-aplicados";
+  const navigation = <select aria-label="Área de cobrança" value={tab} onChange={event => setTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{[["cobranca", "Cobrança"], ["ranking", "Ranking de acompanhamento"], ["parcelamentos", "Parcelamentos"], ["portal", "Portal"], ["beneficios", "Regras de benefícios"], ["beneficios-aplicados", "Benefícios aplicados"], ["premiado", "Tributo premiado"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
+  const toolbar = <>{navigation}{message && <OperationalFilters label="Resultado"><p role="status">{message}</p></OperationalFilters>}</>;
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="flex items-center gap-2 text-lg font-bold">
-            <HandCoins className="size-5 text-amber-500" />
-            Cobrança, Parcelamentos e Portal
-          </h1>
-          <p className="text-[11px] text-slate-500">
-            Régua administrativa, acordos, benefícios e sorteios técnicos
-            auditáveis.
-          </p>
-        </div>
+      <OperationalHeaderActions>
         <select
           className={`${input} max-w-72`}
           value={taxpayerId}
@@ -171,25 +166,9 @@ export default function CobrancaClient({ data }: { data: Data }) {
             </option>
           ))}
         </select>
-      </header>
-      <nav className="flex gap-1 overflow-x-auto rounded-lg bg-slate-900 p-1 text-[11px] font-semibold text-slate-300">
-        {[
-          ["cobranca", "Cobrança"],
-          ["parcelamentos", "Parcelamentos"],
-          ["portal", "Portal"],
-          ["beneficios", "Benefícios"],
-          ["premiado", "Tributo Premiado"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`whitespace-nowrap rounded-md px-3 py-1.5 ${tab === id ? "bg-amber-500 text-slate-950" : "hover:bg-slate-800"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-      {message && (
+      </OperationalHeaderActions>
+      {!listView && navigation}
+      {message && !listView && (
         <button
           onClick={() => setMessage("")}
           className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-left text-xs text-blue-800"
@@ -197,7 +176,14 @@ export default function CobrancaClient({ data }: { data: Data }) {
           {message}
         </button>
       )}
-      <main className="min-h-0 flex-1 overflow-auto">
+      {tab === "ranking" && <TaxOperationalTable id="cobranca-ranking" toolbar={toolbar}
+        columns={[["rank", "Posição", 70, 80], ["taxpayer", "Contribuinte", 200, 380], ["days", "Dias de atraso", 115, 135, "text", "right"], ["contacts", "Contatos com resultado", 170, 210, "text", "right"], ["balance", "Saldo", 130, 180, "text", "right"]]}
+        rows={data.ranking.map((row, index) => ({ id: row.taxpayerId, label: row.taxpayer, values: { rank: `${index + 1}º`, taxpayer: row.taxpayer, days: String(row.overdueDays), contacts: String(row.successfulContacts), balance: money(row.outstanding) } }))} />}
+      {tab === "beneficios-aplicados" && <TaxOperationalTable id="cobranca-beneficios" toolbar={toolbar}
+        actions={<a href="/tributacao/cobranca/relatorios/beneficios" target="_blank" rel="noreferrer" className="h-7 rounded border px-2 text-xs">Relatório</a>}
+        columns={[["taxpayer", "Contribuinte", 160, 270], ["rule", "Regra", 130, 220], ["credit", "Crédito", 110, 140, "text", "right"], ["reduction", "Redução", 110, 140, "text", "right"], ["renunciation", "Renúncia", 110, 140, "text", "right"], ["final", "Final", 110, 140, "text", "right"]]}
+        rows={data.benefitGrants.map(row => ({ id: row.id, label: row.taxpayer, values: { taxpayer: row.taxpayer, rule: row.rule, credit: money(row.credit), reduction: money(row.reduction), renunciation: money(row.renunciation), final: money(row.final) } }))} />}
+      <main className={listView ? "hidden" : "min-h-0 flex-1 overflow-auto"}>
         {tab === "cobranca" && (
           <div className="grid gap-2 xl:grid-cols-[330px_1fr]">
             <div className="grid content-start gap-2">
@@ -292,7 +278,7 @@ export default function CobrancaClient({ data }: { data: Data }) {
                   </article>
                 ))}
               </section>
-              <section className="rounded-lg border bg-white dark:border-slate-800 dark:bg-slate-950">
+              <section className="hidden print:block">
                 <h2 className="border-b p-2 text-sm font-bold">
                   Ranking de acompanhamento
                 </h2>
@@ -497,7 +483,7 @@ export default function CobrancaClient({ data }: { data: Data }) {
                   </div>
                 </article>
               ))}
-              {data.benefitGrants.slice(0, 20).map((g) => (
+              <div className="hidden print:block">{data.benefitGrants.map((g) => (
                 <div
                   key={g.id}
                   className="grid grid-cols-2 gap-1 border-t p-2 text-[11px] sm:grid-cols-6"
@@ -512,7 +498,7 @@ export default function CobrancaClient({ data }: { data: Data }) {
                   <span>Renúncia {money(g.renunciation)}</span>
                   <b>Final {money(g.final)}</b>
                 </div>
-              ))}
+              ))}</div>
             </section>
           </div>
         )}

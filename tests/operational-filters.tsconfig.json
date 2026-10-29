@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "files": [
+    "../next-env.d.ts",
+    "../src/components/app-ui/operational/OperationalListFrame.tsx",
+    "../src/components/app-ui/operational/OperationalPagedContent.tsx",
+    "operational-filters-browser-fixture.tsx"
+  ],
+  "include": [],
+  "exclude": []
+}

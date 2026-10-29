@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Filter, Pencil, PowerOff, Search } from "lucide-react";
-import { SanitationTable, SanitationPagination } from "./SanitationTable";
+import { Pencil, PowerOff } from "lucide-react";
+import { OperationalTable, OperationalPagination, type OperationalRow } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import operational from "@/components/app-ui/operational/operational.module.css";
+import { LocalListToolbar } from "./LocalListToolbar";
+import { qualityColumns } from "./list-columns";
 import styles from "./sanitation.module.css";
 import {
   Sheet,
@@ -23,11 +28,6 @@ type QualityAnalysis = {
   limit: string;
   compliance: string;
   active: boolean;
-};
-
-const COMPLIANCE_COLORS: Record<string, string> = {
-  Conforme: "bg-emerald-100 text-emerald-700",
-  "Não Conforme": "bg-red-100 text-red-700",
 };
 
 export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
@@ -53,7 +53,7 @@ export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
 
     return matchesSearch && matchesCompliance && matchesActive;
   });
-  const pageSize = 20;
+  const pageSize = OPERATIONAL_PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(filteredAnalyses.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const pagedAnalyses = filteredAnalyses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -102,91 +102,23 @@ export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
     }
   }
 
-  return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="Lista de análises de qualidade">
-      <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Buscar ponto, parâmetro..."
-              value={search}
-              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-              className="h-9 w-full rounded-md border bg-white py-1.5 pr-3 pl-8 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-          <div className="flex items-center gap-1">
-            <Filter className="h-3.5 w-3.5 text-gray-400" />
-            <select
-              value={complianceFilter}
-              onChange={(event) => { setComplianceFilter(event.target.value); setPage(1); }}
-              aria-label="Filtrar por conformidade"
-              className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white"
-            >
-              <option value="Todos">Todas as conformidades</option>
-              <option value="Conforme">Conforme</option>
-              <option value="Não Conforme">Não Conforme</option>
-            </select>
-          </div>
-          <select
-            value={activeFilter}
-            onChange={(event) => { setActiveFilter(event.target.value); setPage(1); }}
-            aria-label="Filtrar por situação"
-            className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white"
-          >
-            <option value="Todos">Ativas e inativas</option>
-            <option value="Ativas">Ativas</option>
-            <option value="Inativas">Inativas</option>
-          </select>
-        </div>
-        <span className="text-xs text-gray-400">{filteredAnalyses.length} registro{filteredAnalyses.length !== 1 ? "s" : ""}</span>
-      </div>
+  const rows: OperationalRow[] = pagedAnalyses.map((analysis) => ({
+    id: analysis.id, label: `${analysis.collectionPoint} · ${analysis.parameter}`,
+    values: { point: analysis.collectionPoint, date: new Date(`${analysis.collectedAt}T00:00:00`).toLocaleDateString("pt-BR"), parameter: analysis.parameter, result: analysis.result, limit: analysis.limit, compliance: analysis.compliance, active: analysis.active ? "Ativa" : "Inativa" },
+    actions: <div className={operational.rowActions}>
+      <button type="button" onClick={() => setEditingAnalysis(analysis)} className={operational.iconButton} aria-label={`Editar análise de ${analysis.collectionPoint}`} title="Editar análise"><Pencil /></button>
+      <button type="button" onClick={() => void handleInactivate(analysis)} disabled={!analysis.active || inactivatingId === analysis.id} className={operational.iconButton} aria-label={`Inativar análise de ${analysis.collectionPoint}`} title="Inativar análise"><PowerOff /></button>
+    </div>,
+  }));
 
-      {filteredAnalyses.length === 0 ? (
-        <div className="min-h-0 flex-1 p-10 text-center text-sm text-gray-400">Nenhuma análise encontrada.</div>
-      ) : (
-        <SanitationTable columns={[
-          { label: "Ponto", width: 20 }, { label: "Coleta", width: 12 }, { label: "Parâmetro", width: 16 },
-          { label: "Resultado", width: 10 }, { label: "Limite", width: 12 }, { label: "Conformidade", width: 13 },
-          { label: "Situação", width: 9 }, { label: "Ações", width: 8, align: "right" },
-        ]}>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {pagedAnalyses.map((analysis) => (
-                <tr key={analysis.id} className="h-[38px] text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/40">
-                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{analysis.collectionPoint}</td>
-                  <td className="px-3 py-2">{new Date(`${analysis.collectedAt}T00:00:00`).toLocaleDateString("pt-BR")}</td>
-                  <td className="px-3 py-2">{analysis.parameter}</td>
-                  <td className="px-3 py-2">{analysis.result}</td>
-                  <td className="px-3 py-2">{analysis.limit}</td>
-                  <td className="px-3 py-2"><span className={`rounded-full px-1.5 py-0.5 font-medium ${COMPLIANCE_COLORS[analysis.compliance] ?? "bg-gray-100 text-gray-500"}`}>{analysis.compliance}</span></td>
-                  <td className="px-3 py-2"><span className={`rounded-full px-1.5 py-0.5 font-medium ${analysis.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>{analysis.active ? "Ativa" : "Inativa"}</span></td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditingAnalysis(analysis)}
-                        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-[#0284C7]"
-                        title="Editar análise"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInactivate(analysis)}
-                        disabled={!analysis.active || inactivatingId === analysis.id}
-                        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
-                        title="Inativar análise"
-                      >
-                        <PowerOff className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-        </SanitationTable>
-      )}
+  return (
+    <OperationalListFrame label="Lista de análises de qualidade"
+      toolbar={<LocalListToolbar search={search} onSearch={(value) => { setSearch(value); setPage(1); }} placeholder="Buscar ponto, parâmetro..." filters={[
+        { label: "Conformidade", value: complianceFilter, defaultValue: "Todos", options: ["Todos", "Conforme", "Não Conforme"], onChange: (value) => { setComplianceFilter(value); setPage(1); } },
+        { label: "Situação", value: activeFilter, defaultValue: "Todos", options: ["Todos", "Ativas", "Inativas"], onChange: (value) => { setActiveFilter(value); setPage(1); } },
+      ]} />}
+      pagination={<OperationalPagination page={currentPage} total={filteredAnalyses.length} onPageChange={setPage} />}>
+      <OperationalTable columns={qualityColumns} rows={rows} preferenceId="sanitation-quality" caption="Análises de qualidade da água" emptyMessage="Nenhuma análise encontrada." />
 
       <Sheet open={editingAnalysis !== null} onOpenChange={(open) => !open && setEditingAnalysis(null)}>
         <SheetContent side="right" className={styles.sheet}>
@@ -237,7 +169,6 @@ export function QualityClient({ analyses }: { analyses: QualityAnalysis[] }) {
           )}
         </SheetContent>
       </Sheet>
-      <SanitationPagination page={currentPage} total={filteredAnalyses.length} pageSize={pageSize} onPageChange={setPage} />
-    </section>
+    </OperationalListFrame>
   );
 }

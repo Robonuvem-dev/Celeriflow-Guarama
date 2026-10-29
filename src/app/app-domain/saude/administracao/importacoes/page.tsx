@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { AccessError, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ImportHistory, type ImportBatchRow } from "./ImportHistory";
 import { ImportPanel } from "./ImportPanel";
+import { HealthPageTools } from "../../HealthPageTools";
 import { db } from "@/db/client";
 import { healthSusImportPageRows } from "@/db/repositories/health-pages/catalogs";
 
@@ -20,9 +21,9 @@ export default async function HealthSusImportsPage() {
     completedAt: batch.completedAt?.toISOString() || null, actorName: batch.actorUsuario.nome, issues: batch.issues,
   }));
   return (
-    <PageFrame className="flex min-h-0 max-w-none flex-1 flex-col gap-2 overflow-y-auto lg:h-full lg:overflow-hidden">
+    <PageFrame className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PageHeader title="Importações e Cargas SUS" icon={<DatabaseZap className="size-4 shrink-0 text-emerald-700" />} className="mb-0 shrink-0" action={<div className="flex gap-1"><Link href="/saude/administracao/procedimentos" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Procedimentos</Link><Link href="/saude/administracao" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Administração</Link></div>} />
-      <ImportPanel />
+      <HealthPageTools label="Importar carga"><ImportPanel /></HealthPageTools>
       <ImportHistory rows={rows} />
     </PageFrame>
   );

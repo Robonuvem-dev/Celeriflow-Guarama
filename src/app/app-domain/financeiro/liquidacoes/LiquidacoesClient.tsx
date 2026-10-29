@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import FinanceOperationalList from "../FinanceOperationalList";
+import { financeColumn } from "../operational-columns";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { format } from "date-fns";
-import { FileCheck, Plus, Search, Ban } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,8 @@ type Settlement = {
 type CommitmentOption = { id: string; number: string; availableToSettle: number; purchaseReceipt: { number: string } | null };
 type EmployeeOption = { id: string; name: string };
 type RetentionRule = { id: string; code: string; type: string; description: string; calculationBasePercentage: number; ratePercentage: number; serviceCode: string | null };
+const columns = [financeColumn("date", "Data", 80, 100), financeColumn("commitment", "Empenho", 65, 90), financeColumn("receipt", "Recebimento", 70, 100), financeColumn("supplier", "Fornecedor", 100, 160), financeColumn("document", "Documento (NF/Recibo)", 100, 160), financeColumn("issueDate", "Emissão NF", 80, 100), financeColumn("ged", "Documento GED", 80, 130), financeColumn("author", "Responsável (Ateste)", 90, 140), financeColumn("value", "Valor (R$)", 85, 120, "text", "right"), financeColumn("paid", "Pago (R$)", 85, 120, "text", "right"), financeColumn("internal", "Documento interno", 85, 130), financeColumn("status", "Status", 70, 100, "status"), financeColumn("actions", "Ações", 48, 48, "actions")];
+const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 export default function LiquidacoesClient({
   settlements,
@@ -69,7 +71,6 @@ export default function LiquidacoesClient({
   retentionRules: RetentionRule[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterMonth, setFilterMonth] = useState("ALL");
   const [filterYear, setFilterYear] = useState("ALL");
@@ -104,9 +105,6 @@ export default function LiquidacoesClient({
 
     return matchesSearch && matchesStatus && matchesMonth && matchesYear;
   });
-  const pageSize = 20;
-  const pageCount = Math.max(1, Math.ceil(filteredSettlements.length / pageSize));
-  const pagedSettlements = filteredSettlements.slice((page - 1) * pageSize, page * pageSize);
 
   const handleOpenNew = () => {
     setEditingId(null);
@@ -162,35 +160,11 @@ export default function LiquidacoesClient({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 sm:px-2">
-      <div className="flex flex-col gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-sm font-bold tracking-tight text-slate-900">Liquidações</h1>
-          <p className="text-xs text-muted-foreground">Ateste de notas fiscais e recebimento de serviços</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={handleOpenNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Liquidação
-          </Button>
-        </div>
-      </div>
-
-      <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md shadow-none [&_[data-slot=table-container]]:min-h-0 [&_[data-slot=table-container]]:flex-1 [&_[data-slot=table-container]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-y-auto [&_[data-slot=table]]:table-fixed [&_[data-slot=table-header]]:sticky [&_[data-slot=table-header]]:top-0 [&_[data-slot=table-header]]:z-10 [&_[data-slot=table-row]]:h-[38px]">
-        <CardHeader className="border-b pb-2">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <CardTitle>Listagem de Liquidações</CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar..."
-                  className="pl-8 w-[150px]"
-                  value={searchTerm}
-                  onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
-                />
-              </div>
-              <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val as string); setPage(1); }}>
+    <>
+      <FinanceOperationalList resetKey={`${searchTerm}:${filterStatus}:${filterMonth}:${filterYear}`} searchable={false} preferenceId="financeiro-liquidacoes" label="Liquidações" columns={columns}
+        actions={<button className={styles.newButton} onClick={handleOpenNew}><Plus />Nova Liquidação</button>}
+        toolbar={<><input aria-label="Buscar empenho ou documento" placeholder="Empenho ou documento…" className={styles.searchInput} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} /><OperationalFilters activeCount={[filterStatus, filterMonth, filterYear].filter(value => value !== "ALL").length}>
+              <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val as string); }}>
                 <SelectTrigger className="w-[120px]"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Todos</SelectItem>
@@ -198,7 +172,7 @@ export default function LiquidacoesClient({
                   <SelectItem value="Cancelado">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterMonth} onValueChange={(val) => { setFilterMonth(val as string); setPage(1); }}>
+              <Select value={filterMonth} onValueChange={(val) => { setFilterMonth(val as string); }}>
                 <SelectTrigger className="w-[110px]"><SelectValue placeholder="Mês" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Mês</SelectItem>
@@ -216,7 +190,7 @@ export default function LiquidacoesClient({
                   <SelectItem value="12">Dez</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterYear} onValueChange={(val) => { setFilterYear(val as string); setPage(1); }}>
+              <Select value={filterYear} onValueChange={(val) => { setFilterYear(val as string); }}>
                 <SelectTrigger className="w-[100px]"><SelectValue placeholder="Ano" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Ano</SelectItem>
@@ -224,74 +198,12 @@ export default function LiquidacoesClient({
                   <SelectItem value="2025">2025</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Empenho / recebimento</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>Documento (NF/Recibo)</TableHead>
-                <TableHead>Responsável (Ateste)</TableHead>
-                <TableHead>Valor (R$)</TableHead>
-                <TableHead>Documento interno</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSettlements.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground h-32">
-                    <div className="flex flex-col items-center justify-center">
-                      <FileCheck className="h-8 w-8 mb-2 opacity-20" />
-                      Nenhuma liquidação encontrada.
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pagedSettlements.map((settlement) => (
-                  <TableRow key={settlement.id}>
-                    <TableCell>{format(new Date(settlement.date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="font-medium">{settlement.commitment.number}{settlement.commitment.purchaseReceipt && <span className="block text-xs text-muted-foreground">{settlement.commitment.purchaseReceipt.number}</span>}</TableCell>
-                    <TableCell>
-                      {settlement.commitment.supplier.company?.corporateName || settlement.commitment.supplier.person?.fullName || 'Não identificado'}
-                    </TableCell>
-                       <TableCell>
-                         {settlement.fiscalDocumentNumber ? <><strong>NF {settlement.fiscalDocumentNumber}{settlement.fiscalDocumentSeries ? ` / Série ${settlement.fiscalDocumentSeries}` : ""}</strong><span className="block text-xs text-muted-foreground">{settlement.fiscalDocumentIssueDate ? format(new Date(settlement.fiscalDocumentIssueDate), "dd/MM/yyyy") : ""}</span></> : settlement.documentRef || "-"}
-                         <span className="block text-xs text-muted-foreground">GED: {settlement.document?.title || "-"}</span>
-                       </TableCell>
-                    <TableCell>{settlement.author.name}</TableCell>
-                    <TableCell>
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(settlement.value)}
-                      {settlement.paidValue > 0 && <span className="block text-xs text-muted-foreground">Pago: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(settlement.paidValue)}</span>}
-                    </TableCell>
-                    <TableCell className="text-sm">{settlement.financialDocument?.number || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        settlement.status === 'Liquidado' ? 'default' :
-                        settlement.status === 'Cancelado' ? 'destructive' :
-                        'secondary'
-                      }>
-                        {settlement.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleCancelSettlement(settlement.id)} title="Cancelar Liquidação" disabled={settlement.status === 'Cancelado'}>
-                        <Ban className="h-4 w-4 text-rose-500" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-              <ErpPagination page={Math.min(page, pageCount)} total={filteredSettlements.length} pageSize={pageSize} previousHref="#" nextHref="#" onPageChange={setPage} />
-</Card>
+              <button type="button" className={styles.dialogButton} onClick={() => { setFilterStatus("ALL"); setFilterMonth("ALL"); setFilterYear("ALL"); }}>Limpar filtros</button>
+            </OperationalFilters></>}
+        rows={filteredSettlements.map(settlement => ({ id: settlement.id, label: settlement.commitment.number, values: {
+          date: format(new Date(settlement.date), "dd/MM/yyyy"), commitment: settlement.commitment.number, receipt: settlement.commitment.purchaseReceipt?.number ?? "—", supplier: settlement.commitment.supplier.company?.corporateName || settlement.commitment.supplier.person?.fullName || "Não identificado",
+          document: settlement.fiscalDocumentNumber ? `NF ${settlement.fiscalDocumentNumber}${settlement.fiscalDocumentSeries ? ` / Série ${settlement.fiscalDocumentSeries}` : ""}` : settlement.documentRef || "—", issueDate: settlement.fiscalDocumentIssueDate ? format(new Date(settlement.fiscalDocumentIssueDate), "dd/MM/yyyy") : "—", ged: settlement.document?.title || "—", author: settlement.author.name, value: money(settlement.value), paid: money(settlement.paidValue), internal: settlement.financialDocument?.number || "—", status: settlement.status,
+        }, actions: <button className={styles.iconButton} aria-label={`Cancelar liquidação de ${settlement.commitment.number}`} title="Cancelar Liquidação" disabled={settlement.status === "Cancelado"} onClick={() => void handleCancelSettlement(settlement.id)}><Ban /></button> }))} />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[680px]">
@@ -404,6 +316,6 @@ export default function LiquidacoesClient({
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

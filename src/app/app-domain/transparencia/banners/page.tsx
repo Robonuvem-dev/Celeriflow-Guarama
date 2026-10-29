@@ -1,8 +1,7 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import Link from "next/link";
-import { Eye } from "lucide-react";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { BannersClient, type BannerRow } from "./BannersClient";
 import { db } from "@/db/client";
 import { asc } from "drizzle-orm";
@@ -26,13 +25,9 @@ export default async function BannersPage() {
   }));
 
   return (
-    <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-      <PageHeader
-        title="Banners"
-        icon={<Eye className="size-4 shrink-0 text-blue-600" />}
-        action={<Link href="/transparencia/banners/novo" className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700">Novo banner</Link>}
-      />
+    <>
+      <OperationalHeaderActions><Link href="/transparencia/banners/novo" className={styles.newButton}>Novo banner</Link></OperationalHeaderActions>
       <BannersClient rows={rows} />
-    </PageFrame>
+    </>
   );
 }

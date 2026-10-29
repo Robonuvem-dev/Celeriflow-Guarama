@@ -6,10 +6,97 @@ const legacyMethods = new Set(["$transaction", "$queryRaw", "$queryRawUnsafe", "
 // Catch calls through fixture/client aliases even after imports were removed.
 const legacyDelegates = new Set(["findUnique", "findUniqueOrThrow", "findFirst", "findFirstOrThrow", "findMany", "createMany", "createManyAndReturn", "updateMany", "updateManyAndReturn", "deleteMany", "upsert", "count"]);
 const legacyCliCommands = new Set(["generate", "migrate", "db", "validate", "studio", "init", "format", "version", "-v", "--version"]);
+const locatorSelectors = new Set(["locator", "getByRole", "getByLabel", "getByText", "getByTestId", "getByPlaceholder", "getByAltText", "getByTitle"]);
+const locatorChains = new Set(["filter", "first", "last", "nth", "and", "or"]);
+
+function unwrap(expression) {
+  while (expression && (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression) || ts.isNonNullExpression(expression) || ts.isSatisfiesExpression(expression) || ts.isAwaitExpression(expression))) expression = expression.expression;
+  return expression;
+}
+function memberAccess(expression) {
+  expression = unwrap(expression);
+  if (expression && ts.isPropertyAccessExpression(expression)) return { receiver: expression.expression, name: expression.name.text };
+  if (expression && ts.isElementAccessExpression(expression) && expression.argumentExpression && ts.isStringLiteralLike(expression.argumentExpression)) return { receiver: expression.expression, name: expression.argumentExpression.text };
+}
+
+// Syntactic Locator evidence only: selector calls, known Locator-returning
+// chains and locally declared aliases/factories. Names like rows/page alone
+// never exempt a count. Resolve lexical bindings so shadowing cannot hide ORMs.
+function locatorReceiverCheck(source) {
+  const scopes = new Map(), written = new Set();
+  const isScope = node => ts.isSourceFile(node) || ts.isFunctionLike(node) || ts.isBlock(node) || ts.isCatchClause(node) || ts.isForStatement(node) || ts.isForOfStatement(node) || ts.isForInStatement(node) || ts.isCaseBlock(node);
+  function scopeOf(node, functionScoped = false) {
+    for (let scope = node.parent; scope; scope = scope.parent) if (isScope(scope) && (!functionScoped || ts.isSourceFile(scope) || ts.isFunctionLike(scope))) return scope;
+  }
+  function bind(name, declaration, scope) {
+    if (!name || !scope) return;
+    if (ts.isIdentifier(name)) {
+      if (!scopes.has(scope)) scopes.set(scope, new Map());
+      const bindings = scopes.get(scope);
+      bindings.set(name.text, bindings.has(name.text) ? null : declaration);
+    } else if (ts.isObjectBindingPattern(name) || ts.isArrayBindingPattern(name)) {
+      for (const element of name.elements) if (ts.isBindingElement(element)) bind(element.name, element, scope);
+    }
+  }
+  function collect(node) {
+    if (ts.isVariableDeclaration(node)) bind(node.name, node, scopeOf(node, ts.isVariableDeclarationList(node.parent) && !(node.parent.flags & ts.NodeFlags.BlockScoped)));
+    if (ts.isParameter(node)) bind(node.name, node, scopeOf(node));
+    if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) bind(node.name, node, scopeOf(node));
+    if (ts.isFunctionExpression(node)) bind(node.name, node, node);
+    if (ts.isImportClause(node) || ts.isImportSpecifier(node) || ts.isNamespaceImport(node) || ts.isImportEqualsDeclaration(node)) bind(node.name, node, source);
+    ts.forEachChild(node, collect);
+  }
+  collect(source);
+  function bindingOf(identifier) {
+    for (let scope = identifier.parent; scope; scope = scope.parent) {
+      const bindings = scopes.get(scope);
+      if (bindings?.has(identifier.text)) return bindings.get(identifier.text);
+    }
+  }
+  function markWritten(target) {
+    if (ts.isIdentifier(target)) {
+      const binding = bindingOf(target);
+      if (binding) written.add(binding);
+    } else ts.forEachChild(target, markWritten);
+  }
+  function collectWrites(node) {
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment) markWritten(node.left);
+    if ((ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator)) markWritten(node.operand);
+    if ((ts.isForOfStatement(node) || ts.isForInStatement(node)) && !ts.isVariableDeclarationList(node.initializer)) markWritten(node.initializer);
+    ts.forEachChild(node, collectWrites);
+  }
+  collectWrites(source);
+  function resolve(expression, seen) {
+    expression = unwrap(expression);
+    if (!expression || !ts.isIdentifier(expression)) return expression;
+    const binding = bindingOf(expression);
+    if (!binding || written.has(binding) || seen.has(binding)) return;
+    if (ts.isFunctionDeclaration(binding)) return binding;
+    seen.add(binding);
+    if (ts.isVariableDeclaration(binding) && binding.initializer) return resolve(binding.initializer, seen);
+  }
+  function isLocator(expression, seen = new Set()) {
+    expression = resolve(expression, seen);
+    if (!expression || !ts.isCallExpression(expression)) return false;
+    const member = memberAccess(expression.expression);
+    if (member) {
+      if (locatorSelectors.has(member.name) && expression.arguments.length > 0) return true;
+      return locatorChains.has(member.name) && isLocator(member.receiver, seen);
+    }
+    const factory = resolve(expression.expression, seen);
+    if (!factory || !(ts.isArrowFunction(factory) || ts.isFunctionExpression(factory) || ts.isFunctionDeclaration(factory)) || !factory.body || seen.has(factory)) return false;
+    seen.add(factory);
+    const body = factory.body;
+    const result = ts.isBlock(body) ? body.statements.length === 1 && ts.isReturnStatement(body.statements[0]) ? body.statements[0].expression : undefined : body;
+    return !!result && isLocator(result, seen);
+  }
+  return isLocator;
+}
 
 /** Inspect executable imports/accesses; ordinary SQL archive paths are data. */
 export function findLegacyDatabaseReferences(source) {
   const matches = [];
+  const isLocator = locatorReceiverCheck(source);
   const requireNames = new Set(["require"]);
   const createRequireNames = new Set();
   for (const statement of source.statements) {
@@ -51,8 +138,8 @@ export function findLegacyDatabaseReferences(source) {
       if (["join", "resolve"].includes(name) && strings.some((part, index) => part === "node_modules" && strings[index + 1] === "prisma" || /(?:^|[\\/])node_modules[\\/]prisma(?:[\\/]|$)/.test(part))) record(node, "legacy-tooling", "node_modules/prisma");
       if (["spawn", "spawnSync", "execFile", "execFileSync", "run"].includes(name) && strings[0] === "prisma") record(node, "legacy-tooling", "prisma CLI");
       if (["spawn", "spawnSync", "execFile", "execFileSync", "exec", "execSync"].includes(name) && processStrings.some(value => /(?:^|\s)(?:npx\s+)?prisma\s+(?:generate|migrate|db|validate|studio|init|format)(?:\s|$)/.test(value))) record(node, "legacy-tooling", "prisma shell command");
-      if (ts.isPropertyAccessExpression(node.expression) && legacyDelegates.has(node.expression.name.text)) record(node, "legacy-delegate", node.expression.name.text);
-      if (ts.isElementAccessExpression(node.expression) && node.expression.argumentExpression && ts.isStringLiteralLike(node.expression.argumentExpression) && legacyDelegates.has(node.expression.argumentExpression.text)) record(node, "legacy-delegate", node.expression.argumentExpression.text);
+      const member = memberAccess(node.expression);
+      if (member && legacyDelegates.has(member.name) && !(member.name === "count" && node.arguments.length === 0 && isLocator(member.receiver))) record(node, "legacy-delegate", member.name);
       const input = node.arguments[0];
       if (["create", "update", "delete", "aggregate", "groupBy"].includes(name) && input && ts.isObjectLiteralExpression(input)) {
         const fields = input.properties.flatMap(property => property.name && (ts.isIdentifier(property.name) || ts.isStringLiteralLike(property.name)) ? [property.name.text] : []);

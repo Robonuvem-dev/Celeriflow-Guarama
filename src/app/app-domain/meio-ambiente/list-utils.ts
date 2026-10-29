@@ -11,7 +11,7 @@ export function filterAndPaginate<T extends object>(records: T[], searchParams: 
         return String(value ?? "").toLocaleLowerCase("pt-BR").includes(query);
       }))
     : records;
-  const pageSize = 20;
+  const pageSize = OPERATIONAL_PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const requestedPage = Number.parseInt(searchParams.page ?? "1", 10);
   const currentPage = Math.min(Math.max(Number.isFinite(requestedPage) ? requestedPage : 1, 1), totalPages);
@@ -34,3 +34,4 @@ export function environmentPageHref(route: string, searchParams: EnvironmentSear
   params.set("page", String(page));
   return `${route}?${params.toString()}`;
 }
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";

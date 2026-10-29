@@ -1,18 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Check, Eye, Filter, Pencil, Plus, Search, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Eye, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, paginateFullValue, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { createSegMobItem, toggleSegMobItemStatus, updateSegMobItem } from "../actions";
 import type { SegMobFormData, SegMobItem, SegMobPageConfig } from "../types";
 
@@ -35,7 +33,6 @@ const defaultForm: SegMobFormData = {
   relatedId: "",
 };
 
-const PAGE_SIZE = 20;
 
 function toDateInput(value?: Date | string | null) {
   if (!value) return "";
@@ -51,19 +48,29 @@ function formatDate(value?: Date | string | null) {
   return date.toLocaleDateString("pt-BR");
 }
 
-function statusClass(status: string, isActive: boolean) {
-  if (!isActive) return "bg-slate-100 text-slate-600 hover:bg-slate-100";
-  if (["Resolvida", "Encerrada", "Pago", "Concluida", "Ativo", "Operacional", "Publicado"].includes(status)) {
-    return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100";
-  }
-  if (["Alta", "Urgente", "Interditada", "Cancelado", "Critico"].includes(status)) {
-    return "bg-rose-100 text-rose-700 hover:bg-rose-100";
-  }
-  if (["Em Atendimento", "Em Execucao", "Em Analise", "Pendente", "Notificado"].includes(status)) {
-    return "bg-amber-100 text-amber-700 hover:bg-amber-100";
-  }
-  return "bg-cyan-100 text-cyan-700 hover:bg-cyan-100";
+function RecordText({ text }: { text: string }) {
+  const body = useRef<HTMLDivElement>(null);
+  const [pages, setPages] = useState<string[]>([]);
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    const element = body.current;
+    if (!element) return;
+    const measure = () => {
+      const probe = document.createElement("div");
+      const computed = getComputedStyle(element);
+      Object.assign(probe.style, { position: "fixed", visibility: "hidden", width: `${element.clientWidth}px`, font: computed.font, lineHeight: computed.lineHeight, whiteSpace: "pre-wrap", overflowWrap: "anywhere" });
+      document.body.appendChild(probe);
+      try { setPages(paginateFullValue(text, value => { probe.textContent = value; return probe.scrollHeight <= element.clientHeight && probe.scrollWidth <= element.clientWidth + 1; })); setPage(0); }
+      finally { probe.remove(); }
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    document.fonts.addEventListener("loadingdone", measure);
+    return () => { observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
+  }, [text]);
+  return <><div ref={body} style={{ height: "min(30dvh, 240px)", fontSize: ".8125rem", lineHeight: "1.4", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{pages[page] || "Preparando leitura…"}</div><div className={styles.dialogButtons}><button type="button" className={styles.dialogButton} disabled={page === 0} onClick={() => setPage(current => current - 1)}>Anterior</button><span aria-live="polite">Trecho {page + 1} de {Math.max(1, pages.length)}</span><button type="button" className={styles.dialogButton} disabled={page >= pages.length - 1} onClick={() => setPage(current => current + 1)}>Próximo</button></div></>;
 }
+
 
 export default function SegMobCrudClient({
   items,
@@ -169,135 +176,29 @@ export default function SegMobCrudClient({
     if (result?.error) window.alert(result.error);
   };
 
-  return (
-    <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2 sm:p-3">
-      <PageHeader
-        title={config.title}
-        action={(
-          <Button size="sm" onClick={openNew} className={`${config.accentClass} text-white`}>
-            <Plus />
-            {config.newLabel}
-          </Button>
-        )}
-      />
+  const columns: OperationalColumn[] = [
+    { key: "code", label: config.codeLabel, type: "identifier", initialWidth: 120, minWidth: 85, maxWidth: 250, resizable: true, sortable: false, details: "overflow" },
+    { key: "title", label: config.titleLabel, type: "text", initialWidth: 230, minWidth: 120, maxWidth: 600, resizable: true, sortable: false, details: "overflow" },
+    { key: "type", label: config.typeLabel || "Tipo", type: "text", initialWidth: 150, minWidth: 90, maxWidth: 400, resizable: true, sortable: false, details: "overflow" },
+    { key: "location", label: config.locationLabel || "Local/Equipe", type: "text", initialWidth: 180, minWidth: 100, maxWidth: 500, resizable: true, sortable: false, details: "overflow" },
+    { key: "district", label: "Bairro/região", type: "text", initialWidth: 140, minWidth: 100, maxWidth: 400, resizable: true, sortable: false, details: "overflow" },
+    { key: "status", label: "Status", type: "status", initialWidth: 120, minWidth: 85, maxWidth: 300, resizable: true, sortable: false, details: "overflow" },
+    { key: "date", label: "Data", type: "text", initialWidth: 110, minWidth: 95, maxWidth: 200, resizable: true, sortable: false, details: "overflow" },
+    { key: "actions", label: "Ações", type: "actions", initialWidth: 100, minWidth: 95, maxWidth: 120, resizable: false, sortable: false, details: "none" },
+  ];
 
-      <ErpListFrame
-        toolbar={<div className="grid gap-2 md:grid-cols-[minmax(12rem,1fr)_10rem_10rem_8rem]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input className="h-8 pl-9 text-xs" placeholder="Buscar código, local ou responsável..." value={searchTerm} onChange={(event) => updateFilter(() => setSearchTerm(event.target.value))} />
-            </div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <select className="h-8 w-full rounded-md border border-input bg-background pl-9 pr-2 text-xs" value={statusFilter} onChange={(event) => updateFilter(() => setStatusFilter(event.target.value))}>
-                <option>Todos</option>
-                {statusOptions.map((status) => <option key={status}>{status}</option>)}
-              </select>
-            </div>
-            <select className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs" value={typeFilter} onChange={(event) => updateFilter(() => setTypeFilter(event.target.value))}>
-              <option>Todos</option>
-              {typeOptions.map((type) => <option key={type}>{type}</option>)}
-              {config.categories?.map((category) => <option key={category}>{category}</option>)}
-            </select>
-            <select className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs" value={activeFilter} onChange={(event) => updateFilter(() => setActiveFilter(event.target.value))}>
-              <option>Ativos</option>
-              <option>Inativos</option>
-              <option>Todos</option>
-            </select>
-          </div>}
-        summary={<p className="text-[11px] text-slate-500">{filteredItems.length} registros · {config.description}</p>}
-        pagination={<ErpPagination page={activePage} total={filteredItems.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="registros" onPageChange={setPage} />}
-      >
-        <div className="hidden h-full min-h-0 overflow-y-auto md:block">
-          <Table className="w-full table-fixed text-xs">
-            <TableHeader className="sticky top-0 z-10 bg-slate-100">
-              <TableRow>
-                <TableHead>{config.codeLabel}</TableHead>
-                <TableHead>{config.titleLabel}</TableHead>
-                <TableHead>{config.typeLabel || "Tipo"}</TableHead>
-                <TableHead>{config.locationLabel || "Local/Equipe"}</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-right">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-28 text-center text-slate-500">Nenhum registro encontrado.</TableCell>
-                </TableRow>
-              ) : (
-                paginatedItems.map((item) => (
-                  <TableRow key={item.id} className="h-9">
-                    <TableCell className="truncate py-1.5 font-medium text-slate-900">{item.code}</TableCell>
-                    <TableCell className="truncate py-1.5 font-medium text-slate-900" title={item.title}>{item.title}</TableCell>
-                    <TableCell className="truncate py-1.5 text-slate-700" title={item.category || item.type}>{item.type || item.category || "-"}</TableCell>
-                    <TableCell className="truncate py-1.5" title={[item.location, item.district].filter(Boolean).join(" · ")}>{item.location || item.district || "-"}</TableCell>
-                    <TableCell>
-                      <Badge className={`${statusClass(item.status, item.isActive)} max-w-full truncate px-1.5 py-0 text-[10px]`}>{item.isActive ? item.status : "Inativo"}</Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-1.5">{formatDate(item.date)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-0.5">
-                        <Button variant="ghost" size="icon" className="size-7" onClick={() => setDetailItem(item)} title="Ver detalhes"><Eye className="size-3.5 text-slate-600" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleActive(item)} title={item.isActive ? "Inativar" : "Ativar"}>
-                          {item.isActive ? <X className="h-4 w-4 text-rose-500" /> : <Check className="h-4 w-4 text-emerald-600" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Editar">
-                          <Pencil className="h-4 w-4 text-cyan-700" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="space-y-2 overflow-y-auto p-2 md:hidden">
-          {filteredItems.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">Nenhum registro encontrado.</p>
-          ) : (
-            paginatedItems.map((item) => (
-              <article key={item.id} className="rounded-lg border border-slate-200 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-slate-500">{item.code}</p>
-                    <h2 className="truncate font-semibold text-slate-900">{item.title}</h2>
-                  </div>
-                  <Badge className={`${statusClass(item.status, item.isActive)} shrink-0`}>{item.status}</Badge>
-                </div>
-                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                  <div><dt className="text-slate-500">{config.typeLabel || "Tipo"}</dt><dd className="font-medium text-slate-700">{item.type || "-"}</dd></div>
-                  <div><dt className="text-slate-500">Data</dt><dd className="font-medium text-slate-700">{formatDate(item.date)}</dd></div>
-                  <div className="col-span-2"><dt className="text-slate-500">{config.locationLabel || "Local/Equipe"}</dt><dd className="font-medium text-slate-700">{item.location || item.district || "-"}</dd></div>
-                </dl>
-                <div className="mt-3 flex justify-end gap-1 border-t border-slate-100 pt-2">
-                  <Button variant="ghost" size="sm" onClick={() => setDetailItem(item)}><Eye />Detalhes</Button>
-                  <Button variant="ghost" size="sm" onClick={() => toggleActive(item)}>
-                    {item.isActive ? <X className="text-rose-500" /> : <Check className="text-emerald-600" />}
-                    {item.isActive ? "Inativar" : "Ativar"}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(item)}><Pencil className="text-cyan-700" />Editar</Button>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-      </ErpListFrame>
+  return (
+    <>
+      <OperationalListFrame label={config.title} actions={<button type="button" className={styles.newButton} onClick={openNew}><Plus />{config.newLabel}</button>}
+        toolbar={<><input aria-label="Buscar código, local ou responsável" className={styles.searchInput} placeholder="Buscar código, local ou responsável…" value={searchTerm} onChange={(event) => updateFilter(() => setSearchTerm(event.target.value))} /><OperationalFilters activeCount={Number(statusFilter !== "Todos") + Number(typeFilter !== "Todos") + Number(activeFilter !== "Todos")}><label>Status<select value={statusFilter} onChange={(event) => updateFilter(() => setStatusFilter(event.target.value))}><option>Todos</option>{statusOptions.map(status => <option key={status}>{status}</option>)}</select></label><label>Tipo<select value={typeFilter} onChange={(event) => updateFilter(() => setTypeFilter(event.target.value))}><option>Todos</option>{Array.from(new Set([...typeOptions, ...config.categories || []])).map(type => <option key={type}>{type}</option>)}</select></label><label>Atividade<select value={activeFilter} onChange={(event) => updateFilter(() => setActiveFilter(event.target.value))}><option>Ativos</option><option>Inativos</option><option>Todos</option></select></label><button type="button" onClick={() => updateFilter(() => { setStatusFilter("Todos"); setTypeFilter("Todos"); setActiveFilter("Todos"); })}>Limpar filtros</button></OperationalFilters></>}
+        pagination={<OperationalPagination page={activePage} total={filteredItems.length} onPageChange={setPage} />}>
+        <OperationalTable columns={columns} preferenceId={`seguranca.${config.kind}`} caption={`${config.title} — ${config.description}`} emptyMessage="Nenhum registro encontrado." rows={paginatedItems.map(item => ({ id: item.id, label: item.title, values: { code: item.code, title: item.title, type: item.type || item.category || "—", location: item.location || "—", district: item.district || "—", status: item.isActive ? item.status : "Inativo", date: formatDate(item.date) }, actions: <div className={styles.rowActions}><button type="button" className={styles.iconButton} aria-label={`Ver detalhes de ${item.title}`} onClick={() => setDetailItem(item)}><Eye /></button><button type="button" className={styles.iconButton} aria-label={`${item.isActive ? "Inativar" : "Ativar"} ${item.title}`} onClick={() => void toggleActive(item)}>{item.isActive ? <X /> : <Check />}</button><button type="button" className={styles.iconButton} aria-label={`Editar ${item.title}`} onClick={() => openEdit(item)}><Pencil /></button></div> }))} />
+      </OperationalListFrame>
 
       <Dialog open={Boolean(detailItem)} onOpenChange={(open) => !open && setDetailItem(null)}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-[680px]">
+        <DialogContent className={styles.dialog}>
           <DialogHeader><DialogTitle>{detailItem?.title}</DialogTitle><DialogDescription>{detailItem?.code} · {detailItem?.type}</DialogDescription></DialogHeader>
-          {detailItem && <dl className="grid gap-3 text-sm sm:grid-cols-2">
-            <div><dt className="text-xs font-semibold text-slate-500">Local</dt><dd>{detailItem.location || "-"}</dd></div>
-            <div><dt className="text-xs font-semibold text-slate-500">Bairro/região</dt><dd>{detailItem.district || "-"}</dd></div>
-            <div><dt className="text-xs font-semibold text-slate-500">Responsável</dt><dd>{detailItem.responsible || "-"}</dd></div>
-            <div><dt className="text-xs font-semibold text-slate-500">Data</dt><dd>{formatDate(detailItem.date)}</dd></div>
-            <div><dt className="text-xs font-semibold text-slate-500">Situação</dt><dd>{detailItem.status}</dd></div>
-            <div><dt className="text-xs font-semibold text-slate-500">Prioridade</dt><dd>{detailItem.priority || "-"}</dd></div>
-            <div className="sm:col-span-2"><dt className="text-xs font-semibold text-slate-500">Descrição</dt><dd className="mt-1 whitespace-pre-wrap break-words">{detailItem.description || "Sem descrição."}</dd></div>
-          </dl>}
+          {detailItem && <RecordText text={`Local: ${detailItem.location || "—"}\nBairro/região: ${detailItem.district || "—"}\nResponsável: ${detailItem.responsible || "—"}\nData: ${formatDate(detailItem.date)}\nSituação: ${detailItem.status}\nPrioridade: ${detailItem.priority || "—"}\nDescrição: ${detailItem.description || "Sem descrição."}`} />}
           <DialogFooter><Button type="button" onClick={() => setDetailItem(null)}>Fechar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
@@ -421,6 +322,6 @@ export default function SegMobCrudClient({
           </form>
         </DialogContent>
       </Dialog>
-    </PageFrame>
+    </>
   );
 }

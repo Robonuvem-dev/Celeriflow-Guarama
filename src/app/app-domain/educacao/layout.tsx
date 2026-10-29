@@ -1,4 +1,7 @@
+"use client";
+
 import { ModuleShell, type ModuleNavGroup } from "@/components/app-ui/erp/ModuleShell";
+import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 
 const navigation: ModuleNavGroup[] = [{
   title: "Gestão escolar",
@@ -14,5 +17,7 @@ const navigation: ModuleNavGroup[] = [{
 }];
 
 export default function EducacaoLayout({ children }: { children: React.ReactNode }) {
+  const workspace = useOptionalOperationalWorkspace();
+  if (workspace) return <>{children}</>;
   return <ModuleShell moduleTitle="Educação" moduleCaption="Gestão escolar" moduleIcon="graduationCap" navigation={navigation}>{children}</ModuleShell>;
 }

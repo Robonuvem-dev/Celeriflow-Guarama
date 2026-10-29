@@ -1,20 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, FileBadge, Trash2, XCircle } from "lucide-react";
+import { Search, Plus, Trash2, XCircle } from "lucide-react";
 import { createCertificate, cancelCertificate } from "./actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import {
-  ErpTableContainer,
-  ErpTableThead,
-  ErpTableTh,
-  ErpTableTr,
-  ErpTableTd,
-  ErpStatusBadge,
-  type ErpStatusVariant,
-} from "@/components/app-ui/erp/ErpTable";
+import { TaxOperationalTable } from "../TaxOperationalTable";
 
 type Certificate = {
   id: string;
@@ -35,13 +24,6 @@ type Taxpayer = {
   name: string;
 };
 
-function certVariant(status: string): ErpStatusVariant {
-  if (status === "Ativa") return "success";
-  if (status === "Vencida") return "warning";
-  if (status === "Revogada" || status === "Cancelada") return "danger";
-  return "neutral";
-}
-
 export default function CertidoesClient({
   certificates,
   taxpayers
@@ -51,7 +33,6 @@ export default function CertidoesClient({
 }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
   const [createForm, setCreateForm] = useState({
     certificateType: "Negativa",
     taxpayerId: taxpayers[0]?.id || "",
@@ -66,8 +47,6 @@ export default function CertidoesClient({
     const name = (cert.taxpayer?.company?.corporateName || cert.taxpayer?.person?.fullName || "").toLowerCase();
     return code.includes(term) || type.includes(term) || name.includes(term);
   });
-  const pageSize = 20;
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleCancel = async (id: string) => {
     if (confirm("Deseja revogar esta certidão?")) {
@@ -102,10 +81,10 @@ export default function CertidoesClient({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 p-2 sm:p-2.5 overflow-hidden">
-      <ErpPageTitle
-        title="Certidões e Situação Fiscal"
-        icon={<FileBadge className="size-4 text-sky-600" />}
-        action={
+      <TaxOperationalTable resetKey={searchTerm} id="certidoes" emptyMessage="Nenhum registro de certidão encontrado."
+        columns={[["code", "Autenticação", 120, 170, "identifier"], ["name", "Contribuinte", 140, 260], ["type", "Tipo", 100, 160], ["issued", "Emissão", 95, 105], ["valid", "Validade", 95, 105], ["status", "Status", 85, 100, "status"], ["actions", "Ação", 48, 48, "actions"]]}
+        rows={filtered.map(cert => ({ id: cert.id, label: cert.authCode, values: { code: cert.authCode, name: cert.taxpayer?.company?.corporateName || cert.taxpayer?.person?.fullName || "Não Informado", type: cert.certificateType, issued: new Date(cert.createdAt).toLocaleDateString("pt-BR"), valid: new Date(cert.validUntil).toLocaleDateString("pt-BR"), status: cert.status }, actions: cert.status === "Ativa" ? <button onClick={() => handleCancel(cert.id)} title="Revogar certidão" aria-label={`Revogar certidão ${cert.authCode}`}><Trash2 className="size-4" /></button> : null }))}
+        actions={
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-500 px-3 text-xs font-bold text-slate-950 shadow-xs transition-colors hover:bg-amber-600"
@@ -114,83 +93,22 @@ export default function CertidoesClient({
             Nova Certidão
           </button>
         }
-      />
-
-      <ErpListFrame
-        pagination={<ErpPagination page={page} total={filtered.length} pageSize={pageSize} previousHref="#" nextHref="#" label="certidões" onPageChange={setPage} />}
         toolbar={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <label className="relative min-w-0 flex-1 basis-full sm:basis-auto">
               <span className="sr-only">Buscar certidão</span>
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por código de autenticação, tipo ou contribuinte"
                 className="h-8 w-full rounded-md border border-slate-200 bg-white py-1 pl-8 pr-2.5 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800"
               />
             </label>
           </div>
         }
-      >
-        <ErpTableContainer>
-          <ErpTableThead>
-            <tr>
-              <ErpTableTh className="w-[18%]">Cód. Autenticação</ErpTableTh>
-              <ErpTableTh className="w-[32%]">Contribuinte</ErpTableTh>
-              <ErpTableTh className="w-[20%]">Tipo de Certidão</ErpTableTh>
-              <ErpTableTh className="w-[12%]">Emissão</ErpTableTh>
-              <ErpTableTh className="w-[12%]">Validade</ErpTableTh>
-              <ErpTableTh className="w-[8%]">Status</ErpTableTh>
-              <ErpTableTh className="w-[6%] text-right">Ação</ErpTableTh>
-            </tr>
-          </ErpTableThead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-xs text-slate-400">
-                  Nenhum registro de certidão encontrado.
-                </td>
-              </tr>
-            ) : (
-              paged.map((cert) => (
-                <ErpTableTr key={cert.id}>
-                  <ErpTableTd className="font-mono text-slate-800 dark:text-slate-200 font-semibold">
-                    {cert.authCode}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    {cert.taxpayer?.company?.corporateName || cert.taxpayer?.person?.fullName || "Não Informado"}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    {cert.certificateType}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    {new Date(cert.createdAt).toLocaleDateString("pt-BR")}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    {new Date(cert.validUntil).toLocaleDateString("pt-BR")}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    <ErpStatusBadge variant={certVariant(cert.status)}>{cert.status}</ErpStatusBadge>
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right">
-                    {cert.status === "Ativa" && (
-                      <button
-                        onClick={() => handleCancel(cert.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                        title="Revogar Certidão"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    )}
-                  </ErpTableTd>
-                </ErpTableTr>
-              ))
-            )}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
+      />
 
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

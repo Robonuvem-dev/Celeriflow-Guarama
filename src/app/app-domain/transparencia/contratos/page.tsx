@@ -1,7 +1,4 @@
-import { FileSignature } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
 import { ContratosClient, type ContractRow } from "./ContratosClient";
 import { db } from "@/db/client";
 import { desc, eq } from "drizzle-orm";
@@ -27,9 +24,6 @@ export default async function ContratosPage() {
   }));
 
   return (
-    <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-      <PageHeader title="Contratos públicos" icon={<FileSignature className="size-4 shrink-0 text-emerald-600" />} />
-      <ContratosClient rows={rows} />
-    </PageFrame>
+    <ContratosClient rows={rows} />
   );
 }

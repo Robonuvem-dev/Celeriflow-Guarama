@@ -1,6 +1,8 @@
 # CelerFlow — padrão global de tabelas profissionais
 
-**Documento de instrução para o Codex · Versão 1.1 · 28/10/2026**
+**Documento de instrução para o Codex · Versão 1.2 · 29/10/2026**
+
+**Decisões de execução de 29/10/2026:** o proprietário aprovou o piloto e autorizou aplicar o padrão a todas as tabelas de todos os módulos, com organização em lotes e agentes auxiliares. Autorizou rolagem em **tablets e celulares**, mantendo a proibição em **notebooks e computadores**. Esta decisão substitui, neste documento e no plano anterior, as restrições de rolagem que incluíam tablets. A distinção é por política conservadora de dispositivo, sem inferir celular/tablet apenas pela largura da janela. A execução usa exclusivamente Drizzle; referências a Prisma em evidências anteriores são históricas.
 
 **Revisão do solicitante após o piloto:** recolher o menu significa manter a barra lateral estreita com os ícones, como na página inicial de Água e Saneamento; não remover o menu inteiro. O ícone de detalhes só aparece quando o conteúdo não cabe na largura real da célula ou quando há uma visualização composta que exige mais espaço. Texto integral já legível na célula não deve ganhar um ícone redundante. Estas orientações substituem as interpretações anteriores em contrário.
 
@@ -23,8 +25,8 @@ A interface deve priorizar a leitura de muitos registros, o alinhamento de campo
 | ID | Requisito | Resultado observável |
 | --- | --- | --- |
 | R01 | Paginação fixa de 20 registros | Cada página completa contém exatamente 20 registros, um por linha. |
-| R02 | Sem rolagem em computador, notebook e tablet | A página de listagem e a tabela cabem horizontal e verticalmente, com a última linha e a paginação acessíveis. |
-| R03 | Rolagem permitida no celular | A versão de celular mantém a paginação e pode rolar; o deslocamento horizontal, quando necessário, fica no contêiner da tabela. |
+| R02 | Sem rolagem em computador e notebook | A página de listagem e a tabela cabem horizontal e verticalmente, com a última linha e a paginação acessíveis. |
+| R03 | Rolagem permitida em tablet e celular | Mantêm paginação e podem rolar; o deslocamento horizontal, quando necessário, fica no contêiner da tabela. |
 | R04 | Uma linha visual por célula | Cabeçalhos e células não quebram em duas linhas e não empilham campos. |
 | R05 | Informação completa disponível sem redundância | Texto que cabe é mostrado sem ícone. Conteúdo que não cabe ou exige visualização composta tem um ícone para abrir os detalhes completos. |
 | R06 | Colunas redimensionáveis | O usuário ajusta a largura arrastando as divisórias, dentro dos limites do espaço disponível. |

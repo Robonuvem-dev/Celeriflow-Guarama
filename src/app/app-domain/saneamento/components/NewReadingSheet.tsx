@@ -14,6 +14,7 @@ import { createMeterReading } from "../actions";
 import { ConsumerUnitPicker } from "./ConsumerUnitPicker";
 import { CompetencePicker } from "./CompetencePicker";
 import styles from "./sanitation.module.css";
+import operational from "@/components/app-ui/operational/operational.module.css";
 
 export function NewReadingSheet() {
   const [open, setOpen] = useState(false);
@@ -46,9 +47,9 @@ export function NewReadingSheet() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="flex h-8 items-center gap-2 rounded-md bg-[#0284C7] px-3 text-sm font-medium text-white transition-colors hover:bg-[#0369A1]" />}>
+      <SheetTrigger render={<button type="button" className={operational.newButton} aria-label="Nova Leitura" title="Nova Leitura" />}>
         <FileText className="h-5 w-5" />
-        Nova Leitura
+        <span className={operational.newLabel}>Nova Leitura</span>
       </SheetTrigger>
       <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>

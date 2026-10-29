@@ -4,6 +4,14 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PackageCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { operationalColumns } from "../../_components/operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { approveMaterialRequestAction, issueMaterialRequestInFullAction, issueMaterialRequestItemAction as issuePartialAction } from "../actions";
 
 type RequestItem = { id: string; quantityRequested: number; quantityApproved: number; quantityDelivered: number; material: { id: string; code: string; name: string; unitOfMeasure: string } };
@@ -19,10 +27,16 @@ export function MaterialRequestWorkflowClient({ request, stocks, settlements = [
   const [settlementByItem, setSettlementByItem] = useState<Record<string, string>>({});
   const [lotSearch, setLotSearch] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState(request.items[0]?.id || "");
   const deliveryKeys = useRef<Record<string, string>>({});
   async function issueMaterialRequestItemAction(data: Parameters<typeof issuePartialAction>[0]) {
     const key = deliveryKeys.current[data.requestItemId] ||= crypto.randomUUID();
-    return issuePartialAction({ ...data, idempotencyKey: key });
+    const result = await issuePartialAction({ ...data, idempotencyKey: key });
+    if (!result.error) delete deliveryKeys.current[data.requestItemId];
+    return result;
   }
   const pendingApproval = request.status === "Pendente";
   const awaitingDelivery = ["Aprovada", "Atendida Parcialmente"].includes(request.status);
@@ -40,36 +54,58 @@ export function MaterialRequestWorkflowClient({ request, stocks, settlements = [
   }
 
   const nextStep = pendingApproval ? "Aguardando análise: aprove as quantidades ou informe zero para recusar o item." : awaitingDelivery ? "Pedido aprovado: selecione o lote e registre a entrega parcial ou integral. Cada entrega reduz o estoque e o saldo pendente." : request.status === "Atendida" ? "Entrega concluída. Consulte abaixo os movimentos e o destino dos materiais." : "Pedido encerrado sem entrega.";
+  const query = search.trim().toLocaleLowerCase("pt-BR");
+  const filtered = request.items.filter(item => !query || [item.material.code, item.material.name].some(value => value.toLocaleLowerCase("pt-BR").includes(query)));
+  const activePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / OPERATIONAL_PAGE_SIZE)));
+  const editingItem = request.items.find(item => item.id === editingItemId);
+  const selectedItem = request.items.find(item => item.id === selectedItemId);
+  function approval(item: RequestItem) {
+    return <input aria-label={`Quantidade aprovada de ${item.material.name}`} type="number" min="0" max={item.quantityRequested} step="any" value={approvedQuantities[item.id]} onChange={event => setApprovedQuantities(current => ({ ...current, [item.id]: Number(event.target.value) }))} className="h-6 w-full min-w-0 rounded border px-1" />;
+  }
+  function attendance(item: RequestItem) {
+    const remaining = Math.max(0, item.quantityApproved - item.quantityDelivered);
+    const selected = stocks.find(stock => stock.id === stockByItem[item.id]);
+    const quantity = Math.min(quantityByItem[item.id] || 0, remaining, selected?.quantity || 0);
+    const available = stocks.filter(stock => stock.materialId === item.material.id && `${stock.batchNumber} ${stock.warehouse.name}`.toLowerCase().includes((lotSearch[item.id] || "").toLowerCase()));
+    if (!remaining) return <p>Item concluído</p>;
+    return <div className="grid gap-2">
+      <p>{item.material.code} · {item.material.name} · {item.material.unitOfMeasure} · Pendente: {remaining}</p>
+      <label>Pesquisar lote ou depósito<input type="search" value={lotSearch[item.id] || ""} onChange={event => setLotSearch(current => ({ ...current, [item.id]: event.target.value }))} className="h-8 w-full rounded border px-2" /></label>
+      <label>Lote<select aria-label={`Lote de ${item.material.name}`} value={stockByItem[item.id]} onChange={event => { const stock = stocks.find(row => row.id === event.target.value); setStockByItem(current => ({ ...current, [item.id]: event.target.value })); setQuantityByItem(current => ({ ...current, [item.id]: Math.min(remaining, stock?.quantity || 0) })); }} className="h-8 w-full rounded border">
+        <option value="">Selecione um lote</option>{selected && !available.some(stock => stock.id === selected.id) && <option value={selected.id}>{selected.warehouse.name} · {selected.batchNumber || "Sem lote"} · saldo {selected.quantity} · validade {selected.expirationLabel}</option>}{available.map(stock => <option key={stock.id} value={stock.id}>{stock.warehouse.name} · {stock.batchNumber || "Sem lote"} · saldo {stock.quantity} · validade {stock.expirationLabel}</option>)}
+      </select></label>
+      {!available.length && <p className="text-amber-700">Sem lote disponível na origem para este filtro.</p>}
+      <label>Quantidade a entregar<Input aria-label={`Quantidade a entregar de ${item.material.name}`} type="number" min="0.000001" max={Math.min(remaining, selected?.quantity || 0)} step="any" value={quantity} onChange={event => setQuantityByItem(current => ({ ...current, [item.id]: Number(event.target.value) }))} /></label>
+      {settlements.length > 0 && <label>Vínculo financeiro do consumo<select aria-label={`Liquidação de ${item.material.name}`} value={settlementByItem[item.id] || ""} onChange={event => setSettlementByItem(current => ({ ...current, [item.id]: event.target.value }))} className="h-8 w-full rounded border"><option value="">Sem vínculo financeiro de consumo</option>{settlements.map(settlement => <option key={settlement.id} value={settlement.id}>{settlement.label}</option>)}</select></label>}
+      <Button type="button" size="sm" variant="outline" disabled={!canIssue || pending || !selected || !(quantity > 0)} onClick={() => operate(() => issueMaterialRequestItemAction({ requestItemId: item.id, stockId: stockByItem[item.id], quantity, ...(settlementByItem[item.id] ? { settlementId: settlementByItem[item.id] } : {}) }))}>Registrar entrega</Button>
+      {feedback && <p role="status">{feedback}</p>}
+    </div>;
+  }
+  const workflowActions = <div className="flex gap-2">
+    {pendingApproval && canApprove && <Button type="button" size="sm" disabled={pending} onClick={() => operate(() => approveMaterialRequestAction(request.id, request.items.map(item => ({ itemId: item.id, quantityApproved: Number(approvedQuantities[item.id]) }))))}>{pending ? "Registrando..." : "Confirmar análise e aprovação"}</Button>}
+    {awaitingDelivery && canIssue && <Button type="button" size="sm" disabled={pending || !remainingItems.length || remainingItems.some(item => { const stock = stocks.find(row => row.id === stockByItem[item.id]); return !stock || stock.quantity < item.quantityApproved - item.quantityDelivered; })} onClick={() => operate(() => issueMaterialRequestInFullAction({ requestId: request.id, stockByItem: remainingItems.map(item => ({ requestItemId: item.id, stockId: stockByItem[item.id], ...(settlementByItem[item.id] ? { settlementId: settlementByItem[item.id] } : {}) })) }))}>Entregar todo o saldo pendente</Button>}
+  </div>;
 
   return <section className="space-y-3 rounded border bg-white p-3">
     <p className="rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">{nextStep}</p>
     {operationMessage && <p className="text-xs text-amber-800">{operationMessage}</p>}
-    <div className="overflow-x-auto rounded border">
-      <table className="w-full min-w-[850px] text-left text-xs">
-        <thead className="bg-slate-100 text-[10px] uppercase text-slate-600"><tr><th className="p-2">Material</th><th className="p-2">Solicitado</th><th className="p-2">Aprovado</th><th className="p-2">Entregue</th><th className="p-2">Pendente</th>{awaitingDelivery && <th className="p-2">Atendimento</th>}</tr></thead>
-        <tbody>{request.items.map(item => {
-          const remaining = Math.max(0, item.quantityApproved - item.quantityDelivered);
-          const selected = stocks.find(stock => stock.id === stockByItem[item.id]);
-          const available = stocks.filter(stock => stock.materialId === item.material.id && `${stock.batchNumber} ${stock.warehouse.name}`.toLowerCase().includes((lotSearch[item.id] || "").toLowerCase()));
-          return <tr key={item.id} className="border-t align-top">
-            <td className="p-2 font-medium">{item.material.code}<span className="block text-slate-700">{item.material.name}</span><span className="text-slate-500">{item.material.unitOfMeasure}</span></td>
-            <td className="p-2 tabular-nums">{item.quantityRequested}</td>
-            <td className="p-2">{pendingApproval && canApprove ? <Input aria-label={`Quantidade aprovada de ${item.material.name}`} type="number" min="0" max={item.quantityRequested} step="any" value={approvedQuantities[item.id]} onChange={event => setApprovedQuantities(current => ({ ...current, [item.id]: Number(event.target.value) }))} className="h-8 w-20 text-xs" /> : item.quantityApproved}</td>
-            <td className="p-2 tabular-nums">{item.quantityDelivered}</td><td className="p-2 font-semibold tabular-nums">{pendingApproval ? "Em análise" : remaining}</td>
-            {awaitingDelivery && <td className="min-w-72 space-y-2 p-2">{remaining > 0 ? <>
-              <input aria-label={`Pesquisar lote de ${item.material.name}`} type="search" placeholder="Pesquisar lote ou depósito" value={lotSearch[item.id] || ""} onChange={event => setLotSearch(current => ({ ...current, [item.id]: event.target.value }))} className="h-7 w-full rounded border px-2 text-xs" />
-              <div className="max-h-28 overflow-y-auto rounded border">{available.length ? available.map(stock => <label key={stock.id} className="flex items-start gap-2 border-b p-2 text-[11px] last:border-0"><input type="radio" name={`lot-${item.id}`} checked={stockByItem[item.id] === stock.id} onChange={() => { setStockByItem(current => ({ ...current, [item.id]: stock.id })); setQuantityByItem(current => ({ ...current, [item.id]: Math.min(remaining, stock.quantity) })); }} /><span>{stock.warehouse.name} · {stock.batchNumber || "Sem lote"}<span className="block text-slate-500">Saldo {stock.quantity} · validade {stock.expirationLabel}</span></span></label>) : <p className="p-2 text-[11px] text-amber-700">Sem lote disponível na origem para este filtro.</p>}</div>
-              <div className="flex items-center gap-2"><Input aria-label={`Quantidade a entregar de ${item.material.name}`} type="number" min="0.000001" max={Math.min(remaining, selected?.quantity || 0)} step="any" value={quantityByItem[item.id] || 0} onChange={event => setQuantityByItem(current => ({ ...current, [item.id]: Number(event.target.value) }))} className="h-7 w-24 text-xs" /><Button type="button" size="sm" variant="outline" disabled={!canIssue || pending || !selected || !(quantityByItem[item.id] > 0)} onClick={() => operate(() => issueMaterialRequestItemAction({ requestItemId: item.id, stockId: stockByItem[item.id], quantity: quantityByItem[item.id], ...(settlementByItem[item.id] ? { settlementId: settlementByItem[item.id] } : {}) }))}>Registrar entrega</Button></div>
-              {settlements.length > 0 && <details><summary className="cursor-pointer text-[11px] text-slate-500">Vínculo financeiro do consumo</summary><select aria-label={`Liquidação de ${item.material.name}`} value={settlementByItem[item.id] || ""} onChange={event => setSettlementByItem(current => ({ ...current, [item.id]: event.target.value }))} className="mt-1 h-8 w-full rounded border text-xs"><option value="">Sem vínculo financeiro de consumo</option>{settlements.map(settlement => <option key={settlement.id} value={settlement.id}>{settlement.label}</option>)}</select></details>}
-            </> : "Item concluído"}</td>}
-          </tr>;
-        })}</tbody>
-      </table>
-    </div>
+    <OperationalTablePanel title={`Itens da requisição ${request.number}`} description={nextStep}>
+      <OperationalListFrame actions={<>{workflowActions}<OperationalFilters label="Orientações e resultado"><p>{nextStep}</p>{operationMessage && <p>{operationMessage}</p>}{feedback && <p role="status">{feedback}</p>}</OperationalFilters></>}
+        toolbar={<input type="search" aria-label="Pesquisar material da requisição" placeholder="Código ou material" className={styles.searchInput} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} />}
+        pagination={<OperationalPagination page={activePage} total={filtered.length} onPageChange={setPage} />}>
+        <OperationalTable preferenceId="patrimonio-requisicao-itens" caption={`Itens da requisição ${request.number}`} columns={operationalColumns([
+          ["code", "Código", 110, 65, "identifier"], ["material", "Material", 260, 120], ["unit", "Unidade", 75, 55], ["requested", "Solicitado", 95, 70, "text", "right"], ["approved", "Aprovado", 95, 75, "text", "right"], ["delivered", "Entregue", 95, 70, "text", "right"], ["remaining", "Pendente", 100, 70, "text", "right"], ["warehouse", "Origem selecionada", 170, 80], ["batch", "Lote selecionado", 130, 75], ["actions", "Atendimento", 85, 75, "actions"],
+        ])} rows={filtered.slice((activePage - 1) * OPERATIONAL_PAGE_SIZE, activePage * OPERATIONAL_PAGE_SIZE).map(item => {
+          const stock = stocks.find(row => row.id === stockByItem[item.id]);
+          return { id: item.id, label: item.material.name, values: { code: item.material.code, material: item.material.name, unit: item.material.unitOfMeasure, requested: String(item.quantityRequested), approved: String(pendingApproval && canApprove ? approvedQuantities[item.id] : item.quantityApproved), delivered: String(item.quantityDelivered), remaining: pendingApproval ? "Em análise" : String(Math.max(0, item.quantityApproved - item.quantityDelivered)), warehouse: awaitingDelivery ? stock?.warehouse.name || "Sem seleção" : "—", batch: awaitingDelivery ? stock?.batchNumber || "Sem lote" : "—" },
+            cells: pendingApproval && canApprove ? { approved: approval(item) } : undefined,
+            actions: awaitingDelivery && item.quantityApproved > item.quantityDelivered ? <button type="button" aria-label={`Atender ${item.material.name}`} className={styles.iconButton} onClick={() => setEditingItemId(item.id)}><PackageCheck /></button> : "—" };
+        })} />
+      </OperationalListFrame>
+      <Dialog open={Boolean(editingItem)} onOpenChange={open => { if (!open) setEditingItemId(null); }}><DialogContent><DialogHeader><DialogTitle>Atendimento do item</DialogTitle><DialogDescription>Selecione lote, quantidade e vínculo financeiro. Os valores são preservados ao fechar.</DialogDescription></DialogHeader>{editingItem && attendance(editingItem)}</DialogContent></Dialog>
+    </OperationalTablePanel>
+    {(awaitingDelivery || (pendingApproval && canApprove)) && <div className="grid max-w-2xl gap-2"><label>Item para análise / atendimento<select value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)} className="h-8 w-full rounded border">{request.items.map(item => <option key={item.id} value={item.id}>{item.material.code} · {item.material.name}</option>)}</select></label>{selectedItem && (awaitingDelivery ? attendance(selectedItem) : <label>Quantidade aprovada{approval(selectedItem)}</label>)}</div>}
     {feedback && <p role="status" className="rounded border bg-slate-50 p-2 text-xs">{feedback}</p>}
-    <div className="flex gap-2">
-      {pendingApproval && canApprove && <Button type="button" size="sm" disabled={pending} onClick={() => operate(() => approveMaterialRequestAction(request.id, request.items.map(item => ({ itemId: item.id, quantityApproved: Number(approvedQuantities[item.id]) }))))}>{pending ? "Registrando..." : "Confirmar análise e aprovação"}</Button>}
-      {awaitingDelivery && canIssue && <Button type="button" size="sm" disabled={pending || !remainingItems.length || remainingItems.some(item => { const stock = stocks.find(row => row.id === stockByItem[item.id]); return !stock || stock.quantity < item.quantityApproved - item.quantityDelivered; })} onClick={() => operate(() => issueMaterialRequestInFullAction({ requestId: request.id, stockByItem: remainingItems.map(item => ({ requestItemId: item.id, stockId: stockByItem[item.id], ...(settlementByItem[item.id] ? { settlementId: settlementByItem[item.id] } : {}) })) }))}>Entregar todo o saldo pendente</Button>}
-    </div>
+    {workflowActions}
   </section>;
 }

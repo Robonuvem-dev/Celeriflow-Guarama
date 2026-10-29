@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import ts from "typescript";
+import { assertBoundCall, assertDrizzleOnly, assertFormAction, assertJsxValues, assertOperationalRenderer, assertReviewedInventory, assertVariableValue, currentSources, digest } from "./helpers/table-migration-contracts";
 
 // Captured BEFORE migration from the main-sync reference whose pharmacy files
 // are unchanged from original 5cfa. Never regenerate from migrated working files.
@@ -38,27 +37,19 @@ const unchangedComponents: Record<string, string> = {
   "requisicoes/PharmacyRequestForm.tsx": "0f9073df3e698e96ddd5aebea1c29c1208e09722bd56dcf6e1a452fe9d9e5748",
 };
 const root = "src/app/app-domain/saude/farmacia";
-const sha = (value: string) => createHash("sha256").update(value).digest("hex");
-function files(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : entry.name.endsWith(".tsx") ? [join(directory, entry.name).replaceAll("\\", "/").slice(root.length + 1)] : []);
-}
-test("Pharmacy pages: all 17 original JSX ASTs and eight complete component contracts survive", () => {
-  assert.deepEqual(files(root).sort(), Object.keys(jsxBaseline).sort());
-  const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-  for (const [file, fingerprint] of Object.entries(jsxBaseline)) {
-    const text = readFileSync(join(root, file), "utf8"), source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-    const jsx: string[] = [];
-    function visit(node: ts.Node) {
-      if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) { jsx.push(printer.printNode(ts.EmitHint.Unspecified, node, source)); return; }
-      ts.forEachChild(node, visit);
-    }
-    visit(source);
-    assert.equal(sha(JSON.stringify(jsx)), fingerprint, `${file}: original JSX, fields/actions/CSS/labels/callbacks`);
-    if (unchangedComponents[file]) assert.equal(sha(text.replaceAll("\r\n", "\n")), unchangedComponents[file], `${file}: complete original props, action calls and result handling`);
+test("Farmácia: fingerprints originais preservados como proveniência, UI atual com gates e executor Drizzle", () => {
+  // These are checksums of the ORIGINAL evidence maps above, not regenerated
+  // hashes of the authorized current JSX. No Git/history is required in CI.
+  assert.equal(digest(JSON.stringify(jsxBaseline)), "d0323a26b36609005d6a65579143aaf8756dee4b8c1c0d73a8927d2a81b64a59");
+  assert.equal(digest(JSON.stringify(unchangedComponents)), "908d23b580b05fdd3373dafe536d190e93ae5822724fe5d5ea9e71889ae06b29");
+  assertReviewedInventory(currentSources(root), Object.keys(jsxBaseline).map(file => `${root}/${file}`));
+  assertDrizzleOnly(currentSources(root));
+  for (const file of Object.keys(jsxBaseline)) {
+    const text = readFileSync(join(root, file), "utf8");
     assert.doesNotMatch(text, /@prisma|\bPrisma\b|\bprisma\b|\$transaction|\$queryRaw|\bas\s+(?:any|unknown)\b/, file);
     if (file.endsWith("page.tsx")) {
       assert.match(text, /context\.database \?\? db/, `${file}: supplied executor`);
-      assert.match(text, /getTenantContextForModule\("SAUDE"\)/, `${file}: original module guard`);
+      assertBoundCall(`${root}/${file}`, "@/lib/platform/tenant-context", "getTenantContextForModule", ['"SAUDE"']);
       if (file !== "catalogo/page.tsx") assert.match(text, /context\.user\.hasHealthAccessScope \? context\.user\.allowedHealthUnitIds \|\| \[\] : undefined/, `${file}: original unrestricted/allowed-unit rule`);
     }
   }
@@ -66,4 +57,16 @@ test("Pharmacy pages: all 17 original JSX ASTs and eight complete component cont
   assert.match(dispensations, /if \(params\.unitId\) assertHealthUnitAccess\(context\.user, params\.unitId\)/);
   assert.match(dispensations, /T00:00:00-03:00/);
   assert.match(dispensations, /86400000/);
+});
+
+test("Farmácia atual: escopo por unidade, quatorze actions e payloads integrais independentes da tabela", () => {
+  const page = `${root}/page.tsx`;
+  assertVariableValue(page, "unitIds", "context.user.hasHealthAccessScope ? context.user.allowedHealthUnitIds || [] : undefined");
+  assertBoundCall(page, "@/db/repositories/health-pharmacy-pages/stock", "readPharmacyStockPage", ["context.database ?? db", "unitIds", "{ q, filter, requestedPage: positivePage(first(params.page)) }"]);
+  for (const action of ["createHealthProductAction", "createHealthWarehouseAction", "configureReceiptApprovalAction", "dispenseAction", "dispatchTransferAction", "receiveTransferAction", "writeOffAction", "dispatchPharmacyIntegrationAction", "saveMedicineInteractionAction", "saveDosageTemplateAction", "createPharmacyRequestAction", "setStockBlockAction", "toggleControlledBookAction", "approveHealthReceiptAction"]) assertFormAction(page, "./actions", action);
+  assertOperationalRenderer(page);
+  for (const [file, action] of [["judicial/JudicialCaseForm.tsx", "createJudicialCaseAction"], ["judicial/JudicialDispensationForm.tsx", "dispenseJudicialCaseAction"], ["kits/KitCompositionForm.tsx", "saveKitAction"], ["requisicoes/PharmacyRequestForm.tsx", "createPharmacyRequestManagerAction"]]) assertFormAction(`${root}/${file}`, "./actions", action);
+  for (const file of ["kits/KitCompositionForm.tsx", "requisicoes/PharmacyRequestForm.tsx"]) assertJsxValues(`${root}/${file}`, "input", { type: '"hidden"', name: '"items"', value: "JSON.stringify(items.map(item => ({ materialId: item.materialId, quantity: Number(item.quantity) })))" });
+  for (const action of ["previewPharmacyInvoiceAction", "importPharmacyInvoiceAction"]) assertBoundCall(`${root}/notas/InvoiceImportForm.tsx`, "./actions", action);
+  assertBoundCall(`${root}/HealthReceiptForm.tsx`, "./actions", "saveHealthReceiptAction");
 });

@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Network, Plus, Search, X } from "lucide-react";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import { ErpStatusBadge, ErpTableContainer, ErpTableTd, ErpTableTh, ErpTableThead, ErpTableTr } from "@/components/app-ui/erp/ErpTable";
+import { Plus, X } from "lucide-react";
+import { TaxOperationalTable } from "../TaxOperationalTable";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import { registerRedesimEvent } from "../cadastros-fiscais/actions";
 
 type EventRow = { id: string; eventType: string; status: string; evidenceLevel: string; protocol: string | null; externalReference: string | null; taxpayerId: string | null; economicRegistrationId: string | null; receivedAt: string; result: unknown };
@@ -14,12 +12,9 @@ type TaxpayerOption = { id: string; name: string; cnpj: string; municipalInsc: s
 
 export default function RedesimClient({ events, taxpayers }: { events: EventRow[]; taxpayers: TaxpayerOption[] }) {
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const filtered = useMemo(() => events.filter((event) => `${event.eventType} ${event.status} ${event.protocol ?? ""} ${event.externalReference ?? ""}`.toLowerCase().includes(search.toLowerCase())), [events, search]);
-  const pageSize = 20;
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,12 +29,11 @@ export default function RedesimClient({ events, taxpayers }: { events: EventRow[
   }
 
   return <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
-    <ErpPageTitle title="REDESIM · solicitações" description="Eventos internos vinculados ao cadastro municipal" icon={<Network className="size-4 text-emerald-600" />} action={<button onClick={() => setOpen(true)} className="inline-flex h-8 items-center gap-1 rounded bg-amber-500 px-3 text-xs font-bold text-slate-950"><Plus className="size-3.5" />Registrar evento</button>} />
-    <p className="rounded border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] text-sky-900">Sem contrato configurado, os eventos permanecem no nível L0 e não representam confirmação oficial da Junta Comercial.</p>
-    {message && <p className="rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-900">{message}</p>}
-    <ErpListFrame toolbar={<label className="relative block"><Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar evento, situação ou referência" className="h-8 w-full rounded border border-slate-200 pl-8 pr-2 text-xs" /></label>} pagination={<ErpPagination page={page} total={filtered.length} pageSize={pageSize} previousHref="#" nextHref="#" label="eventos REDESIM" onPageChange={setPage} />}>
-      <ErpTableContainer><ErpTableThead><tr><ErpTableTh className="w-[18%]">Evento</ErpTableTh><ErpTableTh className="w-[20%]">Referência</ErpTableTh><ErpTableTh className="w-[15%]">Data</ErpTableTh><ErpTableTh className="w-[18%]">Situação</ErpTableTh><ErpTableTh className="w-[14%]">Evidência</ErpTableTh><ErpTableTh className="w-[15%] text-right">Cadastro</ErpTableTh></tr></ErpTableThead><tbody>{paged.map((event) => <ErpTableTr key={event.id}><ErpTableTd className="font-semibold">{event.eventType}</ErpTableTd><ErpTableTd className="truncate" title={event.protocol ?? event.externalReference ?? "Referência interna"}>{event.protocol ?? event.externalReference ?? "Referência interna"}</ErpTableTd><ErpTableTd>{new Date(event.receivedAt).toLocaleDateString("pt-BR")}</ErpTableTd><ErpTableTd><ErpStatusBadge variant={event.status === "PROCESSADO_INTERNO" ? "success" : "warning"}>{event.status.replaceAll("_", " ")}</ErpStatusBadge></ErpTableTd><ErpTableTd>{event.evidenceLevel} · interno</ErpTableTd><ErpTableTd className="text-right">{event.economicRegistrationId ? <Link href={`/tributacao/economico/${event.economicRegistrationId}`} className="font-semibold text-emerald-700 hover:underline">Abrir inscrição</Link> : "—"}</ErpTableTd></ErpTableTr>)}{!paged.length && <tr><td colSpan={6} className="p-8 text-center text-xs text-slate-400">Nenhum evento encontrado.</td></tr>}</tbody></ErpTableContainer>
-    </ErpListFrame>
+    <TaxOperationalTable resetKey={search} id="redesim" emptyMessage="Nenhum evento encontrado."
+      actions={<button onClick={() => setOpen(true)} className="inline-flex h-7 items-center gap-1 rounded bg-amber-500 px-2 text-xs font-bold"><Plus className="size-4" />Registrar evento</button>}
+      toolbar={<><input aria-label="Buscar eventos REDESIM" value={search} onChange={event => setSearch(event.target.value)} placeholder="Evento, situação ou referência" className="h-7 min-w-0 flex-1 rounded border px-2 text-[13px]" /><OperationalFilters label="Contexto e resultado"><p>Sem contrato configurado, os eventos permanecem no nível L0 e não representam confirmação oficial da Junta Comercial.</p>{message && <p role="status">{message}</p>}</OperationalFilters></>}
+      columns={[["event", "Evento", 110, 170], ["reference", "Referência", 120, 180, "identifier"], ["date", "Data", 95, 105], ["status", "Situação", 140, 190, "status"], ["evidence", "Evidência interna", 100, 130], ["actions", "Cadastro", 110, 110, "actions"]]}
+      rows={filtered.map(event => ({ id: event.id, label: event.protocol ?? event.externalReference ?? event.id, values: { event: event.eventType, reference: event.protocol ?? event.externalReference ?? "Referência interna", date: new Date(event.receivedAt).toLocaleDateString("pt-BR"), status: event.status.replaceAll("_", " "), evidence: `${event.evidenceLevel} · interno` }, actions: event.economicRegistrationId ? <Link href={`/tributacao/economico/${event.economicRegistrationId}`} className="text-emerald-700 underline">Abrir inscrição</Link> : null }))} />
     {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"><form onSubmit={submit} className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-md bg-white shadow-xl"><div className="sticky top-0 flex justify-between border-b bg-white px-4 py-3"><h2 className="text-sm font-bold">Registrar evento recebido ou preparado</h2><button type="button" onClick={() => setOpen(false)}><X className="size-4" /></button></div><div className="grid gap-3 p-4 sm:grid-cols-2">
       <label className="text-xs font-semibold">Evento<select name="eventType" required className="input mt-1"><option>VIABILIDADE</option><option>FORMALIZACAO</option><option>ABERTURA</option><option>ALTERACAO</option><option>BAIXA</option><option>MEI</option><option>LICENCIAMENTO</option></select></label>
       <label className="text-xs font-semibold">Pessoa jurídica<select name="taxpayerId" required className="input mt-1"><option value="">Selecione</option>{taxpayers.map((taxpayer) => <option key={taxpayer.id} value={taxpayer.id}>{taxpayer.name} · {taxpayer.cnpj}</option>)}</select></label>

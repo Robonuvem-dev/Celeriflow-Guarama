@@ -5,6 +5,7 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
+import { HealthPageTools, HealthListRegion } from "../HealthPageTools";
 import { captureFactsAction, captureManualFactAction, closeCompetenceAction, generateFileAction, importProductionFileAction, openCompetenceAction, processCompetenceAction, processFileAction, reopenCompetenceAction, resolveCriticismAction, saveProductionTargetAction, saveUnitCeilingAction } from "./actions";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -17,7 +18,7 @@ import { people } from "@/db/schema/people";
 import { ProcedureField } from "./laudos/TreatmentReportEditor";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
-const PAGE_SIZE = 20;
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
 type Params = { q?: string | string[]; filter?: string | string[]; page?: string | string[]; comp?: string | string[]; professional?: string | string[]; procedure?: string | string[]; cid?: string | string[]; municipality?: string | string[]; state?: string | string[] };
 const first = (v: string | string[] | undefined) => Array.isArray(v) ? v[0] : v;
 const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? Number(v) : 1;
@@ -64,9 +65,9 @@ export default async function ProducaoPage({ searchParams }: { searchParams: Pro
   const facts = factRows.map(row => ({ ...row.fact, procedure: row.procedure, cidReference: row.cidReference, unit: row.unit, professional: row.professional })), criticisms = criticismRows.map(row => ({ ...row.criticism, fact: row.fact })), files = fileRows.map(row => ({ ...row.file, competence: row.competence, unit: row.unit }));
 
   return (
-    <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
+    <PageFrame className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PageHeader title="Produção e Faturamento SUS" icon={<Factory className="size-4 text-teal-700" />} />
-      <Link href="/saude/producao/laudos" className="shrink-0 text-sm font-semibold text-teal-800 underline">Gestores AIH/APAC: laudos, órgãos, faixas e autorizações</Link>
+      <HealthPageTools><Link href="/saude/producao/laudos" className="shrink-0 text-sm font-semibold text-teal-800 underline">Gestores AIH/APAC: laudos, órgãos, faixas e autorizações</Link>
       <Link href="/saude/producao/previas" className="shrink-0 text-sm font-semibold text-teal-800 underline">Prévias por unidade/profissional, BPA impresso e custo de consumo do paciente</Link>
       <Link href="/saude/producao/tabelas" className="shrink-0 text-sm font-semibold text-teal-800 underline">Tabelas auxiliares e preços versionados por unidade/convênio/vigência</Link>
       <Link href="/saude/producao/raas" className="shrink-0 text-sm font-semibold text-teal-800 underline">Origens clínicas RAAS domiciliar e psicossocial</Link>
@@ -109,11 +110,11 @@ export default async function ProducaoPage({ searchParams }: { searchParams: Pro
         </details>
         <details className="rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Processar arquivo (adaptador)</summary><form action={processFileAction} className="mt-2 grid gap-1"><select name="fileId" required className={field}><option value="">Arquivo</option>{files.map(f => <option key={f.id} value={f.id}>{f.fileType} · {f.competence.period} · {f.status} · {f.quantity}</option>)}</select><p className="text-[10px] text-slate-500">Validador controlado: confere estrutura, devolve aceites/rejeições por linha.</p><button className="h-8 rounded bg-slate-800 font-semibold text-white">Processar</button></form></details>
         <div className="min-h-0 overflow-y-auto rounded border bg-white p-2"><h2 className="sticky top-0 bg-white pb-2 text-xs font-bold uppercase text-slate-500">Críticas abertas ({criticisms.length})</h2>{criticisms.map(c => <article key={c.id} className="mb-2 rounded border p-2 text-xs"><strong>{c.code}</strong><p className="text-slate-500">{c.message}</p><p className="text-slate-400">{c.fact.originType}:{c.fact.originId.slice(0,8)} · {c.fact.period}</p><p className="text-slate-400">{c.actionNeeded}</p><form action={resolveCriticismAction} className="mt-1"><input type="hidden" name="criticismId" value={c.id}/><button className="rounded border px-2 py-1">Resolver após corrigir origem</button></form></article>)}{criticisms.length===0 && <p className="text-xs text-slate-400">Sem críticas abertas.</p>}</div>
-      </div>
-      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[2fr_1fr]">
+      </div></HealthPageTools>
+      <HealthListRegion>
         <HealthSimpleListClient rows={facts.map(f => ({ id: f.id, cells: { date: f.occurredAt.toLocaleDateString("pt-BR"), origin: f.originType, procedure: f.procedure?.code || "-", cid: f.cidReference?.code || "-", unit: f.unit?.name || "-", municipality: f.municipality ? `${f.municipality}${f.state ? `/${f.state}` : ""}` : "-", qty: String(f.quantity), status: f.status, period: f.period } }))} columns={[{ key: "date", label: "Data", width: "medium" }, { key: "origin", label: "Origem", width: "medium" }, { key: "procedure", label: "Procedimento", responsive: "sm" }, { key: "cid", label: "CID", responsive: "lg", width: "narrow" }, { key: "unit", label: "Unidade", responsive: "md" }, { key: "municipality", label: "Município", responsive: "lg", width: "medium" }, { key: "qty", label: "Qtde", width: "narrow" }, { key: "period", label: "Comp.", width: "narrow" }, { key: "status", label: "Situação", width: "medium" }]} label="fatos" searchPlaceholder="Buscar origem, procedimento, CID ou município" filterKey="status" filterLabel="Todos" serverPagination={{ page, total, pathname: "/app-domain/saude/producao", search: q, filter, filterOptions: ["VALIDO","CRITICADO"], extra: { comp: compFilter || undefined, professional: professionalFilter || undefined, procedure: procedureFilter || undefined, cid: cidFilter || undefined, municipality: municipalityFilter || undefined, state: stateFilter || undefined } }} />
         <div className="min-h-0 overflow-y-auto rounded border bg-white p-2"><h2 className="sticky top-0 bg-white pb-2 text-xs font-bold uppercase text-slate-500">Arquivos SUS</h2>{files.map(f => <article key={f.id} className="mb-2 rounded border p-2 text-xs"><strong>{f.fileType} · {f.competence.period}</strong><p className="text-slate-500">{f.unit?.name || "Todas"} · {f.status} · {f.processedCount}/{f.rejectedCount}/{f.quantity}</p><p className="truncate text-slate-400" title={f.hash}>hash {f.hash.slice(0,16)}…</p><div className="mt-1 flex gap-2"><a className="rounded border px-2 py-1" href={`/api/saude/producao/arquivos/${f.id}`}>Baixar</a></div>{Array.isArray(f.errors) && (f.errors as unknown[]).length > 0 && <p className="mt-1 text-rose-600">{(f.errors as Array<{reason:string}>).length} linha(s) rejeitada(s). Reprocesse após corrigir a origem.</p>}</article>)}{files.length===0 && <p className="text-xs text-slate-400">Nenhum arquivo gerado.</p>}</div>
-      </div>
+      </HealthListRegion>
     </PageFrame>
   );
 }

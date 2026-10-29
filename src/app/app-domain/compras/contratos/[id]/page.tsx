@@ -14,6 +14,8 @@ import { ContratoLifecyclePanel } from "../ContratoLifecyclePanel";
 import { InstrumentLifecyclePanel } from "../InstrumentLifecyclePanel";
 import { databaseConnection } from "@/db/client";
 import { loadContractDetail, loadInstrumentSelectors } from "@/db/repositories/procurement/instruments";
+import { ComprasPanelTable } from "../../_components/ComprasPanelTable";
+import { comprasColumn as column } from "../../_components/columns";
 
 export default async function ContratoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   await getTenantContextForModule("COMPRAS");
@@ -158,12 +160,8 @@ export default async function ContratoDetalhesPage({ params }: { params: Promise
           <CardTitle className="text-sm">Itens e Quantidades Contratadas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 p-3 text-sm">
-          {contrato.process.items.length ? contrato.process.items.map((item) => {
-            const description = item.catalogItem?.name ?? item.material?.name ?? item.customName ?? "Item sem descrição";
-            const unit = item.catalogItem?.unit ?? item.material?.unitOfMeasure ?? "UN";
-            const itemValue = item.estimatedUnitValue === null ? null : item.quantity * item.estimatedUnitValue;
-            return <div key={item.id} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"><span>{description}</span><span>{formatQuantity(item.quantity)} {unit}</span><span>{itemValue === null ? "Valor não informado" : formatMoney(itemValue)}</span></div>;
-          }) : <p className="text-muted-foreground">O processo vinculado não possui itens cadastrados.</p>}
+          <ComprasPanelTable title={`Itens contratados — ${contrato.number}`} preferenceId="compras-contrato-itens" columns={[column("name", "Item", 160, 500, "identifier"), column("quantity", "Quantidade", 90, 140), column("unit", "Unidade", 70, 100), column("value", "Valor", 110, 180)]}
+            rows={contrato.process.items.map((item) => ({ id: item.id, label: item.catalogItem?.name ?? item.material?.name ?? item.customName ?? "Item sem descrição", values: { name: item.catalogItem?.name ?? item.material?.name ?? item.customName ?? "Item sem descrição", quantity: formatQuantity(item.quantity), unit: item.catalogItem?.unit ?? item.material?.unitOfMeasure ?? "UN", value: item.estimatedUnitValue === null ? "Valor não informado" : formatMoney(item.quantity * item.estimatedUnitValue) } }))} />
         </CardContent>
       </Card>
 
@@ -271,16 +269,10 @@ export default async function ContratoDetalhesPage({ params }: { params: Promise
         </CardHeader>
         <CardContent className="space-y-3 p-3 text-sm">
           <p className="text-xs text-muted-foreground">Valores abaixo vêm exclusivamente dos atos financeiros já registrados e permanecem separados de medições e parcelas.</p>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            <div><p className="text-sm text-muted-foreground">Contratado</p><p>{formatMoney(contracted)}</p></div>
-            <div><p className="text-sm text-muted-foreground">Empenhado</p><p>{formatMoney(committed)}</p></div>
-            <div><p className="text-sm text-muted-foreground">Liquidado</p><p>{formatMoney(settled)}</p></div>
-            <div><p className="text-sm text-muted-foreground">Pago</p><p>{formatMoney(paid)}</p></div>
-            <div><p className="text-sm text-muted-foreground">Saldo a Empenhar</p><p>{formatMoney(contracted - committed)}</p></div>
-            <div><p className="text-sm text-muted-foreground">Saldo frente ao pago real</p><p>{formatMoney(contracted - paid)}</p></div>
-            <div><p className="text-sm text-muted-foreground">Recebido e atestado</p><p>{formatMoney(received)}</p></div>
-          </div>
-          {contrato.commitments.length ? <div className="space-y-2 border-t pt-3">{contrato.commitments.map((commitment) => <div key={commitment.number} className="flex flex-wrap justify-between gap-2 rounded-md border p-3 text-xs"><span className="font-medium">Empenho {commitment.number}</span><span>{format(commitment.date, "dd/MM/yyyy", { locale: ptBR })}</span><span>{commitment.status}</span><span>{formatMoney(Number(commitment.valueDecimal ?? commitment.value))}</span></div>)}</div> : <p className="text-muted-foreground">Nenhum empenho vinculado ao contrato.</p>}
+          <ComprasPanelTable title={`Resumo financeiro — ${contrato.number}`} preferenceId="compras-contrato-resumo" columns={[column("indicator", "Indicador", 200, 600, "identifier"), column("value", "Valor", 120, 240, "text", "right")]}
+            rows={[["Contratado", contracted], ["Empenhado", committed], ["Liquidado", settled], ["Pago", paid], ["Saldo a Empenhar", contracted - committed], ["Saldo frente ao pago real", contracted - paid], ["Recebido e atestado", received]].map(([label, value]) => ({ id: String(label), label: String(label), values: { indicator: String(label), value: formatMoney(Number(value)) } }))} />
+          <ComprasPanelTable title={`Empenhos — ${contrato.number}`} preferenceId="compras-contrato-empenhos" columns={[column("number", "Empenho", 120, 300, "identifier"), column("date", "Data", 100, 160), column("status", "Situação", 120, 260, "status"), column("value", "Valor", 110, 180, "text", "right")]}
+            rows={contrato.commitments.map((commitment) => ({ id: commitment.number, label: commitment.number, values: { number: commitment.number, date: format(commitment.date, "dd/MM/yyyy", { locale: ptBR }), status: commitment.status, value: formatMoney(Number(commitment.valueDecimal ?? commitment.value)) } }))} />
         </CardContent>
       </Card>
     </PageFrame>

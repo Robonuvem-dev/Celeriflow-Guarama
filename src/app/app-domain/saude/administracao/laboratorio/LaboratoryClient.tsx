@@ -12,14 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  ErpStatusBadge,
-  ErpTableContainer,
-  ErpTableTd,
-  ErpTableTh,
-  ErpTableThead,
-  ErpTableTr,
-} from "@/components/app-ui/erp/ErpTable";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { healthColumn } from "../../operational-columns";
+import { HealthFeedback } from "../../HealthPageTools";
 import { saveLaboratoryConfiguration } from "./actions";
 
 export type LaboratoryRow = {
@@ -110,70 +106,20 @@ export function LaboratoryClient({
   }
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white">
-        <div className="flex shrink-0 items-center justify-between border-b p-2">
-          <span className="text-[11px] text-slate-500">
-            {rows.length} registro(s) nesta página
-          </span>
+        <OperationalHeaderActions>
           {canUpdate && (
             <Button size="sm" onClick={() => edit()}>
               <Plus className="size-3.5" />
               Nova configuração
             </Button>
           )}
-        </div>
-        {message && (
-          <p
-            role="status"
-            className="shrink-0 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800"
-          >
-            {message}
-          </p>
-        )}
-        <ErpTableContainer className="overflow-y-auto overflow-x-hidden">
-          <ErpTableThead>
-            <ErpTableTr>
-              <ErpTableTh>Laboratório / unidade</ErpTableTh>
-              <ErpTableTh className="hidden md:table-cell">Coleta</ErpTableTh>
-              <ErpTableTh className="hidden lg:table-cell">Vigência</ErpTableTh>
-              <ErpTableTh className="w-[100px]">Situação</ErpTableTh>
-              <ErpTableTh className="w-[80px] text-center">Ações</ErpTableTh>
-            </ErpTableTr>
-          </ErpTableThead>
-          <tbody>
-            {rows.map((row) => (
-              <ErpTableTr key={row.id}>
-                <ErpTableTd>
-                  <strong>{row.laboratoryName}</strong>
-                  <br />
-                  <span className="text-[11px] text-slate-500">
-                    {row.unitName}
-                  </span>
-                </ErpTableTd>
-                <ErpTableTd className="hidden md:table-cell">
-                  {row.collectionStartTime} às {row.collectionEndTime}
-                </ErpTableTd>
-                <ErpTableTd className="hidden lg:table-cell">
-                  {new Date(`${row.effectiveFrom}T12:00:00`).toLocaleDateString(
-                    "pt-BR",
-                  )}{" "}
-                  {row.effectiveUntil
-                    ? `a ${new Date(`${row.effectiveUntil}T12:00:00`).toLocaleDateString("pt-BR")}`
-                    : "em diante"}
-                </ErpTableTd>
-                <ErpTableTd>
-                  <ErpStatusBadge
-                    variant={row.isActive ? "success" : "neutral"}
-                  >
-                    {row.isActive ? "Atual" : "Histórica"}
-                  </ErpStatusBadge>
-                </ErpTableTd>
-                <ErpTableTd>
-                  <div className="flex justify-center gap-1">
+        </OperationalHeaderActions>
+        <HealthFeedback message={message} />
+        <OperationalTable preferenceId="saude-admin-laboratorio" caption="Configuração laboratorial" columns={[healthColumn("name", "Laboratório", 240, 120), healthColumn("unit", "Unidade", 210, 110), healthColumn("collectionStart", "Início coleta", 120, 95), healthColumn("collectionEnd", "Fim coleta", 110, 85), healthColumn("from", "Vigência de", 120, 95), healthColumn("until", "Vigência até", 120, 95), healthColumn("status", "Situação", 110, 90, "status"), healthColumn("actions", "Ações", 100, 100, "actions", "right", 120)]} rows={rows.map(row => ({ id: row.id, label: row.laboratoryName, values: { name: row.laboratoryName, unit: row.unitName, collectionStart: row.collectionStartTime, collectionEnd: row.collectionEndTime, from: new Date(`${row.effectiveFrom}T12:00:00`).toLocaleDateString("pt-BR"), until: row.effectiveUntil ? new Date(`${row.effectiveUntil}T12:00:00`).toLocaleDateString("pt-BR") : "Em diante", status: row.isActive ? "Atual" : "Histórica" }, actions: <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
                       onClick={() => setDetail(row)}
-                      className="inline-flex size-7 items-center justify-center rounded border"
+                      className="inline-flex size-6 items-center justify-center rounded border"
                       aria-label={`Abrir ${row.laboratoryName}`}
                     >
                       <Eye className="size-3.5" />
@@ -187,13 +133,7 @@ export function LaboratoryClient({
                         Alterar
                       </button>
                     )}
-                  </div>
-                </ErpTableTd>
-              </ErpTableTr>
-            ))}
-          </tbody>
-        </ErpTableContainer>
-      </div>
+                  </div> }))} />
       <Dialog
         open={Boolean(editing)}
         onOpenChange={(open) => !open && setEditing(null)}

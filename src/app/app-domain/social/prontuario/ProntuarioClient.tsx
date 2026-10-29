@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Search, ClipboardList, Lock, Clock, CheckCircle2, XCircle, SearchCode, HeartHandshake } from "lucide-react";
+import { FileText, Search, ClipboardList, SearchCode, HeartHandshake } from "lucide-react";
 import { createAttendance, updateAttendance, toggleAttendanceStatus } from "../actions";
 import { searchCadUnicoAction, saveRmaRecordAction } from "./cadunico-actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-
-const PAGE_SIZE = 20;
+import { SocialOperationalList } from "../OperationalList";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 type Family = { id: string; familyCode: string | null; nis: string | null };
 type Person = { id: string; fullName: string };
@@ -59,6 +58,7 @@ export default function ProntuarioClient({ atendimentosInicial, familias, person
   const [cadUnicoResult, setCadUnicoResult] = useState<Awaited<ReturnType<typeof searchCadUnicoAction>>["data"] | null>(null);
   const [cadLoading, setCadLoading] = useState(false);
   const [rmaSuccessMsg, setRmaSuccessMsg] = useState<string | null>(null);
+  const [cadOpen, setCadOpen] = useState(false);
   
   const [formData, setFormData] = useState<AttendanceFormData>({
     familyId: "",
@@ -161,9 +161,8 @@ export default function ProntuarioClient({ atendimentosInicial, familias, person
 
   return (
     <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2 sm:p-3">
-      {/* CadÚnico & SUAS Engine Card */}
-      <details className="shrink-0 rounded-lg border border-blue-900 bg-slate-950 text-white shadow-sm">
-        <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-blue-200">Consulta ao cadastro local do CadÚnico</summary>
+      <Dialog open={cadOpen} onOpenChange={setCadOpen}><DialogContent className="sm:max-w-3xl">
+        <DialogHeader><DialogTitle>Consulta ao cadastro local do CadÚnico</DialogTitle><DialogDescription>Dados municipais e registro da consulta local.</DialogDescription></DialogHeader>
         <section className="space-y-3 border-t border-blue-900 p-3">
         <div className="flex flex-col gap-3 border-b border-blue-900 pb-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -241,100 +240,29 @@ export default function ProntuarioClient({ atendimentosInicial, familias, person
           </div>
         )}
         </section>
-      </details>
+      </DialogContent></Dialog>
 
       <PageHeader
         title="Prontuário Eletrônico SUAS"
         icon={<FileText className="size-4 shrink-0 text-blue-600" />}
         action={<button onClick={() => handleOpenModal()} className="inline-flex h-7 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700"><ClipboardList className="size-3.5" />Novo atendimento</button>}
       />
-      <ErpListFrame
-        toolbar={<div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_10rem]"><div className="relative">
+      <SocialOperationalList id="prontuario" page={activePage} total={filtered.length} onPageChange={setPage}
+        actions={<button type="button" onClick={() => setCadOpen(true)}>Consultar CadÚnico</button>}
+        columns={[["date", "Atualização", 150, 120], ["unit", "Unidade", 180, 100], ["subject", "Pessoa/Família", 200, 110, "identifier"], ["type", "Tipo", 140, 80], ["secrecy", "Sigilo", 100, 80, "status"], ["status", "Status", 90, 70, "status"], ["actions", "Ações", 140, 140, "actions"]]}
+        rows={visibleAttendances.map((atendimento) => ({ id: atendimento.id, label: atendimento.person?.fullName || atendimento.family.familyCode || atendimento.id, values: { date: new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(atendimento.date)), unit: atendimento.unit.name, subject: atendimento.person?.fullName || `Família ${atendimento.family.familyCode || "—"}`, type: atendimento.type, secrecy: atendimento.secrecyLevel, status: atendimento.isActive !== false ? "Ativo" : "Inativo" }, actions: <div className="flex gap-2"><button onClick={() => handleOpenModal(atendimento)}>Editar</button><button onClick={() => handleToggleStatus(atendimento.id, atendimento.isActive !== false)}>{atendimento.isActive !== false ? "Inativar" : "Ativar"}</button></div> }))}
+        toolbar={<div className="flex w-full min-w-0 gap-2"><div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
+            aria-label="Buscar prontuário por código da família ou nome"
             placeholder="Buscar por código da família ou nome..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="h-8 w-full rounded-md border border-slate-200 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+            className="h-7 w-full rounded-md border border-slate-200 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
           />
-        </div><select value={secrecyFilter} onChange={(event) => { setSecrecyFilter(event.target.value); setPage(1); }} className="h-8 rounded border border-slate-200 px-2 text-xs"><option>Todos</option>{Array.from(new Set(atendimentos.map((item) => item.secrecyLevel))).map((item) => <option key={item}>{item}</option>)}</select></div>}
-        summary={<p className="text-[11px] text-slate-500">{filtered.length} registros encontrados</p>}
-        pagination={<ErpPagination page={activePage} total={filtered.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="prontuários" onPageChange={setPage} />}
-      >
-          <table className="w-full table-fixed text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-100">
-              <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-500">
-                <th className="p-2 font-semibold">Atualização</th>
-                <th className="hidden p-2 font-semibold md:table-cell">Unidade</th>
-                <th className="p-2 font-semibold">Pessoa/Família</th>
-                <th className="p-2 font-semibold">Tipo</th>
-                <th className="hidden p-2 text-center font-semibold sm:table-cell">Status</th>
-                <th className="p-2 text-right font-semibold">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {filtered.length > 0 ? (
-                visibleAttendances.map((atendimento) => (
-                  <tr key={atendimento.id} className="h-9 hover:bg-slate-50/50">
-                    <td className="whitespace-nowrap p-2">
-                      <p className="font-semibold text-slate-800 flex items-center gap-1 text-xs">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(atendimento.date))}
-                      </p>
-                    </td>
-                    <td className="hidden truncate p-2 text-slate-600 md:table-cell">
-                      {atendimento.unit.name}
-                    </td>
-                    <td className="truncate p-2 font-medium text-slate-800" title={atendimento.person?.fullName || atendimento.family.familyCode || undefined}>{atendimento.person ? atendimento.person.fullName : `Família ${atendimento.family.familyCode || "-"}`}</td>
-                    <td className="p-2">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium border border-indigo-100">
-                          {atendimento.type}
-                        </span>
-                        {atendimento.secrecyLevel === 'Restrito' && (
-                          <span title="Atendimento com Sigilo Restrito">
-                            <Lock className="w-3.5 h-3.5 text-red-500" />
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="hidden p-2 text-center sm:table-cell">
-                      {atendimento.isActive !== false ? (
-                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-200">
-                           <CheckCircle2 className="w-3 h-3" /> Ativo
-                         </span>
-                      ) : (
-                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-50 text-rose-700 rounded-md text-xs font-medium border border-rose-200">
-                           <XCircle className="w-3 h-3" /> Inativo
-                         </span>
-                      )}
-                    </td>
-                    <td className="p-2">
-                      <div className="flex justify-end gap-1">
-                        <button onClick={() => handleOpenModal(atendimento)} className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors text-xs font-medium">
-                          Editar
-                        </button>
-                        <button 
-                          onClick={() => handleToggleStatus(atendimento.id, atendimento.isActive !== false)}
-                          className={atendimento.isActive !== false ? 'text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg transition-colors text-xs font-medium' : 'text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors text-xs font-medium'}
-                        >
-                          {atendimento.isActive !== false ? 'Inativar' : 'Ativar'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
-                    Nenhum atendimento registrado.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-      </ErpListFrame>
+        </div><select aria-label="Nível de sigilo" value={secrecyFilter} onChange={(event) => { setSecrecyFilter(event.target.value); setPage(1); }} className="h-7 min-w-0 rounded border border-slate-200 px-2 text-sm"><option>Todos</option>{Array.from(new Set(atendimentos.map((item) => item.secrecyLevel))).map((item) => <option key={item}>{item}</option>)}</select></div>}
+      />
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

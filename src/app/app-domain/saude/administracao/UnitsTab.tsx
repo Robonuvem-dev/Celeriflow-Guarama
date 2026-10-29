@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Clock3, Eye, Link2, Pencil, Power } from "lucide-react";
 import type { UnitRow } from "./AdministracaoClient";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { healthColumn } from "../operational-columns";
 import {
   changeHealthUnitStatus,
   saveHealthHabilitation,
@@ -26,10 +28,6 @@ type Props = {
 const emptyForm: UnitForm = { name: "", type: "UBS", cnes: "", phone: "", email: "", isThirdParty: false };
 const unitTypes = ["UBS", "ESF", "UPA", "Hospital", "CAPS", "Farmácia", "Centro de Especialidades", "Maternidade", "Outros"];
 const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-function StatusBadge({ active }: { active: boolean }) {
-  return <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"}`}>{active ? "Ativa" : "Inativa"}</span>;
-}
 
 export default function UnitsTab({ rows, specialtyOptions, serviceOptions, editor, canUpdate, onEdit, onClose }: Props) {
   const editing = editor?.kind === "unidades" ? rows.find(row => row.id === editor.id) : undefined;
@@ -89,25 +87,11 @@ export default function UnitsTab({ rows, specialtyOptions, serviceOptions, edito
 
   return (
     <>
-      <table className="w-full table-fixed border-collapse text-left text-xs">
-        <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-          <tr><th className="w-[34%] px-3 py-2">Unidade</th><th className="w-[15%] px-3 py-2">Tipo</th><th className="w-[12%] px-3 py-2">CNES</th><th className="hidden w-[17%] px-3 py-2 lg:table-cell">Telefone</th><th className="w-[10%] px-3 py-2">Situação</th><th className="w-24 px-3 py-2 text-right">Ações</th></tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {rows.map(row => <tr key={row.id} className="h-9 hover:bg-slate-50 dark:hover:bg-slate-800/60">
-            <td className="truncate px-3 font-medium text-slate-900 dark:text-slate-100" title={row.name}>{row.name}</td>
-            <td className="truncate px-3 text-slate-600 dark:text-slate-300">{row.type}</td>
-            <td className="truncate px-3 text-slate-600 dark:text-slate-300">{row.cnes || "–"}</td>
-            <td className="hidden truncate px-3 text-slate-600 dark:text-slate-300 lg:table-cell">{row.phone || "–"}</td>
-            <td className="px-3"><StatusBadge active={row.isActive} /></td>
-            <td className="px-3"><div className="flex justify-end gap-1">
+      <OperationalTable preferenceId="saude-admin-unidades" caption="Unidades" columns={[healthColumn("name", "Unidade", 280, 130), healthColumn("type", "Tipo", 150, 90), healthColumn("cnes", "CNES", 110, 80, "identifier"), healthColumn("phone", "Telefone", 150, 100), healthColumn("status", "Situação", 100, 80, "status"), healthColumn("actions", "Ações", 84, 84, "actions", "right", 100)]} rows={rows.map(row => ({ id: row.id, label: row.name, values: { name: row.name, type: row.type, cnes: row.cnes || "—", phone: row.phone || "—", status: row.isActive ? "Ativa" : "Inativa" }, actions: <div className="flex items-center justify-end gap-1">
               <button title="Detalhes e vínculos" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-emerald-700 dark:hover:bg-slate-800" onClick={() => setDetails(row)}><Eye className="size-3.5" /></button>
               {canUpdate && <button title="Editar" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-emerald-700 dark:hover:bg-slate-800" onClick={() => onEdit(row.id)}><Pencil className="size-3.5" /></button>}
               {canUpdate && <button title={row.isActive ? "Inativar" : "Ativar"} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-amber-700 dark:hover:bg-slate-800" onClick={() => { setError(""); setStatusUnit(row); }}><Power className="size-3.5" /></button>}
-            </div></td>
-          </tr>)}
-        </tbody>
-      </table>
+            </div> }))} />
 
       {editor?.kind === "unidades" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true">
         <form onSubmit={submitUnit} className="w-full max-w-xl rounded-md bg-white shadow-xl dark:bg-slate-900">

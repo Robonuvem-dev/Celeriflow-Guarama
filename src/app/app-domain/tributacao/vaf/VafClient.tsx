@@ -1,6 +1,9 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Landmark } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { TaxOperationalTable } from "../TaxOperationalTable";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
 import {
   createEstimateAction,
   importMovementsAction,
@@ -122,6 +125,7 @@ type Data = {
   };
 };
 export default function VafClient({ data }: { data: Data }) {
+  const router = useRouter();
   const [tab, setTab] = useState("relatorios");
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
@@ -149,24 +153,14 @@ export default function VafClient({ data }: { data: Data }) {
   const companyName = (id: string | null) =>
     data.companies.find((c) => c.id === id)?.corporateName ?? id ?? "-";
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="flex items-center gap-2 text-lg font-bold">
-            <Landmark className="size-5 text-emerald-600" />
-            VAF — Valor Adicionado Fiscal
-          </h1>
-          <p className="text-[11px] text-slate-500">
-            Exercício {ex.year} · importar → cruzar → apurar → ranking/evolução
-            → repasses · EFD/GIA mesclados sem duplicar.
-          </p>
-        </div>
+    <div className={tab === "relatorios" ? "flex h-full min-h-0 min-w-0 flex-1 flex-col p-2 [&>nav]:hidden" : "flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5"}>
+      <OperationalHeaderActions>
         <select
           className={input}
           style={{ maxWidth: 130 }}
           defaultValue={ex.year}
           onChange={(e) => {
-            window.location.href = `/tributacao/vaf?year=${e.target.value}`;
+            router.push(`/tributacao/vaf?year=${e.target.value}`);
           }}
         >
           {data.exercises.map((e) => (
@@ -175,8 +169,8 @@ export default function VafClient({ data }: { data: Data }) {
             </option>
           ))}
         </select>
-      </header>
-      {msg && (
+      </OperationalHeaderActions>
+      {msg && tab !== "relatorios" && (
         <p className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs text-blue-800">
           {msg}
         </p>
@@ -198,10 +192,10 @@ export default function VafClient({ data }: { data: Data }) {
           </button>
         ))}
       </nav>
-      <main className="grid min-h-0 flex-1 content-start gap-2 overflow-auto">
+      <main className={tab === "relatorios" ? "flex min-h-0 flex-1 flex-col" : "grid min-h-0 flex-1 content-start gap-2 overflow-auto"}>
         {tab === "relatorios" && (
           <>
-            <div className="grid gap-2 sm:grid-cols-4">
+            <OperationalHeaderActions><OperationalFilters label="Indicadores VAF"><p>Exercício {ex.year} · importar → cruzar → apurar → ranking/evolução → repasses · EFD/GIA mesclados sem duplicar.</p><div className="grid gap-2 sm:grid-cols-3">
               {[
                 [
                   "VAF total",
@@ -228,8 +222,12 @@ export default function VafClient({ data }: { data: Data }) {
                   <p className="text-[10px] text-slate-500">{s}</p>
                 </div>
               ))}
-            </div>
-            <section className="rounded-lg border bg-white p-3 text-[11px] dark:border-slate-800 dark:bg-slate-950">
+            </div></OperationalFilters></OperationalHeaderActions>
+            <TaxOperationalTable id="vaf-ranking"
+              toolbar={<><select aria-label="Área do VAF" value={tab} onChange={event => setTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{[["relatorios", "Relatórios"], ["empresas", "Empresas / contador"], ["regras", "CFOP / regras"], ["importacoes", "Importações"], ["cruzamentos", "Cruzamentos"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>{msg && <OperationalFilters label="Resultado"><p role="status">{msg}</p></OperationalFilters>}</>}
+              columns={[["rank", "Posição", 70, 80], ["company", "Empresa", 200, 400], ["vaf", "VAF", 130, 180, "text", "right"], ["participation", "Participação", 110, 140, "text", "right"], ["curve", "Curva ABC", 90, 110]]}
+              rows={data.reports.ranking.map(r => ({ id: r.companyId, label: r.company, values: { rank: `${r.rank}º`, company: r.company, vaf: money(r.vaf), participation: `${r.participation}%`, curve: data.reports.abc.find(a => a.label === r.company)?.curve ?? "—" } }))} />
+            <section className="hidden print:block">
               <b>Ranking por VAF</b>
               {data.reports.ranking.map((r) => (
                 <div
@@ -247,7 +245,7 @@ export default function VafClient({ data }: { data: Data }) {
                 </div>
               ))}
             </section>
-            <div className="grid gap-2 xl:grid-cols-2">
+            <OperationalHeaderActions><OperationalFilters label="Análises e repasses"><div className="grid gap-2 xl:grid-cols-2">
               <section className="rounded-lg border bg-white p-3 text-[11px] dark:border-slate-800 dark:bg-slate-950">
                 <b>Evolução (valores absolutos)</b>
                 {data.reports.evolution.map((e) => (
@@ -304,7 +302,7 @@ export default function VafClient({ data }: { data: Data }) {
                   </div>
                 ))}
               </section>
-            </div>
+            </div></OperationalFilters></OperationalHeaderActions>
           </>
         )}
         {tab === "empresas" && (

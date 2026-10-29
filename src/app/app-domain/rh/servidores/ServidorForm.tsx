@@ -17,6 +17,9 @@ import type { BenefitConfig, Department, Dependent, Employee, PayrollBenefit, Ro
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { ErpPageTitle as PageHeader } from "@/components/app-ui/erp/ErpPageTitle";
 import { ReferenceLookup } from "../operacoes/ReferenceLookup";
+import { RhTablePanel } from "../_components/RhTablePanel";
+import { rhColumn } from "../_components/operational-columns";
+import operationalStyles from "@/components/app-ui/operational/operational.module.css";
 
 // Formata CPF: 000.000.000-00
 const formatCPF = (value: string) => {
@@ -244,40 +247,9 @@ export function ServidorForm({
               </Link>
             </CardHeader>
             <CardContent>
-              {data.dependents && data.dependents.length > 0 ? (
-                  <div className="max-h-72 overflow-auto rounded-md border">
-                  <table className="w-full min-w-[560px] border-collapse text-left text-[11px] [&_td]:px-2.5 [&_td]:py-1.5 [&_th]:px-2.5 [&_th]:py-2">
-                    <thead className="sticky top-0 z-10 border-b bg-slate-50 text-[10px] uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      <tr>
-                        <th className="p-3 font-medium">Nome</th>
-                        <th className="p-3 font-medium">Parentesco</th>
-                        <th className="p-3 font-medium">Data de Nascimento</th>
-                        <th className="p-3 font-medium text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.dependents.map((dep) => (
-                        <tr key={dep.id} className="border-b last:border-0 hover:bg-muted/50">
-                          <td className="p-3">{dep.name}</td>
-                          <td className="p-3">{dep.relationship}</td>
-                          <td className="p-3">{dep.birthDate ? new Date(dep.birthDate).toLocaleDateString('pt-BR') : '-'}</td>
-                          <td className="p-3 text-right">
-                            <Link href={`/rh/dependentes/${dep.id}/editar`}>
-                              <Button variant="ghost" size="sm" title="Editar">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center p-6 text-muted-foreground border rounded-md border-dashed">
-                  Nenhum dependente cadastrado para este servidor.
-                </div>
-              )}
+              <RhTablePanel title="Dependentes do servidor" triggerLabel="Consultar dependentes em tela cheia" description="A ficha funcional permanece montada durante a consulta e sua paginação." preferenceId="rh-servidor-dependentes"
+                columns={[rhColumn("name", "Nome", 300, 150), rhColumn("relationship", "Parentesco", 180, 100), rhColumn("birth", "Nascimento", 150, 110), rhColumn("actions", "Ações", 70, 60, "actions")]}
+                rows={(data.dependents || []).map(dep => ({ id: dep.id, label: dep.name, values: { name: dep.name, relationship: dep.relationship, birth: dep.birthDate ? new Date(dep.birthDate).toLocaleDateString("pt-BR") : "—" }, actions: <Link href={`/rh/dependentes/${dep.id}/editar`} className={operationalStyles.iconButton} aria-label={`Editar dependente ${dep.name}`}><Edit /></Link> }))} emptyMessage="Nenhum dependente cadastrado para este servidor." />
             </CardContent>
           </Card>
         )}

@@ -12,6 +12,10 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import AgendaClient from "./AgendaClient";
 import AgendaEngineClient from "./AgendaEngineClient";
+import { HealthPageTools } from "../HealthPageTools";
+import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
+import { HealthReadTable } from "../HealthReadTable";
+import { healthColumn } from "../operational-columns";
 
 type Params = { q?: string | string[] };
 const first = (v: string | string[] | undefined) => Array.isArray(v) ? v[0] : v;
@@ -51,8 +55,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
   return (
     <PageFrame className="flex h-full min-h-0 flex-1 flex-col gap-1 overflow-hidden">
       <PageHeader title="Agenda e Agendamentos" icon={<Calendar className="size-4 shrink-0 text-emerald-600" />} className="dark:border-gray-700 dark:bg-gray-800 dark:[&>h1]:text-white" />
-      <form method="get" className="flex shrink-0 gap-2 px-1"><input name="q" defaultValue={term} placeholder="Buscar nome, CPF, CNS, nascimento (AAAA-MM-DD), mãe, profissional ou situação" className="h-8 w-full rounded border border-slate-200 px-2 text-xs" /><button className="h-8 rounded bg-slate-800 px-3 text-xs font-semibold text-white">Buscar</button></form>
-      <details className="mx-1 shrink-0 rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Painel de chamada ({board.length})</summary><div className="mt-1 max-h-40 overflow-y-auto">{board.map(b => <p key={b.id} className="border-b py-1"><strong>{b.patient.person.fullName}</strong> · {b.unit?.name} · {b.status}{b.calledAt ? ` · chamado às ${b.calledAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}</p>)}{board.length === 0 && <p className="text-slate-400">Ninguém aguardando.</p>}</div></details>
+      <HealthPageTools label="Busca avançada e chamada"><form method="get" className="flex gap-2"><input aria-label="Busca avançada de agendamentos" name="q" defaultValue={term} placeholder="Nome, CPF, CNS, nascimento (AAAA-MM-DD), mãe, profissional ou situação" className="h-8 min-w-0 flex-1 rounded border px-2 text-xs" /><button className="h-8 rounded border px-3 text-xs">Buscar</button></form>
+      <OperationalTablePanel title="Painel de chamada" triggerLabel={`Painel de chamada (${board.length})`}><HealthReadTable id="saude-agenda-chamada" label="Painel de chamada" columns={[healthColumn("patient", "Paciente", 300, 130), healthColumn("unit", "Unidade", 240, 110), healthColumn("status", "Situação", 150, 100, "status"), healthColumn("called", "Chamado às", 140, 100)]} rows={board.map(b => ({ id: b.id, label: b.patient.person.fullName, values: { patient: b.patient.person.fullName, unit: b.unit?.name || "—", status: b.status, called: b.calledAt ? b.calledAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—" } }))} /></OperationalTablePanel></HealthPageTools>
       <AgendaEngineClient
         schedules={schedules.map(s => ({ id: s.id, kind: s.kind, unit: s.unit.name, specialty: s.specialty?.name || null, professional: s.professional?.employee.name || null, when: s.date ? s.date.toLocaleDateString("pt-BR") : s.weekday !== null ? `Toda ${weekdayName[s.weekday || 0]}` : "-", slots: `${s.appointments.length}/${s.totalSlots}`, status: s.status }))}
         waitlist={waitlist.map(w => ({ id: w.id, patient: w.patient.person.fullName, specialty: w.specialty?.name || null, priority: w.priority, status: w.status, createdAt: w.createdAt.toLocaleDateString("pt-BR") }))}

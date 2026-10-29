@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveBankResourceSources } from "./actions";
+import FinanceTablePanel from "../FinanceTablePanel";
+import { financeColumn } from "../operational-columns";
 
 type Account = { id: string; label: string; sourceIds: string[]; undocumented: boolean; balances: { sourceId: string; balance: string }[] };
 type Source = { id: string; code: string; name: string };
@@ -25,6 +27,8 @@ export default function BankResourceSourcesClient({ accounts, sources }: { accou
         <button className="rounded bg-emerald-700 px-3 py-2 font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Salvar fontes permitidas"}</button>
       </fieldset>
     </form>
-    {!account?.undocumented && <table className="w-full text-left"><caption className="text-left font-semibold">Disponibilidade bancária por fonte</caption><thead><tr><th>Fonte</th><th className="text-right">Saldo (R$)</th></tr></thead><tbody>{account?.balances.map(row => <tr key={row.sourceId}><td>{sources.find(source => source.id === row.sourceId)?.code ?? row.sourceId}</td><td className="text-right font-mono">{row.balance}</td></tr>)}</tbody></table>}
+    {!account?.undocumented && <FinanceTablePanel label="Disponibilidade bancária por fonte" preferenceId="financeiro-banco-fontes" resetKey={accountId} description={account?.label}
+      columns={[financeColumn("source", "Fonte", 90, 260), financeColumn("balance", "Saldo (R$)", 90, 160, "text", "right")]}
+      rows={(account?.balances ?? []).map(row => ({ id: row.sourceId, label: sources.find(source => source.id === row.sourceId)?.code ?? row.sourceId, values: { source: sources.find(source => source.id === row.sourceId)?.code ?? row.sourceId, balance: row.balance } }))} />}
   </section>;
 }

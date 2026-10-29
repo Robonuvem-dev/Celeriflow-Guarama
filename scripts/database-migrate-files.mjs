@@ -53,8 +53,10 @@ export function loadMigrationSet(root = repositoryRoot) {
       if (historical) {
         requireValue(provenance && [provenance.localChecksum, provenance.lfChecksum, provenance.installedChecksum].every(validHash), `${name}: missing checksum provenance`);
         requireValue(lfChecksum === provenance.lfChecksum && byteVariants.includes(provenance.localChecksum), `${name}: historical SQL content changed`);
+        // Raw checkout bytes may be mixed. Only uniform LF/CRLF variants can
+        // establish this classification; mixed history requires an archived proof.
         const uniformClassification = provenance.installedChecksum === provenance.localChecksum ? "EXACT"
-          : byteVariants.includes(provenance.installedChecksum) ? "LINE_ENDINGS_ONLY" : "UNRESOLVED_HISTORICAL_DIFFERENCE";
+          : [lfChecksum, crlfChecksum].includes(provenance.installedChecksum) ? "LINE_ENDINGS_ONLY" : "UNRESOLVED_HISTORICAL_DIFFERENCE";
         const artifact = `db/historical-provenance/${name}.json`;
         const artifactPath = join(root, artifact);
         if (existsSync(artifactPath)) {
@@ -70,7 +72,7 @@ export function loadMigrationSet(root = repositoryRoot) {
         }
       }
       const prepared = prepareMigrationSql(sql, { name, allowHistoricalEnvelope: historical && envelopes.has(name) });
-      return { name, source, historical, checksum, lfChecksum, byteVariants, provenance, classification, historicalProof, ...prepared };
+      return { name, source, historical, checksum, lfChecksum, ...(historical ? { crlfChecksum } : {}), byteVariants, provenance, classification, historicalProof, ...prepared };
     });
   };
   const historical = readDirectory(policy.historicalDirectory, true);

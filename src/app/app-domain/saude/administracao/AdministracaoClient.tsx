@@ -11,6 +11,8 @@ import SchedulingGroupsTab from "./SchedulingGroupsTab";
 import HolidaysTab from "./HolidaysTab";
 import PeopleTab from "./PeopleTab";
 import AccessTab from "./AccessTab";
+import { OperationalFilters, OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 export type AdministrationTab = "unidades" | "profissionais" | "especialidades" | "grupos" | "servicos" | "cbo" | "agendamentos" | "feriados" | "pessoas" | "empresas" | "acessos";
 export type AdministrationSituation = "" | "ativo" | "inativo";
@@ -123,28 +125,6 @@ function routeFor(tab: AdministrationTab, page = 1, query = "", situation: Admin
   return `/saude/administracao?${params.toString()}`;
 }
 
-function Pagination({ activeTab, page, total, query, situation }: Pick<AdministrationClientProps, "activeTab" | "page" | "total" | "query" | "situation">) {
-  const pages = Math.max(1, Math.ceil(total / 20));
-  const start = total === 0 ? 0 : (page - 1) * 20 + 1;
-  const end = Math.min(page * 20, total);
-  const visible = Array.from({ length: pages }, (_, index) => index + 1).filter(value => value === 1 || value === pages || Math.abs(value - page) <= 1);
-  return (
-    <footer className="flex h-10 shrink-0 items-center justify-between border-t border-slate-200 px-3 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
-      <span>{start}–{end} de {total} registros</span>
-      <div className="flex items-center gap-1">
-        <Link aria-disabled={page === 1} className={`rounded border px-2 py-1 ${page === 1 ? "pointer-events-none opacity-40" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`} href={routeFor(activeTab, page - 1, query, situation)}>Anterior</Link>
-        {visible.map((value, index) => (
-          <span key={value} className="contents">
-            {index > 0 && visible[index - 1] !== value - 1 && <span className="px-1">…</span>}
-            <Link className={`min-w-7 rounded border px-2 py-1 text-center ${value === page ? "border-emerald-700 bg-emerald-700 text-white" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`} href={routeFor(activeTab, value, query, situation)}>{value}</Link>
-          </span>
-        ))}
-        <Link aria-disabled={page === pages} className={`rounded border px-2 py-1 ${page === pages ? "pointer-events-none opacity-40" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`} href={routeFor(activeTab, page + 1, query, situation)}>Próxima</Link>
-      </div>
-    </footer>
-  );
-}
-
 function EmptyState() {
   return <div className="flex h-full items-center justify-center p-8 text-sm text-slate-500">Nenhum registro encontrado.</div>;
 }
@@ -154,15 +134,9 @@ export default function AdministracaoClient(props: AdministrationClientProps) {
   const canAdd = props.canCreate;
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <nav className="flex shrink-0 flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-1.5 dark:border-slate-700 dark:bg-slate-950" aria-label="Cadastros administrativos da Saúde">
-        {(Object.keys(tabLabels) as AdministrationTab[]).filter(tab => tab !== "acessos" || props.canManageAccess).map(tab => (
-          <Link key={tab} href={routeFor(tab)} className={`rounded px-2.5 py-1.5 text-xs font-semibold ${tab === props.activeTab ? "bg-emerald-700 text-white" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"}`}>{tabLabels[tab]}</Link>
-        ))}
-      </nav>
-
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 p-2 dark:border-slate-700">
-        <form className="flex min-w-0 flex-1 flex-wrap items-center gap-2" action="/saude/administracao">
+    <OperationalListFrame label={tabLabels[props.activeTab]} actions={canAdd && !["pessoas", "empresas", "acessos"].includes(props.activeTab) && <button type="button" onClick={() => setEditor({ kind: props.activeTab })} className={styles.newButton} aria-label={`Novo registro em ${tabLabels[props.activeTab]}`} title={`Novo registro em ${tabLabels[props.activeTab]}`}><Plus className="size-4" aria-hidden="true" /><span className={styles.newLabel}>Novo</span></button>} toolbar={<>
+        <OperationalFilters label="Cadastros"><nav className={styles.filterFields} aria-label="Cadastros administrativos da Saúde">{(Object.keys(tabLabels) as AdministrationTab[]).filter(tab => tab !== "acessos" || props.canManageAccess).map(tab => <Link key={tab} href={routeFor(tab)} aria-current={props.activeTab === tab ? "page" : undefined}>{tabLabels[tab]}</Link>)}</nav></OperationalFilters>
+        <form className={styles.searchForm} action="/saude/administracao">
           <input type="hidden" name="aba" value={props.activeTab} />
           <label className="relative min-w-52 flex-1 sm:max-w-md">
             <Search className="pointer-events-none absolute left-2.5 top-2 size-3.5 text-slate-400" />
@@ -172,10 +146,7 @@ export default function AdministracaoClient(props: AdministrationClientProps) {
           <button className="h-8 rounded bg-slate-800 px-3 text-xs font-semibold text-white hover:bg-slate-700" type="submit">Filtrar</button>
           {(props.query || props.situation) && <Link title="Limpar filtros" className="inline-flex size-8 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800" href={routeFor(props.activeTab)}><FilterX className="size-4" /></Link>}
         </form>
-        {canAdd && !["pessoas", "empresas", "acessos"].includes(props.activeTab) && <button type="button" onClick={() => setEditor({ kind: props.activeTab })} className="inline-flex h-8 items-center gap-1.5 rounded bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"><Plus className="size-3.5" />Novo</button>}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      </>} pagination={<OperationalLinkPagination page={props.page} total={props.total} pathname="/saude/administracao" values={{ aba: props.activeTab, q: props.query, situacao: props.situation, de: props.usageFrom, ate: props.usageUntil }} />}>
         {props.activeTab === "unidades" ? (
           <UnitsTab rows={props.unitRows} specialtyOptions={props.specialtyOptions} serviceOptions={props.serviceOptions} editor={editor} canUpdate={props.canUpdate} onEdit={id => setEditor({ kind: "unidades", id })} onClose={() => setEditor(null)} />
         ) : props.activeTab === "profissionais" ? (
@@ -199,9 +170,6 @@ export default function AdministracaoClient(props: AdministrationClientProps) {
         ) : props.activeTab === "acessos" ? (
           <AccessTab rows={props.accessRows} profiles={props.profileOptions} employees={props.employeeOptions} units={props.unitOptions} canManage={props.canManageAccess} usage={props.usageRows} usageFrom={props.usageFrom} usageUntil={props.usageUntil} />
         ) : props.total === 0 ? <EmptyState /> : <div className="p-3 text-sm text-slate-500">Conteúdo de {tabLabels[props.activeTab]} em preparação.</div>}
-      </div>
-      <Pagination activeTab={props.activeTab} page={props.page} total={props.total} query={props.query} situation={props.situation} />
-
-    </section>
+    </OperationalListFrame>
   );
 }

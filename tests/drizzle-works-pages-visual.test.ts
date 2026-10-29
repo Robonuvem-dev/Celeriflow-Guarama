@@ -1,53 +1,36 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import test from "node:test";
-import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
-import ts from "typescript";
+import { readFileSync } from "node:fs";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import * as mappings from "../src/db/schema/works-pages";
+import { assertBoundCall, assertDrizzleOnly, assertOperationalRenderer, assertReviewedInventory, currentSources, historicalVisualBaseline } from "./helpers/table-migration-contracts";
 
-const root = join(process.cwd(), "src/app/app-domain/obras");
-const baseline = JSON.parse(readFileSync(new URL("./fixtures/historical-visual-baselines.json", import.meta.url), "utf8")) as {
-  formatVersion: number; sourceCommit: string;
-  works: { files: Record<string, { jsxRoots: { count: number; sha256: string } }> };
-};
-function files(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? files(join(directory, entry.name)) : entry.name.endsWith(".tsx") ? [join(directory, entry.name)] : []);
-}
-const printer = ts.createPrinter({ removeComments: true, newLine: ts.NewLineKind.LineFeed });
-function jsx(source: ts.SourceFile) {
-  const result: string[] = [];
-  const visit = (node: ts.Node) => {
-    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) { result.push(printer.printNode(ts.EmitHint.Unspecified, node, source)); return; }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return result;
-}
+const root = "src/app/app-domain/obras";
 
 test("Obras: todos os TSX sem dependência Prisma ativa e com sintaxe válida", () => {
-  const inventory = files(root);
-  assert.equal(inventory.length, 59);
-  for (const file of inventory) {
-    const text = readFileSync(file, "utf8");
-    assert.doesNotMatch(text, /\b[Pp]risma\b|@prisma\//, relative(root, file));
-    const result = ts.transpileModule(text, { fileName: file, reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.Preserve } });
-    assert.deepEqual(result.diagnostics, [], relative(root, file));
-  }
+  const inventory = currentSources(root);
+  assertDrizzleOnly(inventory);
 });
 
-test("Obras: AST de todos os JSX/CSS idêntico à baseline 5cfa75d", () => {
-  assert.equal(baseline.formatVersion, 1);
-  assert.equal(baseline.sourceCommit, "5cfa75dfe20a6d3fcc20dce33e818585cb8b9954");
-  const inventory = files(root);
-  assert.deepEqual(inventory.map(file => relative(process.cwd(), file).replaceAll("\\", "/")).sort(), Object.keys(baseline.works.files).sort());
-  for (const file of inventory) {
-    const path = relative(process.cwd(), file).replaceAll("\\", "/");
-    const parsed = ts.createSourceFile(file, readFileSync(file, "utf8").replaceAll("\r\n", "\n"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-    const nodes = jsx(parsed);
-    assert.deepEqual({ count: nodes.length, sha256: createHash("sha256").update(JSON.stringify(nodes)).digest("hex") }, baseline.works.files[path].jsxRoots, relative(root, file));
+test("Obras: proveniência antiga preservada; setor, leitores e actions da UI operacional atual", () => {
+  const baseline = historicalVisualBaseline();
+  assertReviewedInventory(currentSources(root), Object.keys(baseline.works.files), [`${root}/relatorios/WorksReportsClient.tsx`]);
+  const list = `${root}/construcao-civil/page.tsx`, detail = `${root}/construcao-civil/[id]/page.tsx`;
+  for (const file of [list, detail]) {
+    assertBoundCall(file, "@/lib/platform/tenant-context", "getTenantContextForModule", ['"OBRAS"']);
+    assertBoundCall(file, "@/lib/obras/construction-access", "resolveConstructionAccess", ["context"]);
+    assertOperationalRenderer(file);
   }
+  assertBoundCall(list, "@/db/repositories/works-pages/cases", "loadPageCaseList", ["context.database ?? db", "access", "{ category, q, page: params.page }"]);
+  assertBoundCall(detail, "@/db/repositories/works-pages/cases", "findPageCaseDetail", ["database", "access", "id"]);
+  assertBoundCall(detail, "@/lib/platform/tenant-context", "canViewModule", ["context.user", '"PROCESSOS"']);
+  const rules = `${root}/construcao-civil/regras/ConstructionRulesClient.tsx`;
+  assertBoundCall(rules, "../rules-actions", "publishConstructionDefinition", ["{ kind, definition: data }"]);
+  for (const name of ["publishConstructionDistribution", "publishConstructionZone", "linkConstructionPropertyZone"]) assertBoundCall(rules, "../rules-actions", name);
+  assertOperationalRenderer(rules);
+  const projects = `${root}/components/ObrasProjetosClient.tsx`;
+  for (const name of ["createObra", "updateObra", "inactivateObra"]) assertBoundCall(projects, "../actions", name);
+  assertOperationalRenderer(projects, "ObrasProjetosClient");
 });
 
 test("Obras: mappings exclusivos completos e compatíveis com o catálogo físico", () => {

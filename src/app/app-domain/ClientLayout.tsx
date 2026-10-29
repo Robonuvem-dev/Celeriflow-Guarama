@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
@@ -15,7 +15,8 @@ import { APP_VERSION } from "@/lib/version";
 import UsageAuditTracker from "@/components/platform/UsageAuditTracker";
 import dashboardStyles from "./dashboard/dashboard.module.css";
 import { OperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
-import { sanitationNavigation } from "./saneamento/navigation";
+import { operationalModules } from "@/components/app-ui/operational/modules";
+import { findOperationalRoute } from "@/components/app-ui/operational/routes";
 
 type UserInfo = {
   id: string;
@@ -45,6 +46,7 @@ export default function ClientLayout({
   user?: UserInfo | null;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const isLoginPage = pathname === "/login" || pathname === "/";
   const isDashboard = pathname === "/dashboard";
@@ -60,17 +62,26 @@ export default function ClientLayout({
     }
   };
 
-  if (isLoginPage || isEmployeePortal) {
+  const operational = findOperationalRoute(operationalModules, pathname, searchParams);
+  if (isLoginPage || (isEmployeePortal && !operational)) {
     return <>{children}</>;
   }
 
   const userName = user?.name ?? "Usuário";
   const userRole = user?.role ? getRoleLabel(user.role) : "Gestor do Sistema";
   const initials = getInitials(userName);
-  if (pathname === "/saneamento/unidades") return <OperationalWorkspace
-    title="Unidades Consumidoras" moduleTitle="Saneamento" moduleCaption="Gestão de Água e Esgoto" moduleIcon="droplets" institutionName={institution?.name || "Prefeitura Municipal"}
+  const navigation = operational?.module.navigation.map(group => ({ ...group, items: group.items.map(item => {
+    if (!pathname.startsWith("/cemiterios/") || !item.href.startsWith("/cemiterios/")) return item;
+    const [path, query = ""] = item.href.split("?");
+    const params = new URLSearchParams(query);
+    const cemeteryId = searchParams.get("cemeteryId") || searchParams.get("cemetery");
+    if (cemeteryId) params.set("cemeteryId", cemeteryId);
+    return { ...item, href: `${path}${params.size ? `?${params}` : ""}` };
+  }) }));
+  if (operational) return <OperationalWorkspace key={pathname}
+    title={operational.route.title} moduleTitle={operational.module.moduleTitle} moduleCaption={operational.module.moduleCaption} moduleIcon={operational.module.moduleIcon} institutionName={institution?.name || "Prefeitura Municipal"}
     userId={user?.id || "anonymous"} userName={userName} userRole={userRole}
-    navigation={sanitationNavigation} onLogout={handleLogout}
+    navigation={navigation ?? []} onLogout={handleLogout}
   ><UsageAuditTracker />{children}</OperationalWorkspace>;
   const isFixedRhWorkspace = pathname === "/rh" || pathname.startsWith("/rh/");
   const fixedComprasRoutes = [

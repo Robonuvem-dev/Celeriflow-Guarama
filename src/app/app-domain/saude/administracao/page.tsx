@@ -6,6 +6,7 @@ import { canPerformModuleOperation, getTenantContextForModule, isSystemAdministr
 import { db } from "@/db/client";
 import { healthAdministrationPageData, healthAdministrationReferences } from "@/db/repositories/health-pages/administration";
 import AdministracaoClient, { type AdministrationSituation, type AdministrationTab } from "./AdministracaoClient";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 
 type SearchParams = { aba?: string | string[]; page?: string | string[]; q?: string | string[]; situacao?: string | string[]; de?: string | string[]; ate?: string | string[] };
 const tabs: AdministrationTab[] = ["unidades", "profissionais", "especialidades", "grupos", "servicos", "cbo", "agendamentos", "feriados", "pessoas", "empresas", "acessos"];
@@ -30,7 +31,7 @@ export default async function SaudeAdministracaoPage({ searchParams }: { searchP
 
   return (
     <PageFrame className="flex h-full min-h-0 max-w-none flex-1 flex-col gap-1 overflow-hidden">
-      <PageHeader title="Administração da Saúde" icon={<Building2 className="size-4 shrink-0 text-emerald-700" />} className="mb-0 shrink-0" action={<div className="flex flex-wrap justify-end gap-1"><Link href="/app-domain/saude/administracao/documentos" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Documentos</Link><Link href="/app-domain/saude/administracao/unificacoes" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Unificações</Link><Link href="/app-domain/saude/administracao/laboratorio" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Laboratório</Link><Link href="/saude/administracao/importacoes" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Cargas SUS</Link><Link href="/saude/administracao/procedimentos" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Procedimentos</Link></div>} />
+      <PageHeader title="Administração da Saúde" icon={<Building2 className="size-4 shrink-0 text-emerald-700" />} className="mb-0 shrink-0" action={<OperationalFilters label="Áreas administrativas"><nav className="grid gap-3 text-sm" aria-label="Áreas administrativas"><Link href="/app-domain/saude/administracao/documentos">Documentos</Link><Link href="/app-domain/saude/administracao/unificacoes">Unificações</Link><Link href="/app-domain/saude/administracao/laboratorio">Laboratório</Link><Link href="/saude/administracao/importacoes">Cargas SUS</Link><Link href="/saude/administracao/procedimentos">Procedimentos</Link></nav></OperationalFilters>} />
       <AdministracaoClient
         activeTab={tab}
         query={query}

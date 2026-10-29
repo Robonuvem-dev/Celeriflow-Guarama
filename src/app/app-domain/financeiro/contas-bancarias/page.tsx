@@ -3,6 +3,7 @@ import { getBankAccountBalances } from "@/lib/financeiro";
 import ContasBancariasClient from "./ContasBancariasClient"
 import TreasuryTransferSection from "./TreasuryTransferSection";
 import BankResourceSourcesClient from "./BankResourceSourcesClient";
+import FinanceAuxiliaryForm from "../FinanceAuxiliaryForm";
 import { getBankResourceSourceBalance } from "@/lib/financeiro/bank-resource-sources";
 import { db } from "@/db/client";
 import { listFinancePageAccounts, listFinancePageSources } from "@/db/repositories/finance-pages/catalog";
@@ -43,12 +44,10 @@ export default async function ContasBancariasPage() {
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      <div className="min-h-0 flex-1"><ContasBancariasClient accounts={displayAccounts} resourceSources={resourceSources} budgetUnits={budgetUnits} accountingPlans={accountingPlans} banks={banks} /></div>
-      <details className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1"><summary className="cursor-pointer text-xs font-semibold text-slate-700">Fontes permitidas e disponibilidade por fonte</summary><div className="max-h-[55vh] overflow-y-auto"><BankResourceSourcesClient accounts={sourceAccounts} sources={resourceSources.map(source => ({ id: source.id, code: source.code, name: source.name }))} /></div></details>
-      <details className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1">
-        <summary className="cursor-pointer text-xs font-semibold text-slate-700">Transferências entre contas</summary>
-      <div className="max-h-[55vh] overflow-y-auto px-1 pb-2 sm:px-2">
+    <>
+      <ContasBancariasClient accounts={displayAccounts} resourceSources={resourceSources} budgetUnits={budgetUnits} accountingPlans={accountingPlans} banks={banks} />
+      <FinanceAuxiliaryForm title="Fontes permitidas e disponibilidade por fonte"><BankResourceSourcesClient accounts={sourceAccounts} sources={resourceSources.map(source => ({ id: source.id, code: source.code, name: source.name }))} /></FinanceAuxiliaryForm>
+      <FinanceAuxiliaryForm title="Transferências entre contas">
         <TreasuryTransferSection
           accounts={displayAccounts.map(({ id, bankName, agency, accountNumber, isActive }) => ({ id, bankName, agency, accountNumber, isActive, sourceIds: sourceAccounts.find(account => account.id === id)?.sourceIds ?? [] }))}
           sources={resourceSources.map(source => ({ id: source.id, code: source.code, name: source.name }))}
@@ -61,7 +60,7 @@ export default async function ContasBancariasPage() {
             destinationBankAccount: transfer.destinationBankAccount,
           }))}
         />
-      </div></details>
-    </div>
+      </FinanceAuxiliaryForm>
+    </>
   );
 }

@@ -1,99 +1,23 @@
 import Link from "next/link";
-import { Plus, Wallet } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { FolhaRowActions } from "./FolhaRowActions";
 import { db } from "@/db/client";
 import { readPayrollsPage } from "@/db/repositories/personnel-pages/records";
-import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
-import { RhPagination } from "../_components/RhPagination";
-import { RhSearchToolbar } from "../_components/RhSearchToolbar";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import {
-  ErpTableContainer,
-  ErpTableThead,
-  ErpTableTh,
-  ErpTableTr,
-  ErpTableTd,
-  ErpStatusBadge,
-  type ErpStatusVariant,
-} from "@/components/app-ui/erp/ErpTable";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { rhColumn } from "../_components/operational-columns";
+import { RhNewLink } from "../_components/RhNewLink";
 
-function folhaVariant(status: string): ErpStatusVariant {
-  if (status === "Paga") return "success";
-  if (status === "Aberta") return "info";
-  return "neutral";
-}
+const columns = [rhColumn("competence", "Competência", 220, 130), rhColumn("type", "Tipo", 220, 140), rhColumn("amount", "Valor total", 200, 130, "text", "right"), rhColumn("status", "Status", 120, 90, "status"), rhColumn("actions", "Ações", 110, 90, "actions", "right")];
 
 export default async function FolhaPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { q = "", page } = await searchParams;
   const { total, pagination, payrolls } = await readPayrollsPage(context.database ?? db, { q, page });
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">
-      <ErpPageTitle
-        title="Folha de Pagamento"
-        icon={<Wallet className="size-4 text-violet-600" />}
-        action={
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Link
-              href="/rh/folha/eventos"
-              className="inline-flex h-8 items-center px-3 rounded-md border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Configurar Eventos
-            </Link>
-            <Link
-              href="/rh/folha/novo"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-500 px-3 text-xs font-bold text-slate-950 shadow-xs transition-colors hover:bg-amber-600"
-            >
-              <Plus className="size-3.5" />
-              Nova Folha
-            </Link>
-          </div>
-        }
-      />
-
-      <ErpListFrame
-        toolbar={<RhSearchToolbar pathname="/rh/folha" query={q} placeholder="Buscar por competência, tipo ou status" />}
-        pagination={<RhPagination {...pagination} total={total} pathname="/rh/folha" filters={{ q }} />}
-      >
-        <ErpTableContainer>
-          <ErpTableThead>
-            <tr>
-              <ErpTableTh className="w-[30%]">Competência</ErpTableTh>
-              <ErpTableTh className="w-[24%]">Tipo</ErpTableTh>
-              <ErpTableTh className="w-[22%]">Valor Total</ErpTableTh>
-              <ErpTableTh className="w-[12%]">Status</ErpTableTh>
-              <ErpTableTh className="w-[12%] text-right">Ações</ErpTableTh>
-            </tr>
-          </ErpTableThead>
-          <tbody>
-            {payrolls.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="p-8 text-center text-xs text-slate-400">
-                  Nenhuma folha cadastrada.
-                </td>
-              </tr>
-            ) : (
-              payrolls.map((folha) => (
-                <ErpTableTr key={folha.id}>
-                  <ErpTableTd className="font-semibold">{folha.competence}</ErpTableTd>
-                  <ErpTableTd>{folha.type}</ErpTableTd>
-                  <ErpTableTd className="font-mono">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(folha.totalValue)}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    <ErpStatusBadge variant={folhaVariant(folha.status)}>{folha.status}</ErpStatusBadge>
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right">
-                    <FolhaRowActions folha={folha} />
-                  </ErpTableTd>
-                </ErpTableTr>
-              ))
-            )}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
-    </div>
-  );
+  return <OperationalListFrame label="Folha de pagamento" actions={<><Link href="/rh/folha/eventos" className={styles.filterButton}>Configurar eventos</Link><RhNewLink href="/rh/folha/novo">Nova folha</RhNewLink></>}
+    toolbar={<form action="/rh/folha" method="GET" className={styles.searchForm}><input name="q" aria-label="Buscar por competência, tipo ou status" defaultValue={q} placeholder="Competência, tipo ou status" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button><Link href="/rh/folha" className={styles.filterButton}>Limpar</Link></form>}
+    pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/folha" values={{ q }} />}>
+    <OperationalTable preferenceId="rh-folha" columns={columns} caption="Folha de pagamento" emptyMessage="Nenhuma folha cadastrada." rows={payrolls.map(folha => ({ id: folha.id, label: folha.competence, values: { competence: folha.competence, type: folha.type, amount: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(folha.totalValue), status: folha.status }, actions: <FolhaRowActions folha={folha} /> }))} />
+  </OperationalListFrame>;
 }

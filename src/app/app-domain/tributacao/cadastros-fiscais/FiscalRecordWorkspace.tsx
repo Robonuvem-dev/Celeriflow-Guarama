@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, FilePlus2, X } from "lucide-react";
+import { FilePlus2, X } from "lucide-react";
 import { reviewTaxRegistryEntry, saveTaxRegistryEntry, type FiscalEntityType } from "./actions";
+import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
 
 export type FiscalRegistryEntryView = {
   id: string;
@@ -53,18 +56,6 @@ const categoryOptions: Record<FiscalEntityType, string[]> = {
   REAL_ESTATE: ["SITUACAO", "ATRIBUTO", "CARACTERISTICA", "OBSERVACAO", "PROPRIETARIO", "PARTICIPACAO", "BCI", "AREA", "VALORACAO", "CONDOMINIO", "UNIDADE", "HISTORICO", "RECADASTRAMENTO", "PEDIDO_ALTERACAO", "SITUACAO_FISCAL", "TRIBUTO", "ITBI", "PROCESSO", "DOCUMENTO"],
   ECONOMIC_REGISTRATION: ["SITUACAO", "ATRIBUTO", "CNAE", "REGIME", "ESTRUTURA", "RISCO_ATIVIDADE", "CREDENCIAMENTO_NFSE", "ENDERECO", "CONTATO", "SOCIO", "COOPERADO", "IMOVEL", "MATRIZ_FILIAL", "HISTORICO", "SIMPLES", "FATURAMENTO", "OBSERVACAO", "PROCESSO", "DOCUMENTO", "NOTIFICACAO"],
 };
-
-function dataText(data: unknown) {
-  if (!data || typeof data !== "object" || Array.isArray(data)) return String(data ?? "");
-  const record = data as Record<string, unknown>;
-  return [record.details, record.value, record.percentage ? `${record.percentage}%` : null].filter(Boolean).join(" · ");
-}
-
-function statusStyle(status: string) {
-  if (status === "ATIVO") return "bg-emerald-50 text-emerald-700";
-  if (status === "PENDENTE_VALIDACAO") return "bg-amber-50 text-amber-800";
-  return "bg-slate-100 text-slate-600";
-}
 
 export function FiscalRecordWorkspace({ entityType, entityId, entries, links, processes, documents }: {
   entityType: FiscalEntityType;
@@ -125,12 +116,16 @@ export function FiscalRecordWorkspace({ entityType, entityId, entries, links, pr
 
     {links.length > 0 && <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{links.map((link) => <Link key={link.href + link.label} href={link.href} className="rounded-md border border-slate-200 bg-white p-2 hover:border-emerald-300"><span className="block truncate text-xs font-semibold text-slate-800">{link.label}</span>{link.description && <span className="block truncate text-[10px] text-slate-500">{link.description}</span>}</Link>)}</div>}
 
-    <section className="min-h-0 flex-1 overflow-auto rounded-md border border-slate-200 bg-white">
-      <table className="w-full table-fixed text-left text-[11px]">
-        <thead className="sticky top-0 z-10 bg-slate-100 text-[10px] uppercase text-slate-600"><tr><th className="w-[18%] px-3 py-2">Tipo</th><th className="w-[24%] px-3 py-2">Registro</th><th className="px-3 py-2">Detalhes</th><th className="w-[13%] px-3 py-2">Vigência</th><th className="w-[12%] px-3 py-2">Situação</th></tr></thead>
-        <tbody className="divide-y divide-slate-100">{visible.map((entry) => <tr key={entry.id} className="h-9 hover:bg-slate-50"><td className="truncate px-3 font-semibold text-slate-600">{entry.category.replaceAll("_", " ")}</td><td className="truncate px-3" title={entry.title}>{entry.title}<span className="block text-[9px] text-slate-400">v{entry.version} · {entry.source}</span></td><td className="truncate px-3" title={dataText(entry.data)}>{dataText(entry.data)}</td><td className="px-3 tabular-nums">{new Date(entry.effectiveFrom).toLocaleDateString("pt-BR")}</td><td className="px-3"><span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${statusStyle(entry.status)}`}>{entry.status.replaceAll("_", " ")}</span>{entry.status === "PENDENTE_VALIDACAO" && <span className="ml-1 inline-flex gap-1"><button onClick={() => review(entry.id, "APPROVE")} title="Aprovar" className="text-emerald-700"><Check className="size-3.5" /></button><button onClick={() => review(entry.id, "REJECT")} title="Rejeitar" className="text-rose-700"><X className="size-3.5" /></button></span>}</td></tr>)}{visible.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-xs text-slate-400">Nenhum registro nesta aba.</td></tr>}</tbody>
-      </table>
-    </section>
+    <OperationalTablePanel title="Registros da ficha fiscal" triggerLabel={`Abrir registros fiscais — ${active.label}`} description="Consulta por área cadastral com todas as versões, origens, detalhes e decisões; a ficha e o formulário de inclusão permanecem montados.">
+      <TaxOperationalTable id={`registros-fiscais-${entityType}`} resetKey={`${entityId}:${activeTab}`} emptyMessage="Nenhum registro nesta aba."
+        toolbar={<><select aria-label="Área dos registros fiscais" value={activeTab} onChange={event => setActiveTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{tabs.map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}</select>{message && <OperationalFilters label="Resultado da revisão"><p role="status">{message}</p></OperationalFilters>}</>}
+        columns={[["category", "Tipo", 56, 120], ["title", "Registro", 80, 180], ["version", "Versão", 40, 55], ["source", "Origem", 56, 100], ["details", "Detalhes", 80, 200], ["value", "Valor / referência", 60, 120], ["percentage", "Participação", 48, 70, "text", "right"], ["from", "Início da vigência", 64, 100], ["until", "Fim da vigência", 64, 100], ["status", "Situação", 70, 120, "status"], ["actions", "Ações", 48, 48, "actions"]]}
+        rows={visible.map(entry => {
+          const record = entry.data && typeof entry.data === "object" && !Array.isArray(entry.data) ? entry.data as Record<string, unknown> : null;
+          const display = (value: unknown) => value == null ? "—" : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+          return { id: entry.id, label: entry.title, values: { category: entry.category.replaceAll("_", " "), title: entry.title, version: String(entry.version), source: entry.source, details: display(record ? record.details : entry.data), value: display(record?.value), percentage: record?.percentage == null ? "—" : `${String(record.percentage)}%`, from: new Date(entry.effectiveFrom).toLocaleDateString("pt-BR"), until: entry.effectiveUntil ? new Date(entry.effectiveUntil).toLocaleDateString("pt-BR") : "—", status: entry.status.replaceAll("_", " ") }, actions: entry.status === "PENDENTE_VALIDACAO" ? <TaxRowActions label={entry.title}><TaxRowAction onClick={() => review(entry.id, "APPROVE")}>Aprovar</TaxRowAction><TaxRowAction onClick={() => review(entry.id, "REJECT")}>Rejeitar</TaxRowAction></TaxRowActions> : null };
+        })} />
+    </OperationalTablePanel>
 
     {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"><form onSubmit={submit} className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-md bg-white shadow-xl"><div className="sticky top-0 flex items-center justify-between border-b bg-white px-4 py-3"><h2 className="text-sm font-bold">Novo registro cadastral</h2><button type="button" onClick={() => setOpen(false)} aria-label="Fechar"><X className="size-4" /></button></div><div className="grid gap-3 p-4 sm:grid-cols-2">
       <label className="text-xs font-semibold">Categoria<select name="category" required className="input mt-1">{categoryOptions[entityType].map((value) => <option key={value}>{value}</option>)}</select></label>

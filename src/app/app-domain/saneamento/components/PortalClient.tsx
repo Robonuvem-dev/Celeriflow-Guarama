@@ -1,9 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SanitationTable, SanitationPagination } from "./SanitationTable";
+import { OperationalTable, OperationalPagination, type OperationalRow } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import operational from "@/components/app-ui/operational/operational.module.css";
+import { LocalListToolbar } from "./LocalListToolbar";
+import { portalColumns } from "./list-columns";
 import styles from "./sanitation.module.css";
-import { Filter, Globe, Pencil, PowerOff, Search } from "lucide-react";
+import { Pencil, PowerOff } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -55,7 +60,7 @@ export function PortalClient({ requests }: { requests: PortalRequest[] }) {
       return matchesSearch && matchesStatus && matchesActive;
     });
   }, [activeFilter, requests, search, statusFilter]);
-  const pageSize = 20;
+  const pageSize = OPERATIONAL_PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const paged = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -100,54 +105,23 @@ export function PortalClient({ requests }: { requests: PortalRequest[] }) {
     }
   }
 
-  return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="Lista de solicitações do portal">
-      <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Buscar solicitação, solicitante..."
-              value={search}
-              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-              className="h-9 w-full rounded-md border bg-white py-1.5 pl-8 pr-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-          <div className="flex items-center gap-1">
-            <Filter className="h-3.5 w-3.5 text-gray-400" />
-            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} aria-label="Filtrar solicitações por status" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
-              {statuses.map((status) => <option key={status}>{status}</option>)}
-            </select>
-          </div>
-          <select value={activeFilter} onChange={(event) => { setActiveFilter(event.target.value); setPage(1); }} aria-label="Filtrar solicitações por situação" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
-            <option>Todos</option>
-            <option>Ativas</option>
-            <option>Inativas</option>
-          </select>
-        </div>
-        <span className="text-xs text-gray-400">{filteredRequests.length} {filteredRequests.length === 1 ? "solicitação" : "solicitações"}</span>
-      </div>
+  const rows: OperationalRow[] = paged.map((request) => ({
+    id: request.id, label: request.requestType,
+    values: { type: request.requestType, requester: request.requesterName, date: formatDate(request.requestedAt), source: request.source, status: request.status, active: request.active ? "Ativa" : "Inativa" },
+    actions: <div className={operational.rowActions}>
+      <button type="button" onClick={() => setEditingRequest(request)} className={operational.iconButton} aria-label={`Editar solicitação ${request.requestType}`} title="Editar solicitação"><Pencil /></button>
+      <button type="button" onClick={() => void handleInactivate(request)} disabled={!request.active} className={operational.iconButton} aria-label={`Inativar solicitação ${request.requestType}`} title="Inativar solicitação"><PowerOff /></button>
+    </div>,
+  }));
 
-      {filteredRequests.length === 0 ? (
-        <div className="min-h-0 flex-1 p-10 text-center text-sm text-gray-400"><Globe className="mx-auto mb-3 h-10 w-10 text-gray-200" />Nenhuma solicitação encontrada.</div>
-      ) : (
-        <SanitationTable columns={[
-          { label: "Solicitação", width: 24 }, { label: "Solicitante", width: 22 }, { label: "Data", width: 12 },
-          { label: "Origem", width: 13 }, { label: "Status", width: 13 }, { label: "Situação", width: 8, align: "center" },
-          { label: "Ações", width: 8, align: "right" },
-        ]}>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {paged.map((request) => (
-                <tr key={request.id} className="h-[38px] text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/40">
-                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{request.requestType}</td><td className="px-3 py-2">{request.requesterName}</td><td className="px-3 py-2">{formatDate(request.requestedAt)}</td><td className="px-3 py-2">{request.source}</td><td className="px-3 py-2">{request.status}</td>
-                  <td className="px-3 py-2 text-center"><span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${request.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>{request.active ? "Ativa" : "Inativa"}</span></td>
-                  <td className="px-3 py-2"><div className="flex items-center justify-end gap-1"><button onClick={() => setEditingRequest(request)} className="rounded p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-[#0284C7]" title="Editar solicitação"><Pencil className="h-3.5 w-3.5" /></button><button onClick={() => handleInactivate(request)} disabled={!request.active} className="rounded p-1.5 text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40" title="Inativar solicitação"><PowerOff className="h-3.5 w-3.5" /></button></div></td>
-                </tr>
-              ))}
-            </tbody>
-        </SanitationTable>
-      )}
+  return (
+    <OperationalListFrame label="Lista de solicitações do portal"
+      toolbar={<LocalListToolbar search={search} onSearch={(value) => { setSearch(value); setPage(1); }} placeholder="Buscar solicitação, solicitante..." filters={[
+        { label: "Status", value: statusFilter, defaultValue: "Todos", options: statuses, onChange: (value) => { setStatusFilter(value); setPage(1); } },
+        { label: "Situação", value: activeFilter, defaultValue: "Todos", options: ["Todos", "Ativas", "Inativas"], onChange: (value) => { setActiveFilter(value); setPage(1); } },
+      ]} />}
+      pagination={<OperationalPagination page={currentPage} total={filteredRequests.length} onPageChange={setPage} />}>
+      <OperationalTable columns={portalColumns} rows={rows} preferenceId="sanitation-portal" caption="Solicitações do portal do consumidor" emptyMessage="Nenhuma solicitação encontrada." />
 
       <Sheet open={editingRequest !== null} onOpenChange={(open) => !open && setEditingRequest(null)}>
         <SheetContent side="right" className={styles.sheet}>
@@ -168,8 +142,7 @@ export function PortalClient({ requests }: { requests: PortalRequest[] }) {
         </SheetContent>
       </Sheet>
 
-      <SanitationPagination page={currentPage} total={filteredRequests.length} pageSize={pageSize} onPageChange={setPage} />
-</section>
+    </OperationalListFrame>
   );
 }
 

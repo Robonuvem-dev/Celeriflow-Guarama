@@ -3,12 +3,18 @@
 import { useState } from "react";
 import { FileText, Plus, FileEdit, Trash2, X, Check, ToggleLeft, ToggleRight } from "lucide-react";
 import { updateModelo, deleteModelo, createModelo } from "./actions";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
-const PAGE_SIZE = 20;
+const columns: OperationalColumn[] = [
+  { key: "title", label: "Nome do modelo", type: "text", initialWidth: 260, minWidth: 130, resizable: true, sortable: false, details: "overflow" },
+  { key: "notes", label: "Notas / Descrição", type: "text", initialWidth: 320, minWidth: 140, resizable: true, sortable: false, details: "overflow" },
+  { key: "status", label: "Status", type: "status", initialWidth: 110, minWidth: 75, resizable: true, sortable: false, details: "overflow" },
+  { key: "date", label: "Atualizado em", type: "text", initialWidth: 130, minWidth: 105, resizable: true, sortable: false, details: "overflow" },
+  { key: "actions", label: "Ações", type: "actions", initialWidth: 110, minWidth: 100, maxWidth: 125, resizable: false, sortable: false, details: "none" },
+];
 
 type Modelo = {
   id: string;
@@ -95,89 +101,31 @@ export default function ModelosClient({ initialModelos }: { initialModelos: Mode
   };
 
   return (
-    <PageFrame className="flex h-full min-h-0 max-w-6xl flex-col">
-      <PageHeader title="Modelos de Documentos" icon={<FileText className="size-4 shrink-0 text-indigo-600" />} action={<button onClick={() => setShowNewModal(true)} className="inline-flex h-7 items-center gap-1 rounded-md bg-indigo-600 px-2 text-xs font-semibold text-white hover:bg-indigo-700"><Plus className="size-3.5" /><span className="hidden sm:inline">Novo Modelo</span></button>} />
-      <ErpListFrame toolbar={<input type="search" value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setPage(1); }} placeholder="Buscar por nome, categoria ou situação" aria-label="Buscar modelos" className="h-7 w-full max-w-md rounded border border-slate-300 px-2.5 text-xs outline-none focus:border-indigo-600" />} pagination={<ErpPagination page={activePage} total={filteredModels.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="modelos" onPageChange={setPage} />}>
-          {modelos.length === 0 ? (
-            <div className="p-10 text-center">
-              <FileText className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-slate-500 text-sm">Nenhum modelo encontrado.</p>
-              <button onClick={() => setShowNewModal(true)} className="mt-2 text-indigo-600 text-xs font-semibold hover:underline">
-                Criar o primeiro modelo
-              </button>
-            </div>
-          ) : (
-            <table className="w-full table-fixed text-left text-xs">
-              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase text-slate-500">
-                <tr>
-                  <th className="px-6 py-3">Nome do Modelo</th>
-                  <th className="px-6 py-3">Notas / Descrição</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Atualizado em</th>
-                  <th className="px-6 py-3 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {pageModels.map((modelo) => (
-                  <tr key={modelo.id} className="group h-[38px] transition-colors hover:bg-slate-50">
-                    <td className="max-w-0 truncate px-2.5 py-1.5 font-bold text-slate-800" title={modelo.title}>
-                      {editingId === modelo.id ? (
-                        <input
-                          type="text"
-                          value={editForm.title}
-                          onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
-                          className="w-full border border-indigo-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-                          autoFocus
-                        />
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors shrink-0" />
-                          {modelo.title}
-                        </div>
-                      )}
-                    </td>
-                    <td className="max-w-0 truncate px-2.5 py-1.5 text-slate-500" title={modelo.notes || undefined}>
-                      {editingId === modelo.id ? (
-                        <input
-                          type="text"
-                          value={editForm.notes}
-                          onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                          placeholder="Descrição (opcional)"
-                          className="w-full border border-indigo-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-                        />
-                      ) : (
-                        modelo.notes || <span className="text-slate-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
-                          modelo.status === "Ativo"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-slate-100 text-slate-500"
-                        }`}
-                      >
-                        {modelo.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-400 text-xs">
-                      {new Date(modelo.updatedAt).toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1">
+    <>
+      <OperationalListFrame label="Modelos de documentos" actions={<button onClick={() => setShowNewModal(true)} className={styles.newButton}><Plus />Novo modelo</button>}
+        toolbar={<input type="search" value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setPage(1); }} placeholder="Buscar por nome, descrição ou situação" aria-label="Buscar modelos" className={styles.searchInput} />}
+        pagination={<OperationalPagination page={activePage} total={filteredModels.length} onPageChange={setPage} />}>
+        <OperationalTable columns={columns} preferenceId="documentos-modelos" caption="Modelos de documentos" emptyMessage="Nenhum modelo encontrado." rows={pageModels.map((modelo) => ({
+          id: modelo.id, label: modelo.title,
+          values: { title: modelo.title, notes: modelo.notes || "—", status: modelo.status, date: new Date(modelo.updatedAt).toLocaleDateString("pt-BR") },
+          cells: editingId === modelo.id ? {
+            title: <input aria-label="Nome do modelo" value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} className="h-6 w-full rounded border border-indigo-300 px-1" autoFocus />,
+            notes: <input aria-label="Descrição do modelo" value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Descrição (opcional)" className="h-6 w-full rounded border border-indigo-300 px-1" />,
+          } : undefined,
+          actions: <div className={styles.rowActions}>
                         {editingId === modelo.id ? (
                           <>
                             <button
                               onClick={() => handleSaveEdit(modelo.id)}
                               disabled={loading === modelo.id}
-                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              className={styles.iconButton} aria-label={`Salvar ${modelo.title}`}
                               title="Salvar"
                             >
                               <Check className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setEditingId(null)}
-                              className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
+                              className={styles.iconButton} aria-label="Cancelar edição"
                               title="Cancelar"
                             >
                               <X className="w-4 h-4" />
@@ -187,7 +135,7 @@ export default function ModelosClient({ initialModelos }: { initialModelos: Mode
                           <>
                             <button
                               onClick={() => openEdit(modelo)}
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              className={styles.iconButton} aria-label={`Editar ${modelo.title}`}
                               title="Editar"
                             >
                               <FileEdit className="w-4 h-4" />
@@ -195,7 +143,7 @@ export default function ModelosClient({ initialModelos }: { initialModelos: Mode
                             <button
                               onClick={() => handleToggleStatus(modelo)}
                               disabled={loading === modelo.id}
-                              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              className={styles.iconButton} aria-label={`${modelo.status === "Ativo" ? "Inativar" : "Ativar"} ${modelo.title}`}
                               title={modelo.status === "Ativo" ? "Inativar" : "Ativar"}
                             >
                               {modelo.status === "Ativo" ? (
@@ -207,21 +155,16 @@ export default function ModelosClient({ initialModelos }: { initialModelos: Mode
                             <button
                               onClick={() => handleDelete(modelo.id, modelo.title)}
                               disabled={loading === modelo.id}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className={styles.iconButton} aria-label={`Excluir ${modelo.title}`}
                               title="Excluir"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-      </ErpListFrame>
+                      </div>,
+        }))} />
+      </OperationalListFrame>
 
       {/* New Modelo Modal */}
       {showNewModal && (
@@ -276,6 +219,6 @@ export default function ModelosClient({ initialModelos }: { initialModelos: Mode
           </div>
         </div>
       )}
-    </PageFrame>
+    </>
   );
 }

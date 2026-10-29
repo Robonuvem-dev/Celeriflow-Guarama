@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Landmark, Plus, AlertTriangle, Zap, RefreshCw, ListFilter } from "lucide-react";
+import { Plus, AlertTriangle, Zap } from "lucide-react";
+import FinanceOperationalList from "../FinanceOperationalList";
+import { financeColumn } from "../operational-columns";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { createRuleAction, processConstitutionalRevenueAction, resolveExceptionAction, seedConstitutionalRulesAction } from "./regras-receitas-actions";
 
 interface Rule {
@@ -142,18 +146,9 @@ export default function ReceitasConstitucionaisClient({
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto px-1 py-1 sm:px-2 [&>*+*]:mt-2">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
-      <div className="flex flex-col gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="mt-0.5 flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900">
-            <Landmark className="size-4 text-purple-600" />
-            Receitas Constitucionais e Legais
-          </h1>
-          <p className="text-xs text-slate-600">
-            Tabela de regras configurável para FPM, ICMS, Fundeb, IPVA, ITR, Royalties, ADO LC 176/20 e Fila de Exceções para variação de descrições.
-          </p>
-        </div>
+      <OperationalHeaderActions>
 
         {/* Tab Buttons */}
         <div className="flex max-w-full flex-wrap items-center gap-1 rounded-md border border-slate-300 bg-slate-50 p-1">
@@ -182,101 +177,20 @@ export default function ReceitasConstitucionaisClient({
             <AlertTriangle className="w-3.5 h-3.5 text-amber-300" /> Fila de Exceções ({exceptions.length})
           </button>
         </div>
-      </div>
+      </OperationalHeaderActions>
 
       {/* TAB 1: Tabela de Regras (9 Campos Obrigatórios do Edital) */}
       {activeTab === "regras" && (
-          <div className="space-y-3 rounded-md border border-slate-200 bg-white p-3 shadow-none">
-          <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <ListFilter className="w-5 h-5 text-purple-600" />
-              Tabela de Regras de Receitas (Exigência POC)
-            </h2>
-            <span className="text-xs text-slate-500 font-mono">Ordenado por Prioridade de Execução</span>
-          </div>
-
-          <div className="overflow-y-auto">
-            <table className="w-full table-fixed text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="p-3">Prio</th>
-                  <th className="p-3">Texto Encontrado</th>
-                  <th className="p-3">Banco/Conta</th>
-                  <th className="p-3">Tipo Receita</th>
-                  <th className="p-3">Natureza da Receita</th>
-                  <th className="p-3">Fonte Recurso</th>
-                  <th className="p-3">Evento Contábil</th>
-                  <th className="p-3">Dedução?</th>
-                  <th className="p-3">Confirmação?</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {rules.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3">
-                      <span className="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded text-[10px] dark:bg-purple-900/80 dark:text-purple-200">
-                        #{r.prioridade}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">{r.textoProcurado}</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">
-                      {r.bankAccount
-                        ? `${r.bankAccount.bankName} / ${r.bankAccount.agency} / ${r.bankAccount.accountNumber}`
-                        : "Conta não vinculada"}
-                    </td>
-                    <td className="p-3 font-semibold text-purple-700 dark:text-purple-300">{r.tipoReceita}</td>
-                    <td className="p-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">{r.naturezaReceita}</td>
-                    <td className="p-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">{r.fonteRecurso}</td>
-                    <td className="p-3 font-mono text-[11px] text-blue-600 dark:text-blue-400 font-semibold">{r.eventoContabil}</td>
-                    <td className="p-3">
-                      {r.deducaoAplicavel ? (
-                        <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px] dark:bg-amber-900/60 dark:text-amber-300">
-                          SIM (20% Fundeb)
-                        </span>
-                      ) : (
-                        <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded dark:bg-slate-800 dark:text-slate-400">
-                          NÃO
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {r.exigeConfirmacao ? (
-                        <span className="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded text-[10px] dark:bg-rose-900/60 dark:text-rose-300">
-                          SIM (Manual)
-                        </span>
-                      ) : (
-                        <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px] dark:bg-emerald-900/60 dark:text-emerald-300">
-                          NÃO (Automático)
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {rules.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-500">
-                      <p>Nenhuma regra padrão foi carregada nesta instância.</p>
-                      <button
-                        type="button"
-                        onClick={handleSeedRules}
-                        disabled={loading}
-                        className="mt-3 inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-                      >
-                        <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-                        {loading ? "Criando regras..." : "Criar regras padrão da POC"}
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FinanceOperationalList label="Regras de Receitas" preferenceId="financeiro-regras-receitas"
+          columns={[financeColumn("priority", "Prioridade", 75), financeColumn("text", "Texto Encontrado", 120, 180), financeColumn("account", "Banco/Conta", 150, 220), financeColumn("type", "Tipo Receita", 95), financeColumn("nature", "Natureza da Receita", 135), financeColumn("source", "Fonte Recurso", 110), financeColumn("event", "Evento Contábil", 120), financeColumn("deduction", "Dedução?", 120), financeColumn("confirmation", "Confirmação?", 130)]}
+          toolbar={<><span>Prioridade de execução</span>{errorMsg && <span role="alert">{errorMsg}</span>}{successMsg && <span role="status">{successMsg}</span>}</>}
+          actions={!rules.length ? <button className={styles.dialogButton} disabled={loading} onClick={() => void handleSeedRules()}>{loading ? "Criando regras…" : "Criar regras padrão da POC"}</button> : undefined}
+          rows={rules.map(rule => ({ id: rule.id, label: rule.textoProcurado, values: { priority: `#${rule.prioridade}`, text: rule.textoProcurado, account: rule.bankAccount ? `${rule.bankAccount.bankName} / ${rule.bankAccount.agency} / ${rule.bankAccount.accountNumber}` : "Conta não vinculada", type: rule.tipoReceita ?? "—", nature: rule.naturezaReceita ?? "—", source: rule.fonteRecurso ?? "—", event: rule.eventoContabil ?? "—", deduction: rule.deducaoAplicavel ? "SIM (20% Fundeb)" : "NÃO", confirmation: rule.exigeConfirmacao ? "SIM (Manual)" : "NÃO (Automático)" } }))} />
       )}
 
       {/* TAB 2: Nova Regra */}
       {activeTab === "nova" && (
-          <div className="mx-auto max-w-3xl space-y-3 rounded-md border border-slate-200 bg-white p-3 shadow-none">
+          <div className="mx-auto h-full w-full max-w-3xl space-y-3 overflow-y-auto rounded-md border border-slate-200 bg-white p-3 shadow-none">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">
             Cadastrar Nova Regra de Receita Orçamentária
           </h2>
@@ -408,7 +322,7 @@ export default function ReceitasConstitucionaisClient({
 
       {/* TAB 3: Fila de Exceções */}
       {activeTab === "excecoes" && (
-          <div className="space-y-3 rounded-md border border-slate-200 bg-white p-3 shadow-none">
+          <div className="h-full space-y-3 overflow-y-auto rounded-md border border-slate-200 bg-white p-3 shadow-none">
           <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">

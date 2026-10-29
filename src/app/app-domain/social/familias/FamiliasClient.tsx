@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Search, Plus, CreditCard, CheckCircle2, XCircle } from "lucide-react";
+import { Users, Search, Plus } from "lucide-react";
 import { createFamily, updateFamily, toggleFamilyStatus } from "../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-
-const PAGE_SIZE = 20;
+import { SocialOperationalList } from "../OperationalList";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
 
 type Person = { id: string; fullName: string; cpf: string | null };
 type Family = {
@@ -110,84 +108,21 @@ export default function FamiliasClient({ familiasInicial, persons }: { familiasI
         icon={<Users className="size-4 shrink-0 text-blue-600" />}
         action={<button onClick={() => handleOpenModal()} className="inline-flex h-7 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700"><Plus className="size-3.5" />Nova família</button>}
       />
-      <ErpListFrame
-        toolbar={<div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_10rem]"><div className="relative">
+      <SocialOperationalList id="familias" page={activePage} total={filtered.length} onPageChange={setPage}
+        columns={[["name", "Responsável", 240, 120, "identifier"], ["nis", "NIS", 130, 100], ["code", "Código familiar", 140, 100], ["income", "Renda", 130, 100, "text", "right"], ["status", "Status", 100, 80, "status"], ["actions", "Ações", 140, 140, "actions"]]}
+        rows={visibleFamilies.map((familia) => ({ id: familia.id, label: familia.representative?.fullName || "Sem responsável", values: { name: familia.representative?.fullName || "Sem responsável", nis: familia.nis || "—", code: familia.familyCode || "—", income: familia.income === null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(familia.income), status: familia.status }, actions: <div className="flex justify-end gap-2"><button onClick={() => handleOpenModal(familia)}>Editar</button><button onClick={() => handleToggleStatus(familia.id, familia.status)}>{familia.status === "Ativo" ? "Inativar" : "Ativar"}</button></div> }))}
+        toolbar={<div className="flex w-full min-w-0 gap-2"><div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
+            aria-label="Buscar famílias por NIS, código ou responsável"
             placeholder="Buscar por NIS, código ou responsável..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="h-8 w-full rounded-md border border-slate-200 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+            className="h-7 w-full rounded-md border border-slate-200 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
           />
-        </div><select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} className="h-8 rounded border border-slate-200 px-2 text-xs"><option>Todos</option>{Array.from(new Set(familias.map((item) => item.status))).map((item) => <option key={item}>{item}</option>)}</select></div>}
-        summary={<p className="text-[11px] text-slate-500">{filtered.length} famílias encontradas</p>}
-        pagination={<ErpPagination page={activePage} total={filtered.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="famílias" onPageChange={setPage} />}
-      >
-        <table className="w-full table-fixed text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-100">
-              <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-500">
-                <th className="p-2 font-semibold">Responsável</th>
-                <th className="p-2 font-semibold">NIS</th>
-                <th className="hidden p-2 font-semibold md:table-cell">Código familiar</th>
-                <th className="hidden p-2 font-semibold lg:table-cell">Renda</th>
-                <th className="hidden p-2 text-center font-semibold sm:table-cell">Status</th>
-                <th className="p-2 text-right font-semibold">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {filtered.length > 0 ? (
-                visibleFamilies.map((familia) => (
-                  <tr key={familia.id} className="h-9 hover:bg-slate-50/50">
-                    <td className="truncate p-2 font-semibold text-slate-800" title={familia.representative?.fullName}>{familia.representative?.fullName || "Sem responsável"}</td>
-                    <td className="p-2 text-slate-600">
-                      <p className="flex items-center gap-1 font-medium text-xs">
-                        <CreditCard className="w-3 h-3 text-slate-400" /> 
-                        {familia.nis || '-'}
-                      </p>
-                    </td>
-                    <td className="hidden p-2 text-slate-600 md:table-cell">
-                      {familia.familyCode || '-'}
-                    </td>
-                    <td className="hidden whitespace-nowrap p-2 font-medium text-slate-700 lg:table-cell">
-                      {familia.income === null ? "-" : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(familia.income)}
-                    </td>
-                    <td className="hidden p-2 text-center sm:table-cell">
-                      {familia.status === "Ativo" ? (
-                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-200">
-                           <CheckCircle2 className="w-3 h-3" /> Ativo
-                         </span>
-                      ) : (
-                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-50 text-rose-700 rounded-md text-xs font-medium border border-rose-200">
-                           <XCircle className="w-3 h-3" /> Inativo
-                         </span>
-                      )}
-                    </td>
-                    <td className="p-2">
-                      <div className="flex justify-end gap-1">
-                        <button onClick={() => handleOpenModal(familia)} className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors text-xs font-medium">
-                          Editar
-                        </button>
-                        <button 
-                          onClick={() => handleToggleStatus(familia.id, familia.status)}
-                          className={familia.status === 'Ativo' ? 'text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg transition-colors text-xs font-medium' : 'text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors text-xs font-medium'}
-                        >
-                          {familia.status === 'Ativo' ? 'Inativar' : 'Ativar'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
-                    Nenhuma família encontrada.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-      </ErpListFrame>
+        </div><select aria-label="Situação da família" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} className="h-7 min-w-0 rounded border border-slate-200 px-2 text-sm"><option>Todos</option>{Array.from(new Set(familias.map((item) => item.status))).map((item) => <option key={item}>{item}</option>)}</select></div>}
+      />
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

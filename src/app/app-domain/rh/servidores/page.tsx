@@ -1,152 +1,38 @@
 import Link from "next/link";
-import { Plus, Users, Search } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ServidorRowActions } from "./ServidorRowActions";
 import { db } from "@/db/client";
 import { readEmployeesPage } from "@/db/repositories/personnel-pages/records";
-import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
-import { RhPagination } from "../_components/RhPagination";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import {
-  ErpTableContainer,
-  ErpTableThead,
-  ErpTableTh,
-  ErpTableTr,
-  ErpTableTd,
-  ErpStatusBadge,
-} from "@/components/app-ui/erp/ErpTable";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalFilters, OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { rhColumn } from "../_components/operational-columns";
+import { RhNewLink } from "../_components/RhNewLink";
 
-export default async function ServidoresPage(
-  props: {
-    searchParams?: Promise<{
-      q?: string;
-      status?: string;
-      departmentId?: string;
-      page?: string;
-    }>;
-  }
-) {
+const columns = [rhColumn("name", "Nome", 240, 140), rhColumn("cpf", "CPF", 140, 112, "identifier"), rhColumn("registration", "Matrícula", 110, 90, "identifier"), rhColumn("role", "Cargo", 180, 100), rhColumn("department", "Setor", 160, 100), rhColumn("status", "Status", 90, 76, "status"), rhColumn("actions", "Ações", 90, 80, "actions", "right")];
+
+export default async function ServidoresPage(props: { searchParams?: Promise<{ q?: string; status?: string; departmentId?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const searchParams = await props.searchParams;
-  const q = searchParams?.q || "";
-  const status = searchParams?.status || "";
-  const departmentId = searchParams?.departmentId || "";
-
+  const q = searchParams?.q || "", status = searchParams?.status || "", departmentId = searchParams?.departmentId || "";
   const { total, pagination, employees, departments } = await readEmployeesPage(context.database ?? db, { q, status, departmentId, page: searchParams?.page });
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">
-      <ErpPageTitle
-        title="Servidores"
-        icon={<Users className="size-4 text-violet-600" />}
-        action={
-          <Link
-            href="/rh/servidores/novo"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-500 px-3 text-xs font-bold text-slate-950 shadow-xs transition-colors hover:bg-amber-600"
-          >
-            <Plus className="size-3.5" />
-            Novo Servidor
-          </Link>
-        }
-      />
-
-      <ErpListFrame
-        pagination={<RhPagination {...pagination} total={total} pathname="/rh/servidores" filters={{ q, status, departmentId }} />}
-        toolbar={
-          <form action="/rh/servidores" method="GET" className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 basis-full sm:basis-auto">
-              <span className="sr-only">Buscar servidor</span>
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                name="q"
-                defaultValue={q}
-                placeholder="Buscar por nome, CPF ou matrícula"
-                className="h-8 w-full rounded-md border border-slate-200 bg-white py-1 pl-8 pr-2.5 text-xs outline-none transition-colors placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </label>
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="status" className="text-[11px] font-medium text-slate-500">Status</label>
-              <select
-                id="status"
-                name="status"
-                defaultValue={status}
-                className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-amber-500 dark:border-slate-700 dark:bg-slate-800"
-              >
-                <option value="">Todos</option>
-                <option value="active">Ativos</option>
-                <option value="inactive">Inativos</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="departmentId" className="text-[11px] font-medium text-slate-500">Setor</label>
-              <select
-                id="departmentId"
-                name="departmentId"
-                defaultValue={departmentId}
-                className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-amber-500 dark:border-slate-700 dark:bg-slate-800"
-              >
-                <option value="">Todos</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="h-8 rounded-md bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-slate-700"
-            >
-              Filtrar
-            </button>
-            <Link
-              href="/rh/servidores"
-              className="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700"
-            >
-              Limpar
-            </Link>
-          </form>
-        }
-      >
-        <ErpTableContainer>
-          <ErpTableThead>
-            <tr>
-              <ErpTableTh className="w-[32%]">Nome</ErpTableTh>
-              <ErpTableTh className="w-[18%]">CPF / Matrícula</ErpTableTh>
-              <ErpTableTh className="w-[20%]">Cargo</ErpTableTh>
-              <ErpTableTh className="w-[16%]">Setor</ErpTableTh>
-              <ErpTableTh className="w-[8%]">Status</ErpTableTh>
-              <ErpTableTh className="w-[6%] text-right">Ações</ErpTableTh>
-            </tr>
-          </ErpTableThead>
-          <tbody>
-            {employees.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-xs text-slate-400">
-                  Nenhum servidor encontrado.
-                </td>
-              </tr>
-            ) : (
-              employees.map((emp) => (
-                <ErpTableTr key={emp.id}>
-                  <ErpTableTd className="font-semibold">{emp.name}</ErpTableTd>
-                  <ErpTableTd className="font-mono text-[10.5px]">
-                    {emp.cpf || "Sem CPF"} · {emp.registration || "Sem Matrícula"}
-                  </ErpTableTd>
-                  <ErpTableTd>{emp.role?.name || "—"}</ErpTableTd>
-                  <ErpTableTd>{emp.department?.name || "—"}</ErpTableTd>
-                  <ErpTableTd>
-                    <ErpStatusBadge variant={emp.isActive ? "success" : "neutral"}>
-                      {emp.isActive ? "Ativo" : "Inativo"}
-                    </ErpStatusBadge>
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right">
-                    <ServidorRowActions employee={emp} />
-                  </ErpTableTd>
-                </ErpTableTr>
-              ))
-            )}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
-    </div>
-  );
+  return <OperationalListFrame label="Servidores"
+    actions={<RhNewLink href="/rh/servidores/novo">Novo servidor</RhNewLink>}
+    toolbar={<>
+      <form action="/rh/servidores" method="GET" className={styles.searchForm}>
+        <input type="hidden" name="status" value={status} /><input type="hidden" name="departmentId" value={departmentId} />
+        <input name="q" aria-label="Buscar servidor por nome, CPF ou matrícula" defaultValue={q} placeholder="Nome, CPF ou matrícula" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button>
+      </form>
+      <OperationalFilters activeCount={Number(!!status) + Number(!!departmentId)}>
+        <form action="/rh/servidores" method="GET" className={styles.filterFields}>
+          <input type="hidden" name="q" value={q} />
+          <label>Status<select name="status" defaultValue={status}><option value="">Todos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select></label>
+          <label>Setor<select name="departmentId" defaultValue={departmentId}><option value="">Todos</option>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
+          <button className={styles.primaryButton}>Aplicar</button><Link href="/rh/servidores">Limpar</Link>
+        </form>
+      </OperationalFilters>
+    </>}
+    pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/servidores" values={{ q, status, departmentId }} />}>
+    <OperationalTable preferenceId="rh-servidores" columns={columns} caption="Servidores" emptyMessage="Nenhum servidor encontrado." rows={employees.map(emp => ({ id: emp.id, label: emp.name, values: { name: emp.name, cpf: emp.cpf || "Sem CPF", registration: emp.registration || "Sem Matrícula", role: emp.role?.name || "—", department: emp.department?.name || "—", status: emp.isActive ? "Ativo" : "Inativo" }, actions: <ServidorRowActions employee={emp} /> }))} />
+  </OperationalListFrame>;
 }

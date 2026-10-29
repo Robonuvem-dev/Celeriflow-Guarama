@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalPagination, OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { financeColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import FinanceOperationalList from "../FinanceOperationalList";
 import { format } from "date-fns";
-import { Wallet, Plus, Search, Ban } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Wallet, Plus, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +67,8 @@ type CommitmentOption = { id: string; number: string; value: number; supplierId:
 type SettlementOption = { id: string; commitmentId: string; documentRef: string | null; availableToPay: number };
 type BankAccountOption = { id: string; bankName: string; agency: string; accountNumber: string; cashBalance: string; sourceBalances: { sourceCode: string; balance: string | null }[] };
 type SupplierOption = { id: string; company?: { corporateName: string } | null; person?: { fullName: string } | null };
+const columns = [financeColumn("order", "Ordem", 70, 100), financeColumn("date", "Data", 80, 100), financeColumn("supplier", "Fornecedor", 90, 150), financeColumn("commitment", "Empenho", 65, 90), financeColumn("receipt", "Recebimento", 75, 100), financeColumn("account", "Conta Bancária", 100, 170), financeColumn("method", "Forma Pgto.", 75, 110), financeColumn("gross", "Bruto (R$)", 85, 120, "text", "right"), financeColumn("net", "Líquido (R$)", 85, 120, "text", "right"), financeColumn("retained", "Retido (R$)", 85, 120, "text", "right"), financeColumn("exception", "Exceção justificada", 75, 120), financeColumn("document", "Documento interno", 80, 120), financeColumn("status", "Status", 70, 100, "status"), financeColumn("actions", "Ações", 80, 80, "actions")];
+const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 export default function PagamentosClient({
   payments,
@@ -123,9 +127,10 @@ export default function PagamentosClient({
 
     return matchesSearch && matchesStatus && matchesMonth && matchesYear && matchesAccount && matchesMethod;
   });
-  const pageSize = 20;
+  const pageSize = OPERATIONAL_PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
-  const pagedPayments = filteredPayments.slice((page - 1) * pageSize, page * pageSize);
+  const currentPage = Math.min(page, pageCount);
+  const pagedPayments = filteredPayments.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleOpenNew = () => {
     setFormData({
@@ -203,14 +208,18 @@ export default function PagamentosClient({
     if (result.error) alert(result.error);
   };
 
+  if (isRetentionModalOpen) return <FinanceOperationalList label="Recolhimento de Retenções Tributárias" preferenceId="financeiro-retencoes"
+    columns={[financeColumn("order", "Ordem", 90), financeColumn("type", "Tipo", 100), financeColumn("description", "Descrição", 170, 280), financeColumn("value", "Valor", 110, 140, "text", "right"), financeColumn("actions", "Ação", 90, 90, "actions")]}
+    actions={<button className={styles.dialogButton} onClick={() => setIsRetentionModalOpen(false)}>Voltar aos pagamentos</button>}
+    toolbar={<OperationalFilters label="Conta e comprovante de recolhimento" activeCount={Number(Boolean(selectedBankAccountId)) + Number(Boolean(receiptDocumentId))}>
+      <div className={styles.filterFields}><label>Conta Bancária para Débito do Recolhimento<select className="block w-full rounded border p-2" value={selectedBankAccountId} onChange={event => setSelectedBankAccountId(event.target.value)}><option value="">Selecione a conta</option>{bankAccounts.map(account => <option key={account.id} value={account.id}>{account.bankName} (Ag: {account.agency} Cc: {account.accountNumber})</option>)}</select></label>
+      <label>Comprovante de Recolhimento (GED)<select className="block w-full rounded border p-2" value={receiptDocumentId} onChange={event => setReceiptDocumentId(event.target.value)}><option value="">Selecione o comprovante válido</option>{receiptDocuments.map(document => <option key={document.id} value={document.id}>{document.title} ({document.documentType})</option>)}</select></label><p>O recolhimento gera um registro interno vinculado a este comprovante, à retenção e à ordem de pagamento de origem.</p></div>
+    </OperationalFilters>}
+    rows={pendingWithholdings.map(row => ({ id: row.id, label: row.orderNumber, values: { order: row.orderNumber, type: row.type, description: row.description || "—", value: money(row.value) }, actions: <button className={styles.dialogButton} onClick={() => void handleSettleWithholding(row.id)}>Recolher</button> }))} />;
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 sm:px-2">
-      <div className="flex flex-col gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-sm font-bold tracking-tight text-slate-900">Pagamentos</h1>
-          <p className="text-xs text-muted-foreground">Ordens de pagamento e execução financeira</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+    <>
+      <OperationalListFrame label="Pagamentos" actions={<>
           {pendingWithholdings.length > 0 && (
             <Button size="sm" variant="outline" onClick={() => setIsRetentionModalOpen(true)}>
               <Wallet className="mr-2 h-4 w-4 text-amber-500" />
@@ -221,23 +230,7 @@ export default function PagamentosClient({
             <Plus className="mr-2 h-4 w-4" />
             Nova Ordem de Pagamento
           </Button>
-        </div>
-      </div>
-
-      <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md shadow-none [&_[data-slot=table-container]]:min-h-0 [&_[data-slot=table-container]]:flex-1 [&_[data-slot=table-container]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-y-auto [&_[data-slot=table]]:table-fixed [&_[data-slot=table-header]]:sticky [&_[data-slot=table-header]]:top-0 [&_[data-slot=table-header]]:z-10 [&_[data-slot=table-row]]:h-[38px]">
-        <CardHeader className="border-b pb-2">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <CardTitle>Listagem de Pagamentos</CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar..."
-                  className="pl-8 w-[150px]"
-                  value={searchTerm}
-                  onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
-                />
-              </div>
+      </>} toolbar={<><input aria-label="Buscar fornecedor ou ordem" placeholder="Buscar fornecedor ou ordem…" className={styles.searchInput} value={searchTerm} onChange={event => { setSearchTerm(event.target.value); setPage(1); }} /><OperationalFilters activeCount={[filterStatus, filterMonth, filterYear, filterAccount, filterMethod].filter(value => value !== "ALL").length}>
               <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val as string); setPage(1); }}>
                 <SelectTrigger className="w-[120px]"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
@@ -273,7 +266,7 @@ export default function PagamentosClient({
                   <SelectItem value="2025">2025</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterAccount} onValueChange={(val) => setFilterAccount(val as string)}>
+              <Select value={filterAccount} onValueChange={(val) => { setFilterAccount(val as string); setPage(1); }}>
                 <SelectTrigger className="w-[150px]"><SelectValue placeholder="Conta" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Todas Contas</SelectItem>
@@ -282,7 +275,7 @@ export default function PagamentosClient({
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterMethod} onValueChange={(val) => setFilterMethod(val as string)}>
+              <Select value={filterMethod} onValueChange={(val) => { setFilterMethod(val as string); setPage(1); }}>
                 <SelectTrigger className="w-[130px]"><SelectValue placeholder="Forma" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Todas Formas</SelectItem>
@@ -292,84 +285,12 @@ export default function PagamentosClient({
                   <SelectItem value="PIX">PIX</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ordem</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>Empenho / recebimento</TableHead>
-                <TableHead>Conta Bancária</TableHead>
-                <TableHead>Forma Pgto.</TableHead>
-                <TableHead>Bruto / Líquido (R$)</TableHead>
-                <TableHead>Documento interno</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPayments.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground h-32">
-                    <div className="flex flex-col items-center justify-center">
-                      <Wallet className="h-8 w-8 mb-2 opacity-20" />
-                      Nenhum pagamento encontrado.
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pagedPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell className="font-medium">{payment.orderNumber}</TableCell>
-                    <TableCell>{format(new Date(payment.date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell>
-                      {payment.supplier.company?.corporateName || payment.supplier.person?.fullName || 'Não identificado'}
-                    </TableCell>
-                    <TableCell>{payment.commitment.number}{payment.commitment.purchaseReceipt && <span className="block text-xs text-muted-foreground">{payment.commitment.purchaseReceipt.number}</span>}</TableCell>
-                    <TableCell>
-                      {payment.bankAccount.bankName} - Ag: {payment.bankAccount.agency} Cc: {payment.bankAccount.accountNumber}
-                    </TableCell>
-                    <TableCell>{payment.paymentMethod}</TableCell>
-                    <TableCell>
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.value)}
-                      {(payment.retentionValue > 0 || payment.netValue !== payment.value) && <span className="block text-xs text-muted-foreground">Líquido: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.netValue)}{payment.retentionValue > 0 ? ` | Retido: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.retentionValue)}` : ''}</span>}
-                      {payment.isExceptional && <span className="block text-xs text-amber-600">Exceção justificada</span>}
-                    </TableCell>
-                    <TableCell className="text-sm">{payment.financialDocument?.number || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        payment.status === 'Paga' ? 'default' :
-                        payment.status === 'Emitida' ? 'secondary' :
-                        payment.status === 'Cancelada' ? 'destructive' :
-                        'outline'
-                      }>
-                        {payment.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right flex justify-end gap-2">
-                      {payment.status === 'Paga' && (
-                        <Button variant="outline" size="sm" onClick={() => handleReversePayment(payment.id)} title="Estornar Pagamento Pago">
-                          Estornar
-                        </Button>
-                      )}
-                      {payment.status === 'Emitida' && (
-                        <Button variant="ghost" size="icon" onClick={() => handleChangeStatus(payment.id, 'Cancelada')} title="Cancelar Pagamento">
-                          <Ban className="h-4 w-4 text-rose-500" />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-              <ErpPagination page={Math.min(page, pageCount)} total={filteredPayments.length} pageSize={pageSize} previousHref="#" nextHref="#" onPageChange={setPage} />
-</Card>
+              <button type="button" className={styles.dialogButton} onClick={() => { setFilterStatus("ALL"); setFilterMonth("ALL"); setFilterYear("ALL"); setFilterAccount("ALL"); setFilterMethod("ALL"); setPage(1); }}>Limpar filtros</button>
+            </OperationalFilters></>}
+        pagination={<OperationalPagination page={currentPage} total={filteredPayments.length} onPageChange={setPage} />}>
+        <OperationalTable preferenceId="financeiro-pagamentos" caption="Ordens de pagamento" emptyMessage="Nenhum pagamento encontrado." columns={columns}
+          rows={pagedPayments.map(payment => ({ id: payment.id, label: payment.orderNumber, values: { order: payment.orderNumber, date: format(new Date(payment.date), "dd/MM/yyyy"), supplier: payment.supplier.company?.corporateName || payment.supplier.person?.fullName || "Não identificado", commitment: payment.commitment.number, receipt: payment.commitment.purchaseReceipt?.number ?? "—", account: `${payment.bankAccount.bankName} - Ag: ${payment.bankAccount.agency} Cc: ${payment.bankAccount.accountNumber}`, method: payment.paymentMethod, gross: money(payment.value), net: money(payment.netValue), retained: money(payment.retentionValue), exception: payment.isExceptional ? "Exceção justificada" : "—", document: payment.financialDocument?.number || "—", status: payment.status }, actions: <div className={styles.rowActions}>{payment.status === "Paga" && <button className={styles.dialogButton} onClick={() => void handleReversePayment(payment.id)}>Estornar</button>}{payment.status === "Emitida" && <button className={styles.iconButton} aria-label={`Cancelar pagamento ${payment.orderNumber}`} title="Cancelar Pagamento" onClick={() => void handleChangeStatus(payment.id, "Cancelada")}><Ban /></button>}</div> }))} />
+      </OperationalListFrame>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[600px]">
@@ -470,67 +391,6 @@ export default function PagamentosClient({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isRetentionModalOpen} onOpenChange={setIsRetentionModalOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>Recolhimento de Retenções Tributárias</DialogTitle>
-            <DialogDescription>Selecione a conta bancária e confirme a quitação da retenção tributária / consignação.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Conta Bancária para Débito do Recolhimento</Label>
-              <Select value={selectedBankAccountId} onValueChange={(v) => setSelectedBankAccountId(v as string)}>
-                <SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger>
-                <SelectContent>
-                  {bankAccounts.map(b => (
-                    <SelectItem key={b.id} value={b.id}>{b.bankName} (Ag: {b.agency} Cc: {b.accountNumber})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Comprovante de Recolhimento (GED)</Label>
-              <Select value={receiptDocumentId} onValueChange={(v) => setReceiptDocumentId(v as string)}>
-                <SelectTrigger><SelectValue placeholder="Selecione o comprovante válido" /></SelectTrigger>
-                <SelectContent>
-                  {receiptDocuments.map((document) => <SelectItem key={document.id} value={document.id}>{document.title} ({document.documentType})</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">O recolhimento gera um registro interno vinculado a este comprovante, à retenção e à ordem de pagamento de origem.</p>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ordem</TableHead>
-                  <TableHead>Tipo / Descrição</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingWithholdings.map((pw) => (
-                  <TableRow key={pw.id}>
-                    <TableCell className="font-medium">{pw.orderNumber}</TableCell>
-                    <TableCell>
-                      <strong>{pw.type}</strong>
-                      {pw.description && <span className="block text-xs text-muted-foreground">{pw.description}</span>}
-                    </TableCell>
-                    <TableCell>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pw.value)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" onClick={() => handleSettleWithholding(pw.id)}>
-                        Recolher
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRetentionModalOpen(false)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </>
   );
 }

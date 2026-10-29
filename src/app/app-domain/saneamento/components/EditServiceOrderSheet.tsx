@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { updateServiceOrder } from "../actions";
 import styles from "./sanitation.module.css";
+import operational from "@/components/app-ui/operational/operational.module.css";
 
 type ServiceOrder = {
   id: string;
@@ -54,7 +55,7 @@ export function EditServiceOrderSheet({ order }: { order: ServiceOrder }) {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="p-1.5 text-slate-400 hover:text-[#0284C7] hover:bg-blue-50 rounded transition-colors" title="Editar OS" />}>
+      <SheetTrigger render={<button type="button" className={operational.iconButton} title="Editar OS" aria-label={`Editar OS ${order.orderNumber}`} />}>
         <Pencil className="h-3.5 w-3.5" />
       </SheetTrigger>
       <SheetContent side="right" className={styles.sheet}>

@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { ModuleShell, type ModuleNavGroup } from "@/components/app-ui/erp/ModuleShell";
+import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 
 const navigation: ModuleNavGroup[] = [
   { title: "Painel", items: [{ title: "Painel e Resumo", href: "/meio-ambiente", icon: "layoutDashboard", exact: true }] },
@@ -21,5 +22,7 @@ const navigation: ModuleNavGroup[] = [
 ];
 
 export default function MeioAmbienteLayout({ children }: { children: React.ReactNode }) {
+  const workspace = useOptionalOperationalWorkspace();
+  if (workspace) return <>{children}</>;
   return <Suspense><ModuleShell moduleTitle="Meio Ambiente" moduleCaption="Gestão Sustentável" moduleIcon="leaf" navigation={navigation}>{children}</ModuleShell></Suspense>;
 }

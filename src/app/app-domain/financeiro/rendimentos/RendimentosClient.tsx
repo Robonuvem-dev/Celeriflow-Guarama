@@ -6,6 +6,9 @@ import { calculateYieldAction, fetchExternalYieldsAction, transmitYieldAction } 
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { pocVirtualBank } from "@/lib/poc/poc-config";
 import type { YieldCalculationResult, YieldTransmissionResult } from "@/lib/financeiro/yield-engine";
+import FinanceOperationalList from "../FinanceOperationalList";
+import { financeColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 interface YieldRecord {
   id: string;
@@ -56,6 +59,7 @@ export default function RendimentosClient({ initialHistory = [] }: { initialHist
   const [queryMessage, setQueryMessage] = useState<string | null>(null);
 
   const [history, setHistory] = useState<YieldRecord[]>(initialHistory);
+  const [showHistory, setShowHistory] = useState(true);
 
   async function handleCalculate(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -160,9 +164,15 @@ export default function RendimentosClient({ initialHistory = [] }: { initialHist
     }
   }
 
+  if (showHistory) return <FinanceOperationalList label="Histórico de Rendimentos Apurados" preferenceId="financeiro-rendimentos"
+    actions={<button className={styles.newButton} onClick={() => setShowHistory(false)}>Apurar rendimentos</button>}
+    columns={[financeColumn("date", "Data", 90), financeColumn("account", "Conta Aplicação", 110), financeColumn("type", "Tipo", 100), financeColumn("gross", "Bruto", 110, 130, "text", "right"), financeColumn("tax", "Tributos", 110, 130, "text", "right"), financeColumn("net", "Líquido", 110, 130, "text", "right"), financeColumn("balance", "Saldo Acumulado", 130, 150, "text", "right"), financeColumn("receipt", "Recibo Municipal", 130)]}
+    rows={history.map(row => ({ id: row.id, label: row.reciboMunicipal || row.contaNumero, values: { date: new Date(row.data).toLocaleDateString("pt-BR"), account: row.contaNumero, type: row.tipoRendimento, gross: `R$ ${Number(row.valorBrutoDecimal || 0).toFixed(2)}`, tax: `- R$ ${(Number(row.irrfDecimal || 0) + Number(row.iofDecimal || 0)).toFixed(2)}`, net: `R$ ${Number(row.valorLiquidoDecimal || 0).toFixed(2)}`, balance: `R$ ${Number(row.saldoAcumuladoDecimal || 0).toFixed(2)}`, receipt: row.reciboMunicipal || "—" } }))} />;
+
   return (
     <div className="h-full min-h-0 overflow-y-auto px-1 py-1 sm:px-2 [&>*+*]:mt-2">
       {/* Header */}
+      <button className={styles.dialogButton} onClick={() => setShowHistory(true)}>Consultar histórico (seleção e apuração preservadas)</button>
       <div className="flex flex-col gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="mt-0.5 flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900">
@@ -420,55 +430,6 @@ export default function RendimentosClient({ initialHistory = [] }: { initialHist
         </div>
       </div>
 
-      {/* Histórico */}
-      <div className="space-y-3 rounded-md border border-slate-200 bg-white p-3 shadow-none">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white">Histórico de Rendimentos Apurados</h3>
-        {history.length === 0 ? (
-          <p className="text-sm text-slate-500 italic">Nenhum rendimento transmitido ainda.</p>
-        ) : (
-          <div className="overflow-y-auto">
-            <table className="w-full table-fixed text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase">
-                <tr>
-                  <th className="p-3">Data</th>
-                  <th className="p-3">Conta Aplicação</th>
-                  <th className="p-3">Tipo</th>
-                  <th className="p-3">Bruto</th>
-                  <th className="p-3">Tributos</th>
-                  <th className="p-3">Líquido</th>
-                  <th className="p-3">Saldo Acumulado</th>
-                  <th className="p-3">Recibo Municipal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {history.map((h) => {
-                  const b = Number(h.valorBrutoDecimal || 0);
-                  const l = Number(h.valorLiquidoDecimal || 0);
-                  const t = Number(h.irrfDecimal || 0) + Number(h.iofDecimal || 0);
-                  const s = Number(h.saldoAcumuladoDecimal || 0);
-
-                  return (
-                    <tr key={h.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                      <td className="p-3 font-mono text-slate-500">{new Date(h.data).toLocaleDateString("pt-BR")}</td>
-                      <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">{h.contaNumero}</td>
-                      <td className="p-3">
-                        <span className="bg-slate-100 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded dark:bg-slate-800 dark:text-slate-300">
-                          {h.tipoRendimento}
-                        </span>
-                      </td>
-                      <td className="p-3 font-bold text-slate-700 dark:text-slate-300">R$ {b.toFixed(2)}</td>
-                      <td className="p-3 text-rose-600 dark:text-rose-400 font-bold">- R$ {t.toFixed(2)}</td>
-                      <td className="p-3 font-bold text-emerald-600 dark:text-emerald-400">R$ {l.toFixed(2)}</td>
-                      <td className="p-3 font-bold text-blue-600 dark:text-blue-400">R$ {s.toFixed(2)}</td>
-                      <td className="p-3 font-mono text-xs text-slate-600 dark:text-slate-400">{h.reciboMunicipal || "-"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

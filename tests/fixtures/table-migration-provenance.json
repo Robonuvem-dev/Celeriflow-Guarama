@@ -1,0 +1,81 @@
+{
+  "formatVersion": 1,
+  "inventorySourceCommit": "b199957ce1712fdf1613b4d6909643c3cca4c2c1",
+  "historicalArtifacts": {
+    "historical-visual-baselines.json": {
+      "lfSha256": "6e2f385c7262463b04ae7807627b2bc89e18d5fed51c3e46ec627a45a7e71e75",
+      "sourceCommit": "5cfa75dfe20a6d3fcc20dce33e818585cb8b9954",
+      "typescriptVersion": "5.9.3",
+      "counts": { "works": 59, "planning": 15, "cemetery": 24 }
+    },
+    "health-pages-original-jsx.json": {
+      "lfSha256": "932c4c42b898a76568d19a5e63a009478c8d8526bdf0c9565ca2d9e6a9aee161",
+      "sourceReference": "Original main-sync reference, unchanged from pre-Drizzle 5cfa",
+      "normalization": "TypeScript JSX AST printer LF; remove only AsExpression and TypeAssertionExpression. SHA-256 of JSON.stringify(outermost JSX nodes).",
+      "count": 100
+    }
+  },
+  "originalInlineEvidence": {
+    "personnel": {
+      "sourceCommit": "5cfa75dfe20a6d3fcc20dce33e818585cb8b9954",
+      "count": 98,
+      "jsxSha256": "19c3e7885201ca55ae4af58d87062b41944cc27557a1f9d6468fde27434ef951",
+      "normalization": "JSON.stringify([path, outermost JSX printed with removeComments=true and LF]); CRLF normalized"
+    },
+    "sst": {
+      "sourceReference": "Original main-sync worktree, captured before migration; original test does not record a source SHA",
+      "count": 86,
+      "jsxSha256": "b9865c728366e50925ae78b6a47ce52e6c747978374bdcb7ddd0449a476e2305",
+      "normalization": "JSON.stringify([path, outermost JSX node.getText(source)]); original test applies no CRLF normalization"
+    }
+  },
+  "inventories": {
+    "personnel": {
+      "root": "src/app/app-domain/rh",
+      "originalCount": 98,
+      "originalPathsSha256": "b9bf32a3927451faffa74854bb2ca2bc6e0f69ee37d2c81065f290abe074527b",
+      "authorizedAdditions": [
+        "_components/RhNewLink.tsx",
+        "_components/RhRemoteTablePanel.tsx",
+        "_components/RhSelectionTable.tsx",
+        "_components/RhTablePanel.tsx",
+        "atividades-funcionais/CareerEnrollments.tsx",
+        "operacoes/ContractCustomFieldsTable.tsx"
+      ]
+    },
+    "sst": {
+      "root": "src/app/app-domain/sst",
+      "originalCount": 86,
+      "originalPathsSha256": "3ef5bfd0f58ad7ec961deaf54e38076d4ef32d8b30dda43d8492a36c8db1f0cf",
+      "authorizedAdditions": [
+        "_components/QuestionnaireAnswersEditor.tsx",
+        "_components/SstContent.tsx",
+        "_components/SstNewLink.tsx",
+        "_components/SstRemoteTablePanel.tsx",
+        "_components/SstSelectionField.tsx",
+        "_components/SstSelectionTable.tsx",
+        "_components/SstTablePanel.tsx",
+        "equipamentos/entregas/DeliveryEventEditor.tsx",
+        "juntas/BoardMemberFields.tsx",
+        "ordens-servico/ResponsibilitiesTable.tsx",
+        "ordens-servico/ServiceOrderEquipmentFields.tsx",
+        "prevencao/MeetingPresence.tsx",
+        "profissionais/ProfessionalManagementTable.tsx"
+      ]
+    },
+    "finance": {
+      "root": "src/app/app-domain/financeiro",
+      "originalCount": 64,
+      "originalPathsSha256": "3c05dfed6f1b9a7ec46376805ad3b91c9ecf3d24bad8b46ec524ffc6d6b60bc0",
+      "authorizedAdditions": [
+        "AnnualBudgetDraft.tsx",
+        "CostDistributionDraft.tsx",
+        "FinanceAuxiliaryForm.tsx",
+        "FinanceOperationalList.tsx",
+        "FinanceTablePanel.tsx",
+        "FiscalTermsDraft.tsx",
+        "automacoes/AutomationRuns.tsx"
+      ]
+    }
+  }
+}

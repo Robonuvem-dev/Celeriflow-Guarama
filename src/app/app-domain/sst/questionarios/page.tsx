@@ -5,22 +5,27 @@ import { findSstClinicalGrant } from "@/db/repositories/sst/access";
 import { sstDatabase } from "@/lib/sst/database";
 import { readSstQuestionnairesPage } from "@/db/repositories/sst-pages/clinical-options";
 import { QuestionnaireForm } from "./QuestionnaireForm";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalFilters, OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { sstColumn } from "../_components/operational-columns";
+import { SstNewLink } from "../_components/SstNewLink";
 
-export default async function SstQuestionnairesPage({ searchParams }: { searchParams: Promise<{ budgetUnitId?: string; q?: string; page?: string }> }) {
+const columns = [sstColumn("code", "Código", 180, 110, "identifier"), sstColumn("title", "Título", 380, 180), sstColumn("version", "Versão", 100, 75, "text", "right"), sstColumn("actions", "Ficha", 90, 80, "actions")];
+
+export default async function SstQuestionnairesPage({ searchParams }: { searchParams: Promise<{ budgetUnitId?: string; q?: string; page?: string; view?: string }> }) {
   const context = await getTenantContextForModule("SST");
   const params = await searchParams;
   const database = sstDatabase(context), units = await integrationUnits(context);
-  const unit = units.find((item) => item.id === params.budgetUnitId);
+  const unit = units.find(item => item.id === params.budgetUnitId);
   const { total, page, records } = await readSstQuestionnairesPage(database, params.budgetUnitId ? unit ? [unit.id] : [] : units.map(item => item.id), params);
   const grant = unit && !isSystemAdministrator(context.user) ? await findSstClinicalGrant(database, context.user.id, unit.id) : null;
   const create = canPerformModuleOperation(context.user, "SST", "create") && (isSystemAdministrator(context.user) || grant?.canAssess);
-  const href = (value: number) => `/sst/questionarios?${new URLSearchParams({ budgetUnitId: params.budgetUnitId || "", q: params.q || "", page: String(value) })}`;
-  return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Questionários de anamnese médica</h1><p>Versões preservadas por UG, com perguntas personalizadas e impressão em branco.</p>
-    <form className="flex flex-wrap gap-2"><select aria-label="UG" name="budgetUnitId" defaultValue={params.budgetUnitId} className="rounded border p-2"><option value="">Todas as UGs clínicas autorizadas</option>{units.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><input aria-label="Título" name="q" defaultValue={params.q} placeholder="Buscar por título" className="rounded border p-2"/><button className="rounded border p-2">Filtrar</button></form>
-    {unit && create && <details className="rounded border p-3"><summary className="cursor-pointer font-semibold">Registrar questionário ou nova versão</summary><QuestionnaireForm key={unit.id} budgetUnitId={unit.id}/></details>}
-    <table className="w-full table-fixed text-left text-sm"><thead><tr><th className="p-2">Código</th><th className="p-2">Título</th><th className="p-2">Versão</th><th className="p-2">Ficha</th></tr></thead><tbody>{records.map((record) => <tr key={record.id} className="border-b"><td className="break-words p-2">{record.code}</td><td className="break-words p-2">{record.title}</td><td className="p-2">{record.version}</td><td className="p-2"><Link className="underline" href={`/sst/questionarios/${record.id}`}>Abrir</Link></td></tr>)}</tbody></table>
-    {!records.length && <p role="status">Nenhum questionário encontrado nas UGs clínicas autorizadas.</p>}
-    <ErpPagination page={page} total={total} previousHref={href(page - 1)} nextHref={href(page + 1)}/>
-  </div>;
+  const values = { budgetUnitId: params.budgetUnitId, q: params.q };
+  if (params.view === "manage") return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Registrar questionário ou nova versão</h1><p>Versões preservadas por UG, com perguntas personalizadas e impressão em branco.</p><Link href={`/sst/questionarios?${new URLSearchParams({ budgetUnitId: params.budgetUnitId || "", q: params.q || "" })}`}>Voltar à listagem</Link><form className="flex flex-wrap gap-2"><input type="hidden" name="view" value="manage" /><label>UG<select name="budgetUnitId" defaultValue={params.budgetUnitId}><option value="">Selecione a UG</option>{units.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button>Carregar</button></form>{unit && create && <QuestionnaireForm key={unit.id} budgetUnitId={unit.id} />}</div>;
+  return <OperationalListFrame label="Questionários de anamnese médica" actions={<SstNewLink href={`/sst/questionarios?${new URLSearchParams({ budgetUnitId: params.budgetUnitId || "", view: "manage" })}`}>Registrar questionário</SstNewLink>}
+    toolbar={<><form method="GET" className={styles.searchForm}><input type="hidden" name="budgetUnitId" value={params.budgetUnitId || ""} /><input name="q" aria-label="Buscar por título" defaultValue={params.q} placeholder="Título" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form><OperationalFilters activeCount={Number(!!params.budgetUnitId)}><form method="GET" className={styles.filterFields}><input type="hidden" name="q" value={params.q || ""} /><label>UG<select name="budgetUnitId" defaultValue={params.budgetUnitId}><option value="">Todas as UGs clínicas autorizadas</option>{units.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button className={styles.primaryButton}>Aplicar</button><Link href="/sst/questionarios">Limpar</Link></form></OperationalFilters></>}
+    pagination={<OperationalLinkPagination page={page} total={total} pathname="/sst/questionarios" values={values} />}>
+    <OperationalTable columns={columns} preferenceId="sst-questionarios" caption="Questionários de anamnese médica" emptyMessage="Nenhum questionário encontrado nas UGs clínicas autorizadas." rows={records.map(record => ({ id: record.id, label: record.title, values: { code: record.code, title: record.title, version: String(record.version) }, actions: <Link href={`/sst/questionarios/${record.id}`}>Abrir</Link> }))} />
+  </OperationalListFrame>;
 }

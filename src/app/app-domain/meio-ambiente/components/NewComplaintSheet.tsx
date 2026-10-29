@@ -11,6 +11,7 @@ import {
   SheetTrigger 
 } from "@/components/ui/sheet";
 import { createEnvComplaint } from "../actions";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 export function NewComplaintSheet() {
   const [open, setOpen] = useState(false);
@@ -35,9 +36,9 @@ export function NewComplaintSheet() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="flex h-8 items-center gap-2 rounded-md bg-red-600 px-3 text-sm font-medium text-white transition-colors hover:bg-red-700" />}>
+      <SheetTrigger render={<button type="button" className={styles.newButton} aria-label="Registrar Denúncia" title="Registrar Denúncia" />}>
         <AlertTriangle className="h-5 w-5" />
-        Registrar Denúncia
+        <span className={styles.newLabel}>Registrar Denúncia</span>
       </SheetTrigger>
       <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
         <SheetHeader>

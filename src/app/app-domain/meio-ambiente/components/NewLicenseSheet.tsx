@@ -11,6 +11,7 @@ import {
   SheetTrigger 
 } from "@/components/ui/sheet";
 import { createEnvLicense } from "../actions";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 export function NewLicenseSheet({ enterprises }: { enterprises: { id: string, name: string }[] }) {
   const [open, setOpen] = useState(false);
@@ -35,9 +36,9 @@ export function NewLicenseSheet({ enterprises }: { enterprises: { id: string, na
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="flex h-8 items-center gap-2 rounded-md bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700" />}>
+      <SheetTrigger render={<button type="button" className={styles.newButton} aria-label="Nova Licença" title="Nova Licença" />}>
         <FileText className="h-5 w-5" />
-        Nova Licença
+        <span className={styles.newLabel}>Nova Licença</span>
       </SheetTrigger>
       <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
         <SheetHeader>

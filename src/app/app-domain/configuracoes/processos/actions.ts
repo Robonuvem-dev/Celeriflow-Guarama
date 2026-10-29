@@ -46,6 +46,7 @@ export async function saveProcessType(formData: FormData): Promise<void> {
   }
   else await db.insert(processTypes).values(data);
   revalidatePath("/configuracoes/processos");
+  revalidatePath("/configuracoes/processos/etapas");
 }
 
 export async function saveSubject(formData: FormData): Promise<void> {
@@ -72,6 +73,7 @@ export async function saveSubject(formData: FormData): Promise<void> {
   if (id) await db.update(processSubjects).set(data).where(eq(processSubjects.id, id));
   else await db.insert(processSubjects).values(data);
   revalidatePath("/configuracoes/processos");
+  revalidatePath("/configuracoes/processos/etapas");
 }
 
 export async function saveProcessWorkflowStage(formData: FormData): Promise<void> {
@@ -103,6 +105,7 @@ export async function saveProcessWorkflowStage(formData: FormData): Promise<void
     if (!stage) throw new Error("Etapa nao encontrada.");
   } else await db.insert(processWorkflowStages).values(data);
   revalidatePath("/configuracoes/processos");
+  revalidatePath("/configuracoes/processos/etapas");
 }
 
 export async function deleteProcessWorkflowStage(formData: FormData): Promise<void> {
@@ -112,6 +115,7 @@ export async function deleteProcessWorkflowStage(formData: FormData): Promise<vo
   const [stage] = await db.delete(processWorkflowStages).where(eq(processWorkflowStages.id, id)).returning({ id: processWorkflowStages.id });
   if (!stage) throw new Error("Etapa nao encontrada.");
   revalidatePath("/configuracoes/processos");
+  revalidatePath("/configuracoes/processos/etapas");
 }
 
 export async function createGenericWorkflowDefinitionAction(formData: FormData): Promise<void> {

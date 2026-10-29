@@ -4,6 +4,7 @@ import { simulateGroupedPropertyValuation } from "@/lib/tributacao/property-grou
 import ConfirmPropertySimulationClient from "./ConfirmPropertySimulationClient";
 import { db, databaseConnection } from "@/db/client";
 import { listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import SimulationUnitsEditor from "./SimulationUnitsEditor";
 
 export const dynamic="force-dynamic";
 export default async function GroupSimulationPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
@@ -28,7 +29,7 @@ export default async function GroupSimulationPage({searchParams}:{searchParams:P
       <label className="text-xs">Alíquota para simulação (%)<input name="taxRate" type="number" min="0" max="100" step="0.000001" defaultValue={value("taxRate") || "0"} required className={field}/></label>
       <label className="text-xs">Área territorial simulada (m², vazio usa cadastro)<input name="landArea" type="number" min="0" step="0.000001" defaultValue={value("landArea")} className={field}/></label>
       <label className="text-xs">Construção do imóvel principal (m², vazio usa cadastro)<input name="builtArea" type="number" min="0" step="0.000001" defaultValue={value("builtArea")} className={field}/></label>
-      <fieldset className="space-y-2 rounded border p-3 sm:col-span-2"><legend className="text-xs font-semibold">Unidades para simular em conjunto</legend>{[...latestProfiles.values()].filter(entry=>taxScopeSnapshot(entry.data).parentId===parentId).map(entry=><div key={entry.id} className="grid gap-2 sm:grid-cols-2"><label className="inline-flex items-center gap-2 text-xs"><input name="unitIds" value={entry.entityId} type="checkbox" defaultChecked={unitIds.includes(entry.entityId)}/>{String(taxScopeSnapshot(entry.data).inscription ?? entry.entityId)} · {String(taxScopeSnapshot(entry.data).unitMode)}</label><label className="text-xs">Construção simulada (m², vazio usa cadastro)<input name={`area.${entry.entityId}`} type="number" min="0" step="0.000001" defaultValue={value(`area.${entry.entityId}`)} className={field}/></label></div>)}</fieldset>
+      <fieldset className="space-y-2 rounded border p-3 sm:col-span-2"><legend className="text-xs font-semibold">Unidades para simular em conjunto</legend><SimulationUnitsEditor key={`${parentId}:${JSON.stringify(unitIds)}:${JSON.stringify(unitBuiltAreaOverrides)}`} initialSelected={unitIds} units={[...latestProfiles.values()].filter(entry => taxScopeSnapshot(entry.data).parentId === parentId).map(entry => ({ id: entry.entityId, inscription: String(taxScopeSnapshot(entry.data).inscription ?? entry.entityId), mode: String(taxScopeSnapshot(entry.data).unitMode ?? ""), area: value(`area.${entry.entityId}`) }))} /></fieldset>
       <label className="flex items-center gap-2 text-xs"><input name="includeParentConstruction" type="checkbox" defaultChecked={params.includeParentConstruction==="on"}/>Incluir construção do imóvel principal</label><button name="calculate" value="1" className="rounded bg-emerald-700 p-2 text-xs text-white">Simular</button>
     </form>
     {error && <p role="alert" className="rounded border bg-amber-50 p-2 text-sm">{error}</p>}

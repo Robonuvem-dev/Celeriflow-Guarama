@@ -3,7 +3,14 @@
 import { useState } from "react";
 import type { z } from "zod";
 import type { personnelFiscalComposition, readPersonnelFiscalPosition } from "@/lib/financeiro/personnel-fiscal";
-import { definePersonnelFiscalAction } from "./actions";
+import { definePersonnelFiscalAction as persistPersonnelFiscal } from "./actions";
+import FiscalTermsDraft from "../../FiscalTermsDraft";
+import { fiscalTermsError } from "../../draft-rows";
+
+function definePersonnelFiscalAction(input: Parameters<typeof persistPersonnelFiscal>[0]) {
+  const error = fiscalTermsError(input.definition.personnel) ?? fiscalTermsError(input.definition.adjustedRcl);
+  return error ? Promise.resolve({ error }) : persistPersonnelFiscal(input);
+}
 
 type Composition = z.infer<typeof personnelFiscalComposition>;
 type Term = Composition["personnel"][number];
@@ -13,8 +20,8 @@ const style = "rounded border p-2";
 const blank = (side: Term["side"]): Term => ({ label: "", accountIds: [], side, operation: "ADD" });
 
 function CompositionEditor({ title, rows, change, options }: { title: string; rows: Term[]; change: (rows: Term[]) => void; options: Options }) {
-  const update = (at: number, row: Term) => change(rows.map((item, index) => index === at ? row : item));
-  return <fieldset className="space-y-3 rounded border p-3"><legend>{title}</legend>{rows.map((row, at) => <div key={at} className="grid gap-3 rounded border p-3 md:grid-cols-2"><input required aria-label={`Componente ${title} ${at + 1}`} placeholder="Descrição do componente" className={style} value={row.label} onChange={event => update(at, { ...row, label: event.target.value })} /><select aria-label="Inclusão/dedução" className={style} value={row.operation} onChange={event => update(at, { ...row, operation: event.target.value as Term["operation"] })}><option value="ADD">Incluir</option><option value="SUBTRACT">Deduzir</option></select><label>Contas analíticas<select multiple required className={`${style} block w-full`} value={row.accountIds} onChange={event => update(at, { ...row, accountIds: [...event.target.selectedOptions].map(option => option.value) })}>{options.accounts.map(account => <option key={account.id} value={account.id}>{account.code} — {account.name}</option>)}</select></label><label>UGs (vazio = todas do ente)<select multiple className={`${style} block w-full`} value={row.budgetUnitIds ?? []} onChange={event => { const ids = [...event.target.selectedOptions].map(option => option.value); const { budgetUnitIds: _previous, ...rest } = row; update(at, { ...rest, ...(ids.length ? { budgetUnitIds: ids } : {}) }); }}>{options.units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></label><select aria-label="Sinal líquido" className={style} value={row.side} onChange={event => update(at, { ...row, side: event.target.value as Term["side"] })}><option value="DEBIT_NET">Débitos menos créditos</option><option value="CREDIT_NET">Créditos menos débitos</option></select><label>Origens registradas (vazio = todas)<select multiple className={`${style} block w-full`} value={row.sourceTypes ?? []} onChange={event => { const ids = [...event.target.selectedOptions].map(option => option.value); const { sourceTypes: _previous, ...rest } = row; update(at, { ...rest, ...(ids.length ? { sourceTypes: ids } : {}) }); }}>{options.sourceTypes.map(source => <option key={source} value={source}>{source}</option>)}</select></label><button type="button" disabled={rows.length === 1} className={style} onClick={() => change(rows.filter((_, index) => index !== at))}>Remover componente</button></div>)}<button type="button" className={style} onClick={() => change([...rows, blank(rows[0]?.side ?? "DEBIT_NET")])}>Adicionar componente</button></fieldset>;
+  return <FiscalTermsDraft title={title} rows={rows} onChange={change} blank={() => blank(rows[0]?.side ?? "DEBIT_NET")}
+    accounts={options.accounts.map(row => ({ id: row.id, label: `${row.code} — ${row.name}` }))} units={options.units.map(row => ({ id: row.id, label: row.name }))} sourceTypes={options.sourceTypes} />;
 }
 
 export function PersonnelFiscalClient({ yearId, year, through, years, options, position, revisions }: { yearId: string; year: number; through: string; years: Array<{ id: string; name: string }>; options: Options; position: Position; revisions: Array<{ id: string; revision: number; effectiveFrom: string; legalReference: string; definition: Composition; legalLimit: string; prudentialLimit: string; alertLimit: string }> }) {

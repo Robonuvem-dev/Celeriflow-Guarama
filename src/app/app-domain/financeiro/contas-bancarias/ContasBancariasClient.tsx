@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import { Landmark, Pencil, Plus, Search, Check, X } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import FinanceOperationalList from "../FinanceOperationalList";
+import { financeColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { Pencil, Plus, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +37,7 @@ type BankAccount = {
   resourceSource?: { id: string; name: string } | null;
   budgetUnit?: { id: string; code: string; name: string } | null;
 };
+const columns = [financeColumn("bank", "Banco", 120, 180), financeColumn("agency", "Agência", 75), financeColumn("account", "Conta", 90), financeColumn("type", "Tipo", 90), financeColumn("purpose", "Finalidade", 130, 180), financeColumn("source", "Fonte de Recurso", 120), financeColumn("unit", "Unidade Gestora", 120), financeColumn("balance", "Saldo Atual (R$)", 125, 150, "text", "right"), financeColumn("status", "Status", 75, 90, "status"), financeColumn("actions", "Ações", 64, 64, "actions")];
 
 export default function ContasBancariasClient({
   accounts,
@@ -53,7 +53,6 @@ export default function ContasBancariasClient({
   banks: { id: string; compe: string; name: string; shortName: string; branches: { id: string; code: string; name: string }[] }[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,9 +77,6 @@ export default function ContasBancariasClient({
     account.accountNumber.includes(searchTerm) ||
     account.purpose?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const pageSize = 20;
-  const pageCount = Math.max(1, Math.ceil(filteredAccounts.length / pageSize));
-  const pagedAccounts = filteredAccounts.slice((page - 1) * pageSize, page * pageSize);
 
   const handleOpenNew = () => {
     setEditingId(null);
@@ -145,96 +141,11 @@ export default function ContasBancariasClient({
   const selectedBank = banks.find((bank) => bank.id === formData.bankId);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 sm:px-2">
-      <div className="flex flex-col gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-sm font-bold tracking-tight text-slate-900">Contas Bancárias</h1>
-          <p className="text-xs text-muted-foreground">Gestão da tesouraria, com contas separadas por finalidade, área e fonte de recurso.</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={handleOpenNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Conta
-          </Button>
-        </div>
-      </div>
-
-      <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md shadow-none [&_[data-slot=table-container]]:min-h-0 [&_[data-slot=table-container]]:flex-1 [&_[data-slot=table-container]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-y-auto [&_[data-slot=table]]:table-fixed [&_[data-slot=table-header]]:sticky [&_[data-slot=table-header]]:top-0 [&_[data-slot=table-header]]:z-10 [&_[data-slot=table-row]]:h-[38px]">
-        <CardHeader className="border-b pb-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Listagem de Contas</CardTitle>
-              <CardDescription>Contas segregadas por finalidade operacional, como saúde, educação, convênios, arrecadação e aplicações.</CardDescription>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por banco ou agência..."
-                className="w-full pl-8 sm:w-[250px]"
-                value={searchTerm}
-                onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Banco</TableHead>
-                <TableHead>Agência / Conta</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Finalidade</TableHead>
-                <TableHead>Fonte de Recurso</TableHead>
-                <TableHead>Unidade Gestora</TableHead>
-                <TableHead>Saldo Atual (R$)</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAccounts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground h-32">
-                    <div className="flex flex-col items-center justify-center">
-                      <Landmark className="h-8 w-8 mb-2 opacity-20" />
-                      Nenhuma conta bancária encontrada.
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pagedAccounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell className="font-medium">{account.bankName}</TableCell>
-                    <TableCell>{account.agency} / {account.accountNumber}</TableCell>
-                    <TableCell>{account.accountType}</TableCell>
-                    <TableCell className="max-w-52 whitespace-normal">{account.purpose || "Finalidade não informada"}</TableCell>
-                    <TableCell>{account.resourceSource?.name || 'Não vinculada'}</TableCell>
-                    <TableCell>{account.budgetUnit ? `${account.budgetUnit.code} - ${account.budgetUnit.name}` : "Não vinculada"}</TableCell>
-                    <TableCell className={account.currentBalance < 0 ? "text-rose-500 font-medium" : "text-emerald-500 font-medium"}>
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(account.currentBalance)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={account.isActive ? 'default' : 'secondary'}>
-                        {account.isActive ? 'Ativa' : 'Inativa'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(account.id, account.isActive)} title={account.isActive ? "Inativar" : "Ativar"}>
-                        {account.isActive ? <X className="h-4 w-4 text-rose-500" /> : <Check className="h-4 w-4 text-emerald-500" />}
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(account)} title="Editar">
-                        <Pencil className="h-4 w-4 text-amber-500" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-              <ErpPagination page={Math.min(page, pageCount)} total={filteredAccounts.length} pageSize={pageSize} previousHref="#" nextHref="#" onPageChange={setPage} />
-</Card>
+    <>
+      <FinanceOperationalList label="Contas Bancárias" preferenceId="financeiro-contas" columns={columns} searchable={false} resetKey={searchTerm}
+        actions={<button className={styles.newButton} onClick={handleOpenNew}><Plus />Nova Conta</button>}
+        toolbar={<input aria-label="Buscar banco, agência, conta ou finalidade" placeholder="Buscar banco, agência, conta ou finalidade…" className={styles.searchInput} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} />}
+        rows={filteredAccounts.map(account => ({ id: account.id, label: `${account.bankName} / ${account.accountNumber}`, values: { bank: account.bankName, agency: account.agency, account: account.accountNumber, type: account.accountType, purpose: account.purpose || "Finalidade não informada", source: account.resourceSource?.name || "Não vinculada", unit: account.budgetUnit ? `${account.budgetUnit.code} - ${account.budgetUnit.name}` : "Não vinculada", balance: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(account.currentBalance), status: account.isActive ? "Ativa" : "Inativa" }, actions: <div className={styles.rowActions}><button className={styles.iconButton} aria-label={`${account.isActive ? "Inativar" : "Ativar"} conta ${account.accountNumber}`} title={account.isActive ? "Inativar" : "Ativar"} onClick={() => void handleToggleStatus(account.id, account.isActive)}>{account.isActive ? <X /> : <Check />}</button><button className={styles.iconButton} aria-label={`Editar conta ${account.accountNumber}`} title="Editar" onClick={() => handleOpenEdit(account)}><Pencil /></button></div> }))} />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[500px]">
@@ -348,6 +259,6 @@ export default function ContasBancariasClient({
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

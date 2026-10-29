@@ -1,9 +1,10 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import FinanceTablePanel from "../FinanceTablePanel";
+import { financeColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { Badge } from "@/components/ui/badge";
-import { FileText } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ type CreditRequest = {
 type ExpenseRequest = { id: string; description: string; value: number; status: string; appropriationId: string; appropriation: { code: string }; supplier: { company?: { corporateName: string } | null; person?: { fullName: string } | null } | null };
 type SupplierOption = { id: string; name: string };
 type PurchaseReceipt = { id: string; number: string; contractNumber: string; secretariatId: string; value: number };
+const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 export default function OrcamentoClient({
   appropriations,
@@ -184,146 +186,21 @@ export default function OrcamentoClient({
 
        {canEdit && purchaseReceipts.length > 0 && <Card><CardHeader><CardTitle>Solicitação de Despesa por Recebimento</CardTitle></CardHeader><CardContent><form onSubmit={submitReceiptExpense} className="grid gap-3 md:grid-cols-3"><Select value={receiptExpense.purchaseReceiptId} onValueChange={purchaseReceiptId => setReceiptExpense({ ...receiptExpense, purchaseReceiptId: purchaseReceiptId ?? "" })}><SelectTrigger><SelectValue placeholder="Recebimento aprovado" /></SelectTrigger><SelectContent>{purchaseReceipts.map((receipt) => <SelectItem key={receipt.id} value={receipt.id}>{receipt.number} · {receipt.contractNumber} · {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(receipt.value)}</SelectItem>)}</SelectContent></Select><Select value={receiptExpense.appropriationId} onValueChange={appropriationId => setReceiptExpense({ ...receiptExpense, appropriationId: appropriationId ?? "" })}><SelectTrigger><SelectValue placeholder="Dotação" /></SelectTrigger><SelectContent>{appropriations.filter((item) => item.budgetUnit.secretariatId === purchaseReceipts.find((receipt) => receipt.id === receiptExpense.purchaseReceiptId)?.secretariatId).map((item) => <SelectItem key={item.id} value={item.id}>{item.code}</SelectItem>)}</SelectContent></Select><Input placeholder="Descrição complementar" value={receiptExpense.description} onChange={event => setReceiptExpense({ ...receiptExpense, description: event.target.value })} /><Button type="submit" disabled={pending || !receiptExpense.purchaseReceiptId}>Criar solicitação vinculada</Button></form></CardContent></Card>}
 
-       <Card><CardHeader><CardTitle>Solicitações de Despesa</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead>Dotação</TableHead><TableHead>Fornecedor</TableHead><TableHead className="text-right">Valor</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>{expenses.length === 0 ? <TableRow><TableCell colSpan={6} className="h-20 text-center text-muted-foreground">Nenhuma solicitação de despesa pendente.</TableCell></TableRow> : expenses.map(expense => <TableRow key={expense.id}><TableCell>{expense.description}</TableCell><TableCell>{expense.appropriation.code}</TableCell><TableCell>{expense.supplier?.company?.corporateName ?? expense.supplier?.person?.fullName ?? "-"}</TableCell><TableCell className="text-right">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(expense.value)}</TableCell><TableCell><Badge variant="outline">{expense.status}</Badge></TableCell><TableCell className="text-right">{canEdit && expense.status === "Solicitada" && <Button size="sm" variant="outline" onClick={() => approveExpense(expense.id)} disabled={pending}>Aprovar</Button>}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+       <FinanceTablePanel label="Solicitações de Despesa" preferenceId="financeiro-orcamento-despesas"
+         columns={[financeColumn("description", "Descrição", 120, 300), financeColumn("appropriation", "Dotação", 80, 150), financeColumn("supplier", "Fornecedor", 100, 240), financeColumn("value", "Valor", 90, 140, "text", "right"), financeColumn("status", "Status", 80, 120, "status"), financeColumn("actions", "Ações", 80, 80, "actions")]}
+         rows={expenses.map(expense => ({ id: expense.id, label: expense.description, values: { description: expense.description, appropriation: expense.appropriation.code, supplier: expense.supplier?.company?.corporateName ?? expense.supplier?.person?.fullName ?? "—", value: money(expense.value), status: expense.status }, actions: canEdit && expense.status === "Solicitada" ? <button className={styles.dialogButton} onClick={() => void approveExpense(expense.id)} disabled={pending}>Aprovar</button> : undefined }))} />
 
-       <Card>
-        <CardHeader>
-          <CardTitle>Listagem de Dotações</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código da Dotação</TableHead>
-                <TableHead>Natureza da Despesa</TableHead>
-                <TableHead>Unidade Orçamentária</TableHead>
-                <TableHead>Fonte</TableHead>
-                <TableHead className="text-right">Valor Atualizado (R$)</TableHead>
-                <TableHead className="text-right">Reservado (R$)</TableHead>
-                <TableHead className="text-right">Valor Empenhado (R$)</TableHead>
-                <TableHead className="text-right">Saldo (R$)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {appropriations.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground h-32">
-                    <div className="flex flex-col items-center justify-center">
-                      <FileText className="h-8 w-8 mb-2 opacity-20" />
-                      Nenhuma dotação encontrada.
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                appropriations.map((app) => (
-                  <TableRow key={app.id}>
-                    <TableCell className="font-medium">{app.code}</TableCell>
-                    <TableCell>{app.expenseNature.code} - {app.expenseNature.name}</TableCell>
-                    <TableCell>{app.budgetUnit.code} - {app.budgetUnit.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{app.resourceSource.code}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-emerald-600">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(app.updatedValue)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-amber-600">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(app.reservedValue)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-amber-600">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(app.committedValue)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-blue-600">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(app.availableValue)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+       <FinanceTablePanel label="Dotações" preferenceId="financeiro-orcamento-dotacoes"
+         columns={[financeColumn("code", "Código da Dotação", 80, 140), financeColumn("nature", "Natureza da Despesa", 100, 200), financeColumn("unit", "Unidade Orçamentária", 100, 200), financeColumn("source", "Fonte", 70, 120), financeColumn("updated", "Valor Atualizado (R$)", 90, 140, "text", "right"), financeColumn("reserved", "Reservado (R$)", 90, 140, "text", "right"), financeColumn("committed", "Valor Empenhado (R$)", 90, 140, "text", "right"), financeColumn("balance", "Saldo (R$)", 90, 140, "text", "right")]}
+         rows={appropriations.map(row => ({ id: row.id, label: row.code, values: { code: row.code, nature: `${row.expenseNature.code} - ${row.expenseNature.name}`, unit: `${row.budgetUnit.code} - ${row.budgetUnit.name}`, source: row.resourceSource.code, updated: money(row.updatedValue), reserved: money(row.reservedValue), committed: money(row.committedValue), balance: money(row.availableValue) } }))} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Solicitações de Crédito Adicional (Segregação de Funções)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Justificativa</TableHead>
-                <TableHead className="text-right">Valor Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {creditRequests.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground h-20">
-                    Nenhuma solicitação de crédito adicional cadastrada.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                creditRequests.map((credit) => (
-                  <TableRow key={credit.id}>
-                    <TableCell className="font-medium">{credit.number}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{credit.type}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[250px] truncate">{credit.justification}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(credit.totalValue))}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          credit.status === "PUBLISHED"
-                            ? "bg-emerald-500 hover:bg-emerald-600"
-                            : credit.status === "APPROVED"
-                            ? "bg-blue-500 hover:bg-blue-600"
-                            : "bg-amber-500 hover:bg-amber-600"
-                        }
-                      >
-                        {credit.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                        {canEdit && credit.status === "DRAFT" && (
-                         <Button variant="outline" size="sm" disabled={pending} onClick={() => handleSubmitCredit(credit.id)}>Submeter</Button>
-                       )}
-                        {canEdit && credit.status === "SUBMITTED" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={pending}
-                          onClick={() => handleApproveCredit(credit.id)}
-                        >
-                          Aprovar
-                        </Button>
-                      )}
-                        {canEdit && credit.status === "PUBLISHED" && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          disabled={pending}
-                          onClick={() => handleExecuteCredit(credit.id)}
-                        >
-                          Efetivar Saldo
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <FinanceTablePanel label="Solicitações de Crédito Adicional" description="Segregação de funções preservada por situação e permissão." preferenceId="financeiro-orcamento-creditos"
+        columns={[financeColumn("number", "Número", 80, 130), financeColumn("type", "Tipo", 90, 140), financeColumn("reason", "Justificativa", 120, 360), financeColumn("value", "Valor Total", 90, 150, "text", "right"), financeColumn("status", "Status", 90, 140, "status"), financeColumn("actions", "Ações", 110, 110, "actions")]}
+        rows={creditRequests.map(credit => ({ id: credit.id, label: credit.number, values: { number: credit.number, type: credit.type, reason: credit.justification, value: money(Number(credit.totalValue)), status: credit.status }, actions: <>{canEdit && credit.status === "DRAFT" && <button className={styles.dialogButton} disabled={pending} onClick={() => void handleSubmitCredit(credit.id)}>Submeter</button>}{canEdit && credit.status === "SUBMITTED" && <button className={styles.dialogButton} disabled={pending} onClick={() => void handleApproveCredit(credit.id)}>Aprovar</button>}{canEdit && credit.status === "PUBLISHED" && <button className={styles.dialogButton} disabled={pending} onClick={() => void handleExecuteCredit(credit.id)}>Efetivar Saldo</button>}</> }))} />
 
-       <Card><CardHeader><CardTitle>Reservas recentes</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Número</TableHead><TableHead>Dotação</TableHead><TableHead>Valor</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader><TableBody>{reservations.map(reservation => <TableRow key={reservation.id}><TableCell>{reservation.number}</TableCell><TableCell>{reservation.appropriation.code}</TableCell><TableCell>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(reservation.value)}</TableCell><TableCell>{reservation.status}</TableCell><TableCell>{canEdit && reservation.status === "Ativa" && <Button variant="outline" size="sm" onClick={() => cancelReservation(reservation.id)}>Cancelar</Button>}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+       <FinanceTablePanel label="Reservas recentes" preferenceId="financeiro-orcamento-reservas"
+         columns={[financeColumn("number", "Número", 80, 140), financeColumn("appropriation", "Dotação", 90, 200), financeColumn("value", "Valor", 90, 150, "text", "right"), financeColumn("status", "Status", 80, 140, "status"), financeColumn("actions", "Ações", 85, 85, "actions")]}
+         rows={reservations.map(row => ({ id: row.id, label: row.number, values: { number: row.number, appropriation: row.appropriation.code, value: money(row.value), status: row.status }, actions: canEdit && row.status === "Ativa" ? <button className={styles.dialogButton} onClick={() => void cancelReservation(row.id)}>Cancelar</button> : undefined }))} />
     </div>
   );
 }

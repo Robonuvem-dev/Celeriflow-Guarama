@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { RhTablePanel } from "../_components/RhTablePanel";
+import { rhColumn } from "../_components/operational-columns";
 import {
-  ChevronLeft,
-  ChevronRight,
   CircleAlert,
   FileCog,
   Landmark,
@@ -185,7 +187,7 @@ const secondaryButtonClass =
   "inline-flex h-8 items-center justify-center gap-1.5 rounded border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60";
 const primaryButtonClass =
   "inline-flex h-8 items-center justify-center gap-1.5 rounded bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60";
-const PAGE_SIZE = 20;
+const PAGE_SIZE = OPERATIONAL_PAGE_SIZE;
 
 function dateInputValue(value: string | null) {
   return value ? value.slice(0, 10) : "";
@@ -205,50 +207,6 @@ function ruleValueForInput(rule: RuleView) {
   } catch {
     return rule.value;
   }
-}
-
-function PageControls({
-  page,
-  total,
-  onPageChange,
-}: {
-  page: number;
-  total: number;
-  onPageChange: (page: number) => void;
-}) {
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-      <span>
-        {total} registros
-        {total > 0 &&
-          ` · ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)}`}
-      </span>
-      <span className="flex items-center gap-1">
-        <button
-          type="button"
-          aria-label="Página anterior"
-          disabled={page === 1}
-          onClick={() => onPageChange(page - 1)}
-          className="rounded p-1 hover:bg-slate-100 disabled:opacity-40"
-        >
-          <ChevronLeft className="size-4" />
-        </button>
-        <span>
-          Página {page} de {pages}
-        </span>
-        <button
-          type="button"
-          aria-label="Próxima página"
-          disabled={page === pages}
-          onClick={() => onPageChange(page + 1)}
-          className="rounded p-1 hover:bg-slate-100 disabled:opacity-40"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </span>
-    </div>
-  );
 }
 
 function usePage<T>(items: T[]) {
@@ -292,21 +250,6 @@ function SectionHeader({
       </div>
       {action}
     </div>
-  );
-}
-
-function TableShell({
-  children,
-  footer,
-}: {
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-}) {
-  return (
-    <section className="flex max-h-[60dvh] min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
-      {footer}
-    </section>
   );
 }
 
@@ -786,72 +729,11 @@ function RulesEditor({
   const pager = usePage(settings.rules);
   return (
     <div className="grid min-h-0 gap-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(21rem,.75fr)]">
-      <TableShell
-        footer={
-          <PageControls
-            page={pager.page}
-            total={settings.rules.length}
-            onPageChange={pager.setPage}
-          />
-        }
-      >
-        <SectionHeader
-          title="Regras operacionais"
-          description="Valores tipados por categoria, com vigência herdada do conjunto selecionado."
-          action={
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className={secondaryButtonClass}
-            >
-              <Plus className="size-4" />
-              Nova regra
-            </button>
-          }
-        />
-        <CompactTable
-          headers={["Código", "Nome", "Categoria", "Valor", "Status"]}
-        >
-          {pager.items.length === 0 && (
-            <EmptyTableRow
-              columns={5}
-              message="Nenhuma regra cadastrada nesta versão."
-            />
-          )}
-          {pager.items.map((rule) => (
-            <tr
-              key={rule.id}
-              className={
-                selectedId === rule.id ? "bg-emerald-50" : "hover:bg-slate-50"
-              }
-            >
-              <td className="px-3 py-2 align-top">
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(rule.id)}
-                  className="font-semibold text-emerald-800 hover:underline"
-                >
-                  {rule.code}
-                </button>
-              </td>
-              <td className="px-3 py-2 align-top text-slate-800">
-                {rule.name}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {rule.category}
-              </td>
-              <td className="max-w-48 px-3 py-2 align-top text-slate-600">
-                <span className="block truncate">
-                  {ruleValueForInput(rule)}
-                </span>
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {rule.isActive ? "Ativa" : "Inativa"}
-              </td>
-            </tr>
-          ))}
-        </CompactTable>
-      </TableShell>
+      <RhTablePanel title="Regras operacionais" triggerLabel="Consultar regras em tela cheia" description="Valores tipados por categoria, com vigência herdada do conjunto selecionado. Feche a consulta para usar o editor; paginação e fechamento preservam seus campos." preferenceId="rh-parametros-regras"
+        columns={[rhColumn("code", "Código", 150, 90, "identifier"), rhColumn("name", "Nome", 240, 130), rhColumn("category", "Categoria", 140, 90), rhColumn("value", "Valor", 240, 130), rhColumn("status", "Status", 90, 75, "status"), rhColumn("selection", "Seleção", 100, 80, "status"), rhColumn("actions", "Editar", 75, 65, "actions")]}
+        rows={pager.items.map(rule => ({ id: rule.id, label: rule.name, values: { code: rule.code, name: rule.name, category: rule.category, value: ruleValueForInput(rule), status: rule.isActive ? "Ativa" : "Inativa", selection: selectedId === rule.id ? "Selecionada" : "—" }, actions: <button type="button" onClick={() => setSelectedId(rule.id)} aria-label={`Editar regra ${rule.code}`}>Editar</button> }))}
+        actions={<button type="button" onClick={() => setSelectedId(null)}>Nova regra</button>} emptyMessage="Nenhuma regra cadastrada nesta versão."
+        pagination={<OperationalPagination page={pager.page} total={settings.rules.length} onPageChange={pager.setPage} />} />
 
       <section className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
         <SectionHeader
@@ -1006,68 +888,11 @@ function RubricsEditor({
   const pager = usePage(settings.rubrics);
   return (
     <div className="grid min-h-0 gap-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(21rem,.75fr)]">
-      <TableShell
-        footer={
-          <PageControls
-            page={pager.page}
-            total={settings.rubrics.length}
-            onPageChange={pager.setPage}
-          />
-        }
-      >
-        <SectionHeader
-          title="Rubricas"
-          description="Proventos, descontos e bases que serão usados pelo motor de folha versionado."
-          action={
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className={secondaryButtonClass}
-            >
-              <Plus className="size-4" />
-              Nova rubrica
-            </button>
-          }
-        />
-        <CompactTable headers={["Código", "Nome", "Tipo", "Método", "Status"]}>
-          {pager.items.length === 0 && (
-            <EmptyTableRow
-              columns={5}
-              message="Nenhuma rubrica cadastrada nesta versão."
-            />
-          )}
-          {pager.items.map((rubric) => (
-            <tr
-              key={rubric.id}
-              className={
-                selectedId === rubric.id ? "bg-emerald-50" : "hover:bg-slate-50"
-              }
-            >
-              <td className="px-3 py-2 align-top">
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(rubric.id)}
-                  className="font-semibold text-emerald-800 hover:underline"
-                >
-                  {rubric.code}
-                </button>
-              </td>
-              <td className="px-3 py-2 align-top text-slate-800">
-                {rubric.name}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {rubric.type}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {rubric.calculationMethod}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {rubric.isActive ? "Ativa" : "Inativa"}
-              </td>
-            </tr>
-          ))}
-        </CompactTable>
-      </TableShell>
+      <RhTablePanel title="Rubricas" triggerLabel="Consultar rubricas em tela cheia" description="Proventos, descontos e bases do motor de folha versionado. O editor fica montado fora da consulta." preferenceId="rh-parametros-rubricas"
+        columns={[rhColumn("code", "Código", 150, 90, "identifier"), rhColumn("name", "Nome", 280, 140), rhColumn("type", "Tipo", 130, 90), rhColumn("method", "Método", 220, 120), rhColumn("status", "Status", 90, 75, "status"), rhColumn("selection", "Seleção", 100, 80, "status"), rhColumn("actions", "Editar", 75, 65, "actions")]}
+        rows={pager.items.map(rubric => ({ id: rubric.id, label: rubric.name, values: { code: rubric.code, name: rubric.name, type: rubric.type, method: rubric.calculationMethod, status: rubric.isActive ? "Ativa" : "Inativa", selection: selectedId === rubric.id ? "Selecionada" : "—" }, actions: <button type="button" onClick={() => setSelectedId(rubric.id)} aria-label={`Editar rubrica ${rubric.code}`}>Editar</button> }))}
+        actions={<button type="button" onClick={() => setSelectedId(null)}>Nova rubrica</button>} emptyMessage="Nenhuma rubrica cadastrada nesta versão."
+        pagination={<OperationalPagination page={pager.page} total={settings.rubrics.length} onPageChange={pager.setPage} />} />
 
       <section className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
         <SectionHeader
@@ -1261,70 +1086,11 @@ function VacationEditor({
   const pager = usePage(settings.vacationPolicies);
   return (
     <div className="grid min-h-0 gap-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(21rem,.75fr)]">
-      <TableShell
-        footer={
-          <PageControls
-            page={pager.page}
-            total={settings.vacationPolicies.length}
-            onPageChange={pager.setPage}
-          />
-        }
-      >
-        <SectionHeader
-          title="Políticas de férias"
-          description="Parâmetros de aquisição, concessão, fracionamento e abono por natureza de vínculo."
-          action={
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className={secondaryButtonClass}
-            >
-              <Plus className="size-4" />
-              Nova política
-            </button>
-          }
-        />
-        <CompactTable
-          headers={["Código", "Nome", "Natureza", "Dias", "Status"]}
-        >
-          {pager.items.length === 0 && (
-            <EmptyTableRow
-              columns={5}
-              message="Nenhuma política de férias cadastrada nesta versão."
-            />
-          )}
-          {pager.items.map((policy) => (
-            <tr
-              key={policy.id}
-              className={
-                selectedId === policy.id ? "bg-emerald-50" : "hover:bg-slate-50"
-              }
-            >
-              <td className="px-3 py-2 align-top">
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(policy.id)}
-                  className="font-semibold text-emerald-800 hover:underline"
-                >
-                  {policy.code}
-                </button>
-              </td>
-              <td className="px-3 py-2 align-top text-slate-800">
-                {policy.name}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {policy.employmentNature}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {policy.entitlementDays}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {policy.isActive ? "Ativa" : "Inativa"}
-              </td>
-            </tr>
-          ))}
-        </CompactTable>
-      </TableShell>
+      <RhTablePanel title="Políticas de férias" triggerLabel="Consultar políticas de férias em tela cheia" description="Aquisição, concessão, fracionamento e abono por natureza de vínculo. Fechar e paginar não desmonta o editor." preferenceId="rh-parametros-ferias"
+        columns={[rhColumn("code", "Código", 150, 90, "identifier"), rhColumn("name", "Nome", 280, 140), rhColumn("nature", "Natureza", 180, 110), rhColumn("days", "Dias", 80, 60, "text", "right"), rhColumn("status", "Status", 90, 75, "status"), rhColumn("selection", "Seleção", 100, 80, "status"), rhColumn("actions", "Editar", 75, 65, "actions")]}
+        rows={pager.items.map(policy => ({ id: policy.id, label: policy.name, values: { code: policy.code, name: policy.name, nature: policy.employmentNature, days: String(policy.entitlementDays), status: policy.isActive ? "Ativa" : "Inativa", selection: selectedId === policy.id ? "Selecionada" : "—" }, actions: <button type="button" onClick={() => setSelectedId(policy.id)} aria-label={`Editar política ${policy.code}`}>Editar</button> }))}
+        actions={<button type="button" onClick={() => setSelectedId(null)}>Nova política</button>} emptyMessage="Nenhuma política de férias cadastrada nesta versão."
+        pagination={<OperationalPagination page={pager.page} total={settings.vacationPolicies.length} onPageChange={pager.setPage} />} />
 
       <section className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
         <SectionHeader
@@ -1548,76 +1314,11 @@ function SocialSecurityEditor({
   const pager = usePage(settings.socialSecuritySchemes);
   return (
     <div className="grid min-h-0 gap-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(21rem,.75fr)]">
-      <TableShell
-        footer={
-          <PageControls
-            page={pager.page}
-            total={settings.socialSecuritySchemes.length}
-            onPageChange={pager.setPage}
-          />
-        }
-      >
-        <SectionHeader
-          title="Regimes previdenciários"
-          description="Cadastre os regimes e suas faixas de contribuição sem sobrepor os limites."
-          action={
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedId(null);
-                setSelectedBandId(null);
-              }}
-              className={secondaryButtonClass}
-            >
-              <Plus className="size-4" />
-              Novo regime
-            </button>
-          }
-        />
-        <CompactTable
-          headers={["Código", "Nome", "Regime", "Cálculo", "Status"]}
-        >
-          {pager.items.length === 0 && (
-            <EmptyTableRow
-              columns={5}
-              message="Nenhum regime previdenciário cadastrado nesta versão."
-            />
-          )}
-          {pager.items.map((scheme) => (
-            <tr
-              key={scheme.id}
-              className={
-                selectedId === scheme.id ? "bg-emerald-50" : "hover:bg-slate-50"
-              }
-            >
-              <td className="px-3 py-2 align-top">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(scheme.id);
-                    setSelectedBandId(null);
-                  }}
-                  className="font-semibold text-emerald-800 hover:underline"
-                >
-                  {scheme.code}
-                </button>
-              </td>
-              <td className="px-3 py-2 align-top text-slate-800">
-                {scheme.name}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {scheme.regime}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {scheme.employeeCalculationMethod}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {scheme.isActive ? "Ativo" : "Inativo"}
-              </td>
-            </tr>
-          ))}
-        </CompactTable>
-      </TableShell>
+      <RhTablePanel title="Regimes previdenciários" triggerLabel="Consultar previdência em tela cheia" description="Regimes e faixas sem sobreposição. A seleção de regime/faixa e seus editores permanecem fora do painel." preferenceId="rh-parametros-previdencia"
+        columns={[rhColumn("code", "Código", 150, 90, "identifier"), rhColumn("name", "Nome", 260, 140), rhColumn("regime", "Regime", 130, 90), rhColumn("method", "Cálculo", 190, 110), rhColumn("status", "Status", 90, 75, "status"), rhColumn("selection", "Seleção", 100, 80, "status"), rhColumn("actions", "Editar", 75, 65, "actions")]}
+        rows={pager.items.map(scheme => ({ id: scheme.id, label: scheme.name, values: { code: scheme.code, name: scheme.name, regime: scheme.regime, method: scheme.employeeCalculationMethod, status: scheme.isActive ? "Ativo" : "Inativo", selection: selectedId === scheme.id ? "Selecionado" : "—" }, actions: <button type="button" onClick={() => { setSelectedId(scheme.id); setSelectedBandId(null); }} aria-label={`Editar regime ${scheme.code}`}>Editar</button> }))}
+        actions={<button type="button" onClick={() => { setSelectedId(null); setSelectedBandId(null); }}>Novo regime</button>} emptyMessage="Nenhum regime previdenciário cadastrado nesta versão."
+        pagination={<OperationalPagination page={pager.page} total={settings.socialSecuritySchemes.length} onPageChange={pager.setPage} />} />
 
       <div className="space-y-2">
         <section className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
@@ -1813,52 +1514,9 @@ function SocialSecurityBandsEditor({
           </button>
         }
       />
-      <div className="max-h-72 overflow-auto">
-        <CompactTable
-          headers={[
-            "Seq.",
-            "Limite inicial",
-            "Limite final",
-            "Servidor",
-            "Patronal",
-          ]}
-        >
-          {scheme.bands.length === 0 && (
-            <EmptyTableRow
-              columns={5}
-              message="Nenhuma faixa cadastrada neste regime."
-            />
-          )}
-          {scheme.bands.map((band) => (
-            <tr
-              key={band.id}
-              className={
-                selectedBandId === band.id
-                  ? "bg-emerald-50"
-                  : "hover:bg-slate-50"
-              }
-            >
-              <td className="px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => onSelectBand(band.id)}
-                  className="font-semibold text-emerald-800 hover:underline"
-                >
-                  {band.sequence}
-                </button>
-              </td>
-              <td className="px-3 py-2 text-slate-600">{band.lowerLimit}</td>
-              <td className="px-3 py-2 text-slate-600">
-                {band.upperLimit || "Sem teto"}
-              </td>
-              <td className="px-3 py-2 text-slate-600">{band.employeeRate}%</td>
-              <td className="px-3 py-2 text-slate-600">
-                {band.employerRate ? `${band.employerRate}%` : "-"}
-              </td>
-            </tr>
-          ))}
-        </CompactTable>
-      </div>
+      <RhTablePanel title={`Faixas de ${scheme.code}`} triggerLabel="Consultar faixas em tela cheia" description="Limites inclusivos sem sobreposição. O formulário da faixa não é desmontado ao paginar ou fechar." preferenceId="rh-parametros-faixas"
+        columns={[rhColumn("sequence", "Sequência", 100, 75, "text", "right"), rhColumn("lower", "Limite inicial", 160, 100, "text", "right"), rhColumn("upper", "Limite final", 160, 100, "text", "right"), rhColumn("employee", "Servidor", 140, 95, "text", "right"), rhColumn("employer", "Patronal", 140, 95, "text", "right"), rhColumn("selection", "Seleção", 100, 80, "status"), rhColumn("actions", "Editar", 75, 65, "actions")]}
+        rows={scheme.bands.map(band => ({ id: band.id, label: `Faixa ${band.sequence}`, values: { sequence: String(band.sequence), lower: band.lowerLimit, upper: band.upperLimit || "Sem teto", employee: `${band.employeeRate}%`, employer: band.employerRate ? `${band.employerRate}%` : "—", selection: selectedBandId === band.id ? "Selecionada" : "—" }, actions: <button type="button" onClick={() => onSelectBand(band.id)} aria-label={`Editar faixa ${band.sequence}`}>Editar</button> }))} emptyMessage="Nenhuma faixa cadastrada neste regime." />
       <form
         key={selected?.id || "new"}
         className="grid gap-3 border-t border-slate-200 p-3 md:grid-cols-2"
@@ -2113,73 +1771,11 @@ function EmploymentRegimeEditor({
   const pager = usePage(settings.employmentRegimes);
   return (
     <div className="grid min-h-0 gap-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(21rem,.75fr)]">
-      <TableShell
-        footer={
-          <PageControls
-            page={pager.page}
-            total={settings.employmentRegimes.length}
-            onPageChange={pager.setPage}
-          />
-        }
-      >
-        <SectionHeader
-          title="Vínculos e regimes"
-          description="Associe cada natureza de vínculo ao regime previdenciário e à política de férias aplicáveis."
-          action={
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className={secondaryButtonClass}
-            >
-              <Plus className="size-4" />
-              Novo vínculo
-            </button>
-          }
-        />
-        <CompactTable
-          headers={["Código", "Nome", "Natureza", "Previdência", "Status"]}
-        >
-          {pager.items.length === 0 && (
-            <EmptyTableRow
-              columns={5}
-              message="Nenhum vínculo cadastrado nesta versão."
-            />
-          )}
-          {pager.items.map((regime) => (
-            <tr
-              key={regime.id}
-              className={
-                selectedId === regime.id ? "bg-emerald-50" : "hover:bg-slate-50"
-              }
-            >
-              <td className="px-3 py-2 align-top">
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(regime.id)}
-                  className="font-semibold text-emerald-800 hover:underline"
-                >
-                  {regime.code}
-                </button>
-              </td>
-              <td className="px-3 py-2 align-top text-slate-800">
-                {regime.name}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {regime.employmentNature}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {linkedName(
-                  settings.socialSecuritySchemes,
-                  regime.socialSecuritySchemeId,
-                )}
-              </td>
-              <td className="px-3 py-2 align-top text-slate-600">
-                {regime.isActive ? "Ativo" : "Inativo"}
-              </td>
-            </tr>
-          ))}
-        </CompactTable>
-      </TableShell>
+      <RhTablePanel title="Vínculos e regimes" triggerLabel="Consultar vínculos em tela cheia" description="Natureza de vínculo, previdência e política de férias. O editor permanece montado durante a consulta." preferenceId="rh-parametros-vinculos"
+        columns={[rhColumn("code", "Código", 150, 90, "identifier"), rhColumn("name", "Nome", 250, 140), rhColumn("nature", "Natureza", 160, 100), rhColumn("security", "Previdência", 220, 120), rhColumn("status", "Status", 90, 75, "status"), rhColumn("selection", "Seleção", 100, 80, "status"), rhColumn("actions", "Editar", 75, 65, "actions")]}
+        rows={pager.items.map(regime => ({ id: regime.id, label: regime.name, values: { code: regime.code, name: regime.name, nature: regime.employmentNature, security: linkedName(settings.socialSecuritySchemes, regime.socialSecuritySchemeId), status: regime.isActive ? "Ativo" : "Inativo", selection: selectedId === regime.id ? "Selecionado" : "—" }, actions: <button type="button" onClick={() => setSelectedId(regime.id)} aria-label={`Editar vínculo ${regime.code}`}>Editar</button> }))}
+        actions={<button type="button" onClick={() => setSelectedId(null)}>Novo vínculo</button>} emptyMessage="Nenhum vínculo cadastrado nesta versão."
+        pagination={<OperationalPagination page={pager.page} total={settings.employmentRegimes.length} onPageChange={pager.setPage} />} />
 
       <section className="overflow-hidden rounded border border-slate-200 bg-white shadow-sm">
         <SectionHeader
@@ -2394,54 +1990,6 @@ function Checkbox({
       />
       {label}
     </label>
-  );
-}
-
-function CompactTable({
-  headers,
-  children,
-}: {
-  headers: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <table className="w-full table-fixed border-collapse text-left text-[11px] sm:text-xs">
-      <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300">
-        <tr>
-          {headers.map((header) => (
-            <th
-              key={header}
-              className="truncate px-2.5 py-2 font-semibold"
-              title={header}
-            >
-              {header}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-        {children}
-      </tbody>
-    </table>
-  );
-}
-
-function EmptyTableRow({
-  columns,
-  message,
-}: {
-  columns: number;
-  message: string;
-}) {
-  return (
-    <tr>
-      <td
-        colSpan={columns}
-        className="px-3 py-6 text-center text-xs text-slate-500"
-      >
-        {message}
-      </td>
-    </tr>
   );
 }
 

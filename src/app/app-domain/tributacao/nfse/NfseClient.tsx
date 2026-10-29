@@ -1,10 +1,12 @@
 "use client";
 import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import {
   BadgeCheck,
   FileText,
   Landmark,
-  ReceiptText,
   Search,
   Send,
   WalletCards,
@@ -157,7 +159,7 @@ function Select({
   );
 }
 export default function NfseClient({ data }: { data: Data }) {
-  const [tab, setTab] = useState("notas");
+  const [tab, setTab] = useState("consulta");
   const [search, setSearch] = useState("");
   const [pending, start] = useTransition();
   const [message, setMessage] = useState("");
@@ -200,18 +202,10 @@ export default function NfseClient({ data }: { data: Data }) {
       {row.municipalInsc} · {row.name}
     </option>
   ));
+  const navigation = <select aria-label="Área de NFS-e" value={tab} onChange={event => setTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{[["consulta", "Consultar notas"], ["notas", "Emitir NFS-e"], ["credenciamento", "Credenciamento"], ["rps", "RPS e DMS"], ["avulsa", "Avulsa e deduções"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-            <ReceiptText className="size-5 text-amber-500" />
-            NFS-e
-          </h1>
-          <p className="text-[11px] text-slate-500">
-            Credenciamento, emissão, eventos, RPS, DMS, avulsa e deduções.
-          </p>
-        </div>
+      <OperationalHeaderActions><OperationalFilters label="Totais de ISS">
         <div className="flex gap-2 text-xs">
           <span className="rounded-md bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">
             ISS próprio {money(ownTotal)}
@@ -220,24 +214,9 @@ export default function NfseClient({ data }: { data: Data }) {
             ISS retido {money(retainedTotal)}
           </span>
         </div>
-      </header>
-      <nav className="flex gap-1 overflow-x-auto rounded-lg bg-slate-900 p-1 text-[11px] font-semibold text-slate-300">
-        {[
-          ["notas", "Notas e emissão"],
-          ["credenciamento", "Credenciamento"],
-          ["rps", "RPS e DMS"],
-          ["avulsa", "Avulsa e deduções"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`whitespace-nowrap rounded-md px-3 py-1.5 ${tab === id ? "bg-amber-500 text-slate-950" : "hover:bg-slate-800"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-      {message && (
+      </OperationalFilters></OperationalHeaderActions>
+      {tab !== "consulta" && navigation}
+      {message && tab !== "consulta" && (
         <button
           onClick={() => setMessage("")}
           className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-left text-xs text-blue-800"
@@ -245,9 +224,13 @@ export default function NfseClient({ data }: { data: Data }) {
           {message}
         </button>
       )}
-      <main className="min-h-0 flex-1 overflow-auto">
+      {tab === "consulta" && <TaxOperationalTable id="nfse" resetKey={search}
+        toolbar={<>{navigation}<input aria-label="Buscar NFS-e" value={search} onChange={event => setSearch(event.target.value)} placeholder="Número, prestador, tomador ou código" className="h-7 min-w-0 flex-1 rounded border px-2 text-[13px]" />{message && <OperationalFilters label="Resultado"><p role="status">{message}</p></OperationalFilters>}</>}
+        columns={[["number", "Número", 75, 90, "identifier"], ["date", "Data", 95, 105], ["provider", "Prestador", 140, 210], ["taker", "Tomador", 140, 210], ["description", "Serviço", 150, 250], ["base", "Base", 110, 140, "text", "right"], ["iss", "ISS", 110, 140, "text", "right"], ["kind", "Recolhimento", 115, 130], ["status", "Situação", 100, 130, "status"], ["actions", "Ações", 60, 60, "actions"]]}
+        rows={filtered.map(row => ({ id: row.id, label: `NFS-e ${row.invoiceNumber}`, values: { number: `#${row.invoiceNumber}`, date: new Date(row.createdAt).toLocaleDateString("pt-BR"), provider: row.providerName, taker: row.takerName, description: row.description, base: money(row.serviceValue - row.deductions), iss: money(row.issValue), kind: row.retainedIss ? "Retido" : "Próprio", status: row.status }, actions: <TaxRowActions label={`NFS-e ${row.invoiceNumber}`}><TaxRowAction href={`/tributacao/nfse/${row.id}/pdf`} target="_blank">PDF</TaxRowAction><TaxRowAction href={`/tributacao/nfse/${row.id}/documento`} target="_blank">Documento</TaxRowAction><TaxRowAction href={`/tributacao/nfse/${row.id}/xml`}>XML</TaxRowAction><TaxRowAction href={`/portal/nfse/${row.verificationCode}`} target="_blank">QR / autenticidade</TaxRowAction>{row.status === "Emitida" && <><TaxRowAction onClick={() => { const reason = prompt("Motivo do cancelamento"); if (reason) run(() => cancelNfseAction({ invoiceId: row.id, reason })); }}>Cancelar</TaxRowAction><TaxRowAction onClick={() => { const reason = prompt("Motivo da substituição"); if (reason) run(() => substituteNfseAction({ invoiceId: row.id, reason, serviceDescription: row.description, serviceValue: row.serviceValue, deductions: row.deductions, retained: row.retainedIss > 0 })); }}>Substituir</TaxRowAction><TaxRowAction onClick={() => { const text = prompt("Nova informação adicional"); if (text) run(() => correctionLetterAction({ invoiceId: row.id, reason: "Correção de informação não fiscal", changes: { additionalInformation: text } })); }}>Carta de correção</TaxRowAction></>}</TaxRowActions> }))} />}
+      <main className={tab === "consulta" ? "hidden" : "min-h-0 flex-1 overflow-auto"}>
         {tab === "notas" && (
-          <div className="grid gap-2 xl:grid-cols-[340px_1fr]">
+          <div className="grid gap-2">
             <form
               onSubmit={submit(async (form) =>
                 emitNfseAction({
@@ -373,7 +356,7 @@ export default function NfseClient({ data }: { data: Data }) {
                 Calcular e emitir
               </button>
             </form>
-            <section className="min-w-0 rounded-lg border bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <section className="hidden print:block">
               <div className="flex items-center gap-2 border-b p-2 dark:border-slate-800">
                 <Search className="size-3.5 text-slate-400" />
                 <input

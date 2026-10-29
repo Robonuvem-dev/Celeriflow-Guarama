@@ -2,18 +2,31 @@ import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { readPersonnelExternalReadiness } from "@/db/repositories/personnel-pages/catalog";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { rhColumn } from "../_components/operational-columns";
+import { RhNewLink } from "../_components/RhNewLink";
 import { EsocialConfigurationForm } from "./ConfigurationForm";
 import { db } from "@/db/client";
 import { readEsocialEventsPage } from "@/db/repositories/personnel-pages/requests";
 
 export const dynamic = "force-dynamic";
-export default async function RhEsocialPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function RhEsocialPage({ searchParams }: { searchParams: Promise<{ page?: string; view?: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const readiness = await readPersonnelExternalReadiness(database);
-  const { total, page, events } = await readEsocialEventsPage(database, (await searchParams).page);
+  const params = await searchParams;
+  const { total, page, events } = await readEsocialEventsPage(database, params.page);
+  if (params.view !== "manage") {
+    const columns = [rhColumn("type", "Evento", 230, 140), rhColumn("source", "Origem", 260, 150, "identifier"), rhColumn("environment", "Ambiente", 160, 110), rhColumn("status", "Estado", 150, 100, "status"), rhColumn("actions", "Conferência", 230, 210, "actions")];
+    return <OperationalListFrame label="eSocial · preparação de RH/Folha" actions={<><Link href="/rh/operacoes" className={styles.filterButton}>Operações</Link><RhNewLink href="?view=manage">Configuração e exportações</RhNewLink></>}
+      pagination={<OperationalLinkPagination page={page} total={total} pathname="/rh/esocial" />}>
+      <OperationalTable columns={columns} preferenceId="rh-esocial" caption="Origens de preparação eSocial RH/Folha — transmissão não ativa" emptyMessage="Nenhuma origem encontrada." rows={events.map(event => ({ id: event.id, label: event.sourceKey, values: { type: event.eventType, source: event.sourceKey, environment: event.environment, status: event.status }, actions: <Link href={event.eventType === "OBRIGACAO_ARQUIVO_GERADO" ? `/api/rh/obrigacoes/arquivos/${event.id}` : `/api/rh/integracoes/${event.id}`}>{event.eventType === "OBRIGACAO_ARQUIVO_GERADO" ? "Baixar bytes preservados" : "Baixar origem JSON"}</Link> }))} />
+    </OperationalListFrame>;
+  }
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
     <ErpPageTitle title="eSocial · preparação de RH/Folha" description="Parâmetros e origens segregados por ambiente. Não há transmissão ativa neste incremento." action={<Link href="/rh/operacoes">Operações</Link>} />
+    <Link href="/rh/esocial" className="text-xs underline">Voltar às origens</Link>
     <div className="grid gap-2 sm:grid-cols-2">{readiness.map(row => <section key={row.environment} className="rounded border bg-white p-3 text-xs"><strong>{row.environment}</strong><p>{row.status}</p><p>{row.configured ? "Parâmetros preenchidos; cliente de transmissão pendente." : "Aguardando parâmetros oficiais."}</p></section>)}</div>
     <EsocialConfigurationForm />
     <section className="rounded border bg-white p-3 text-xs">
@@ -35,7 +48,5 @@ export default async function RhEsocialPage({ searchParams }: { searchParams: Pr
         <button type="submit" className="rounded border px-2 py-1">Baixar histórico JSON</button>
       </form>
     </section>
-    <table className="w-full border bg-white text-left text-xs"><thead><tr><th className="p-2">Origem</th><th>Ambiente</th><th>Estado</th><th>Conferência</th></tr></thead><tbody>{events.map(event => <tr key={event.id} className="h-7 border-t"><td className="truncate px-2" title={event.sourceKey}>{event.eventType} · {event.sourceKey}</td><td>{event.environment}</td><td>{event.status}</td><td><Link href={event.eventType === "OBRIGACAO_ARQUIVO_GERADO" ? `/api/rh/obrigacoes/arquivos/${event.id}` : `/api/rh/integracoes/${event.id}`}>{event.eventType === "OBRIGACAO_ARQUIVO_GERADO" ? "Baixar bytes preservados" : "Baixar origem JSON"}</Link></td></tr>)}</tbody></table>
-    <ErpPagination page={page} total={total} pageSize={20} label="origens" previousHref={`?page=${page - 1}`} nextHref={`?page=${page + 1}`} />
   </div>;
 }

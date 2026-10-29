@@ -5,6 +5,9 @@ import { db, databaseConnection } from "@/db/client";
 import { modules } from "@/db/schema/identity";
 import { and, eq } from "drizzle-orm";
 import { listControlWorkforceYears } from "@/db/repositories/internal-control/workforce";
+import WorkforceTables from "./WorkforceTables";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 export default async function ControlWorkforceConsultation({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { user } = await getTenantContextForModule("ADMINISTRACAO");
@@ -20,10 +23,10 @@ export default async function ControlWorkforceConsultation({ searchParams }: { s
   if (!years.some(year => year.id === input.data.financialYearId) || !input.data.referenceDate.startsWith(`${selectedYear.year}-`)) return <p className="p-5">Exercício ou referência fora do escopo selecionado.</p>;
   const data = await readControlWorkforceStatistics(databaseConnection, actor, input.data);
   const exportQuery = new URLSearchParams(Object.entries(input.data).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]));
-  return <section className="space-y-4 p-5">
-    <h1 className="text-xl font-semibold">Controle Interno — estatísticas funcionais por referência</h1>
-    <Link href="/controle-interno" className="underline">Voltar ao Controle</Link>
-    <form className="flex flex-wrap items-end gap-3">
+  return <WorkforceTables key={exportQuery.toString()}
+    actions={<><Link href="/controle-interno" className={styles.dialogButton}>Voltar ao Controle</Link>{["PDF", "CSV", "XLSX"].map(format => <a key={format} className={styles.dialogButton} href={`/api/controle-interno/estatisticas-rh?${exportQuery}&format=${format}`}>Exportar {format}</a>)}</>}
+    filters={<OperationalFilters activeCount={[input.data.roleId, input.data.employeeId, input.data.salaryLevel, input.data.roleStatus !== "ALL", input.data.legalStatus !== "ALL"].filter(Boolean).length}>
+    <form method="get" className={styles.filterFields}>
       <label>Entidade/exercício<select name="financialYearId" defaultValue={input.data.financialYearId} className="block rounded border p-2">{years.map(year => <option key={year.id} value={year.id}>{year.governmentEntity?.name} — {year.year}</option>)}</select></label>
       <label>Referência<input type="date" name="referenceDate" required defaultValue={input.data.referenceDate} className="block rounded border p-2" /></label>
       <label>Cargo ID<input name="roleId" defaultValue={input.data.roleId} className="block rounded border p-2" /></label>
@@ -33,12 +36,12 @@ export default async function ControlWorkforceConsultation({ searchParams }: { s
       <label>Situação legal na referência<select name="legalStatus" defaultValue={input.data.legalStatus} className="block rounded border p-2"><option value="ALL">Todas</option><option value="EXISTING">Existentes documentados</option><option value="EXTINGUISHED">Extintos documentados</option><option value="NOT_DOCUMENTED">Sem posição legal</option></select></label>
       <button className="rounded border p-2">Consultar</button>
     </form>
-    <nav className="flex gap-3" aria-label="Exportações funcionais">{["PDF", "CSV", "XLSX"].map(format => <a key={format} className="underline" href={`/api/controle-interno/estatisticas-rh?${exportQuery}&format=${format}`}>Exportar {format}</a>)}</nav>
     <p className="text-sm">{data.metadata}</p>
     <p>Cargos sem posição legal vigente: {data.undocumentedRoleCount} · Vínculos em cargos extintos: {data.contractsInExtinguishedRoles}. <Link href="/rh/quadro-cargos/historico-legal" className="underline">Histórico legal de origem</Link></p>
     <p>Pessoas distintas: <strong>{data.totalPeople}</strong> · Vínculos ativos na referência: <strong>{data.totalContracts}</strong>. Pessoas por cargo não são somáveis quando há multivínculo.</p>
     {(data.missingRevisionCount > 0 || data.missingRoleCount > 0) && <p role="status">Conferência incompleta: {data.missingRevisionCount} contratos candidatos sem revisão vigente; {data.missingRoleCount} vínculos com cargo ausente no catálogo.</p>}
-    <div className="overflow-auto"><table className="w-full text-sm"><thead><tr><th className="border p-2">Cargo</th><th className="border p-2">Situação atual</th><th className="border p-2">Situação legal na data</th><th className="border p-2">Pessoas</th><th className="border p-2">Vínculos</th></tr></thead><tbody>{data.groups.map(group => <tr key={group.id}><td className="border p-2">{group.name} · {group.id}</td><td className="border p-2">{group.currentlyActive ? "Ativo" : "Inativo"}</td><td className="border p-2">{group.legalState} · {group.historicalDesignation ?? "sem denominação histórica"} · {group.legalEffectiveFrom} · {group.legalReference}<br />{group.legalEventId}</td><td className="border p-2">{group.people}</td><td className="border p-2">{group.contracts}</td></tr>)}</tbody></table></div>
-    <details><summary>Vínculos e revisões utilizados na apuração</summary><div className="overflow-auto"><table className="w-full text-sm"><thead><tr>{["Servidor", "Matrícula", "Cargo", "Enquadramento", "Centro/localização", "Revisão"].map(title => <th key={title} className="border p-2">{title}</th>)}</tr></thead><tbody>{data.rows.map(row => <tr key={row.contractId}><td className="border p-2">{row.employeeName} · {row.employeeId}</td><td className="border p-2">{row.registration}</td><td className="border p-2">{row.roleName}</td><td className="border p-2">{row.salaryLevel}</td><td className="border p-2">{row.costCenterName} · {row.workLocation}</td><td className="border p-2">{row.version} · {row.revisionId}</td></tr>)}</tbody></table></div></details>
-  </section>;
+    <Link className={styles.dialogButton} href="/controle-interno/consultas/rh">Limpar filtros</Link>
+    </OperationalFilters>}
+    groups={data.groups.map(group => ({ id: group.id, label: group.name, values: { role: group.name, id: group.id, current: group.currentlyActive ? "Ativo" : "Inativo", legal: group.legalState, designation: group.historicalDesignation ?? "sem denominação histórica", effective: group.legalEffectiveFrom ?? "—", reference: group.legalReference ?? "—", event: group.legalEventId ?? "—", people: String(group.people), contracts: String(group.contracts) } }))}
+    records={data.rows.map(row => ({ id: row.contractId, label: row.employeeName, values: { employee: row.employeeName, id: row.employeeId, registration: row.registration ?? "—", role: row.roleName ?? "—", salary: row.salaryLevel ?? "—", center: row.costCenterName ?? "—", location: row.workLocation ?? "—", version: String(row.version), revision: row.revisionId } }))} />;
 }

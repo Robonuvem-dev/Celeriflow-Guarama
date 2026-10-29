@@ -1,6 +1,7 @@
 "use client";
 
 import { ModuleShell, type ModuleIconName, type ModuleNavGroup } from "@/components/app-ui/erp/ModuleShell";
+import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 import { fleetNavigationGroups } from "./navigation";
 
 const areaIcons: Record<string, ModuleIconName> = {
@@ -33,6 +34,8 @@ const navigation: ModuleNavGroup[] = fleetNavigationGroups.map((group) => ({
 }));
 
 export default function FrotasLayout({ children }: { children: React.ReactNode }) {
+  const workspace = useOptionalOperationalWorkspace();
+  if (workspace) return <>{children}</>;
   return (
     <ModuleShell
       moduleTitle="Frotas"

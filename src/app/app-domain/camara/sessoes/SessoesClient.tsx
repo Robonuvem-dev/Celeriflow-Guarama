@@ -1,260 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Search, Plus, FileText, CheckCircle2 } from "lucide-react";
+import { Eye, Pencil, Plus, Settings } from "lucide-react";
 import { format } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-
-const PAGE_SIZE = 20;
+import { OperationalTable, OperationalPagination, type OperationalRow } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 type Sessao = {
-  id: string;
-  numero: number;
-  tipo: string;
-  data: Date;
-  local: string | null;
-  status: string;
-  quorum: number | null;
-  proposicoes: {
-    numero: string;
-    tipo: string;
-    ementa: string;
-    status: string;
-  }[];
-  atas: {
-    numero: string;
-    status: string;
-    dataAprovacao: Date | null;
-  }[];
+  id: string; numero: number; tipo: string; data: Date; local: string | null; status: string; quorum: number | null;
+  proposicoes: { numero: string; tipo: string; ementa: string; status: string }[];
+  atas: { numero: string; status: string; dataAprovacao: Date | null }[];
 };
-
+const column = (key: string, label: string, initialWidth: number, minWidth: number, type: OperationalColumn["type"] = "text"): OperationalColumn => ({ key, label, initialWidth, minWidth, maxWidth: type === "actions" ? 170 : 800, type, resizable: type !== "actions", sortable: false, details: type === "actions" ? "none" : "overflow" });
+const columns = {
+  sessoes: [column("numero", "Número", 90, 70, "identifier"), column("tipo", "Tipo", 140, 90), column("data", "Data e hora", 165, 135), column("local", "Local", 180, 100), column("quorum", "Quórum", 100, 80), column("status", "Status", 130, 90, "status"), column("actions", "Ações", 100, 90, "actions")],
+  pautas: [column("sessao", "Sessão", 90, 70), column("tipoSessao", "Tipo de sessão", 140, 95), column("data", "Data e hora", 165, 135), column("numero", "Matéria", 100, 75, "identifier"), column("tipo", "Tipo de matéria", 140, 100), column("ementa", "Ementa", 330, 120), column("status", "Situação", 130, 85, "status")],
+  atas: [column("numero", "Ata", 120, 85, "identifier"), column("sessao", "Sessão", 90, 70), column("tipoSessao", "Tipo de sessão", 150, 100), column("data", "Data da sessão", 130, 105), column("aprovacao", "Aprovação", 130, 100), column("status", "Situação", 120, 85, "status"), column("actions", "Ações", 80, 72, "actions")],
+};
 export default function SessoesClient({ sessoes }: { sessoes: Sessao[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
-  const [activeTab, setActiveTab] = useState<"sessoes" | "pautas" | "atas">("sessoes");
+  const [activeTab, setActiveTab] = useState<keyof typeof columns>("sessoes");
   const [page, setPage] = useState(1);
-
-  const filtered = sessoes.filter(s => 
-    s.numero.toString().includes(searchTerm) || 
-    (s.tipo && s.tipo.toLowerCase().includes(searchTerm.toLowerCase()))
-  ).filter((session) => statusFilter === "Todos" || session.status === statusFilter);
-  const activePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
-  const visible = filtered.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
-
-  return (
-    <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2 sm:p-3">
-      <PageHeader
-        title="Sessões Plenárias"
-        icon={<Calendar className="size-4 shrink-0 text-[#9333EA]" />}
-        action={<button className="flex h-8 items-center gap-2 rounded-md bg-[#9333EA] px-3 text-sm font-medium text-white transition-colors hover:bg-[#7E22CE]"><Plus className="h-4 w-4" />Nova Sessão</button>}
-        className="dark:border-gray-700 dark:bg-gray-800 dark:[&>h1]:text-white"
-      />
-
-      <div className="flex shrink-0 flex-wrap gap-1 overflow-hidden border-b border-gray-200 dark:border-gray-700">
-        <button
-          onClick={() => setActiveTab("sessoes")}
-          className={`relative whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "sessoes" ? "text-[#9333EA]" : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Sessões
-          {activeTab === "sessoes" && (
-            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#9333EA] rounded-t-full" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("pautas")}
-          className={`relative whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "pautas" ? "text-[#9333EA]" : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Pautas (Ordem do Dia)
-          {activeTab === "pautas" && (
-            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#9333EA] rounded-t-full" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("atas")}
-          className={`relative whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "atas" ? "text-[#9333EA]" : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Atas
-          {activeTab === "atas" && (
-            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#9333EA] rounded-t-full" />
-          )}
-        </button>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Buscar sessão..." 
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-              className="w-full rounded-md border border-slate-300 bg-white py-1.5 pl-9 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#9333EA]/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-          <select aria-label="Filtrar sessões por situação" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} className="h-8 rounded border border-slate-200 px-2 text-xs"><option>Todos</option>{Array.from(new Set(sessoes.map((item) => item.status))).map((item) => <option key={item}>{item}</option>)}</select>
-        </div>
-
-        {activeTab === "sessoes" && (
-          filtered.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>Nenhuma sessão encontrada.</p>
-            </div>
-          ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <table className="w-full table-fixed text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-100 text-[10px] uppercase text-gray-500 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-6 py-3">Número / Tipo</th>
-                    <th className="px-6 py-3">Data e Hora</th>
-                    <th className="hidden px-3 py-2 md:table-cell">Local</th>
-                    <th className="hidden px-3 py-2 text-center lg:table-cell">Quórum</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((s) => (
-                    <tr key={s.id} className="h-9 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <td className="truncate px-3 py-2 font-bold text-gray-900 dark:text-white">{s.numero}ª · {s.tipo}</td>
-                      <td className="whitespace-nowrap px-3 py-2 font-medium">{format(new Date(s.data), "dd/MM/yyyy HH:mm")}</td>
-                      <td className="hidden truncate px-3 py-2 text-gray-500 md:table-cell">
-                        {s.local || "Plenário"}
-                      </td>
-                      <td className="hidden px-3 py-2 text-center lg:table-cell">
-                        {s.quorum ? (
-                          <Badge variant="outline" className="bg-gray-50">{s.quorum} presenças</Badge>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge 
-                          className={
-                            s.status === 'Encerrada' ? 'bg-gray-100 text-gray-700 hover:bg-gray-100' : 
-                            s.status === 'Em Andamento' ? 'bg-green-100 text-green-700 hover:bg-green-100' : 
-                            'bg-blue-100 text-blue-700 hover:bg-blue-100'
-                          }
-                        >
-                          {s.status}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button className="text-xs font-medium text-[#9333EA] hover:text-[#7E22CE]">
-                          Gerenciar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-        )}
-
-        {activeTab === "pautas" && (
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Ordem do Dia por Sessão</h3>
-            <div className="space-y-6">
-              {visible.map(s => (
-                <div key={s.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <div>
-                      <h4 className="font-bold text-gray-900 dark:text-white">{s.numero}ª Sessão {s.tipo}</h4>
-                      <p className="text-xs text-gray-500">{format(new Date(s.data), "dd/MM/yyyy 'às' HH:mm")}</p>
-                    </div>
-                    <Badge variant="outline">{s.proposicoes.length} Matérias</Badge>
-                  </div>
-                  <div className="p-0">
-                    {s.proposicoes.length === 0 ? (
-                      <p className="p-4 text-sm text-gray-500 italic">Nenhuma matéria pautada para esta sessão.</p>
-                    ) : (
-                        <div className="overflow-hidden"><table className="w-full table-fixed text-xs">
-                        <tbody>
-                          {s.proposicoes.map((prop, idx) => (
-                            <tr key={idx} className="border-b last:border-0 border-gray-100 dark:border-gray-800">
-                              <td className="p-4 w-1/4">
-                                <span className="font-medium text-gray-900 dark:text-white">{prop.numero}</span>
-                                <br />
-                                <span className="text-xs text-gray-500">{prop.tipo}</span>
-                              </td>
-                              <td className="p-4 text-gray-600 line-clamp-2" title={prop.ementa}>{prop.ementa}</td>
-                              <td className="p-4 w-32 text-right">
-                                <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">{prop.status}</Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        </table></div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "atas" && (
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {visible.flatMap(s => s.atas.map((ata, idx) => (
-                <Card key={idx} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="p-2 bg-purple-50 dark:bg-purple-900/20 text-[#9333EA] rounded-lg">
-                        <FileText className="h-5 w-5" />
-                      </div>
-                      <Badge 
-                        className={
-                          ata.status === 'Publicada' ? 'bg-green-100 text-green-700 hover:bg-green-100' : 
-                          ata.status === 'Aprovada' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' : 
-                          'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
-                        }
-                      >
-                        {ata.status}
-                      </Badge>
-                    </div>
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-1">{ata.numero}</h3>
-                    <p className="text-xs text-gray-500 mb-4">
-                      Ref: {s.numero}ª Sessão {s.tipo} ({format(new Date(s.data), "dd/MM/yyyy")})
-                    </p>
-                    
-                    {ata.dataAprovacao && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500 mb-4">
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
-                        Aprovada em: {format(new Date(ata.dataAprovacao), "dd/MM/yyyy")}
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-800">
-                      <button className="text-xs font-medium text-gray-500 hover:text-gray-700">Visualizar</button>
-                      <button className="text-xs font-medium text-[#9333EA] hover:text-[#7E22CE]">Editar</button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )))}
-            </div>
-            {visible.flatMap(s => s.atas).length === 0 && (
-              <div className="p-12 text-center text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>Nenhuma ata registrada nas sessões listadas.</p>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="shrink-0 border-t border-slate-200 px-3 py-1.5"><ErpPagination page={activePage} total={filtered.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="sessões" onPageChange={setPage} /></div>
-      </div>
-    </PageFrame>
-  );
+  const filtered = sessoes.filter((session) => (session.numero.toString().includes(searchTerm) || session.tipo.toLowerCase().includes(searchTerm.toLowerCase())) && (statusFilter === "Todos" || session.status === statusFilter));
+  const rows: OperationalRow[] = activeTab === "pautas" ? filtered.flatMap((session) => session.proposicoes.map((prop, index) => ({ id: `${session.id}:${index}`, label: `${prop.tipo} ${prop.numero} — sessão ${session.numero}`, values: { sessao: `${session.numero}ª`, tipoSessao: session.tipo, data: format(new Date(session.data), "dd/MM/yyyy HH:mm"), numero: prop.numero, tipo: prop.tipo, ementa: prop.ementa, status: prop.status } })))
+    : activeTab === "atas" ? filtered.flatMap((session) => session.atas.map((ata, index) => ({ id: `${session.id}:${index}`, label: ata.numero, values: { numero: ata.numero, sessao: `${session.numero}ª`, tipoSessao: session.tipo, data: format(new Date(session.data), "dd/MM/yyyy"), aprovacao: ata.dataAprovacao ? format(new Date(ata.dataAprovacao), "dd/MM/yyyy") : "—", status: ata.status }, actions: <div className={styles.rowActions}><button type="button" className={styles.iconButton} aria-label={`Visualizar ata ${ata.numero}`}><Eye /></button><button type="button" className={styles.iconButton} aria-label={`Editar ata ${ata.numero}`}><Pencil /></button></div> })))
+    : filtered.map((session) => ({ id: session.id, label: `${session.numero}ª Sessão ${session.tipo}`, values: { numero: `${session.numero}ª`, tipo: session.tipo, data: format(new Date(session.data), "dd/MM/yyyy HH:mm"), local: session.local || "Plenário", quorum: session.quorum === null ? "—" : String(session.quorum), status: session.status }, actions: <button type="button" className={styles.iconButton} aria-label={`Gerenciar ${session.numero}ª sessão`}><Settings /></button> }));
+  const activePage = Math.min(page, Math.max(1, Math.ceil(rows.length / OPERATIONAL_PAGE_SIZE)));
+  return <OperationalListFrame label="Sessões plenárias" actions={<button type="button" className={styles.newButton}><Plus />Nova Sessão</button>}
+    toolbar={<><input aria-label="Buscar sessão" className={styles.searchInput} placeholder="Buscar sessão…" value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setPage(1); }} /><select aria-label="Visualização de sessões" value={activeTab} onChange={(event) => { setActiveTab(event.target.value as keyof typeof columns); setPage(1); }}><option value="sessoes">Sessões</option><option value="pautas">Pautas (Ordem do Dia)</option><option value="atas">Atas</option></select><OperationalFilters activeCount={Number(statusFilter !== "Todos")}><label>Situação da sessão<select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}><option>Todos</option>{Array.from(new Set(sessoes.map((item) => item.status))).map((item) => <option key={item}>{item}</option>)}</select></label><button type="button" onClick={() => { setStatusFilter("Todos"); setPage(1); }}>Limpar filtros</button></OperationalFilters></>}
+    pagination={<OperationalPagination page={activePage} total={rows.length} onPageChange={setPage} />}>
+    <OperationalTable columns={columns[activeTab]} rows={rows.slice((activePage - 1) * OPERATIONAL_PAGE_SIZE, activePage * OPERATIONAL_PAGE_SIZE)} preferenceId={`camara.sessoes.${activeTab}`} caption={`Sessões plenárias — ${activeTab}`} emptyMessage={activeTab === "pautas" ? "Nenhuma matéria pautada nas sessões filtradas." : activeTab === "atas" ? "Nenhuma ata registrada nas sessões filtradas." : "Nenhuma sessão encontrada."} />
+  </OperationalListFrame>;
 }

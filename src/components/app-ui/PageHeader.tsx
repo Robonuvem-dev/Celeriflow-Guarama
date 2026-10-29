@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { OperationalHeaderActions, useOptionalOperationalWorkspace } from "./operational/OperationalWorkspace";
 
 type PageHeaderProps = {
   title: string;
@@ -9,6 +12,8 @@ type PageHeaderProps = {
 };
 
 export function PageHeader({ title, action, icon, className }: PageHeaderProps) {
+  const operational = useOptionalOperationalWorkspace();
+  if (operational) return action ? <OperationalHeaderActions>{action}</OperationalHeaderActions> : null;
   return (
     <header
       data-slot="page-header"

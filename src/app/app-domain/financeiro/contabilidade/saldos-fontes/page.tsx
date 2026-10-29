@@ -4,6 +4,8 @@ import { readAccountingMonthlySources } from "@/lib/financeiro/accounting-monthl
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { db, databaseConnection } from "@/db/client";
 import { listAccountingReportUnits, listAccountingReportYears } from "@/db/repositories/finance/accounting-reports";
+import FinanceTablePanel from "../../FinanceTablePanel";
+import { financeColumn } from "../../operational-columns";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +32,6 @@ export default async function MonthlySourceBalancesPage({ searchParams }: { sear
   try { report = await readAccountingMonthlySources(databaseConnection, { allowedBudgetUnitIds }, { governmentEntityId, financialYearId, budgetUnitId: filters.budgetUnitId, account: filters.account }); }
   catch (error) { return <section className="space-y-3 p-5"><Link href="/financeiro/contabilidade" className="underline">Voltar à Contabilidade</Link><p>{error instanceof Error ? error.message : "Não foi possível conciliar a consulta de saldos."}</p></section>; }
   const unitLabels = new Map(entityUnits.map(unit => [unit.budgetUnitId, `${unit.budgetUnit.code} · ${unit.budgetUnit.name}`]));
-  const visible = report.rows.slice((filters.page - 1) * 50, filters.page * 50);
-  const href = (page: number) => {
-    const query = new URLSearchParams({ governmentEntityId, financialYearId, page: String(page) });
-    if (filters.budgetUnitId) query.set("budgetUnitId", filters.budgetUnitId);
-    if (filters.account) query.set("account", filters.account);
-    return `?${query}`;
-  };
   const field = "block w-full rounded border p-2 text-sm";
   return <section className="space-y-4 p-5">
     <header><h1 className="text-xl font-semibold">Saldos mensais por conta e vínculo de recursos</h1><Link href="/financeiro/contabilidade" className="underline">Contabilidade e fechamento</Link></header>
@@ -50,10 +45,12 @@ export default async function MonthlySourceBalancesPage({ searchParams }: { sear
     </form>
     <p className="text-sm">Exercício {report.year} · {report.entryCount} linhas · {report.fullEntity ? "Todas as UGs do ente" : "Recorte das UGs autorizadas"}. Saldo: débitos menos créditos, acumulado até o fim de cada mês; negativo indica saldo credor. Lançamentos de abertura integram o mês de sua data.</p>
     {!!report.undocumentedEntries && <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{report.undocumentedEntries} linhas sem classificação/fonte publicada congelada. Seus valores permanecem visíveis em agrupamentos separados; a consulta não certifica a conciliação por vínculo dessas linhas.</p>}
-    <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr><th className="border p-2 text-left">Conta / UG / fonte</th>{Array.from({ length: 12 }, (_, month) => <th key={month} className="border p-2">{new Date(Date.UTC(report.year, month, 1)).toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" })}</th>)}</tr></thead><tbody>{visible.map(row => <tr key={JSON.stringify([row.accountId, row.accountCode, row.budgetUnitId, row.sourceId, row.sourceCode])}>
-      <td className="min-w-64 border p-2">{row.accountCode} — {row.accountName}<br />{unitLabels.get(row.budgetUnitId)}<br />Fonte: {row.sourceCode ?? "Classificação não documentada"} · {row.sourceId ?? "Vínculo não documentado"}{!!row.undocumentedEntries && <p>{row.undocumentedEntries} linhas a conciliar</p>}</td>
-      {row.months.map((month, index) => <td key={index} className="min-w-32 whitespace-nowrap border p-2 text-right"><span className="font-semibold">Saldo {month.balance}</span><br />D {month.debit}<br />C {month.credit}</td>)}
-    </tr>)}{!report.rows.length && <tr><td colSpan={13} className="border p-4 text-center">Sem lançamentos com os filtros informados.</td></tr>}</tbody></table></div>
-    <nav className="flex gap-4">{filters.page > 1 && <Link href={href(filters.page - 1)}>Anterior</Link>}<span>Página {filters.page} · {report.rows.length} combinações</span>{filters.page * 50 < report.rows.length && <Link href={href(filters.page + 1)}>Próxima</Link>}</nav>
+    <div className="flex flex-wrap gap-2" aria-label="Consultar os doze meses do exercício">{Array.from({ length: 12 }, (_, monthIndex) => {
+      const monthLabel = new Date(Date.UTC(report.year, monthIndex, 1)).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
+      return <FinanceTablePanel key={monthIndex} label={`Saldos de ${monthLabel}`} preferenceId="financeiro-saldos-mensais" resetKey={JSON.stringify([governmentEntityId, financialYearId, filters.budgetUnitId, filters.account, monthIndex])}
+        description={`${report.rows.length} combinações. Saldo acumulado até o fim do mês; débito e crédito mantidos separadamente.`}
+        columns={[financeColumn("code", "Conta", 75, 120, "identifier"), financeColumn("name", "Descrição da conta", 100, 190), financeColumn("unit", "UG", 90, 180), financeColumn("source", "Classificação da fonte", 85, 150), financeColumn("link", "Vínculo da fonte", 85, 150, "identifier"), financeColumn("undocumented", "Linhas a conciliar", 70, 110, "text", "right"), financeColumn("balance", "Saldo acumulado", 90, 140, "text", "right"), financeColumn("debit", "Débitos", 90, 140, "text", "right"), financeColumn("credit", "Créditos", 90, 140, "text", "right")]}
+        rows={report.rows.map(row => ({ id: JSON.stringify([row.accountId, row.accountCode, row.budgetUnitId, row.sourceId, row.sourceCode]), label: row.accountCode, values: { code: row.accountCode, name: row.accountName, unit: unitLabels.get(row.budgetUnitId) ?? row.budgetUnitId, source: row.sourceCode ?? "Classificação não documentada", link: row.sourceId ?? "Vínculo não documentado", undocumented: String(row.undocumentedEntries), balance: row.months[monthIndex]?.balance ?? "—", debit: row.months[monthIndex]?.debit ?? "—", credit: row.months[monthIndex]?.credit ?? "—" } }))} />;
+    })}</div>
   </section>;
 }

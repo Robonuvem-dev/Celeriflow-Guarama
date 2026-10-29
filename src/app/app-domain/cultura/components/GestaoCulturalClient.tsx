@@ -1,21 +1,23 @@
 "use client";
 
 import { useDeferredValue, useState } from "react";
-import { Eye, Landmark, MapPin, Search, Users } from "lucide-react";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { Eye } from "lucide-react";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type RecordKind = "Agente" | "Espaço" | "Patrimônio";
 export type CulturalRecord = { id: string; kind: RecordKind; name: string; classification: string; status: string; active: boolean; references: { label: string; value: string }[] };
-const PAGE_SIZE = 20;
-
-function KindIcon({ kind }: { kind: RecordKind }) {
-  if (kind === "Agente") return <Users className="size-3.5" />;
-  if (kind === "Espaço") return <MapPin className="size-3.5" />;
-  return <Landmark className="size-3.5" />;
-}
+const columns: OperationalColumn[] = [
+  { key: "name", label: "Identificação", type: "identifier", initialWidth: 280, minWidth: 120, maxWidth: 700, resizable: true, sortable: false, details: "overflow" },
+  { key: "kind", label: "Categoria", type: "text", initialWidth: 120, minWidth: 85, maxWidth: 250, resizable: true, sortable: false, details: "overflow" },
+  { key: "classification", label: "Classificação", type: "text", initialWidth: 220, minWidth: 110, maxWidth: 600, resizable: true, sortable: false, details: "overflow" },
+  { key: "status", label: "Situação", type: "status", initialWidth: 130, minWidth: 85, maxWidth: 300, resizable: true, sortable: false, details: "overflow" },
+  { key: "actions", label: "Ações", type: "actions", initialWidth: 65, minWidth: 50, maxWidth: 80, resizable: false, sortable: false, details: "none" },
+];
 
 export function GestaoCulturalClient({ records }: { records: CulturalRecord[] }) {
   const [search, setSearch] = useState("");
@@ -31,9 +33,9 @@ export function GestaoCulturalClient({ records }: { records: CulturalRecord[] })
   const visible = filtered.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
 
   return <>
-    <ErpListFrame toolbar={<div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_10rem]"><label className="relative"><span className="sr-only">Buscar registros culturais</span><Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar nome, referência ou status..." className="h-8 w-full rounded border border-slate-200 pl-8 pr-2 text-xs outline-none focus:ring-2 focus:ring-pink-600" /></label><select value={kind} onChange={(event) => { setKind(event.target.value as RecordKind | "Todos"); setPage(1); }} className="h-8 rounded border border-slate-200 px-2 text-xs"><option>Todos</option><option>Agente</option><option>Espaço</option><option>Patrimônio</option></select></div>} summary={<p className="text-[11px] text-slate-500">{filtered.length} registros culturais encontrados</p>} pagination={<ErpPagination page={activePage} total={filtered.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="registros" onPageChange={setPage} />}>
-      <table className="w-full table-fixed text-left text-xs"><thead className="sticky top-0 z-10 bg-slate-100 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-2">Identificação</th><th className="p-2">Categoria</th><th className="hidden p-2 md:table-cell">Classificação</th><th className="p-2">Situação</th><th className="p-2 text-right">Ações</th></tr></thead><tbody className="divide-y divide-slate-100">{visible.map((record) => <tr key={record.kind + record.id} className="h-9 hover:bg-slate-50"><td className="truncate p-2 font-semibold text-slate-900" title={record.name}>{record.name}</td><td className="p-2"><span className="inline-flex items-center gap-1"><KindIcon kind={record.kind} />{record.kind}</span></td><td className="hidden truncate p-2 md:table-cell" title={record.classification}>{record.classification}</td><td className="p-2"><span className={record.active ? "rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700" : "rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600"}>{record.status}</span></td><td className="p-2 text-right"><Button variant="ghost" size="icon" className="size-7" onClick={() => setDetail(record)} title="Ver detalhes"><Eye className="size-3.5" /></Button></td></tr>)}{visible.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Nenhum registro encontrado.</td></tr>}</tbody></table>
-    </ErpListFrame>
+    <OperationalListFrame label="Registros culturais" toolbar={<><input aria-label="Buscar registros culturais" type="search" className={styles.searchInput} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar nome, referência ou status…" /><select aria-label="Categoria cultural" value={kind} onChange={(event) => { setKind(event.target.value as RecordKind | "Todos"); setPage(1); }}><option>Todos</option><option>Agente</option><option>Espaço</option><option>Patrimônio</option></select></>} pagination={<OperationalPagination page={activePage} total={filtered.length} onPageChange={setPage} />}>
+      <OperationalTable columns={columns} preferenceId="cultura.gestao" caption="Registros culturais" emptyMessage="Nenhum registro encontrado." rows={visible.map((record) => ({ id: record.kind + record.id, label: record.name, values: { name: record.name, kind: record.kind, classification: record.classification, status: record.status }, actions: <button type="button" className={styles.iconButton} onClick={() => setDetail(record)} aria-label={`Ver referências de ${record.name}`}><Eye /></button> }))} />
+    </OperationalListFrame>
     <Dialog open={Boolean(detail)} onOpenChange={(open) => !open && setDetail(null)}><DialogContent><DialogHeader><DialogTitle>{detail?.name}</DialogTitle><DialogDescription>{detail?.kind} · {detail?.classification}</DialogDescription></DialogHeader><dl className="space-y-3">{detail?.references.map((reference) => <div key={reference.label}><dt className="text-xs font-semibold text-slate-500">{reference.label}</dt><dd className="mt-0.5 break-words text-sm text-slate-700">{reference.value}</dd></div>)}</dl><DialogFooter><Button onClick={() => setDetail(null)}>Fechar</Button></DialogFooter></DialogContent></Dialog>
   </>;
 }

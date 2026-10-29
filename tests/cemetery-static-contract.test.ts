@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import ts from "typescript";
 import { getTableColumns, getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import * as tables from "../src/db/schema/cemeteries";
+import { assertBoundCall, assertOperationalRenderer, assertReviewedInventory, historicalVisualBaseline } from "./helpers/table-migration-contracts";
 
 function sources(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? sources(join(directory, entry.name)) : /\.(ts|tsx)$/.test(entry.name) ? [join(directory, entry.name)] : []);
@@ -25,46 +25,21 @@ test("reserva cemiterial: sintaxe e nenhuma dependência/consulta do ORM removid
   }
 });
 
-function jsxRoots(source: string, file: string) {
-  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const result: string[] = [];
-  function visit(node: ts.Node) {
-    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) {
-      result.push(node.getText(tree).replaceAll("\r\n", "\n"));
-      return;
-    }
-    ts.forEachChild(node, visit);
-  }
-  visit(tree);
-  return result;
-}
-const visualBase = JSON.parse(readFileSync(new URL("./fixtures/historical-visual-baselines.json", import.meta.url), "utf8")) as {
-  formatVersion: number; sourceCommit: string;
-  cemetery: {
-    decimalException: { path: string; namespace: string; before: string; after: string };
-    files: Record<string, { decimalOccurrences: number; jsxRoots: { count: number; sha256: string }; decimalNormalizedJsxRoots: { count: number; sha256: string } }>;
-  };
-};
-const fingerprint = (nodes: string[]) => ({ count: nodes.length, sha256: createHash("sha256").update(JSON.stringify(nodes)).digest("hex") });
-test("JSX/CSS cemiterial preservado por AST contra a cópia visual", t => {
-  assert.equal(visualBase.formatVersion, 1);
-  assert.equal(visualBase.sourceCommit, "5cfa75dfe20a6d3fcc20dce33e818585cb8b9954");
+test("Cemitérios: proveniência imutável e contratos atuais de acesso, ações e históricos", () => {
+  const visualBase = historicalVisualBaseline();
   assert.deepEqual(visualBase.cemetery.decimalException, { path: "src/app/app-domain/cemiterios/taxas/guias/[id]/page.tsx", namespace: "Prisma.Decimal", before: "Prisma.Decimal.max(0, total.minus(paid))", after: "Decimal.max(0, total.minus(paid))" });
-  const files = sourceFiles.filter(file => file.endsWith(".tsx"));
-  assert.deepEqual(files.map(file => file.replaceAll("\\", "/")).sort(), Object.keys(visualBase.cemetery.files).sort());
-  let strict = 0, scalarOnly = 0;
-  for (const file of files) {
-    const before = visualBase.cemetery.files[file.replaceAll("\\", "/")];
-    const after = fingerprint(jsxRoots(readFileSync(file, "utf8"), file));
-    if (before.jsxRoots.count === after.count && before.jsxRoots.sha256 === after.sha256) { strict++; continue; }
-    // The only allowed expression change removes the former decimal namespace;
-    // markup, props, CSS, text and the arithmetic itself must remain identical.
-    assert.equal(file.replaceAll("\\", "/"), "src/app/app-domain/cemiterios/taxas/guias/[id]/page.tsx");
-    assert.equal(before.decimalOccurrences, 1);
-    assert.deepEqual(before.decimalNormalizedJsxRoots, after, relative(".", file));
-    scalarOnly++;
-  }
-  t.diagnostic(JSON.stringify({ compared: files.length, exactJsxRoots: strict, decimalNamespaceOnly: scalarOnly, sourceCommit: visualBase.sourceCommit }));
+  assertReviewedInventory(sourceFiles.filter(file => file.endsWith(".tsx")), Object.keys(visualBase.cemetery.files), ["src/app/app-domain/cemiterios/ProcessRowMenu.tsx"]);
+  const structure = "src/components/cemeteries/StructurePages.tsx";
+  assertBoundCall(structure, "@/lib/platform/tenant-context", "getTenantContextForModule", ['"CEMITERIOS"'], 2);
+  assertBoundCall(structure, "@/lib/platform/tenant-context", "canPerformModuleOperation", ["c.user", '"CEMITERIOS"', 'id === "novo" ? "create" : "update"']);
+  for (const name of ["readStructureHistory", "readLotGraves", "readStructureTaxpayers"]) assertBoundCall(structure, "@/db/repositories/cemeteries/structure", name);
+  assertBoundCall("src/components/cemeteries/StructureForm.tsx", "@/app/app-domain/cemiterios/estrutura/actions", "saveStructureAction", ["kind", "record.id ? String(record.id) : undefined", "data"]);
+  for (const name of ["StructureListPage", "StructureDetailPage"]) assertOperationalRenderer(structure, name);
+  const processes = "src/app/app-domain/cemiterios/processos/page.tsx";
+  assertBoundCall(processes, "@/lib/platform/tenant-context", "getTenantContextForModule", ['"CEMITERIOS"']);
+  assertBoundCall(processes, "@/db/repositories/cemeteries/workflow-pages", "readScheduledProcessPage", ["context.database ?? db", "{ ...filters, cemeteryId }"]);
+  for (const operation of ["create", "update"]) assertBoundCall(processes, "@/lib/platform/tenant-context", "canPerformModuleOperation", ["context.user", '"CEMITERIOS"', JSON.stringify(operation)]);
+  assertOperationalRenderer(processes);
 });
 
 const catalogFile = new URL("./fixtures/installed-physical-catalog.json", import.meta.url);

@@ -5,6 +5,7 @@ import type { ControlChecklistGroup } from "@/lib/c7/control-checklists";
 import { publishControlChecklistAction, answerControlChecklistAction, runControlChecklistDiagnosticsAction } from "./actions";
 import { controlChecklistCatalog } from "@/lib/c7/checklist-catalog";
 import { ChecklistGroupsEditor } from "./ChecklistGroupsEditor";
+import { checklistDraftError } from "./checklist-drafts";
 
 type Edition = { id: string; planId: string; title: string; category: string; groups: ControlChecklistGroup[] };
 export function ControlChecklistsClient({ plans, editions }: { plans: Array<{ id: string; title: string; status: string }>; editions: Edition[] }) {
@@ -29,7 +30,7 @@ export function ControlChecklistsClient({ plans, editions }: { plans: Array<{ id
   return <section className="space-y-4 p-8">
     <h2 className="text-xl font-semibold">Checklists de auditoria por categoria</h2>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    <form className="grid gap-3 rounded border p-5" onSubmit={event => { event.preventDefault(); void run(() => publishControlChecklistAction({ ...draft, groups, ...provenance })); }}>
+    <form className="grid gap-3 rounded border p-5" onSubmit={event => { event.preventDefault(); const error = checklistDraftError(groups); if (error) { setError(error); return; } void run(() => publishControlChecklistAction({ ...draft, groups, ...provenance })); }}>
       <h3 className="font-semibold">Publicar edição numerada</h3>
       <select aria-label="Checklist padrão" className="rounded border p-2" defaultValue="" onChange={event => { const template = controlChecklistCatalog.find(item => item.code === event.target.value); if (template) { setDraft({ ...draft, title: template.title, category: template.category, lines: "" }); setGroups(structuredClone(template.groups)); setProvenance({}); } }}><option value="">Carregar checklist padrão editável</option>{controlChecklistCatalog.map(template => <option key={template.code} value={template.code}>{template.title}</option>)}</select>
       <div className="grid gap-2 rounded border p-3">

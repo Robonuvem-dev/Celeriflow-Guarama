@@ -1,134 +1,31 @@
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import { buttonVariants } from "@/components/ui/button";
-import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
+import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { portalCount, portalRows } from "@/db/repositories/portal-servidor/records";
-import { FileSignature, FileText, Search } from "lucide-react";
-import Link from "next/link";
+import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { PortalOperationalList } from "../PortalOperationalList";
+import { portalColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 export const dynamic = "force-dynamic";
-
-const PAGE_SIZE = 20;
-const signatureStatuses = ["PENDING", "SIGNED", "REJECTED", "CANCELLED"] as const;
-
-type SearchParams = {
-  q?: string | string[];
-  status?: string | string[];
-  page?: string | string[];
-};
-
-function firstValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] || "" : value || "";
-}
-
-function parseStatus(value: string | string[] | undefined) {
-  const status = firstValue(value).toUpperCase();
-  return signatureStatuses.includes(status as (typeof signatureStatuses)[number]) ? status : "";
-}
-
-function resolvePage(value: string | string[] | undefined, total: number) {
-  const requested = Number.parseInt(firstValue(value), 10);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  return Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, totalPages) : 1;
-}
-
-function hrefFor(page: number, values: { q: string; status: string }) {
-  const params = new URLSearchParams();
-  if (values.q) params.set("q", values.q);
-  if (values.status) params.set("status", values.status);
-  if (page > 1) params.set("page", String(page));
-  const query = params.toString();
-  return "/portal-servidor/documentos" + (query ? "?" + query : "");
-}
-
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(value);
-}
-
-function signatureStatusLabel(status: string) {
-  if (status === "PENDING") return "Pendente";
-  if (status === "SIGNED") return "Assinado";
-  if (status === "REJECTED") return "Recusado";
-  if (status === "CANCELLED") return "Cancelado";
-  return status;
-}
-
-function signatureStatusClass(status: string) {
-  if (status === "SIGNED") return "bg-emerald-100 text-emerald-800";
-  if (status === "REJECTED") return "bg-red-100 text-red-800";
-  if (status === "CANCELLED") return "bg-slate-100 text-slate-700";
-  return "bg-amber-100 text-amber-800";
-}
-
-function PortalUnavailable() {
-  return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center p-3">
-      <section className="max-w-md border border-slate-300 bg-white p-5 text-center shadow-sm">
-        <FileText className="mx-auto size-6 text-slate-400" />
-        <h1 className="mt-2 text-sm font-semibold text-slate-900">Documentos indisponíveis</h1>
-        <p className="mt-1 text-xs leading-5 text-slate-600">Seu acesso ainda não está vinculado a um cadastro funcional ativo.</p>
-      </section>
-    </div>
-  );
-}
+type SearchParams = { q?: string | string[]; status?: string | string[]; page?: string | string[] };
+function firstValue(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] || "" : value || ""; }
+const statuses: Record<string, string> = { PENDING: "Pendente", SIGNED: "Assinado", REJECTED: "Recusado", CANCELLED: "Cancelado" };
 
 export default async function DocumentosPortalPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const access = await getEmployeePortalAccess();
-  if (access.status !== "AVAILABLE") return <PortalUnavailable />;
-
+  if (access.status !== "AVAILABLE") return <p className="p-4">Documentos indisponíveis. Seu acesso ainda não está vinculado a um cadastro funcional ativo.</p>;
   const params = await searchParams;
   const q = firstValue(params.q).trim().slice(0, 120);
-  const status = parseStatus(params.status);
+  const rawStatus = firstValue(params.status).toUpperCase();
+  const status = Object.hasOwn(statuses, rawStatus) ? rawStatus : "";
   const { context, employee } = access;
   const executor = context.database ?? db;
   const where = sql`s."signerEmployeeId"=${employee.id} ${status ? sql`AND s.status=${status}` : sql``} ${q ? sql`AND (strpos(lower(d.title),lower(${q}))>0 OR strpos(lower(d."documentType"),lower(${q}))>0)` : sql``}`;
   const total = await portalCount(executor, sql`SELECT count(*) FROM "DocumentSignature" s JOIN "Document" d ON d.id=s."documentId" WHERE ${where}`);
-  const page = resolvePage(params.page, total);
-  const signatureRows = await portalRows<{ id: string; status: string; requestedAt: Date; signedAt: Date | null; rejectedAt: Date | null; title: string; documentType: string; documentStatus: string }>(executor, sql`SELECT s.id,s.status,s."requestedAt",s."signedAt",s."rejectedAt",d.title,d."documentType",d.status AS "documentStatus" FROM "DocumentSignature" s JOIN "Document" d ON d.id=s."documentId" WHERE ${where} ORDER BY s."requestedAt" DESC,s.id DESC LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`);
-  const signatures = signatureRows.map(({ title, documentType, documentStatus, ...row }) => ({ ...row, document: { title, documentType, status: documentStatus } }));
-
-  return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">
-      <ErpPageTitle
-        title="Documentos e assinaturas"
-        description="Consulta das solicitações de assinatura vinculadas ao seu cadastro funcional."
-        icon={<FileSignature className="size-5 shrink-0 text-emerald-700" />}
-        action={<Link href="/portal-servidor/ficha-funcional" className="inline-flex h-8 items-center gap-1.5 rounded border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">Minha ficha</Link>}
-      />
-
-      <ErpListFrame
-        toolbar={
-          <form className="grid items-center gap-2 md:grid-cols-[minmax(0,1fr)_150px_auto_auto]" role="search">
-            <label className="relative block"><span className="sr-only">Buscar documento</span><Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input name="q" defaultValue={q} placeholder="Documento ou tipo" className="h-7 w-full rounded border border-slate-300 bg-white py-1 pl-8 pr-2 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15" /></label>
-            <select name="status" defaultValue={status} aria-label="Filtrar por situação" className="h-7 rounded border border-slate-300 bg-white px-2 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15"><option value="">Todas as situações</option><option value="PENDING">Pendentes</option><option value="SIGNED">Assinados</option><option value="REJECTED">Recusados</option><option value="CANCELLED">Cancelados</option></select>
-            <button type="submit" className={buttonVariants({ size: "sm", className: "h-7 px-3 text-xs" })}>Aplicar</button>
-            <Link href="/portal-servidor/documentos" className="inline-flex h-7 items-center justify-center rounded border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">Limpar</Link>
-          </form>
-        }
-        summary={<p className="text-[11px] text-slate-600"><strong className="text-slate-900">{total}</strong> documento(s) ou assinatura(s) no seu histórico</p>}
-        pagination={<ErpPagination page={page} total={total} pageSize={PAGE_SIZE} label="documentos" previousHref={hrefFor(Math.max(1, page - 1), { q, status })} nextHref={hrefFor(page + 1, { q, status })} />}
-      >
-        {signatures.length === 0 ? (
-          <div className="flex h-full min-h-[220px] flex-col items-center justify-center p-6 text-center"><FileText className="size-5 text-slate-400" /><h2 className="mt-2 text-sm font-semibold text-slate-700">Nenhum documento encontrado</h2><p className="mt-1 max-w-md text-xs text-slate-500">As solicitações de assinatura vinculadas ao seu cadastro aparecerão nesta área.</p></div>
-        ) : (
-          <>
-            <div className="hidden h-full md:block">
-              <table className="w-full table-fixed text-left text-[11px] leading-4 text-slate-700">
-                <thead className="h-7 border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500"><tr><th className="w-[46%] px-3">Documento</th><th className="w-[22%] px-3">Tipo</th><th className="w-[16%] px-3">Situação</th><th className="w-[16%] px-3 text-right">Solicitado em</th></tr></thead>
-                <tbody className="divide-y divide-slate-100">
-                  {signatures.map((signature) => <tr key={signature.id} className="h-[clamp(18px,2.65vh,28px)] hover:bg-slate-50"><td className="px-3 py-0 font-semibold text-slate-800"><span className="block truncate" title={signature.document.title}>{signature.document.title}</span></td><td className="px-3 py-0"><span className="block truncate">{signature.document.documentType || "Documento"}</span></td><td className="px-3 py-0"><span className={["inline-flex max-w-full truncate rounded px-1.5 py-0 text-[10px] font-semibold leading-4", signatureStatusClass(signature.status)].join(" ")}>{signatureStatusLabel(signature.status)}</span></td><td className="px-3 py-0 text-right text-[10px] text-slate-600">{formatDate(signature.requestedAt)}</td></tr>)}
-                </tbody>
-              </table>
-            </div>
-            <div className="divide-y divide-slate-100 overflow-y-auto md:hidden">
-              {signatures.map((signature) => <article key={signature.id} className="space-y-1.5 p-3"><div className="flex items-start justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-slate-900">{signature.document.title}</p><span className={["shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold", signatureStatusClass(signature.status)].join(" ")}>{signatureStatusLabel(signature.status)}</span></div><p className="truncate text-[11px] text-slate-600">{signature.document.documentType || "Documento"}</p><p className="text-[11px] text-slate-500">Solicitado em {formatDate(signature.requestedAt)}</p></article>)}
-            </div>
-          </>
-        )}
-      </ErpListFrame>
-    </div>
-  );
+  const requested = Number.parseInt(firstValue(params.page), 10);
+  const page = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, Math.max(1, Math.ceil(total / OPERATIONAL_PAGE_SIZE))) : 1;
+  const signatureRows = await portalRows<{ id: string; status: string; requestedAt: Date; signedAt: Date | null; rejectedAt: Date | null; title: string; documentType: string; documentStatus: string }>(executor, sql`SELECT s.id,s.status,s."requestedAt",s."signedAt",s."rejectedAt",d.title,d."documentType",d.status AS "documentStatus" FROM "DocumentSignature" s JOIN "Document" d ON d.id=s."documentId" WHERE ${where} ORDER BY s."requestedAt" DESC,s.id DESC LIMIT ${OPERATIONAL_PAGE_SIZE} OFFSET ${(page - 1) * OPERATIONAL_PAGE_SIZE}`);
+  return <PortalOperationalList id="documentos" label="Documentos e assinaturas" page={page} total={total} values={{ q, status }} actions={<Link href="/portal-servidor/ficha-funcional">Minha ficha</Link>} toolbar={<form className={styles.searchForm} role="search"><input aria-label="Buscar documento" name="q" defaultValue={q} placeholder="Documento ou tipo" className={styles.searchInput} /><select name="status" defaultValue={status} aria-label="Situação"><option value="">Todas as situações</option>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button className={styles.filterButton}>Aplicar</button><Link href="/portal-servidor/documentos">Limpar</Link></form>} columns={[portalColumn("title", "Documento", 340, 140), portalColumn("type", "Tipo", 220, 110), portalColumn("status", "Situação", 140, 90, "status"), portalColumn("date", "Solicitado em", 140, 105)]} rows={signatureRows.map(row => ({ id: row.id, label: row.title, values: { title: row.title, type: row.documentType || "Documento", status: statuses[row.status] || row.status, date: new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(row.requestedAt) } }))} />;
 }

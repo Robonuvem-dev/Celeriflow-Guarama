@@ -1,28 +1,35 @@
 import type { AuditEventType } from "@/lib/contracts/audit";
 import { auditEventTypes } from "@/lib/contracts/audit";
 import {
-  createAuditEventSearchParams,
+  buildAuditEventWhere,
   parseAuditEventQuery,
 } from "@/lib/platform/audit-query";
-import { getAuditEventPage } from "@/lib/platform/audit-query-service";
+import { and, count, desc, eq, gt, gte, or, sql } from "drizzle-orm";
+import { auditEvents } from "@/db/schema/audit";
+import { accessProfiles, users } from "@/db/schema/identity";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import {
-  ErpTableContainer,
-  ErpTableTd,
-  ErpTableTh,
-  ErpTableThead,
-  ErpTableTr,
-} from "@/components/app-ui/erp/ErpTable";
+import { OperationalListFrame, OperationalFilters, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { buttonVariants } from "@/components/ui/button";
-import { Activity, BarChart3, Clock3, Database, Search, ShieldCheck } from "lucide-react";
+import { Activity, BarChart3, Clock3, Database, Search } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/client";
 import { loadAuditEventSummary } from "@/db/repositories/platform/audit-queries";
 
 export const dynamic = "force-dynamic";
+
+const columns: OperationalColumn[] = [
+  { key: "date", label: "Data/hora", type: "text", initialWidth: 180, minWidth: 150, resizable: true, sortable: false, details: "overflow" },
+  { key: "actor", label: "Usuário", type: "text", initialWidth: 170, minWidth: 100, resizable: true, sortable: false, details: "overflow" },
+  { key: "event", label: "Evento", type: "text", initialWidth: 220, minWidth: 110, resizable: true, sortable: false, details: "overflow" },
+  { key: "object", label: "Objeto", type: "text", initialWidth: 150, minWidth: 90, resizable: true, sortable: false, details: "overflow" },
+  { key: "targetId", label: "ID do objeto", type: "identifier", initialWidth: 180, minWidth: 110, resizable: true, sortable: false, details: "overflow" },
+  { key: "targetType", label: "Tipo do objeto", type: "identifier", initialWidth: 150, minWidth: 105, resizable: true, sortable: false, details: "overflow" },
+  { key: "profile", label: "Perfil do ator", type: "text", initialWidth: 150, minWidth: 100, resizable: true, sortable: false, details: "overflow" },
+  { key: "id", label: "ID da evidência", type: "identifier", initialWidth: 180, minWidth: 115, resizable: true, sortable: false, details: "overflow" },
+];
 
 type AuditSearchParams = Record<string, string | string[] | undefined>;
 
@@ -122,14 +129,31 @@ export default async function AuditoriaPage({
   searchParams: Promise<AuditSearchParams>;
 }) {
   const context = await getTenantContextForModule("AUDITORIA");
-  const query = parseAuditEventQuery(await searchParams);
+  const params = await searchParams;
+  const query = parseAuditEventQuery(params);
   const last24Hours = getLast24Hours();
 
   const database = context.database ?? db;
-  const [eventPage, { total, recent, eventGroups, targetGroups }] = await Promise.all([
-    getAuditEventPage(database, query),
+  const where = buildAuditEventWhere(query.filters);
+  // URLs antigas por cursor são localizadas por contagem real na mesma ordem.
+  // A navegação nova usa páginas/offset e não armazena contadores acumulados na URL.
+  const cursorBoundary = query.cursor && !params.page ? or(
+    gt(auditEvents.createdAt, query.cursor.createdAt),
+    and(eq(auditEvents.createdAt, query.cursor.createdAt), query.direction === "previous" ? gt(auditEvents.id, query.cursor.id) : gte(auditEvents.id, query.cursor.id)),
+  ) : undefined;
+  const [[{ total, cursorPosition }], { recent, eventGroups, targetGroups }] = await Promise.all([
+    database.select({ total: count(), cursorPosition: cursorBoundary ? sql<number>`count(*) filter (where ${cursorBoundary})::int` : sql<number>`0` })
+      .from(auditEvents).innerJoin(users, eq(auditEvents.actorUsuarioId, users.id)).innerJoin(accessProfiles, eq(users.perfilId, accessProfiles.id)).where(where),
     loadAuditEventSummary(database, query.filters, last24Hours),
   ]);
+  const requestedPage = params.page ? Number(params.page) : query.cursor
+    ? Math.floor(Math.max(0, cursorPosition - (query.direction === "previous" ? OPERATIONAL_PAGE_SIZE : 0)) / OPERATIONAL_PAGE_SIZE) + 1 : 1;
+  const page = Math.min(Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1, Math.max(1, Math.ceil(total / OPERATIONAL_PAGE_SIZE)));
+  const eventRows = await database.select({
+    id: auditEvents.id, eventType: auditEvents.eventType, targetType: auditEvents.targetType, targetId: auditEvents.targetId, createdAt: auditEvents.createdAt,
+    actorName: users.nome, profileName: accessProfiles.nome,
+  }).from(auditEvents).innerJoin(users, eq(auditEvents.actorUsuarioId, users.id)).innerJoin(accessProfiles, eq(users.perfilId, accessProfiles.id))
+    .where(where).orderBy(desc(auditEvents.createdAt), desc(auditEvents.id)).limit(OPERATIONAL_PAGE_SIZE).offset((page - 1) * OPERATIONAL_PAGE_SIZE);
 
   const events = distributionRows(eventGroups);
   const targets = distributionRows(targetGroups);
@@ -145,13 +169,7 @@ export default async function AuditoriaPage({
   const controlClass = "h-8 min-w-0 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:border-amber-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
 
   return (
-    <PageFrame className="flex h-full min-h-0 flex-col p-2 sm:p-3">
-      <PageHeader
-        title="Auditoria"
-        icon={<ShieldCheck className="size-4 text-amber-700" />}
-        action={<span className="text-[11px] text-slate-500">Evidências imutáveis de operações autenticadas</span>}
-      />
-
+    <OperationalListFrame label="Auditoria" actions={<OperationalFilters label="Indicadores e distribuições">
       <div className="mb-2 grid shrink-0 grid-cols-2 gap-2 lg:grid-cols-4">
         {[
           { label: "Eventos no recorte", value: total, icon: Database },
@@ -186,10 +204,14 @@ export default async function AuditoriaPage({
         Módulo e resultado não são campos das evidências atuais e, por segurança, não são inferidos nesta visão.
       </p>
 
-      <ErpListFrame
-        className="min-h-[360px]"
-        toolbar={
-          <form method="get" role="search" className="grid grid-cols-2 gap-1.5 md:grid-cols-3 xl:flex xl:items-center">
+      </OperationalFilters>}
+        toolbar={<>
+          <form method="get" role="search" className={styles.searchForm}>
+            {Object.entries(query.filters).filter(([name, value]) => name !== "targetId" && value).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
+            <input name="targetId" defaultValue={query.filters.targetId} placeholder="Identificador exato do objeto" aria-label="Identificador exato do objeto" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button>
+          </form>
+          <OperationalFilters activeCount={Object.values(query.filters).filter(Boolean).length}>
+          <form method="get" className={styles.filterFields}>
             <input name="actorUsuarioId" defaultValue={query.filters.actorUsuarioId} placeholder="ID do usuário" aria-label="ID do usuário" className={controlClass} />
             <select name="eventType" defaultValue={query.filters.eventType ?? ""} aria-label="Tipo de evento" className={controlClass}>
               <option value="">Todos os eventos</option>
@@ -201,55 +223,14 @@ export default async function AuditoriaPage({
             <input name="to" type="date" defaultValue={query.filters.to} aria-label="Data final" className={controlClass} />
             <button type="submit" className={buttonVariants({ size: "sm", className: "h-8" })}><Search className="size-3.5" />Filtrar</button>
             <Link href="/auditoria" className={buttonVariants({ variant: "outline", size: "sm", className: "h-8" })}>Limpar</Link>
-          </form>
-        }
-        summary={<p className="text-[11px] text-slate-600 dark:text-slate-300"><strong className="text-slate-900 dark:text-slate-100">{total.toLocaleString("pt-BR")}</strong> evento(s) no recorte selecionado</p>}
-        pagination={
-          <div className="flex min-h-7 items-center justify-between gap-3 text-[11px] text-slate-500">
-            <span>20 eventos por página</span>
-            <div className="flex gap-2">
-              {eventPage.previousCursor ? (
-                <Link href={`/auditoria?${createAuditEventSearchParams(query.filters, { cursor: eventPage.previousCursor, direction: "previous" })}`} className={buttonVariants({ variant: "outline", size: "xs" })}>Anterior</Link>
-              ) : <span className="rounded border px-2 py-1 text-slate-300">Anterior</span>}
-              {eventPage.nextCursor ? (
-                <Link href={`/auditoria?${createAuditEventSearchParams(query.filters, { cursor: eventPage.nextCursor })}`} className={buttonVariants({ variant: "outline", size: "xs" })}>Próxima</Link>
-              ) : <span className="rounded border px-2 py-1 text-slate-300">Próxima</span>}
-            </div>
-          </div>
-        }
+          </form></OperationalFilters>
+        </>}
+        pagination={<OperationalLinkPagination page={page} total={total} pathname="/auditoria" values={query.filters} />}
       >
-        <ErpTableContainer>
-          <ErpTableThead><ErpTableTr>
-            <ErpTableTh className="w-[22%] sm:w-[18%]">Data/hora</ErpTableTh>
-            <ErpTableTh className="w-[25%] sm:w-[22%]">Usuário</ErpTableTh>
-            <ErpTableTh className="w-[38%] sm:w-[27%]">Evento</ErpTableTh>
-            <ErpTableTh className="hidden w-[18%] md:table-cell">Objeto</ErpTableTh>
-            <ErpTableTh className="w-[15%]">Detalhes</ErpTableTh>
-          </ErpTableTr></ErpTableThead>
-          <tbody>
-            {eventPage.events.map((event) => (
-              <ErpTableTr key={event.id}>
-                <ErpTableTd className="tabular-nums">{dateFormatter.format(event.createdAt)}</ErpTableTd>
-                <ErpTableTd title={event.actorUsuario.nome}>{event.actorUsuario.nome}</ErpTableTd>
-                <ErpTableTd>{eventLabels[event.eventType as AuditEventType] ?? event.eventType}</ErpTableTd>
-                <ErpTableTd className="hidden md:table-cell">{targetLabels[event.targetType] ?? event.targetType}</ErpTableTd>
-                <ErpTableTd className="overflow-visible whitespace-normal">
-                  <details>
-                    <summary className="cursor-pointer font-semibold text-amber-800 underline-offset-2 hover:underline dark:text-amber-400">Ver</summary>
-                    <dl className="mt-2 min-w-48 space-y-1 rounded-md border border-slate-200 bg-white p-2 text-[10px] shadow-md dark:border-slate-700 dark:bg-slate-950">
-                      <div><dt className="font-semibold text-slate-500">Identificador do objeto</dt><dd className="break-all font-mono text-slate-800 dark:text-slate-200">{event.targetId}</dd></div>
-                      <div><dt className="font-semibold text-slate-500">Tipo do objeto</dt><dd>{event.targetType}</dd></div>
-                      <div><dt className="font-semibold text-slate-500">Perfil do ator</dt><dd>{event.actorUsuario.perfil.nome}</dd></div>
-                      <div><dt className="font-semibold text-slate-500">ID da evidência</dt><dd className="break-all font-mono">{event.id}</dd></div>
-                    </dl>
-                  </details>
-                </ErpTableTd>
-              </ErpTableTr>
-            ))}
-            {eventPage.events.length === 0 && <ErpTableTr><ErpTableTd colSpan={5} className="py-10 text-center text-slate-500">Nenhum evento encontrado para os filtros informados.</ErpTableTd></ErpTableTr>}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
-    </PageFrame>
+        <OperationalTable columns={columns} preferenceId="auditoria-evidencias" caption="Evidências de auditoria" emptyMessage="Nenhum evento encontrado para os filtros informados." rows={eventRows.map((event) => ({
+          id: event.id, label: event.id,
+          values: { date: dateFormatter.format(event.createdAt), actor: event.actorName, event: eventLabels[event.eventType as AuditEventType] ?? event.eventType, object: targetLabels[event.targetType] ?? event.targetType, targetId: event.targetId, targetType: event.targetType, profile: event.profileName, id: event.id },
+        }))} />
+    </OperationalListFrame>
   );
 }

@@ -15,6 +15,7 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { CatalogItemPicker } from "../_components/CatalogItemPicker";
+import { AllocationDraftTable } from "./AllocationDraftTable";
 
 type RequestItem = {
   id?: string;
@@ -151,6 +152,8 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const invalidItem = items.findIndex((item) => item.allocations.some((allocation) => !availableBudgetAppropriations.some((appropriation) => appropriation.id === allocation.budgetAppropriationId) || !Number.isFinite(allocation.quantity) || allocation.quantity < 0.01 || !Number.isFinite(allocation.value) || allocation.value < 0));
+    if (invalidItem >= 0) { alert(`Revise dotação, quantidade e valor das alocações do item ${invalidItem + 1}, inclusive nas outras páginas.`); return; }
     setIsSaving(true);
     
     const formData = new FormData(e.currentTarget);
@@ -313,36 +316,8 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
                           </div>
                           {!secretariatId ? <p className="text-xs text-amber-700">Selecione a secretaria antes de informar a dotação.</p> : null}
                           {secretariatId && availableBudgetAppropriations.length === 0 ? <p className="text-xs text-amber-700">Não há dotações disponíveis para esta secretaria.</p> : null}
-                          {item.allocations.map((allocation, allocationIndex) => (
-                            <div key={allocationIndex} className="grid grid-cols-12 items-end gap-2 rounded-md border bg-white p-2">
-                              <div className="col-span-12 lg:col-span-6 space-y-1">
-                                <Label className="text-xs">Dotação</Label>
-                                <Select value={allocation.budgetAppropriationId} onValueChange={(value) => updateAllocation(index, allocationIndex, "budgetAppropriationId", value ?? "")}>
-                                  <SelectTrigger><SelectValue placeholder="Selecione a dotação" /></SelectTrigger>
-                                  <SelectContent>
-                                    {availableBudgetAppropriations.map((appropriation) => (
-                                      <SelectItem key={appropriation.id} value={appropriation.id}>
-                                        {appropriation.code} · {appropriation.expenseNatureCode} · {appropriation.resourceSourceCode} ({appropriation.financialYear})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="col-span-5 lg:col-span-2 space-y-1">
-                                <Label className="text-xs">Quantidade</Label>
-                                <Input type="number" min="0.01" step="0.01" value={allocation.quantity} onChange={(event) => updateAllocation(index, allocationIndex, "quantity", Number(event.target.value) || 0)} />
-                              </div>
-                              <div className="col-span-5 lg:col-span-3 space-y-1">
-                                <Label className="text-xs">Valor (R$)</Label>
-                                <MoneyInput value={allocation.value} onChange={(value) => updateAllocation(index, allocationIndex, "value", value)} />
-                              </div>
-                              <div className="col-span-2 lg:col-span-1">
-                                <Button type="button" variant="ghost" size="icon" className="text-rose-500 hover:bg-rose-100 hover:text-rose-700" onClick={() => removeAllocation(index, allocationIndex)} title="Remover alocação">
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                          <AllocationDraftTable title={`Alocações do item ${index + 1}`} allocations={item.allocations} appropriations={availableBudgetAppropriations} disabled={isSaving || !secretariatId}
+                            onChange={(allocationIndex, field, value) => updateAllocation(index, allocationIndex, field, value)} onRemove={(allocationIndex) => removeAllocation(index, allocationIndex)} />
                           <p className="text-xs text-muted-foreground">
                             Alocado: {item.allocations.reduce((total, allocation) => total + allocation.quantity, 0)} de {item.quantity} · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.allocations.reduce((total, allocation) => total + allocation.value, 0))} de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.quantity * item.estimatedUnitValue)}
                           </p>

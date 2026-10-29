@@ -34,7 +34,9 @@ async function loadExternalRows(path: string, query: TransparencyQuery, external
   const headers = { entidade: String(externalCode), exercicio: String(query.year), Accept: "application/json" };
   async function page(number: number) {
     params.set("page", String(number));
-    const response = await fetcher(`${base}${path}?${params}`, { headers, signal: AbortSignal.timeout(15000), next: { revalidate: 300 } });
+    // Validate Next.js options while retaining narrow types for native/Undici overloads.
+    const options = { headers, signal: AbortSignal.timeout(15000), next: { revalidate: 300 } } satisfies RequestInit;
+    const response = await fetcher(`${base}${path}?${params}`, options);
     if (!response.ok) throw new Error(`Fonte retornou HTTP ${response.status}.`);
     return response.json() as Promise<unknown>;
   }

@@ -1,14 +1,22 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle, File, FileSignature, X } from "lucide-react";
+import { CheckCircle, FileSignature, X } from "lucide-react";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { signDocumentInternally } from "./actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
-const PAGE_SIZE = 20;
+const columns: OperationalColumn[] = [
+  { key: "title", label: "Documento", type: "text", initialWidth: 320, minWidth: 160, resizable: true, sortable: false, details: "overflow" },
+  { key: "type", label: "Tipo", type: "text", initialWidth: 150, minWidth: 90, resizable: true, sortable: false, details: "overflow" },
+  { key: "date", label: "Data de envio", type: "text", initialWidth: 140, minWidth: 110, resizable: true, sortable: false, details: "overflow" },
+  { key: "status", label: "Status", type: "status", initialWidth: 130, minWidth: 90, resizable: true, sortable: false, details: "overflow" },
+  { key: "actions", label: "Ações", type: "actions", initialWidth: 100, minWidth: 90, maxWidth: 120, resizable: false, sortable: false, details: "none" },
+];
 
 type Documento = {
   id: string;
@@ -61,49 +69,12 @@ export default function AssinaturasClient({ initialDocuments }: { initialDocumen
   };
 
   return (
-    <ErpListFrame toolbar={<input type="search" value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setPage(1); }} placeholder="Buscar documentos pendentes" aria-label="Buscar documentos pendentes" className="h-7 w-full max-w-md rounded border border-slate-300 px-2.5 text-xs outline-none focus:border-indigo-600" />} pagination={<ErpPagination page={activePage} total={filteredDocuments.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="assinaturas" onPageChange={setPage} />}>
-      <table className="w-full table-fixed text-left text-xs">
-        <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase text-slate-600">
-          <tr>
-            <th className="px-6 py-3">Documento</th>
-            <th className="px-6 py-3">Tipo</th>
-            <th className="px-6 py-3">Data de Envio</th>
-            <th className="px-6 py-3">Status</th>
-            <th className="px-6 py-3 text-right">Ações</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {pageDocuments.map((doc) => (
-            <tr key={doc.id} className="group h-[38px] transition-colors hover:bg-slate-50">
-              <td className="max-w-0 truncate px-2.5 py-1.5 font-bold text-slate-800" title={doc.title}>
-                <File className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                {doc.title}
-              </td>
-              <td className="px-6 py-4 text-slate-600">
-                {doc.documentType || "Arquivo"}
-              </td>
-              <td className="px-6 py-4 text-slate-500">
-                {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
-              </td>
-              <td className="px-6 py-4">
-                <span className="px-2 py-1 rounded-md text-xs font-semibold bg-amber-100 text-amber-700">
-                  Pendente
-                </span>
-              </td>
-              <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                <button
-                  onClick={() => setSelectedDocument(doc)}
-                  disabled={isPending}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md shadow-sm transition-colors flex items-center gap-1 disabled:opacity-50"
-                >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Assinar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <OperationalListFrame label="Assinaturas eletrônicas" toolbar={<input type="search" value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setPage(1); }} placeholder="Buscar documentos pendentes" aria-label="Buscar documentos pendentes" className={styles.searchInput} />} pagination={<OperationalPagination page={activePage} total={filteredDocuments.length} pending={isPending} onPageChange={setPage} />}>
+      <OperationalTable columns={columns} preferenceId="documentos-assinaturas" caption="Documentos pendentes de assinatura" emptyMessage="Você não possui documentos pendentes de assinatura para esta busca." rows={pageDocuments.map((doc) => ({
+        id: doc.id, label: doc.title,
+        values: { title: doc.title, type: doc.documentType || "Arquivo", date: new Date(doc.createdAt).toLocaleDateString("pt-BR"), status: "Pendente" },
+        actions: <div className={styles.rowActions}><button onClick={() => setSelectedDocument(doc)} disabled={isPending} className={styles.iconButton} aria-label={`Assinar ${doc.title}`} title="Assinar"><CheckCircle /></button></div>,
+      }))} />
       {selectedDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
@@ -126,6 +97,6 @@ export default function AssinaturasClient({ initialDocuments }: { initialDocumen
           </div>
         </div>
       )}
-    </ErpListFrame>
+    </OperationalListFrame>
   );
 }

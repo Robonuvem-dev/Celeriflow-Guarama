@@ -13,6 +13,7 @@ import {
 import { createServiceOrder } from "../actions";
 import { ConsumerUnitPicker } from "./ConsumerUnitPicker";
 import styles from "./sanitation.module.css";
+import operational from "@/components/app-ui/operational/operational.module.css";
 
 export function NewServiceOrderSheet() {
   const [open, setOpen] = useState(false);
@@ -45,9 +46,9 @@ export function NewServiceOrderSheet() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="flex h-8 items-center gap-2 rounded-md bg-[#0284C7] px-3 text-sm font-medium text-white transition-colors hover:bg-[#0369A1]" />}>
+      <SheetTrigger render={<button type="button" className={operational.newButton} aria-label="Nova OS" title="Nova OS" />}>
         <Wrench className="h-5 w-5" />
-        Nova OS
+        <span className={operational.newLabel}>Nova OS</span>
       </SheetTrigger>
       <SheetContent side="right" className={styles.sheet}>
         <SheetHeader>

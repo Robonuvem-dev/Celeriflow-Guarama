@@ -3,7 +3,7 @@
 **Data:** 28/10/2026  
 **Rota:** `/saneamento/unidades`  
 **Menu:** Água e Saneamento → Unidades Consumidoras  
-**Situação:** piloto implementado e verificado tecnicamente nos cenários abaixo; aguardando validação visual/funcional do proprietário antes de aplicar às outras listagens.
+**Situação:** piloto aprovado pelo proprietário em 29/10/2026; aplicação às demais tabelas autorizada. As medições abaixo continuam identificadas pela revisão em que foram executadas. Na execução global, tablets e celulares receberam autorização de rolagem; notebook/computador mantêm a composição sem rolagem.
 
 **Revisão 1.1:** menu lateral recolhido para ícones e detalhes de texto condicionais à largura real da célula, conforme a revisão de [Padrão de Tabelas.md](Padr%C3%A3o%20de%20Tabelas.md). A matriz de geometria e os comportamentos identificados como revisão 1.1 foram novamente verificados no navegador. As evidências anteriores são identificadas separadamente.
 

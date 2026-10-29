@@ -2,19 +2,25 @@
 
 import { useState } from "react";
 import { 
-  ShieldCheck, Plus, Search, X, Pencil, CheckCircle2, SlidersHorizontal, 
+  ShieldCheck, Plus, X, Pencil, CheckCircle2,
   Building2, Users, FileText, HeadphonesIcon, ShoppingCart, DollarSign,
   Package, Receipt, Stethoscope, GraduationCap, HeartHandshake, HardHat, 
-  Trees, Shield, Droplets, Landmark, Palette, Share2, Settings, Lock, CheckSquare, Square, Trash2, Truck, BadgeCheck,
+   Trees, Shield, Droplets, Landmark, Palette, Share2, Settings, CheckSquare, Square, Trash2, Truck, BadgeCheck,
    Church, ClipboardCheck, Headset, Lightbulb
 } from "lucide-react";
 import { deletePerfil, upsertPerfil, togglePerfilStatus } from "./actions";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpCompactListFrame } from "@/components/app-ui/erp/ErpCompactListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
-const PAGE_SIZE = 20;
+const columns: OperationalColumn[] = [
+  { key: "name", label: "Nome do perfil", type: "text", initialWidth: 240, minWidth: 130, resizable: true, sortable: false, details: "overflow" },
+  { key: "description", label: "Descrição", type: "text", initialWidth: 300, minWidth: 140, resizable: true, sortable: false, details: "overflow" },
+  { key: "coverage", label: "Cobertura de módulos", type: "text", initialWidth: 210, minWidth: 155, resizable: true, sortable: false, details: "overflow" },
+  { key: "status", label: "Status", type: "status", initialWidth: 100, minWidth: 75, resizable: true, sortable: false, details: "overflow" },
+  { key: "actions", label: "Ações", type: "actions", initialWidth: 140, minWidth: 116, maxWidth: 160, resizable: false, sortable: false, details: "none" },
+];
 
 type Perfil = {
   id: string;
@@ -290,106 +296,43 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
   }
 
   return (
-    <PageFrame className="flex h-full min-h-0 flex-col">
-      <PageHeader
-        title="Gestão de Perfis e Permissões"
-        icon={<ShieldCheck className="size-4 shrink-0 text-indigo-600 dark:text-indigo-300" />}
-        action={capabilities.create ? <button onClick={openNew} className="flex h-8 items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 text-sm font-medium text-white transition-colors hover:bg-indigo-700"><Plus className="h-4 w-4" />Criar perfil</button> : undefined}
-        className="dark:border-slate-700 dark:bg-slate-800 dark:[&>h1]:text-white"
-      />
-      <ErpCompactListFrame toolbar={
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar perfil..."
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-              className="w-full rounded-md border border-slate-300 bg-white py-1.5 pl-9 pr-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-            />
-          </div>
-        } pagination={<ErpPagination page={activePage} total={filtered.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="perfis" onPageChange={setPage} />}>
-          <table className="w-full table-fixed text-left text-xs">
-            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[10px] uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-800/95 dark:text-slate-400">
-              <tr>
-                <th className="w-[24%] font-semibold">Nome do Perfil</th>
-                <th className="w-[29%] font-semibold">Descrição</th>
-                <th className="w-[19%] font-semibold">Cobertura de Módulos</th>
-                <th className="w-[8%] font-semibold">Status</th>
-                <th className="w-[20%] font-semibold text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                    Nenhum perfil encontrado.
-                  </td>
-                </tr>
-              ) : (
-                pageProfiles.map((perfil) => {
+    <>
+      <OperationalListFrame label="Gestão de perfis e permissões"
+        actions={capabilities.create ? <button onClick={openNew} className={styles.newButton}><Plus />Criar perfil</button> : undefined}
+        toolbar={<input type="search" aria-label="Buscar perfis" placeholder="Buscar perfil..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }} className={styles.searchInput} />}
+        pagination={<OperationalPagination page={activePage} total={filtered.length} onPageChange={setPage} />}>
+          <OperationalTable columns={columns} preferenceId="configuracoes-perfis" caption="Perfis e permissões" emptyMessage="Nenhum perfil encontrado." rows={pageProfiles.map((perfil) => {
                   const permMap = parsePermissionsJSON(perfil.permissoes, perfil.legacyModuleCodes).map;
                   const activeModulesCount = MODULES_LIST.filter((moduleItem) => {
                     const permission = permMap[moduleItem.code];
                     return permission && !permission.blocked;
                   }).length;
 
-                  return (
-                    <tr key={perfil.id} className="h-[38px] transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                      <td className="max-w-0 truncate px-2.5 py-1.5 font-bold text-slate-900 dark:text-white" title={perfil.nome}>
-                        <span className="flex min-w-0 items-center gap-1.5"><Lock className="size-3 shrink-0 text-indigo-500" /><span className="truncate">{perfil.nome}</span></span>
-                      </td>
-                      <td className="max-w-0 truncate px-2.5 py-1.5 text-slate-600 dark:text-slate-400" title={perfil.descricao || undefined}>
-                        {perfil.descricao || "Perfil de acesso padrão do sistema municipal."}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex h-[18px] items-center gap-1 whitespace-nowrap rounded border border-slate-200 bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          <SlidersHorizontal className="size-3 shrink-0 text-indigo-500" />
-                           {activeModulesCount === MODULES_LIST.length ? `Todos os ${MODULES_LIST.length} Módulos` : `${activeModulesCount} de ${MODULES_LIST.length} Módulos`}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleToggle(perfil.id, perfil.ativo)}
-                          disabled={!capabilities.update}
-                            className={`inline-flex h-[18px] items-center rounded-full px-2 text-[10px] font-semibold transition-colors ${
-                            perfil.ativo
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                          }`}
-                        >
-                          {perfil.ativo ? "Ativo" : "Inativo"}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="inline-flex items-center gap-1 whitespace-nowrap">
+                  return {
+                    id: perfil.id, label: perfil.nome,
+                    values: { name: perfil.nome, description: perfil.descricao || "Perfil de acesso padrão do sistema municipal.", coverage: activeModulesCount === MODULES_LIST.length ? `Todos os ${MODULES_LIST.length} Módulos` : `${activeModulesCount} de ${MODULES_LIST.length} Módulos`, status: perfil.ativo ? "Ativo" : "Inativo" },
+                    cells: { status: <button onClick={() => handleToggle(perfil.id, perfil.ativo)} disabled={!capabilities.update} aria-label={`Alterar status de ${perfil.nome}`} className="h-6 max-w-full rounded px-1 font-medium">{perfil.ativo ? "Ativo" : "Inativo"}</button> },
+                    actions: <div className={styles.rowActions}>
                           <button
                             onClick={() => openEdit(perfil)}
                             aria-label={`${capabilities.update ? "Configurar" : "Visualizar"} permissões de ${perfil.nome}`}
-                            className="inline-flex h-5 items-center gap-1 rounded bg-indigo-50 px-2 text-[10px] font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-300 dark:hover:bg-indigo-900"
+                            className={styles.iconButton} title="Permissões"
                           >
                             <Pencil className="h-3.5 w-3.5" />
-                            Permissões
                           </button>
                           {capabilities.delete && perfil.codigo !== "SYSTEM_ADMINISTRATOR" && (
                             <button
                               onClick={() => handleDelete(perfil)}
                               disabled={deletingId === perfil.id}
-                              className="inline-flex h-5 items-center gap-1 rounded bg-rose-50 px-2 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-rose-950 dark:text-rose-300 dark:hover:bg-rose-900"
+                              className={styles.iconButton} aria-label={`Excluir ${perfil.nome}`} title="Excluir perfil"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
-                              {deletingId === perfil.id ? "Excluindo..." : "Excluir"}
                             </button>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-      </ErpCompactListFrame>
+                        </div>,
+                  };
+                })} />
+      </OperationalListFrame>
 
       {/* Permissions Config Modal */}
       {isModalOpen && (
@@ -630,6 +573,6 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
           </div>
         </div>
       )}
-    </PageFrame>
+    </>
   );
 }

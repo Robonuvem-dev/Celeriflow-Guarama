@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Stethoscope, Pencil, Trash2, CheckCircle, XCircle, Plus, Search, AlertCircle } from "lucide-react";
+import { Pencil, Trash2, CheckCircle, XCircle, Plus, AlertCircle } from "lucide-react";
 import { createHealthProfessional, updateHealthProfessional, toggleHealthProfessionalStatus, deleteHealthProfessional } from "./actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-
-const PAGE_SIZE = 20;
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { healthColumn } from "../operational-columns";
 
 type Employee = {
   id: string;
@@ -120,66 +121,9 @@ export default function ProfissionaisClient({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      {/* Barra de Ações e Busca */}
-      <div className="flex shrink-0 flex-col gap-2 rounded-md border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800">
-        <div className="relative flex-1 max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-          className="block h-9 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm leading-5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:text-white"
-            placeholder="Pesquisar por nome, especialidade ou conselho..."
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-          />
-        </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex h-9 items-center justify-center rounded-md border border-transparent bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Profissional
-        </button>
-      </div>
-
-      {/* Tabela */}
-      <ErpListFrame pagination={<ErpPagination page={activePage} total={filteredProfs.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="profissionais" onPageChange={setPage} />}>
-        <table className="w-full table-fixed text-left text-xs">
-          <thead className="sticky top-0 z-10 border-b bg-slate-100 text-[10px] uppercase tracking-wider">
-            <tr>
-              <th className="p-2 font-semibold text-gray-600">Nome (Servidor)</th>
-              <th className="p-2 font-semibold text-gray-600">Especialidade</th>
-              <th className="p-2 font-semibold text-gray-600">Conselho</th>
-              <th className="p-2 font-semibold text-gray-600">Nº Conselho</th>
-              <th className="p-2 font-semibold text-gray-600">Status</th>
-              <th className="p-2 text-right font-semibold text-gray-600">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {visibleProfs.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
-                  <div className="flex flex-col items-center justify-center">
-                    <Stethoscope className="h-10 w-10 text-gray-300 mb-2" />
-                    <p>Nenhum profissional encontrado.</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              visibleProfs.map(item => (
-                <tr key={item.id} className="h-9 hover:bg-slate-50">
-                  <td className="truncate p-2 font-medium text-gray-900">{item.employee?.name}</td>
-                  <td className="truncate p-2 text-gray-600">{item.specialty || '-'}</td>
-                  <td className="truncate p-2 text-gray-600">{item.councilName || '-'}</td>
-                  <td className="truncate p-2 text-gray-600">{item.councilNumber || '-'}</td>
-                  <td className="p-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {item.isActive ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="p-2 text-right"><div className="flex items-center justify-end gap-1">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <OperationalListFrame label="Profissionais de saúde" toolbar={<input aria-label="Buscar profissionais" className={styles.searchInput} placeholder="Pesquisar por nome, especialidade ou conselho..." value={searchTerm} onChange={event => { setSearchTerm(event.target.value); setPage(1); }} />} actions={<button type="button" onClick={openCreateModal} className={styles.newButton} aria-label="Novo Profissional" title="Novo Profissional"><Plus aria-hidden="true" /><span className={styles.newLabel}>Novo Profissional</span></button>} pagination={<OperationalPagination page={activePage} total={filteredProfs.length} onPageChange={setPage} />}>
+        <OperationalTable preferenceId="saude-profissionais" caption="Profissionais de saúde" columns={[healthColumn("name", "Nome (Servidor)", 280, 130), healthColumn("specialty", "Especialidade", 240, 110), healthColumn("council", "Conselho", 120, 80), healthColumn("number", "Nº Conselho", 140, 90, "identifier"), healthColumn("status", "Status", 100, 80, "status"), healthColumn("actions", "Ações", 84, 84, "actions", "right", 100)]} rows={visibleProfs.map(item => ({ id: item.id, label: item.employee?.name || item.id, values: { name: item.employee?.name || "—", specialty: item.specialty || "—", council: item.councilName || "—", number: item.councilNumber || "—", status: item.isActive ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>
                     <button onClick={() => openEditModal(item)} className="text-gray-400 hover:text-emerald-600 p-1 rounded hover:bg-emerald-50" title="Editar">
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -195,13 +139,8 @@ export default function ProfissionaisClient({
                     <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50" title="Excluir">
                       <Trash2 className="h-4 w-4" />
                     </button>
-                  </div></td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </ErpListFrame>
+                  </div> }))} />
+      </OperationalListFrame>
 
       {/* Modal */}
       {isModalOpen && (

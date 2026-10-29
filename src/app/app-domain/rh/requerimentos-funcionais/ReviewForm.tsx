@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { completeFunctionalDocumentRequestAction, decideFunctionalRequestAction, requestFunctionalComplementAction } from "../servicos-funcionais/actions";
+import { RhSelectionTable } from "../_components/RhSelectionTable";
+import { rhColumn } from "../_components/operational-columns";
 
 export function FunctionalReviewForm({ requestId, documents = [] }: { requestId: string; documents?: { code: string; label: string }[] }) {
   const router = useRouter(); const [pending, setPending] = useState(false), [error, setError] = useState("");
+  const [documentCodes, setDocumentCodes] = useState<string[]>([]);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); const data = new FormData(event.currentTarget); setPending(true); setError("");
     try {
@@ -16,7 +19,7 @@ export function FunctionalReviewForm({ requestId, documents = [] }: { requestId:
     } catch { setError("Não foi possível registrar a análise."); }
     finally { setPending(false); }
   }
-  return <form onSubmit={submit} className="mt-3 grid gap-2 rounded border border-slate-300 bg-slate-50 p-3 text-xs"><label htmlFor={`result-${requestId}`} className="font-semibold">Resultado da análise</label><select id={`result-${requestId}`} name="status" disabled={pending} className="h-8 rounded border bg-white px-2"><option value="COMPLEMENTO">Solicitar complementação</option><option value="DEFERIDA">Deferir conforme a operação do serviço</option><option value="INDEFERIDA">Indeferir</option></select><label htmlFor={`decision-${requestId}`}>Fundamento da decisão ou instruções ao requerente</label><textarea id={`decision-${requestId}`} name="decision" required minLength={10} maxLength={4000} disabled={pending} rows={4} className="rounded border bg-white p-2" />{documents.map(document => <label key={document.code} className="flex items-center gap-2"><input type="checkbox" name="documentCodes" value={document.code} disabled={pending} />Solicitar novamente: {document.label}</label>)}{error && <p role="alert" className="text-red-700">{error}</p>}<Button disabled={pending} className="w-fit">{pending ? "Processando…" : "Registrar análise"}</Button></form>;
+  return <form onSubmit={submit} className="mt-3 grid gap-2 rounded border border-slate-300 bg-slate-50 p-3 text-xs"><label htmlFor={`result-${requestId}`} className="font-semibold">Resultado da análise</label><select id={`result-${requestId}`} name="status" disabled={pending} className="h-8 rounded border bg-white px-2"><option value="COMPLEMENTO">Solicitar complementação</option><option value="DEFERIDA">Deferir conforme a operação do serviço</option><option value="INDEFERIDA">Indeferir</option></select><label htmlFor={`decision-${requestId}`}>Fundamento da decisão ou instruções ao requerente</label><textarea id={`decision-${requestId}`} name="decision" required minLength={10} maxLength={4000} disabled={pending} rows={4} className="rounded border bg-white p-2" /><RhSelectionTable title="Documentos a solicitar novamente" preferenceId="rh-requerimento-documentos-edicao" selected={documentCodes} onSelectionAction={setDocumentCodes} name="documentCodes" disabled={pending} columns={[rhColumn("code", "Código", 200, 100), rhColumn("label", "Documento", 400, 160)]} items={documents.map(document => ({ id: document.code, label: document.label, values: { code: document.code, label: document.label } }))} />{error && <p role="alert" className="text-red-700">{error}</p>}<Button disabled={pending} className="w-fit">{pending ? "Processando…" : "Registrar análise"}</Button></form>;
 }
 
 export function FunctionalExecutionForm({ requestId }: { requestId: string }) {

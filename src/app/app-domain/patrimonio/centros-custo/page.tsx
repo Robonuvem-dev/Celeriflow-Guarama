@@ -1,17 +1,15 @@
 import Link from "next/link";
-import { Landmark, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { asc, count, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { costCenters as costCenterTable } from "@/db/schema/master-data";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import {
   clampPatrimonioListPage,
-  patrimonioListHref,
   parsePatrimonioListPage,
   PATRIMONIO_LIST_PAGE_SIZE,
 } from "../listing";
@@ -36,15 +34,14 @@ export default async function CentrosCustoPage({ searchParams }: { searchParams?
   const canDelete = canPerformModuleOperation(context.user, "PATRIMONIO", "delete");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">
-      <ErpPageTitle title="Centros de custo" icon={<Landmark className="size-4 text-emerald-700" />} action={canCreate ? <Link href="/patrimonio/centros-custo/novo" className={buttonVariants({ size: "sm" })}><Plus className="size-3.5" />Novo centro de custo</Link> : undefined} />
-      <ErpListFrame
-        toolbar={<form className="flex items-center gap-2" role="search"><Input name="q" defaultValue={q} placeholder="Código, nome ou descrição" className="h-8 min-w-0 flex-1 bg-white text-xs sm:max-w-xl" /><button type="submit" className={buttonVariants({ size: "sm" })}><Search className="size-3.5" />Buscar</button></form>}
-        summary={<p className="text-[11px] text-slate-600"><strong className="text-slate-900">{total}</strong> centro(s) de custo encontrado(s)</p>}
-        pagination={<ErpPagination page={page} total={total} pageSize={PATRIMONIO_LIST_PAGE_SIZE} label="centros de custo" previousHref={patrimonioListHref("/patrimonio/centros-custo", page - 1, { q })} nextHref={patrimonioListHref("/patrimonio/centros-custo", page + 1, { q })} />}
+    <>
+      <OperationalHeaderActions>{canCreate ? <Link href="/patrimonio/centros-custo/novo" className={buttonVariants({ size: "sm" })}><Plus className="size-3.5" />Novo centro de custo</Link> : undefined}</OperationalHeaderActions>
+      <OperationalListFrame
+        toolbar={<form className="flex items-center gap-2" role="search"><Input name="q" aria-label="Código, nome ou descrição" defaultValue={q} placeholder="Código, nome ou descrição" className="h-8 min-w-0 flex-1 bg-white text-xs sm:max-w-xl" /><button type="submit" className={buttonVariants({ size: "sm" })}><Search className="size-3.5" />Buscar</button></form>}
+        pagination={<OperationalLinkPagination page={page} total={total} pathname="/patrimonio/centros-custo" values={{ q }} />}
       >
         <CostCenterTable costCenters={costCenters.map((costCenter) => ({ id: costCenter.id, code: costCenter.code, name: costCenter.name, description: costCenter.description, isActive: costCenter.isActive, warehouseCount: costCenter._count.warehouses }))} canUpdate={canUpdate} canDelete={canDelete} />
-      </ErpListFrame>
-    </div>
+      </OperationalListFrame>
+    </>
   );
 }

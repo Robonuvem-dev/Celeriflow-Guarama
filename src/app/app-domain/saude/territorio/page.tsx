@@ -3,6 +3,7 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { HealthSimpleListClient } from "../HealthSimpleListClient";
+import { HealthPageTools } from "../HealthPageTools";
 import { addFamilyMemberAction, addVisitParticipantAction, createVisitAction, saveAreaAction, saveFamilyAction, saveHouseholdAction, saveMicroareaAction } from "./actions";
 import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -12,7 +13,7 @@ import { patients as patientTable } from "@/db/schema/health-registration";
 import { people } from "@/db/schema/people";
 
 const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs";
-const PAGE_SIZE = 20;
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
 type Params = { q?: string | string[]; page?: string | string[] };
 const first = (v: string | string[] | undefined) => Array.isArray(v) ? v[0] : v;
 const num = (v: string | undefined) => v && /^\d+$/.test(v) && Number(v) > 0 ? Number(v) : 1;
@@ -44,9 +45,9 @@ export default async function TerritorioPage({ searchParams }: { searchParams: P
   const visits = visitRows.map(row => ({ ...row.visit, family: row.family, household: row.household, team: row.team, participants: participants.filter(participant => participant.visitId === row.visit.id) })), families = familyRows.map(row => ({ ...row, members: members.filter(member => member.familyId === row.id) }));
 
   return (
-    <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
+    <PageFrame className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PageHeader title="Território e Visitas" icon={<MapPin className="size-4 text-emerald-700" />} />
-      <div className="grid shrink-0 gap-2 lg:grid-cols-4">
+      <HealthPageTools>
         <details className="rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Área / Microárea</summary>
           <form action={saveAreaAction} className="mt-2 grid gap-1"><input name="code" required placeholder="Código da área" className={field}/><input name="name" required placeholder="Nome" className={field}/><select name="unitId" className={field}><option value="">Unidade</option>{units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select><select name="teamId" className={field}><option value="">Equipe</option>{teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select><button className="h-8 rounded bg-emerald-700 font-semibold text-white">Salvar área</button></form>
           <form action={saveMicroareaAction} className="mt-2 grid gap-1 border-t pt-2"><select name="areaId" required className={field}><option value="">Área</option>{areas.map(a => <option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}</select><input name="code" required placeholder="Código microárea" className={field}/><button className="h-8 rounded bg-slate-800 font-semibold text-white">Salvar microárea</button></form>
@@ -58,8 +59,8 @@ export default async function TerritorioPage({ searchParams }: { searchParams: P
         </details>
         <details className="rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Nova visita</summary><form action={createVisitAction} className="mt-2 grid gap-1"><select name="householdId" className={field}><option value="">Domicílio</option>{households.map(h => <option key={h.id} value={h.id}>{h.householdCode || h.id.slice(0,8)}</option>)}</select><select name="familyId" className={field}><option value="">Família</option>{families.map(f => <option key={f.id} value={f.id}>{f.familyCode || f.id.slice(0,8)}</option>)}</select><select name="professionalId" required className={field}><option value="">Agente/profissional</option>{professionals.map(p => <option key={p.id} value={p.id}>{p.id.slice(0,8)}</option>)}</select><select name="teamId" className={field}><option value="">Equipe</option>{teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select><select name="microareaId" className={field}><option value="">Microárea</option>{microareas.map(m => <option key={m.id} value={m.id}>{m.area.code}/{m.code}</option>)}</select><input name="visitedAt" type="datetime-local" required className={field}/><textarea name="actions" required placeholder="Ações realizadas" className="min-h-12 rounded border p-2"/><input name="observations" placeholder="Observações permitidas" className={field}/><button className="h-8 rounded bg-emerald-700 font-semibold text-white">Registrar visita</button></form></details>
         <details className="rounded border bg-white p-2 text-xs"><summary className="cursor-pointer font-semibold">Participantes da visita</summary><form action={addVisitParticipantAction} className="mt-2 grid gap-1"><select name="visitId" required className={field}><option value="">Visita</option>{visits.map(v => <option key={v.id} value={v.id}>{v.visitedAt.toLocaleDateString("pt-BR")} · {v.actions.slice(0,30)}</option>)}</select><select name="personId" required className={field}><option value="">Pessoa atendida</option>{patients.map(p => <option key={p.personId} value={p.personId}>{p.person.fullName}</option>)}</select><p className="text-[10px] text-slate-500">1 visita pode ter N participantes; evento e participações ficam separados.</p><button className="h-8 rounded bg-slate-800 font-semibold text-white">Adicionar participante</button></form></details>
-      </div>
-      <HealthSimpleListClient rows={visits.map(v => ({ id: v.id, cells: { date: v.visitedAt.toLocaleDateString("pt-BR"), family: v.family?.familyCode || v.household?.householdCode || "-", team: v.team?.name || "-", actions: v.actions.slice(0,60), participants: String(v.participants.length), status: v.status } }))} columns={[{ key: "date", label: "Data", width: "medium" }, { key: "family", label: "Família/Domicílio" }, { key: "team", label: "Equipe", responsive: "sm" }, { key: "actions", label: "Ações" }, { key: "participants", label: "Pessoas", width: "narrow" }, { key: "status", label: "Situação", width: "medium" }]} label="visitas" searchPlaceholder="Buscar ação ou família" serverPagination={{ page, total, pathname: "/app-domain/saude/territorio", search: q }} />
+      </HealthPageTools>
+      <HealthSimpleListClient rows={visits.map(v => ({ id: v.id, cells: { date: v.visitedAt.toLocaleDateString("pt-BR"), family: v.family?.familyCode || v.household?.householdCode || "-", team: v.team?.name || "-", actions: v.actions, participants: String(v.participants.length), status: v.status } }))} columns={[{ key: "date", label: "Data", width: "medium" }, { key: "family", label: "Família/Domicílio" }, { key: "team", label: "Equipe" }, { key: "actions", label: "Ações" }, { key: "participants", label: "Pessoas", width: "narrow" }, { key: "status", label: "Situação", width: "medium" }]} label="visitas" searchPlaceholder="Buscar ação ou família" serverPagination={{ page, total, pathname: "/saude/territorio", search: q }} />
     </PageFrame>
   );
 }

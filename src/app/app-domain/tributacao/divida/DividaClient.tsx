@@ -1,377 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, Banknote, Pencil, Trash2, RefreshCw, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
 import { createActiveDebt, updateActiveDebt, cancelActiveDebt, reactivateActiveDebt } from "./actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import {
-  ErpTableContainer,
-  ErpTableThead,
-  ErpTableTh,
-  ErpTableTr,
-  ErpTableTd,
-  ErpStatusBadge,
-  type ErpStatusVariant,
-} from "@/components/app-ui/erp/ErpTable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TaxOperationalTable } from "../TaxOperationalTable";
 
-type ActiveDebt = {
-  id: string;
-  cdaNumber: string | null;
-  year: number;
-  originDebtType: string;
-  originalValue: number;
-  updatedValue: number;
-  status: string;
-  taxpayer: {
-    id: string;
-    person: { fullName: string; cpf: string | null } | null;
-    company: { corporateName: string; cnpj: string } | null;
-  };
-};
-
-type Taxpayer = {
-  id: string;
-  name: string;
-};
-
-function debtVariant(status: string): ErpStatusVariant {
-  if (status === "Inscrita") return "danger";
-  if (status === "Parcelada") return "info";
-  if (status === "Paga") return "success";
-  return "neutral";
-}
-
-export default function DividaClient({
-  activeDebts,
-  taxpayers
-}: {
-  activeDebts: ActiveDebt[];
-  taxpayers: Taxpayer[];
-}) {
+type ActiveDebt = { id: string; cdaNumber: string | null; year: number; originDebtType: string; originalValue: number; updatedValue: number; status: string; taxpayer: { id: string; person: { fullName: string; cpf: string | null } | null; company: { corporateName: string; cnpj: string } | null } };
+type Taxpayer = { id: string; name: string };
+const field = "h-8 w-full rounded border px-2 text-[13px]";
+const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+export default function DividaClient({ activeDebts, taxpayers }: { activeDebts: ActiveDebt[]; taxpayers: Taxpayer[] }) {
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ActiveDebt>>({});
-  const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    cdaNumber: "",
-    year: new Date().getFullYear(),
-    originDebtType: "IPTU",
-    originalValue: 0,
-    updatedValue: 0,
-    taxpayerId: taxpayers[0]?.id || ""
-  });
-
-  const filtered = activeDebts.filter((debt) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    const cda = (debt.cdaNumber || "").toLowerCase();
-    const orig = debt.originDebtType.toLowerCase();
-    const name = (debt.taxpayer.company?.corporateName || debt.taxpayer.person?.fullName || "").toLowerCase();
-    return cda.includes(term) || orig.includes(term) || name.includes(term);
-  });
-  const pageSize = 20;
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-  const handleEditClick = (debt: ActiveDebt) => {
-    setEditingId(debt.id);
-    setEditForm({
-      cdaNumber: debt.cdaNumber,
-      year: debt.year,
-      originDebtType: debt.originDebtType,
-      updatedValue: debt.updatedValue
-    });
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingId) return;
-    if (confirm("Deseja salvar as alterações?")) {
-      try {
-        await updateActiveDebt(editingId, editForm);
-        setEditingId(null);
-      } catch (e) {
-        console.error(e);
-        alert("Erro ao salvar alterações.");
-      }
-    }
-  };
-
-  const handleCancel = async (id: string) => {
-    if (confirm("Deseja cancelar esta dívida ativa?")) {
-      await cancelActiveDebt(id);
-    }
-  };
-
-  const handleReactivate = async (id: string) => {
-    if (confirm("Deseja reativar esta dívida ativa?")) {
-      await reactivateActiveDebt(id);
-    }
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createForm.taxpayerId) {
-      alert("Selecione um contribuinte válido.");
-      return;
-    }
-    try {
-      await createActiveDebt(createForm);
-      setIsCreateModalOpen(false);
-      setCreateForm({
-        cdaNumber: "",
-        year: new Date().getFullYear(),
-        originDebtType: "IPTU",
-        originalValue: 0,
-        updatedValue: 0,
-        taxpayerId: taxpayers[0]?.id || ""
-      });
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao inscrever em dívida ativa.");
-    }
-  };
-
-  return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-2 p-2 sm:p-2.5 overflow-hidden">
-      <ErpPageTitle
-        title="Dívida Ativa"
-        icon={<Banknote className="size-4 text-rose-600" />}
-        action={
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-500 px-3 text-xs font-bold text-slate-950 shadow-xs transition-colors hover:bg-amber-600"
-          >
-            <Plus className="size-3.5" />
-            Nova Inscrição CDA
-          </button>
-        }
-      />
-
-      <ErpListFrame
-        pagination={<ErpPagination page={page} total={filtered.length} pageSize={pageSize} previousHref="#" nextHref="#" label="inscrições" onPageChange={setPage} />}
-        toolbar={
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 basis-full sm:basis-auto">
-              <span className="sr-only">Buscar dívida</span>
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                placeholder="Buscar por CDA, contribuinte ou origem"
-                className="h-8 w-full rounded-md border border-slate-200 bg-white py-1 pl-8 pr-2.5 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </label>
-          </div>
-        }
-      >
-        <ErpTableContainer>
-          <ErpTableThead>
-            <tr>
-              <ErpTableTh className="w-[16%]">Número CDA</ErpTableTh>
-              <ErpTableTh className="w-[34%]">Contribuinte</ErpTableTh>
-              <ErpTableTh className="w-[16%]">Origem / Exercício</ErpTableTh>
-              <ErpTableTh className="w-[16%] text-right">Valor Atualizado</ErpTableTh>
-              <ErpTableTh className="w-[8%]">Status</ErpTableTh>
-              <ErpTableTh className="w-[10%] text-right">Ações</ErpTableTh>
-            </tr>
-          </ErpTableThead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-xs text-slate-400">
-                  Nenhum registro de dívida ativa encontrado.
-                </td>
-              </tr>
-            ) : (
-              paged.map((debt) => (
-                <ErpTableTr key={debt.id}>
-                  <ErpTableTd className="font-semibold text-slate-900 dark:text-slate-100">
-                    {editingId === debt.id ? (
-                      <input
-                        type="text"
-                        value={editForm.cdaNumber || ""}
-                        onChange={(e) => setEditForm({ ...editForm, cdaNumber: e.target.value })}
-                        className="h-6 w-full rounded border border-slate-200 px-1 text-[11px] outline-none focus:border-amber-500"
-                      />
-                    ) : (
-                      debt.cdaNumber || "—"
-                    )}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    {debt.taxpayer?.company?.corporateName || debt.taxpayer?.person?.fullName || "Não Informado"}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    {editingId === debt.id ? (
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={editForm.originDebtType || ""}
-                          onChange={(e) => setEditForm({ ...editForm, originDebtType: e.target.value })}
-                          className="h-6 w-2/3 rounded border border-slate-200 px-1 text-[11px] outline-none focus:border-amber-500"
-                        />
-                        <input
-                          type="number"
-                          value={editForm.year || ""}
-                          onChange={(e) => setEditForm({ ...editForm, year: Number(e.target.value) })}
-                          className="h-6 w-1/3 rounded border border-slate-200 px-1 text-[11px] outline-none focus:border-amber-500"
-                        />
-                      </div>
-                    ) : (
-                      `${debt.originDebtType} / ${debt.year}`
-                    )}
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right font-bold tabular-nums text-rose-600 dark:text-rose-400">
-                    {editingId === debt.id ? (
-                      <input
-                        type="number"
-                        value={editForm.updatedValue || 0}
-                        onChange={(e) => setEditForm({ ...editForm, updatedValue: Number(e.target.value) })}
-                        className="h-6 w-24 rounded border border-slate-200 px-1 text-right text-[11px] outline-none focus:border-amber-500"
-                      />
-                    ) : (
-                      new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(debt.updatedValue)
-                    )}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    <ErpStatusBadge variant={debtVariant(debt.status)}>{debt.status}</ErpStatusBadge>
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right">
-                    {editingId === debt.id ? (
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={handleSaveEdit} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Salvar">
-                          <CheckCircle className="size-4" />
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded" title="Cancelar">
-                          <XCircle className="size-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => handleEditClick(debt)} className="p-1 text-slate-400 hover:text-indigo-600 rounded" title="Editar">
-                          <Pencil className="size-3.5" />
-                        </button>
-                        {debt.status === "Inscrita" || debt.status === "Parcelada" ? (
-                          <button onClick={() => handleCancel(debt.id)} className="p-1 text-slate-400 hover:text-rose-600 rounded" title="Cancelar">
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        ) : (
-                          <button onClick={() => handleReactivate(debt.id)} className="p-1 text-slate-400 hover:text-emerald-600 rounded" title="Reativar">
-                            <RefreshCw className="size-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </ErpTableTd>
-                </ErpTableTr>
-              ))
-            )}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
-
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-base font-bold text-slate-800">Inscrever em Dívida Ativa</h2>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <XCircle className="size-5" />
-              </button>
-            </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Contribuinte</label>
-                <select
-                  required
-                  value={createForm.taxpayerId}
-                  onChange={(e) => setCreateForm({...createForm, taxpayerId: e.target.value})}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
-                >
-                  <option value="">Selecione um contribuinte...</option>
-                  {taxpayers.map(tp => (
-                    <option key={tp.id} value={tp.id}>{tp.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Número CDA</label>
-                  <input
-                    type="text"
-                    required
-                    value={createForm.cdaNumber}
-                    onChange={(e) => setCreateForm({...createForm, cdaNumber: e.target.value})}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Exercício</label>
-                  <input
-                    type="number"
-                    required
-                    value={createForm.year}
-                    onChange={(e) => setCreateForm({...createForm, year: Number(e.target.value)})}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Origem (Ex: IPTU, ISS)</label>
-                <input
-                  type="text"
-                  required
-                  value={createForm.originDebtType}
-                  onChange={(e) => setCreateForm({...createForm, originDebtType: e.target.value})}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Valor Original (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={createForm.originalValue}
-                    onChange={(e) => setCreateForm({...createForm, originalValue: Number(e.target.value)})}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Valor Atualizado (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={createForm.updatedValue}
-                    onChange={(e) => setCreateForm({...createForm, updatedValue: Number(e.target.value)})}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-600 transition-colors shadow-xs"
-                >
-                  Inscrever
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const [creating, setCreating] = useState(false);
+  const initial = { cdaNumber: "", year: new Date().getFullYear(), originDebtType: "IPTU", originalValue: 0, updatedValue: 0, taxpayerId: taxpayers[0]?.id || "" };
+  const [createForm, setCreateForm] = useState(initial);
+  const filtered = activeDebts.filter(debt => { const term = search.toLowerCase(); return (debt.cdaNumber || "").toLowerCase().includes(term) || debt.originDebtType.toLowerCase().includes(term) || (debt.taxpayer.company?.corporateName || debt.taxpayer.person?.fullName || "").toLowerCase().includes(term); });
+  async function saveEdit(event: React.FormEvent) {
+    event.preventDefault(); if (!editingId || !confirm("Deseja salvar as alterações?")) return;
+    try { await updateActiveDebt(editingId, editForm); setEditingId(null); } catch (error) { console.error(error); alert("Erro ao salvar alterações."); }
+  }
+  async function cancel(id: string) { if (confirm("Deseja cancelar esta dívida ativa?")) await cancelActiveDebt(id); }
+  async function reactivate(id: string) { if (confirm("Deseja reativar esta dívida ativa?")) await reactivateActiveDebt(id); }
+  async function create(event: React.FormEvent) {
+    event.preventDefault(); if (!createForm.taxpayerId) { alert("Selecione um contribuinte válido."); return; }
+    if (!createForm.cdaNumber || !createForm.originDebtType) { alert("Preencha o número CDA e a origem."); return; }
+    try { await createActiveDebt(createForm); setCreating(false); setCreateForm(initial); } catch (error) { console.error(error); alert("Erro ao inscrever em dívida ativa."); }
+  }
+  return <>
+    <TaxOperationalTable id="divida" resetKey={search} emptyMessage="Nenhum registro de dívida ativa encontrado."
+      toolbar={<input aria-label="Buscar dívida" value={search} onChange={event => setSearch(event.target.value)} placeholder="CDA, origem ou contribuinte" className={`${field} min-w-0 flex-1`} />}
+      actions={<button onClick={() => setCreating(true)} className="inline-flex h-7 items-center gap-1 rounded bg-amber-500 px-2 text-xs font-bold"><Plus className="size-4" />Nova inscrição CDA</button>}
+      columns={[["cda", "Número CDA", 110, 150, "identifier"], ["name", "Contribuinte", 160, 270], ["origin", "Origem", 90, 130], ["year", "Exercício", 75, 85], ["value", "Valor atualizado", 125, 160, "text", "right"], ["status", "Status", 85, 110, "status"], ["actions", "Ações", 80, 80, "actions"]]}
+      rows={filtered.map(debt => ({ id: debt.id, label: debt.cdaNumber || debt.id, values: { cda: debt.cdaNumber || "—", name: debt.taxpayer?.company?.corporateName || debt.taxpayer?.person?.fullName || "Não Informado", origin: debt.originDebtType, year: String(debt.year), value: money(debt.updatedValue), status: debt.status }, actions: <div className="flex justify-end gap-2"><button aria-label={`Editar dívida ${debt.cdaNumber || debt.id}`} title="Editar" onClick={() => { setEditingId(debt.id); setEditForm({ cdaNumber: debt.cdaNumber, year: debt.year, originDebtType: debt.originDebtType, updatedValue: debt.updatedValue }); }}><Pencil className="size-4" /></button>{["Inscrita", "Parcelada"].includes(debt.status) ? <button aria-label={`Cancelar dívida ${debt.cdaNumber || debt.id}`} title="Cancelar" onClick={() => cancel(debt.id)}><Trash2 className="size-4" /></button> : <button aria-label={`Reativar dívida ${debt.cdaNumber || debt.id}`} title="Reativar" onClick={() => reactivate(debt.id)}><RefreshCw className="size-4" /></button>}</div> }))} />
+    <Dialog open={editingId !== null} onOpenChange={open => { if (!open) setEditingId(null); }}><DialogContent><DialogHeader><DialogTitle>Editar dívida ativa</DialogTitle></DialogHeader><form onSubmit={saveEdit} className="grid gap-3"><label>Número CDA<input value={editForm.cdaNumber || ""} onChange={event => setEditForm({ ...editForm, cdaNumber: event.target.value })} className={field} /></label><label>Origem<input value={editForm.originDebtType || ""} onChange={event => setEditForm({ ...editForm, originDebtType: event.target.value })} className={field} /></label><label>Exercício<input type="number" value={editForm.year || ""} onChange={event => setEditForm({ ...editForm, year: Number(event.target.value) })} className={field} /></label><label>Valor atualizado<input type="number" value={editForm.updatedValue || 0} onChange={event => setEditForm({ ...editForm, updatedValue: Number(event.target.value) })} className={field} /></label><div className="flex justify-end gap-3"><button type="button" onClick={() => setEditingId(null)}>Cancelar</button><button>Salvar</button></div></form></DialogContent></Dialog>
+    <Dialog open={creating} onOpenChange={setCreating}><DialogContent><DialogHeader><DialogTitle>Inscrever em dívida ativa</DialogTitle></DialogHeader><form onSubmit={create} className="grid gap-3"><label>Contribuinte<select required value={createForm.taxpayerId} onChange={event => setCreateForm({ ...createForm, taxpayerId: event.target.value })} className={field}><option value="">Selecione um contribuinte...</option>{taxpayers.map(tp => <option key={tp.id} value={tp.id}>{tp.name}</option>)}</select></label><label>Número CDA<input value={createForm.cdaNumber} onChange={event => setCreateForm({ ...createForm, cdaNumber: event.target.value })} className={field} /></label><label>Origem<input value={createForm.originDebtType} onChange={event => setCreateForm({ ...createForm, originDebtType: event.target.value })} className={field} /></label><label>Exercício<input type="number" value={createForm.year} onChange={event => setCreateForm({ ...createForm, year: Number(event.target.value) })} className={field} /></label><div className="grid grid-cols-2 gap-2"><label>Valor original<input type="number" step="0.01" value={createForm.originalValue} onChange={event => setCreateForm({ ...createForm, originalValue: Number(event.target.value) })} className={field} /></label><label>Valor atualizado<input type="number" step="0.01" value={createForm.updatedValue} onChange={event => setCreateForm({ ...createForm, updatedValue: Number(event.target.value) })} className={field} /></label></div><div className="flex justify-end gap-3"><button type="button" onClick={() => setCreating(false)}>Cancelar</button><button>Inscrever</button></div></form></DialogContent></Dialog>
+  </>;
 }

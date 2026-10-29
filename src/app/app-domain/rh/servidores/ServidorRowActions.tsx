@@ -1,7 +1,7 @@
 "use client";
 
 import { Edit, PowerOff, Power } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import Link from "next/link";
 import { toggleServidorStatus } from "./actions";
 import type { Employee } from "@/lib/contracts/personnel-pages";
@@ -17,15 +17,12 @@ export function ServidorRowActions({ employee }: { employee: Employee }) {
   };
 
   return (
-    <div className="flex items-center justify-end space-x-2">
-      <Link href={`/rh/servidores/${employee.id}/editar`}>
-        <Button variant="ghost" size="sm" title="Editar">
-          <Edit className="h-4 w-4" />
-        </Button>
+    <div className={styles.rowActions}>
+      <Link href={`/rh/servidores/${employee.id}/editar`} className={styles.iconButton} aria-label={`Editar servidor ${employee.name}`} title="Editar">
+        <Edit className="h-4 w-4" />
       </Link>
-      <Button 
-        variant="ghost" 
-        size="sm" 
+      <button type="button" className={styles.iconButton}
+        aria-label={`${employee.isActive ? "Inativar" : "Ativar"} servidor ${employee.name}`}
         title={employee.isActive ? "Inativar" : "Ativar"}
         onClick={handleToggleStatus}
       >
@@ -34,7 +31,7 @@ export function ServidorRowActions({ employee }: { employee: Employee }) {
         ) : (
           <Power className="h-4 w-4 text-emerald-500" />
         )}
-      </Button>
+      </button>
     </div>
   );
 }

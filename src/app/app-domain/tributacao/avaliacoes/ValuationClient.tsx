@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { publishValuationRuleAction, saveValuationAction } from "./actions";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { TaxOperationalTable } from "../TaxOperationalTable";
 
 type Rule = { id: string; taxId: string; version: number; data: Record<string, unknown> };
 const inputClass = "mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-xs";
@@ -19,8 +21,8 @@ export default function ValuationClient(props: { taxes: { id: string; name: stri
   const selected = props.rules.find(rule => rule.id === ruleId);
   const property = props.properties.find(item => item.id === propertyId);
   function run(task: () => Promise<{ error?: string }>, success: string) { startTransition(async () => { const result = await task(); setMessage(result.error ?? success); }); }
-  return <div className="h-full overflow-auto p-4">
-    <h1 className="text-lg font-bold">Avaliações imobiliárias — IPTU e ITBI</h1>
+  return <TaxOperationalTable id="avaliacoes"
+    toolbar={<OperationalFilters label="Regras e avaliação">
     <p className="mt-1 text-xs text-slate-600">Regras independentes por tributo, UG e exercício. Cada publicação conserva a versão anterior e cada avaliação registra a memória do cálculo.</p>
     {message && <p role="status" className="my-3 rounded border border-amber-200 bg-amber-50 p-2 text-sm">{message}</p>}
     <div className="my-4 grid gap-4 lg:grid-cols-2">
@@ -44,6 +46,7 @@ export default function ValuationClient(props: { taxes: { id: string; name: stri
         <Link href="/tributacao/lotes-anuais" className="ml-3 text-xs text-emerald-700 underline">Lotes anuais</Link>
       </form>
     </div>
-    <h2 className="text-sm font-bold">Memórias de avaliação</h2><div className="mt-2 overflow-auto"><table className="w-full text-left text-xs"><thead><tr className="border-b"><th className="p-2">Imóvel</th><th>Tributo / exercício</th><th>Valor venal</th><th>Versão / data</th><th>Fundamento</th></tr></thead><tbody>{props.memories.map(memory => <tr key={memory.id} className="border-b"><td className="p-2"><Link className="text-emerald-700 underline" href={`/tributacao/imoveis/${memory.propertyId}`}>{props.properties.find(item => item.id === memory.propertyId)?.label ?? memory.propertyId}</Link></td><td>{memory.category.endsWith("IPTU") ? "IPTU" : "ITBI"} / {String(memory.data.year)}</td><td>R$ {String(memory.data.venalValue)}</td><td>{memory.version} · {new Date(memory.date).toLocaleString("pt-BR")}</td><td>{String(memory.data.reason ?? "")}</td></tr>)}</tbody></table></div>
-  </div>;
+    </OperationalFilters>}
+    columns={[["property", "Imóvel", 150, 220], ["tax", "Tributo", 75, 90], ["year", "Exercício", 75, 85], ["value", "Valor venal", 110, 140, "text", "right"], ["version", "Versão", 65, 75], ["date", "Data", 155, 180], ["reason", "Fundamento", 150, 240], ["actions", "Ficha", 85, 85, "actions"]]}
+    rows={props.memories.map(memory => ({ id: memory.id, label: props.properties.find(item => item.id === memory.propertyId)?.label ?? memory.propertyId, values: { property: props.properties.find(item => item.id === memory.propertyId)?.label ?? memory.propertyId, tax: memory.category.endsWith("IPTU") ? "IPTU" : "ITBI", year: String(memory.data.year), value: `R$ ${String(memory.data.venalValue)}`, version: String(memory.version), date: new Date(memory.date).toLocaleString("pt-BR"), reason: String(memory.data.reason ?? "") }, actions: <Link className="text-emerald-700 underline" href={`/tributacao/imoveis/${memory.propertyId}`}>Abrir ficha</Link> }))} />;
 }

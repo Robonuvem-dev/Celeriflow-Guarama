@@ -7,7 +7,6 @@ import { fleetSelectedUnit, fleetSelectedUnits } from "@/db/repositories/fleet/p
 import { fleetPageIssue } from "@/lib/frotas/page-errors";
 import { FrotasClient } from "./FrotasClient";
 import { FleetUnavailable } from "./FleetUnavailable";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -35,5 +34,5 @@ export default async function FrotasPage({ searchParams }: { searchParams: Promi
   const query = parsed.data;
   const result = await loadFleetPage(query);
   if (!result.ok) return <FleetUnavailable issue={result.issue} />;
-  return <><Link href="/frotas/gestao" className="m-2 inline-flex w-fit rounded border border-teal-300 bg-white px-3 py-2 text-sm font-semibold text-teal-800">Gestão: CNH, agenda, guarita, autorizações, componentes, multas e sinistros →</Link><FrotasClient key={JSON.stringify(query)} query={query} list={result.list} selectedUnit={result.selectedUnit} selectedUnits={result.selectedUnits.map(v => ({ id: v.id, label: `${v.code} · ${v.name}` }))} permissions={result.permissions} departmentId={result.departmentId} /></>;
+  return <FrotasClient key={JSON.stringify(query)} query={query} list={result.list} selectedUnit={result.selectedUnit} selectedUnits={result.selectedUnits.map(v => ({ id: v.id, label: `${v.code} · ${v.name}` }))} permissions={result.permissions} departmentId={result.departmentId} />;
 }

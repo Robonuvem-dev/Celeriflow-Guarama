@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Pencil, Trash2, Ban, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 interface ActionButtonsProps {
   id: string;
@@ -36,14 +38,19 @@ export function ActionButtons({
   };
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      {error && <span className="text-xs text-red-600 max-w-[140px] text-right mr-1">{error}</span>}
+    <div className={styles.rowActions}>
+      <Dialog open={Boolean(error)} onOpenChange={(open) => { if (!open) setError(""); }}>
+        <DialogContent className={styles.dialog}>
+          <DialogHeader><DialogTitle>Não foi possível atualizar o registro</DialogTitle><DialogDescription>{error}</DialogDescription></DialogHeader>
+          <button type="button" className={styles.dialogButton} onClick={() => setError("")}>Fechar</button>
+        </DialogContent>
+      </Dialog>
 
       {/* Editar */}
       {onEdit && (
         <button
           onClick={onEdit}
-          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+          className={styles.iconButton}
           title="Editar"
           aria-label="Editar registro"
           type="button"
@@ -57,7 +64,7 @@ export function ActionButtons({
         <button
           onClick={() => handleAction(onInactivate, inactivateLabel)}
           disabled={isPending}
-          className="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition-colors disabled:opacity-40"
+          className={styles.iconButton}
           title={inactivateLabel}
           aria-label={inactivateLabel}
           type="button"
@@ -71,7 +78,7 @@ export function ActionButtons({
         <button
           onClick={() => handleAction(onDelete, deleteLabel)}
           disabled={isPending}
-          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
+          className={styles.iconButton}
           title={deleteLabel}
           aria-label={deleteLabel}
           type="button"

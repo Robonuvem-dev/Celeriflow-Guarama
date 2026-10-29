@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, Calculator, Pencil, Plus, Search } from "lucide-react";
+import { Ban, Pencil, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { createMedicao, inactivateMedicao, updateMedicao } from "../actions";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { operationalColumns } from "../../patrimonio/_components/operational-columns";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 type Medicao = {
   id: string;
@@ -46,7 +50,11 @@ type FormData = {
 };
 
 const measurementStatuses = ["Em Análise", "Aprovada", "Rejeitada"];
-const PAGE_SIZE = 20;
+const columns = operationalColumns([
+  ["number", "Medição", 110, 85, "identifier"], ["workCode", "Código da obra", 140, 100], ["work", "Obra", 280, 150],
+  ["date", "Período", 120, 100], ["value", "Valor", 160, 120, "text", "right"], ["status", "Situação", 150, 100, "status"],
+  ["actions", "Ações", 80, 80, "actions", "right"],
+]);
 
 function defaultForm(obraId = ""): FormData {
   return {
@@ -56,12 +64,6 @@ function defaultForm(obraId = ""): FormData {
     obraId,
     status: "Em Análise",
   };
-}
-
-function statusClass(status: string) {
-  if (status === "Aprovada") return "bg-emerald-100 text-emerald-700";
-  if (status === "Rejeitada") return "bg-rose-100 text-rose-700";
-  return "bg-amber-100 text-amber-700";
 }
 
 function formatCurrency(value: number) {
@@ -184,35 +186,21 @@ export default function MedicoesClient({ medicoes, obras }: { medicoes: Medicao[
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
-        <div>
-          <h1 className="text-base font-bold text-slate-900 dark:text-white">Medições de Obras</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Acompanhamento financeiro das medições registradas.</p>
-        </div>
-        <Button onClick={openCreateSheet} disabled={obras.length === 0} className="bg-blue-600 text-white hover:bg-blue-700">
-          <Plus />
-          Nova medição
-        </Button>
-      </div>
-
-      {obras.length === 0 && (
-        <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
-          Cadastre ou ative uma obra para registrar uma medição.
-        </p>
-      )}
-
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800" aria-label="Lista de medições">
-        <div className="flex flex-col items-stretch justify-between gap-2 border-b border-slate-100 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/50 md:flex-row md:items-center">
-          <div className="relative w-full md:max-w-sm">
-            <Search className="absolute top-1/2 left-3 size-5 -translate-y-1/2 text-slate-400" />
+      <OperationalListFrame actions={<>
+        <button onClick={openCreateSheet} disabled={obras.length === 0} className={styles.newButton}><Plus />Nova medição</button>
+        {(actionError || !obras.length) && <OperationalFilters label={actionError ? "Erro na operação" : "Cadastro de obras"}><p role={actionError ? "alert" : "status"}>{actionError || "Cadastre ou ative uma obra para registrar uma medição."}</p></OperationalFilters>}
+      </>} toolbar={<>
+          <div className={styles.searchForm}>
+            <Search aria-hidden="true" />
             <Input
               value={search}
+              aria-label="Buscar por obra ou número"
               onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Buscar por obra ou número..."
-              className="h-8 border-slate-200 bg-white pl-10 text-xs dark:border-slate-600 dark:bg-slate-700"
+              className={styles.searchInput}
             />
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <OperationalFilters activeCount={[statusFilter, activeFilter].filter(value => value !== "Todos").length}><div className={styles.filterFields}>
             <select
               value={statusFilter}
               onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}
@@ -232,52 +220,12 @@ export default function MedicoesClient({ medicoes, obras }: { medicoes: Medicao[
               <option value="Ativas">Ativas</option>
               <option value="Inativas">Inativas</option>
             </select>
-          </div>
-        </div>
-
-        {actionError && <p className="mx-4 mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">{actionError}</p>}
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <table className="w-full table-fixed border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-100">
-              <tr className="text-[10px] uppercase tracking-wider text-slate-500">
-                <th className="p-2 font-medium">Medição</th><th className="p-2 font-medium">Obra</th><th className="p-2 font-medium">Período</th><th className="hidden p-2 font-medium md:table-cell">Valor</th><th className="p-2 font-medium">Situação</th><th className="p-2 text-right font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {filteredMedicoes.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-14 text-center text-slate-500 dark:text-slate-400">
-                    <Calculator className="mx-auto mb-3 size-8 opacity-30" />
-                    Nenhuma medição encontrada.
-                  </td>
-                </tr>
-              ) : visibleMedicoes.map((medicao) => (
-                <tr key={medicao.id} className="h-9 hover:bg-slate-50">
-                  <td className="truncate p-2 font-semibold text-slate-900">Nº {medicao.numero}</td>
-                  <td className="truncate p-2 font-medium text-slate-900" title={medicao.obra.nome}>{medicao.obra.numero} · {medicao.obra.nome}</td>
-                  <td className="whitespace-nowrap p-2 text-slate-700">{formatDate(medicao.data)}</td>
-                  <td className="hidden whitespace-nowrap p-2 font-medium text-slate-700 md:table-cell">{formatCurrency(medicao.valorMedido)}</td>
-                  <td className="p-2"><span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${statusClass(medicao.status)}`}>{medicao.active ? medicao.status : "Inativa"}</span></td>
-                  <td className="p-2">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon-sm" onClick={() => openEditSheet(medicao)} title="Editar medição">
-                        <Pencil />
-                        <span className="sr-only">Editar medição</span>
-                      </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => handleInactivate(medicao.id)} disabled={!medicao.active || inactivatingId === medicao.id} title="Inativar medição" className="text-rose-600 hover:text-rose-700">
-                        <Ban />
-                        <span className="sr-only">Inativar medição</span>
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="shrink-0 border-t border-slate-200 px-3 py-1.5"><ErpPagination page={activePage} total={filteredMedicoes.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="medições" onPageChange={setPage} /></div>
-      </section>
+          </div></OperationalFilters>
+        </>} pagination={<OperationalPagination page={activePage} total={filteredMedicoes.length} onPageChange={setPage} />}>
+        <OperationalTable columns={columns} preferenceId="obras-medicoes" caption="Medições de obras" emptyMessage="Nenhuma medição encontrada." rows={visibleMedicoes.map(medicao => ({ id: medicao.id, label: `Medição ${medicao.numero}`, values: {
+          number: `Nº ${medicao.numero}`, workCode: medicao.obra.numero, work: medicao.obra.nome, date: formatDate(medicao.data), value: formatCurrency(medicao.valorMedido), status: medicao.active ? medicao.status : "Inativa",
+        }, actions: <div className={styles.rowActions}><button type="button" className={styles.iconButton} onClick={() => openEditSheet(medicao)} aria-label={`Editar medição ${medicao.numero}`}><Pencil /></button><button type="button" className={styles.iconButton} onClick={() => handleInactivate(medicao.id)} disabled={!medicao.active || inactivatingId === medicao.id} aria-label={`Inativar medição ${medicao.numero}`}><Ban /></button></div> }))} />
+      </OperationalListFrame>
 
       <Sheet open={sheetOpen} onOpenChange={handleSheetChange}>
         <SheetContent className="w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-[34rem]">

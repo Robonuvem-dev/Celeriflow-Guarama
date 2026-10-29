@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Edit, FileText, Trash2 } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { deleteCovenant } from "./actions";
 
 export function ConvenioRowActions({ id }: { id: string }) {
@@ -21,10 +21,10 @@ export function ConvenioRowActions({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex justify-end gap-1">
-      <Link href={`/compras/convenios/${id}`} className={buttonVariants({ variant: "ghost", size: "icon" })} title="Ver detalhes"><FileText className="size-4 text-blue-500" /></Link>
-      <Link href={`/compras/convenios/${id}/editar`} className={buttonVariants({ variant: "ghost", size: "icon" })} title="Editar"><Edit className="size-4 text-amber-500" /></Link>
-      <Button variant="ghost" size="icon" onClick={handleDelete} disabled={isDeleting} title="Excluir"><Trash2 className="size-4 text-rose-500" /></Button>
+    <div className={styles.rowActions}>
+      <Link href={`/compras/convenios/${id}`} className={styles.iconButton} aria-label="Ver detalhes do convênio" title="Ver detalhes"><FileText className="size-4 text-blue-500" /></Link>
+      <Link href={`/compras/convenios/${id}/editar`} className={styles.iconButton} aria-label="Editar convênio" title="Editar"><Edit className="size-4 text-amber-500" /></Link>
+      <button type="button" className={styles.iconButton} onClick={handleDelete} disabled={isDeleting} aria-label="Excluir convênio" title="Excluir"><Trash2 className="size-4 text-rose-500" /></button>
     </div>
   );
 }

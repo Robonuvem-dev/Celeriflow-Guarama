@@ -1,112 +1,24 @@
 import Link from "next/link";
-import { Plus, Gift, Search } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { BeneficioRowActions } from "./BeneficioRowActions";
 import { db } from "@/db/client";
 import { readBenefitsPage } from "@/db/repositories/personnel-pages/records";
-import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
-import { RhPagination } from "../_components/RhPagination";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import {
-  ErpTableContainer,
-  ErpTableThead,
-  ErpTableTh,
-  ErpTableTr,
-  ErpTableTd,
-  ErpStatusBadge,
-} from "@/components/app-ui/erp/ErpTable";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { rhColumn } from "../_components/operational-columns";
+import { RhNewLink } from "../_components/RhNewLink";
 
-export default async function BeneficiosPage(
-  props: { searchParams?: Promise<{ q?: string; page?: string }> }
-) {
+const columns = [rhColumn("name", "Nome", 230, 140), rhColumn("type", "Tipo", 130, 90), rhColumn("supplier", "Fornecedor", 240, 140), rhColumn("amount", "Valor base", 140, 115, "text", "right"), rhColumn("status", "Status", 90, 76, "status"), rhColumn("actions", "Ações", 90, 80, "actions", "right")];
+
+export default async function BeneficiosPage(props: { searchParams?: Promise<{ q?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const searchParams = await props.searchParams;
   const q = searchParams?.q || "";
-
   const { total, pagination, benefits } = await readBenefitsPage(context.database ?? db, { q, page: searchParams?.page });
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">
-      <ErpPageTitle
-        title="Benefícios"
-        icon={<Gift className="size-4 text-violet-600" />}
-        action={
-          <Link
-            href="/rh/beneficios/novo"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-500 px-3 text-xs font-bold text-slate-950 shadow-xs transition-colors hover:bg-amber-600"
-          >
-            <Plus className="size-3.5" />
-            Novo Benefício
-          </Link>
-        }
-      />
-
-      <ErpListFrame
-        pagination={<RhPagination {...pagination} total={total} pathname="/rh/beneficios" filters={{ q }} />}
-        toolbar={
-          <form action="/rh/beneficios" method="GET" className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 basis-full sm:basis-auto">
-              <span className="sr-only">Buscar benefício</span>
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                name="q"
-                defaultValue={q}
-                placeholder="Buscar por nome do benefício"
-                className="h-8 w-full rounded-md border border-slate-200 bg-white py-1 pl-8 pr-2.5 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </label>
-            <button type="submit" className="h-8 rounded-md bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800">
-              Filtrar
-            </button>
-            <Link href="/rh/beneficios" className="inline-flex h-8 items-center px-2.5 rounded-md border border-slate-200 text-xs text-slate-600 hover:bg-slate-50">
-              Limpar
-            </Link>
-          </form>
-        }
-      >
-        <ErpTableContainer>
-          <ErpTableThead>
-            <tr>
-              <ErpTableTh className="w-[28%]">Nome</ErpTableTh>
-              <ErpTableTh className="w-[16%]">Tipo</ErpTableTh>
-              <ErpTableTh className="w-[28%]">Fornecedor</ErpTableTh>
-              <ErpTableTh className="w-[14%]">Valor Base</ErpTableTh>
-              <ErpTableTh className="w-[8%]">Status</ErpTableTh>
-              <ErpTableTh className="w-[6%] text-right">Ações</ErpTableTh>
-            </tr>
-          </ErpTableThead>
-          <tbody>
-            {benefits.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-xs text-slate-400">
-                  Nenhum benefício master cadastrado.
-                </td>
-              </tr>
-            ) : (
-              benefits.map((ben) => (
-                <ErpTableTr key={ben.id}>
-                  <ErpTableTd className="font-semibold">{ben.name}</ErpTableTd>
-                  <ErpTableTd>{ben.type}</ErpTableTd>
-                  <ErpTableTd>
-                    {ben.supplier?.company?.corporateName || ben.supplier?.person?.fullName || "—"}
-                  </ErpTableTd>
-                  <ErpTableTd className="font-mono">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(ben.baseValue)}
-                  </ErpTableTd>
-                  <ErpTableTd>
-                    <ErpStatusBadge variant={ben.isActive ? "success" : "neutral"}>
-                      {ben.isActive ? "Ativo" : "Inativo"}
-                    </ErpStatusBadge>
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right">
-                    <BeneficioRowActions beneficio={ben} />
-                  </ErpTableTd>
-                </ErpTableTr>
-              ))
-            )}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
-    </div>
-  );
+  return <OperationalListFrame label="Benefícios" actions={<RhNewLink href="/rh/beneficios/novo">Novo benefício</RhNewLink>}
+    toolbar={<form action="/rh/beneficios" method="GET" className={styles.searchForm}><input name="q" aria-label="Buscar benefício" defaultValue={q} placeholder="Nome do benefício" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button><Link href="/rh/beneficios" className={styles.filterButton}>Limpar</Link></form>}
+    pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/beneficios" values={{ q }} />}>
+    <OperationalTable preferenceId="rh-beneficios" columns={columns} caption="Benefícios" emptyMessage="Nenhum benefício master cadastrado." rows={benefits.map(ben => ({ id: ben.id, label: ben.name, values: { name: ben.name, type: ben.type, supplier: ben.supplier?.company?.corporateName || ben.supplier?.person?.fullName || "—", amount: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(ben.baseValue), status: ben.isActive ? "Ativo" : "Inativo" }, actions: <BeneficioRowActions beneficio={ben} /> }))} />
+  </OperationalListFrame>;
 }

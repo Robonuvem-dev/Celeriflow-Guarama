@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { HardHat } from "lucide-react";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { operationalColumns } from "../../patrimonio/_components/operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
 import { db } from "@/db/client";
@@ -15,12 +15,19 @@ export default async function ConstructionCasesPage({ searchParams }: { searchPa
   const context = await getTenantContextForModule("OBRAS");
   const access = await resolveConstructionAccess(context);
   const { total, page, cases } = await loadPageCaseList(context.database ?? db, access, { category, q, page: params.page });
-  const href = (target: number) => `?${new URLSearchParams({ q, category, page: String(target) })}`;
-  return <PageFrame className="space-y-3 p-3"><PageHeader title="Construção Civil — Solicitações" icon={<HardHat className="size-4" />} action={<Link href="/obras/construcao-civil/novo" className="rounded bg-blue-600 px-3 py-2 text-xs text-white">Nova solicitação interna</Link>} />
-    <div className="flex flex-wrap gap-3 text-xs"><Link href="/obras/construcao-civil/configuracoes" className="text-blue-700 underline">Configurações urbanísticas</Link><Link href="/obras/construcao-civil/taxas" className="text-blue-700 underline">Taxas, guias e débitos</Link>{access.administrator && <Link href="/obras/construcao-civil/equipe" className="text-blue-700 underline">Equipe e papéis</Link>}</div>
-    <section className="rounded-lg border"><form className="flex flex-wrap gap-2 border-b p-2"><input name="q" defaultValue={q} aria-label="Buscar protocolo ou requerente" type="search" className="h-8 min-w-0 flex-1 rounded border bg-transparent px-2 text-sm" placeholder="Buscar protocolo ou requerente..." /><select name="category" defaultValue={category} aria-label="Categoria" className="h-8 rounded border bg-transparent px-2 text-xs"><option value="">Todas as categorias</option><option value="BUILDING">Obra</option><option value="SUBDIVISION">Parcelamento do solo</option></select><button className="rounded bg-blue-600 px-3 text-xs text-white">Filtrar</button></form>
-      <table className="w-full table-fixed text-left text-xs"><thead className="bg-slate-100 text-[10px] uppercase text-slate-500 dark:bg-slate-800"><tr><th className="p-2">Protocolo / requerente</th><th className="hidden p-2 sm:table-cell">Setor</th><th className="w-24 p-2">Categoria</th><th className="hidden w-24 p-2 md:table-cell">Área (m²)</th><th className="w-28 p-2">Situação</th><th className="w-16 p-2 text-right">Ação</th></tr></thead><tbody>{cases.map((item) => <tr key={item.id} className="h-9 border-t"><td className="truncate p-2" title={`${item.process.protocolNumber} — ${item.process.person?.fullName || item.process.company?.corporateName || ""}`}><span className="font-medium">{item.process.protocolNumber}</span><p className="truncate text-[10px] text-slate-500">{item.process.person?.fullName || item.process.company?.corporateName}</p></td><td className="hidden truncate p-2 sm:table-cell">{item.process.currentDepartment?.name || "—"}</td><td className="p-2 text-[10px]">{item.category === "BUILDING" ? "Obra" : "Parcelamento"}<br />{item.locationType === "URBAN" ? "Urbana" : "Rural"}{item.regularization ? " • Regularização" : ""}</td><td className="hidden truncate p-2 md:table-cell" title={item.totalArea.toString()}>{item.totalArea.toString()}</td><td className="p-2 text-[10px]">{item.process.status}</td><td className="p-2 text-right"><Link className="text-blue-700 underline" href={`/obras/construcao-civil/${item.id}`}>Detalhes</Link></td></tr>)}</tbody></table>
-      {!cases.length && <p className="p-6 text-center text-xs text-slate-500">Nenhuma solicitação disponível no seu setor. Confirme seu vínculo urbanístico vigente.</p>}<div className="border-t p-2"><ErpPagination page={page} total={total} pageSize={20} previousHref={href(page - 1)} nextHref={href(page + 1)} label="solicitações" /></div>
-    </section>
-  </PageFrame>;
+  return <OperationalListFrame actions={<>
+    <Link href="/obras/construcao-civil/configuracoes" className={styles.dialogButton}>Configurações</Link><Link href="/obras/construcao-civil/taxas" className={styles.dialogButton}>Taxas, guias e débitos</Link>
+    {access.administrator && <Link href="/obras/construcao-civil/equipe" className={styles.dialogButton}>Equipe e papéis</Link>}
+    <Link href="/obras/construcao-civil/novo" className={styles.newButton}>Nova solicitação interna</Link>
+  </>} toolbar={<form className={styles.searchForm} role="search"><input name="q" defaultValue={q} aria-label="Buscar protocolo ou requerente" type="search" className={styles.searchInput} placeholder="Buscar protocolo ou requerente..." /><select name="category" defaultValue={category} aria-label="Categoria" className="h-7 rounded border px-2"><option value="">Todas as categorias</option><option value="BUILDING">Obra</option><option value="SUBDIVISION">Parcelamento do solo</option></select><button className={styles.dialogButton}>Filtrar</button></form>}
+    pagination={<OperationalLinkPagination page={page} total={total} pathname="/obras/construcao-civil" values={{ q, category }} />}>
+    <OperationalTable preferenceId="obras-construcao-solicitacoes" caption="Solicitações urbanísticas" emptyMessage="Nenhuma solicitação disponível no seu setor. Confirme seu vínculo urbanístico vigente." columns={operationalColumns([
+      ["protocol", "Protocolo", 150, 85, "identifier"], ["applicant", "Requerente", 220, 100], ["department", "Setor", 170, 80],
+      ["category", "Categoria", 140, 80], ["location", "Localização", 110, 70], ["regularization", "Regularização", 120, 80],
+      ["area", "Área (m²)", 100, 70, "text", "right"], ["status", "Situação", 160, 85, "status"], ["actions", "Ação", 80, 75, "actions"],
+    ])} rows={cases.map(item => ({ id: item.id, label: item.process.protocolNumber, values: {
+      protocol: item.process.protocolNumber, applicant: item.process.person?.fullName || item.process.company?.corporateName || "—", department: item.process.currentDepartment?.name || "—",
+      category: item.category === "BUILDING" ? "Obra" : "Parcelamento", location: item.locationType === "URBAN" ? "Urbana" : "Rural", regularization: item.regularization ? "Sim" : "Não", area: item.totalArea.toString(), status: item.process.status,
+    }, actions: <Link className="text-blue-700 underline" href={`/obras/construcao-civil/${item.id}`}>Detalhes</Link> }))} />
+  </OperationalListFrame>;
 }

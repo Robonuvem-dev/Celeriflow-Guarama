@@ -4,6 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { BookOpenCheck, LockKeyhole, Send, TriangleAlert } from "lucide-react";
 import { authorizeMonthClose, authorizeMonthReopen, finalizeAnnualClose, postManualAccountingTransaction, prepareAnnualClose, requestMonthClose, requestMonthReopen, savePostingRule } from "./actions";
+import FinanceOperationalList from "../FinanceOperationalList";
+import { financeColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 type Props = { units: { id: string; name: string; governmentEntityId: string; governmentEntityName: string; governmentEntityType: string }[]; years: { id: string; year: number; status: string; governmentEntityId: string | null; governmentEntityName: string }[]; accounts: { id: string; code: string; name: string }[]; transactions: { id: string; date: string; history: string; status: string; entries: { id: string; type: string; value: string; account: string }[] }[]; trialBalance: { account: string; debit: string; credit: string; balance: string }[]; monthlyCloses: { id: string; year: number; competence: string; status: string; closedAt?: string; events: { id: string; action: string; justification?: string | null; requestedBy: string; authorizedBy?: string; requestedAt: string; authorizedAt?: string }[] }[]; annualCloses: { id: string; year: number; status: string; closedBy?: string; closedAt?: string }[] };
 const currency = (value: string | number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value));
@@ -17,6 +20,7 @@ export default function ContabilidadeClient({ units, years, accounts, transactio
   const [competence, setCompetence] = useState(new Date().toISOString().slice(0, 7) + "-01");
   const [reopenJustification, setReopenJustification] = useState("");
   const [rule, setRule] = useState({ eventCode: "", eventName: "", debitAccountId: accounts[0]?.id ?? "", creditAccountId: accounts[1]?.id ?? accounts[0]?.id ?? "" });
+  const [showBalance, setShowBalance] = useState(true);
 
   async function submitPosting(event: React.FormEvent) {
     event.preventDefault();
@@ -54,7 +58,12 @@ export default function ContabilidadeClient({ units, years, accounts, transactio
     setNotice(result.error ?? "Exercicio encerrado definitivamente.");
   }
 
+  if (showBalance) return <FinanceOperationalList label="Balancete interno" preferenceId="financeiro-balancete" actions={<button className={styles.dialogButton} onClick={() => setShowBalance(false)}>Postagens e fechamento</button>}
+    columns={[financeColumn("account", "Conta", 220, 400), financeColumn("debit", "Débitos", 130, 180, "text", "right"), financeColumn("credit", "Créditos", 130, 180, "text", "right"), financeColumn("balance", "Saldo", 130, 180, "text", "right")]}
+    rows={trialBalance.map(row => ({ id: row.account, label: row.account, values: { account: row.account, debit: currency(row.debit), credit: currency(row.credit), balance: currency(row.balance) } }))} />;
+
   return <div className="h-full min-h-0 overflow-y-auto px-1 py-1 sm:px-2 [&>*+*]:mt-2">
+    <button className={styles.dialogButton} onClick={() => setShowBalance(true)}>Consultar balancete (rascunhos preservados)</button>
     <header className="flex gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm"><BookOpenCheck className="mt-0.5 size-4 text-emerald-700" /><div><h1 className="text-sm font-bold tracking-tight text-slate-900">Contabilidade e Fechamento</h1><p className="text-xs text-slate-500">Postagem interna balanceada. Nenhum demonstrativo oficial e gerado nesta tela.</p></div></header>
     {notice && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex gap-2"><TriangleAlert className="w-4 h-4 mt-0.5" />{notice}</div>}
     <Link href="/financeiro/contabilidade/lancamentos" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Consulta unificada: eventos, origens, usuários e dimensões por linha</Link>
@@ -79,7 +88,6 @@ export default function ContabilidadeClient({ units, years, accounts, transactio
     </div>
     <section className="bg-white border border-slate-200 rounded-xl overflow-hidden"><div className="p-4 border-b font-bold text-slate-800">Historico de fechamentos mensais</div><div className="divide-y">{monthlyCloses.map((close) => <div key={close.id} className="p-4 space-y-2"><div className="flex justify-between gap-3"><span className="font-semibold">{new Date(close.competence).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })}</span><span className="text-xs text-slate-500">{close.status}</span></div>{close.events.map((event) => <div key={event.id} className="text-sm text-slate-600"><span className="font-medium">{event.action}</span> solicitado por {event.requestedBy} em {new Date(event.requestedAt).toLocaleString("pt-BR")}{event.authorizedBy && <>; autorizado por {event.authorizedBy}{event.authorizedAt && ` em ${new Date(event.authorizedAt).toLocaleString("pt-BR")}`}</>}{event.justification && <p className="text-slate-500">Justificativa: {event.justification}</p>}</div>)}</div>)}{!monthlyCloses.length && <p className="p-6 text-sm text-slate-500">Nenhum fechamento mensal registrado.</p>}</div></section>
     <section className="bg-white border border-slate-200 rounded-xl overflow-hidden"><div className="p-4 border-b font-bold text-slate-800">Encerramentos anuais</div><div className="divide-y">{annualCloses.map((close) => <div key={close.id} className="p-4 text-sm flex justify-between gap-3"><span>{close.year} - {close.status}</span><span className="text-slate-500">{close.closedBy ? `${close.closedBy}${close.closedAt ? ` em ${new Date(close.closedAt).toLocaleString("pt-BR")}` : ""}` : "Sem fechamento final"}</span></div>)}{!annualCloses.length && <p className="p-6 text-sm text-slate-500">Nenhum encerramento anual preparado.</p>}</div></section>
-    <section className="bg-white border border-slate-200 rounded-xl overflow-hidden"><div className="p-4 border-b font-bold text-slate-800">Balancete interno</div><div className="overflow-y-auto"><table className="w-full table-fixed text-xs"><thead className="bg-slate-50 text-left"><tr><th className="p-3">Conta</th><th className="p-3 text-right">Debitos</th><th className="p-3 text-right">Creditos</th><th className="p-3 text-right">Saldo</th></tr></thead><tbody>{trialBalance.map((row) => <tr key={row.account} className="border-t"><td className="p-3">{row.account}</td><td className="p-3 text-right">{currency(row.debit)}</td><td className="p-3 text-right">{currency(row.credit)}</td><td className="p-3 text-right">{currency(row.balance)}</td></tr>)}{!trialBalance.length && <tr><td colSpan={4} className="p-6 text-center text-slate-500">Sem postagens no exercicio selecionado.</td></tr>}</tbody></table></div></section>
     <section className="bg-white border border-slate-200 rounded-xl overflow-hidden"><div className="p-4 border-b font-bold text-slate-800">Diario interno recente</div><div className="divide-y">{transactions.map((transaction) => <div key={transaction.id} className="p-4"><div className="flex justify-between gap-3"><span className="font-semibold">{transaction.history}</span><span className="text-xs text-slate-500">{new Date(transaction.date).toLocaleDateString("pt-BR")} · {transaction.status}</span></div><p className="text-sm text-slate-500 mt-1">{transaction.entries.map((entry) => `${entry.type}: ${entry.account} (${currency(entry.value)})`).join(" | ")}</p></div>)}{!transactions.length && <p className="p-6 text-sm text-slate-500">Nenhum lancamento contabil interno.</p>}</div></section>
   </div>;
 }

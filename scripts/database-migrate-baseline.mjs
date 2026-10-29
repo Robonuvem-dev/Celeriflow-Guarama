@@ -9,7 +9,9 @@ export function unresolvedBaselineTuple(migration) {
     installedChecksum: migration.provenance.installedChecksum,
     recordedLocalChecksum: migration.provenance.localChecksum,
     lfChecksum: migration.lfChecksum,
-    localByteVariants: [...migration.byteVariants].sort(),
+    // Authorization pins the recorded source and uniform variants, not the
+    // incidental raw bytes of a mixed-ending checkout used for execution.
+    localByteVariants: [...new Set([migration.provenance.localChecksum, migration.lfChecksum, migration.crlfChecksum])].sort(),
     classification: migration.classification,
   };
 }

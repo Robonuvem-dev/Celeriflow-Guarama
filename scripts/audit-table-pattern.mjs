@@ -1,11 +1,31 @@
 // Read-only static inventory. This script does not change application files or
 // query a database. Signals are evidence for review, not proof of conformance.
-import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve, relative, dirname, join } from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
 const root = process.cwd();
 const normalize = (file) => relative(root, file).replaceAll("\\", "/");
+// Read Git objects in one batch, without checkout, temporary files or DB access.
+export function readSources(ref) {
+  if (ref) {
+    const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", ref, "--", "src"], { encoding: "utf8" }).trim().split("\n").filter(file => /\.[jt]sx?$/.test(file) && !/\.(?:test|spec)\.[jt]sx?$/.test(file) && !file.includes("/__tests__/"));
+    const result = spawnSync("git", ["cat-file", "--batch"], { input: paths.map(file => `${ref}:${file}\n`).join(""), maxBuffer: 128 * 1024 * 1024 });
+    if (result.status !== 0) throw new Error(result.stderr?.toString() || "git cat-file failed");
+    const sources = new Map();
+    let offset = 0;
+    for (const file of paths) {
+      const end = result.stdout.indexOf(10, offset);
+      const header = result.stdout.subarray(offset, end).toString();
+      const size = Number(header.split(" ")[2]);
+      if (!Number.isFinite(size)) throw new Error(`Missing Git source: ${ref}:${file}`);
+      sources.set(file, result.stdout.subarray(end + 1, end + 1 + size).toString("utf8"));
+      offset = end + size + 2;
+    }
+    return sources;
+  }
 const files = [];
 function walk(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -17,13 +37,38 @@ function walk(directory) {
 }
 walk(join(root, "src"));
 files.sort();
+return new Map(files.map(file => [normalize(file), readFileSync(file, "utf8")]));
+}
+
+export const operationalPrimitives = new Set([
+  "src/components/app-ui/operational/OperationalTable.tsx",
+  "src/app/app-domain/compras/_components/ComprasOperationalList.tsx",
+  "src/app/app-domain/compras/_components/ComprasPanelTable.tsx",
+  "src/app/app-domain/financeiro/FinanceOperationalList.tsx",
+  "src/app/app-domain/financeiro/FinanceTablePanel.tsx",
+  "src/app/app-domain/portal-servidor/PortalOperationalList.tsx",
+  "src/app/app-domain/rh/_components/RhTablePanel.tsx",
+  "src/app/app-domain/rh/_components/RhRemoteTablePanel.tsx",
+  "src/app/app-domain/saude/HealthReadTable.tsx",
+  "src/app/app-domain/social/OperationalList.tsx",
+  "src/app/app-domain/sst/_components/SstTablePanel.tsx",
+  "src/app/app-domain/sst/_components/SstRemoteTablePanel.tsx",
+  "src/app/app-domain/tributacao/TaxOperationalTable.tsx",
+  "src/app/portal/PublicOperationalList.tsx",
+  "src/components/app-ui/planejamento/PlanningList.tsx",
+  "src/components/app-ui/planejamento/PlanningLocalList.tsx",
+  "src/components/app-ui/planejamento/PlanningDraftTable.tsx",
+]);
+
+export function auditTables({ ref, sources = readSources(ref) } = {}) {
 const sourceFiles = new Map();
-for (const file of files) sourceFiles.set(normalize(file), ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, /x$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS));
+for (const [file, text] of sources) sourceFiles.set(file, ts.createSourceFile(join(root, file), text, ts.ScriptTarget.Latest, true, /x$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS));
 const sourceInfo = new Map();
 const primitives = new Set([
   "src/components/ui/table.tsx", "src/components/app-ui/erp/ErpTable.tsx",
   "src/app/app-domain/saneamento/components/SanitationTable.tsx",
   "src/app/app-domain/patrimonio/_components/ResizableTable.tsx",
+  ...operationalPrimitives,
 ]);
 const records = [];
 const gridCandidates = [];
@@ -42,7 +87,7 @@ function resolveImport(file, specifier) {
   const base = specifier.startsWith("@/") ? join(root, "src", specifier.slice(2)) : resolve(dirname(file), specifier);
   for (const suffix of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
     const candidate = base + suffix;
-    if (existsSync(candidate) && statSync(candidate).isFile()) return normalize(candidate);
+    if (sourceFiles.has(normalize(candidate))) return normalize(candidate);
   }
   return null;
 }
@@ -107,6 +152,7 @@ for (const [file, source] of sourceFiles) {
       if (name === "table") kind = "HTML";
       else if (binding?.original === "Table" && /\/ui\/table$/.test(binding.specifier)) kind = "Table UI";
       else if (["ErpTableContainer", "SanitationTable", "ResizableTable"].includes(binding?.original ?? name)) kind = binding?.original ?? name;
+      else if (binding?.destination && operationalPrimitives.has(binding.destination) && (binding.original === "default" || /^(?:OperationalTable|ComprasOperationalList|ComprasPanelTable|FinanceOperationalList|FinanceTablePanel|PortalOperationalList|RhTablePanel|RhRemoteTablePanel|HealthReadTable|SocialOperationalList|SstTablePanel|SstRemoteTablePanel|TaxOperationalTable|PublicOperationalList|PlanningList|PlanningLocalList|PlanningDraftTable)$/.test(binding.original))) kind = binding.original === "OperationalTable" ? "OperationalTable" : `Operational adapter:${binding.original === "default" ? binding.destination.split("/").at(-1).replace(/\.tsx$/, "") : binding.original}`;
       const role = literalAttribute(node, "role");
       if (["table", "grid", "treegrid"].includes(role)) roleGrids.push({ file, line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1, role });
       if (kind) {
@@ -115,7 +161,7 @@ for (const [file, source] of sourceFiles) {
         while (parent) { if (opening(parent)) ancestors.push(parent); parent = parent.parent; }
         const ancestorsText = [node, ...ancestors].map((item) => literalAttribute(item, "className")).join(" ");
         const printOnly = /(?:^|\s)hidden\s[^\n]*print:(?:block|table|flex)/.test(ancestorsText) || /\/api\//.test(file);
-        const primitive = name === "table" && primitives.has(file);
+        const primitive = primitives.has(file);
         const nestedTable = name === "table" && ancestors.some((item) => ["table", "ErpTableContainer", "SanitationTable", "ResizableTable"].includes(tag(item)));
         const children = descendants(node, (item) => Boolean(opening(item)));
         const cells = children.filter((item) => ["td", "TableCell", "ErpTableTd"].includes(tag(item)));
@@ -158,7 +204,7 @@ for (const [file, source] of sourceFiles) {
             const containers = [];
             let container = node.parent;
             while (container) { if (opening(container)) containers.push(container); container = container.parent; }
-            gridCandidates.push({ file, line: position.line + 1, column: position.character + 1, expression: parent.expression.getText(), className: literalAttribute(node, "className"), modal: containers.some((item) => /DialogContent|SheetContent/.test(tag(item))), snippet: node.getText(source).slice(0, 420) });
+            gridCandidates.push({ file, line: position.line + 1, column: position.character + 1, expression: parent.expression.getText(), className: literalAttribute(node, "className"), printOnly: containers.some(item => /(?:^|\s)hidden\s[^\n]*print:(?:block|table|flex)/.test(literalAttribute(item, "className"))), modal: containers.some((item) => /DialogContent|SheetContent/.test(tag(item))), snippet: node.getText(source).slice(0, 420) });
             break;
           }
           parent = parent.parent;
@@ -173,7 +219,7 @@ for (const [file, source] of sourceFiles) {
         const ancestors = [];
         let parent = node.parent;
         while (parent) { if (opening(parent)) ancestors.push(parent); parent = parent.parent; }
-        const insideTable = ancestors.some((item) => ["table", "Table", "ErpTableContainer", "SanitationTable", "ResizableTable", "tbody", "thead", "tr", "td"].includes(tag(item)));
+        const insideTable = ancestors.some((item) => ["table", "Table", "ErpTableContainer", "SanitationTable", "ResizableTable", "tbody", "thead", "tr", "td"].includes(tag(item)) || operationalPrimitives.has(imports.get(tag(item))?.destination));
         const body = callback.body;
         const unwrap = (value) => ts.isParenthesizedExpression(value) ? unwrap(value.expression) : value;
         const returns = ts.isBlock(body) ? descendants(body, (item) => ts.isReturnStatement(item) && item.expression).filter((item) => {
@@ -209,7 +255,7 @@ for (const grid of gridCandidates) {
     file.endsWith("/suporte-tecnico/page.tsx") ? "informational" : "editing-grid";
   if (grid.classification === "data-grid") {
     const info = sourceInfo.get(file);
-    records.push({ id: `${file}:${grid.line}:${grid.column}`, file, line: grid.line, column: grid.column, module: owner(file), kind: "CSS grid", scope: "operational", context: grid.modal ? "modal/seletor" : "grade alternativa", headers: [], pageSizes: info.pageSizes, paginationSignal: info.paginationSignal, signals: { resize: false, hiddenColumns: false, stackedCells: /<br\s*\/>|<small/.test(grid.snippet) ? 1 : 0, ancestorScroll: false, fixedLayout: false, truncation: /truncate/.test(grid.snippet), explicitCellDetail: false, smallFontLiterals: [] }, routes: [] });
+    records.push({ id: `${file}:${grid.line}:${grid.column}`, file, line: grid.line, column: grid.column, module: owner(file), kind: "CSS grid", scope: grid.printOnly ? "print-only" : "operational", context: grid.modal ? "modal/seletor" : "grade alternativa", headers: [], pageSizes: info.pageSizes, paginationSignal: info.paginationSignal, signals: { resize: false, hiddenColumns: false, stackedCells: /<br\s*\/>|<small/.test(grid.snippet) ? 1 : 0, ancestorScroll: false, fixedLayout: false, truncation: /truncate/.test(grid.snippet), explicitCellDetail: false, smallFontLiterals: [] }, routes: [] });
   }
 }
 records.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column);
@@ -282,8 +328,19 @@ const summary = {
   explicitNon20Points: operational.filter((record) => record.pageSizes.some((size) => /^\d+$/.test(size.value) && size.value !== "20")).map((record) => ({ id: record.id, sizes: record.pageSizes })),
   roleGrids, cssGridCandidates: gridCandidates.length, alternativeCandidates: alternativeCandidates.length, modules,
 };
+return { summary, records, routes: routeRecords, gridCandidates, alternativeCandidates, stringTables };
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+// Historical index locations refer to the immutable snapshot, not the migration.
+const document = readFileSync(join(root, "docs/INVENTARIO_TABELAS_CELERIFLOW.md"), "utf8");
+const baselineRef = /\*\*Snapshot:\*\* `([^`]+)`/.exec(document)?.[1];
+const baselineArg = process.argv.indexOf("--baseline");
+const ref = baselineArg >= 0 ? (process.argv[baselineArg + 1] || baselineRef) : process.argv.includes("--verify-index") ? baselineRef : undefined;
+const { summary, records, routes: routeRecords, gridCandidates, alternativeCandidates, stringTables } = auditTables({ ref });
+const tabular = records.filter(record => ["operational", "special-format"].includes(record.scope));
+const modules = summary.modules;
 if (process.argv.includes("--verify-index")) {
-  const document = readFileSync(join(root, "docs/INVENTARIO_TABELAS_CELERIFLOW.md"), "utf8");
   let base = "";
   const indexed = [];
   for (const line of document.split(/\r?\n/)) {
@@ -300,7 +357,7 @@ if (process.argv.includes("--verify-index")) {
   const extra = [...actual].filter((id) => !expected.has(id));
   const duplicates = indexed.filter((id, index) => indexed.indexOf(id) !== index);
   const passed = !missing.length && !extra.length && !duplicates.length && actual.size === tabular.length;
-  console.log(JSON.stringify({ passed, expected: tabular.length, indexed: actual.size, missing, extra, duplicates }, null, 2));
+  console.log(JSON.stringify({ passed, ref, expected: tabular.length, indexed: actual.size, missing, extra, duplicates }, null, 2));
   if (!passed) process.exitCode = 1;
 }
 else if (process.argv.includes("--inventory")) console.log(JSON.stringify({ summary, records, routes: routeRecords, gridCandidates, alternativeCandidates, stringTables }, null, 2));
@@ -326,3 +383,4 @@ else if (process.argv.includes("--csv")) {
   for (const record of records) rows.push([record.id, record.module, record.file, record.line, record.kind, record.scope, record.context, record.headers.join(" / "), record.pageSizes.map((item) => `${item.name}=${item.value}`).join(" / "), record.paginationSignal, record.signals.resize, record.signals.hiddenColumns, record.signals.stackedCells, record.signals.ancestorScroll, record.routes.join(" | ")]);
   console.log(rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n"));
 } else console.log(JSON.stringify(summary, null, 2));
+}

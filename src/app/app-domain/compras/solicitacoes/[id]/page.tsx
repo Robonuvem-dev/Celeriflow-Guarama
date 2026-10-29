@@ -11,6 +11,8 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { canManagePurchaseRequest } from "@/lib/compras/purchase-request-policy";
 import { db } from "@/db/client";
 import { loadPurchaseRequestDetail } from "@/db/repositories/procurement/purchase-requests";
+import { ComprasPanelTable } from "../../_components/ComprasPanelTable";
+import { comprasColumn as column } from "../../_components/columns";
 
 export default async function SolicitacaoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
@@ -79,58 +81,22 @@ export default async function SolicitacaoDetalhesPage({ params }: { params: Prom
           <CardTitle className="text-sm">Itens ({solicitacao.items.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-3">
-          <div className="overflow-x-auto rounded-md border">
-            <table className="min-w-[980px] text-sm divide-y">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-2 text-left">Item / Serviço</th>
-                  <th className="px-4 py-2 text-left">Quant.</th>
-                  <th className="px-4 py-2 text-left">Valor Unit.</th>
-                  <th className="px-4 py-2 text-left">Subtotal</th>
-                  <th className="px-4 py-2 text-left">Alocação orçamentária</th>
-                  <th className="px-4 py-2 text-left">Processo de origem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {solicitacao.items.map((item) => {
-                  const name = item.catalogItem ? item.catalogItem.name : item.customName;
-                  const unitVal = item.estimatedUnitValue ?? 0;
-                  const subtotal = item.quantity * unitVal;
-                  return (
-                    <tr key={item.id}>
-                      <td className="px-4 py-2">{name}</td>
-                      <td className="px-4 py-2">{item.quantity}</td>
-                      <td className="px-4 py-2">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(unitVal)}</td>
-                      <td className="px-4 py-2">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotal)}</td>
-                      <td className="px-4 py-2 align-top">
-                        {item.budgetAllocations.length ? <ul className="space-y-1 text-xs">
-                          {item.budgetAllocations.map((allocation) => {
-                            const appropriation = allocation.budgetAppropriation;
-                            return <li key={allocation.id}>
-                              <span className="font-medium">{appropriation.code}</span> · {appropriation.expenseNature.code} · {appropriation.resourceSource.code}<br />
-                              {appropriation.budgetUnit.name} · exercício {appropriation.financialYear.year}<br />
-                              {allocation.quantity} un. · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(allocation.valueDecimal.toNumber())}
-                            </li>;
-                          })}
-                        </ul> : <span className="text-muted-foreground">Sem alocação</span>}
-                      </td>
-                      <td className="px-4 py-2 align-top">
-                        {item.processItemOrigins.length ? <ul className="space-y-1 text-xs">
-                          {item.processItemOrigins.map((origin) => (
-                            <li key={origin.id}>
-                              <Link className="font-medium text-primary underline-offset-2 hover:underline" href={`/compras/processos/${origin.purchaseProcessItem.purchaseProcess.id}`}>
-                                {origin.purchaseProcessItem.purchaseProcess.number}
-                              </Link> · {origin.quantity} un. · {origin.purchaseProcessItem.purchaseProcess.status}
-                            </li>
-                          ))}
-                        </ul> : <span className="text-muted-foreground">Ainda não agrupado</span>}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ComprasPanelTable title={`Itens da solicitação ${solicitacao.number}`} preferenceId="compras-solicitacao-itens"
+            columns={[column("name", "Item / serviço", 150, 300, "identifier"), column("quantity", "Quantidade", 80, 100, "text", "right"), column("unitValue", "Valor unitário", 100, 130, "text", "right"), column("subtotal", "Subtotal", 100, 130, "text", "right"), column("allocations", "Alocações orçamentárias", 130, 220), column("origins", "Processos de origem", 130, 220)]}
+            rows={solicitacao.items.map((item) => {
+              const name = item.catalogItem?.name ?? item.customName ?? "Item";
+              const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+              const allocations = item.budgetAllocations.map((allocation) => {
+                const appropriation = allocation.budgetAppropriation;
+                return { id: allocation.id, label: appropriation.code, values: { code: appropriation.code, nature: appropriation.expenseNature.code, source: appropriation.resourceSource.code, unit: appropriation.budgetUnit.name, year: String(appropriation.financialYear.year), quantity: String(allocation.quantity), value: money(allocation.valueDecimal.toNumber()) } };
+              });
+              const origins = item.processItemOrigins.map((origin) => ({ id: origin.id, label: origin.purchaseProcessItem.purchaseProcess.number, values: { process: origin.purchaseProcessItem.purchaseProcess.number, quantity: String(origin.quantity), status: origin.purchaseProcessItem.purchaseProcess.status }, actions: <Link href={`/compras/processos/${origin.purchaseProcessItem.purchaseProcess.id}`}>Abrir processo</Link> }));
+              return { id: item.id, label: name, values: { name, quantity: String(item.quantity), unitValue: money(item.estimatedUnitValue ?? 0), subtotal: money(item.quantity * (item.estimatedUnitValue ?? 0)), allocations: allocations.map((row) => Object.values(row.values).join(" · ")).join("\n") || "Sem alocação", origins: origins.map((row) => Object.values(row.values).join(" · ")).join("\n") || "Ainda não agrupado" },
+                cells: {
+                  allocations: <ComprasPanelTable title={`Alocações de ${name}`} triggerLabel={`Ver alocações (${allocations.length})`} preferenceId="compras-solicitacao-alocacoes" columns={[column("code", "Dotação", 90, 140), column("nature", "Natureza", 90, 130), column("source", "Fonte", 75, 100), column("unit", "Unidade gestora", 140, 260), column("year", "Exercício", 70, 90), column("quantity", "Quantidade", 80, 100), column("value", "Valor", 100, 140)]} rows={allocations} />,
+                  origins: <ComprasPanelTable title={`Processos de ${name}`} triggerLabel={`Ver processos (${origins.length})`} preferenceId="compras-solicitacao-origens" columns={[column("process", "Processo", 130, 300), column("quantity", "Quantidade", 90, 120), column("status", "Situação", 120, 240, "status"), column("actions", "Ações", 120, 130, "actions")]} rows={origins} />,
+                } };
+            })} />
           <div className="mt-4 text-right">
             <p className="text-lg font-bold">Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(solicitacao.estimatedValue ?? 0)}</p>
           </div>

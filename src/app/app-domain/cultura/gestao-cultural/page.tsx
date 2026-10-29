@@ -1,8 +1,6 @@
-import { Palette } from "lucide-react";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { GestaoCulturalClient, type CulturalRecord } from "../components/GestaoCulturalClient";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
 import { db } from "@/db/client";
 import { getCulturalManagement } from "@/db/repositories/culture/queries";
 
@@ -83,11 +81,9 @@ export default async function GestaoCulturalPage() {
   const humanResourcesLinks = spaces.filter((space) => space.responsibleEmployeeId).length;
 
   return (
-    <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden p-2 sm:p-3">
-      <PageHeader title="Gestão Cultural" icon={<Palette className="size-4 shrink-0 text-pink-600" />} className="dark:border-slate-700 dark:bg-slate-800 dark:[&>h1]:text-white" />
-      <p className="shrink-0 text-xs text-slate-500">Consulta integrada · Cadastro Geral: {generalRegistryLinks} · Patrimônio: {patrimonyLinks} · RH: {humanResourcesLinks}</p>
-
+    <>
+      <OperationalHeaderActions><span className="text-[13px]">Cadastro: {generalRegistryLinks} · Patrimônio: {patrimonyLinks} · RH: {humanResourcesLinks}</span></OperationalHeaderActions>
       <GestaoCulturalClient records={records} />
-    </PageFrame>
+    </>
   );
 }

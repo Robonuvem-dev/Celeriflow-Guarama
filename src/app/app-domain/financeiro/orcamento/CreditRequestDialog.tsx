@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { actionCreateCreditRequest } from "./planejamento-actions";
 import { PlusCircle, ShieldAlert } from "lucide-react";
+import FinanceTablePanel from "../FinanceTablePanel";
+import { financeColumn } from "../operational-columns";
+import { creditItemsError, draftField } from "../draft-rows";
 
 type AppropriationOption = {
   id: string;
@@ -64,6 +67,8 @@ export function CreditRequestDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const error = creditItemsError(items);
+    if (error) { alert(error); return; }
     setPending(true);
 
     const result = await actionCreateCreditRequest({
@@ -76,7 +81,7 @@ export function CreditRequestDialog({
       legalDocumentId,
       fundingSourceId,
       justification,
-      items: items.filter((item) => item.appropriationId && item.value > 0),
+      items,
     });
 
     setPending(false);
@@ -165,60 +170,13 @@ export function CreditRequestDialog({
               </Button>
             </div>
 
-            {items.map((item, idx) => (
-              <div key={idx} className="grid items-center gap-2 rounded-md border bg-muted/30 p-3 sm:grid-cols-12">
-                <div className="sm:col-span-5">
-                  <Select
-                    value={item.appropriationId}
-                    onValueChange={(value) => updateItem(idx, "appropriationId", value ?? "")}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a Dotação" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {appropriations.map((app) => (
-                        <SelectItem key={app.id} value={app.id}>
-                          {app.code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="sm:col-span-3">
-                  <Select
-                    value={item.type}
-                    onValueChange={(value) => updateItem(idx, "type", value as CreditItem["type"])}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Acréscimo">Acréscimo (+)</SelectItem>
-                      <SelectItem value="Anulação">Anulação (-)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="sm:col-span-3">
-                  <MoneyInput
-                    value={item.value}
-                    onChange={(val) => updateItem(idx, "value", val)}
-                  />
-                </div>
-                <div className="text-right sm:col-span-1">
-                  {items.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => removeItem(idx)}
-                    >
-                      ×
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+            <FinanceTablePanel label="Itens da alteração orçamentária" preferenceId="financeiro-credito-itens-rascunho" searchable={false}
+              columns={[financeColumn("appropriation", "Dotação", 150, 450), financeColumn("type", "Tipo", 120, 250), financeColumn("value", "Valor", 100, 200), financeColumn("actions", "Ações", 80, 80, "actions")]}
+              rows={items.map((item, index) => ({ id: String(index), label: `Item ${index + 1}`, values: { appropriation: appropriations.find(row => row.id === item.appropriationId)?.code ?? item.appropriationId, type: item.type, value: String(item.value) }, cells: {
+                appropriation: <select aria-label={`Dotação ${index + 1}`} className={draftField} disabled={pending} value={item.appropriationId} onChange={event => updateItem(index, "appropriationId", event.target.value)}><option value="">Selecione a Dotação</option>{appropriations.map(row => <option key={row.id} value={row.id}>{row.code}</option>)}</select>,
+                type: <select aria-label={`Tipo ${index + 1}`} className={draftField} disabled={pending} value={item.type} onChange={event => updateItem(index, "type", event.target.value as CreditItem["type"])}><option value="Acréscimo">Acréscimo (+)</option><option value="Anulação">Anulação (-)</option></select>,
+                value: <MoneyInput aria-label={`Valor ${index + 1}`} className={draftField} disabled={pending} value={item.value} onChange={value => updateItem(index, "value", value)} />,
+              }, actions: <button type="button" disabled={pending || items.length === 1} onClick={() => removeItem(index)}>Remover</button> }))} />
           </div>
 
           <div className="pt-4 flex justify-end gap-2">

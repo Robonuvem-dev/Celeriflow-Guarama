@@ -1,8 +1,10 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
+import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import {
   Calculator,
-  ClipboardCheck,
   FileText,
   ListChecks,
   Search,
@@ -198,19 +200,12 @@ export default function FiscalizacaoClient({ data }: { data: Data }) {
       ),
     [data.taxpayers, filter],
   );
+  const listView = ["malhas", "documentos", "produtividade"].includes(tab);
+  const navigation = <select aria-label="Área da fiscalização" value={tab} onChange={event => setTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{[["planejamento", "Planejamento"], ["malhas", "Malhas"], ["ordens", "Ordens e ação fiscal"], ["documentos", "Documentos e autos"], ["produtividade", "Produtividade"], ["parametros", "Modelos e regras"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
+  const toolbar = <>{navigation}{message && <OperationalFilters label="Resultado"><p role="status">{message}</p></OperationalFilters>}</>;
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="flex items-center gap-2 text-lg font-bold">
-            <ClipboardCheck className="size-5 text-amber-500" />
-            Fiscalização Tributária
-          </h1>
-          <p className="text-[11px] text-slate-500">
-            Planejamento, malhas, OS, ação fiscal, documentos, autos e
-            produtividade.
-          </p>
-        </div>
+      <OperationalHeaderActions>
         <div className="flex gap-1">
           <input
             className={`${input} w-28`}
@@ -229,26 +224,9 @@ export default function FiscalizacaoClient({ data }: { data: Data }) {
             ))}
           </select>
         </div>
-      </header>
-      <nav className="flex gap-1 overflow-x-auto rounded-lg bg-slate-900 p-1 text-[11px] font-semibold text-slate-300">
-        {[
-          ["planejamento", "Planejamento"],
-          ["malhas", "Malhas"],
-          ["ordens", "Ordens e ação fiscal"],
-          ["documentos", "Documentos e autos"],
-          ["produtividade", "Produtividade"],
-          ["parametros", "Modelos e regras"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`whitespace-nowrap rounded-md px-3 py-1.5 ${tab === id ? "bg-amber-500 text-slate-950" : "hover:bg-slate-800"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-      {message && (
+      </OperationalHeaderActions>
+      {!listView && navigation}
+      {message && !listView && (
         <button
           onClick={() => setMessage("")}
           className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-left text-xs text-blue-800"
@@ -256,7 +234,18 @@ export default function FiscalizacaoClient({ data }: { data: Data }) {
           {message}
         </button>
       )}
-      <main className="min-h-0 flex-1 overflow-auto">
+      {tab === "malhas" && <TaxOperationalTable id="fiscalizacao-malhas" toolbar={toolbar}
+        actions={<button className="h-7 rounded border px-2 text-xs" onClick={() => run(() => runMeshesAction(competence))}>Cruzar fontes</button>}
+        columns={[["taxpayer", "Contribuinte", 80, 220], ["competence", "Competência", 56, 115], ["status", "Situação", 56, 130, "status"], ["nfse", "NFS-e", 48, 120, "text", "right"], ["simples", "Simples", 48, 120, "text", "right"], ["cards", "Cartões", 48, 120, "text", "right"], ["desif", "DES-IF", 48, 120, "text", "right"], ["difference", "Diferença", 48, 120, "text", "right"], ["rate", "Alíquota", 40, 90, "text", "right"], ["potential", "Potencial", 48, 120, "text", "right"], ["causes", "Causas", 72, 180], ["order", "Ordem fiscal", 56, 90], ["actions", "Ações", 48, 60, "actions"]]}
+        rows={data.findings.map(row => ({ id: row.id, label: row.taxpayer, values: { taxpayer: row.taxpayer, competence: row.competence, status: row.status, nfse: money(row.nfse), simples: money(row.simples), cards: money(row.cards), desif: money(row.desif), difference: money(row.difference), rate: `${row.rate}%`, potential: money(row.potential), causes: row.causes.join("; ") || "Sem divergência", order: row.hasOrder ? "OS vinculada" : "Sem OS" }, actions: row.hasOrder ? null : <TaxRowActions label={row.taxpayer}><TaxRowAction disabled={!employeeId} onClick={() => run(() => createOrderFromMeshAction(row.id, employeeId))}>Abrir análise</TaxRowAction></TaxRowActions> }))} />}
+      {tab === "documentos" && <TaxOperationalTable id="fiscalizacao-documentos" toolbar={toolbar}
+        columns={[["order", "OS", 100, 130, "identifier"], ["subject", "Assunto", 150, 240], ["kind", "Tipo", 100, 130], ["number", "Documento", 120, 160, "identifier"], ["status", "Situação", 100, 130, "status"], ["date", "Emissão", 155, 180], ["actions", "Ações", 60, 60, "actions"]]}
+        rows={data.orders.flatMap(order => order.documents.map(doc => ({ id: doc.id, label: doc.number, values: { order: order.number, subject: order.subject, kind: doc.kind, number: doc.number, status: doc.status, date: new Date(doc.issuedAt).toLocaleString("pt-BR") }, actions: <TaxRowActions label={doc.number}><TaxRowAction href={`/tributacao/fiscalizacao/documentos/${doc.id}`} target="_blank">Visualizar</TaxRowAction><TaxRowAction onClick={() => run(() => communicateDocumentAction(doc.id))}>Enviar DTE</TaxRowAction>{doc.kind === "TIAF" && doc.status === "ABERTO" && <><TaxRowAction onClick={() => { const receivedBy = prompt("Pessoa que recebeu a correspondência"); if (receivedBy) run(() => acknowledgeTiafAction(doc.id, receivedBy)); }}>Registrar ciência</TaxRowAction><TaxRowAction onClick={() => { const reason = prompt("Motivo do cancelamento"); if (reason) run(() => cancelTiafAction(doc.id, reason)); }}>Cancelar</TaxRowAction></>}</TaxRowActions> })))} />}
+      {tab === "produtividade" && <TaxOperationalTable id="fiscalizacao-produtividade" toolbar={toolbar}
+        actions={<a href={`/tributacao/fiscalizacao/produtividade/relatorio?competence=${competence}`} target="_blank" rel="noreferrer" className="h-7 rounded border px-2 text-xs">Relatório</a>}
+        columns={[["employee", "Fiscal", 80, 210], ["competence", "Competência", 56, 115], ["ledger", "Conta-corrente", 80, 220], ["points", "Pontos", 40, 75, "text", "right"], ["point", "Valor/ponto", 48, 120, "text", "right"], ["gross", "Bruto", 48, 120, "text", "right"], ["cap", "Teto", 48, 120, "text", "right"], ["excess", "Excesso", 48, 120, "text", "right"], ["adjustment", "Ajuste", 48, 120, "text", "right"], ["final", "Resultado", 48, 120, "text", "right"], ["status", "Situação", 56, 130, "status"], ["actions", "Ações", 48, 60, "actions"]]}
+        rows={data.productivity.map(row => ({ id: row.id, label: row.employee, values: { employee: row.employee, competence: row.competence, ledger: row.ledger.map(item => `${item.type}: ${money(item.amount)} · ${item.description}`).join("\n"), points: String(row.points), point: money(row.pointValue), gross: money(row.gross), cap: money(row.cap), excess: money(row.excess), adjustment: money(row.adjustment), final: money(row.final), status: row.status }, actions: row.status === "APURADA" ? <TaxRowActions label={row.employee}><TaxRowAction onClick={() => run(() => confirmProductivityAction(row.id))}>Confirmar sem folha</TaxRowAction></TaxRowActions> : null }))} />}
+      <main className={listView ? "hidden print:block" : "min-h-0 flex-1 overflow-auto"}>
         {tab === "planejamento" && (
           <div className="grid gap-2 xl:grid-cols-[390px_1fr]">
             <form

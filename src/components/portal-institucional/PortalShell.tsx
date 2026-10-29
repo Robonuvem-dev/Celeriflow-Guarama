@@ -497,7 +497,7 @@ function MainMenu() {
         </div>
 
         {/* Desktop */}
-        <ul className="hidden flex-nowrap items-stretch xl:flex">
+        <ul className="hidden flex-wrap items-stretch xl:flex">
           {MAIN_MENU.map((item, index) => {
             const isOpen = openDropdown === item.label;
             const isActive = pathname === item.href || (item.href !== "/portal" && pathname.startsWith(item.href));
@@ -508,7 +508,7 @@ function MainMenu() {
                     <Link
                       href={item.href}
                       aria-current={isActive ? "page" : undefined}
-                      className={`flex items-center gap-1.5 whitespace-nowrap px-2 py-[13px] text-[13px] font-semibold transition ${isActive ? "bg-white/20 text-white" : "text-white/90 hover:bg-white/15 hover:text-white"}`}
+                      className={`flex items-center gap-1.5 whitespace-nowrap px-1.5 py-[13px] text-[13px] font-semibold transition ${isActive ? "bg-white/20 text-white" : "text-white/90 hover:bg-white/15 hover:text-white"}`}
                     >
                       {item.home && <Home className="size-4" aria-hidden="true" />}
                       {item.label}
@@ -548,7 +548,7 @@ function MainMenu() {
                   <Link
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex items-center gap-1.5 whitespace-nowrap px-2 py-[13px] text-[13px] font-semibold transition ${isActive ? "bg-white/20 text-white" : "text-white/90 hover:bg-white/15 hover:text-white"}`}
+                    className={`flex items-center gap-1.5 whitespace-nowrap px-1.5 py-[13px] text-[13px] font-semibold transition ${isActive ? "bg-white/20 text-white" : "text-white/90 hover:bg-white/15 hover:text-white"}`}
                   >
                     {item.home && <Home className="size-4" aria-hidden="true" />}
                     {item.label}
@@ -558,7 +558,7 @@ function MainMenu() {
             );
           })}
           <li className="ml-auto flex shrink-0 items-stretch border-l border-white/20">
-            <Link href="/portal/mapa-do-site" aria-label="Todos os menus — mapa do site" title="Todos os menus" className="flex items-center px-4 text-white/70 hover:bg-white/15 hover:text-white">
+            <Link href="/portal/mapa-do-site" aria-label="Todos os menus — mapa do site" title="Todos os menus" className="flex items-center px-3 text-white/70 hover:bg-white/15 hover:text-white">
               <Menu className="size-5" aria-hidden="true" />
             </Link>
           </li>

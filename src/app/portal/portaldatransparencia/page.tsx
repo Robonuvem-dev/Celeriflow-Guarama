@@ -17,6 +17,10 @@ import { applyDiscoverySettings, getDiscoverySettings, publicPortalOrigin } from
 import { TransparencyHome } from "@/components/transparencia/TransparencyHome";
 import { buildTransparencyDiscovery, isTransparencyConsultation } from "@/lib/transparencia/discovery";
 import { MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipality-identity";
+import { PublicOperationalList } from "../PublicOperationalList";
+import { transparencyOperationalColumns } from "../public-columns";
+import { PublicRowAction } from "../PublicRowAction";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {
@@ -43,6 +47,7 @@ export default async function PublicTransparencyPage({ searchParams }: { searchP
   if (!params.has("entity")) params.set("entity", settings.entities.find(item => item.enabled)!.key);
   if (!params.has("year")) params.set("year", String(settings.availableYears.includes(new Date().getUTCFullYear())?new Date().getUTCFullYear():settings.availableYears[0]));
   if (!params.has("source")) params.set("source", slug === "publicacoes"||slug.startsWith("doc-") ? "DOCUMENTOS" : settings.defaultSource);
+  params.set("pageSize", String(OPERATIONAL_PAGE_SIZE));
   const parsed = (() => { try { return parseTransparencyQuery(params); } catch { return null; } })();
   if (!parsed || !collection) return <main className="mx-auto max-w-7xl p-6"><h1 className="text-2xl font-bold">Portal da Transparência</h1><p className="my-4">Consulta ou filtros não disponíveis.</p><Link href={publicTransparencyPath} className="underline">Voltar ao início da transparência</Link></main>;
   const query = parsed;
@@ -71,23 +76,14 @@ export default async function PublicTransparencyPage({ searchParams }: { searchP
         {result?.declarationLinks?.map(link=><a key={link.url} href={link.url} className="block text-sm font-semibold underline">Declaração: {link.title}</a>)}
         {!result || result.status !== "AVAILABLE" ? <p role="status" className="rounded border p-4">{result?.message || "Consulta indisponível. Não há total ou arquivo confirmado para esta fonte."}</p> : <>
           <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm"><p role="status" className="py-2 font-semibold">{result.total} registro(s) no conjunto filtrado</p>{result.complete && <details className="max-w-full rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer font-bold text-[#0e4c7e]">Baixar dados</summary><p className="mt-3 max-w-md text-sm leading-6 text-slate-600">O arquivo inclui todo o conjunto filtrado, não apenas esta página. A fonte e os filtros acompanham a exportação.</p><nav aria-label="Exportar conjunto completo" className="mt-3 flex flex-wrap gap-3">{["csv","pdf","xlsx","txt","docx","json","jpeg"].map(format=><a key={format} className="inline-flex min-h-10 items-center rounded border border-slate-300 px-3 py-2 font-semibold text-[#0e4c7e] underline" href={`/api/transparencia/consultas/${slug}?${publicQueryHref(query, { format })}`}>{format==="jpeg"?"JPEG (ZIP)":format.toUpperCase()}</a>)}</nav></details>}</div>
-          <div id="resultados-consulta" className="scroll-mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white" tabIndex={0} role="region" aria-label="Tabela de resultados">
-            <table className="w-full text-left text-sm">
-              <caption className="sr-only">{collection.title} — {sources[query.source]}, exercício {query.year}</caption>
-              <thead className="bg-slate-100"><tr>
-                {query.entity === "consolidado" && <th scope="col" className="p-3">Entidade</th>}
-                {collection.columns.map(column => <th key={column.key} scope="col" aria-sort={query.sort === column.key ? query.direction === "asc" ? "ascending" : "descending" : "none"} className="p-3"><Link className="rounded focus-visible:outline-3 focus-visible:outline-offset-2" href={href({ sort: column.key, direction: query.sort === column.key && query.direction === "asc" ? "desc" : "asc", page: 1 })}>{column.label} <span aria-hidden="true">↕</span></Link></th>)}
-                <th scope="col" className="p-3">Acesso</th>
-              </tr></thead>
-              <tbody>{result.records.map(record => <tr key={record.key} className="border-t align-top hover:bg-slate-50">
-                {query.entity === "consolidado" && <td className="p-3">{record.entity}</td>}
-                {collection.columns.map(column => <td key={column.key} className="max-w-md p-3">{display(record.values[column.key], column.kind)}</td>)}
-                <td className="space-y-2 p-3"><Link className="block rounded underline focus-visible:outline-3 focus-visible:outline-offset-2" href={`${href({ record: record.key, page: result.page })}#detalhes-registro`}>Detalhes<span className="sr-only"> do registro {record.key}</span></Link>{record.links?.map(link => <a key={link.url} className="block rounded underline focus-visible:outline-3 focus-visible:outline-offset-2" href={link.url}>{link.title}{/^https?:\/\//i.test(link.url) && " — site externo ↗"}</a>)}</td>
-              </tr>)}{!result.total && <tr><td colSpan={collection.columns.length + (query.entity === "consolidado" ? 2 : 1)} className="p-6">Nenhum registro publicado para os filtros selecionados.</td></tr>}</tbody>
-            </table>
+          <div id="resultados-consulta" className="min-h-0 min-w-0" role="region" aria-label="Tabela de resultados">
+            <PublicOperationalList id={`transparencia-${slug}-${query.entity}`} caption={`${collection.title} — ${sources[query.source]}, exercício ${query.year}`}
+              serverPagination={{ page: result.page, total: result.total, pathname: publicTransparencyPath, values: Object.fromEntries(new URLSearchParams(publicQueryHref(query, { view: slug }))) }}
+              toolbar={<form action={publicTransparencyPath} className="flex w-full min-w-0 gap-2">{Array.from(new URLSearchParams(publicQueryHref(query, { view: slug, page: 1 }))).filter(([key]) => !["sort", "direction"].includes(key)).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}<select aria-label="Ordenar resultados por" name="sort" defaultValue={query.sort} className="h-7 min-w-0 flex-1 rounded border px-2"><option value="">Ordem padrão</option>{collection.columns.map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}</select><select aria-label="Direção da ordenação" name="direction" defaultValue={query.direction} className="h-7 rounded border px-2"><option value="asc">Crescente</option><option value="desc">Decrescente</option></select><button className="h-7 rounded border px-2">Ordenar</button></form>}
+              columns={transparencyOperationalColumns(collection.columns, query.entity === "consolidado")}
+              rows={result.records.map((record) => ({ id: record.key, label: record.key, values: { ...Object.fromEntries(collection.columns.map((column) => [column.key, display(record.values[column.key], column.kind)])), __entity: record.entity }, actions: <div className="flex gap-2"><a className="underline" href={`${href({ record: record.key, page: result.page })}#detalhes-registro`}>Detalhes<span className="sr-only"> do registro {record.key}</span></a>{!!record.links?.length && <PublicRowAction label="Links" title={`Acesso ao registro ${record.key}`}><nav aria-label="Documentos e fontes do registro" className="flex flex-col gap-2">{record.links.map((link) => <a key={link.url} className="underline" href={link.url}>{link.title}{/^https?:\/\//i.test(link.url) && " — site externo ↗"}</a>)}</nav></PublicRowAction>}</div> }))} />
           </div>
           {!!collection.amountFields.length && <dl className="flex flex-wrap gap-5 rounded border bg-slate-50 p-3 text-sm">{collection.amountFields.map(field => <div key={field}><dt>{collection.columns.find(column => column.key === field)?.label || field} — total filtrado</dt><dd className="font-bold">{result.totals[field] === null ? "Total não disponível: campos ausentes" : display(result.totals[field], "money")}</dd></div>)}</dl>}
-          <nav aria-label="Paginação dos resultados" className="flex justify-between text-sm">{result.page > 1 ? <Link className="underline" href={href({ page: result.page - 1 })}>Anterior</Link> : <span /> }<span>Página {result.page} de {Math.max(1, Math.ceil(result.total / result.pageSize))}</span>{result.page * result.pageSize < result.total ? <Link className="underline" href={href({ page: result.page + 1 })}>Próxima</Link> : <span />}</nav>
         </>}
         {selected && <section id="detalhes-registro" tabIndex={-1} aria-labelledby="record-details-title" className="scroll-mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 focus-visible:outline-3 focus-visible:outline-sky-800">
           <h3 id="record-details-title" className="text-lg font-bold">Detalhes do registro</h3>

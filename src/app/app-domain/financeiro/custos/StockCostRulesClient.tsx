@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import type { readStockCostOptions } from "@/lib/financeiro/cost-stock-options";
-import { createCostRuleAction } from "./actions";
+import { createCostRuleAction as persistCostRule } from "./actions";
+import CostDistributionDraft from "../CostDistributionDraft";
+import { distributionError } from "../draft-rows";
+
+function createCostRuleAction(input: Parameters<typeof persistCostRule>[0]) {
+  const error = distributionError(input.shares.map(row => ({ ...row, value: row.percentage })));
+  return error ? Promise.resolve({ error }) : persistCostRule(input);
+}
 
 type Options = Awaited<ReturnType<typeof readStockCostOptions>>;
 type ObjectRow = { id: string; code: string; description: string; budgetUnitId: string | null; isActive: boolean; links: Array<{ itemId: string }> };
@@ -22,6 +29,7 @@ export function StockCostRulesClient({ yearId, year, units, objects, items, opti
     <select className={style} aria-label="Almoxarifado" value={input.warehouseId} onChange={event => setInput({ ...input, warehouseId: event.target.value })}><option value="">Todos os almoxarifados do recorte</option>{options.warehouses.filter(row => row.budgetUnitIds.includes(input.budgetUnitId) && (!input.costCenterId || row.costCenterId === input.costCenterId)).map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select>
     <select className={style} aria-label="Destino/localização" value={input.departmentId} onChange={event => setInput({ ...input, departmentId: event.target.value })}><option value="">Todos os destinos da UG</option>{options.departments.filter(row => row.budgetUnitIds.includes(input.budgetUnitId)).map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></div>
     <div className="grid gap-3 md:grid-cols-3"><label>Prioridade<input type="number" required className={`${style} w-full`} value={input.priority} onChange={event => setInput({ ...input, priority: Number(event.target.value) })} /></label><label>Vigência inicial<input type="date" required className={`${style} w-full`} value={input.effectiveFrom} onChange={event => setInput({ ...input, effectiveFrom: event.target.value })} /></label><label>Vigência final<input type="date" className={`${style} w-full`} value={input.effectiveUntil} onChange={event => setInput({ ...input, effectiveUntil: event.target.value })} /></label></div>
-    <fieldset className="space-y-2 rounded border p-3"><legend>Objetos e itens de destino</legend>{shares.map((share, at) => <div key={at} className="grid gap-2 md:grid-cols-4"><select required className={style} aria-label={`Objeto de consumo ${at + 1}`} value={share.objectId} onChange={event => setShares(shares.map((row, index) => index === at ? { ...row, objectId: event.target.value, itemId: "" } : row))}><option value="">Objeto</option>{objects.filter(row => row.isActive && (!row.budgetUnitId || row.budgetUnitId === input.budgetUnitId)).map(row => <option key={row.id} value={row.id}>{row.code} — {row.description}</option>)}</select><select required className={style} aria-label={`Item de consumo ${at + 1}`} value={share.itemId} onChange={event => setShares(shares.map((row, index) => index === at ? { ...row, itemId: event.target.value } : row))}><option value="">Item vinculado</option>{items.filter(row => row.isActive && objects.find(object => object.id === share.objectId)?.links.some(link => link.itemId === row.id)).map(row => <option key={row.id} value={row.id}>{row.description}</option>)}</select><input required className={style} aria-label={`Percentual de consumo ${at + 1}`} inputMode="decimal" value={share.percentage} onChange={event => setShares(shares.map((row, index) => index === at ? { ...row, percentage: event.target.value.replace(",", ".") } : row))} /><button type="button" disabled={shares.length === 1} className={style} onClick={() => setShares(shares.filter((_, index) => index !== at))}>Remover</button></div>)}<button type="button" className={style} onClick={() => setShares([...shares, { objectId: "", itemId: "", percentage: "" }])}>Adicionar distribuição</button></fieldset><button disabled={pending} className={style}>Registrar regra de consumo</button>
+    <CostDistributionDraft title="Objetos e itens de destino do consumo" percentages disabled={pending} rows={shares.map(row => ({ objectId: row.objectId, itemId: row.itemId, value: row.percentage }))} onChange={rows => setShares(rows.map(row => ({ objectId: row.objectId, itemId: row.itemId, percentage: row.value })))}
+      objects={objects.filter(row => row.isActive && (!row.budgetUnitId || row.budgetUnitId === input.budgetUnitId)).map(row => ({ id: row.id, label: `${row.code} — ${row.description}`, itemIds: row.links.map(link => link.itemId) }))} items={items.filter(row => row.isActive).map(row => ({ id: row.id, label: row.description }))} /><button disabled={pending} className={style}>Registrar regra de consumo</button>
   </form></details>;
 }

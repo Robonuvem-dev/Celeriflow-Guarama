@@ -3,12 +3,16 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, CalendarPlus, Search, X } from "lucide-react";
+import { CalendarPlus, MoreHorizontal, Search, X } from "lucide-react";
+import { HealthFeedback } from "../HealthPageTools";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { createHealthAppointmentAction, transitionHealthAppointmentAction } from "./actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-
-const PAGE_SIZE = 20;
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import { healthColumn } from "../operational-columns";
 
 type Appointment = {
   id: string;
@@ -159,44 +163,25 @@ export default function AgendaClient({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      {error && <div role="alert" className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"><AlertCircle className="size-4 shrink-0" />{error}</div>}
-      <div className="flex shrink-0 flex-col gap-2 rounded-md border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <HealthFeedback message={error} error />
+      <OperationalListFrame label="Agendamentos" toolbar={<>
         <label className="relative block max-w-md flex-1">
           <span className="sr-only">Buscar agendamentos</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar paciente, unidade ou profissional" className="h-8 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15" />
         </label>
         <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs"><option value="">Todas as situações</option>{statuses.map((value) => <option key={value}>{value}</option>)}</select>
-        {canCreate && <button type="button" onClick={openDialog} disabled={!patients.length || !units.length || pending} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"><CalendarPlus className="size-4" />Novo agendamento</button>}
-      </div>
-
-      <ErpListFrame pagination={<ErpPagination page={activePage} total={filteredAppointments.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="agendamentos" onPageChange={setPage} />}>
-          <table className="w-full table-fixed text-left text-xs">
-            <thead className="sticky top-0 z-10 border-b bg-slate-100 text-[10px] uppercase tracking-wider text-slate-600">
-              <tr><th className="w-32 p-2 font-semibold">Data e hora</th><th className="p-2 font-semibold">Paciente</th><th className="p-2 font-semibold">Unidade</th><th className="hidden p-2 font-semibold md:table-cell">Profissional</th><th className="hidden p-2 font-semibold lg:table-cell">Especialidade</th><th className="w-28 p-2 font-semibold">Situação</th>{canUpdate && <th className="w-44 p-2 text-right font-semibold">Ações</th>}</tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visibleAppointments.length === 0 ? <tr><td colSpan={canUpdate ? 7 : 6} className="p-8 text-center text-slate-500">Nenhum agendamento encontrado.</td></tr> : visibleAppointments.map(appointment => (
-                <tr key={appointment.id} className="h-9 hover:bg-slate-50">
-                  <td className="truncate p-2 text-slate-700">{new Date(appointment.date).toLocaleString("pt-BR")}</td>
-                  <td className="truncate p-2 font-medium text-slate-900">{appointment.patient.person.fullName}</td>
-                  <td className="truncate p-2 text-slate-700">{appointment.unit.name}</td>
-                  <td className="hidden truncate p-2 text-slate-700 md:table-cell">{appointment.professional?.employee.name || "Não definido"}</td>
-                   <td className="hidden truncate p-2 text-slate-700 lg:table-cell">{appointment.specialtyRef?.name || appointment.specialty || "-"}</td>
-                  <td className="p-2"><span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">{appointment.status}</span></td>
-                  {canUpdate && <td className="p-2 text-right"><div className="flex justify-end gap-1">
-                     {["Aguardando", "Em Atendimento", "Atendido"].includes(appointment.status) && <Link href={`/saude/vacinacao/carteira/${encodeURIComponent(appointment.patient.id)}?appointmentId=${encodeURIComponent(appointment.id)}`} className="rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-800">Vacinação</Link>}
-                     {appointment.status === "Agendado" && <><button type="button" disabled={pending} onClick={() => changeStatus(appointment.id, "Confirmado")} className="rounded border border-blue-300 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-50 disabled:opacity-50">Confirmar</button><button type="button" disabled={pending} onClick={() => changeStatus(appointment.id, "Aguardando")} className="rounded border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50">Chegou</button></>}
-                     {appointment.status === "Confirmado" && <button type="button" disabled={pending} onClick={() => changeStatus(appointment.id, "Aguardando")} className="rounded border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50">Chegou</button>}
-                     {["Agendado", "Confirmado", "Aguardando"].includes(appointment.status) && <button type="button" disabled={pending} onClick={() => changeStatus(appointment.id, "Faltou")} className="rounded border border-amber-300 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-50 disabled:opacity-50">Faltou</button>}
-                     {["Agendado", "Confirmado", "Aguardando"].includes(appointment.status) && <button type="button" disabled={pending} onClick={() => changeStatus(appointment.id, "Cancelado")} className="rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50">Cancelar</button>}
-                  </div></td>}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-      </ErpListFrame>
+        {canCreate && <OperationalHeaderActions><button type="button" onClick={openDialog} disabled={!patients.length || !units.length || pending} className="inline-flex h-7 items-center gap-1 rounded border px-2 text-xs"><CalendarPlus className="size-4" />Novo agendamento</button></OperationalHeaderActions>}
+      </>} pagination={<OperationalPagination page={activePage} total={filteredAppointments.length} onPageChange={setPage} />}>
+          <OperationalTable preferenceId="saude-agenda" caption="Agendamentos" columns={[healthColumn("date", "Data e hora", 170, 125), healthColumn("patient", "Paciente", 240, 120), healthColumn("unit", "Unidade", 180, 100), healthColumn("professional", "Profissional", 200, 110), healthColumn("specialty", "Especialidade", 180, 100), healthColumn("status", "Situação", 120, 90, "status"), ...(canUpdate ? [healthColumn("actions", "Ações", 48, 48, "actions", "right", 64)] : [])]} rows={visibleAppointments.map(appointment => ({ id: appointment.id, label: appointment.patient.person.fullName, values: { date: new Date(appointment.date).toLocaleString("pt-BR"), patient: appointment.patient.person.fullName, unit: appointment.unit.name, professional: appointment.professional?.employee.name || "Não definido", specialty: appointment.specialtyRef?.name || appointment.specialty || "—", status: appointment.status }, actions: canUpdate && <div className={styles.rowActions}><DropdownMenu><DropdownMenuTrigger render={<button type="button" className={styles.iconButton} disabled={pending} aria-label={`Ações do agendamento de ${appointment.patient.person.fullName}`} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end">
+                     {["Aguardando", "Em Atendimento", "Atendido"].includes(appointment.status) && <DropdownMenuItem render={<Link href={`/saude/vacinacao/carteira/${encodeURIComponent(appointment.patient.id)}?appointmentId=${encodeURIComponent(appointment.id)}`} />}>Vacinação</DropdownMenuItem>}
+                     {appointment.status === "Agendado" && <DropdownMenuItem disabled={pending} onClick={() => changeStatus(appointment.id, "Confirmado")}>Confirmar</DropdownMenuItem>}
+                     {["Agendado", "Confirmado"].includes(appointment.status) && <DropdownMenuItem disabled={pending} onClick={() => changeStatus(appointment.id, "Aguardando")}>Chegou</DropdownMenuItem>}
+                     {["Agendado", "Confirmado", "Aguardando"].includes(appointment.status) && <DropdownMenuItem disabled={pending} onClick={() => changeStatus(appointment.id, "Faltou")}>Faltou</DropdownMenuItem>}
+                     {["Agendado", "Confirmado", "Aguardando"].includes(appointment.status) && <DropdownMenuItem disabled={pending} onClick={() => changeStatus(appointment.id, "Cancelado")}>Cancelar</DropdownMenuItem>}
+                   </DropdownMenuContent></DropdownMenu></div> }))} />
+      </OperationalListFrame>
 
       {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
         <form onSubmit={submit} className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl" aria-labelledby="new-appointment-title">

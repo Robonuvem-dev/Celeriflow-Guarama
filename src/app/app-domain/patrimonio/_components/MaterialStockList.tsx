@@ -1,7 +1,6 @@
 import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-import { buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { OperationalFilters, OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -105,28 +104,37 @@ export async function MaterialStockList({ searchParams, equipmentOnly = false }:
       expirationLabel: earliestExpiration ? earliestExpiration.toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "-",
     };
   });
-  const selectClass = "h-8 max-w-44 rounded-md border border-input bg-white px-2 text-xs";
+  if (view === "catalogo") return <OperationalListFrame label={equipmentOnly ? "Equipamentos em estoque" : "Estoque de materiais"}
+    actions={<>
+      {canCreate && <Link href={equipmentOnly ? "/patrimonio/materiais/novo?type=PATRIMONIO" : "/patrimonio/materiais/novo"} className={styles.newButton} aria-label={equipmentOnly ? "Novo equipamento" : "Novo material"}><Plus /><span className={styles.newLabel}>{equipmentOnly ? "Novo equipamento" : "Novo material"}</span></Link>}
+      {canUpdate && <Link href={panelHref("movimentar")} className={styles.filterButton}>Movimentar</Link>}
+      {equipmentOnly && <Link href="/patrimonio/bens" className={styles.filterButton}>Bens patrimoniais</Link>}
+    </>}
+    toolbar={<>
+      <form action={pathname} className={styles.searchForm} role="search">
+        {Object.entries(catalogValues).filter(([key]) => key !== "q").map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
+        <input type="hidden" name="view" value="catalogo" />
+        <input name="q" aria-label="Buscar material por código, nome ou descrição" defaultValue={q} placeholder="Código, nome ou descrição…" className={styles.searchInput} />
+        <button type="submit" className={styles.iconButton} aria-label="Pesquisar materiais"><Search /></button>
+      </form>
+      <OperationalFilters activeCount={[categoryId, status, warehouseId, order !== "code-asc"].filter(Boolean).length}>
+        <form action={pathname} className="grid gap-3">
+          <input type="hidden" name="q" value={q} /><input type="hidden" name="view" value="catalogo" /><input type="hidden" name="type" value={type} />
+          <div className={styles.filterFields}>
+            <label>Categoria<select name="category" defaultValue={categoryId}><option value="">Todas</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            <label>Status<select name="status" defaultValue={status}><option value="">Todos</option><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option><option value="SEM_ESTOQUE">Sem estoque</option></select></label>
+            <label>Almoxarifado<select name="warehouse" defaultValue={warehouseId}><option value="">Todos</option>{warehouses.map(warehouse => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
+            <label>Ordenação<select name="order" defaultValue={order}><option value="code-asc">Código: A–Z</option><option value="code-desc">Código: Z–A</option><option value="name-asc">Nome: A–Z</option><option value="name-desc">Nome: Z–A</option><option value="description-asc">Descrição: A–Z</option><option value="description-desc">Descrição: Z–A</option></select></label>
+          </div>
+          <div className={styles.dialogFooter}><Link href={pathname} className={styles.dialogButton}>Limpar filtros</Link><button type="submit" className={`${styles.dialogButton} ${styles.primaryButton}`}>Aplicar filtros</button></div>
+        </form>
+      </OperationalFilters>
+    </>}
+    pagination={<OperationalLinkPagination page={page} total={catalogTotal} pathname={pathname} values={{ ...catalogValues, view: "catalogo" }} />}
+  ><MaterialCatalogTable materials={materialRows} categories={categories} subcategories={subcategories} canUpdate={canUpdate} canDelete={canDelete} /></OperationalListFrame>;
 
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">
     <ErpPageTitle title={equipmentOnly ? "Equipamentos em estoque" : "Estoque de Materiais"} action={equipmentOnly ? <Link href="/patrimonio/bens" className="text-xs underline">Bens patrimoniais</Link> : undefined} />
-    {view === "catalogo" && <ErpListFrame
-      toolbar={<form className="flex flex-wrap items-center gap-2" role="search">
-        <input type="hidden" name="view" value="catalogo" />
-        <Input name="q" aria-label="Buscar material" defaultValue={q} placeholder="Código, nome ou descrição" className="h-8 min-w-0 flex-1 bg-white text-xs sm:min-w-52" />
-        <select name="category" defaultValue={categoryId} aria-label="Filtrar por categoria" className={selectClass}><option value="">Categoria: todas</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
-        <select name="status" defaultValue={status} aria-label="Filtrar por status" className={selectClass}><option value="">Status: todos</option><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option><option value="SEM_ESTOQUE">Sem estoque</option></select>
-        <select name="warehouse" defaultValue={warehouseId} aria-label="Filtrar por almoxarifado" className={selectClass}><option value="">Almoxarifado: todos</option>{warehouses.map(warehouse => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select>
-        <select name="order" defaultValue={order} aria-label="Ordenar materiais" className={selectClass}><option value="code-asc">Código: A-Z</option><option value="code-desc">Código: Z-A</option><option value="name-asc">Nome: A-Z</option><option value="name-desc">Nome: Z-A</option><option value="description-asc">Descrição: A-Z</option><option value="description-desc">Descrição: Z-A</option></select>
-        <div className="flex items-center gap-2">
-          <button type="submit" className={buttonVariants({ size: "sm", variant: "outline" })}><Search className="size-3.5" />Filtro</button>
-          {canCreate && <Link href={equipmentOnly ? "/patrimonio/materiais/novo?type=PATRIMONIO" : "/patrimonio/materiais/novo"} className={buttonVariants({ size: "sm" })}><Plus className="size-3.5" />{equipmentOnly ? "Novo equipamento" : "Novo material"}</Link>}
-        </div>
-        {canUpdate && <Link href={panelHref("movimentar")} className="text-xs font-semibold text-emerald-800 underline">Movimentar</Link>}
-        <Link href={pathname} className="text-xs text-slate-500 underline">Limpar</Link>
-      </form>}
-      summary={<p className="text-[11px] text-slate-600"><strong className="text-slate-900">{catalogTotal}</strong> {equipmentOnly ? "equipamentos" : "materiais"} · 20 por página · Arraste as bordas dos cabeçalhos para ajustar as colunas.</p>}
-      pagination={<ErpPagination page={page} total={catalogTotal} pageSize={PATRIMONIO_LIST_PAGE_SIZE} label={equipmentOnly ? "equipamentos" : "materiais"} previousHref={panelHref("catalogo", page - 1)} nextHref={panelHref("catalogo", page + 1)} jumpTo={{ pathname, values: { ...catalogValues, view: "catalogo" } }} />}
-    ><MaterialCatalogTable materials={materialRows} categories={categories} subcategories={subcategories} canUpdate={canUpdate} canDelete={canDelete} /></ErpListFrame>}
     {view === "movimentar" && <ErpListFrame toolbar={<div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-800">Registrar movimentação de estoque</p><Link href={panelHref("catalogo")} className="text-xs underline">Voltar ao estoque</Link></div>}><div className="p-3"><StockOperationsClient
       materials={movementMaterials.map(material => ({ id: material.id, label: `${material.code} - ${material.name}` }))}
       warehouses={warehouses.map(warehouse => ({ id: warehouse.id, label: warehouse.name }))}

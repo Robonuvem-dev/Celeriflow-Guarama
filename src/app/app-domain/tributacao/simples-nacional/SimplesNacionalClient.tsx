@@ -1,4 +1,7 @@
 "use client";
+import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import {
   useMemo,
   useState,
@@ -11,7 +14,6 @@ import {
   Database,
   FileOutput,
   RefreshCw,
-  Scale,
   WalletCards,
 } from "lucide-react";
 import {
@@ -127,19 +129,12 @@ export default function SimplesNacionalClient({ data }: { data: Data }) {
       ),
     [data.divergences, filter],
   );
+  const listView = tab === "malhas" || tab === "pagamentos";
+  const navigation = <select aria-label="Área do Simples Nacional" value={tab} onChange={event => setTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{[["malhas", "Malhas e regularização"], ["importacoes", "Importações"], ["pagamentos", "Pagamentos"], ["exclusao", "Preparação de exclusão"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
+  const toolbar = <>{navigation}{tab === "malhas" && <input aria-label="Buscar malhas" value={filter} onChange={event => setFilter(event.target.value)} placeholder="Contribuinte, tipo, competência ou situação" className="h-7 min-w-0 flex-1 rounded border px-2 text-[13px]" />}<OperationalFilters label="Contexto e resultado">{message && <p role="status">{message}</p>}<p>Tipos cobertos: notas x declaração, ausências, valor/base, alíquota, atividade, estimativa e pagamento.</p><p>O total nacional do DAS é apenas referência. A diferença municipal usa o componente de ISS declarado e o DAF607 confirmado.</p></OperationalFilters></>;
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="flex items-center gap-2 text-lg font-bold">
-            <Scale className="size-5 text-amber-500" />
-            Gestão do Simples Nacional
-          </h1>
-          <p className="text-[11px] text-slate-500">
-            Importações controladas, malhas, autorregularização, exclusão e
-            pagamentos municipais.
-          </p>
-        </div>
+      <OperationalHeaderActions>
         <button
           className={primary}
           disabled={pending}
@@ -148,24 +143,9 @@ export default function SimplesNacionalClient({ data }: { data: Data }) {
           <RefreshCw className="size-3.5" />
           Reprocessar {competence}
         </button>
-      </header>
-      <nav className="flex gap-1 overflow-x-auto rounded-lg bg-slate-900 p-1 text-[11px] font-semibold text-slate-300">
-        {[
-          ["malhas", "Malhas e regularização"],
-          ["importacoes", "Importações"],
-          ["pagamentos", "Pagamentos"],
-          ["exclusao", "Preparação de exclusão"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`whitespace-nowrap rounded-md px-3 py-1.5 ${tab === id ? "bg-amber-500 text-slate-950" : "hover:bg-slate-800"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-      {message && (
+      </OperationalHeaderActions>
+      {!listView && navigation}
+      {message && !listView && (
         <button
           onClick={() => setMessage("")}
           className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-left text-xs text-blue-800"
@@ -173,7 +153,13 @@ export default function SimplesNacionalClient({ data }: { data: Data }) {
           {message}
         </button>
       )}
-      <main className="min-h-0 flex-1 overflow-auto">
+      {tab === "malhas" && <TaxOperationalTable id="simples-malhas" resetKey={filter} toolbar={toolbar}
+        columns={[["taxpayer", "Contribuinte", 80, 240], ["type", "Malha", 64, 170], ["competence", "Competência", 56, 115], ["nfse", "NFS-e", 48, 120, "text", "right"], ["declared", "Declaração", 48, 120, "text", "right"], ["revenueDifference", "Diferença receita", 48, 150, "text", "right"], ["municipal", "ISS municipal", 48, 130, "text", "right"], ["confirmed", "DAF607", 48, 120, "text", "right"], ["paymentDifference", "Diferença pagamento", 48, 180, "text", "right"], ["status", "Situação", 56, 130, "status"], ["history", "Histórico", 72, 190], ["actions", "Ações", 48, 60, "actions"]]}
+        rows={visible.map(row => ({ id: row.id, label: row.taxpayerName, values: { taxpayer: row.taxpayerName, type: row.type.replaceAll("_", " "), competence: row.competence, nfse: money(row.nfse), declared: money(row.declared), revenueDifference: money(row.revenueDifference), municipal: money(row.municipalIss), confirmed: money(row.confirmed), paymentDifference: money(row.paymentDifference), status: row.status, history: row.events.join("\n") }, actions: <TaxRowActions label={row.taxpayerName}><TaxRowAction href="/tributacao/economico">Abrir cadastro</TaxRowAction><TaxRowAction onClick={() => run(() => communicateDivergenceAction(row.id))}>Comunicar DTE</TaxRowAction><TaxRowAction onClick={() => { const declared = prompt("Valor retificado da declaração", String(row.nfse)); if (declared === null) return; const municipal = prompt("Componente municipal declarado", String(row.municipalIss)); if (municipal === null) return; run(() => rectifyDivergenceAction({ divergenceId: row.id, declaredService: Number(declared), municipalIss: Number(municipal), rate: 3, activityCode: "01.01" })); }}>Retificar e reprocessar</TaxRowAction></TaxRowActions> }))} />}
+      {tab === "pagamentos" && <TaxOperationalTable id="simples-pagamentos" toolbar={toolbar}
+        columns={[["taxpayer", "Contribuinte", 150, 250], ["regime", "Regime", 100, 150], ["competence", "Competência", 100, 115], ["code", "Código", 90, 110, "identifier"], ["national", "DAS nacional", 115, 140, "text", "right"], ["municipal", "ISS municipal", 115, 140, "text", "right"], ["confirmed", "Confirmado", 110, 140, "text", "right"], ["difference", "Diferença", 110, 140, "text", "right"]]}
+        rows={data.allocations.map(row => ({ id: row.id, label: row.taxpayerName, values: { taxpayer: row.taxpayerName, regime: row.regime, competence: row.competence, code: row.code, national: money(row.nationalDas), municipal: money(row.municipal), confirmed: money(row.confirmed), difference: money(row.difference) } }))} />}
+      <main className={listView ? "hidden print:block" : "min-h-0 flex-1 overflow-auto"}>
         {tab === "malhas" && (
           <section className="rounded-lg border bg-white dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center gap-2 border-b p-2 dark:border-slate-800">

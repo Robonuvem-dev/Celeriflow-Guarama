@@ -1,10 +1,12 @@
 "use client";
 import { useState, useTransition } from "react";
+import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import {
   Building2,
   Calculator,
   FileCheck2,
-  Landmark,
   PackageSearch,
   ShieldCheck,
 } from "lucide-react";
@@ -144,6 +146,7 @@ export default function IssBancarioClient({ data }: { data: Data }) {
     data.institutions[0]?.id ?? "",
   );
   const [processId, setProcessId] = useState("");
+  const [confronto, setConfronto] = useState("balancetes");
   const run = (job: () => Promise<{ error?: string }>) =>
     start(async () => {
       const response = await job();
@@ -156,19 +159,12 @@ export default function IssBancarioClient({ data }: { data: Data }) {
       event.preventDefault();
       void handler(new FormData(event.currentTarget));
     };
+  const listView = ["apuracao", "historico-importacoes", "confrontos", "fiscalizacao"].includes(tab);
+  const navigation = <select aria-label="Área do ISS bancário" value={tab} onChange={event => setTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{[["apuracao", "Apuração"], ["importacoes", "Receber arquivo"], ["historico-importacoes", "Histórico de importações"], ["cadastros", "Instituições"], ["catalogo", "PGCC / COSIF"], ["confrontos", "Balancete / pacotes"], ["fiscalizacao", "Fiscalização bancária"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
+  const toolbar = <>{navigation}{tab === "confrontos" && <select aria-label="Confronto" value={confronto} onChange={event => setConfronto(event.target.value)} className="h-7 rounded border text-[13px]"><option value="balancetes">Balancetes</option><option value="pacotes">Pacotes e correntistas</option></select>}<OperationalFilters label="Contexto e resultado">{message && <p role="status">{message}</p>}<p>O confronto de pacotes é independente e não duplica a mesma receita já apurada por COSIF/PGCC.</p><p>Escopo desta tela: omissão, diferença e ausência de movimento no ISS bancário. A fiscalização tributária geral permanece fora do S6.</p><p>Cenário de referência: R$ 10.000 − R$ 1.000 = R$ 9.000 × 5% = R$ 450 − R$ 50 = R$ 400.</p></OperationalFilters></>;
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="flex items-center gap-2 text-lg font-bold">
-            <Landmark className="size-5 text-amber-500" />
-            ISS Bancário / DES-IF
-          </h1>
-          <p className="text-[11px] text-slate-500">
-            Instituições, PGCC/COSIF, importação, apuração, balancete, pacotes e
-            fiscalização bancária.
-          </p>
-        </div>
+      <OperationalHeaderActions>
         <select
           className={`${input} max-w-72`}
           value={taxpayerId}
@@ -180,26 +176,9 @@ export default function IssBancarioClient({ data }: { data: Data }) {
             </option>
           ))}
         </select>
-      </header>
-      <nav className="flex gap-1 overflow-x-auto rounded-lg bg-slate-900 p-1 text-[11px] font-semibold text-slate-300">
-        {[
-          ["apuracao", "Apuração"],
-          ["importacoes", "Importações"],
-          ["cadastros", "Instituições"],
-          ["catalogo", "PGCC / COSIF"],
-          ["confrontos", "Balancete / Pacotes"],
-          ["fiscalizacao", "Fiscalização bancária"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`whitespace-nowrap rounded-md px-3 py-1.5 ${tab === id ? "bg-amber-500 text-slate-950" : "hover:bg-slate-800"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-      {message && (
+      </OperationalHeaderActions>
+      {!listView && navigation}
+      {message && !listView && (
         <button
           className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-left text-xs text-blue-800"
           onClick={() => setMessage("")}
@@ -207,7 +186,23 @@ export default function IssBancarioClient({ data }: { data: Data }) {
           {message}
         </button>
       )}
-      <main className="min-h-0 flex-1 overflow-auto">
+      {tab === "apuracao" && <TaxOperationalTable id="iss-bancario-apuracao" toolbar={toolbar}
+        actions={<select aria-label="Processo para OS" className="h-7 max-w-48 rounded border text-[13px]" value={processId} onChange={event => setProcessId(event.target.value)}><option value="">OS sem processo</option>{data.processes.map(row => <option key={row.id} value={row.id}>{row.protocolNumber} · {row.status}</option>)}</select>}
+        columns={[["institution", "Instituição", 80, 200], ["agency", "Agência", 64, 150], ["competence", "Competência", 56, 115], ["subtitle", "Subtítulo", 56, 130], ["revenue", "Receita", 48, 120, "text", "right"], ["deduction", "Dedução", 48, 120, "text", "right"], ["base", "Base", 48, 120, "text", "right"], ["rate", "Alíquota", 40, 90, "text", "right"], ["gross", "ISS", 48, 120, "text", "right"], ["credit", "Crédito", 48, 120, "text", "right"], ["debit", "Débito", 48, 120, "text", "right"], ["due", "A recolher", 48, 120, "text", "right"], ["actions", "Ações", 48, 60, "actions"]]}
+        rows={data.assessments.map(row => ({ id: row.id, label: `${row.institution} · ${row.competence} · ${row.subtitle}`, values: { institution: row.institution, agency: row.agency, competence: row.competence, subtitle: row.subtitle, revenue: money(row.revenue), deduction: money(row.deduction), base: money(row.base), rate: `${row.rate}%`, gross: money(row.grossTax), credit: `-${money(row.credit)}`, debit: `+${money(row.debit)}`, due: money(row.due) }, actions: <TaxRowActions label={row.institution}>{row.guideId ? <TaxRowAction href={`/tributacao/iss-bancario/guias/${row.guideId}`} target="_blank">DAM</TaxRowAction> : <TaxRowAction disabled={pending} onClick={() => run(() => issueGuideAction(row.id))}>Gerar DAM</TaxRowAction>}{([ ["DIFERENCA", "OS diferença"], ["OMISSAO", "OS omissão"], ["SEM_MOVIMENTO", "OS sem movimento"] ] as const).map(([kind, label]) => <TaxRowAction key={kind} disabled={pending} onClick={() => run(() => openFiscalCaseAction(row.id, kind, processId || undefined))}>{label}</TaxRowAction>)}</TaxRowActions> }))} />}
+      {tab === "confrontos" && confronto === "balancetes" && <TaxOperationalTable id="iss-bancario-balancetes" toolbar={toolbar}
+        columns={[["agency", "Agência", 130, 190], ["account", "Conta", 110, 150, "identifier"], ["competence", "Competência", 100, 115], ["inconsistency", "Inconsistência", 150, 250], ["opening", "Inicial", 110, 140, "text", "right"], ["credits", "Créditos", 110, 140, "text", "right"], ["debits", "Débitos", 110, 140, "text", "right"], ["final", "Final", 110, 140, "text", "right"]]}
+        rows={data.balances.map(row => ({ id: row.id, label: `${row.agency} · ${row.account}`, values: { agency: row.agency, account: row.account, competence: row.competence, inconsistency: row.inconsistency ?? "Sem diferença", opening: money(row.opening), credits: money(row.credits), debits: money(row.debits), final: money(row.calculated) } }))} />}
+      {tab === "confrontos" && confronto === "pacotes" && <TaxOperationalTable id="iss-bancario-pacotes" toolbar={toolbar}
+        columns={[["agency", "Agência", 130, 190], ["package", "Pacote", 130, 200], ["competence", "Competência", 100, 115], ["holders", "Correntistas", 100, 120, "text", "right"], ["potential", "Potencial", 110, 140, "text", "right"], ["collected", "Arrecadado", 110, 140, "text", "right"], ["difference", "Diferença", 110, 140, "text", "right"], ["impact", "Impacto", 110, 140, "text", "right"]]}
+        rows={data.movements.map(row => ({ id: row.id, label: `${row.agency} · ${row.package}`, values: { agency: row.agency, package: row.package, competence: row.competence, holders: String(row.holders), potential: money(row.potential), collected: money(row.collected), difference: money(row.difference), impact: money(row.impact) } }))} />}
+      {tab === "fiscalizacao" && <TaxOperationalTable id="iss-bancario-fiscalizacao" toolbar={toolbar}
+        columns={[["institution", "Instituição", 80, 180], ["agency", "Agência", 64, 140], ["competence", "Competência", 56, 115], ["finding", "Achado", 56, 140], ["status", "Situação", 56, 140, "status"], ["order", "OS", 56, 130, "identifier"], ["process", "Processo", 56, 150, "identifier"], ["infraction", "Auto", 64, 180], ["communication", "Comunicação", 64, 180], ["history", "Histórico", 72, 220], ["actions", "Ações", 48, 60, "actions"]]}
+        rows={data.cases.map(row => ({ id: row.id, label: row.os || row.id, values: { institution: row.institution, agency: row.agency, competence: row.competence, finding: row.findingType, status: row.status, order: row.os ?? "—", process: data.processes.find(item => item.id === row.processId)?.protocolNumber ?? "Sem processo", infraction: row.infractionId ? "Gerado" : "Pendente de vínculo fiscal", communication: row.dteMessageId ? "Disponibilizada no DTE" : "Não comunicada", history: row.events.join("\n") }, actions: <TaxRowActions label={row.os || row.id}><TaxRowAction href={`/tributacao/iss-bancario/fiscalizacoes/${row.id}/tiaf`} target="_blank">TIAF</TaxRowAction><TaxRowAction href={`/tributacao/iss-bancario/fiscalizacoes/${row.id}/mapa`} target="_blank">Mapa</TaxRowAction>{!row.dteMessageId && <TaxRowAction onClick={() => run(() => communicateFiscalCaseAction(row.id))}>Comunicar DTE</TaxRowAction>}</TaxRowActions> }))} />}
+      {tab === "historico-importacoes" && <TaxOperationalTable id="iss-bancario-importacoes" toolbar={toolbar}
+        columns={[["file", "Arquivo", 80, 200], ["module", "Módulo", 56, 150], ["institution", "Instituição", 72, 180], ["agency", "Agência", 56, 140], ["competence", "Competência", 56, 115], ["version", "Versão", 40, 80], ["origin", "Origem", 56, 140], ["status", "Validação", 56, 150, "status"], ["policy", "Política de assinatura", 64, 190], ["signature", "Assinatura", 56, 150], ["errors", "Inconsistências", 72, 220], ["receipt", "Recibo", 64, 160, "identifier"], ["actions", "Ações", 48, 60, "actions"]]}
+        rows={data.imports.map(row => ({ id: row.id, label: row.fileName, values: { file: row.fileName, module: row.moduleType, institution: row.institution, agency: row.agency, competence: row.competence, version: row.version, origin: row.originMode, status: row.status, policy: row.signaturePolicy, signature: row.signatureStatus, errors: errorList(row.inconsistencies), receipt: row.receipt || "Após processar" }, actions: <TaxRowActions label={row.fileName}>{row.receipt && <TaxRowAction href={`/tributacao/iss-bancario/importacoes/${row.id}/recibo`} target="_blank">Abrir recibo</TaxRowAction>}{["RECEBIDO", "INCONSISTENTE"].includes(row.status) && <TaxRowAction onClick={() => run(() => validateImportAction(row.id))}>Validar</TaxRowAction>}{row.status === "VALIDADO" && <TaxRowAction onClick={() => run(() => processImportAction(row.id))}>Processar</TaxRowAction>}</TaxRowActions> }))} />}
+      <main className={listView ? "hidden print:block" : "min-h-0 flex-1 overflow-auto"}>
         {tab === "apuracao" && (
           <section className="rounded-lg border bg-white dark:border-slate-800 dark:bg-slate-950">
             <div className="flex flex-wrap items-center gap-2 border-b p-2">
@@ -451,7 +446,7 @@ export default function IssBancarioClient({ data }: { data: Data }) {
                 depende de leiaute e provedor homologados.
               </p>
             </form>
-            <section className="rounded-lg border bg-white dark:border-slate-800 dark:bg-slate-950">
+            <section className="hidden print:block">
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px]">
                   <thead className="bg-slate-50 text-left dark:bg-slate-900">

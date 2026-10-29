@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { addBenefitToEmployee, removeBenefitFromEmployee } from "./benefitActions";
 import type { BenefitConfig, Employee, PayrollBenefit } from "@/lib/contracts/personnel-pages";
+import { RhTablePanel } from "../_components/RhTablePanel";
+import { rhColumn } from "../_components/operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 type EmployeeWithBenefits = Pick<Employee, "id"> & {
   benefits?: (PayrollBenefit & { benefitConfig: BenefitConfig })[];
@@ -79,49 +82,10 @@ export function EmployeeBenefitsCard({ employee, benefitConfigs }: { employee: E
 
       </CardHeader>
       <CardContent>
-        {employee.benefits && employee.benefits.length > 0 ? (
-          <div className="max-h-72 overflow-auto rounded-md border">
-            <table className="w-full min-w-[560px] border-collapse text-left text-[11px] [&_td]:px-2.5 [&_td]:py-1.5 [&_th]:px-2.5 [&_th]:py-2">
-              <thead className="sticky top-0 z-10 border-b bg-slate-50 text-[10px] uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                <tr>
-                  <th className="p-3 font-medium">Benefício</th>
-                  <th className="p-3 font-medium">Tipo</th>
-                  <th className="p-3 font-medium">Valor Concedido</th>
-                  <th className="p-3 font-medium text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employee.benefits.map((ben) => {
-                  const val = ben.customValue !== null ? ben.customValue : ben.benefitConfig.baseValue;
-                  return (
-                    <tr key={ben.id} className="border-b last:border-0 hover:bg-muted/50">
-                      <td className="p-3">{ben.benefitConfig.name}</td>
-                      <td className="p-3">{ben.benefitConfig.type}</td>
-                      <td className="p-3">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)}
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          title="Remover Benefício"
-                          onClick={() => handleRemove(ben.id, ben.benefitConfig.name)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center p-6 text-muted-foreground border rounded-md border-dashed">
-            Nenhum benefício concedido para este servidor.
-          </div>
-        )}
+        <RhTablePanel title="Benefícios concedidos ao servidor" triggerLabel="Consultar benefícios em tela cheia" description="Fechar esta consulta preserva os dados ainda não salvos na ficha funcional." preferenceId="rh-servidor-beneficios"
+          columns={[rhColumn("name", "Benefício", 300, 150), rhColumn("type", "Tipo", 180, 100), rhColumn("value", "Valor concedido", 180, 120, "text", "right"), rhColumn("actions", "Ações", 70, 60, "actions")]}
+          rows={(employee.benefits || []).map(ben => ({ id: ben.id, label: ben.benefitConfig.name, values: { name: ben.benefitConfig.name, type: ben.benefitConfig.type, value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(ben.customValue !== null ? ben.customValue : ben.benefitConfig.baseValue) }, actions: <button type="button" className={styles.iconButton} aria-label={`Remover benefício ${ben.benefitConfig.name}`} onClick={() => void handleRemove(ben.id, ben.benefitConfig.name)}><Trash2 /></button> }))}
+          emptyMessage="Nenhum benefício concedido para este servidor." />
       </CardContent>
     </Card>
   );

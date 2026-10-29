@@ -7,7 +7,9 @@ import { Eye, FileSignature, Plus, Upload } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ErpStatusBadge, ErpTableContainer, ErpTableTd, ErpTableTh, ErpTableThead, ErpTableTr } from "@/components/app-ui/erp/ErpTable";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { healthColumn } from "../../operational-columns";
 import { saveHealthStandardDocument, signHealthStandardDocument } from "./actions";
 
 export type HealthDocumentRow = {
@@ -99,16 +101,10 @@ export function DocumentsClient({ rows, modules, canCreate, canUpdate }: { rows:
   }
 
   return <>
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 p-2">
-        <span className="text-[11px] font-medium text-slate-500">{rows.length} registro(s) nesta página</span>
+    <OperationalHeaderActions>
         {canCreate && <button type="button" onClick={() => { setMessage(""); setUploadOpen(true); }} className="inline-flex h-8 items-center gap-1.5 rounded bg-emerald-700 px-3 text-xs font-bold text-white"><Plus className="size-3.5" />Novo documento</button>}
-      </div>
-      <ErpTableContainer className="overflow-y-auto overflow-x-hidden">
-        <ErpTableThead><ErpTableTr><ErpTableTh>Documento</ErpTableTh><ErpTableTh className="hidden w-[16%] md:table-cell">Categoria</ErpTableTh><ErpTableTh className="hidden w-[14%] lg:table-cell">Módulo</ErpTableTh><ErpTableTh className="w-[15%]">Situação</ErpTableTh><ErpTableTh className="w-[90px] text-center">Ações</ErpTableTh></ErpTableTr></ErpTableThead>
-        <tbody>{rows.map(row => <ErpTableTr key={row.id}><ErpTableTd>{row.title}</ErpTableTd><ErpTableTd className="hidden md:table-cell">{row.category}</ErpTableTd><ErpTableTd className="hidden lg:table-cell">{row.moduleCode}</ErpTableTd><ErpTableTd><ErpStatusBadge variant={row.status === "Assinado" ? "success" : row.status === "Pendente Assinatura" ? "warning" : "info"}>{row.status}</ErpStatusBadge></ErpTableTd><ErpTableTd className="text-center"><div className="flex justify-center gap-1"><button type="button" onClick={() => setDetail(row)} aria-label={`Visualizar ${row.title}`} className="inline-flex size-7 items-center justify-center rounded border border-slate-200"><Eye className="size-3.5" /></button>{canUpdate && row.status !== "Assinado" && <button type="button" onClick={() => { setMessage(""); setSignatureDocument(row); }} aria-label={`Assinar ${row.title}`} className="inline-flex size-7 items-center justify-center rounded border border-slate-200"><FileSignature className="size-3.5" /></button>}</div></ErpTableTd></ErpTableTr>)}</tbody>
-      </ErpTableContainer>
-    </div>
+    </OperationalHeaderActions>
+    <OperationalTable preferenceId="saude-admin-documentos" caption="Documentos da Saúde" columns={[healthColumn("title", "Documento", 360, 140), healthColumn("category", "Categoria", 170, 100), healthColumn("module", "Módulo", 150, 90), healthColumn("status", "Situação", 190, 130, "status"), healthColumn("actions", "Ações", 64, 64, "actions", "right", 80)]} rows={rows.map(row => ({ id: row.id, label: row.title, values: { title: row.title, category: row.category, module: row.moduleCode, status: row.status }, actions: <div className="flex items-center justify-end gap-1"><button type="button" onClick={() => setDetail(row)} aria-label={`Visualizar ${row.title}`}><Eye className="size-4" /></button>{canUpdate && row.status !== "Assinado" && <button type="button" onClick={() => { setMessage(""); setSignatureDocument(row); }} aria-label={`Assinar ${row.title}`}><FileSignature className="size-4" /></button>}</div> }))} />
 
     <Dialog open={uploadOpen} onOpenChange={setUploadOpen}><DialogContent><DialogHeader><DialogTitle>Novo documento padrão</DialogTitle><DialogDescription>Arquivo armazenado no GED institucional.</DialogDescription></DialogHeader><div className="grid gap-3"><label className="grid gap-1 text-xs font-semibold">Título<input value={title} onChange={event => setTitle(event.target.value)} className="h-9 rounded border px-3 text-sm" /></label><label className="grid gap-1 text-xs font-semibold">Categoria<select value={category} onChange={event => setCategory(event.target.value)} className="h-9 rounded border bg-white px-3 text-sm">{["Procedimento", "Orientação", "Formulário", "Protocolo", "Outro"].map(value => <option key={value}>{value}</option>)}</select></label><label className="grid gap-1 text-xs font-semibold">Módulo<select value={moduleCode} onChange={event => setModuleCode(event.target.value)} className="h-9 rounded border bg-white px-3 text-sm">{modules.map(module => <option key={module.code} value={module.code}>{module.name}</option>)}</select></label><label className="grid gap-1 text-xs font-semibold">PDF<input ref={fileRef} type="file" accept="application/pdf,.pdf" className="rounded border p-2 text-xs" /></label>{message && <p role="status" className="text-xs font-semibold text-rose-700">{message}</p>}</div><DialogFooter><Button variant="outline" onClick={() => setUploadOpen(false)}>Cancelar</Button><Button onClick={upload} disabled={pending || title.trim().length < 3}><Upload className="size-4" />{pending ? "Salvando..." : "Salvar"}</Button></DialogFooter></DialogContent></Dialog>
 

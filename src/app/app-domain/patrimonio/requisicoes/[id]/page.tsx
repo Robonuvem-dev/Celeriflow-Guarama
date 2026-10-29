@@ -13,6 +13,8 @@ import { materialRequests, materialRequestItems } from "@/db/schema/assets-reque
 import { materials, materialMovements, materialStocks, warehouses } from "@/db/schema/assets-stock";
 import { departments, employees } from "@/db/schema/administration";
 import { modules } from "@/db/schema/identity";
+import { RecordHistoryPanel } from "../../_components/RecordHistoryPanel";
+import { operationalColumns } from "../../_components/operational-columns";
 
 export default async function RequisicaoMaterialDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: routeId } = await params;
@@ -43,7 +45,7 @@ export default async function RequisicaoMaterialDetalhePage({ params }: { params
       <div className="grid gap-2 rounded border bg-white p-3 text-xs sm:grid-cols-2"><p><strong>Origem:</strong> {request.sourceWarehouse?.name || "Registro anterior: origem definida pelos lotes de entrega"}</p><p><strong>Destino:</strong> {request.department.name}</p><p><strong>Solicitante / recebedor:</strong> {request.requester.name}</p><p><strong>Situação:</strong> {request.status}</p><p><strong>Aprovado por:</strong> {request.approvedByEmployee?.name || "Aguardando análise"}</p><p><strong>Última entrega por:</strong> {request.issuedByEmployee?.name || "Sem entrega"}</p></div>
       {request.justification && <p className="rounded-md border bg-white p-3 text-sm"><span className="font-medium">Justificativa:</span> {request.justification}</p>}
       <MaterialRequestWorkflowClient
-        key={request.updatedAt.toISOString()}
+        key={request.id}
         canApprove={canPerformModuleOperation(user, "PATRIMONIO", "update") && Boolean(user.employeeId) && user.employeeId !== request.requesterId}
         canIssue={canPerformModuleOperation(user, "PATRIMONIO", "create") && Boolean(user.employeeId)}
         operationMessage={!user.employeeId ? "Vincule seu usuário a um servidor em Configurações para aprovar ou registrar entregas." : request.status === "Pendente" && user.employeeId === request.requesterId ? "A aprovação deve ser feita por outro servidor autorizado. Você é o solicitante deste pedido." : undefined}
@@ -62,7 +64,12 @@ export default async function RequisicaoMaterialDetalhePage({ params }: { params
         stocks={stocks.map(stock => ({ ...stock, expirationLabel: stock.expirationDate?.toLocaleDateString("pt-BR", { timeZone: "UTC" }) || "—" }))}
         settlements={settlements.map(settlement => ({ id: settlement.id, label: `Empenho ${settlement.commitment.number} · ${settlement.date.toISOString().slice(0, 10)} · R$ ${settlement.valueDecimal?.toFixed(2) ?? "não conciliado"}` }))}
       />
-      <section className="rounded border bg-white p-3"><h2 className="mb-2 text-sm font-semibold">Histórico de entregas e baixa do estoque</h2>{request.items.some(item => item.movements.length) ? <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-xs"><thead className="bg-slate-100"><tr><th className="p-2">Data</th><th className="p-2">Material</th><th className="p-2">Origem / lote</th><th className="p-2">Destino</th><th className="p-2">Quantidade</th></tr></thead><tbody>{request.items.flatMap(item => item.movements.map(movement => <tr key={movement.id} className="border-t"><td className="p-2">{movement.date.toLocaleString("pt-BR")}</td><td className="p-2">{item.material.code} · {item.material.name}</td><td className="p-2">{movement.warehouse.name} · {movement.stock?.batchNumber || "Sem lote"}</td><td className="p-2">{request.department.name} · {request.requester.name}</td><td className="p-2">{movement.quantity} {item.material.unitOfMeasure}</td></tr>))}</tbody></table></div> : <p className="text-xs text-slate-500">Nenhuma entrega registrada. O estoque será alterado após a aprovação e o atendimento.</p>}</section>
+      <RecordHistoryPanel title="Histórico de entregas e baixa do estoque" preferenceId="patrimonio-requisicao-entregas" emptyMessage="Nenhuma entrega registrada. O estoque será alterado após a aprovação e o atendimento." columns={operationalColumns([
+        ["date", "Data", 150, 100], ["code", "Código", 100, 65, "identifier"], ["material", "Material", 220, 100], ["warehouse", "Origem", 170, 80], ["batch", "Lote", 100, 65], ["department", "Destino", 170, 80], ["requester", "Recebedor", 170, 80], ["quantity", "Quantidade", 100, 75, "text", "right"], ["unit", "Unidade", 75, 55],
+      ])} rows={request.items.flatMap(item => item.movements.map(movement => ({ id: movement.id, label: item.material.name, values: {
+        date: movement.date.toLocaleString("pt-BR"), code: item.material.code, material: item.material.name, warehouse: movement.warehouse.name,
+        batch: movement.stock?.batchNumber || "Sem lote", department: request.department.name, requester: request.requester.name, quantity: String(movement.quantity), unit: item.material.unitOfMeasure,
+      } })))} />
     </PageFrame>
   );
 }

@@ -1,8 +1,5 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { BarChart3 } from "lucide-react";
 import { ReportsClient } from "../components/ReportsClient";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
 import { db } from "@/db/client";
 import { listSavedReports } from "@/db/repositories/sanitation/queries";
 
@@ -10,10 +7,5 @@ export default async function RelatoriosPage() {
   const context = await getTenantContextForModule("SANEAMENTO");
   const reports = await listSavedReports(context.database ?? db);
 
-  return (
-    <PageFrame className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
-      <PageHeader title="Relatórios Gerenciais" icon={<BarChart3 className="size-4 shrink-0 text-pink-500" />} className="dark:border-gray-700 dark:bg-gray-800 dark:[&>h1]:text-white" />
-      <div className="min-h-0 flex-1"><ReportsClient reports={reports} /></div>
-    </PageFrame>
-  );
+  return <ReportsClient reports={reports} />;
 }

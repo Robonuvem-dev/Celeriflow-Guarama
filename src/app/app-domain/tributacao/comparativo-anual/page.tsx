@@ -4,6 +4,8 @@ import { annualComparisonFilters, readAnnualTaxComparison } from "@/lib/tributac
 import PrintMovements from "../movimentacoes-contabeis/PrintMovements";
 import { databaseConnection, db } from "@/db/client";
 import { listFiscalPlanningUnits, listFiscalTaxLabels } from "@/db/repositories/taxation-pages/lookups";
+import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { TaxOperationalTable } from "../TaxOperationalTable";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +23,9 @@ export default async function AnnualComparisonPage({ searchParams }: { searchPar
   const taxes = await listFiscalTaxLabels(database, "name");
   const field = "block w-full rounded border p-1.5 text-xs";
   const query = new URLSearchParams(Object.entries(parsed.data).map(([key, value]) => [key, String(value)]));
-  return <div className="h-full space-y-3 overflow-auto p-4"><h1 className="text-lg font-bold">Comparativo anual — IPTU, ISS e demais receitas tributárias</h1>
-    <form className="grid gap-2 rounded border bg-white p-3 sm:grid-cols-4 print:hidden">
+  const summaryView = params.view === "summary";
+  const summaryFields = [["launched", "Valor lançado"], ["net", "Valor líquido atual"], ["discount", "Descontos"], ["paid", "Pagamentos confirmados"], ["outstanding", "Saldo em aberto"], ["assessments", "Lançamentos"], ["guides", "Guias ativas"], ["pendingDecimal", "Lançamentos com Decimal pendente"]] as const;
+  const filters = <form className="grid gap-2 rounded border bg-white p-3 sm:grid-cols-2 print:hidden">
       <label className="text-xs">Ente<select name="governmentEntityId" defaultValue={report.filters.governmentEntityId} className={field}>{entities.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
       <label className="text-xs">UG<select name="budgetUnitId" defaultValue={report.filters.budgetUnitId ?? ""} className={field}><option value="">Todas as UGs autorizadas do ente</option>{units.map(unit => <option key={unit.budgetUnitId} value={unit.budgetUnitId}>{unit.governmentEntity.name} · {unit.budgetUnit.code} · {unit.budgetUnit.name}</option>)}</select></label>
       <label className="text-xs">Tributo<select name="taxId" defaultValue={report.filters.taxId ?? ""} className={field}><option value="">Todos</option>{taxes.map(tax => <option key={tax.id} value={tax.id}>{tax.name}</option>)}</select></label>
@@ -32,10 +35,17 @@ export default async function AnnualComparisonPage({ searchParams }: { searchPar
       <label className="text-xs">Variação<select name="direction" defaultValue={report.filters.direction} className={field}><option value="ALL">Todas</option><option value="INCREASE">A maior</option><option value="DECREASE">A menor</option></select></label>
       <label className="text-xs">Diferença mínima (R$)<input name="minimumDifference" type="number" min="0" step="0.01" defaultValue={report.filters.minimumDifference} className={field} /></label><label className="text-xs">Variação mínima (%)<input name="minimumPercentage" type="number" min="0" step="0.000001" defaultValue={report.filters.minimumPercentage} className={field}/></label>
       <button className="rounded bg-emerald-700 p-2 text-xs text-white">Consultar</button>
-    </form>
+    </form>;
+  const contextText = "Posição operacional atual dos lançamentos e avaliações de cada exercício, com arrecadação confirmada e estornos considerados. Créditos compensados reduzem o saldo, sem serem apresentados como pagamento. Guias canceladas não integram a contagem ativa. Registros sem origem municipal ou valores Decimal conciliados não são presumidos. O resumo apresenta valores documentados; sua integralidade depende de não haver pendências.";
+  return <><div className="flex min-h-0 flex-1 flex-col print:hidden"><TaxOperationalTable id={summaryView ? "comparativo-resumo" : "comparativo-registros"} resetKey={query.toString()}
+    toolbar={<><Link href={`?${query}&view=${summaryView ? "rows" : "summary"}`} className="h-7 rounded border px-2 text-xs">{summaryView ? "Ver registros" : "Ver resumo"}</Link><OperationalFilters label="Filtros e contexto">{filters}<p>{contextText}</p></OperationalFilters></>}
+    actions={<div className="flex items-center gap-2"><PrintMovements /><Link className="text-xs text-emerald-700 underline" href={`/tributacao/comparativo-anual/exportar?${query}`}>Exportar CSV</Link></div>}
+    columns={summaryView ? [["label", "Resumo", 230, 400], ["first", String(report.filters.firstYear), 160, 230, "text", "right"], ["second", String(report.filters.secondYear), 160, 230, "text", "right"]] : [["tax", "Tributo", 100, 130], ["taxpayer", "Contribuinte", 150, 230], ["registration", "Inscrição", 100, 140, "identifier"], ["first", `${report.filters.metric === "VENAL" ? "Venal" : "Líquido"} ${report.filters.firstYear}`, 110, 140, "text", "right"], ["second", `${report.filters.metric === "VENAL" ? "Venal" : "Líquido"} ${report.filters.secondYear}`, 110, 140, "text", "right"], ["difference", "Diferença (R$)", 115, 140, "text", "right"], ["percentage", "Variação (%)", 110, 130, "text", "right"]]}
+    rows={summaryView ? summaryFields.map(([key, label]) => ({ id: key, label, values: { label, first: String(report.first[key]), second: String(report.second[key]) } })) : report.rows.map(row => ({ id: row.key, label: row.taxpayer, values: { tax: row.tax, taxpayer: row.taxpayer, registration: row.registration, first: String(row.comparedFirst ?? "Pendente"), second: String(row.comparedSecond ?? "Pendente"), difference: String(row.change?.difference ?? "Não avaliada"), percentage: String(row.change?.percentage ?? "Não calculável") } }))} /></div>
+    <div className="hidden print:block"><h1>Comparativo anual — IPTU, ISS e demais receitas tributárias</h1>
     <p className="text-xs">Posição operacional atual dos lançamentos e avaliações de cada exercício, com arrecadação confirmada e estornos considerados. Créditos compensados reduzem o saldo, sem serem apresentados como pagamento. Guias canceladas não integram a contagem ativa. Registros sem origem municipal ou valores Decimal conciliados não são presumidos. O resumo apresenta valores documentados; sua integralidade depende de não haver pendências.</p>
     <div className="flex gap-3 print:hidden"><PrintMovements /><Link className="text-xs text-emerald-700 underline" href={`/tributacao/comparativo-anual/exportar?${query}`}>Exportar CSV</Link></div>
     <table className="w-full text-left text-xs"><thead><tr><th>Resumo</th><th>{report.filters.firstYear}</th><th>{report.filters.secondYear}</th></tr></thead><tbody>{([["launched", "Valor lançado"], ["net", "Valor líquido atual"], ["discount", "Descontos"], ["paid", "Pagamentos confirmados"], ["outstanding", "Saldo em aberto"], ["assessments", "Lançamentos"], ["guides", "Guias ativas"], ["pendingDecimal", "Lançamentos com Decimal pendente"]] as const).map(([key, label]) => <tr key={key} className="border-t"><td className="py-1">{label}</td><td>{report.first[key]}</td><td>{report.second[key]}</td></tr>)}</tbody></table>
     <table className="w-full text-left text-xs"><thead><tr><th>Tributo / contribuinte</th><th>Inscrição</th><th>{report.filters.metric === "VENAL" ? "Venal" : "Líquido"} {report.filters.firstYear}</th><th>{report.filters.metric === "VENAL" ? "Venal" : "Líquido"} {report.filters.secondYear}</th><th>Diferença (R$)</th><th>Variação (%)</th></tr></thead><tbody>{report.rows.map(row => <tr key={row.key} className="border-t"><td className="py-2">{row.tax} · {row.taxpayer}</td><td>{row.registration}</td><td>{row.comparedFirst ?? "Pendente"}</td><td>{row.comparedSecond ?? "Pendente"}</td><td>{row.change?.difference ?? "Não avaliada"}</td><td>{row.change?.percentage ?? "Não calculável"}</td></tr>)}</tbody></table>
-  </div>;
+  </div></>;
 }

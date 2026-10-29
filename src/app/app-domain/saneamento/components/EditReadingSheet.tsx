@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { updateMeterReading } from "../actions";
 import styles from "./sanitation.module.css";
+import operational from "@/components/app-ui/operational/operational.module.css";
 
 type Reading = {
   id: string;
@@ -53,7 +54,7 @@ export function EditReadingSheet({ reading }: { reading: Reading }) {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="p-1.5 text-slate-400 hover:text-[#0284C7] hover:bg-blue-50 rounded transition-colors" title="Editar leitura" />}>
+      <SheetTrigger render={<button type="button" className={operational.iconButton} title="Editar leitura" aria-label={`Editar leitura de ${reading.unit.code}`} />}>
         <Pencil className="h-3.5 w-3.5" />
       </SheetTrigger>
       <SheetContent side="right" className={styles.sheet}>

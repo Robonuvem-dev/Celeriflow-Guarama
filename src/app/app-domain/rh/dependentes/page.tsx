@@ -1,96 +1,24 @@
 import Link from "next/link";
-import { UserPlus, Search } from "lucide-react";
+import { format } from "date-fns";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { DependenteRowActions } from "./DependenteRowActions";
-import { format } from "date-fns";
 import { db } from "@/db/client";
 import { readDependentsPage } from "@/db/repositories/personnel-pages/records";
-import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
-import { RhPagination } from "../_components/RhPagination";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import {
-  ErpTableContainer,
-  ErpTableThead,
-  ErpTableTh,
-  ErpTableTr,
-  ErpTableTd,
-} from "@/components/app-ui/erp/ErpTable";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { rhColumn } from "../_components/operational-columns";
 
-export default async function DependentesPage(
-  props: { searchParams?: Promise<{ q?: string; page?: string }> }
-) {
+const columns = [rhColumn("employee", "Servidor responsável", 260, 160), rhColumn("name", "Dependente", 260, 150), rhColumn("relationship", "Parentesco", 160, 100), rhColumn("birth", "Nascimento", 130, 110), rhColumn("actions", "Ações", 90, 80, "actions", "right")];
+
+export default async function DependentesPage(props: { searchParams?: Promise<{ q?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const searchParams = await props.searchParams;
   const q = searchParams?.q || "";
-
   const { total, pagination, dependents } = await readDependentsPage(context.database ?? db, { q, page: searchParams?.page });
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">
-      <ErpPageTitle
-        title="Dependentes"
-        icon={<UserPlus className="size-4 text-violet-600" />}
-        description="Cadastro na ficha do Servidor"
-      />
-
-      <ErpListFrame
-        pagination={<RhPagination {...pagination} total={total} pathname="/rh/dependentes" filters={{ q }} />}
-        toolbar={
-          <form action="/rh/dependentes" method="GET" className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 basis-full sm:basis-auto">
-              <span className="sr-only">Buscar dependente</span>
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                name="q"
-                defaultValue={q}
-                placeholder="Buscar por dependente ou servidor"
-                className="h-8 w-full rounded-md border border-slate-200 bg-white py-1 pl-8 pr-2.5 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </label>
-            <button type="submit" className="h-8 rounded-md bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800">
-              Filtrar
-            </button>
-            <Link href="/rh/dependentes" className="inline-flex h-8 items-center px-2.5 rounded-md border border-slate-200 text-xs text-slate-600 hover:bg-slate-50">
-              Limpar
-            </Link>
-          </form>
-        }
-      >
-        <ErpTableContainer>
-          <ErpTableThead>
-            <tr>
-              <ErpTableTh className="w-[32%]">Servidor Responsável</ErpTableTh>
-              <ErpTableTh className="w-[30%]">Dependente</ErpTableTh>
-              <ErpTableTh className="w-[18%]">Parentesco</ErpTableTh>
-              <ErpTableTh className="w-[12%]">Nascimento</ErpTableTh>
-              <ErpTableTh className="w-[8%] text-right">Ações</ErpTableTh>
-            </tr>
-          </ErpTableThead>
-          <tbody>
-            {dependents.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="p-8 text-center text-xs text-slate-400">
-                  Nenhum dependente encontrado.
-                </td>
-              </tr>
-            ) : (
-              dependents.map((dep) => (
-                <ErpTableTr key={dep.id}>
-                  <ErpTableTd className="font-semibold">{dep.employee?.name}</ErpTableTd>
-                  <ErpTableTd>{dep.name}</ErpTableTd>
-                  <ErpTableTd>{dep.relationship}</ErpTableTd>
-                  <ErpTableTd>
-                    {dep.birthDate ? format(new Date(dep.birthDate), "dd/MM/yyyy") : "—"}
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right">
-                    <DependenteRowActions dependent={dep} />
-                  </ErpTableTd>
-                </ErpTableTr>
-              ))
-            )}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
-    </div>
-  );
+  return <OperationalListFrame label="Dependentes"
+    toolbar={<form action="/rh/dependentes" method="GET" className={styles.searchForm}><input name="q" aria-label="Buscar por dependente ou servidor" defaultValue={q} placeholder="Dependente ou servidor" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button><Link href="/rh/dependentes" className={styles.filterButton}>Limpar</Link></form>}
+    pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/dependentes" values={{ q }} />}>
+    <OperationalTable preferenceId="rh-dependentes" columns={columns} caption="Dependentes — cadastro na ficha do servidor" emptyMessage="Nenhum dependente encontrado." rows={dependents.map(dep => ({ id: dep.id, label: dep.name, values: { employee: dep.employee?.name || "—", name: dep.name, relationship: dep.relationship, birth: dep.birthDate ? format(new Date(dep.birthDate), "dd/MM/yyyy") : "—" }, actions: <DependenteRowActions dependent={dep} /> }))} />
+  </OperationalListFrame>;
 }

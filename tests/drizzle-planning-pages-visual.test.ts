@@ -1,70 +1,38 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import test from "node:test";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import ts from "typescript";
+import { readFileSync } from "node:fs";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import * as mappings from "../src/db/schema/planning-pages";
+import { assertBoundCall, assertDrizzleOnly, assertJsxProps, assertOperationalRenderer, assertReviewedInventory, currentSources, historicalVisualBaseline } from "./helpers/table-migration-contracts";
 
 const root = "src/components/app-ui/planejamento";
-const baseline = JSON.parse(readFileSync(new URL("./fixtures/historical-visual-baselines.json", import.meta.url), "utf8")) as {
-  formatVersion: number; sourceCommit: string;
-  planning: {
-    decimalException: { path: string; namespace: string; before: string; after: string };
-    files: Record<string, { fullAstSha256: string; decimalConstructors: number; jsxRoots: { count: number; sha256: string }; decimalNormalizedJsxRoots: { count: number; sha256: string } }>;
-    financeWrappers: Record<string, { fullAstSha256: string }>;
-  };
-};
-const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
-const printer = ts.createPrinter({ removeComments: true, newLine: ts.NewLineKind.LineFeed });
-function source(path: string) {
-  const text = readFileSync(path, "utf8").replaceAll("\r\n", "\n");
-  const { diagnostics } = ts.transpileModule(text, { fileName: path, reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.ESNext, jsx: ts.JsxEmit.Preserve } });
-  assert.deepEqual(diagnostics, [], path);
-  return ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-}
-function jsx(path: string) {
-  const parsed = source(path), nodes: string[] = [];
-  const visit = (node: ts.Node) => {
-    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) {
-      const text = printer.printNode(ts.EmitHint.Unspecified, node, parsed);
-      nodes.push(text);
-      return;
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(parsed); return nodes;
-}
-
-test("Planejamento: 15 TSX sem Prisma, 14 JSX exatos e somente binding Decimal na versão", () => {
-  assert.equal(baseline.formatVersion, 1);
-  assert.equal(baseline.sourceCommit, "5cfa75dfe20a6d3fcc20dce33e818585cb8b9954");
+test("Planejamento: proveniência AST imutável e inventário atual Drizzle, incluindo os cinco novos adapters", () => {
+  const baseline = historicalVisualBaseline();
   assert.deepEqual(baseline.planning.decimalException, { path: "src/components/app-ui/planejamento/PlanningVersionPage.tsx", namespace: "Prisma.Decimal", before: "new Prisma.Decimal(", after: "new Decimal(" });
-  const inventory = readdirSync(root).filter(file => file.endsWith(".tsx")); assert.equal(inventory.length, 15);
-  assert.deepEqual(inventory.map(file => `${root}/${file}`).sort(), Object.keys(baseline.planning.files).sort());
-  for (const file of inventory) {
-    assert.doesNotMatch(readFileSync(join(root, file), "utf8"), /@prisma|\bprisma\b|\bPrisma\b/);
-    const previous = baseline.planning.files[`${root}/${file}`], nodes = jsx(join(root, file));
-    const actual = { count: nodes.length, sha256: sha256(JSON.stringify(nodes)) };
-    if (file === "PlanningVersionPage.tsx") {
-      assert.equal(previous.decimalConstructors, 1);
-      assert.deepEqual(actual, previous.decimalNormalizedJsxRoots, file);
-    } else assert.deepEqual(actual, previous.jsxRoots, file);
-  }
+  const inventory = currentSources(root);
+  assertReviewedInventory(inventory, Object.keys(baseline.planning.files), ["ContextualTables", "PlanningDraftTable", "PlanningList", "PlanningLocalList", "PlanningWorkspace"].map(file => `${root}/${file}.tsx`));
+  assertDrizzleOnly(inventory);
   for (const file of ["lookups", "reports", "report-layouts", "publication-response"]) assert.doesNotMatch(readFileSync(`src/lib/planejamento/${file}.ts`, "utf8"), /@prisma|\bprisma\b|\bPrisma\b|as unknown as/);
 });
 
-test("Planejamento: seis componentes sem acesso persistente e wrappers Financeiro preservados", () => {
-  for (const file of ["PlanningDocumentUpload", "PlanningForm", "PlanningLookupField", "PlanningRecordEditor", "PlanningReportSubmission", "PlanningMovementHistory"]) {
-    const path = join(root, `${file}.tsx`);
-    assert.equal(sha256(printer.printFile(source(path))), baseline.planning.files[path.replaceAll("\\", "/")].fullAstSha256, file);
-  }
-  const route = "src/app/app-domain/financeiro/orcamento/planejamento";
-  for (const file of ["page.tsx", "PlanejamentoClient.tsx"]) {
-    const path = join(route, file);
-    assert.equal(sha256(printer.printFile(source(path))), baseline.planning.financeWrappers[path.replaceAll("\\", "/")].fullAstSha256, file);
-  }
+test("Planejamento atual: jurisdição, executor, permissões e actions completos com renderizadores reais", () => {
+  const pages = `${root}/PlanningPages.tsx`, management = `${root}/PlanningManagementPage.tsx`;
+  assertBoundCall(pages, "@/lib/planejamento/access", "getPlanningContext", ["jurisdiction"], 4);
+  assertBoundCall(pages, "@/db/repositories/planning-pages/navigation", "pageEntities", ["pageDatabase(context)", "context", "admin"]);
+  assertBoundCall(pages, "@/lib/planejamento/service", "getPlanningInstrument", ["context", "id", "page", "asOf"]);
+  for (const operation of ["create", "update"]) assertBoundCall(pages, "@/lib/platform/tenant-context", "canPerformModuleOperation", ["context.user", '"PLANEJAMENTO"', JSON.stringify(operation)]);
+  assertBoundCall(management, "@/db/repositories/planning-pages/shared", "pageInstrument", ["database", "context", "id"]);
+  for (const moduleCode of ["PLANEJAMENTO", "TRANSPARENCIA", "DOCUMENTOS", "CAMARA"]) assertBoundCall(management, "@/lib/platform/tenant-context", "canPerformModuleOperation", ["context.user", JSON.stringify(moduleCode), '"update"']);
+  assertBoundCall(`${root}/PlanningReferencePage.tsx`, "@/db/repositories/planning-pages/catalogs", "pageReferences", ["database", "context", "filters"]);
+  assertBoundCall(`${root}/PlanningReferencePage.tsx`, "@/db/repositories/planning/scope", "planningEntityScope", ["context", "governmentEntities.id"]);
+  assertBoundCall(`${root}/PlanningForm.tsx`, "@/app/app-domain/planejamento/actions", "savePlanningRecord", ["jurisdiction", "operation", "{ ...input, ...hidden }"]);
+  assertBoundCall(`${root}/PlanningForm.tsx`, "@/app/app-domain/planejamento/actions", "previewPlanningImportAction", ["jurisdiction", "{ ...input, ...hidden }"]);
+  assertBoundCall(`${root}/PlanningLookupField.tsx`, "@/app/app-domain/planejamento/actions", "searchPlanningOptions");
+  for (const name of ["PlanningInstrumentsPage", "PlanningDetailPage"]) assertOperationalRenderer(pages, name);
+  for (const name of ["PlanningReferencePage", "PlanningManagementPage", "PlanningMovementHistory"]) assertOperationalRenderer(`${root}/${name}.tsx`, name);
+  assertJsxProps(`${root}/PlanningList.tsx`, "OperationalTable", ["columns", "rows", "preferenceId", "caption"]);
+  assertJsxProps(`${root}/PlanningList.tsx`, "OperationalLinkPagination", ["page", "total", "values", "pageParam"]);
+  assertBoundCall("src/app/app-domain/financeiro/orcamento/planejamento/page.tsx", "next/navigation", "redirect", ['"/planejamento"']);
 });
 
 test("Planejamento: quatro mappings completos conferidos com o catálogo físico", () => {

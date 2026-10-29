@@ -2,7 +2,7 @@
 
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Filter, Pencil, PowerOff, Search } from "lucide-react";
+import { Pencil, PowerOff } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,7 +11,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { inactivateSavedReport, updateSavedReport } from "../actions";
-import { SanitationTable, SanitationPagination } from "./SanitationTable";
+import { OperationalTable, OperationalPagination, type OperationalRow } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import operational from "@/components/app-ui/operational/operational.module.css";
+import { LocalListToolbar } from "./LocalListToolbar";
+import { reportColumns } from "./list-columns";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import styles from "./sanitation.module.css";
 
 type Report = {
@@ -42,7 +48,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     const matchesActive = activeFilter === "Todos" || (activeFilter === "Ativos" ? report.active : !report.active);
     return matchesSearch && matchesType && matchesActive;
   });
-  const pageSize = 20;
+  const pageSize = OPERATIONAL_PAGE_SIZE;
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filteredReports.length / pageSize)));
   const paged = filteredReports.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -88,64 +94,29 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     setInactivatingId(null);
   }
 
+  const rows: OperationalRow[] = paged.map((report) => ({
+    id: report.id, label: report.name,
+    values: { name: report.name, type: report.type, period: report.period, format: report.format, active: report.active ? "Ativo" : "Inativo" },
+    actions: <div className={operational.rowActions}>
+      <button type="button" onClick={() => { setError(""); setSelectedReport(report); }} className={operational.iconButton} aria-label={`Editar relatório ${report.name}`} title="Editar"><Pencil /></button>
+      <button type="button" onClick={() => void handleInactivate(report)} disabled={!report.active || inactivatingId === report.id} className={operational.iconButton} aria-label={`Inativar relatório ${report.name}`} title="Inativar"><PowerOff /></button>
+    </div>,
+  }));
+
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="Lista de relatórios">
-      <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Buscar relatório..."
-              value={search}
-              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-              className="h-9 w-full rounded-md border bg-white py-1.5 pr-3 pl-8 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-          <div className="flex items-center gap-1">
-            <Filter className="h-3.5 w-3.5 text-gray-400" />
-            <select value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }} aria-label="Filtrar relatórios por tipo" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
-              {types.map((type) => <option key={type}>{type}</option>)}
-            </select>
-          </div>
-          <select value={activeFilter} onChange={(event) => { setActiveFilter(event.target.value); setPage(1); }} aria-label="Filtrar relatórios por situação" className="h-9 rounded-md border bg-white px-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0284C7] dark:bg-gray-900 dark:text-white">
-            <option>Ativos</option>
-            <option>Inativos</option>
-            <option>Todos</option>
-          </select>
-        </div>
-        <span className="text-xs text-gray-400">{filteredReports.length} relatório{filteredReports.length !== 1 ? "s" : ""}</span>
-      </div>
-
-      {error && <div className="mx-3 mt-3 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}</div>}
-
-      {filteredReports.length === 0 ? (
-        <div className="min-h-0 flex-1 p-10 text-center text-sm text-gray-400">
-          <FileText className="mx-auto mb-3 h-10 w-10 text-gray-200" />
-          Nenhum relatório encontrado.
-        </div>
-      ) : (
-        <SanitationTable columns={[
-          { label: "Relatório", width: 35 }, { label: "Tipo", width: 20 }, { label: "Período", width: 15 },
-          { label: "Formato", width: 10 }, { label: "Status", width: 12 }, { label: "Ações", width: 8, align: "right" },
-        ]}>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {paged.map((report) => (
-                <tr key={report.id} className="text-xs text-gray-600 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{report.name}</td>
-                  <td className="px-3 py-2">{report.type}</td>
-                  <td className="px-3 py-2">{report.period}</td>
-                  <td className="px-3 py-2">{report.format}</td>
-                  <td className="px-3 py-2"><span className={`rounded-full px-1.5 py-0.5 font-medium ${report.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{report.active ? "Ativo" : "Inativo"}</span></td>
-                  <td className="px-3 py-2"><div className="flex justify-end gap-1">
-                    <button onClick={() => { setError(""); setSelectedReport(report); }} className="rounded p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-[#0284C7]" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => handleInactivate(report)} disabled={!report.active || inactivatingId === report.id} className="rounded p-1.5 text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40" title="Inativar"><PowerOff className="h-3.5 w-3.5" /></button>
-                  </div></td>
-                </tr>
-              ))}
-            </tbody>
-        </SanitationTable>
-      )}
+    <OperationalListFrame label="Lista de relatórios"
+      toolbar={<LocalListToolbar search={search} onSearch={(value) => { setSearch(value); setPage(1); }} placeholder="Buscar relatório..." filters={[
+        { label: "Tipo", value: typeFilter, defaultValue: "Todos", options: types, onChange: (value) => { setTypeFilter(value); setPage(1); } },
+        { label: "Situação", value: activeFilter, defaultValue: "Todos", options: ["Ativos", "Inativos", "Todos"], onChange: (value) => { setActiveFilter(value); setPage(1); } },
+      ]} />}
+      pagination={<OperationalPagination page={currentPage} total={filteredReports.length} onPageChange={setPage} />}>
+      <OperationalTable columns={reportColumns} rows={rows} preferenceId="sanitation-reports" caption="Relatórios salvos" emptyMessage="Nenhum relatório encontrado." />
+      <Dialog open={Boolean(error) && !selectedReport} onOpenChange={(open) => { if (!open) setError(""); }}>
+        <DialogContent className={operational.dialog}>
+          <DialogHeader><DialogTitle>Não foi possível atualizar o relatório</DialogTitle><DialogDescription>{error}</DialogDescription></DialogHeader>
+          <button type="button" className={operational.dialogButton} onClick={() => setError("")}>Fechar</button>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={selectedReport !== null} onOpenChange={(open) => !open && closeSheet()}>
         <SheetContent side="right" className={styles.sheet}>
@@ -163,7 +134,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
           </form>}
         </SheetContent>
       </Sheet>
-      <SanitationPagination page={currentPage} total={filteredReports.length} pageSize={pageSize} onPageChange={setPage} />
-    </section>
+    </OperationalListFrame>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Download, ShieldCheck, FileCheck, HardDrive, Terminal, CheckCircle2, RefreshCw, Eye, Hash, Calendar, Building2 } from "lucide-react";
+import { Download, ShieldCheck, FileCheck, HardDrive, Terminal, CheckCircle2, RefreshCw, Hash, Calendar, Building2 } from "lucide-react";
+import FinanceOperationalList from "../FinanceOperationalList";
+import { financeColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { runAutomatedBankDownloadAction } from "./extratos-actions";
 import { pocVirtualBank } from "@/lib/poc/poc-config";
 
@@ -35,6 +38,7 @@ export default function DownloadExtratosClient({ initialHistory = [] }: { initia
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentResult, setCurrentResult] = useState<DownloadRecord | null>(null);
   const [history, setHistory] = useState<DownloadRecord[]>(initialHistory);
+  const [showHistory, setShowHistory] = useState(true);
 
   async function handleExecuteAutomation(e: React.FormEvent) {
     e.preventDefault();
@@ -61,9 +65,15 @@ export default function DownloadExtratosClient({ initialHistory = [] }: { initia
     }
   }
 
+  if (showHistory) return <FinanceOperationalList label="Histórico de downloads de extratos" preferenceId="financeiro-extratos"
+    actions={<button className={styles.newButton} onClick={() => setShowHistory(false)}>Executar automação</button>}
+    columns={[financeColumn("date", "Data/Hora", 150), financeColumn("bank", "Banco", 110), financeColumn("account", "Conta", 90), financeColumn("period", "Período", 170), financeColumn("file", "Arquivo Original", 140), financeColumn("hash", "Hash SHA-256", 130, 180, "identifier"), financeColumn("destination", "Destino", 130, 180), financeColumn("status", "Status", 100, 120, "status")]}
+    rows={history.map(item => ({ id: item.id, label: item.nomeArquivo, values: { date: new Date(item.createdAt).toLocaleString("pt-BR"), bank: item.banco, account: item.contaNumero, period: `${item.periodoInicio.slice(0, 10)} a ${item.periodoFim.slice(0, 10)}`, file: item.nomeArquivo, hash: item.hashSHA256, destination: item.caminhoDestino, status: item.status } }))} />;
+
   return (
     <div className="h-full min-h-0 overflow-y-auto px-1 py-1 sm:px-2 [&>*+*]:mt-2">
       {/* Header */}
+      <button className={styles.dialogButton} onClick={() => setShowHistory(true)}>Consultar histórico (parâmetros e resultado preservados)</button>
       <div className="flex flex-col gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="mt-0.5 flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900">
@@ -279,58 +289,6 @@ export default function DownloadExtratosClient({ initialHistory = [] }: { initia
         </div>
       </div>
 
-      {/* History Table */}
-      <div className="space-y-3 rounded-md border border-slate-200 bg-white p-3 shadow-none">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Eye className="w-5 h-5 text-slate-600" />
-          Histórico de Execuções e Downloads de Extratos
-        </h3>
-
-        {history.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400 italic">Nenhum download efetuado recentemente.</p>
-        ) : (
-          <div className="overflow-y-auto">
-            <table className="w-full table-fixed text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="p-3">Data/Hora</th>
-                  <th className="p-3">Banco / Conta</th>
-                  <th className="p-3">Período</th>
-                  <th className="p-3">Arquivo Original</th>
-                  <th className="p-3">Hash SHA-256</th>
-                  <th className="p-3">Destino</th>
-                  <th className="p-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {history.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                    <td className="p-3 font-mono text-slate-500">{new Date(item.createdAt).toLocaleString("pt-BR")}</td>
-                    <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
-                      {item.banco} ({item.contaNumero})
-                    </td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">
-                      {item.periodoInicio.slice(0, 10)} a {item.periodoFim.slice(0, 10)}
-                    </td>
-                    <td className="p-3 font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{item.nomeArquivo}</td>
-                    <td className="p-3 font-mono text-[10px] text-slate-500 max-w-[140px] truncate" title={item.hashSHA256}>
-                      {item.hashSHA256}
-                    </td>
-                    <td className="p-3 font-mono text-[10px] text-slate-500 max-w-[180px] truncate" title={item.caminhoDestino}>
-                      {item.caminhoDestino}
-                    </td>
-                    <td className="p-3">
-                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded dark:bg-emerald-900/60 dark:text-emerald-300">
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

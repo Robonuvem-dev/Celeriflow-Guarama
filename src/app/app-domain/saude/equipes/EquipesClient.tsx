@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Pencil, Trash2, CheckCircle, XCircle, Plus, Search, AlertCircle } from "lucide-react";
+import { Pencil, Trash2, CheckCircle, XCircle, Plus, AlertCircle } from "lucide-react";
 import { createHealthTeam, updateHealthTeam, toggleHealthTeamStatus, deleteHealthTeam } from "./actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-
-const PAGE_SIZE = 20;
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { healthColumn } from "../operational-columns";
 
 type HealthUnit = {
   id: string;
@@ -102,66 +103,9 @@ export default function EquipesClient({ teams, units }: { teams: HealthTeam[], u
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      {/* Barra de Ações e Busca */}
-      <div className="flex shrink-0 flex-col gap-2 rounded-md border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800">
-        <div className="relative flex-1 max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-          className="block h-9 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm leading-5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:text-white"
-            placeholder="Pesquisar por nome ou código..."
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-          />
-        </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex h-9 items-center justify-center rounded-md border border-transparent bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Equipe
-        </button>
-      </div>
-
-      {/* Tabela */}
-      <ErpListFrame pagination={<ErpPagination page={activePage} total={filteredTeams.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="equipes" onPageChange={setPage} />}>
-        <table className="w-full table-fixed text-left text-xs">
-          <thead className="sticky top-0 z-10 border-b bg-slate-100 text-[10px] uppercase tracking-wider">
-            <tr>
-              <th className="p-2 font-semibold text-gray-600">Nome da Equipe</th>
-              <th className="p-2 font-semibold text-gray-600">Código</th>
-              <th className="p-2 font-semibold text-gray-600">Microárea</th>
-              <th className="p-2 font-semibold text-gray-600">Unidade</th>
-              <th className="p-2 font-semibold text-gray-600">Status</th>
-              <th className="p-2 text-right font-semibold text-gray-600">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {visibleTeams.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
-                  <div className="flex flex-col items-center justify-center">
-                    <Users className="h-10 w-10 text-gray-300 mb-2" />
-                    <p>Nenhuma equipe encontrada.</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              visibleTeams.map(item => (
-                <tr key={item.id} className="h-9 hover:bg-slate-50">
-                  <td className="truncate p-2 font-medium text-gray-900">{item.name}</td>
-                  <td className="truncate p-2 text-gray-600">{item.code}</td>
-                  <td className="truncate p-2 text-gray-600">{item.microarea || '-'}</td>
-                  <td className="truncate p-2 text-gray-600">{item.unit?.name}</td>
-                  <td className="p-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {item.isActive ? 'Ativa' : 'Inativa'}
-                    </span>
-                  </td>
-                  <td className="p-2 text-right"><div className="flex items-center justify-end gap-1">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <OperationalListFrame label="Equipes ESF" toolbar={<input aria-label="Buscar equipes" className={styles.searchInput} placeholder="Pesquisar por nome ou código..." value={searchTerm} onChange={event => { setSearchTerm(event.target.value); setPage(1); }} />} actions={<button type="button" onClick={openCreateModal} className={styles.newButton} aria-label="Nova Equipe" title="Nova Equipe"><Plus aria-hidden="true" /><span className={styles.newLabel}>Nova Equipe</span></button>} pagination={<OperationalPagination page={activePage} total={filteredTeams.length} onPageChange={setPage} />}>
+        <OperationalTable preferenceId="saude-equipes" caption="Equipes ESF" columns={[healthColumn("name", "Nome da equipe", 260, 130), healthColumn("code", "Código", 120, 80, "identifier"), healthColumn("microarea", "Microárea", 150, 90), healthColumn("unit", "Unidade", 240, 110), healthColumn("status", "Status", 100, 80, "status"), healthColumn("actions", "Ações", 84, 84, "actions", "right", 100)]} rows={visibleTeams.map(item => ({ id: item.id, label: item.name, values: { name: item.name, code: item.code || "—", microarea: item.microarea || "—", unit: item.unit?.name || "—", status: item.isActive ? "Ativa" : "Inativa" }, actions: <div className={styles.rowActions}>
                     <button onClick={() => openEditModal(item)} className="text-gray-400 hover:text-emerald-600 p-1 rounded hover:bg-emerald-50" title="Editar">
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -177,13 +121,8 @@ export default function EquipesClient({ teams, units }: { teams: HealthTeam[], u
                     <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50" title="Excluir">
                       <Trash2 className="h-4 w-4" />
                     </button>
-                  </div></td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </ErpListFrame>
+                  </div> }))} />
+      </OperationalListFrame>
 
       {/* Modal */}
       {isModalOpen && (

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Database } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
@@ -7,6 +6,7 @@ import { MasterDataCatalogClient } from "./MasterDataCatalogClient";
 import type { MasterDataCatalog, MasterDataColumn, MasterDataField } from "./master-data-types";
 import { db } from "@/db/client";
 import { loadMasterDataPage } from "@/db/repositories/registry/master-data-queries";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 export type MasterDataSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function firstParam(value: string | string[] | undefined) {
@@ -22,12 +22,15 @@ export async function renderMasterDataPage(input: {
 }) {
   const params = await input.searchParams;
   const query = firstParam(params.q)?.trim() || "";
-  const page = Math.max(1, Number.parseInt(firstParam(params.page) || "1", 10) || 1);
+  const requestedPage = Math.max(1, Number.parseInt(firstParam(params.page) || "1", 10) || 1);
   const requestedTab = firstParam(params.tab);
   const activeTab = input.tabs?.some(tab => tab.value === requestedTab) ? requestedTab : input.tabs?.[0]?.value;
   const catalog = input.tabs?.find(tab => tab.value === activeTab)?.catalog || input.catalog;
   const context = await getTenantContextForModule("CADASTROS");
-  const { rows, total, options } = await loadMasterDataPage(context.database ?? db, catalog, query, page);
+  let result = await loadMasterDataPage(context.database ?? db, catalog, query, requestedPage);
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(result.total / OPERATIONAL_PAGE_SIZE)));
+  if (page !== requestedPage) result = await loadMasterDataPage(context.database ?? db, catalog, query, page);
+  const { rows, total, options } = result;
   let columns: MasterDataColumn[] = [];
   let fields: MasterDataField[] = [];
 
@@ -76,6 +79,5 @@ export async function renderMasterDataPage(input: {
     fields = [{ name: "type", label: "Tipo", required: true }, { name: "number", label: "Número", required: true }, { name: "summary", label: "Ementa", type: "textarea", required: true }, { name: "governmentLevel", label: "Esfera", required: true }, { name: "issuingBody", label: "Órgão emissor", required: true }, { name: "governmentEntityId", label: "Entidade", type: "select", options: options.entities }, { name: "publicationDate", label: "Publicação", type: "date" }, { name: "effectiveFrom", label: "Início da vigência", type: "date" }, { name: "effectiveUntil", label: "Fim da vigência", type: "date" }, { name: "content", label: "Conteúdo consolidado", type: "textarea", required: true }];
   }
 
-  const tabLinks = input.tabs && <div className="mb-2 flex gap-1 border-b border-slate-200">{input.tabs.map(tab => <Link key={tab.value} href={`${input.pathname}?tab=${tab.value}`} className={`border-b-2 px-3 py-1.5 text-xs font-semibold ${activeTab === tab.value ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-800"}`}>{tab.label}</Link>)}</div>;
-  return <PageFrame className="flex h-full min-h-0 flex-col"><PageHeader title={input.title} icon={<Database className="size-4 text-emerald-700" />} />{tabLinks}<MasterDataCatalogClient catalog={catalog} pathname={input.pathname} rows={rows} columns={columns} fields={fields} page={page} total={total} query={query} extraQuery={activeTab ? { tab: activeTab } : undefined} /></PageFrame>;
+  return <PageFrame className="flex h-full min-h-0 flex-col"><PageHeader title={input.title} icon={<Database className="size-4 text-emerald-700" />} /><MasterDataCatalogClient key={catalog} catalog={catalog} pathname={input.pathname} rows={rows} columns={columns} fields={fields} page={page} total={total} query={query} tabs={input.tabs} extraQuery={activeTab ? { tab: activeTab } : undefined} /></PageFrame>;
 }

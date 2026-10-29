@@ -1,4 +1,7 @@
+"use client";
+
 import { ModuleShell, type ModuleNavGroup } from "@/components/app-ui/erp/ModuleShell";
+import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 
 const navigation: ModuleNavGroup[] = [{
   title: "Gestão urbana",
@@ -32,5 +35,7 @@ const navigation: ModuleNavGroup[] = [{
 }];
 
 export default function ObrasLayout({ children }: { children: React.ReactNode }) {
+  const workspace = useOptionalOperationalWorkspace();
+  if (workspace) return <>{children}</>;
   return <ModuleShell moduleTitle="Obras e Construção Civil" moduleCaption="Infraestrutura e construção civil" moduleIcon="hardHat" navigation={navigation}>{children}</ModuleShell>;
 }

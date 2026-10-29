@@ -2,22 +2,16 @@ import { and, asc, count, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { healthSusProcedures, healthSusImportBatches } from "@/db/schema/health-catalogs";
 import Link from "next/link";
-import { ListFilter } from "lucide-react";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalLinkPagination, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ProcedureCatalog, type ProcedureRow } from "./ProcedureCatalog";
 
-const PAGE_SIZE = 20;
 type SearchParams = { q?: string | string[]; page?: string | string[]; source?: string | string[]; competence?: string | string[]; status?: string | string[]; group?: string | string[]; subgroup?: string | string[] };
 
 function first(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] : value; }
 function pageNumber(value: string | undefined) { return value && /^\d+$/.test(value) && Number(value) > 0 ? Number(value) : 1; }
-function href(page: number, values: Record<string, string>) {
-  const params = new URLSearchParams(Object.entries({ ...values, page: String(page) }).filter(([, value]) => value));
-  return `/saude/administracao/procedimentos?${params}`;
-}
 
 export default async function HealthProceduresPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const context = await getTenantContextForModule("SAUDE"), database = context.database ?? db;
@@ -49,18 +43,16 @@ export default async function HealthProceduresPage({ searchParams }: { searchPar
     versions: versionRecords.filter(version => version.source === item.source && version.code === item.code).map(version => ({ id: version.id, competence: version.competence, isCurrent: version.isCurrent, createdAt: version.createdAt.toISOString(), origin: version.sourceBatch.origin, fileName: version.sourceBatch.fileName })),
   }));
   const values = { q: query, source, competence, status, group, subgroup };
-  return <PageFrame className="flex h-full min-h-0 max-w-none flex-1 flex-col gap-2 overflow-hidden">
-    <PageHeader title="Procedimentos Ambulatoriais" icon={<ListFilter className="size-4 shrink-0 text-emerald-700" />} className="mb-0 shrink-0" action={<div className="flex gap-1"><Link href="/saude/administracao/importacoes" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Cargas SUS</Link><Link href="/saude/administracao" className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Administração</Link></div>} />
-    <form method="get" className="grid shrink-0 gap-2 rounded-md border border-slate-200 bg-white p-2 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-      <input name="q" defaultValue={query} placeholder="Código ou descrição" className="h-8 rounded border border-slate-300 px-2.5 text-xs" />
+  return <OperationalListFrame label="Procedimentos ambulatoriais" actions={<><Link href="/saude/administracao/importacoes">Cargas SUS</Link><Link href="/saude/administracao">Administração</Link></>} toolbar={<><form className={styles.searchForm}><input aria-label="Código ou descrição" name="q" defaultValue={query} placeholder="Código ou descrição" className={styles.searchInput} />{Object.entries({ source, competence, status, group, subgroup }).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}<button className={styles.filterButton}>Buscar</button></form><OperationalFilters activeCount={[source, competence, status, group, subgroup].filter(Boolean).length}>
+    <form method="get" className={styles.filterFields}>
+      <input type="hidden" name="q" value={query} />
       <select name="source" defaultValue={source} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs"><option value="">Todas as origens</option><option value="SIA">SIA/SUS</option><option value="SIGTAP">SIGTAP</option></select>
       <select name="competence" defaultValue={competence} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs"><option value="">Todas as competências</option>{competences.map(item => <option key={item.competence} value={item.competence}>{item.competence}</option>)}</select>
       <select name="status" defaultValue={status} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs"><option value="">Todas as situações</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select>
       <select name="group" aria-label="Grupo de procedimentos" defaultValue={group} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs"><option value="">Todos os grupos</option>{groups.map(item => <option key={item.groupCode} value={item.groupCode || ""}>{item.groupCode} · {item.groupName}</option>)}</select>
       <select name="subgroup" aria-label="Subgrupo de procedimentos" defaultValue={subgroup} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs"><option value="">Todos os subgrupos</option>{subgroups.map(item => <option key={item.subgroupCode} value={item.subgroupCode || ""}>{item.subgroupCode} · {item.subgroupName}</option>)}</select>
       <button type="submit" className="h-8 rounded bg-slate-800 px-4 text-xs font-bold text-white hover:bg-slate-900">Consultar</button>
-    </form>
+    <Link href="/saude/administracao/procedimentos">Limpar filtros</Link></form></OperationalFilters></>} pagination={<OperationalLinkPagination page={page} total={total} values={values} />}>
     <ProcedureCatalog rows={rows} />
-    <div className="shrink-0 px-1"><ErpPagination page={page} total={total} pageSize={PAGE_SIZE} previousHref={href(Math.max(1, page - 1), values)} nextHref={href(page + 1, values)} label="procedimentos" jumpTo={{ pathname: "/saude/administracao/procedimentos", values }} /></div>
-  </PageFrame>;
+  </OperationalListFrame>;
 }

@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalPagination, OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { financeColumn } from "../operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { format } from "date-fns";
-import { FileText, Plus, Search, Filter, Ban } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +76,8 @@ type CovenantOption = { id: string; number: string; grantor: string | null };
 type PublicityCampaignOption = { id: string; name: string; agency: string | null };
 type FundedDebtOption = { id: string; lawNumber: string; creditorName: string | null };
 
+const columns = [financeColumn("number", "Número", 70, 90, "identifier"), financeColumn("date", "Data", 90), financeColumn("supplier", "Fornecedor/Credor", 120, 200), financeColumn("unit", "Unidade Orçamentária", 120, 170), financeColumn("value", "Valor (R$)", 110, 130, "text", "right"), financeColumn("receipt", "Recebimento", 95), financeColumn("document", "Documento interno", 110), financeColumn("works", "Obra/OS", 80), financeColumn("status", "Status", 85, 100, "status"), financeColumn("actions", "Ações", 48, 48, "actions")];
+
 export default function EmpenhosClient({
   commitments,
   suppliers,
@@ -126,9 +129,10 @@ export default function EmpenhosClient({
     c.supplier.company?.corporateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.supplier.person?.fullName.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const pageSize = 20;
+  const pageSize = OPERATIONAL_PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(filteredCommitments.length / pageSize));
-  const pagedCommitments = filteredCommitments.slice((page - 1) * pageSize, page * pageSize);
+  const currentPage = Math.min(page, pageCount);
+  const pagedCommitments = filteredCommitments.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleOpenNew = () => {
     setEditingId(null);
@@ -184,103 +188,15 @@ export default function EmpenhosClient({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 sm:px-2">
-      <div className="flex flex-col gap-2 border-b border-slate-300 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-sm font-bold tracking-tight text-slate-900">Empenhos</h1>
-          <p className="text-xs text-muted-foreground">Gestão de empenhos da execução orçamentária</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={handleOpenNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Empenho
-          </Button>
-        </div>
-      </div>
-
-      <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md shadow-none [&_[data-slot=table-container]]:min-h-0 [&_[data-slot=table-container]]:flex-1 [&_[data-slot=table-container]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-y-auto [&_[data-slot=table]]:table-fixed [&_[data-slot=table-header]]:sticky [&_[data-slot=table-header]]:top-0 [&_[data-slot=table-header]]:z-10 [&_[data-slot=table-row]]:h-[38px]">
-        <CardHeader className="border-b pb-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Listagem de Empenhos</CardTitle>
-            <div className="flex space-x-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por fornecedor ou número..."
-                  className="w-full pl-8 sm:w-[280px]"
-                  value={searchTerm}
-                  onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
-                />
-              </div>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Fornecedor/Credor</TableHead>
-                <TableHead>Unidade Orçamentária</TableHead>
-                <TableHead>Valor (R$)</TableHead>
-                <TableHead>Recebimento</TableHead>
-                <TableHead>Documento interno</TableHead>
-                <TableHead>Obra/OS</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCommitments.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground h-32">
-                    <div className="flex flex-col items-center justify-center">
-                      <FileText className="h-8 w-8 mb-2 opacity-20" />
-                      Nenhum empenho encontrado.
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pagedCommitments.map((commitment) => (
-                  <TableRow key={commitment.id}>
-                    <TableCell className="font-medium">{commitment.number}</TableCell>
-                    <TableCell>{format(new Date(commitment.date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell>
-                      {commitment.supplier.company?.corporateName || commitment.supplier.person?.fullName || 'Não identificado'}
-                    </TableCell>
-                    <TableCell>{commitment.appropriation.budgetUnit.name}</TableCell>
-                    <TableCell>
-                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(commitment.value)}
-                    </TableCell>
-                    <TableCell className="text-sm">{commitment.purchaseReceipt?.number ?? "-"}</TableCell>
-                    <TableCell className="text-sm">{commitment.financialDocument?.number || "-"}</TableCell>
-                    <TableCell className="text-sm">{commitment.obrasServices.map((service) => service.protocolo).join(", ") || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        commitment.status === 'Pago' ? 'default' :
-                        commitment.status === 'Anulado' ? 'destructive' :
-                        'secondary'
-                      }>
-                        {commitment.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleCancelCommitment(commitment.id)} title="Anular" disabled={commitment.status === 'Anulado'}>
-                        <Ban className="h-4 w-4 text-rose-500" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-              <ErpPagination page={Math.min(page, pageCount)} total={filteredCommitments.length} pageSize={pageSize} previousHref="#" nextHref="#" onPageChange={setPage} />
-</Card>
+    <>
+      <OperationalListFrame label="Empenhos" actions={<button className={styles.newButton} onClick={handleOpenNew}><Plus />Novo Empenho</button>}
+        toolbar={<input aria-label="Buscar por fornecedor ou número" placeholder="Buscar por fornecedor ou número…" className={styles.searchInput} value={searchTerm} onChange={event => { setSearchTerm(event.target.value); setPage(1); }} />}
+        pagination={<OperationalPagination page={currentPage} total={filteredCommitments.length} onPageChange={setPage} />}>
+        <OperationalTable preferenceId="financeiro-empenhos" columns={columns} caption="Empenhos" emptyMessage="Nenhum empenho encontrado." rows={pagedCommitments.map(commitment => ({ id: commitment.id, label: commitment.number, values: {
+          number: commitment.number, date: format(new Date(commitment.date), "dd/MM/yyyy"), supplier: commitment.supplier.company?.corporateName || commitment.supplier.person?.fullName || "Não identificado", unit: commitment.appropriation.budgetUnit.name,
+          value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(commitment.value), receipt: commitment.purchaseReceipt?.number ?? "—", document: commitment.financialDocument?.number || "—", works: commitment.obrasServices.map(service => service.protocolo).join(", ") || "—", status: commitment.status,
+        }, actions: <button className={styles.iconButton} aria-label={`Anular empenho ${commitment.number}`} title="Anular" disabled={commitment.status === "Anulado"} onClick={() => void handleCancelCommitment(commitment.id)}><Ban /></button> }))} />
+      </OperationalListFrame>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[600px]">
@@ -440,6 +356,6 @@ export default function EmpenhosClient({
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

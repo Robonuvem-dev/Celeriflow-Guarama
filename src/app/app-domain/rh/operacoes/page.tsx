@@ -5,8 +5,12 @@ import { db } from "@/db/client";
 import { readWorkforceOperations } from "@/db/repositories/personnel-pages/workforce";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { RhRemoteTablePanel } from "../_components/RhRemoteTablePanel";
+import { readPanelPage } from "../_components/read-panel-page";
+import type { PanelRow } from "../_components/usePanelPage";
+import type { WorkforceOperationsPage } from "@/lib/contracts/personnel-pages";
+import { rhColumn } from "../_components/operational-columns";
+import operationalStyles from "@/components/app-ui/operational/operational.module.css";
 import { OperationForm, type OperationField } from "./OperationForm";
 import { contractCustomFieldsPolicySchema, contractCustomFieldsPolicyHash, type ContractCustomFieldValues } from "@/lib/rh/contract-custom-fields";
 
@@ -18,6 +22,15 @@ const field = (name: string, label: string, value = "", type = "text", required 
   return { name, label: name === "contractIds" ? "Contratos selecionados" : label.replace("ID do ", "").replace("ID ", ""), value, type: name === "contractIds" ? "contracts" : type === "text" && references[name] ? `lookup:${references[name]}` : type, required };
 };
 const money = (value: Decimal) => `R$ ${value.toFixed(2)}`;
+function workforceTableRows({ contracts, movements, rights, runs, events }: WorkforceOperationsPage): PanelRow[] {
+  return [
+    ...contracts.map(row => ({ id: row.id, label: row.employee.name, values: { registration: row.registration, employee: row.employee.name, salary: money(row.salary), status: row.status, version: String(row.version) }, links: [{ href: `/rh/operacoes?tab=contratos&id=${row.id}`, label: "Alterar" }, { href: `/rh/operacoes/contratos/${row.id}`, label: "Histórico" }] })),
+    ...movements.map(row => ({ id: row.id, label: row.rubricCode, values: { registration: row.contract.registration, rubric: row.rubricCode, amount: money(row.amount), source: row.sourceKey, notes: row.notes } })),
+    ...rights.map(row => ({ id: row.id, label: row.kind, values: { registration: row.contract.registration, kind: row.kind, quantity: row.quantity.toString(), amount: money(row.amount), id: row.id, source: row.sourceKey } })),
+    ...runs.map(row => ({ id: row.id, label: row.payroll.competence, values: { competence: row.payroll.competence, mode: row.mode, net: money(row.net), status: row.status }, links: [{ href: `/rh/operacoes/calculos/${row.id}`, label: "Conferir memória e demonstrativos" }] })),
+    ...events.map(row => ({ id: row.id, label: row.eventType, values: { domain: row.domain, type: row.eventType, status: row.status, environment: row.environment, source: row.sourceKey, hash: row.payloadHash } })),
+  ];
+}
 
 export default async function WorkforcePage({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await getTenantContextForModule("RH");
@@ -28,8 +41,27 @@ export default async function WorkforcePage({ searchParams }: { searchParams: Pr
   const customValue = first(params.customValue).trim();
   const customType = first(params.customType) === "BOOLEANO" ? "BOOLEANO" : "TEXTO";
   const customFilterError = customCode && (!/^[A-Z][A-Z0-9_]{0,63}$/.test(customCode) || (customType === "BOOLEANO" && !["true", "false"].includes(customValue))) ? "Informe código válido e valor booleano true/false quando aplicável." : "";
-  const { total, page, selected, contracts, movements, rights, runs, events, regimes, roles } = await readWorkforceOperations(context.database ?? db, context.user, { tab, q, customCode, customValue, customType, customFilterError, payrollId: first(params.payrollId), id: first(params.id), page: first(params.page) });
-  const href = (value: number) => `/rh/operacoes?${new URLSearchParams({ tab, q, page: String(value), ...(customCode ? { customCode, customValue, customType } : {}), ...(first(params.payrollId) ? { payrollId: first(params.payrollId) } : {}) })}`;
+  const tableInput = { tab, q, customCode, customValue, customType, customFilterError, payrollId: first(params.payrollId), id: first(params.id), page: first(params.page) };
+  const initialData = await readWorkforceOperations(context.database ?? db, context.user, tableInput);
+  const { total, page, selected, regimes, roles } = initialData;
+  async function loadTablePage(requestedPage: number) {
+    "use server";
+    return readPanelPage(async () => {
+      const current = await getTenantContextForModule("RH");
+      const data = await readWorkforceOperations(current.database ?? db, current.user, { ...tableInput, page: String(requestedPage) });
+      return { rows: workforceTableRows(data), total: data.total, page: data.page };
+    });
+  }
+  const pagingValues = { tab, q, customCode, customValue, customType, payrollId: first(params.payrollId), id: first(params.id) };
+  const columns = tab === "contratos"
+    ? [rhColumn("registration", "Matrícula", 140, 90, "identifier"), rhColumn("employee", "Servidor", 260, 140), rhColumn("salary", "Salário", 150, 100, "text", "right"), rhColumn("status", "Situação", 130, 90, "status"), rhColumn("version", "Versão", 80, 65), rhColumn("actions", "Ficha", 170, 150, "actions")]
+    : tab === "movimentos"
+      ? [rhColumn("registration", "Matrícula", 140, 90, "identifier"), rhColumn("rubric", "Rubrica", 130, 90), rhColumn("amount", "Valor", 150, 100, "text", "right"), rhColumn("source", "Origem", 240, 110, "identifier"), rhColumn("notes", "Observação", 300, 140)]
+      : tab === "direitos"
+        ? [rhColumn("registration", "Matrícula", 130, 90, "identifier"), rhColumn("kind", "Direito", 160, 100), rhColumn("quantity", "Quantidade", 110, 80, "text", "right"), rhColumn("amount", "Valor", 140, 100, "text", "right"), rhColumn("id", "ID", 220, 110, "identifier"), rhColumn("source", "Origem", 240, 110, "identifier")]
+        : tab === "calculos"
+          ? [rhColumn("competence", "Competência", 160, 100), rhColumn("mode", "Modo", 150, 90), rhColumn("net", "Líquido", 170, 110, "text", "right"), rhColumn("status", "Situação", 150, 90, "status"), rhColumn("actions", "Memória", 290, 270, "actions")]
+          : [rhColumn("domain", "Domínio", 130, 90), rhColumn("type", "Evento", 200, 110), rhColumn("status", "Situação", 130, 90, "status"), rhColumn("environment", "Ambiente", 130, 90), rhColumn("source", "Origem", 240, 110, "identifier"), rhColumn("hash", "Hash do payload", 260, 120, "identifier")];
   const customPolicyErrors: string[] = [];
   const customPolicies = Object.fromEntries(regimes.flatMap(regime => {
     const rule = regime.ruleSet.rules[0];
@@ -104,15 +136,7 @@ export default async function WorkforcePage({ searchParams }: { searchParams: Pr
     {tab === "direitos" && <OperationForm command="cancelar-ferias" title="Cancelar reserva futura e restaurar saldo" fields={[field("entryId", "ID da reserva de gozo"), field("reason", "Motivo do cancelamento", "", "textarea")]} />}
     {tab === "calculos" && <OperationForm command="calcular" title="Calcular seleção de contratos" fields={[field("payrollId", "ID folha", first(params.payrollId)), field("requestKey", "Chave da solicitação", randomUUID()), field("contractIds", "IDs de contratos separados por vírgula", "", "textarea"), { ...field("mode", "Modo"), options: ["SIMULACAO", "OFICIAL"].map(value => ({ value, label: value })) }, { ...field("scope", "Escopo"), options: ["DEMONSTRACAO", "HOMOLOGACAO", "PRODUCAO"].map(value => ({ value, label: value })) }]} />}
     {tab === "calculos" && <OperationForm command="simular-especial" title="Preparar cenário isolado de folha especial" fields={[field("payrollId", "Folha especial"), field("contractIds", "Contratos"), field("ruleId", "Política JSON de simulação"), field("requestKey", "Chave da simulação", randomUUID()), field("referenceDays", "Dias de referência explícitos", "0", "number"), { ...field("scope", "Escopo"), options: ["DEMONSTRACAO", "HOMOLOGACAO", "PRODUCAO"].map(value => ({ value, label: value })) }, field("parameters", "Parâmetros com value/sourceReference (JSON)", "{}", "textarea")]} />}
-    <ErpListFrame className="[&>div:nth-last-child(2)]:overflow-y-hidden" toolbar={<form className="flex gap-2"><input type="hidden" name="tab" value={tab} /><input name="q" defaultValue={q} placeholder="Buscar nome/matrícula, competência ou integração" className="h-8 flex-1 rounded border px-2 text-xs" /><button className="rounded border px-3 text-xs">Buscar</button></form>} summary={<p className="text-xs">{total} registros no filtro · página {page}</p>} pagination={<ErpPagination page={page} total={total} pageSize={20} label="registros" previousHref={href(page - 1)} nextHref={href(page + 1)} />}>
-      <table className="w-full table-fixed text-left text-xs"><thead className="border-b bg-slate-50"><tr><th className="p-2">Registro / origem</th><th className="p-2">Valores / situação</th><th className="p-2">Ficha</th></tr></thead><tbody>
-        {contracts.map(row => <tr key={row.id} className="h-7 border-b"><td className="truncate px-2">{row.registration} · {row.employee.name}</td><td className="px-2">{money(row.salary)} · {row.status} · v{row.version}</td><td className="truncate px-2"><Link href={`/rh/operacoes?tab=contratos&id=${row.id}`}>Alterar</Link> · <Link href={`/rh/operacoes/contratos/${row.id}`}>Histórico</Link></td></tr>)}
-        {movements.map(row => <tr key={row.id} className="h-7 border-b"><td className="truncate px-2">{row.contract.registration} · {row.rubricCode}</td><td className="px-2">{money(row.amount)}</td><td className="truncate px-2" title={row.notes}>{row.sourceKey} · {row.notes}</td></tr>)}
-        {rights.map(row => <tr key={row.id} className="h-7 border-b"><td className="px-2">{row.contract.registration} · {row.kind}</td><td className="px-2">{row.quantity.toString()} · {money(row.amount)}</td><td className="truncate px-2" title={`${row.id} · ${row.sourceKey}`}>{row.id} · {row.sourceKey}</td></tr>)}
-        {runs.map(row => <tr key={row.id} className="h-7 border-b"><td className="px-2">{row.payroll.competence} · {row.mode}</td><td className="px-2">{money(row.net)} · {row.status}</td><td className="px-2"><Link href={`/rh/operacoes/calculos/${row.id}`}>Conferir memória e demonstrativos</Link></td></tr>)}
-        {events.map(row => <tr key={row.id} className="h-7 border-b"><td className="px-2">{row.domain} · {row.eventType}</td><td className="px-2">{row.status} · {row.environment}</td><td className="truncate px-2" title={row.payloadHash}>{row.sourceKey}</td></tr>)}
-      </tbody></table>
-      {!total && <p className="p-4 text-sm text-slate-500">Nenhum registro neste filtro.</p>}
-    </ErpListFrame>
+    <RhRemoteTablePanel title={`Operações de RH — ${tab}`} triggerLabel={`Consultar ${tab} em tela cheia`} description="Prévia, seleção coletiva e formulários permanecem montados ao fechar e paginar a consulta." columns={columns} initial={{ rows: workforceTableRows(initialData), page, total }} loadPageAction={loadTablePage} preferenceId={`rh-operacoes-${tab}`} emptyMessage="Nenhum registro neste filtro."
+      toolbar={<form className={operationalStyles.searchForm}>{Object.entries(pagingValues).filter(([key]) => key !== "q").map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}<input name="q" aria-label="Buscar nome, matrícula, competência ou integração" defaultValue={q} placeholder="Nome, matrícula, competência ou integração" className={operationalStyles.searchInput} /><button className={operationalStyles.filterButton}>Buscar</button></form>} />
   </div>;
 }

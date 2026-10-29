@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { SstForm } from "../SstForm";
 import { saveSstAso } from "./actions";
-import { asoKinds, asoResults, asoOccasion } from "@/lib/sst/aso-policy";
+import { asoKinds, asoResults, asoOccasion, asoExamInput } from "@/lib/sst/aso-policy";
+import { SstTablePanel } from "../_components/SstTablePanel";
+import { sstColumn } from "../_components/operational-columns";
+import { QuestionnaireAnswersEditor, questionnaireAnswersError } from "../_components/QuestionnaireAnswersEditor";
 import type { Question } from "@/lib/sst/questionnaire-policy";
 
 type PersonOption = { id: string; fullName: string };
@@ -25,6 +28,9 @@ export function AsoForm({ budgetUnitId, people, laboratories, programs, question
   const [programGroupId, setProgramGroupId] = useState("");
   const [kind, setKind] = useState<keyof typeof asoKinds>("ADMISSIONAL");
   const [exams, setExams] = useState<ExamEntry[]>([emptyExam(0, "Exame clínico", "CLINICO")]);
+  const [selectedExamKey, setSelectedExamKey] = useState(0);
+  const exam = exams.find(item => item.key === selectedExamKey) || exams[0];
+  const index = exams.indexOf(exam);
   const [questionnaireId, setQuestionnaireId] = useState("");
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const questionnaire = questionnaires.find((q) => q.id === questionnaireId);
@@ -33,7 +39,11 @@ export function AsoForm({ budgetUnitId, people, laboratories, programs, question
   const prescribed = selected?.exams.filter((exam) => exam.occasion === asoOccasion(kind)) || [];
   const update = (key: number, name: keyof ExamEntry, value: string) => setExams((current) => current.map((exam) => exam.key === key ? { ...exam, [name]: value } : exam));
   const personSelect = (name: string, label: string) => <label className="grid gap-1">{label}<select name={name} required className={field} defaultValue=""><option value="">Selecione no Cadastro Único</option>{people.map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label>;
-  return <SstForm action={saveSstAso} label="Registrar ASO emitido" redirectBase="/sst/aso">
+  return <SstForm action={async form => {
+    for (const [position, item] of exams.entries()) { const parsed = asoExamInput.safeParse(item); if (!parsed.success) return { error: `Exame ${position + 1}: ${parsed.error.issues[0]?.message || "Confira os campos."}` }; }
+    const error = questionnaire ? questionnaireAnswersError(questionnaire.questions, answers) : "Selecione o questionário de Medicina.";
+    return error ? { error } : saveSstAso(form);
+  }} label="Registrar ASO emitido" redirectBase="/sst/aso">
     <input type="hidden" name="budgetUnitId" value={budgetUnitId}/>
     <input type="hidden" name="exams" value={JSON.stringify(exams)}/>
     <input type="hidden" name="anamnesis" value={JSON.stringify({ questionnaireVersionId: questionnaireId, answers })}/>
@@ -52,16 +62,14 @@ export function AsoForm({ budgetUnitId, people, laboratories, programs, question
       <label className="grid gap-1">Restrições, recomendações ou condição temporária<textarea name="recommendations" maxLength={10000} rows={3} className={field}/></label>
     </div>
     <section className="space-y-3 rounded border p-3"><h2 className="font-semibold">Anamnese pré-emissão obrigatória</h2><select required className={field} value={questionnaireId} onChange={(e) => { setQuestionnaireId(e.target.value); setAnswers({}); }}><option value="">Selecione questionário de Medicina</option>{questionnaires.map((q) => <option key={q.id} value={q.id}>{q.title} v{q.version}</option>)}</select>
-      {questionnaire?.questions.map((q) => <label key={`${questionnaire.id}:${q.key}`} className="grid gap-1">{q.section} · {q.label}{q.required ? " *" : ""}
-        {q.kind === "BOOLEAN" ? <select required={q.required} className={field} defaultValue="" onChange={(e) => answer(q.key, e.target.value === "" ? null : e.target.value === "true")}><option value="">Selecione</option><option value="true">Sim</option><option value="false">Não</option></select>
-          : q.kind === "SINGLE_CHOICE" ? <select required={q.required} className={field} defaultValue="" onChange={(e) => answer(q.key, e.target.value)}><option value="">Selecione</option>{q.choices.map((c) => <option key={c}>{c}</option>)}</select>
-          : q.kind === "MULTIPLE_CHOICE" ? <select multiple className={field} onChange={(e) => answer(q.key, [...e.target.selectedOptions].map((o) => o.value))}>{q.choices.map((c) => <option key={c}>{c}</option>)}</select>
-          : <input required={q.required} type={q.kind === "DATE" ? "date" : q.kind === "NUMBER" ? "number" : "text"} step={q.kind === "NUMBER" ? "any" : undefined} className={field} onChange={(e) => answer(q.key, q.kind === "NUMBER" ? e.target.value === "" ? null : Number(e.target.value) : e.target.value)}/>}
-      </label>)}
+      {questionnaire && <QuestionnaireAnswersEditor key={questionnaire.id} questions={questionnaire.questions} answers={answers} onAnswerAction={answer} preferenceId="sst-aso-anamnese-edicao" />}
     </section>
     {selected && <section className="space-y-2 rounded border p-3"><h2 className="font-semibold">Exames previstos no PCMSO para este tipo</h2><p>{prescribed.length ? prescribed.map((exam) => exam.name).join("; ") : "Sem protocolo específico nesta versão. O exame clínico permanece obrigatório."}</p><button type="button" className="rounded border p-2" onClick={() => setExams((current) => [...current, ...prescribed.filter((item) => !current.some((exam) => exam.name.trim().toLocaleLowerCase("pt-BR") === item.name.trim().toLocaleLowerCase("pt-BR"))).map((item, index) => emptyExam(Math.max(...current.map((exam) => exam.key), -1) + index + 1, item.name))].slice(0, 100))}>Adicionar exames previstos</button></section>}
     <h2 className="font-semibold">Exames realizados ou apresentados</h2>
-    {exams.map((exam, index) => <fieldset key={exam.key} className="grid gap-3 rounded border p-3 sm:grid-cols-2"><legend className="px-1 font-semibold">Exame {index + 1}</legend>
+    <SstTablePanel title="Exames realizados ou apresentados" preferenceId="sst-aso-exames-edicao" description="O JSON contém todos os exames de todas as páginas. Selecione e feche para editar os campos completos."
+      columns={[sstColumn("name", "Nome", 200, 110), sstColumn("kind", "Classificação", 140, 75), sstColumn("source", "Origem", 140, 85), sstColumn("professional", "Profissional", 180, 105), sstColumn("council", "Conselho", 140, 90), sstColumn("discipline", "Atuação", 130, 80), sstColumn("performedAt", "Realização", 120, 90), sstColumn("validUntil", "Validade", 120, 90), sstColumn("laboratory", "Laboratório", 180, 100), sstColumn("report", "Laudo", 130, 85), sstColumn("result", "Resultado", 250, 100), sstColumn("actions", "Ações", 145, 135, "actions")]}
+      rows={exams.map(item => ({ id: String(item.key), label: item.name || `Exame ${item.key + 1}`, values: { name: item.name, kind: item.kind, source: item.source, professional: people.find(person => person.id === item.professionalPersonId)?.fullName || item.professionalPersonId, council: item.professionalCouncil, discipline: item.professionalDiscipline, performedAt: item.performedAt, validUntil: item.validUntil, laboratory: laboratories.find(lab => lab.id === item.laboratoryCompanyId)?.corporateName || item.laboratoryCompanyId, report: item.reportNumber, result: item.result }, actions: <><button type="button" onClick={() => setSelectedExamKey(item.key)}>Editar</button> <button type="button" disabled={exams.length <= 1} onClick={() => setExams(current => current.filter(value => value.key !== item.key))}>Remover</button></> }))} />
+    {exam && <fieldset className="grid gap-3 rounded border p-3 sm:grid-cols-2"><legend className="px-1 font-semibold">Exame {index + 1}</legend>
       <label className="grid gap-1">Nome<input value={exam.name} required minLength={2} maxLength={200} className={field} onChange={(event) => update(exam.key, "name", event.target.value)}/></label>
       <label className="grid gap-1">Classificação<select value={exam.kind} className={field} onChange={(event) => update(exam.key, "kind", event.target.value)}><option value="CLINICO">Clínico</option><option value="COMPLEMENTAR">Complementar</option><option value="TOXICOLOGICO">Toxicológico</option></select></label>
       <label className="grid gap-1">Origem<select value={exam.source} className={field} onChange={(event) => update(exam.key, "source", event.target.value)}><option value="REALIZADO">Realizado</option><option value="APRESENTADO">Apresentado pelo paciente</option></select></label>
@@ -74,7 +82,7 @@ export function AsoForm({ budgetUnitId, people, laboratories, programs, question
       <label className="grid gap-1">Número do laudo<input value={exam.reportNumber} required={exam.kind === "TOXICOLOGICO"} maxLength={100} className={field} onChange={(event) => update(exam.key, "reportNumber", event.target.value)}/></label>
       <label className="grid gap-1">Resultado<textarea value={exam.result} required minLength={2} maxLength={10000} rows={2} className={field} onChange={(event) => update(exam.key, "result", event.target.value)}/></label>
       <button type="button" disabled={exams.length <= 1} className="w-fit rounded border px-3 py-1 disabled:opacity-50" onClick={() => setExams((current) => current.filter((item) => item.key !== exam.key))}>Remover exame</button>
-    </fieldset>)}
+    </fieldset>}
     <button type="button" disabled={exams.length >= 100} className="w-fit rounded border p-2 disabled:opacity-50" onClick={() => setExams((current) => [...current, emptyExam(Math.max(...current.map((exam) => exam.key), -1) + 1)])}>Adicionar outro exame</button>
   </SstForm>;
 }

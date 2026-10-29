@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Eye, Link2, Pencil, Power } from "lucide-react";
 import type { ProfessionalRow } from "./AdministracaoClient";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { healthColumn } from "../operational-columns";
 import { changeHealthProfessionalStatus, saveHealthHabilitation, saveHealthProfessionalAdministration, saveHealthProfessionalAssignment, saveHealthServiceAssignment } from "./actions";
 
 type Props = {
@@ -17,10 +19,6 @@ type Props = {
   onEdit: (id: string) => void;
   onClose: () => void;
 };
-
-function badge(active: boolean) {
-  return <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"}`}>{active ? "Ativo" : "Inativo"}</span>;
-}
 
 export default function ProfessionalsTab({ rows, editor, unitOptions, specialtyOptions, serviceOptions, cboOptions, employeeOptions, canUpdate, onEdit, onClose }: Props) {
   const editing = editor?.kind === "profissionais" ? rows.find(row => row.id === editor.id) : undefined;
@@ -79,9 +77,7 @@ export default function ProfessionalsTab({ rows, editor, unitOptions, specialtyO
   }
 
   return <>
-    <table className="w-full table-fixed border-collapse text-left text-xs"><thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"><tr><th className="w-[31%] px-3 py-2">Profissional</th><th className="w-[16%] px-3 py-2">CPF</th><th className="hidden w-[16%] px-3 py-2 lg:table-cell">CNS</th><th className="w-[22%] px-3 py-2">Especialidade</th><th className="w-[9%] px-3 py-2">Situação</th><th className="w-24 px-3 py-2 text-right">Ações</th></tr></thead>
-      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{rows.map(row => <tr key={row.id} className="h-9 hover:bg-slate-50 dark:hover:bg-slate-800/60"><td className="truncate px-3 font-medium" title={row.employee.name}>{row.treatment ? `${row.treatment} ` : ""}{row.employee.name}</td><td className="truncate px-3 text-slate-600 dark:text-slate-300">{row.employee.cpf || "–"}</td><td className="hidden truncate px-3 text-slate-600 dark:text-slate-300 lg:table-cell">{row.cns || "–"}</td><td className="truncate px-3 text-slate-600 dark:text-slate-300">{row.specialty || "–"}</td><td className="px-3">{badge(row.isActive)}</td><td className="px-3"><div className="flex justify-end gap-1"><button title="Detalhes" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-emerald-700" onClick={() => setDetails(row)}><Eye className="size-3.5" /></button>{canUpdate && row.isActive && <button title="Vincular serviço ou habilitação" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-emerald-700" onClick={() => { setError(""); setReferenceConfig({ professional: row, kind: "servico" }); }}><Link2 className="size-3.5" /></button>}{canUpdate && <button title="Editar" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-emerald-700" onClick={() => onEdit(row.id)}><Pencil className="size-3.5" /></button>}{canUpdate && <button title={row.isActive ? "Inativar" : "Ativar"} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-amber-700" onClick={() => { setError(""); setStatusProfessional(row); }}><Power className="size-3.5" /></button>}</div></td></tr>)}</tbody>
-    </table>
+    <OperationalTable preferenceId="saude-admin-profissionais" caption="Profissionais" columns={[healthColumn("name", "Profissional", 260, 120), healthColumn("cpf", "CPF", 150, 110, "identifier"), healthColumn("cns", "CNS", 170, 120, "identifier"), healthColumn("specialty", "Especialidade", 210, 110), healthColumn("status", "Situação", 100, 80, "status"), healthColumn("actions", "Ações", 108, 108, "actions", "right", 120)]} rows={rows.map(row => ({ id: row.id, label: row.employee.name, values: { name: `${row.treatment ? `${row.treatment} ` : ""}${row.employee.name}`, cpf: row.employee.cpf || "—", cns: row.cns || "—", specialty: row.specialty || "—", status: row.isActive ? "Ativo" : "Inativo" }, actions: <div className="flex justify-end gap-1"><button title="Detalhes" onClick={() => setDetails(row)}><Eye className="size-4" /></button>{canUpdate && row.isActive && <button title="Vincular serviço ou habilitação" onClick={() => { setError(""); setReferenceConfig({ professional: row, kind: "servico" }); }}><Link2 className="size-4" /></button>}{canUpdate && <button title="Editar" onClick={() => onEdit(row.id)}><Pencil className="size-4" /></button>}{canUpdate && <button title={row.isActive ? "Inativar" : "Ativar"} onClick={() => { setError(""); setStatusProfessional(row); }}><Power className="size-4" /></button>}</div> }))} />
 
     {editor?.kind === "profissionais" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true"><form onSubmit={submitProfessional} className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-md bg-white shadow-xl dark:bg-slate-900"><div className="flex items-center justify-between border-b px-4 py-3 dark:border-slate-700"><h2 className="text-sm font-bold">{editing ? "Editar Profissional" : "Novo Profissional"}</h2><button type="button" className="text-xs text-slate-500" onClick={onClose}>Fechar</button></div><div className="grid gap-3 overflow-y-auto p-4 sm:grid-cols-2 text-xs">
       {error && <p className="sm:col-span-2 rounded bg-rose-50 p-2 text-rose-700 dark:bg-rose-950 dark:text-rose-300">{error}</p>}

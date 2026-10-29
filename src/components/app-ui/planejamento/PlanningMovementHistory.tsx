@@ -1,20 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import type { PlanningContext } from "@/lib/planejamento/access";
 import { getPlanningMovementHistory } from "@/lib/planejamento/revisions";
+import { PlanningList, planningColumn as col } from "./PlanningList";
 
 export async function PlanningMovementHistory({ context, instrumentId, pathname, asOf, page, linePage }: {
   context: PlanningContext; instrumentId: string; pathname: string; asOf: string; page?: string; linePage: number;
 }) {
   const data = await getPlanningMovementHistory(context, instrumentId, page);
-  const values = { asOf, page: String(linePage) };
-  const href = (movementPage: number) => `${pathname}?${new URLSearchParams({ ...values, movementPage: String(movementPage) })}`;
-  return <Card><CardHeader><CardTitle>Histórico de alterações legais</CardTitle></CardHeader><CardContent>
-    <Table><TableHeader><TableRow><TableHead>Vigência</TableHead><TableHead>Previsão</TableHead><TableHead>Ato legal</TableHead><TableHead>Alteração (R$)</TableHead><TableHead>Fundamento</TableHead></TableRow></TableHeader><TableBody>
-      {data.records.map((row) => <TableRow key={row.id}><TableCell>{row.effectiveAt.toISOString().slice(0, 10)}</TableCell><TableCell>{row.line.code} · {row.line.description}</TableCell><TableCell>{row.legalActNumber}</TableCell><TableCell>{row.value.toFixed(2)}</TableCell><TableCell><details><summary className="cursor-pointer">{row.reason}</summary><p className="whitespace-pre-wrap text-xs">{row.legalText}</p><p className="text-xs text-muted-foreground">Registrado em {row.createdAt.toISOString()} · Responsável: {row.createdById}</p></details></TableCell></TableRow>)}
-      {!data.records.length && <TableRow><TableCell colSpan={5} className="py-6 text-center">Nenhuma alteração legal registrada.</TableCell></TableRow>}
-    </TableBody></Table><ErpPagination page={data.page} total={data.total} pageSize={20} previousHref={href(data.page - 1)} nextHref={href(data.page + 1)} />
-    {data.total > 20 && <form action={pathname} method="get" className="mt-2 flex items-center gap-2 text-xs"><input type="hidden" name="asOf" value={asOf} /><input type="hidden" name="page" value={linePage} /><label>Ir para página do histórico<input type="number" name="movementPage" min="1" max={Math.ceil(data.total / 20)} defaultValue={data.page} className="ml-2 w-16 rounded border bg-background p-1" /></label><button className="rounded border px-2 py-1">Ir</button></form>}
-  </CardContent></Card>;
+  return <PlanningList id={`planning:${context.jurisdiction}:movements`} label="Histórico de alterações legais" pathname={pathname} page={data.page} total={data.total} pageParam="movementPage" values={{ asOf, page: linePage }}
+    columns={[col("date", "Vigência", 90, 105), col("code", "Previsão", 80, 110), col("description", "Descrição", 120, 240), col("act", "Ato legal", 85, 110), col("value", "Alteração (R$)", 110, 130, { align: "right" }), col("reason", "Fundamento", 110, 210), col("text", "Texto jurídico", 120, 250), col("created", "Registrado em", 120, 170), col("actor", "Responsável", 100, 160)]}
+    rows={data.records.map(row => ({ id: row.id, label: row.line.code, values: { date: row.effectiveAt.toISOString().slice(0, 10), code: row.line.code, description: row.line.description, act: row.legalActNumber, value: row.value.toFixed(2), reason: row.reason, text: row.legalText, created: row.createdAt.toISOString(), actor: row.createdById } }))} emptyMessage="Nenhuma alteração legal registrada." />;
 }

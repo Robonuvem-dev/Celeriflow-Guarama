@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { ModuleShell, type ModuleNavGroup } from "@/components/app-ui/erp/ModuleShell";
+import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 
 const navigation: ModuleNavGroup[] = [
   { title: "Visão Geral", items: [{ title: "Painel Financeiro", href: "/financeiro", icon: "layoutDashboard", exact: true }] },
@@ -32,5 +33,7 @@ const navigation: ModuleNavGroup[] = [
 ];
 
 export default function FinanceiroLayout({ children }: { children: React.ReactNode }) {
+  const workspace = useOptionalOperationalWorkspace();
+  if (workspace) return children;
   return <Suspense><ModuleShell moduleTitle="Financeiro" moduleCaption="Gestão e Contabilidade" moduleIcon="landmark" navigation={navigation}>{children}</ModuleShell></Suspense>;
 }

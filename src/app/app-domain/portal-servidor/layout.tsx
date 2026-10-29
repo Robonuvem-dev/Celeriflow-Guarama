@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AccessError, getOptionalTenantContext } from "@/lib/platform/tenant-context";
 import { EMPLOYEE_PORTAL_LOGIN, EMPLOYEE_PORTAL_PATH_HEADER, employeePortalDestination, isEmployeePublicRoute } from "@/lib/portal-servidor/routes";
-import { EmployeePortalShell } from "@/components/portal-servidor/EmployeePortalShell";
+import { PortalLayoutShell } from "./PortalLayoutShell";
 import { getInstitutionalContact } from "@/lib/portal-institucional/public-content";
 import { assertEmployeePortalLogin } from "@/lib/portal-servidor/login-policy";
 import { db } from "@/db/client";
@@ -22,5 +22,5 @@ export default async function PortalServidorLayout({ children }: { children: Rea
     redirect(`${EMPLOYEE_PORTAL_LOGIN}?${new URLSearchParams({ returnTo: employeePortalDestination(requestedPath), access: "unavailable" })}`);
   }
   const institution = await getInstitutionalContact();
-  return <EmployeePortalShell institutionName={institution.name} userName={context.user.name}>{children}</EmployeePortalShell>;
+  return <PortalLayoutShell institutionName={institution.name} userName={context.user.name}>{children}</PortalLayoutShell>;
 }

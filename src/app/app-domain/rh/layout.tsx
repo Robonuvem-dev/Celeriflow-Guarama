@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./RhWorkspace.module.css";
+import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 import { 
   Users, 
   Wallet,
@@ -44,6 +45,9 @@ export default function RhLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
+  const operationalWorkspace = useOptionalOperationalWorkspace();
+
+  if (operationalWorkspace) return children;
 
   return (
     <div data-module-shell className={`${styles.workspace} relative -my-2 -mx-2 flex min-h-0 w-[calc(100%+1rem)] flex-1 flex-col bg-slate-50 dark:bg-slate-950 sm:-my-3 sm:-mx-3 sm:w-[calc(100%+1.5rem)] md:flex-row`}>

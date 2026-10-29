@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { approvePurchaseReceiptAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ComprasPanelTable } from "../_components/ComprasPanelTable";
+import { comprasColumn as column } from "../_components/columns";
+
+const cellInput = "h-6 w-full min-w-0 rounded border bg-white px-1 text-[13px]";
+const receiptColumns = [column("code", "Código", 80, 100, "identifier"), column("name", "Material / equipamento", 130, 200), column("unit", "Unidade", 50, 65), column("remaining", "Saldo a receber", 70, 90), column("warehouse", "Almoxarifado", 120, 160), column("quantity", "Quantidade", 75, 95), column("cost", "Custo unitário", 95, 120), column("batch", "Lote", 70, 90), column("expiration", "Validade", 100, 115), column("brand", "Marca", 70, 90), column("model", "Modelo", 70, 90), column("serial", "Número de série", 90, 120)];
 
 type SourceItem = { id: string; quantity: number; receivedQuantity?: number; estimatedUnitValue: number | null; material: { id: string; code?: string; unitOfMeasure?: string; name: string; type: string } | null };
 type Contract = { id: string; number: string; process: { items: SourceItem[] } };
@@ -36,6 +41,8 @@ export function ReceiptForm({ contracts, documents, employees, warehouses }: { c
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setFeedback("");
     if (!items.some(item => item.quantity > 0)) { setFeedback("Informe ao menos uma quantidade recebida."); return; }
+    const invalidIndex = items.findIndex((item, index) => !Number.isFinite(item.quantity) || item.quantity < 0 || item.quantity > processItems[index].quantity - (processItems[index].receivedQuantity || 0) || !Number.isFinite(item.unitCost) || item.unitCost < 0 || (item.quantity > 0 && !warehouses.some((warehouse) => warehouse.id === item.warehouseId)));
+    if (invalidIndex >= 0) { setFeedback(`Revise quantidade, custo e almoxarifado do item ${invalidIndex + 1}. Todas as páginas são verificadas antes da aprovação.`); return; }
     if (items.some((item, index) => item.quantity > 0 && processItems[index]?.material?.type === "PATRIMONIO" && (!Number.isInteger(item.quantity) || item.serialNumber.trim() && item.quantity !== 1))) { setFeedback("Equipamentos exigem quantidade inteira. Para informar série, receba uma unidade por linha."); return; }
     setPending(true);
     try {
@@ -59,17 +66,18 @@ export function ReceiptForm({ contracts, documents, employees, warehouses }: { c
       {([['receiverId', 'Recebedor'], ['attesterId', 'Atestador']] as const).map(([key, label]) => <label key={key} className="grid gap-1 text-sm">{label}<select required value={data[key]} onChange={event => setData({ ...data, [key]: event.target.value })} className={selectClass}><option value="">Selecione o servidor</option>{employees.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>)}
     </div>
     {contract && !items.length && <p className="rounded border bg-amber-50 p-3 text-sm">Este contrato não possui materiais ou equipamentos pendentes de recebimento em estoque.</p>}
-    {items.map((item, index) => {
-      const source = processItems[index];
-      const remaining = source.quantity - (source.receivedQuantity || 0);
-      return <section key={item.purchaseProcessItemId} className="grid gap-3 rounded border p-3 md:grid-cols-4">
-        <h3 className="text-sm font-semibold md:col-span-4">{source.material?.code} · {source.material?.name} · saldo a receber: {remaining} {source.material?.unitOfMeasure}</h3>
-        <label className="grid gap-1 text-xs">Almoxarifado<select required={item.quantity > 0} value={item.warehouseId} onChange={event => updateItem(index, { warehouseId: event.target.value })} className={selectClass}><option value="">Selecione</option>{warehouses.map(warehouse => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
-        <label className="grid gap-1 text-xs">Quantidade<Input required type="number" min="0" max={remaining} step={source.material?.type === "PATRIMONIO" ? "1" : "any"} value={item.quantity} onChange={event => updateItem(index, { quantity: Number(event.target.value) })} /></label>
-        <label className="grid gap-1 text-xs">Custo unitário<Input required type="number" min="0" step="0.01" value={item.unitCost} onChange={event => updateItem(index, { unitCost: Number(event.target.value) })} /></label>
-        {([['batchNumber', 'Lote'], ['expirationDate', 'Validade'], ['brand', 'Marca'], ['model', 'Modelo'], ['serialNumber', 'Número de série']] as const).map(([key, label]) => <label key={key} className="grid gap-1 text-xs">{label}<Input type={key === "expirationDate" ? "date" : "text"} value={item[key]} onChange={event => updateItem(index, { [key]: event.target.value })} /></label>)}
-      </section>;
-    })}
+    <ComprasPanelTable editable title="Itens do recebimento" description="Edição não salva mantida entre páginas e ao fechar a tabela. Quantidade zero deixa o item para outra entrega." preferenceId="compras-recebimento-edicao" columns={receiptColumns}
+      rows={items.map((item, index) => {
+        const source = processItems[index];
+        const remaining = source.quantity - (source.receivedQuantity || 0);
+        const label = source.material?.name ?? "Item";
+        return { id: item.purchaseProcessItemId, label, values: { code: source.material?.code || "-", name: label, unit: source.material?.unitOfMeasure || "-", remaining: String(remaining), warehouse: warehouses.find((warehouse) => warehouse.id === item.warehouseId)?.name || "Não informado", quantity: String(item.quantity), cost: String(item.unitCost), batch: item.batchNumber, expiration: item.expirationDate, brand: item.brand, model: item.model, serial: item.serialNumber }, cells: {
+          warehouse: <select className={cellInput} aria-label={`Almoxarifado de ${label}`} value={item.warehouseId} disabled={pending} onChange={(event) => updateItem(index, { warehouseId: event.target.value })}><option value="">Selecione</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select>,
+          quantity: <input className={cellInput} aria-label={`Quantidade de ${label}`} type="number" min="0" max={remaining} step={source.material?.type === "PATRIMONIO" ? "1" : "any"} value={item.quantity} disabled={pending} onChange={(event) => updateItem(index, { quantity: Number(event.target.value) })} />,
+          cost: <input className={cellInput} aria-label={`Custo unitário de ${label}`} type="number" min="0" step="0.01" value={item.unitCost} disabled={pending} onChange={(event) => updateItem(index, { unitCost: Number(event.target.value) })} />,
+          ...Object.fromEntries(([['batch', 'batchNumber', 'Lote'], ['expiration', 'expirationDate', 'Validade'], ['brand', 'brand', 'Marca'], ['model', 'model', 'Modelo'], ['serial', 'serialNumber', 'Número de série']] as const).map(([key, field, fieldLabel]) => [key, <input key={key} className={cellInput} aria-label={`${fieldLabel} de ${label}`} type={field === "expirationDate" ? "date" : "text"} value={item[field]} disabled={pending} onChange={(event) => updateItem(index, { [field]: event.target.value })} />])),
+        } };
+      })} />
     {feedback && <p role="alert" className="rounded bg-red-50 p-2 text-sm text-red-700">{feedback}</p>}
     <Button type="submit" disabled={pending || !contract || !items.length}>{pending ? "Aprovando..." : "Aprovar recebimento e registrar entrada"}</Button>
   </form>;

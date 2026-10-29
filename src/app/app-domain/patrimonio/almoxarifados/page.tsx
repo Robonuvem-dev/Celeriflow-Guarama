@@ -1,6 +1,5 @@
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
@@ -13,7 +12,6 @@ import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import {
   clampPatrimonioListPage,
-  patrimonioListHref,
   parsePatrimonioListPage,
   PATRIMONIO_LIST_PAGE_SIZE,
 } from "../listing";
@@ -43,23 +41,21 @@ export default async function AlmoxarifadosPage({
   const canDelete = canPerformModuleOperation(context.user, "PATRIMONIO", "delete");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">
-      <ErpPageTitle
-        title="Almoxarifados"
-        action={
-          canCreate ? <Link href="/patrimonio/almoxarifados/novo" className={buttonVariants({ size: "sm" })}>
+    <>
+      <OperationalHeaderActions>
+          {canCreate ? <Link href="/patrimonio/almoxarifados/novo" className={buttonVariants({ size: "sm" })}>
             <Plus className="size-3.5" />
             <span className="hidden sm:inline">Novo almoxarifado</span>
             <span className="sm:hidden">Novo</span>
-          </Link> : undefined
-        }
-      />
+          </Link> : undefined}
+      </OperationalHeaderActions>
 
-      <ErpListFrame
+      <OperationalListFrame
         toolbar={
           <form className="flex items-center gap-2" role="search">
             <Input
               name="q"
+              aria-label="Nome do almoxarifado"
               defaultValue={q}
               placeholder="Nome do almoxarifado"
               className="h-8 min-w-0 flex-1 bg-white text-xs sm:max-w-xl"
@@ -70,20 +66,12 @@ export default async function AlmoxarifadosPage({
             </button>
           </form>
         }
-        summary={<p className="text-[11px] text-slate-600"><strong className="text-slate-900">{total}</strong> almoxarifado(s) no recorte selecionado</p>}
         pagination={
-          <ErpPagination
-            page={page}
-            total={total}
-            pageSize={PATRIMONIO_LIST_PAGE_SIZE}
-            label="almoxarifados"
-            previousHref={patrimonioListHref("/patrimonio/almoxarifados", page - 1, { q })}
-            nextHref={patrimonioListHref("/patrimonio/almoxarifados", page + 1, { q })}
-          />
+          <OperationalLinkPagination page={page} total={total} pathname="/patrimonio/almoxarifados" values={{ q }} />
         }
       >
         <WarehouseTable warehouses={warehouses.map((warehouse) => ({ id: warehouse.id, name: warehouse.name, type: warehouse.type, address: warehouse.address, zipCode: warehouse.zipCode, streetName: warehouse.streetName, number: warehouse.number, neighborhood: warehouse.neighborhood, city: warehouse.city, state: warehouse.state, isActive: warehouse.isActive, managerName: warehouse.manager?.name || null, costCenterName: warehouse.costCenter ? `${warehouse.costCenter.code} · ${warehouse.costCenter.name}` : null }))} canUpdate={canUpdate} canDelete={canDelete} />
-      </ErpListFrame>
-    </div>
+      </OperationalListFrame>
+    </>
   );
 }

@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Pencil, Trash2, CheckCircle, XCircle, Plus, Search, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Pencil, Trash2, CheckCircle, XCircle, Plus, Search, AlertCircle } from "lucide-react";
 import { createPatient, updatePatient, togglePatientStatus, deletePatient } from "./actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
-
-const PAGE_SIZE = 20;
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { healthColumn } from "../operational-columns";
 
 type Person = {
   id: string;
@@ -91,6 +94,7 @@ export default function PacientesClient({
   units: HealthUnit[], 
   teams: HealthTeam[] 
 }) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [birthFilter, setBirthFilter] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
@@ -139,7 +143,7 @@ export default function PacientesClient({
   };
 
   const openEditModal = (patient: Patient) => {
-    window.location.assign(`/saude/pacientes/${encodeURIComponent(patient.id)}`);
+    router.push(`/saude/pacientes/${encodeURIComponent(patient.id)}`);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -181,68 +185,34 @@ export default function PacientesClient({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* Barra de Ações e Busca */}
-      <div className="flex shrink-0 flex-col gap-2 rounded-md border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800">
+      <OperationalListFrame label="Pacientes" toolbar={<>
         <div className="relative flex-1 max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-gray-400" />
           </div>
           <input
             type="text"
-          className="block h-9 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm leading-5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:bg-gray-900 dark:text-white"
+            aria-label="Buscar pacientes"
+            className={`${styles.searchInput} block w-full pl-10!`}
             placeholder="Pesquisar por nome, CPF ou CNS..."
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
           />
         </div>
-        <button
+        <OperationalHeaderActions><button
           onClick={openCreateModal}
           className="inline-flex h-9 items-center justify-center rounded-md border border-transparent bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none"
         >
           <Plus className="h-4 w-4 mr-2" />
           Novo Paciente
-        </button>
-      </div>
+        </button></OperationalHeaderActions>
 
-      <div className="flex shrink-0 flex-wrap gap-2 text-xs"><label className="flex items-center gap-2">Nascimento<input aria-label="Filtrar pacientes por nascimento" type="date" value={birthFilter} onChange={event => { setBirthFilter(event.target.value); setPage(1); }} className="h-8 rounded border bg-white px-2" /></label><label className="flex items-center gap-2">Sexo<select aria-label="Filtrar pacientes por sexo" value={genderFilter} onChange={event => { setGenderFilter(event.target.value); setPage(1); }} className="h-8 rounded border bg-white px-2"><option value="">Todos</option>{[...new Set(patients.flatMap(patient => patient.person.gender ? [patient.person.gender] : []))].sort().map(gender => <option key={gender}>{gender}</option>)}</select></label></div>
+      <OperationalFilters activeCount={Number(Boolean(birthFilter)) + Number(Boolean(genderFilter))}><div className={styles.filterFields}><label>Nascimento<input type="date" value={birthFilter} onChange={event => { setBirthFilter(event.target.value); setPage(1); }} /></label><label>Sexo<select value={genderFilter} onChange={event => { setGenderFilter(event.target.value); setPage(1); }}><option value="">Todos</option>{[...new Set(patients.flatMap(patient => patient.person.gender ? [patient.person.gender] : []))].sort().map(gender => <option key={gender}>{gender}</option>)}</select></label><button onClick={() => { setBirthFilter(""); setGenderFilter(""); setPage(1); }}>Limpar filtros</button></div></OperationalFilters>
 
-      {/* Tabela */}
-      <ErpListFrame pagination={<ErpPagination page={activePage} total={filteredPatients.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="pacientes" onPageChange={setPage} />}>
-        <table className="w-full table-fixed text-left text-xs">
-          <thead className="sticky top-0 z-10 border-b bg-slate-100 text-[10px] uppercase tracking-wider">
-            <tr>
-              <th className="p-2 font-semibold text-gray-600">Nome</th>
-              <th className="p-2 font-semibold text-gray-600">CPF</th>
-              <th className="p-2 font-semibold text-gray-600">CNS</th>
-              <th className="p-2 font-semibold text-gray-600">Data Nasc.</th>
-              <th className="p-2 font-semibold text-gray-600">Status</th>
-              <th className="p-2 text-right font-semibold text-gray-600">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {visiblePatients.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
-                  <div className="flex flex-col items-center justify-center">
-                    <Users className="h-10 w-10 text-gray-300 mb-2" />
-                    <p>Nenhum paciente encontrado.</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              visiblePatients.map(item => (
-                <tr key={item.id} className="h-9 hover:bg-slate-50">
-                  <td className="truncate p-2 font-medium text-gray-900">{item.person?.fullName}</td>
-                  <td className="truncate p-2 text-gray-600">{formatCPF(item.person?.cpf)}</td>
-                  <td className="truncate p-2 text-gray-600">{formatCNS(item.cns)}</td>
-                  <td className="truncate p-2 text-gray-600">{item.person?.birthDate ? new Date(item.person.birthDate).toLocaleDateString() : '-'}</td>
-                  <td className="p-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="p-2 text-right"><div className="flex items-center justify-end gap-1">
+      </>} pagination={<OperationalPagination page={activePage} total={filteredPatients.length} onPageChange={setPage} />}>
+        <OperationalTable preferenceId="saude-pacientes" caption="Pacientes" columns={[healthColumn("name", "Nome", 300, 130), healthColumn("cpf", "CPF", 160, 120, "identifier"), healthColumn("cns", "CNS", 190, 140, "identifier"), healthColumn("birth", "Data Nasc.", 120, 92), healthColumn("status", "Status", 100, 80, "status"), healthColumn("actions", "Ações", 84, 84, "actions", "right", 100)]} rows={visiblePatients.map(item => ({ id: item.id, label: item.person.fullName, values: { name: item.person.fullName, cpf: formatCPF(item.person.cpf), cns: formatCNS(item.cns), birth: item.person.birthDate ? new Date(item.person.birthDate).toLocaleDateString("pt-BR") : "—", status: item.status }, actions: <div className={styles.rowActions}>
                     <button onClick={() => openEditModal(item)} className="text-gray-400 hover:text-emerald-600 p-1 rounded hover:bg-emerald-50" title="Editar">
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -258,13 +228,8 @@ export default function PacientesClient({
                     <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50" title="Excluir">
                       <Trash2 className="h-4 w-4" />
                     </button>
-                  </div></td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </ErpListFrame>
+                  </div> }))} />
+      </OperationalListFrame>
 
       {/* Modal */}
       {isModalOpen && (

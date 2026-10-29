@@ -1,137 +1,24 @@
 import Link from "next/link";
-import { Plus, FileSignature, Search, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { AtoRowActions } from "./AtoRowActions";
-import { format } from "date-fns";
 import { db } from "@/db/client";
 import { readActsPage } from "@/db/repositories/personnel-pages/records";
-import { RhListFrame as ErpListFrame } from "../_components/RhListFrame";
-import { RhPagination } from "../_components/RhPagination";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import {
-  ErpTableContainer,
-  ErpTableThead,
-  ErpTableTh,
-  ErpTableTr,
-  ErpTableTd,
-  ErpStatusBadge,
-  type ErpStatusVariant,
-} from "@/components/app-ui/erp/ErpTable";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalFilters, OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { rhColumn } from "../_components/operational-columns";
+import { RhNewLink } from "../_components/RhNewLink";
 
-function atoVariant(type: string): ErpStatusVariant {
-  if (type === "Admissão") return "success";
-  if (type === "Demissão") return "danger";
-  if (type === "Promoção") return "info";
-  if (type === "Advertência") return "warning";
-  return "neutral";
-}
+const columns = [rhColumn("date", "Data", 120, 100), rhColumn("employee", "Servidor", 240, 150), rhColumn("type", "Tipo", 150, 100, "status"), rhColumn("number", "Nº do ato", 160, 100), rhColumn("document", "Documento", 130, 100), rhColumn("actions", "Ações", 100, 80, "actions", "right")];
 
 export default async function AtosPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { q, type, page } = await searchParams;
-
   const { total, pagination, acts } = await readActsPage(context.database ?? db, { q, type, page });
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 p-3 dark:bg-slate-950">
-      <ErpPageTitle
-        title="Atos de Pessoal"
-        icon={<FileSignature className="size-4 text-violet-600" />}
-        action={
-          <Link
-            href="/rh/atos/novo"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-500 px-3 text-xs font-bold text-slate-950 shadow-xs transition-colors hover:bg-amber-600"
-          >
-            <Plus className="size-3.5" />
-            Registrar Ato
-          </Link>
-        }
-      />
-
-      <ErpListFrame
-        pagination={<RhPagination {...pagination} total={total} pathname="/rh/atos" filters={{ q, type }} />}
-        toolbar={
-          <form action="/rh/atos" method="GET" className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 basis-full sm:basis-auto">
-              <span className="sr-only">Buscar servidor</span>
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                name="q"
-                defaultValue={q}
-                placeholder="Buscar por servidor"
-                className="h-8 w-full rounded-md border border-slate-200 bg-white py-1 pl-8 pr-2.5 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </label>
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="type" className="text-[11px] font-medium text-slate-500">Tipo</label>
-              <select
-                id="type"
-                name="type"
-                defaultValue={type}
-                className="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium outline-none focus:border-amber-500 dark:border-slate-700 dark:bg-slate-800"
-              >
-                <option value="">Todos</option>
-                <option value="Admissão">Admissão</option>
-                <option value="Demissão">Demissão</option>
-                <option value="Promoção">Promoção</option>
-                <option value="Transferência">Transferência</option>
-                <option value="Advertência">Advertência</option>
-              </select>
-            </div>
-            <button type="submit" className="h-8 rounded-md bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800">
-              Filtrar
-            </button>
-            <Link href="/rh/atos" className="inline-flex h-8 items-center px-2.5 rounded-md border border-slate-200 text-xs text-slate-600 hover:bg-slate-50">
-              Limpar
-            </Link>
-          </form>
-        }
-      >
-        <ErpTableContainer>
-          <ErpTableThead>
-            <tr>
-              <ErpTableTh className="w-[12%]">Data</ErpTableTh>
-              <ErpTableTh className="w-[28%]">Servidor</ErpTableTh>
-              <ErpTableTh className="w-[16%]">Tipo</ErpTableTh>
-              <ErpTableTh className="w-[22%]">Nº do Ato</ErpTableTh>
-              <ErpTableTh className="w-[8%]">Doc</ErpTableTh>
-              <ErpTableTh className="w-[14%] text-right">Ações</ErpTableTh>
-            </tr>
-          </ErpTableThead>
-          <tbody>
-            {acts.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-xs text-slate-400">
-                  Nenhum ato de pessoal registrado.
-                </td>
-              </tr>
-            ) : (
-              acts.map((ato) => (
-                <ErpTableTr key={ato.id}>
-                  <ErpTableTd>{format(new Date(ato.date), "dd/MM/yyyy")}</ErpTableTd>
-                  <ErpTableTd className="font-semibold">{ato.employee?.name}</ErpTableTd>
-                  <ErpTableTd>
-                    <ErpStatusBadge variant={atoVariant(ato.type)}>{ato.type}</ErpStatusBadge>
-                  </ErpTableTd>
-                  <ErpTableTd>{ato.actNumber || "—"}</ErpTableTd>
-                  <ErpTableTd>
-                    {ato.documentUrl ? (
-                      <a href={ato.documentUrl} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:text-sky-800">
-                        <ExternalLink className="size-3.5" />
-                      </a>
-                    ) : (
-                      <span className="text-slate-300">—</span>
-                    )}
-                  </ErpTableTd>
-                  <ErpTableTd className="text-right">
-                    <AtoRowActions ato={ato} />
-                  </ErpTableTd>
-                </ErpTableTr>
-              ))
-            )}
-          </tbody>
-        </ErpTableContainer>
-      </ErpListFrame>
-    </div>
-  );
+  return <OperationalListFrame label="Atos de pessoal" actions={<RhNewLink href="/rh/atos/novo">Registrar ato</RhNewLink>}
+    toolbar={<><form action="/rh/atos" method="GET" className={styles.searchForm}><input type="hidden" name="type" value={type || ""} /><input name="q" aria-label="Buscar servidor" defaultValue={q} placeholder="Servidor" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form><OperationalFilters activeCount={Number(!!type)}><form action="/rh/atos" method="GET" className={styles.filterFields}><input type="hidden" name="q" value={q || ""} /><label>Tipo<select name="type" defaultValue={type}><option value="">Todos</option>{["Admissão", "Demissão", "Promoção", "Transferência", "Advertência"].map(value => <option key={value}>{value}</option>)}</select></label><button className={styles.primaryButton}>Aplicar</button><Link href="/rh/atos">Limpar</Link></form></OperationalFilters></>}
+    pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/atos" values={{ q, type }} />}>
+    <OperationalTable preferenceId="rh-atos" columns={columns} caption="Atos de pessoal" emptyMessage="Nenhum ato de pessoal registrado." rows={acts.map(ato => ({ id: ato.id, label: ato.employee?.name || ato.id, values: { date: format(new Date(ato.date), "dd/MM/yyyy"), employee: ato.employee?.name || "—", type: ato.type, number: ato.actNumber || "—", document: ato.documentUrl || "—" }, cells: ato.documentUrl ? { document: <a href={ato.documentUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir documento do ato ${ato.actNumber || ato.id}`}>Abrir documento</a> } : undefined, actions: <AtoRowActions ato={ato} /> }))} />
+  </OperationalListFrame>;
 }

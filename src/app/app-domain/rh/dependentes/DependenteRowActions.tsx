@@ -1,7 +1,7 @@
 "use client";
 
 import { Edit, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import Link from "next/link";
 import { deleteDependente } from "./actions";
 import { useRouter } from "next/navigation";
@@ -22,21 +22,18 @@ export function DependenteRowActions({ dependent }: { dependent: Dependent }) {
   };
 
   return (
-    <div className="flex items-center justify-end space-x-2">
-      <Link href={`/rh/dependentes/${dependent.id}/editar`}>
-        <Button variant="ghost" size="sm" title="Editar">
-          <Edit className="h-4 w-4" />
-        </Button>
+    <div className={styles.rowActions}>
+      <Link href={`/rh/dependentes/${dependent.id}/editar`} className={styles.iconButton} aria-label={`Editar dependente ${dependent.name}`} title="Editar">
+        <Edit className="h-4 w-4" />
       </Link>
-      <Button 
-        variant="ghost" 
-        size="sm" 
+      <button type="button"
+        aria-label={`Excluir dependente ${dependent.name}`}
         title="Excluir"
         onClick={handleDelete}
-        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        className={styles.iconButton}
       >
         <Trash2 className="h-4 w-4" />
-      </Button>
+      </button>
     </div>
   );
 }

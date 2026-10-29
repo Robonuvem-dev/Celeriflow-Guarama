@@ -121,6 +121,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useOptionalOperationalWorkspace } from "../operational/OperationalContext";
 
 const iconRegistry = {
   accessibility: Accessibility,
@@ -302,10 +303,13 @@ export function ModuleShell({
   const ModuleIcon = iconRegistry[moduleIcon];
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const operational = useOptionalOperationalWorkspace();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktopMenuCollapsed, setIsDesktopMenuCollapsed] = useState(false);
   const isLightSidebar = sidebarVariant === "light";
   const isCollapsed = desktopCollapsible && isDesktopMenuCollapsed;
+
+  if (operational) return <>{children}</>;
 
   return (
     <div

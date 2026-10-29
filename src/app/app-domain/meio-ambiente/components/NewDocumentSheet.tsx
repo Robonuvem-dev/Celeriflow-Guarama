@@ -11,6 +11,7 @@ import {
   SheetTrigger 
 } from "@/components/ui/sheet";
 import { createEnvDocument } from "../actions";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 export function NewDocumentSheet({ enterprises }: { enterprises: { id: string; name: string }[] }) {
   const [open, setOpen] = useState(false);
@@ -35,9 +36,9 @@ export function NewDocumentSheet({ enterprises }: { enterprises: { id: string; n
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<button className="flex h-8 items-center gap-2 rounded-md bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700" />}>
+      <SheetTrigger render={<button type="button" className={styles.newButton} aria-label="Anexar Documento" title="Anexar Documento" />}>
         <Plus className="h-5 w-5" />
-        Anexar Documento
+        <span className={styles.newLabel}>Anexar Documento</span>
       </SheetTrigger>
       <SheetContent side="right" className="w-[calc(100vw-1rem)] overflow-y-auto sm:w-[34rem]">
         <SheetHeader>

@@ -1,20 +1,40 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Pencil } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { digitalServiceSchema, serviceProviders } from "@/lib/portal-cidadao/services-policy";
 import { saveDigitalServiceAction, saveServiceNoticeAction, prepareServiceTemplatesAction } from "./actions";
 
 type Service = { id: string; slug: string; group: string; provider: string; audience: string; published: boolean; featured: boolean; requiresLogin: boolean; configuration: unknown; publicService: { name: string; description: string; requirements: string | null; steps: string | null; deadline: string | null; cost: string | null } };
+const columns: OperationalColumn[] = [
+  ...([["name", "Serviço", 260, 130], ["slug", "Código / slug", 180, 110], ["audience", "Público", 140, 100], ["provider", "Executor", 160, 100], ["published", "Publicação", 130, 95]] as [string, string, number, number][]).map(([key, label, initialWidth, minWidth]): OperationalColumn => ({ key, label, initialWidth, minWidth, maxWidth: 650, type: key === "published" ? "status" : "text", resizable: true, sortable: false, details: "overflow" })),
+  { key: "actions", label: "Ação", type: "actions", initialWidth: 56, minWidth: 56, maxWidth: 80, resizable: false, sortable: false, details: "none" },
+];
 export default function ServiceCatalogEditor({ services, subjects }: { services: Service[]; subjects: { id: string; name: string; processTypeId: string; processType: { name: string } }[] }) {
   const router = useRouter();
-  const [editing, setEditing] = useState<Service | null>(null);
-  const [configuration, setConfiguration] = useState(JSON.stringify(digitalServiceSchema.parse({}), null, 2));
+  const params = useSearchParams();
+  const initialService = services.find(service => service.id === params.get("id")) || null;
+  const [editing, setEditing] = useState<Service | null>(initialService);
+  const [configuration, setConfiguration] = useState(JSON.stringify(initialService?.configuration ?? digitalServiceSchema.parse({}), null, 2));
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [pending, setPending] = useState(false), [message, setMessage] = useState("");
   const shortFields: [string, string, string | null | undefined][] = [["slug", "Código / slug", editing?.slug], ["name", "Nome", editing?.publicService.name], ["group", "Grupo", editing?.group || "Serviços municipais"], ["deadline", "Prazo informado", editing?.publicService.deadline], ["cost", "Custo / condições", editing?.publicService.cost]];
   const longFields: [string, string, string | null | undefined][] = [["description", "Descrição", editing?.publicService.description], ["requirements", "Requisitos", editing?.publicService.requirements], ["steps", "Etapas", editing?.publicService.steps]];
+  const filtered = services.filter(service => [service.publicService.name, service.slug, service.audience, service.provider].some(value => value.toLocaleLowerCase("pt-BR").includes(search.toLocaleLowerCase("pt-BR"))));
+  const activePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / OPERATIONAL_PAGE_SIZE)));
+  if (!["novo", "editar", "avisos"].includes(params.get("view") || "")) return <OperationalListFrame label="Catálogo de serviços" actions={<><button type="button" className={styles.newButton} onClick={() => { setEditing(null); setConfiguration(JSON.stringify(digitalServiceSchema.parse({}), null, 2)); router.push("/protocolos/servicos?view=novo"); }}>Novo serviço</button><button type="button" className={styles.dialogButton} onClick={() => router.push("/protocolos/servicos?view=avisos")}>Avisos</button><button type="button" disabled={pending} className={styles.dialogButton} onClick={async () => { setPending(true); try { const result = await prepareServiceTemplatesAction(); setMessage(result.error || "Modelos preparados como rascunhos."); if (!result.error) router.refresh(); } finally { setPending(false); } }}>Preparar modelos</button></>}
+    toolbar={<><input aria-label="Buscar serviço" className={styles.searchInput} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar serviço, código ou executor…" />{message && <span role="status">{message}</span>}</>} pagination={<OperationalPagination page={activePage} total={filtered.length} onPageChange={setPage} />}>
+    <OperationalTable columns={columns} preferenceId="protocolos.servicos" caption="Catálogo — modelos são rascunhos; configure os vínculos antes de publicar" emptyMessage="Nenhum serviço encontrado." rows={filtered.slice((activePage - 1) * OPERATIONAL_PAGE_SIZE, activePage * OPERATIONAL_PAGE_SIZE).map(service => ({ id: service.id, label: service.publicService.name, values: { name: service.publicService.name, slug: service.slug, audience: service.audience, provider: service.provider, published: service.published ? "Publicado" : "Rascunho" }, actions: <button type="button" className={styles.iconButton} aria-label={`Editar ou criar versão de ${service.publicService.name}`} onClick={() => { setEditing(service); setConfiguration(JSON.stringify(service.configuration, null, 2)); router.push(`/protocolos/servicos?view=editar&id=${encodeURIComponent(service.id)}`); }}><Pencil /></button> }))} />
+  </OperationalListFrame>;
+  if (params.get("view") === "avisos") return <div className="space-y-4 p-4"><button type="button" onClick={() => router.push("/protocolos/servicos")}>Voltar ao catálogo</button><ServiceNoticeEditor /></div>;
   return <div className="space-y-6">
+    <button type="button" onClick={() => router.push("/protocolos/servicos")}>Voltar ao catálogo</button>
     <div className="rounded border bg-slate-50 p-4"><button type="button" disabled={pending} onClick={async () => { setPending(true); try { const result = await prepareServiceTemplatesAction(); setMessage(result.error || "Modelos preparados como rascunhos."); if (!result.error) router.refresh(); } finally { setPending(false); } }} className="rounded border bg-white px-4 py-2 text-sm font-semibold text-emerald-800">Preparar modelos iniciais do catálogo</button><p className="mt-2 text-xs leading-6 text-slate-600">Os modelos são rascunhos. Configure assuntos, setores, requisitos, classes documentais, unidade fiscal, espaços e vagas antes de publicar.</p></div>
-    <div className="overflow-x-auto rounded border bg-white"><table className="w-full text-left text-sm"><thead><tr><th className="p-3">Serviço</th><th className="p-3">Público / executor</th><th className="p-3">Publicação</th><th className="p-3">Ação</th></tr></thead><tbody>{services.map((service) => <tr key={service.id} className="border-t"><td className="p-3">{service.publicService.name}<p className="text-xs text-slate-500">{service.slug}</p></td><td className="p-3">{service.audience} / {service.provider}</td><td className="p-3">{service.published ? "Publicado" : "Rascunho"}</td><td className="p-3"><button className="font-semibold text-emerald-800 underline" onClick={() => { setEditing(service); setConfiguration(JSON.stringify(service.configuration, null, 2)); }}>Editar / criar versão</button></td></tr>)}</tbody></table></div>
     <button type="button" onClick={() => { setEditing(null); setConfiguration(JSON.stringify(digitalServiceSchema.parse({}), null, 2)); }} className="rounded border px-4 py-2 text-sm">Novo serviço</button>
     <form key={editing?.id || "new"} className="grid gap-4 rounded border bg-white p-5 sm:grid-cols-2" onSubmit={async (event) => {
       event.preventDefault(); setPending(true); setMessage(""); const form = new FormData(event.currentTarget);

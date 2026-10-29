@@ -1,16 +1,18 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Plus, Search, Truck, X } from "lucide-react";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { Download, FileText, Plus, Search, X } from "lucide-react";
+import Link from "next/link";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { operationalColumns } from "../patrimonio/_components/operational-columns";
+import styles from "@/components/app-ui/operational/operational.module.css";
 import { categories, labels, type FleetArea, type FleetQuery } from "@/lib/frotas/contract";
 import type { FleetList, FleetRow } from "@/lib/frotas/queries";
 import { FleetEditor, type Editor } from "./FleetEditor";
 import { fieldClass, ReferencePicker } from "./ReferencePicker";
 import { mutateFleetAction } from "./actions";
-import { fleetAreaTitle, fleetNavigationGroups } from "./navigation";
+import { fleetAreaTitle } from "./navigation";
 const creation: Partial<Record<FleetArea, { title: string; kind: Editor["kind"]; initial?: Record<string, string> }>> = {
   frota: { title: "Nova unidade da frota", kind: "unit" }, rotas: { title: "Nova rota", kind: "route" }, utilizacao: { title: "Registrar utilização", kind: "usage" }, planos: { title: "Programar plano", kind: "plan" }, consumos: { title: "Registrar consumo", kind: "consumption" }, gastos: { title: "Registrar outro gasto", kind: "expense" }, seguros: { title: "Registrar seguro", kind: "document", initial: { kind: "SEGURO", type: "SEGURO" } }, obrigacoes: { title: "Agendar obrigação", kind: "document", initial: { kind: "OBRIGACAO", type: "LICENCIAMENTO" } }, documentos: { title: "Registrar documento", kind: "document", initial: { kind: "DOCUMENTO", type: "OUTRO" } }, ocorrencias: { title: "Registrar ocorrência", kind: "occurrence" },
 };
@@ -33,9 +35,8 @@ function DetailDialog({ row, onClose, onAction, canCreate, canUpdate, canIssue }
 export function FrotasClient({ query, list, selectedUnit, selectedUnits = [], permissions, departmentId }: { query: FleetQuery; list: FleetList; selectedUnit: { id: string; code: string; name: string; category: string } | null; selectedUnits?: { id: string; label: string }[]; permissions: { create: boolean; update: boolean; issueReports: boolean }; departmentId: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition(), [editor, setEditor] = useState<Editor | null>(null), [detail, setDetail] = useState<FleetRow | null>(null), [message, setMessage] = useState(""), [error, setError] = useState(""), [exporting, setExporting] = useState(false);
-  const [filters, setFilters] = useState(query), [advanced, setAdvanced] = useState(false), [format, setFormat] = useState("pdf");
+  const [filters, setFilters] = useState(query), [format, setFormat] = useState("pdf");
   const [units, setUnits] = useState(selectedUnits);
-  const group = fleetNavigationGroups.find(g => g.items.some(i => i.area === query.area))!;
   const create = creation[query.area];
   function navigate(patch: Partial<FleetQuery>) { startTransition(() => router.push(href(query, patch))); }
   function applyFilters(event: React.FormEvent) { event.preventDefault(); setError(""); if (filters.from && filters.to && filters.from > filters.to) { setError("A data final deve ser igual ou posterior à inicial."); return; } navigate({ ...filters, page: 1 }); }
@@ -85,12 +86,10 @@ export function FrotasClient({ query, list, selectedUnit, selectedUnits = [], pe
   const currentTitle = fleetAreaTitle[query.area];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden text-[11px] text-slate-700">
-      <ErpPageTitle
-        title={currentTitle}
-        description={query.area === "ordens" ? "Ordens de serviço · novas emissões são geradas nos planos de manutenção" : `${group.title} · Frotas`}
-        icon={<Truck className="size-4 shrink-0 text-emerald-700" />}
-        action={create && permissions.create ? (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <OperationalListFrame actions={<>
+        <Link href="/frotas/gestao" className={styles.dialogButton}>Gestão da frota</Link>
+        {create && permissions.create ? (
           <button
             type="button"
             onClick={() => setEditor({ ...create, initial: { unitId: query.unitId, ...create.initial }, context: selectedUnitLabel || undefined })}
@@ -100,13 +99,17 @@ export function FrotasClient({ query, list, selectedUnit, selectedUnits = [], pe
             {create.title}
           </button>
         ) : undefined}
-      />
-
-      <ErpListFrame
-        className="min-h-0"
+        {permissions.issueReports && <><label className="sr-only" htmlFor="fleet-format">Formato da emissão</label><select id="fleet-format" className="h-7 rounded border px-1" value={format} onChange={e => setFormat(e.target.value)}>{["pdf", "xlsx", "csv", "txt", "print"].map(value => <option key={value} value={value}>{value === "print" ? "Impressão" : value.toUpperCase()}</option>)}</select><button type="button" disabled={exporting} onClick={() => void emit()} className={styles.dialogButton}><Download />{exporting ? "Emitindo" : "Emitir"}</button></>}
+        <OperationalFilters label={notice ? "Resultado da operação" : "Resumo do recorte"}><div className="space-y-2"><p role={error ? "alert" : "status"}>{notice || `${currentTitle} · ${list.total} registro(s) no recorte`}</p>{selectedUnit && <><p>{selectedUnitLabel}</p><button type="button" onClick={() => navigate({ unitId: "", page: 1 })}>Toda a frota</button></>}{query.area === "ordens" && <p>Novas emissões são geradas nos planos de manutenção.</p>}{list.amount !== null && <p>Total conhecido: {moneyText(list.amount)}</p>}{Object.entries(list.quantities).map(([unit, quantity]) => <p key={unit}>{quantity} {unit}</p>)}{list.missingCosts > 0 && <p>Parcial · {list.missingCosts} sem custo</p>}</div></OperationalFilters>
+      </>}
         toolbar={
-          <form key={href(query)} onSubmit={applyFilters} className="relative">
-            <div className="flex min-h-8 flex-wrap items-end gap-1.5 xl:flex-nowrap">
+          <>
+          <form id="fleet-filters" key={href(query)} onSubmit={applyFilters} className={styles.searchForm}>
+            <input name="q" aria-label="Buscar código, descrição ou referência" type="search" className={styles.searchInput} value={filters.q} onChange={e => setFilters({ ...filters, q: e.target.value })} placeholder="Código, descrição ou referência" />
+            <button type="submit" disabled={pending} className={styles.iconButton} aria-label="Aplicar filtros"><Search /></button>
+          </form>
+          <OperationalFilters activeCount={[query.category, query.status, query.type, query.origin, query.from, query.to, query.unitId, query.unitIds].filter(Boolean).length}>
+            <div className={styles.filterFields}>
               {query.area === "relatorios" && (
                 <label className="min-w-44 flex-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 xl:max-w-72">
                   Relatório
@@ -115,10 +118,6 @@ export function FrotasClient({ query, list, selectedUnit, selectedUnits = [], pe
                   </select>
                 </label>
               )}
-              <label className="min-w-48 flex-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Busca
-                <input name="q" type="search" className="mt-0.5 h-7 w-full rounded border border-slate-300 bg-white px-2 text-[11px] text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600" value={filters.q} onChange={e => setFilters({ ...filters, q: e.target.value })} placeholder="Código, descrição ou referência" />
-              </label>
               {!["frota", "rotas"].includes(query.area) && <>
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   {dateCaption} inicial
@@ -129,53 +128,25 @@ export function FrotasClient({ query, list, selectedUnit, selectedUnits = [], pe
                   <input type="date" className="mt-0.5 h-7 rounded border border-slate-300 bg-white px-2 text-[11px] text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600" value={filters.to} onChange={e => setFilters({ ...filters, to: e.target.value })} />
                 </label>
               </>}
-              <button type="submit" disabled={pending} className="inline-flex h-7 items-center gap-1 rounded border border-emerald-700 bg-white px-2 text-[11px] font-semibold text-emerald-800 outline-none hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:opacity-60"><Search className="size-3.5" />{pending ? "Consultando" : "Aplicar"}</button>
-              <button type="button" onClick={() => setAdvanced(!advanced)} aria-expanded={advanced} className="h-7 rounded border border-slate-300 bg-white px-2 text-[11px] font-semibold text-slate-700 outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">Mais filtros</button>
+              <button type="submit" form="fleet-filters" disabled={pending} className={styles.primaryButton}>{pending ? "Consultando" : "Aplicar"}</button>
               <button type="button" onClick={() => navigate({ q: "", category: "", status: "", type: "", origin: "", from: "", to: "", unitId: "", unitIds: "", page: 1 })} className="h-7 px-1 text-[11px] font-semibold text-slate-600 outline-none hover:text-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-600">Limpar</button>
             </div>
-            {advanced && (
-              <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-30 grid gap-2 rounded border border-slate-300 bg-white p-3 shadow-lg sm:grid-cols-2 lg:grid-cols-4">
+              <div className={styles.filterFields}>
                 {query.area !== "rotas" && (query.area === "relatorios" ? <div className="sm:col-span-2"><span className="mb-1 block text-[11px] font-semibold text-slate-600">Unidades para o relatório</span><ReferencePicker kind={filters.report === "abastecimentos" ? "allVehicles" : "allUnits"} label="Adicionar unidade ao relatório" value="" onChange={(id, label) => { if (!id || units.some(v => v.id === id)) return; if (units.length >= 50) { setError("Selecione até 50 unidades."); return; } const next = [...units, { id, label: label || id }]; setUnits(next); setFilters({ ...filters, unitId: "", unitIds: next.map(v => v.id).join(",") }); }} /><div className="mt-2 flex flex-wrap gap-1">{units.map(v => <button type="button" key={v.id} aria-label={`Remover ${v.label}`} className="inline-flex h-7 max-w-full items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 text-[11px] text-emerald-900" onClick={() => { const next = units.filter(u => u.id !== v.id); setUnits(next); setFilters({ ...filters, unitIds: next.map(u => u.id).join(",") }); }}><span className="truncate">{v.label}</span><X className="size-3.5 shrink-0" /></button>)}</div></div> : <div><span className="mb-1 block text-[11px] font-semibold text-slate-600">Unidade da frota</span><ReferencePicker kind="allUnits" label="Filtro de unidade da frota" value={filters.unitId} selectedLabel={selectedUnitLabel || undefined} onChange={value => setFilters({ ...filters, unitId: value, unitIds: "" })} /></div>)}
                 {query.area !== "rotas" && <label className="text-[11px] font-semibold text-slate-600">Categoria<select className={fieldClass + " mt-1"} value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value as FleetQuery["category"] })}><option value="">Todas</option>{categories.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></label>}
                 {!!statuses.length && <label className="text-[11px] font-semibold text-slate-600">Situação<select className={fieldClass + " mt-1"} value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })}><option value="">Todas</option>{statuses.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></label>}
                 {!!filterTypes.length && <label className="text-[11px] font-semibold text-slate-600">Tipo / natureza<select className={fieldClass + " mt-1"} value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value })}><option value="">Todos</option>{filterTypes.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></label>}
                 {query.area === "consumos" && <label className="text-[11px] font-semibold text-slate-600">Origem do material<select className={fieldClass + " mt-1"} value={filters.origin} onChange={e => setFilters({ ...filters, origin: e.target.value as FleetQuery["origin"] })}><option value="">Todas</option>{["PROPRIO", "TERCEIRO"].map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></label>}
               </div>
-            )}
-          </form>
-        }
-        summary={
-          <div className="flex min-h-5 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <p role={error ? "alert" : message ? "status" : undefined} className={`min-w-0 truncate ${error ? "font-semibold text-red-700" : message ? "font-semibold text-emerald-800" : "text-slate-600"}`}>
-              {notice || <>{selectedUnit && <><span className="font-semibold text-slate-800">{selectedUnitLabel}</span><span className="mx-1.5 text-slate-300">|</span></>}{list.total} registro(s) no recorte{query.area === "relatorios" ? " · prévia paginada" : ""}{query.q && ` · busca: ${query.q}`}{query.from || query.to ? ` · ${dateCaption.toLowerCase()}: ${query.from || "sem início"} a ${query.to || "sem fim"}` : ""}</>}
-            </p>
-            <div className="flex shrink-0 items-center gap-2">
-              {selectedUnit && <button type="button" onClick={() => navigate({ unitId: "", page: 1 })} className="h-6 text-[11px] font-semibold text-emerald-800 hover:text-emerald-950">Toda a frota</button>}
-              {permissions.issueReports && <><label className="sr-only" htmlFor="fleet-format">Formato da emissão</label><select id="fleet-format" className="h-6 rounded border border-slate-300 bg-white px-1.5 text-[10px] font-semibold text-slate-700" value={format} onChange={e => setFormat(e.target.value)}>{["pdf", "xlsx", "csv", "txt", "print"].map(value => <option key={value} value={value}>{value === "print" ? "Impressão" : value.toUpperCase()}</option>)}</select><button type="button" disabled={exporting} onClick={() => void emit()} className="inline-flex h-6 items-center gap-1 text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 disabled:opacity-60"><Download className="size-3.5" />{exporting ? "Emitindo" : "Emitir"}</button></>}
-            </div>
-          </div>
+          </OperationalFilters>
+          </>
         }
         pagination={
-          <div className="flex min-h-7 items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-[10px] text-slate-600">
-              {list.amount !== null ? <><strong className="font-semibold text-slate-800">Total conhecido: {moneyText(list.amount)}</strong>{Object.entries(list.quantities).map(([unit, quantity]) => <span key={unit} className="ml-2 tabular-nums">{quantity} {unit}</span>)}{list.missingCosts > 0 && <span className="ml-2 text-amber-800">parcial · {list.missingCosts} sem custo</span>}</> : !permissions.create && !permissions.update ? "Acesso de consulta" : "20 registros por página"}
-            </p>
-            <ErpPagination page={list.page} total={list.total} pageSize={list.pageSize} previousHref={href(query, { page: Math.max(1, list.page - 1) })} nextHref={href(query, { page: list.page + 1 })} label="registros" />
-          </div>
+          <OperationalPagination page={list.page} total={list.total} pending={pending} onPageChange={page => navigate({ page })} />
         }
       >
-        <div className="h-full overflow-hidden" aria-busy={pending}>
-          <table className="h-full w-full table-fixed border-collapse text-left text-[11px]">
-            <thead className="h-6 bg-slate-100 text-[10px] font-bold uppercase tracking-wide text-slate-600">
-              <tr>{list.columns.map(col => <th key={col.key} title={col.label} className={`truncate border-b border-slate-200 px-2 py-0.5 ${col.numeric ? "text-right" : ""}`}>{col.label}</th>)}<th className="w-12 border-b border-slate-200 px-1.5 py-0.5 text-right">Ação</th></tr>
-            </thead>
-            <tbody>
-              {list.rows.map(row => <tr key={row.id} className="h-[clamp(1rem,2.5dvh,1.65rem)] border-b border-slate-100 last:border-0 hover:bg-emerald-50/70">{list.columns.map(col => <td key={col.key} className={`max-w-0 px-2 py-0 leading-none ${col.numeric ? "text-right tabular-nums" : ""}`}><span className={`block truncate ${col.key === "status" ? "font-semibold text-emerald-800" : ""}`} title={row.cells[col.key]}>{row.cells[col.key]}</span></td>)}<td className="px-1 py-0 text-right"><button type="button" onClick={() => act("detail", row)} aria-label={`Abrir ficha de ${row.cells.unit || row.cells.name || row.cells.title || row.cells.code}`} className="h-5 rounded px-1.5 text-[10px] font-semibold text-emerald-800 outline-none hover:bg-emerald-100 hover:text-emerald-950 focus-visible:ring-2 focus-visible:ring-emerald-600">Abrir</button></td></tr>)}
-              {!list.rows.length && <tr><td colSpan={list.columns.length + 1} className="h-32 px-3 text-center text-[11px] text-slate-500">Nenhum registro encontrado. Ajuste os filtros ou registre a primeira operação.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </ErpListFrame>
+        <OperationalTable columns={operationalColumns([...list.columns.map(col => [col.key, col.label, col.numeric ? 150 : 200, col.numeric ? 95 : 80, col.key === "status" ? "status" : "text", col.numeric ? "right" : "left"] as const), ["actions", "Ação", 70, 65, "actions"]])} preferenceId={`frotas-${query.area}-${query.report}`} caption={currentTitle} emptyMessage="Nenhum registro encontrado. Ajuste os filtros ou registre a primeira operação." rows={list.rows.map(row => ({ id: row.id, label: row.cells.unit || row.cells.name || row.cells.title || row.cells.code || row.id, values: row.cells, actions: <button type="button" onClick={() => act("detail", row)} className={styles.iconButton} aria-label={`Abrir ficha de ${row.cells.unit || row.cells.name || row.cells.title || row.cells.code}`}><FileText /></button> }))} />
+      </OperationalListFrame>
       {detail && <DetailDialog row={detail} onClose={() => setDetail(null)} onAction={act} canCreate={permissions.create} canUpdate={permissions.update} canIssue={permissions.issueReports} />}
       {editor && <FleetEditor editor={editor} onClose={() => setEditor(null)} onSuccess={value => { setMessage(value); router.refresh(); }} defaultDepartment={departmentId} />}
     </div>

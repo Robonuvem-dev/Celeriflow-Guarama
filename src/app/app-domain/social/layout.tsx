@@ -1,4 +1,7 @@
+"use client";
+
 import { ModuleShell, type ModuleNavGroup } from "@/components/app-ui/erp/ModuleShell";
+import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 
 const navigation: ModuleNavGroup[] = [{
   title: "Atendimento SUAS",
@@ -20,5 +23,7 @@ const navigation: ModuleNavGroup[] = [{
 }];
 
 export default function SocialLayout({ children }: { children: React.ReactNode }) {
+  const workspace = useOptionalOperationalWorkspace();
+  if (workspace) return <>{children}</>;
   return <ModuleShell moduleTitle="Assistência Social" moduleCaption="Gestão SUAS" moduleIcon="heartHandshake" navigation={navigation}>{children}</ModuleShell>;
 }

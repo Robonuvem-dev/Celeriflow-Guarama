@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, Search, ShieldAlert } from "lucide-react";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { Eye, Search } from "lucide-react";
+import { SocialOperationalList } from "../OperationalList";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -19,7 +19,6 @@ export type AttendanceRow = {
   secrecyLevel: string;
 };
 
-const PAGE_SIZE = 20;
 
 export function AtendimentosClient({ rows }: { rows: AttendanceRow[] }) {
   const [search, setSearch] = useState("");
@@ -36,30 +35,14 @@ export function AtendimentosClient({ rows }: { rows: AttendanceRow[] }) {
   const visible = filtered.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
 
   return <>
-    <ErpListFrame
-      toolbar={<div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_12rem]">
-        <label className="relative"><span className="sr-only">Buscar atendimentos</span><Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar família, unidade ou técnico..." className="h-8 w-full rounded border border-slate-200 pl-8 pr-2 text-xs outline-none focus:ring-2 focus:ring-emerald-600" /></label>
-        <select value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} className="h-8 rounded border border-slate-200 px-2 text-xs"><option value="">Todos os tipos</option>{types.map((value) => <option key={value}>{value}</option>)}</select>
+    <SocialOperationalList id="atendimentos" page={activePage} total={filtered.length} onPageChange={setPage}
+      columns={[["date", "Data", 140, 110], ["subject", "Usuário/família", 200, 110, "identifier"], ["type", "Tipo", 130, 80], ["unit", "Unidade", 160, 90], ["professional", "Técnico", 160, 90], ["status", "Sigilo", 110, 80, "status"], ["actions", "Ações", 64, 64, "actions"]]}
+      rows={visible.map((row) => ({ id: row.id, label: row.personName || row.familyName, values: { date: new Date(row.date).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }), subject: row.personName || row.familyName, type: row.type, unit: row.unitName, professional: row.professionalName || "—", status: row.secrecyLevel }, actions: <Button variant="ghost" size="icon" className="size-7" onClick={() => setDetail(row)} aria-label={`Abrir atendimento de ${row.familyName}`}><Eye className="size-3.5" /></Button> }))}
+      toolbar={<div className="flex w-full min-w-0 gap-2">
+        <label className="relative min-w-0 flex-1"><span className="sr-only">Buscar atendimentos</span><Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar família, unidade ou técnico..." className="h-7 w-full rounded border border-slate-200 pl-8 pr-2 text-sm outline-none focus:ring-2 focus:ring-emerald-600" /></label>
+        <select aria-label="Tipo de atendimento" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} className="h-7 min-w-0 rounded border border-slate-200 px-2 text-sm"><option value="">Todos os tipos</option>{types.map((value) => <option key={value}>{value}</option>)}</select>
       </div>}
-      summary={<p className="text-[11px] text-slate-500">{filtered.length} atendimentos encontrados</p>}
-      pagination={<ErpPagination page={activePage} total={filtered.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="atendimentos" onPageChange={setPage} />}
-    >
-      <table className="w-full table-fixed text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-100 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-2">Data</th><th className="p-2">Usuário/família</th><th className="p-2">Tipo</th><th className="hidden p-2 md:table-cell">Unidade</th><th className="hidden p-2 lg:table-cell">Técnico</th><th className="p-2">Situação</th><th className="p-2 text-right">Ações</th></tr></thead>
-        <tbody className="divide-y divide-slate-100">
-          {visible.map((row) => <tr key={row.id} className="h-9 hover:bg-slate-50">
-            <td className="whitespace-nowrap p-2">{new Date(row.date).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
-            <td className="truncate p-2 font-medium text-slate-800" title={row.personName || row.familyName}>{row.personName || row.familyName}</td>
-            <td className="truncate p-2" title={row.type}>{row.type}</td>
-            <td className="hidden truncate p-2 md:table-cell" title={row.unitName}>{row.unitName}</td>
-            <td className="hidden truncate p-2 lg:table-cell" title={row.professionalName || undefined}>{row.professionalName || "-"}</td>
-            <td className="p-2"><span className={row.secrecyLevel === "Normal" ? "rounded bg-slate-100 px-1.5 py-0.5 text-[10px]" : "inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] text-rose-700"}>{row.secrecyLevel !== "Normal" && <ShieldAlert className="size-3" />}{row.secrecyLevel}</span></td>
-            <td className="p-2 text-right"><Button variant="ghost" size="icon" className="size-7" onClick={() => setDetail(row)} title="Abrir detalhes"><Eye className="size-3.5" /></Button></td>
-          </tr>)}
-          {visible.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-slate-500">Nenhum atendimento encontrado.</td></tr>}
-        </tbody>
-      </table>
-    </ErpListFrame>
+    />
     <Dialog open={Boolean(detail)} onOpenChange={(open) => !open && setDetail(null)}>
       <DialogContent><DialogHeader><DialogTitle>{detail?.type}</DialogTitle><DialogDescription>{detail?.familyName} · {detail?.unitName}</DialogDescription></DialogHeader><div className="whitespace-pre-wrap break-words text-sm text-slate-700">{detail?.description || "Sem relato."}</div><DialogFooter><Button onClick={() => setDetail(null)}>Fechar</Button></DialogFooter></DialogContent>
     </Dialog>

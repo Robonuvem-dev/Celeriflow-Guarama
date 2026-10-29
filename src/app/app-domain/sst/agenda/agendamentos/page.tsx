@@ -3,13 +3,22 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { listSstUnits } from "@/db/repositories/sst/scope";
 import { sstDatabase } from "@/lib/sst/database";
 import { readSstAppointmentsPage } from "@/db/repositories/sst-pages/agenda";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { sstColumn } from "../../_components/operational-columns";
+import { SstNewLink } from "../../_components/SstNewLink";
+
+const columns = [sstColumn("employee", "Servidor", 240, 140), sstColumn("professional", "Profissional", 210, 130), sstColumn("unit", "Local", 180, 110), sstColumn("date", "Data/hora", 180, 145), sstColumn("status", "Situação", 120, 90, "status"), sstColumn("actions", "Detalhes", 90, 80, "actions")];
 
 export default async function SstAppointmentsPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string }> }) {
   const context = await getTenantContextForModule("SST");
   const params = await searchParams;
   const database = sstDatabase(context), units = await listSstUnits(database, context);
   const { total, page, records } = await readSstAppointmentsPage(database, units.map(item => item.id), params);
-  const href = (value: number) => `/sst/agenda/agendamentos?${new URLSearchParams({ page: String(value), q: params.q || "" })}`;
-  return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Agendamentos SST</h1><Link href="/sst/agenda">Abrir agenda</Link><form className="flex gap-2"><input name="q" defaultValue={params.q} placeholder="Servidor" className="rounded border p-2"/><button className="rounded border p-2">Filtrar</button></form><table className="w-full table-fixed text-left text-sm"><thead><tr><th className="p-2">Servidor</th><th className="p-2">Profissional/local</th><th className="p-2">Data/hora</th><th className="p-2">Situação</th><th className="p-2">Detalhes</th></tr></thead><tbody>{records.map((record) => <tr className="border-b" key={record.id}><td className="break-words p-2">{record.employee.name}</td><td className="break-words p-2">{record.availability.professional.fullName}<br/>{record.availability.unitName}</td><td className="p-2">{record.startsAt.toLocaleString("pt-BR")}</td><td className="p-2">{record.status}</td><td className="p-2"><Link className="underline" href={`/sst/agenda/agendamentos/${record.id}`}>Abrir</Link></td></tr>)}</tbody></table><ErpPagination page={page} total={total} previousHref={href(page - 1)} nextHref={href(page + 1)}/></div>;
+  return <OperationalListFrame label="Agendamentos SST" actions={<SstNewLink href="/sst/agenda">Abrir agenda</SstNewLink>}
+    toolbar={<form action="/sst/agenda/agendamentos" method="GET" className={styles.searchForm}><input name="q" aria-label="Buscar servidor" defaultValue={params.q} placeholder="Servidor" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button><Link href="/sst/agenda/agendamentos" className={styles.filterButton}>Limpar</Link></form>}
+    pagination={<OperationalLinkPagination page={page} total={total} pathname="/sst/agenda/agendamentos" values={{ q: params.q }} />}>
+    <OperationalTable columns={columns} preferenceId="sst-agendamentos" caption="Agendamentos SST" emptyMessage="Nenhum agendamento encontrado." rows={records.map(record => ({ id: record.id, label: record.employee.name, values: { employee: record.employee.name, professional: record.availability.professional.fullName, unit: record.availability.unitName, date: record.startsAt.toLocaleString("pt-BR"), status: record.status }, actions: <Link href={`/sst/agenda/agendamentos/${record.id}`}>Abrir</Link> }))} />
+  </OperationalListFrame>;
 }

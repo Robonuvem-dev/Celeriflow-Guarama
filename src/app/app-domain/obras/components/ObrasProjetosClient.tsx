@@ -5,8 +5,11 @@ import { Pencil, Plus, PowerOff, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { createObra, inactivateObra, updateObra } from "../actions";
-import { ErpListFrame } from "@/components/app-ui/erp/ErpListFrame";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { operationalColumns } from "../../patrimonio/_components/operational-columns";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE } from "@/lib/operational-tables";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 type Obra = {
   id: string;
@@ -23,7 +26,10 @@ type Obra = {
 const tipos = ["Construção", "Reforma", "Pavimentação", "Drenagem", "Iluminação"];
 const statusOptions = ["Em Planejamento", "Em Execução", "Concluída", "Paralisada"];
 const fieldClass = "w-full rounded-md border border-slate-200 bg-white p-2 text-sm text-slate-900 outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
-const PAGE_SIZE = 20;
+const columns = operationalColumns([
+  ["code", "Código", 140, 100, "identifier"], ["name", "Obra/projeto", 300, 160], ["location", "Local", 220, 120],
+  ["type", "Tipo", 160, 100], ["status", "Situação", 180, 120, "status"], ["actions", "Ações", 80, 80, "actions", "right"],
+]);
 
 function ObraSheet({ obra, open, onOpenChange }: { obra?: Obra; open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
@@ -139,17 +145,13 @@ export function ObrasProjetosClient({ obras }: { obras: Obra[] }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
-      <div className="flex shrink-0 justify-end"><button type="button" onClick={() => setNewOpen(true)} className="flex h-7 items-center gap-1 rounded-md bg-amber-600 px-2.5 text-xs font-medium text-white hover:bg-amber-700"><Plus className="size-3.5" />Nova obra</button></div>
-      <ErpListFrame toolbar={<div className="grid gap-2 lg:grid-cols-[minmax(12rem,1fr)_9rem_9rem_8rem]">
-          <div className="relative"><Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => resetPage(() => setSearch(event.target.value))} placeholder="Buscar número, obra ou local..." className="h-8 w-full rounded border border-slate-200 bg-white pl-8 pr-2 text-xs outline-none focus:ring-2 focus:ring-amber-600" /></div>
+      <OperationalListFrame actions={<><button type="button" onClick={() => setNewOpen(true)} className={styles.newButton}><Plus />Nova obra</button>{actionError && <OperationalFilters label="Erro na operação"><p role="alert">{actionError}</p></OperationalFilters>}</>} toolbar={<>
+          <div className={styles.searchForm}><Search aria-hidden="true" /><input aria-label="Buscar número, obra ou local" value={search} onChange={(event) => resetPage(() => setSearch(event.target.value))} placeholder="Buscar número, obra ou local..." className={styles.searchInput} /></div>
+          <OperationalFilters activeCount={[tipo, status, active].filter(value => value !== "Todos").length}><div className={styles.filterFields}>
           <Filter value={tipo} onChange={(value) => resetPage(() => setTipo(value))} options={["Todos", ...tipos]} label="Tipo" /><Filter value={status} onChange={(value) => resetPage(() => setStatus(value))} options={["Todos", ...statusOptions]} label="Status" /><Filter value={active} onChange={(value) => resetPage(() => setActive(value))} options={["Todos", "Ativas", "Inativas"]} label="Situação" />
-        </div>} summary={<p className="text-[11px] text-slate-500">{filteredObras.length} obras encontradas</p>} pagination={<ErpPagination page={activePage} total={filteredObras.length} pageSize={PAGE_SIZE} previousHref="#" nextHref="#" label="obras" onPageChange={setPage} />}>
-        {actionError && <div className="mx-4 mt-4 rounded-md bg-red-100 p-3 text-sm text-red-700 md:mx-6">{actionError}</div>}
-        <table className="w-full table-fixed text-left text-xs"><thead className="sticky top-0 z-10 bg-slate-100 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-2">Código</th><th className="p-2">Obra/projeto</th><th className="hidden p-2 md:table-cell">Local</th><th className="hidden p-2 lg:table-cell">Tipo</th><th className="p-2">Situação</th><th className="p-2 text-right">Ações</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-          {visibleObras.map((obra) => <tr key={obra.id} className="h-9 hover:bg-slate-50"><td className="truncate p-2 font-medium">{obra.numero}</td><td className="truncate p-2 font-semibold text-slate-900" title={obra.nome}>{obra.nome}</td><td className="hidden truncate p-2 md:table-cell" title={obra.local || undefined}>{obra.local || "-"}</td><td className="hidden truncate p-2 lg:table-cell">{obra.tipo}</td><td className="p-2"><StatusBadge status={obra.active ? obra.status : "Inativa"} /></td><td className="p-2"><div className="flex justify-end gap-0.5"><button type="button" onClick={() => setEditing(obra)} className="rounded p-1.5 text-slate-500 hover:bg-amber-50 hover:text-amber-600" title="Editar e ver detalhes"><Pencil className="size-3.5" /></button><button type="button" onClick={() => handleInactivate(obra)} disabled={!obra.active || inactivatingId === obra.id} className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-40" title="Inativar">{inactivatingId === obra.id ? "..." : <PowerOff className="size-3.5" />}</button></div></td></tr>)}
-          {filteredObras.length === 0 && <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500">Nenhuma obra encontrada.</td></tr>}
-        </tbody></table>
-      </ErpListFrame>
+        </div></OperationalFilters></>} pagination={<OperationalPagination page={activePage} total={filteredObras.length} onPageChange={setPage} />}>
+        <OperationalTable columns={columns} preferenceId="obras-projetos" caption="Obras e projetos" emptyMessage="Nenhuma obra encontrada." rows={visibleObras.map(obra => ({ id: obra.id, label: obra.nome, values: { code: obra.numero, name: obra.nome, location: obra.local || "—", type: obra.tipo, status: obra.active ? obra.status : "Inativa" }, actions: <div className={styles.rowActions}><button type="button" onClick={() => setEditing(obra)} className={styles.iconButton} aria-label={`Editar e ver detalhes de ${obra.numero}`}><Pencil /></button><button type="button" onClick={() => handleInactivate(obra)} disabled={!obra.active || inactivatingId === obra.id} className={styles.iconButton} aria-label={`Inativar ${obra.numero}`}>{inactivatingId === obra.id ? "..." : <PowerOff />}</button></div> }))} />
+      </OperationalListFrame>
       <ObraSheet open={newOpen} onOpenChange={setNewOpen} />
       {editing && <ObraSheet obra={editing} open onOpenChange={(open) => { if (!open) setEditing(null); }} />}
     </div>
@@ -158,9 +160,4 @@ export function ObrasProjetosClient({ obras }: { obras: Obra[] }) {
 
 function Filter({ value, onChange, options, label }: { value: string; onChange: (value: string) => void; options: string[]; label: string }) {
   return <select value={value} onChange={(event) => onChange(event.target.value)} aria-label={label} className="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none">{options.map((option) => <option key={option}>{option}</option>)}</select>;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const color = status === "Concluída" ? "bg-emerald-500" : status === "Em Execução" ? "bg-amber-500" : status === "Paralisada" ? "bg-red-500" : "bg-blue-500";
-  return <span className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300"><span className={`h-2 w-2 rounded-full ${color}`} />{status}</span>;
 }

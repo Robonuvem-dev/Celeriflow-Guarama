@@ -8,5 +8,5 @@ export default async function AdministrationIndicatorsPage({ searchParams }: { s
   const context = await getTenantContextForModule("ADMINISTRACAO");
   const params = await searchParams;
   const data = await getAdministrationBi(context, params.secretariatId || "");
-  return <AdministrationDashboard key={data.selection} data={data} />;
+  return <AdministrationDashboard data={data} />;
 }

@@ -5,6 +5,8 @@ import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import ConfiguredFiscalDetails from "../../cadastros-fiscais/ConfiguredFiscalDetails";
 import FiscalReferenceFilter from "../../cadastros-fiscais/FiscalReferenceFilter";
 import PropertyProfilePosition from "./PropertyProfilePosition";
+import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
+import { TaxOperationalTable } from "../../TaxOperationalTable";
 
 const labels: Record<string, string> = { municipalInsc: "Inscrição municipal", registration: "Matrícula", propertyType: "Tipo", status: "Situação", streetName: "Logradouro", number: "Número", complement: "Complemento", lot: "Lote", block: "Quadra", landArea: "Área do terreno", builtArea: "Área construída", propertyUse: "Uso", fiscalZone: "Zona fiscal", neighborhoodId: "Bairro", streetId: "Logradouro cadastrado", taxpayerId: "Titular principal" };
 
@@ -19,7 +21,17 @@ export default async function PropertyHistory({ database, id, at }: { database: 
   return <section className="shrink-0 rounded border bg-white p-3"><h2 className="text-sm font-bold">Histórico e espelho imobiliário</h2>
     <FiscalReferenceFilter at={at}/>
     {at && <div className="mt-2 bg-slate-50 p-2 text-xs">{position ? <dl className="grid gap-2 sm:grid-cols-3">{Object.entries(fields).filter(([key]) => key !== "id").map(([key, value]) => <div key={key}><dt className="font-semibold">{labels[key] ?? key}</dt><dd>{value === null ? "Não informado" : String(value)}</dd></div>)}</dl> : "Sem posição documentada na referência informada."}</div>}
-    <div className="mt-2 max-h-40 overflow-auto"><table className="w-full text-left text-xs"><thead><tr><th>Data / usuário</th><th>Campo</th><th>Anterior</th><th>Novo</th></tr></thead><tbody>{entries.flatMap(entry => { const memory = taxScopeSnapshot(entry.data); const before = taxScopeSnapshot(memory.before); const after = taxScopeSnapshot(memory.after); const changed = Array.isArray(memory.fields) ? memory.fields.filter((field): field is string => typeof field === "string") : []; return changed.map(field => <tr key={`${entry.id}:${field}`} className="border-t"><td className="py-1">{entry.effectiveFrom.toLocaleString("pt-BR")} · {names.get(entry.actorUsuarioId ?? "") ?? entry.actorUsuarioId ?? "Origem sem usuário atribuído"}</td><td>{labels[field] ?? field}</td><td>{memory.baseline ? "Posição inicial" : String(before[field] ?? "Não informado")}</td><td>{String(after[field] ?? "Não informado")}</td></tr>); })}</tbody></table>{!entries.length && <p className="text-xs text-slate-500">Sem posições documentadas. O próximo movimento registrará a posição observada e a alteração.</p>}</div>
+    <OperationalTablePanel title="Histórico cadastral imobiliário" triggerLabel="Abrir histórico imobiliário em tabela" description="Campos e posições efetivamente documentados no cadastro imobiliário.">
+      <TaxOperationalTable id="historico-imobiliario" resetKey={`${id}:${at ?? ""}`} emptyMessage="Sem posições documentadas. O próximo movimento registrará a posição observada e a alteração."
+        toolbar={<span className="text-[13px]">Imóvel {id} · referência {at ?? "atual"}</span>}
+        columns={[["date", "Data", 80, 165], ["actor", "Usuário", 80, 175], ["field", "Campo", 80, 160], ["before", "Anterior", 100, 300], ["after", "Novo", 100, 300]]}
+        rows={entries.flatMap(entry => {
+          const memory = taxScopeSnapshot(entry.data); const before = taxScopeSnapshot(memory.before); const after = taxScopeSnapshot(memory.after);
+          const changed = Array.isArray(memory.fields) ? memory.fields.filter((field): field is string => typeof field === "string") : [];
+          const display = (value: unknown) => value == null ? "Não informado" : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+          return changed.map(field => ({ id: `${entry.id}:${field}`, label: labels[field] ?? field, values: { date: entry.effectiveFrom.toLocaleString("pt-BR"), actor: names.get(entry.actorUsuarioId ?? "") ?? entry.actorUsuarioId ?? "Origem sem usuário atribuído", field: labels[field] ?? field, before: memory.baseline ? "Posição inicial" : display(before[field]), after: display(after[field]) } }));
+        })} />
+    </OperationalTablePanel>
     <ConfiguredFiscalDetails database={database} entityType="REAL_ESTATE" entityId={id} at={at}/>
     <PropertyProfilePosition database={database} id={id} at={at}/>
   </section>;

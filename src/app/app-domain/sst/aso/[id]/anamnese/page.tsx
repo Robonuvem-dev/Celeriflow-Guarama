@@ -8,10 +8,14 @@ import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/
 import { findSstClinicalGrant } from "@/db/repositories/sst/access";
 import { sstDatabase } from "@/lib/sst/database";
 import { findSstAsoScope, readSstAnamnesisHistory } from "@/db/repositories/sst-pages/aso";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import styles from "@/components/app-ui/operational/operational.module.css";
+import { sstColumn } from "../../../_components/operational-columns";
+import { SstNewLink } from "../../../_components/SstNewLink";
 import { AnamnesisForm } from "./AnamnesisForm";
 
-export default async function SstAsoAnamnesis({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ questionnaireVersionId?: string; q?: string; page?: string }> }) {
+export default async function SstAsoAnamnesis({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ questionnaireVersionId?: string; q?: string; page?: string; view?: string }> }) {
   const context = await getTenantContextForModule("SST");
   const { id } = await params;
   const search = await searchParams;
@@ -23,9 +27,15 @@ export default async function SstAsoAnamnesis({ params, searchParams }: { params
   const grant = isSystemAdministrator(context.user) ? null : await findSstClinicalGrant(database, context.user.id, scope.budgetUnitId);
   const canCreate = canPerformModuleOperation(context.user, "SST", "create") && (isSystemAdministrator(context.user) || grant?.canAssess);
   await writeAuditEvent(database, { actorUsuarioId: context.user.id, eventType: auditEventTypes.pageView, targetType: "SST_ANAMNESIS_HISTORY", targetId: id });
-  const href = (value: number) => `/sst/aso/${id}/anamnese?${new URLSearchParams({ q: search.q || "", questionnaireVersionId: selected?.id || "", page: String(value) })}`;
+  if (search.view !== "manage") {
+    const columns = [sstColumn("revision", "Revisão", 100, 80, "text", "right"), sstColumn("title", "Questionário", 300, 170), sstColumn("version", "Versão", 100, 75, "text", "right"), sstColumn("createdAt", "Registro", 200, 150), sstColumn("actions", "Ficha", 90, 80, "actions")];
+    return <OperationalListFrame label="Histórico de anamnese do ASO" actions={<><Link href={`/sst/aso/${id}`} className={styles.filterButton}>Voltar ao ASO</Link>{canCreate && <SstNewLink href={`/sst/aso/${id}/anamnese?${new URLSearchParams({ view: "manage", q: search.q || "", questionnaireVersionId: selected?.id || "" })}`}>Registrar revisão</SstNewLink>}</>}
+      pagination={<OperationalLinkPagination page={page} total={total} pathname={`/sst/aso/${id}/anamnese`} values={{ q: search.q, questionnaireVersionId: selected?.id }} />}>
+      <OperationalTable columns={columns} preferenceId="sst-anamnese" caption="Histórico preservado de anamnese" emptyMessage="Nenhuma anamnese registrada." rows={history.map(record => ({ id: record.id, label: `Revisão ${record.revision}`, values: { revision: String(record.revision), title: record.questionnaireVersion.title, version: String(record.questionnaireVersion.version), createdAt: record.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) }, actions: <Link href={`/sst/anamneses/${record.id}`}>Abrir</Link> }))} />
+    </OperationalListFrame>;
+  }
   return <div className="space-y-4 p-4"><h1 className="text-xl font-semibold">Anamnese vinculada ao ASO</h1><Link className="underline" href={`/sst/aso/${id}`}>Voltar ao ASO</Link>
-    {canCreate && <><form className="flex flex-wrap gap-2"><input aria-label="Título do questionário" name="q" defaultValue={search.q} placeholder="Buscar questionário" className="rounded border p-2"/><select aria-label="Versão do questionário" name="questionnaireVersionId" defaultValue={selected?.id || ""} className="min-w-0 rounded border p-2"><option value="">Selecione a versão (20 opções por busca)</option>{selected && !versions.some((item) => item.id === selected.id) && <option value={selected.id}>{selected.title} v{selected.version}</option>}{versions.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.title} v{item.version}</option>)}</select><button className="rounded border p-2">Carregar</button></form>{selected && <AnamnesisForm key={selected.id} asoId={id} questionnaireVersionId={selected.id} questions={questionnaireQuestions.parse(selected.questions)} needsReason={total > 0}/>}</>}
-    <h2 className="font-semibold">Histórico preservado · {total} revisão(ões)</h2><table className="w-full table-fixed text-left text-sm"><thead><tr><th className="p-2">Revisão</th><th className="p-2">Questionário</th><th className="p-2">Registro</th><th className="p-2">Ficha</th></tr></thead><tbody>{history.map((record) => <tr key={record.id} className="border-b"><td className="p-2">{record.revision}</td><td className="break-words p-2">{record.questionnaireVersion.title} v{record.questionnaireVersion.version}</td><td className="p-2">{record.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td><td className="p-2"><Link className="underline" href={`/sst/anamneses/${record.id}`}>Abrir</Link></td></tr>)}</tbody></table>{!history.length && <p>Nenhuma anamnese registrada.</p>}<ErpPagination page={page} total={total} previousHref={href(page - 1)} nextHref={href(page + 1)}/>
+    <Link href={`/sst/aso/${id}/anamnese`}>Voltar ao histórico</Link>
+    {canCreate && <><form className="flex flex-wrap gap-2"><input type="hidden" name="view" value="manage" /><input aria-label="Título do questionário" name="q" defaultValue={search.q} placeholder="Buscar questionário" className="rounded border p-2"/><select aria-label="Versão do questionário" name="questionnaireVersionId" defaultValue={selected?.id || ""} className="min-w-0 rounded border p-2"><option value="">Selecione a versão (20 opções por busca)</option>{selected && !versions.some((item) => item.id === selected.id) && <option value={selected.id}>{selected.title} v{selected.version}</option>}{versions.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.title} v{item.version}</option>)}</select><button className="rounded border p-2">Carregar</button></form>{selected && <AnamnesisForm key={selected.id} asoId={id} questionnaireVersionId={selected.id} questions={questionnaireQuestions.parse(selected.questions)} needsReason={total > 0}/>}</>}
   </div>;
 }
