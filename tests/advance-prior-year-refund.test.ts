@@ -12,7 +12,6 @@ import { planningEntityUnits } from "../src/db/schema/planning-budget";
 import { hrIntegrationEvents, hrPortalRequests } from "../src/db/schema/personnel-workforce";
 import { documents } from "../src/db/schema/registry";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { financeDatabaseError } from "./helpers/finance-database-error";
 import type { AppContext } from "../src/lib/platform/tenant-context";
 import { createExpenseRequest, approveExpenseRequest, createBudgetReservation, createCommitment, createSettlement, createRevenue, createPayment, updatePaymentStatus, reverseRevenue, reversePayment, cancelSettlement, cancelCommitment, getBudgetAvailability, getBankAccountBalance } from "../src/lib/financeiro";
@@ -24,10 +23,8 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) for (const sce
   const previousMode = process.env.CELERIFLOW_ACCOUNTING_MODE;
   process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
   const f = await createPlanningExecutionFixture(2025, 2, jurisdiction);
-  let finance: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
   try {
-    finance = await connectFinanceDrizzleFixture(f.pg);
-    const { connection } = finance;
+    const { connection } = f;
     const db = connection.db;
     const context: AppContext = f.context;
     const reviewer: AppContext = f.reviewer;
@@ -135,7 +132,9 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) for (const sce
     }
     assert.equal((await db.select().from(hrPortalRequests).where(eq(hrPortalRequests.id, request.id)))[0].status, "PRESTACAO_APROVADA");
   } finally {
-    if (previousMode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE; else process.env.CELERIFLOW_ACCOUNTING_MODE = previousMode;
-    try { await finance?.close(); } finally { await f.close(); }
+    try { await f.close(); } finally {
+      t.mock.timers.reset();
+      if (previousMode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE; else process.env.CELERIFLOW_ACCOUNTING_MODE = previousMode;
+    }
   }
 });

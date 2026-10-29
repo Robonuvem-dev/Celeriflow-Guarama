@@ -13,10 +13,12 @@ import { saveItbiTransactionType } from "../src/lib/tributacao/itbi-parameters";
 import { createItbiPropertyCollection } from "../src/lib/tributacao/itbi-property-collection";
 import { requestItbiContestation,decideItbiContestation } from "../src/lib/tributacao/itbi-contestation";
 import { transmitItbiDeclaration,confirmItbiWithDocuments } from "../src/lib/tributacao/s3-service";
+import { postgresError } from "./helpers/postgres-assertion";
 
 test("ITBI: conjunto conserva valores por imóvel; impugnação revisa crédito e documentos na mesma transação",async()=>{
   const f=await createItbiDrizzleFixture();
-  try {
+   try {
+     await f.database.exec(`UPDATE "Tax" SET "isActive"=false WHERE lower(name)='itbi' AND id<>'ITBI';`);
     await f.database.exec(`
       INSERT INTO "RealEstate" (id,"municipalInsc","taxpayerId","landArea","builtArea","updatedAt") VALUES ('land','LAND','seller',100,20,CURRENT_TIMESTAMP),('unit','UNIT','seller',100,20,CURRENT_TIMESTAMP);
       INSERT INTO "Process" (id,"protocolNumber",description,"processTypeId","subjectId","updatedAt") VALUES ('process','ITBI-COLLECTION','Conjunto de imóveis','process-type','subject',CURRENT_TIMESTAMP);
@@ -45,7 +47,7 @@ test("ITBI: conjunto conserva valores por imóvel; impugnação revisa crédito 
     await assert.rejects(generateTaxGuide(f.connection,f.actor,{assessmentId:pending.assessmentId!,dueDate:new Date()}),/impugnação pendente/);
     const decision={declarationId:declaration.id,contestationId:contestation.id,expectedUpdatedAt:pending.updatedAt.toISOString(),approved:true,propertyValue:"1500.00",reason:"Laudo fiscal deferido"};
     await f.database.exec(`CREATE FUNCTION fail_itbi_decision() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.category='ITBI_CONTESTATION_DECISION' THEN RAISE EXCEPTION 'itbi rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_itbi_decision BEFORE INSERT ON "TaxRegistryEntry" FOR EACH ROW EXECUTE FUNCTION fail_itbi_decision();`);
-    await assert.rejects(decideItbiContestation(f.connection,f.actor,decision),/itbi rollback/);
+    await assert.rejects(decideItbiContestation(f.connection,f.actor,decision),postgresError("P0001", "itbi rollback"));
     assert.equal((await readItbiAssessment(f.db,pending.assessmentId!)).finalValueDecimal?.toFixed(2),"40.00");
     assert.equal((await readItbiDeclaration(f.db,declaration.id)).status,"IMPUGNADA");
     await f.database.exec('DROP TRIGGER fail_itbi_decision ON "TaxRegistryEntry"; DROP FUNCTION fail_itbi_decision();');
@@ -54,7 +56,7 @@ test("ITBI: conjunto conserva valores por imóvel; impugnação revisa crédito 
     assert.equal((await readItbiAssessment(f.db,pending.assessmentId!)).finalValueDecimal?.toFixed(2),"30.00");
     assert.equal(requireItbiRecord((await f.db.select().from(documents).where(eq(documents.id,confirmed.documentId)))[0]).status,"Revogado");
     await assert.rejects(decideItbiContestation(f.connection,f.actor,decision),/indisponível/);
-    await assert.rejects(async()=>{await f.db.update(taxRegistryEntries).set({title:"Outra"}).where(eq(taxRegistryEntries.id,contestation.id));},/imutável/);
+    await assert.rejects(async()=>{await f.db.update(taxRegistryEntries).set({title:"Outra"}).where(eq(taxRegistryEntries.id,contestation.id));},postgresError("P0001", "Evidência do processo ITBI é imutável; registre novo evento."));
     const regenerated=await confirmItbiWithDocuments(f.connection,f.actor,{declarationId:declaration.id,notes:"Documentos após decisão"});
     assert.notEqual(regenerated.guideId,confirmed.guideId);assert.notEqual(regenerated.documentId,confirmed.documentId);
     assert.equal((await guideById(regenerated.guideId)).totalValueDecimal?.toFixed(2),"30.00");

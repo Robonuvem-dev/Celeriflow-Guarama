@@ -12,7 +12,6 @@ import { departments } from "../src/db/schema/administration";
 import { planningBudgetUnits, planningEntityUnits } from "../src/db/schema/planning-budget";
 import { planningCatalogEntries, planningCatalogVersions } from "../src/db/schema/planning-legal";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { createRevenue, createTreasuryTransfer, getBankAccountBalance, postAccountingTransaction, requestAccountingMonthClose, authorizeAccountingMonthClose, requestAccountingMonthReopen, authorizeAccountingMonthReopen, prepareAnnualAccountingClose, finalizeAnnualAccountingClose } from "../src/lib/financeiro";
 import { recordAssetDisposal } from "../src/lib/patrimonio/asset-lifecycle";
 
@@ -21,18 +20,14 @@ async function scenario(body: (fixture: Fixture, connection: DatabaseConnection)
   const mode = process.env.CELERIFLOW_ACCOUNTING_MODE;
   process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
   let fixture: Fixture | undefined;
-  let finance: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
   try {
     fixture = await createPlanningExecutionFixture();
-    finance = await connectFinanceDrizzleFixture(fixture.pg);
-    await finance.connection.db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
-    await body(fixture, finance.connection);
+    await fixture.db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
+    await body(fixture, fixture.connection);
   } finally {
-    try { await finance?.close(); } finally {
-      try { await fixture?.close(); } finally {
-        if (mode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE;
-        else process.env.CELERIFLOW_ACCOUNTING_MODE = mode;
-      }
+    try { await fixture?.close(); } finally {
+      if (mode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE;
+      else process.env.CELERIFLOW_ACCOUNTING_MODE = mode;
     }
   }
 }

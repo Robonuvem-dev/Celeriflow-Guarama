@@ -8,17 +8,14 @@ import { payments } from "../src/db/schema/finance-payments";
 import { accountingTransactions } from "../src/db/schema/finance-accounting";
 import { reconciliationTreasuryMovements } from "../src/db/schema/finance-reconciliation";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { configureAccountingPostingRule, createCommitment, createSettlement, createPayment, createRevenue, updatePaymentStatus, reversePayment, getBankAccountBalance, cancelPayableCarryForward, accountingPendingChecks } from "../src/lib/financeiro";
 import { readResourceAvailability } from "../src/lib/financeiro/resource-availability";
 
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
   test(`RAP processado ${jurisdiction}: pagamento no ano corrente preserva origem encerrada`, async context => {
     const f = await createPlanningExecutionFixture(2025, 2, jurisdiction);
-    let finance: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
     try {
-      finance = await connectFinanceDrizzleFixture(f.pg);
-      const { connection } = finance;
+      const { connection } = f;
       const db = connection.db;
       const payableStatus = async () => (await db.select({ status: payableCarryForwards.status }).from(payableCarryForwards).where(eq(payableCarryForwards.id, "rap")))[0].status;
       const originStatus = async () => (await db.select({ status: financialYears.status }).from(financialYears).where(eq(financialYears.id, "ano")))[0].status;
@@ -28,6 +25,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       context.mock.timers.reset();
       const commitment = await createCommitment(connection, f.actor, { date: new Date("2025-09-01"), number: "NE-RAP", value: "2.25", type: "Ordinário", history: "Obrigação municipal", appropriationId: f.appropriationId, supplierId: "fornecedor", reservationId: reservation.id });
       const settlement = await createSettlement(connection, f.actor, { date: new Date("2025-09-02"), value: "2.25", commitmentId: commitment.id, authorId: "servidora-ana", documentId: "documento-fiscal" });
+      context.mock.timers.enable({ apis: ["Date"], now: new Date("2026-09-04T12:00:00Z").getTime() });
       await db.insert(financialYears).values({ id: "current-year", governmentEntityId: "ente", year: 2026, status: "Aberto", startDate: new Date("2026-01-01"), endDate: new Date("2026-12-31T23:59:59.999Z") });
       await db.insert(payableCarryForwards).values({ id: "rap", financialYearId: "ano", originFinancialYearId: "ano", commitmentId: commitment.id, type: "PROCESSADO", valueDecimal: new Decimal("2.25"), status: "PENDENTE" });
       await db.update(financialYears).set({ status: "Encerrado" }).where(eq(financialYears.id, "ano"));
@@ -49,7 +47,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       assert.equal((await accountingPendingChecks(db, "current-year", date)).emittedPayments, 1, "Ordem de RAP pendente bloqueia a competência do exercício de execução");
       assert.equal((await accountingPendingChecks(db, "ano", new Date("2025-12-31"))).emittedPayments, 0);
       await assert.rejects(createPayment(connection, f.actor, { ...input, orderNumber: "OP-EXCESS", value: "0.01" }), /saldo inscrito|liquidado/i);
-      await assert.rejects(cancelPayableCarryForward(finance.connection, f.actor, { payableCarryForwardId: "rap", justification: "Inscrição sob revisão" }), /ordens nativas/);
+      await assert.rejects(cancelPayableCarryForward(connection, f.actor, { payableCarryForwardId: "rap", justification: "Inscrição sob revisão" }), /ordens nativas/);
       await assert.rejects(updatePaymentStatus(connection, f.actor, order.id, "Paga"), /regra ativa/);
       assert.equal((await getBankAccountBalance(db, "banco")).toFixed(2), "100.00");
       assert.equal((await db.select().from(payments).where(eq(payments.id, order.id)))[0].status, "Emitida");
@@ -68,7 +66,9 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       assert.equal(await payableStatus(), "PAGO_RASTREADO");
       assert.equal((await db.select({ total: count() }).from(payableCarryForwardEvents).where(eq(payableCarryForwardEvents.paymentId, order.id)))[0].total, 1);
       assert.equal((await getBankAccountBalance(db, "banco")).toFixed(2), "97.75");
-      await reversePayment(connection, f.actor, order.id, "Devolução do pagamento de RAP");
+      const reversed = await reversePayment(connection, f.actor, order.id, "Devolução do pagamento de RAP");
+      assert.equal(reversed.status, "Estornada");
+      assert.equal((await db.select({ status: payments.status }).from(payments).where(eq(payments.id, order.id)))[0].status, "Estornada", "O estorno deve persistir o status da ordem antes de recalcular o RAP");
       assert.equal(await payableStatus(), "PENDENTE");
       assert.equal((await db.select({ total: count() }).from(payableCarryForwardEvents).where(eq(payableCarryForwardEvents.paymentId, order.id)))[0].total, 2);
       assert.equal((await getBankAccountBalance(db, "banco")).toFixed(2), "100.00");
@@ -90,6 +90,6 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       await reversePayment(connection, f.actor, remainder.id, "Devolução da parcela restante");
       assert.equal(await payableStatus(), "PENDENTE");
       assert.equal((await getBankAccountBalance(db, "banco")).toFixed(2), "100.00");
-    } finally { try { await finance?.close(); } finally { await f.close(); } }
+    } finally { context.mock.timers.reset(); await f.close(); }
   });
 }

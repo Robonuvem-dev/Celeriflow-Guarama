@@ -13,7 +13,7 @@ export async function publishProcessPublicNotice(
   processId: string,
 ) {
   return withDatabaseTransaction(db, async (tx) => {
-    const [process] = await tx.select({ id: processes.id, protocolNumber: processes.protocolNumber, status: processes.status, isFromOmbudsman: sql<boolean>`EXISTS(SELECT 1 FROM "Ombudsman" o WHERE o."processId"=${processes.id})` }).from(processes).where(eq(processes.id, processId)).limit(1);
+    const [process] = await tx.select({ id: processes.id, protocolNumber: processes.protocolNumber, status: processes.status, isFromOmbudsman: sql<boolean>`EXISTS(SELECT 1 FROM "Ombudsman" o WHERE o."processId"="Process"."id")` }).from(processes).where(eq(processes.id, processId)).limit(1);
     if (!process) throw new Error("Processo nao encontrado.");
     assertProcessNoticeCanBePublished({ status: process.status, isFromOmbudsman: process.isFromOmbudsman });
     const notice = createRedactedProcessNotice({

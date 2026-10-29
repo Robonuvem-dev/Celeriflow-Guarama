@@ -28,7 +28,7 @@ export default async function CentrosCustoPage({ searchParams }: { searchParams?
   const where = q ? or(ilike(costCenterTable.code, pattern), ilike(costCenterTable.name, pattern), ilike(costCenterTable.description, pattern)) : undefined;
   const [{ total }] = await db.select({ total: count() }).from(costCenterTable).where(where);
   const page = clampPatrimonioListPage(requestedPage, total);
-  const costCenters = await db.select({ costCenter: costCenterTable, warehouses: sql<number>`(SELECT count(*)::int FROM "Warehouse" WHERE "costCenterId"=${costCenterTable.id})` }).from(costCenterTable)
+  const costCenters = await db.select({ costCenter: costCenterTable, warehouses: sql<number>`(SELECT count(*)::int FROM "Warehouse" WHERE "costCenterId"="CostCenter"."id")` }).from(costCenterTable)
     .where(where).orderBy(asc(costCenterTable.code), asc(costCenterTable.name)).offset((page - 1) * PATRIMONIO_LIST_PAGE_SIZE).limit(PATRIMONIO_LIST_PAGE_SIZE)
     .then(rows => rows.map(row => ({ ...row.costCenter, _count: { warehouses: row.warehouses } })));
   const canCreate = canPerformModuleOperation(context.user, "PATRIMONIO", "create");

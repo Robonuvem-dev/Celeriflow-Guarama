@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       const q = (p.get("q") || "").slice(0, 100);
       options = (await db.select({ id: assets.id, patrimonyNumber: assets.patrimonyNumber, name: assets.name }).from(assets).leftJoin(departments, eq(departments.id, assets.departmentId))
         .where(and(notInArray(assets.status, ["Baixado", "Inativo"]), q ? or(ilike(assets.patrimonyNumber, contains), ilike(assets.name, contains)) : undefined,
-          allowed ? or(inArray(assets.budgetUnitId, allowed), and(isNull(assets.budgetUnitId), sql`EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c.id=r."commitmentId" JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assets.purchaseReceiptItemId} AND ${inArray(sql`b."budgetUnitId"`, allowed)})`), and(isNull(assets.budgetUnitId), isNull(assets.purchaseReceiptItemId), departmentScope)) : undefined))
+          allowed ? or(inArray(assets.budgetUnitId, allowed), and(isNull(assets.budgetUnitId), sql`EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c."purchaseReceiptId"=r.id JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assets.purchaseReceiptItemId} AND ${inArray(sql`b."budgetUnitId"`, allowed)})`), and(isNull(assets.budgetUnitId), isNull(assets.purchaseReceiptItemId), departmentScope)) : undefined))
         .orderBy(asc(assets.patrimonyNumber), asc(assets.id)).limit(20)).map(v => ({ id: v.id, label: `${v.patrimonyNumber} · ${v.name}` }));
     }
     return Response.json({ options }, { headers: { "Cache-Control": "private, no-store" } });

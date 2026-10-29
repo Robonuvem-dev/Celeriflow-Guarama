@@ -13,7 +13,7 @@ INSERT INTO "ConfiguracaoInstancia" (id,"nomePrefeitura",municipio,uf,"updatedAt
  ('instance','Município isolado de teste','Município isolado de teste','PR',CURRENT_TIMESTAMP);
 INSERT INTO "Secretariat" (id,name,"updatedAt") VALUES ('secretariat','Secretaria de teste',CURRENT_TIMESTAMP);
 INSERT INTO "ResourceSource" (id,code,name,"updatedAt") VALUES ('source','WORKFORCE','Recurso de teste',CURRENT_TIMESTAMP);
-INSERT INTO "Person" (id,"fullName",cpf,status,"updatedAt") VALUES ('person','Servidor demonstrativo','00000000000','Ativo',CURRENT_TIMESTAMP);
+INSERT INTO "Person" (id,"fullName",cpf,status,"updatedAt") VALUES ('person','Servidor demonstrativo','12345678909','Ativo',CURRENT_TIMESTAMP);
 INSERT INTO "Employee" (id,name,"personId","isActive","updatedAt") VALUES ('employee','Servidor demonstrativo','person',true,CURRENT_TIMESTAMP);
 INSERT INTO "Role" (id,name,"isActive","updatedAt") VALUES ('role','Cargo',true,CURRENT_TIMESTAMP);
 INSERT INTO "HrPayrollRuleSet" (id,"configuracaoInstanciaId",code,name,status,scope,"effectiveFrom","effectiveUntil","isDemo","updatedAt") VALUES

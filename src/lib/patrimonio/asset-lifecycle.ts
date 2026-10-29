@@ -126,7 +126,7 @@ export async function depreciateAssetsForMonth(db: DatabaseConnection, reference
    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`ASSET_DEPRECIATION:${accounting.budgetUnitId}`}, 0))::text`);
    const assets = await tx.select({ id: assetTable.id }).from(assetTable).innerJoin(departments, eq(departments.id, assetTable.departmentId)).where(and(
      notInArray(assetTable.status, ["Baixado", "Inativo"]), eq(departments.secretariatId, scope.unit.secretariatId),
-     sql`(${assetTable.budgetUnitId}=${accounting.budgetUnitId} OR (${assetTable.budgetUnitId} IS NULL AND (${assetTable.purchaseReceiptItemId} IS NULL OR EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c.id=r."commitmentId" JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assetTable.purchaseReceiptItemId} AND b."budgetUnitId"=${accounting.budgetUnitId}))))`,
+      sql`(${assetTable.budgetUnitId}=${accounting.budgetUnitId} OR (${assetTable.budgetUnitId} IS NULL AND (${assetTable.purchaseReceiptItemId} IS NULL OR EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c."purchaseReceiptId"=r.id JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assetTable.purchaseReceiptItemId} AND b."budgetUnitId"=${accounting.budgetUnitId}))))`,
    )).orderBy(asc(assetTable.id));
   let processed = 0;
   let skipped = 0;

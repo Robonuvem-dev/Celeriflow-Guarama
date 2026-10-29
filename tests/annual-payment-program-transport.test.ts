@@ -10,7 +10,6 @@ import { retentionRules } from "../src/db/schema/finance-settlements";
 import { reconciliationBankAccounts, reconciliationTreasuryMovements } from "../src/db/schema/finance-reconciliation";
 import { listPaymentRetentions } from "../src/db/repositories/finance/payments";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { createCommitment, createSettlement, createPayment, createRevenue, configureAccountingPostingRule, requestAccountingMonthClose, authorizeAccountingMonthClose, prepareAnnualAccountingClose, finalizeAnnualAccountingClose, accountingPendingChecks } from "../src/lib/financeiro";
 import { prepareAnnualPaymentPrograms, transportAnnualPaymentPrograms, undoAnnualPaymentPrograms } from "../src/lib/financeiro/annual-payment-program-transport";
 import { executeAnnualRapPostings } from "../src/lib/financeiro/annual-rap-postings";
@@ -20,10 +19,8 @@ import { undoCarryForwardTransport } from "../src/lib/financeiro/carry-forward-t
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
   test(`Programações ${jurisdiction}: ordem não preparada bloqueia fechamento e lote incompleto reverte toda a baixa`, async context => {
     const f = await createPlanningExecutionFixture(2026, 2, jurisdiction);
-    let finance: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
     try {
-      finance = await connectFinanceDrizzleFixture(f.pg);
-      const { connection } = finance;
+      const { connection } = f;
       const db = connection.db;
       const actor = { usuarioId: f.actor.usuarioId, employeeId: f.actor.employeeId };
       await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
@@ -63,14 +60,12 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       assert.ok(child);
       await undoCarryForwardTransport(connection, actor, { payableCarryForwardId: child.id, reason: "Desmovimentação independente da inscrição transportada" });
       assert.equal((await db.select().from(payableCarryForwards).where(eq(payableCarryForwards.id, "batch-parent")))[0].status, "PENDENTE");
-    } finally { context.mock.timers.reset(); try { await finance?.close(); } finally { await f.close(); } }
+    } finally { context.mock.timers.reset(); await f.close(); }
   });
   test(`Programações ${jurisdiction}: baixa/cópia, retenções, retorno correlacionado e desmovimentação`, async context => {
     const f = await createPlanningExecutionFixture(2026, 2, jurisdiction);
-    let finance: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
     try {
-      finance = await connectFinanceDrizzleFixture(f.pg);
-      const { connection } = finance;
+      const { connection } = f;
       const db = connection.db;
       const actor = { usuarioId: f.actor.usuarioId, employeeId: f.actor.employeeId };
       await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
@@ -142,6 +137,6 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       await assert.rejects(undoAnnualPaymentPrograms(connection, actor, { stageId: nextStage.stageId, reason: "Tentativa após retorno bancário" }), /retorno bancário/);
       await assert.rejects(applyPaymentBankReturn(connection, actor, { ...payload, bank_transaction_id: "other-debit" }), /outra transação/);
       await assert.rejects(applyPaymentBankReturn(connection, actor, { ...payload, status: "PENDING" }), /já executada/);
-    } finally { context.mock.timers.reset(); try { await finance?.close(); } finally { await f.close(); } }
+    } finally { context.mock.timers.reset(); await f.close(); }
   });
 }

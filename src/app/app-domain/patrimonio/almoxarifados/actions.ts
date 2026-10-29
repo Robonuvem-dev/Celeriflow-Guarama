@@ -135,11 +135,11 @@ export async function deleteWarehouseAction(id: string): Promise<WarehouseAction
   try {
     await getTenantContextForModuleOperation("PATRIMONIO", "delete");
     const [warehouse] = await db.select({ id: warehouses.id, linkedRecords: sql<number>`(
-      (SELECT count(*) FROM "MaterialStock" WHERE "warehouseId"=${warehouses.id}) +
-      (SELECT count(*) FROM "MaterialMovement" WHERE "warehouseId"=${warehouses.id}) +
-      (SELECT count(*) FROM "PurchaseReceiptItem" WHERE "warehouseId"=${warehouses.id}) +
-      (SELECT count(*) FROM "InventorySession" WHERE "warehouseId"=${warehouses.id}) +
-      (SELECT count(*) FROM "SchoolMeal" WHERE "warehouseId"=${warehouses.id})
+      (SELECT count(*) FROM "MaterialStock" WHERE "warehouseId"="Warehouse"."id") +
+      (SELECT count(*) FROM "MaterialMovement" WHERE "warehouseId"="Warehouse"."id") +
+      (SELECT count(*) FROM "PurchaseReceiptItem" WHERE "warehouseId"="Warehouse"."id") +
+      (SELECT count(*) FROM "InventorySession" WHERE "warehouseId"="Warehouse"."id") +
+      (SELECT count(*) FROM "SchoolMeal" WHERE "warehouseId"="Warehouse"."id")
     )::int` }).from(warehouses).where(eq(warehouses.id, id)).limit(1);
     if (!warehouse) throw new Error("Almoxarifado não encontrado.");
     const linkedRecords = warehouse.linkedRecords;

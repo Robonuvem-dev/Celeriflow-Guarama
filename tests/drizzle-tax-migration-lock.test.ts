@@ -7,7 +7,10 @@ import { inspectHrMigrations } from "../scripts/deploy-hr-migrations";
 import { inspectCemeteryMigrations } from "../scripts/deploy-cemetery-migrations";
 import { createPlanningPostgresBackend } from "./helpers/planning-postgres-backend";
 
-test("Tax migration wrappers: real PostgreSQL sessions reject the core transactional lock and release it on rollback", { timeout: 15000 }, async () => {
+test("Tax migration wrappers: real PostgreSQL sessions reject the core transactional lock and release it on rollback", {
+  timeout: 15000,
+  skip: process.env.CELERIFLOW_PLANNING_TEST_POSTGRES_URL ? false : "Requer scripts/verify-planning-postgres.mjs e PostgreSQL real local planning_s2; sem fallback PGlite.",
+}, async () => {
   const url = process.env.CELERIFLOW_PLANNING_TEST_POSTGRES_URL;
   assert.ok(url, "Execute este teste com scripts/verify-planning-postgres.mjs: exige PostgreSQL real local planning_s2, sem fallback PGlite.");
   const holder = await createPlanningPostgresBackend(url);

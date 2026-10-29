@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { count, eq } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
+import type { DatabaseConnection } from "@/db/connection";
+import { planningCatalogEntries, planningCatalogVersions } from "@/db/schema/planning-legal";
 import { accountingEntries, accountingPlans, accountingTransactions, annualAccountingCloses, monthlyAccountingCloses } from "@/db/schema/finance-accounting";
 import { reconciliationBankAccounts, reconciliationTreasuryMovements, bankReconciliations } from "@/db/schema/finance-reconciliation";
 import { bankStatementItems } from "@/db/schema/finance-banking";
@@ -15,6 +17,17 @@ import { generateInternalReportDataset } from "../report-delivery";
 import { resolveFinancialReportScope } from "../report-scope";
 import { connectFinanceDrizzleFixture } from "../../../../tests/helpers/finance-drizzle-connection";
 
+async function publishScopeFixtureAccounts(connection: DatabaseConnection) {
+  const db = connection.db;
+  await db.insert(planningCatalogVersions).values({ id: "scope-fixture-accounts", year: 2026, label: "Contas analíticas do ensaio de isolamento", sourceHash: "scope-fixture-accounts", normativeReference: "Classificação explícita de fixture", createdById: "ana" });
+  await db.insert(planningCatalogEntries).values([
+    { versionId: "scope-fixture-accounts", kind: "ACCOUNT", canonicalId: "debito", code: "ISOLATED.D", name: "Débito de ensaio", degree: 7, attributes: { operational: true, pocOnly: false, postingAllowed: true, informationNature: "P", balanceNature: "D", effectiveFrom: "2026-01-01", effectiveUntil: "2026-12-31" } },
+    { versionId: "scope-fixture-accounts", kind: "ACCOUNT", canonicalId: "credito", code: "ISOLATED.C", name: "Crédito de ensaio", degree: 7, attributes: { operational: true, pocOnly: false, postingAllowed: true, informationNature: "P", balanceNature: "C", effectiveFrom: "2026-01-01", effectiveUntil: "2026-12-31" } },
+    { versionId: "scope-fixture-accounts", kind: "ACCOUNT", canonicalId: "sintetica", code: "ISOLATED", name: "Conta sintética de ensaio", degree: 1, attributes: { operational: true, pocOnly: false, postingAllowed: false, informationNature: "P", balanceNature: "D", effectiveFrom: "2026-01-01", effectiveUntil: "2026-12-31" } },
+  ]);
+  await db.update(planningCatalogVersions).set({ status: "PUBLISHED" }).where(eq(planningCatalogVersions.id, "scope-fixture-accounts"));
+}
+
 test("contabilidade filtra Diario, Razao e Balancete pela entidade e UG sem misturar movimentos", async () => {
   const fixture = await createPlanningAccountingFixture();
   let transport: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
@@ -23,6 +36,7 @@ test("contabilidade filtra Diario, Razao e Balancete pela entidade e UG sem mist
     const { connection } = transport;
     const db = connection.db;
     await fixture.rules();
+    await publishScopeFixtureAccounts(connection);
     const date = new Date("2026-04-15T12:00:00.000Z");
     const posted = await postAccountingTransaction(connection, { usuarioId: "ana", employeeId: "servidora-ana", allowedBudgetUnitIds: ["ug"] }, {
       financialYearId: "ano", governmentEntityId: "ente", budgetUnitId: "ug", date: new Date("2026-01-01T00:00:00.000Z"),
@@ -143,6 +157,7 @@ test("fechar e reabrir a Prefeitura não fecha a Câmara no mesmo ano", async ()
     const { connection } = transport;
     const db = connection.db;
     await fixture.rules();
+    await publishScopeFixtureAccounts(connection);
     await db.insert(governmentEntities).values({ id: "camara", code: "CAMARA", name: "Câmara de ensaio", type: "CAMARA" });
     await db.insert(planningBudgetUnits).values({ id: "ug-camara", code: "LEG.01", name: "Câmara", secretariatId: "secretaria" });
     await db.insert(planningEntityUnits).values({ governmentEntityId: "camara", budgetUnitId: "ug-camara" });

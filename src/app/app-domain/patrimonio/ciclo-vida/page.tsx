@@ -66,7 +66,7 @@ export default async function AssetLifecyclePage({
   const view = parseLifecycleView(params?.view);
   const requestedPage = parsePatrimonioListPage(params?.page);
   const assetAccess = allowed ? or(inArray(assetTable.budgetUnitId, allowed),
-    and(isNull(assetTable.budgetUnitId), sql`EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c.id=r."commitmentId" JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assetTable.purchaseReceiptItemId} AND ${inArray(sql`b."budgetUnitId"`, allowed)})`),
+    and(isNull(assetTable.budgetUnitId), sql`EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c."purchaseReceiptId"=r.id JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assetTable.purchaseReceiptItemId} AND ${inArray(sql`b."budgetUnitId"`, allowed)})`),
     and(isNull(assetTable.budgetUnitId), isNull(assetTable.purchaseReceiptItemId), sql`EXISTS (SELECT 1 FROM "Department" d WHERE d.id=${assetTable.departmentId} AND ${inArray(sql`d."secretariatId"`, budgetUnits.map(unit => unit.secretariatId))})`)) : undefined;
   const activeAssetWhere = notInArray(assetTable.status, ["Baixado", "Inativo"]);
 

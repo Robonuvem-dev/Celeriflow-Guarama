@@ -223,7 +223,7 @@ async function assertTransitionRequirements(
 ) {
   if (nextStatus === BIDDING_STATUS.PUBLISHED) {
     const [lots, [assignment]] = await Promise.all([
-      tx.select({ id: biddingLots.id, itemCount: sql<number>`(SELECT count(*)::integer FROM "BiddingLotItem" i WHERE i."biddingLotId" = ${biddingLots.id})` }).from(biddingLots).where(eq(biddingLots.biddingId, bidding.id)),
+      tx.select({ id: biddingLots.id, itemCount: sql<number>`(SELECT count(*)::integer FROM "BiddingLotItem" i WHERE i."biddingLotId" = "BiddingLot"."id")` }).from(biddingLots).where(eq(biddingLots.biddingId, bidding.id)),
       tx.select({ id: biddingAppointmentAssignments.id }).from(biddingAppointmentAssignments).where(and(eq(biddingAppointmentAssignments.biddingId, bidding.id), eq(biddingAppointmentAssignments.status, "Ativa"))).limit(1),
     ]);
     if (!assignment) throw new BiddingWorkflowError("Vincule uma comissão ou agente de contratação antes de publicar a licitação.");
@@ -240,7 +240,7 @@ async function assertTransitionRequirements(
   }
 
   if (nextStatus === BIDDING_STATUS.HOMOLOGATED) {
-    const lots = await tx.select({ id: biddingLots.id, hasResult: sql<boolean>`EXISTS (SELECT 1 FROM "BiddingResult" r WHERE r."biddingLotId" = ${biddingLots.id} AND r."isCurrent" = true)` }).from(biddingLots).where(eq(biddingLots.biddingId, bidding.id));
+    const lots = await tx.select({ id: biddingLots.id, hasResult: sql<boolean>`EXISTS (SELECT 1 FROM "BiddingResult" r WHERE r."biddingLotId" = "BiddingLot"."id" AND r."isCurrent" = true)` }).from(biddingLots).where(eq(biddingLots.biddingId, bidding.id));
     if (!lots.length || lots.some((lot) => !lot.hasResult)) {
       throw new BiddingWorkflowError("Registre a arrematação de todos os lotes antes de homologar a licitação.");
     }

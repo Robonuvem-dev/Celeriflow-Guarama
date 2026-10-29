@@ -14,6 +14,17 @@ import { approveExpenseRequest, createBudgetReservation, createExpenseRequest, t
 
 export async function createPlanningExecutionFixture(year = 2026, periodMonths: 2 | 3 | 6 = 2, jurisdiction: "EXECUTIVE" | "LEGISLATIVE" = "EXECUTIVE", options: { expenseLineAmount?: string } = {}) {
   const f = await createPlanningAccountingFixture(jurisdiction, { year, ...options });
+  // This fixture deliberately installs reference posting rules, never a
+  // homologated municipal matrix. Keep their explicit POC scope through teardown.
+  const previousMode = process.env.CELERIFLOW_ACCOUNTING_MODE;
+  process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
+  const close = async () => {
+    try { await f.close(); }
+    finally {
+      if (previousMode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE;
+      else process.env.CELERIFLOW_ACCOUNTING_MODE = previousMode;
+    }
+  };
   try {
     await f.pg.exec(`
       INSERT INTO "Company" (id,"corporateName",cnpj,"updatedAt") VALUES ('empresa','Araucárias Serviços Municipais Ltda.','11222333000181',NOW());
@@ -45,6 +56,6 @@ export async function createPlanningExecutionFixture(year = 2026, periodMonths: 
     };
     await f.db.insert(documents).values({ id: "documento-fiscal", title: "Documento fiscal municipal", documentType: "FISCAL", fileUrl: "https://arquivos.example.org/fiscal.pdf", status: "Válido" });
     await f.db.insert(bankAccounts).values({ id: "banco", bankName: "Banco Municipal", agency: "0001", accountNumber: "1000-1", accountType: "Corrente", resourceSourceId: "livre", budgetUnitId: "ug", accountingPlanId: "debito", currentBalance: 0, currentBalanceDecimal: new Decimal(0), isActive: true });
-    return { ...f, year, actor, financeReviewer: reviewer, appropriationId: line.appropriationId!, request, reserve };
-  } catch (error) { await f.close(); throw error; }
+    return { ...f, close, year, actor, financeReviewer: reviewer, appropriationId: line.appropriationId!, request, reserve };
+  } catch (error) { await close(); throw error; }
 }

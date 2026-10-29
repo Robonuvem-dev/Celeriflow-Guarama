@@ -19,7 +19,8 @@ const testDatabaseUrlUnpooled = process.env.TEST_DATABASE_URL_UNPOOLED ?? testDa
 const env = testDatabaseUrl
   ? { ...process.env, DATABASE_URL: testDatabaseUrl, DATABASE_URL_UNPOOLED: testDatabaseUrlUnpooled }
   : process.env;
-const result = spawnSync(process.execPath, [tsxCli, "--conditions=react-server", "--test", "--test-concurrency=1", ...tests], { stdio: "inherit", env });
+// TAP reports each failure with its cause immediately, even in long suites.
+const result = spawnSync(process.execPath, [tsxCli, "--conditions=react-server", "--test", "--test-reporter=tap", "--test-concurrency=1", ...tests], { stdio: "inherit", env });
 
 if (result.error) throw result.error;
 process.exit(result.status ?? 1);

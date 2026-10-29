@@ -7,7 +7,6 @@ import { payableCarryForwards, payableCarryForwardSettlementLinks } from "../src
 import { settlements } from "../src/db/schema/finance-settlements";
 import { payments } from "../src/db/schema/finance-payments";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { financeDatabaseError } from "./helpers/finance-database-error";
 import { configureAccountingPostingRule, createCommitment, createSettlement, createPayment, createRevenue, updatePaymentStatus, reversePayment, cancelSettlement, cancelPayableCarryForward } from "../src/lib/financeiro";
 import { transportCarryForward, undoCarryForwardTransport } from "../src/lib/financeiro/carry-forward-transport";
@@ -16,10 +15,8 @@ import { readResourceAvailability } from "../src/lib/financeiro/resource-availab
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) for (const type of ["PROCESSADO", "NAO_PROCESSADO"] as const) {
   test(`Transporte ${jurisdiction}/${type}: saldo parcial, liquidação herdada, concorrência e desmovimentação`, async context => {
     const f = await createPlanningExecutionFixture(2025, 2, jurisdiction);
-    let finance: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
     try {
-      finance = await connectFinanceDrizzleFixture(f.pg);
-      const { connection } = finance;
+      const { connection } = f;
       const db = connection.db;
       const yearStatus = async (id: string) => (await db.select({ status: financialYears.status }).from(financialYears).where(eq(financialYears.id, id)))[0].status;
       const paymentStatus = async (id: string) => (await db.select({ status: payments.status }).from(payments).where(eq(payments.id, id)))[0].status;
@@ -64,7 +61,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) for (const typ
       await assert.rejects(db.update(payableCarryForwardSettlementLinks).set({ valueDecimal: new Decimal("1.00") }).where(eq(payableCarryForwardSettlementLinks.id, link.id)), financeDatabaseError(/immutable/));
       const availability = async () => (await readResourceAvailability(connection, f.actor, { financialYearId: "target-year", governmentEntityId: "ente", resourceSourceIds: ["livre"] })).rows[0].carryForwardsPayable;
       assert.equal(await availability(), "2.25");
-      await assert.rejects(cancelPayableCarryForward(finance.connection, f.actor, { payableCarryForwardId: child.id, justification: "Revisão da liquidação herdada" }), /liquidações herdadas/);
+      await assert.rejects(cancelPayableCarryForward(connection, f.actor, { payableCarryForwardId: child.id, justification: "Revisão da liquidação herdada" }), /liquidações herdadas/);
       await undoCarryForwardTransport(connection, f.actor, { payableCarryForwardId: child.id, reason: "Conferência antes de movimentar" });
       assert.equal((await undoCarryForwardTransport(connection, f.actor, { payableCarryForwardId: child.id, reason: "Conferência antes de movimentar" })).replay, true);
       assert.equal(await availability(), "2.25", "Desmovimentação restaura a obrigação original mesmo preservando a ligação histórica ao sucessor inativo.");
@@ -112,6 +109,6 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) for (const typ
       assert.equal(await yearStatus("target-year"), "Encerrado");
       const thirdAvailability = await readResourceAvailability(connection, f.actor, { financialYearId: "third-year", governmentEntityId: "ente", resourceSourceIds: ["livre"] });
       assert.equal(thirdAvailability.rows[0].carryForwardsPayable, "1.75");
-    } finally { context.mock.timers.reset(); try { await finance?.close(); } finally { await f.close(); } }
+    } finally { context.mock.timers.reset(); await f.close(); }
   });
 }

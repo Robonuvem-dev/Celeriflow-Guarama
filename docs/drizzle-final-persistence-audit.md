@@ -4,6 +4,8 @@ Data: 28/10/2026. Auditoria local, somente leitura, com criação exclusiva dest
 
 ## Resultado executivo
 
+**Tratamentos posteriores pela central (29/10):** o oráculo temporário Prisma foi preservado como referência não executável em `.agent/archive/oracle-integration-null.prisma-legacy.txt`. O driver TCP opcional recebeu dependência direta `pg@8.23.1`; smoke em PostgreSQL local real confirmou mesma sessão física entre consultas, transação e rollback de DDL. O caminho padrão permanece Neon. Essas ações resolvem os dois resíduos operacionais descritos na auditoria original abaixo; as distinções de cobertura SQL-only continuam válidas.
+
 - O gate executado nesta revisão passou: **3.791 fontes, zero arquivos/acessos legados, zero dependências/scripts/pacotes de lock Prisma**. O número anterior informado pela central era 3.790; a árvore está recebendo trabalho concorrente. Este resultado é pontual, não um congelamento da árvore.
 - Importação real dos objetos de `src/db/schema` por `node --import tsx`, com `getTableConfig`, confirmou **924 nomes físicos, 1.193 declarações, 12.145 colunas declaradas e 367 FKs declaradas**. Declarações são projeções: esses números não representam 1.193 tabelas distintas nem todas as colunas/FKs físicas.
 - A diferença para **1.006 tabelas físicas** está inteiramente reconciliada: **997 tabelas públicas + 9 tabelas `neon_auth`**. O fixture tem **998 relações públicas**, porque inclui **a view `HrPortalReferenceDiagnostics`**. Portanto: **997 − 924 = 73 tabelas públicas sem `pgTable`**, mais uma view sem `pgTable`. Nenhum dos 924 nomes Drizzle está fora do fixture.

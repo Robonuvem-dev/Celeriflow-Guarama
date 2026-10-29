@@ -14,6 +14,7 @@ import { payments } from "../src/db/schema/finance-payments";
 import { reconciliationTreasuryMovements as treasuryMovements } from "../src/db/schema/finance-reconciliation";
 import { Decimal } from "../src/db/decimal";
 import { requiredPersonnelRow } from "./helpers/personnel-financial-regression-queries";
+import { postgresError } from "./helpers/postgres-assertion";
 
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jurisdiction}: folha empenha todo o plano em lote nativo; falha tardia reverte reserva, nota, partida e cota`, async () => {
   const mode = process.env.CELERIFLOW_ACCOUNTING_MODE;
@@ -39,7 +40,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     const entriesBefore = await db.$count(accountingTransactions);
     await f.pg.exec(`CREATE FUNCTION fail_second_payroll_commitment() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.number='RH-002' THEN RAISE EXCEPTION 'injected payroll batch failure'; END IF; RETURN NEW; END $$;
       CREATE TRIGGER fail_second_payroll_commitment BEFORE INSERT ON "Commitment" FOR EACH ROW EXECUTE FUNCTION fail_second_payroll_commitment();`);
-    await assert.rejects(commitPayrollExpenseRequests(connection, context, input), /injected payroll batch failure/i);
+    await assert.rejects(commitPayrollExpenseRequests(connection, context, input), postgresError("P0001", "injected payroll batch failure"));
     assert.equal(await db.$count(commitments), 0);
     assert.equal(await db.$count(budgetReservations), 0);
     assert.equal(await db.$count(financialDocuments), 0);
@@ -58,7 +59,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     const undo = { runId: "run-cycle", commitmentEventId: firstEvent.id, date: "2026-09-02", reason: "Regeração autorizada da competência", idempotencyKey: "undo-cycle" };
     await f.pg.exec(`CREATE FUNCTION fail_payroll_reversal_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='ESTORNADA' AND NEW."eventType"='EMPENHOS_FOLHA' THEN RAISE EXCEPTION 'injected payroll reversal failure'; END IF; RETURN NEW; END $$;
       CREATE TRIGGER fail_payroll_reversal_event BEFORE UPDATE ON "HrIntegrationEvent" FOR EACH ROW EXECUTE FUNCTION fail_payroll_reversal_event();`);
-    await assert.rejects(reversePayrollCommitments(connection, context, undo), /injected payroll reversal failure/i);
+    await assert.rejects(reversePayrollCommitments(connection, context, undo), postgresError("P0001", "injected payroll reversal failure"));
     assert.equal(await db.$count(commitments, eq(commitments.status, "Anulado")), 0);
     assert.equal(await db.$count(expenses, eq(expenses.status, "Empenhada")), 2);
     assert.equal(await db.$count(accountingTransactions, isNotNull(accountingTransactions.reversalOfId)), 0);

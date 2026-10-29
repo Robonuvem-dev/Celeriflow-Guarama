@@ -10,8 +10,8 @@ export async function openMigrationConnection(connectionString, driver = "neon")
     neon.neonConfig.webSocketConstructor = ws;
     Client = neon.Client;
   } else if (driver === "pg") {
-    // Optional TCP driver. It must be a direct project dependency before this
-    // option is used; never rely on an adapter's transitive Prisma dependency.
+    // Explicit TCP driver, installed as a direct project dependency. Never rely
+    // on an ORM adapter's transitive dependencies for the migration authority.
     const pg = await import("pg");
     Client = pg.Client ?? pg.default.Client;
   } else throw new Error("DATABASE_MIGRATION_DRIVER must be neon or pg");

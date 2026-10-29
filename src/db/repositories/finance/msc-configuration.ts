@@ -32,7 +32,7 @@ export async function hasMscAccountChildren(db: DatabaseExecutor, code: string):
 }
 
 export async function findMscCatalogVersion(db: DatabaseExecutor, id: string): Promise<CatalogVersionWithCount | null> {
-  const [row] = await db.select({ version: planningCatalogVersions, entries: sql<number>`(SELECT count(*)::int FROM "PlanningCatalogEntry" e WHERE e."versionId"=${planningCatalogVersions.id})` }).from(planningCatalogVersions).where(eq(planningCatalogVersions.id, id));
+  const [row] = await db.select({ version: planningCatalogVersions, entries: sql<number>`(SELECT count(*)::int FROM "PlanningCatalogEntry" e WHERE e."versionId"="PlanningCatalogVersion"."id")` }).from(planningCatalogVersions).where(eq(planningCatalogVersions.id, id));
   return row ? { ...row.version, _count: { entries: row.entries } } : null;
 }
 

@@ -10,6 +10,7 @@ import { readItbiDeclaration, requireItbiRecord, updateItbiDeclaration } from ".
 import { taxScopeSnapshot } from "../src/lib/tributacao/scope";
 import { createItbiDrizzleFixture, seedItbiDeclaration } from "./helpers/itbi-drizzle-fixture";
 import { attributeItbiHistory } from "../src/lib/tributacao/itbi-history";
+import { postgresError } from "./helpers/postgres-assertion";
 
 test("ITBI: histórico nativo preserva Decimal, autor, partes, posição legada e rollback sem reconstruir passado", async () => {
   const f = await createItbiDrizzleFixture({ fieldHistory: false });
@@ -37,8 +38,8 @@ test("ITBI: histórico nativo preserva Decimal, autor, partes, posição legada 
     await assert.rejects(withDatabaseTransaction(f.connection, async tx => { await attributeItbiHistory(tx, f.actor); await updateItbiDeclaration(tx, declaration.id, { status: "CANCELADA" }); throw new Error("history rollback"); }), /history rollback/);
     assert.equal(await historyCount(), beforeRollback);
     assert.equal((await readItbiDeclaration(f.db, declaration.id)).status, "PROTOCOLADA");
-    await assert.rejects(async () => { await f.db.delete(taxRegistryEntries).where(eq(taxRegistryEntries.id, history[1].id)); }, /imutável/);
-    await assert.rejects(async () => { await f.db.delete(itbiDeclarations).where(eq(itbiDeclarations.id, declaration.id)); }, /imutável/);
+    await assert.rejects(async () => { await f.db.delete(taxRegistryEntries).where(eq(taxRegistryEntries.id, history[1].id)); }, postgresError("P0001", "Histórico do ITBI é imutável; registre novo evento ou cancelamento."));
+    await assert.rejects(async () => { await f.db.delete(itbiDeclarations).where(eq(itbiDeclarations.id, declaration.id)); }, postgresError("P0001", "Histórico do ITBI é imutável; registre novo evento ou cancelamento."));
     await f.db.update(itbiDeclarations).set({ analysisNotes: "Escrita sem atribuição de operador" }).where(eq(itbiDeclarations.id, declaration.id));
     const unattributed = requireItbiRecord((await f.db.select().from(taxRegistryEntries).where(and(eq(taxRegistryEntries.entityId, declaration.id), eq(taxRegistryEntries.category, "ITBI_FIELD_HISTORY"))).orderBy(desc(taxRegistryEntries.version)).limit(1))[0]);
     assert.equal(unattributed.actorUsuarioId, null); assert.equal(taxScopeSnapshot(unattributed.data).actorAttribution, "NAO_IDENTIFICADO");

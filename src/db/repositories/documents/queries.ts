@@ -27,7 +27,7 @@ export async function readGedFolder(db: DatabaseExecutor, id: string): Promise<(
   return row ? { ...row.folder, parent: row.parent } : null;
 }
 export async function listGedFolders(db: DatabaseExecutor, parentId: string | null): Promise<DocumentFolderWithCounts[]> {
-  const rows = await db.select({ folder: documentFolders, documentCount: sql<number>`(SELECT count(*)::int FROM "Document" d WHERE d."folderId"=${documentFolders.id})`, childrenCount: sql<number>`(SELECT count(*)::int FROM "Folder" f WHERE f."parentId"=${documentFolders.id})` }).from(documentFolders).where(parentId ? eq(documentFolders.parentId, parentId) : isNull(documentFolders.parentId)).orderBy(asc(documentFolders.name));
+  const rows = await db.select({ folder: documentFolders, documentCount: sql<number>`(SELECT count(*)::int FROM "Document" d WHERE d."folderId"="Folder"."id")`, childrenCount: sql<number>`(SELECT count(*)::int FROM "Folder" f WHERE f."parentId"="Folder"."id")` }).from(documentFolders).where(parentId ? eq(documentFolders.parentId, parentId) : isNull(documentFolders.parentId)).orderBy(asc(documentFolders.name));
   return rows.map(row => ({ ...row.folder, _count: { documents: row.documentCount, children: row.childrenCount } }));
 }
 export async function listGedSelectors(db: DatabaseExecutor): Promise<{ documentClasses: { code: string; label: string; signaturePolicy: string }[]; signers: { id: string; nome: string; email: string }[] }> {

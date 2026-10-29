@@ -25,7 +25,7 @@ export default async function AssetDetailPage({ params, searchParams }: { params
   const asset = loaded ? { ...loaded.asset, department: loaded.department, responsible: loaded.responsible, fleetUnit: loaded.fleetUnit } : undefined;
   if (!asset) notFound();
   const fromDepartments = alias(departments, "transfer_origin"), toDepartments = alias(departments, "transfer_destination");
-  const maintenanceSelection = { maintenance: assetMaintenances, fleetOrderId: sql<string | null>`(SELECT o.id FROM "FleetWorkOrder" o WHERE o."assetMaintenanceId"=${assetMaintenances.id})` };
+  const maintenanceSelection = { maintenance: assetMaintenances, fleetOrderId: sql<string | null>`(SELECT o.id FROM "FleetWorkOrder" o WHERE o."assetMaintenanceId"="AssetMaintenance"."id")` };
   const [maintenances, count, open, transfers] = await Promise.all([
     db.select(maintenanceSelection).from(assetMaintenances).where(eq(assetMaintenances.assetId, id)).orderBy(desc(assetMaintenances.startDate), desc(assetMaintenances.id)).limit(10).offset((page - 1) * 10)
       .then(rows => rows.map(row => ({ ...row.maintenance, fleetOrder: row.fleetOrderId ? { id: row.fleetOrderId } : null }))),

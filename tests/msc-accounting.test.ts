@@ -20,10 +20,10 @@ import { resolveAccountingReversalLineDimensions } from "../src/lib/financeiro/a
 import { generateMunicipalMscArchive } from "../src/lib/financeiro/msc-export";
 import { postAccountingTransaction } from "../src/lib/financeiro";
 import { createPlanningAccountingFixture } from "./helpers/planning-accounting-fixture";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { financeDatabaseError } from "./helpers/finance-database-error";
 
-const capture = readFileSync("docs/poc-p0/fontes/MSC_STN_2026_20260708.json", "utf8").replaceAll("\r\n", "\n");
+// Exact official derivation preserved with the tests, independent of local docs.
+const capture = readFileSync(new URL("./helpers/MSC_STN_2026_20260708.json", import.meta.url), "utf8").replaceAll("\r\n", "\n");
 const referenceId = "msc-reference:stn:2026:20260708";
 const reference = (type: string, code: string) => `${referenceId}:${type}:${code}`;
 const decision = "Decisão municipal documentada para classificação por origem e vigência.";
@@ -35,31 +35,30 @@ function jsonObject(value: JsonValue | undefined): JsonObject {
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
   test(`MSC versionada, sucessão e estorno preservam memória (${jurisdiction})`, async () => {
     const fixture = await createPlanningAccountingFixture(jurisdiction);
-    const transport = await connectFinanceDrizzleFixture(fixture.pg);
+    const { connection } = fixture;
     try {
       await fixture.rules();
-      const { connection } = transport;
       const db = connection.db;
       const context: AppContext = fixture.context;
-      assert.equal(await captureMscReference2026(transport.connection, context, capture), referenceId);
-      assert.equal(await captureMscReference2026(transport.connection, context, capture.replaceAll("\n", "\r\n")), referenceId);
-      await assert.rejects(captureMscReference2026(transport.connection, context, capture + " "), /divergente/);
+      assert.equal(await captureMscReference2026(connection, context, capture), referenceId);
+      assert.equal(await captureMscReference2026(connection, context, capture.replaceAll("\n", "\r\n")), referenceId);
+      await assert.rejects(captureMscReference2026(connection, context, capture + " "), /divergente/);
       await assert.rejects(db.update(planningCatalogEntries).set({ name: "Alterada" }).where(eq(planningCatalogEntries.id, reference("FR", "1500"))), financeDatabaseError(/immutable/));
       const scope = { governmentEntityId: "ente", budgetUnitId: "ug", financialYearId: "ano", effectiveFrom: "2026-01-01", effectiveUntil: "2026-12-31", reason: decision };
       const po = jurisdiction === "EXECUTIVE" ? "10131" : "20231";
       const accountInput = { ...scope, kind: "ACCOUNT", canonicalId: "debito", referenceEntryId: reference("ACCOUNT", "111110100"), poEntryId: reference("PO", po), fpEntryId: reference("FP", "1"), omitCo: true };
-      const accountMapping = await configureMscMapping(transport.connection, context, accountInput);
-      assert.equal(await configureMscMapping(transport.connection, context, accountInput), accountMapping);
-      await assert.rejects(configureMscMapping(transport.connection, context, { ...accountInput, reason: decision + " Outra edição." }), /sobreposto/);
-      await assert.rejects(configureMscMapping(transport.connection, context, { ...accountInput, poEntryId: reference("PO", po === "10131" ? "20231" : "10131") }), /Poder/);
-      await assert.rejects(configureMscMapping(transport.connection, context, { ...accountInput, fpEntryId: reference("FP", "2") }), /FP/);
+      const accountMapping = await configureMscMapping(connection, context, accountInput);
+      assert.equal(await configureMscMapping(connection, context, accountInput), accountMapping);
+      await assert.rejects(configureMscMapping(connection, context, { ...accountInput, reason: decision + " Outra edição." }), /sobreposto/);
+      await assert.rejects(configureMscMapping(connection, context, { ...accountInput, poEntryId: reference("PO", po === "10131" ? "20231" : "10131") }), /Poder/);
+      await assert.rejects(configureMscMapping(connection, context, { ...accountInput, fpEntryId: reference("FP", "2") }), /FP/);
       const sourceInput = { ...scope, kind: "SOURCE", canonicalId: "livre", referenceEntryId: reference("FR", "1500") };
-      const originalSourceMapping = await configureMscMapping(transport.connection, context, sourceInput);
+      const originalSourceMapping = await configureMscMapping(connection, context, sourceInput);
       const origin = { governmentEntityId: "ente", budgetUnitId: "ug", resourceSourceId: "livre", sourceClassification: { externalCode: "1500" } };
       const january = await withDatabaseTransaction(connection, tx => composeMscLineDimensions(tx, { ...scope, date: new Date("2026-01-15") }, "debito", origin));
       assert.equal(january?.status, "DOCUMENTED");
       assert.deepEqual(january?.information, { PO: po, FP: "1", FR: "1500" });
-      const successor = await configureMscMapping(transport.connection, context, { ...sourceInput, effectiveFrom: "2026-02-01", predecessorEntryId: originalSourceMapping, referenceEntryId: reference("FR", "2500") });
+      const successor = await configureMscMapping(connection, context, { ...sourceInput, effectiveFrom: "2026-02-01", predecessorEntryId: originalSourceMapping, referenceEntryId: reference("FR", "2500") });
       const old = await withDatabaseTransaction(connection, tx => composeMscLineDimensions(tx, { ...scope, date: new Date("2026-01-31") }, "debito", origin));
       const newer = await withDatabaseTransaction(connection, tx => composeMscLineDimensions(tx, { ...scope, date: new Date("2026-02-01") }, "debito", origin));
       assert.equal(jsonObject(old?.information).FR, "1500");
@@ -69,8 +68,8 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       assert.equal(incomplete?.status, "NOT_RECONCILED");
       assert.deepEqual(incomplete?.missingInformationTypes, ["FR"]);
       const concurrent = await Promise.allSettled([
-        configureMscMapping(transport.connection, context, { ...sourceInput, canonicalId: "vinculada", reason: decision + " Primeira proposta concorrente." }),
-        configureMscMapping(transport.connection, context, { ...sourceInput, canonicalId: "vinculada", referenceEntryId: reference("FR", "2500"), reason: decision + " Segunda proposta concorrente." }),
+        configureMscMapping(connection, context, { ...sourceInput, canonicalId: "vinculada", reason: decision + " Primeira proposta concorrente." }),
+        configureMscMapping(connection, context, { ...sourceInput, canonicalId: "vinculada", referenceEntryId: reference("FR", "2500"), reason: decision + " Segunda proposta concorrente." }),
       ]);
       assert.equal(concurrent.filter(result => result.status === "fulfilled").length, 1);
       assert.equal(concurrent.filter(result => result.status === "rejected").length, 1);
@@ -97,7 +96,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
         ]);
       });
       await db.update(planningCatalogVersions).set({ status: "PUBLISHED" }).where(eq(planningCatalogVersions.id, "municipal-accounts"));
-      await configureMscMapping(transport.connection, context, { ...scope, kind: "ACCOUNT", canonicalId: "credito", referenceEntryId: reference("ACCOUNT", "211110101"), poEntryId: reference("PO", po), fpEntryId: reference("FP", "1"), omitCo: true });
+      await configureMscMapping(connection, context, { ...scope, kind: "ACCOUNT", canonicalId: "credito", referenceEntryId: reference("ACCOUNT", "211110101"), poEntryId: reference("PO", po), fpEntryId: reference("FP", "1"), omitCo: true });
       const actor = { usuarioId: "ana", employeeId: "servidora-ana", allowedBudgetUnitIds: ["ug"] };
       const posting = { financialYearId: "ano", governmentEntityId: "ente", budgetUnitId: "ug", date: new Date("2026-01-15"), history: "Partida municipal canônica", sourceModule: "FINANCEIRO", sourceType: "BANK_ACCOUNT", sourceId: "bank", idempotencyKey: "municipal-origin", lines: [{ accountId: "debito", type: "Débito" as const, value: "1.00" }, { accountId: "credito", type: "Crédito" as const, value: "1.00" }] };
       const persisted = await postAccountingTransaction(connection, actor, posting);
@@ -116,32 +115,31 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       }
       assert.equal((await postAccountingTransaction(connection, actor, posting)).id, persisted.id);
       const restrictedContext = { ...context, user: { ...context.user, profileCode: "ACCOUNTANT", allowedBudgetUnitIds: [], permissions: JSON.stringify({ modules: { FINANCEIRO: { update: true } } }) } };
-      await assert.rejects(configureMscMapping(transport.connection, restrictedContext, accountInput), /acesso|permiss|autoriz/i);
-    } finally { try { await transport.close(); } finally { await fixture.close(); } }
+      await assert.rejects(configureMscMapping(connection, restrictedContext, accountInput), /acesso|permiss|autoriz/i);
+    } finally { await fixture.close(); }
   });
 }
 
 test("MSC agrega Prefeitura/Câmara com PO distintos, Decimal e competência fechada", async () => {
   const fixture = await createPlanningAccountingFixture();
-  const transport = await connectFinanceDrizzleFixture(fixture.pg);
+  const { connection } = fixture;
   try {
     await fixture.rules();
-    const { connection } = transport;
     const db = connection.db;
     const context: AppContext = fixture.context;
-    await captureMscReference2026(transport.connection, context, capture);
+    await captureMscReference2026(connection, context, capture);
     await db.insert(governmentEntities).values({ id: "camara", code: "CM", name: "Câmara Municipal", type: "CAMARA", status: "ATIVA", parentId: "ente" });
     await db.insert(planningBudgetUnits).values({ id: "ug-camara", code: "03.01", name: "Câmara", secretariatId: "secretaria" });
     await db.insert(planningEntityUnits).values({ governmentEntityId: "camara", budgetUnitId: "ug-camara" });
     await db.insert(financialYears).values({ id: "ano-camara", year: 2026, governmentEntityId: "camara", status: "Aberto", startDate: new Date("2026-01-01"), endDate: new Date("2026-12-31") });
     const reporting = { governmentEntityId: "ente", financialYearId: "ano", institutionCode: "4109756EX", entityIds: ["ente", "camara"], reason: decision };
-    await assert.rejects(configureMscReportingScope(transport.connection, context, { ...reporting, entityIds: ["ente"] }), /todos/);
-    const scopeId = await configureMscReportingScope(transport.connection, context, reporting);
-    assert.equal(await configureMscReportingScope(transport.connection, context, reporting), scopeId);
+    await assert.rejects(configureMscReportingScope(connection, context, { ...reporting, entityIds: ["ente"] }), /todos/);
+    const scopeId = await configureMscReportingScope(connection, context, reporting);
+    assert.equal(await configureMscReportingScope(connection, context, reporting), scopeId);
     for (const [entityId, unitId, yearId, po] of [["ente", "ug", "ano", "10131"], ["camara", "ug-camara", "ano-camara", "20231"]]) {
       const scope = { governmentEntityId: entityId, budgetUnitId: unitId, financialYearId: yearId, effectiveFrom: "2026-01-01", effectiveUntil: "2026-12-31", reason: decision };
-      await configureMscMapping(transport.connection, context, { ...scope, kind: "SOURCE", canonicalId: "livre", referenceEntryId: reference("FR", "1500") });
-      for (const [accountId, code] of [["debito", "111110100"], ["credito", "211110101"]]) await configureMscMapping(transport.connection, context, { ...scope, kind: "ACCOUNT", canonicalId: accountId, referenceEntryId: reference("ACCOUNT", code), poEntryId: reference("PO", po), fpEntryId: reference("FP", "1"), omitCo: true });
+      await configureMscMapping(connection, context, { ...scope, kind: "SOURCE", canonicalId: "livre", referenceEntryId: reference("FR", "1500") });
+      for (const [accountId, code] of [["debito", "111110100"], ["credito", "211110101"]]) await configureMscMapping(connection, context, { ...scope, kind: "ACCOUNT", canonicalId: accountId, referenceEntryId: reference("ACCOUNT", code), poEntryId: reference("PO", po), fpEntryId: reference("FP", "1"), omitCo: true });
       const seed = async (suffix: string, date: string, value: string, eventType: string) => {
         await withDatabaseTransaction(connection, async tx => {
           const transactionId = `${entityId}:${suffix}`;
@@ -158,10 +156,10 @@ test("MSC agrega Prefeitura/Câmara com PO distintos, Decimal e competência fec
     }
     const input = { reportingScopeEntryId: scopeId, period: "2026-01" };
     const actor = { usuarioId: "ana" };
-    await assert.rejects(generateMunicipalMscArchive(transport.connection, { ...actor, allowedBudgetUnitIds: ["ug"] }, input), /todas as UGs/);
-    await assert.rejects(generateMunicipalMscArchive(transport.connection, actor, input), /fechada/);
+    await assert.rejects(generateMunicipalMscArchive(connection, { ...actor, allowedBudgetUnitIds: ["ug"] }, input), /todas as UGs/);
+    await assert.rejects(generateMunicipalMscArchive(connection, actor, input), /fechada/);
     for (const yearId of ["ano", "ano-camara"]) await db.insert(monthlyAccountingCloses).values({ financialYearId: yearId, competence: new Date("2026-01-01"), status: "FECHADO" });
-    const archive = await generateMunicipalMscArchive(transport.connection, actor, input);
+    const archive = await generateMunicipalMscArchive(connection, actor, input);
     const zip = await JSZip.loadAsync(archive.bytes);
     const csv = await Object.values(zip.files)[0].async("string");
     assert.equal(csv, archive.csv);
@@ -177,6 +175,6 @@ test("MSC agrega Prefeitura/Câmara com PO distintos, Decimal e competência fec
     const [entry] = await db.select({ id: accountingEntries.id }).from(accountingEntries).limit(1);
     assert.ok(entry);
     await db.update(accountingEntries).set({ valueDecimal: new Decimal("9.99") }).where(eq(accountingEntries.id, entry.id));
-    await assert.rejects(generateMunicipalMscArchive(transport.connection, actor, input), /balanceada/);
-  } finally { try { await transport.close(); } finally { await fixture.close(); } }
+    await assert.rejects(generateMunicipalMscArchive(connection, actor, input), /balanceada/);
+  } finally { await fixture.close(); }
 });

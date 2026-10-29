@@ -21,6 +21,7 @@ import { decideItbiContestation } from "../src/lib/tributacao/itbi-contestation"
 test("ITBI on-line: formulários, anexos e impugnação atômicos; avisos, idempotência e modelos respeitam autorização vigente", async () => {
   const f = await createItbiDrizzleFixture();
   try {
+    await f.database.exec(`UPDATE "Tax" SET "isActive"=false WHERE lower(name)='itbi' AND id<>'ITBI';`);
     await f.db.insert(taxRegistryEntries).values({ entityType: "REAL_ESTATE", entityId: "property", category: "PROPERTY_PROFILE", title: "Origem conferida", data: { governmentEntityId: "ente", budgetUnitId: "ug", kind: "Terreno", riskArea: false, environmentalProtection: false, latitude: null, longitude: null } });
     const type = await saveItbiTransactionType(f.connection, f.actor, { code: "VENDA-ONLINE", name: "Compra e venda", rate: "2", requiresDebtClearance: false, legalBasis: "Lei municipal informada", expectedUpdatedAt: null });
     const rule = await publishPropertyValuationRule(f.connection, f.actor, { taxId: "ITBI", year: 2026, landUnitValue: "10", constructionUnitValue: "0", landFactor: "1", constructionFactor: "1", globalFactor: "1", legalBasis: "Avaliação ITBI", reference: "Critério municipal informado", expectedVersion: 0 });

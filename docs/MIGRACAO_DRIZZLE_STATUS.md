@@ -4,6 +4,12 @@
 
 ### Validação integrada posterior — base `bed3a2b`
 
+- Atualização de 29/10: `npm run build` **PASS** integral, 3.130 fontes/937 validações de rotas/14 partições e compilação Next concluídos. Instrumentação de 24 processos: maior heap amostrado **2,244 GiB**, maxRSS do SO **2.544,598 MiB**, zero saídas não-zero. Alterações posteriores de runtime motivam novo build final; não confundir este resultado com aprovação de toda a suíte.
+- Homologação autenticada local do build servido: **20/20 domínios PASS**, sessão/auditoria e CRUD real de catálogo com cleanup PASS, logout/fronteira privada PASS.
+- Concorrência externa: **15/15 testes** de Planejamento e fechamento contábil aprovados no PostgreSQL real local, zero skips; contenção dos wrappers SQL em sessões distintas também aprovada. O launcher local agora dimensiona `max_locks_per_transaction=4096` e `max_connections=20`, pois o replay/cleanup integral excede a tabela de locks padrão do PostgreSQL; não é alteração de V8 nem de configuração de produção.
+- Auditoria ampliada reconciliou 997 tabelas públicas + nove `neon_auth`; 924 têm `pgTable`, e o documento `drizzle-final-persistence-audit.md` classifica as 73 tabelas públicas SQL-only/sem consumidor nominal e a view adicional. SQL explícito parametrizado via Drizzle é persistência válida; nenhuma tabela/dado foi removido para fazer as contagens coincidirem.
+- Encontrada e corrigida correlação SQL de documentos em RH: três subqueries exigiam referência qualificada `"Document"."id"`; a checagem RH integral chegou ao último assert após a correção, incluindo rejeição de anexos clínicos. Auditoria da mesma classe de subqueries em andamento.
+
 - O proprietário publicou as alterações anteriores em `bed3a2b`; esta sessão não executou commit/push. A orientação atual é concluir as verificações locais e entregar o conteúdo ao proprietário para publicação.
 - Gate global repetido: **3.790 fontes, zero acessos/dependências/scripts/nós de lock Prisma**. Conferência física de instalação: ausentes `node_modules/prisma`, `node_modules/@prisma`, `node_modules/.prisma` e `src/lib/prisma.ts`.
 - Typecheck auxiliar completo aprovado: **589 fontes, dez partições, zero diagnósticos/OOM**. Digest das raízes: `cae74562b1ede23df04556d2b4c0ec367c7d51af7625c046bd83157326f87685`. Novas alterações posteriores exigem retestes correspondentes.

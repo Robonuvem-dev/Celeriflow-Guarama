@@ -36,10 +36,10 @@ export async function createAssetsFixture(extraTables: PgTable[] = []) {
   }
   await pg.exec(`CREATE TABLE "SequenceCounter" (id TEXT PRIMARY KEY, key TEXT UNIQUE, value INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP NOT NULL);
     CREATE TABLE "Settlement" (id TEXT PRIMARY KEY, status TEXT);
-    CREATE TABLE "PurchaseReceipt" (id TEXT PRIMARY KEY, number TEXT, "receivedAt" TIMESTAMP, status TEXT, "contractId" TEXT, "commitmentId" TEXT);
+    CREATE TABLE "PurchaseReceipt" (id TEXT PRIMARY KEY, number TEXT, "receivedAt" TIMESTAMP, status TEXT, "contractId" TEXT);
     CREATE TABLE "PurchaseReceiptItem" (id TEXT PRIMARY KEY, "purchaseReceiptId" TEXT, "materialId" TEXT, "warehouseId" TEXT, quantity DOUBLE PRECISION, "quantityIncorporated" DOUBLE PRECISION DEFAULT 0, "unitCost" DOUBLE PRECISION, "batchNumber" TEXT DEFAULT '', brand TEXT, model TEXT, "serialNumber" TEXT, "updatedAt" TIMESTAMP);
     CREATE TABLE "Contract" (id TEXT PRIMARY KEY, "supplierId" TEXT);
-    CREATE TABLE "Commitment" (id TEXT PRIMARY KEY, "appropriationId" TEXT);
+    CREATE TABLE "Commitment" (id TEXT PRIMARY KEY, "appropriationId" TEXT, "purchaseReceiptId" TEXT);
     CREATE TABLE "BudgetAppropriation" (id TEXT PRIMARY KEY, "budgetUnitId" TEXT);
     CREATE TABLE "BudgetUnit" (id TEXT PRIMARY KEY, "secretariatId" TEXT);
     CREATE TABLE "AccountingTransaction" (id TEXT PRIMARY KEY, "reversalOfId" TEXT);

@@ -50,7 +50,7 @@ export async function acquireAssetFromPurchaseReceipt(db: DatabaseConnection, ac
       materialName: string; materialDescription: string | null; materialType: string; receiptNumber: string; receivedAt: string; receiptStatus: string; supplierId: string; budgetUnitId: string | null; secretariatId: string | null;
     }>(sql`SELECT i.id, i.quantity, i."quantityIncorporated", i."unitCost", i.brand, i.model, i."serialNumber", i."warehouseId", i."materialId", i."batchNumber", m.name AS "materialName", m.description AS "materialDescription", m.type AS "materialType", r.number AS "receiptNumber", r."receivedAt", r.status AS "receiptStatus", c."supplierId", a."budgetUnitId", u."secretariatId"
       FROM "PurchaseReceiptItem" i JOIN "Material" m ON m.id=i."materialId" JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Contract" c ON c.id=r."contractId"
-       LEFT JOIN "Commitment" e ON e.id=r."commitmentId" LEFT JOIN "BudgetAppropriation" a ON a.id=e."appropriationId" LEFT JOIN "BudgetUnit" u ON u.id=a."budgetUnitId" WHERE i.id=${input.purchaseReceiptItemId}`)).rows[0];
+       LEFT JOIN "Commitment" e ON e."purchaseReceiptId"=r.id LEFT JOIN "BudgetAppropriation" a ON a.id=e."appropriationId" LEFT JOIN "BudgetUnit" u ON u.id=a."budgetUnitId" WHERE i.id=${input.purchaseReceiptItemId}`)).rows[0];
     const receiptItem = rawReceiptItem ? { ...rawReceiptItem, receivedAt: databaseTimestamp(rawReceiptItem.receivedAt) } : null;
     if (!receiptItem || receiptItem.receiptStatus !== "APPROVED") {
       throw new AssetAcquisitionError("O tombamento exige um item de recebimento de compra aprovado.");

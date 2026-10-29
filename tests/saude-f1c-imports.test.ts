@@ -61,10 +61,13 @@ test("migration F1-C é incremental, rastreável e idempotente", async () => {
 
 test("processador reutiliza cadastros globais e sanitários existentes", async () => {
   const service = await readFile(new URL("../src/lib/saude/sus-import-service.ts", import.meta.url), "utf8");
-  assert.match(service, /tx\.person\.upsert/);
-  assert.match(service, /tx\.patient\.upsert/);
-  assert.match(service, /tx\.healthUnit\.upsert/);
-  assert.match(service, /tx\.healthProfessional\.upsert/);
-  assert.match(service, /tx\.healthTeam\.upsert/);
+  assert.match(service, /tx\.insert\(people\)/);
+  assert.match(service, /tx\.insert\(patients\)/);
+  assert.match(service, /tx\.insert\(healthUnits\)/);
+  assert.match(service, /tx\.insert\(healthProfessionals\)/);
+  assert.match(service, /tx\.insert\(healthTeams\)/);
+  for (const key of ["people.cpf", "patients.personId", "healthUnits.cnes", "healthProfessionals.employeeId", "healthTeams.code"]) {
+    assert.ok(service.includes(`target: ${key}`), `reutilização pela chave canônica ${key}`);
+  }
   assert.doesNotMatch(service, /createHealthPerson|createHealthPatient/);
 });

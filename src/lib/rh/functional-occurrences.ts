@@ -46,9 +46,11 @@ export async function registerFunctionalOccurrence(db: DatabaseConnection, actor
     if (!act) throw new Error("Ato de pessoal não encontrado.");
     if (act.employeeId !== stored.employeeId || act.date.toISOString().slice(0, 10) > input.date) throw new Error("Ato deve pertencer ao titular e não ser posterior à ocorrência.");
     const documents = await tx.select({ id: documentTable.id, title: documentTable.title, documentType: documentTable.documentType, personId: documentTable.personId, companyId: documentTable.companyId, status: documentTable.status, validUntil: documentTable.validUntil, updatedAt: documentTable.updatedAt,
-      healthClinicalDocument: sql<{ id: string } | null>`(SELECT jsonb_build_object('id',h.id) FROM "HealthClinicalDocument" h WHERE h."documentId"=${documentTable.id})`,
-      healthStandardDocument: sql<{ id: string } | null>`(SELECT jsonb_build_object('id',h.id) FROM "HealthStandardDocument" h WHERE h."documentId"=${documentTable.id})`,
-      sstCertificateDocument: sql<{ id: string } | null>`(SELECT jsonb_build_object('id',h.id) FROM "SstCertificateDocument" h WHERE h."documentId"=${documentTable.id})`,
+      // Keep the outer reference qualified: single-table selection rendering
+      // otherwise turns an interpolated column into the inner relation's id.
+      healthClinicalDocument: sql<{ id: string } | null>`(SELECT jsonb_build_object('id',h.id) FROM "HealthClinicalDocument" h WHERE h."documentId"="Document"."id")`,
+      healthStandardDocument: sql<{ id: string } | null>`(SELECT jsonb_build_object('id',h.id) FROM "HealthStandardDocument" h WHERE h."documentId"="Document"."id")`,
+      sstCertificateDocument: sql<{ id: string } | null>`(SELECT jsonb_build_object('id',h.id) FROM "SstCertificateDocument" h WHERE h."documentId"="Document"."id")`,
     }).from(documentTable).where(inArray(documentTable.id, input.documentIds)).orderBy(asc(documentTable.id));
     if (documents.length !== input.documentIds.length || documents.some(document => document.companyId || (document.personId && document.personId !== stored.employee.personId) || document.healthClinicalDocument || document.healthStandardDocument || document.sstCertificateDocument)) throw new Error("Anexo ausente, de outro titular ou de origem clínica protegida; use documentos funcionais do GED.");
     const regime = await requireEmploymentRegime(tx, contract.regimeId);

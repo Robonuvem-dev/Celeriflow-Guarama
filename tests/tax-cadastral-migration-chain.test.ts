@@ -27,6 +27,7 @@ test("Tributação: quatorze migrations coexistem com cadastro, perfil, alvará 
    const mode = process.env.CELERIFLOW_ACCOUNTING_MODE;
    process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
    try {
+     await f.database.exec(`UPDATE "Tax" SET "isActive"=false WHERE lower(name)='itbi';`);
      // The complete historical fixture includes the fourteen migrations exercised by this chain.
      await f.db.update(financialYears).set({status:"Aberto"}).where(eq(financialYears.id,"ano"));
      for(const id of ["seller","buyer"]) await f.db.insert(taxpayers).values({id,taxpayerType:"PF",status:"Ativo"});

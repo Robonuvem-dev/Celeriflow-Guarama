@@ -64,9 +64,9 @@ export async function listProcurementContracts(db: DatabaseExecutor): Promise<Co
 
 export async function listProcurementCovenants(db: DatabaseExecutor): Promise<CovenantListEntry[]> {
   const rows = await db.select({ covenant: procurementCovenants,
-    partyCount: sql<number>`(SELECT count(*)::integer FROM "InstrumentParty" p WHERE p."covenantId" = ${procurementCovenants.id})`,
-    measurementCount: sql<number>`(SELECT count(*)::integer FROM "InstrumentMeasurement" m WHERE m."covenantId" = ${procurementCovenants.id})`,
-    installmentCount: sql<number>`(SELECT count(*)::integer FROM "InstrumentInstallment" i WHERE i."covenantId" = ${procurementCovenants.id})`,
+    partyCount: sql<number>`(SELECT count(*)::integer FROM "InstrumentParty" p WHERE p."covenantId" = "Covenant"."id")`,
+    measurementCount: sql<number>`(SELECT count(*)::integer FROM "InstrumentMeasurement" m WHERE m."covenantId" = "Covenant"."id")`,
+    installmentCount: sql<number>`(SELECT count(*)::integer FROM "InstrumentInstallment" i WHERE i."covenantId" = "Covenant"."id")`,
   }).from(procurementCovenants).orderBy(desc(procurementCovenants.createdAt));
   return rows.map(row => ({ ...row.covenant, _count: { instrumentParties: row.partyCount, measurements: row.measurementCount, installments: row.installmentCount } }));
 }

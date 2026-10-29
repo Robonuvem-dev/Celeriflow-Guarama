@@ -21,10 +21,12 @@ import { rectifyTransferredItbi } from "../src/lib/tributacao/itbi-rectification
 import { renderItbiDamPdf } from "../src/lib/tributacao/itbi-dam-pdf";
 import { renderItbiProcessPdf } from "../src/lib/tributacao/itbi-process-pdf";
 import { createItbiDrizzleFixture, seedItbiDeclaration } from "./helpers/itbi-drizzle-fixture";
+import { postgresError } from "./helpers/postgres-assertion";
 
 test("ITBI helpers: physical SQL, scope, JSON null, dates, same-transaction audit, channel and cadastral reversal", async t => {
   const f = await createItbiDrizzleFixture();
   try {
+    await f.database.exec(`UPDATE "Tax" SET "isActive"=false WHERE lower(name)='itbi' AND id<>'ITBI';`);
     await f.database.exec(`INSERT INTO "Process" (id,"protocolNumber","processTypeId","subjectId","updatedAt") VALUES ('process','ITBI-HELPERS','process-type','subject',CURRENT_TIMESTAMP);`);
 
     await t.test("Date/Decimal/JSON-null decoding and sequence/audit rollback use the caller transaction", async () => {
@@ -95,15 +97,18 @@ test("ITBI helpers: physical SQL, scope, JSON null, dates, same-transaction audi
       assert.equal(decided.status, "NAO_TRIBUTAVEL"); assert.equal(decided.taxAmount.toFixed(2), "20.00"); assert.equal(decided.documentId, result.documentId);
       const entry = requireItbiRecord(await latestItbiRegistryEntry(f.db, "ITBI_DECLARATION", declaration.id, "ITBI_FISCAL_TREATMENT"));
       assert.equal(taxScopeSnapshot(entry.data).payableTax, "0.00");
-      await assert.rejects(async () => { await f.db.update(taxRegistryEntries).set({ title: "Mudança" }).where(eq(taxRegistryEntries.id, entry.id)); }, /imutável/);
+      await assert.rejects(async () => { await f.db.update(taxRegistryEntries).set({ title: "Mudança" }).where(eq(taxRegistryEntries.id, entry.id)); }, postgresError("P0001", "Histórico tributário imutável: registre nova versão ou evento."));
     });
 
     await t.test("partial ownership, correspondence, rectification chain and reversal remain one atomic cadastral history", async () => {
       await f.database.exec(`INSERT INTO "Process" (id,"protocolNumber","processTypeId","subjectId","updatedAt") VALUES ('ownership-process','ITBI-OWNERSHIP','process-type','subject',CURRENT_TIMESTAMP);`);
       const declaration = await seedItbiDeclaration(f, "ownership", { processId: "ownership-process", status: "APROVADA", transmittedFraction: new Decimal(50), taxableBase: new Decimal(500), taxAmount: new Decimal(10), cadastralUpdateMode: "MANUAL" });
       await f.db.insert(itbiParties).values([{ declarationId: declaration.id, taxpayerId: "seller", role: "TRANSMITENTE", participationPercent: new Decimal(100), sortOrder: 0 }, { declarationId: declaration.id, taxpayerId: "buyer", role: "ADQUIRENTE", participationPercent: new Decimal(100), sortOrder: 1 }]);
+      // The versioned profile and physical property must describe the same kind
+      // and inscription before the ownership service exercises the edit guard.
+      await f.db.update(realEstates).set({ propertyType: "Terreno" }).where(eq(realEstates.id, "property"));
       const address = { street: "Rua municipal", number: "1", complement: "", neighborhood: "Centro", city: "Município", state: "PR", zipCode: "" };
-      await f.db.insert(taxRegistryEntries).values({ entityType: "REAL_ESTATE", entityId: "property", category: "PROPERTY_PROFILE", title: "Perfil conferido", data: { propertyId: "property", expectedVersion: 0, expectedUpdatedAt: new Date().toISOString(), governmentEntityId: "ente", budgetUnitId: "ug", kind: "Terreno", parentId: null, unitMode: null, owners: [{ taxpayerId: "seller", sharePercent: "100", primary: true }], inscriptionParts: {}, correspondenceAddress: address, latitude: null, longitude: null, floors: 0, frontSetback: "0", sideSetback: "0", riskArea: false, environmentalProtection: false, documentIds: [], processId: "ownership-process", reason: "Origem conferida" } });
+      await f.db.insert(taxRegistryEntries).values({ entityType: "REAL_ESTATE", entityId: "property", category: "PROPERTY_PROFILE", title: "Perfil conferido", data: { propertyId: "property", expectedVersion: 0, expectedUpdatedAt: new Date().toISOString(), governmentEntityId: "ente", budgetUnitId: "ug", kind: "Terreno", inscription: "ITBI-PROPERTY", parentId: null, unitMode: null, owners: [{ taxpayerId: "seller", sharePercent: "100", primary: true }], inscriptionParts: {}, correspondenceAddress: address, latitude: null, longitude: null, floors: 0, frontSetback: "0", sideSetback: "0", riskArea: false, environmentalProtection: false, documentIds: [], processId: "ownership-process", reason: "Origem conferida" } });
       const [assessment] = await f.db.insert(taxAssessments).values({ id: "ownership-assessment", year: 2026, taxId: "ITBI", taxpayerId: "buyer", originalValue: 10, originalValueDecimal: new Decimal(10), taxableBaseDecimal: new Decimal(500), finalValueDecimal: new Decimal(10), status: "Pago", calculationSnapshot: { governmentEntityId: "ente", budgetUnitId: "ug", itbiDeclarationId: declaration.id } }).returning();
       const [guide] = await f.db.insert(taxGuides).values({ assessmentId: assessment.id, totalValue: 10, totalValueDecimal: new Decimal(10), dueDate: new Date("2026-12-01T23:59:59.999Z"), status: "Paga" }).returning();
       const [payment] = await f.db.insert(taxPayments).values({ guideId: guide.id, amountPaid: 10, amountPaidDecimal: new Decimal(10), paymentDate: new Date("2026-01-01T12:34:56.789Z"), paymentMethod: "Manual", status: "Confirmado" }).returning();

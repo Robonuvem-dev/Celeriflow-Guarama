@@ -64,7 +64,7 @@ export default async function NovoMaterialPage({ searchParams }: { searchParams?
     const [category, catalogItem] = await Promise.all([
       activeMaterialCategory(db, parsed.data.categoryId),
       catalogItemId
-        ? db.select({ id: catalogItemTable.id, productKind: catalogItemTable.productKind, linked: sql<boolean>`EXISTS (SELECT 1 FROM "Material" m WHERE m."catalogItemId"=${catalogItemTable.id})` }).from(catalogItemTable).where(and(eq(catalogItemTable.id, catalogItemId), eq(catalogItemTable.isActive, true))).limit(1).then(rows => rows[0])
+        ? db.select({ id: catalogItemTable.id, productKind: catalogItemTable.productKind, linked: sql<boolean>`EXISTS (SELECT 1 FROM "Material" m WHERE m."catalogItemId"="CatalogItem"."id")` }).from(catalogItemTable).where(and(eq(catalogItemTable.id, catalogItemId), eq(catalogItemTable.isActive, true))).limit(1).then(rows => rows[0])
         : null,
     ]);
     if (!category) throw new Error("Selecione uma categoria de material ativa.");

@@ -66,7 +66,7 @@ export async function setCostCenterActiveAction(id: string, active: boolean): Pr
 export async function deleteCostCenterAction(id: string): Promise<CostCenterActionResult> {
   try {
     await getTenantContextForModuleOperation("PATRIMONIO", "delete");
-    const [costCenter] = await db.select({ id: costCenters.id, warehouseCount: sql<number>`(SELECT count(*)::int FROM "Warehouse" WHERE "costCenterId"=${costCenters.id})` }).from(costCenters).where(eq(costCenters.id, id)).limit(1);
+    const [costCenter] = await db.select({ id: costCenters.id, warehouseCount: sql<number>`(SELECT count(*)::int FROM "Warehouse" WHERE "costCenterId"="CostCenter"."id")` }).from(costCenters).where(eq(costCenters.id, id)).limit(1);
     if (!costCenter) throw new Error("Centro de custo não encontrado.");
     if (costCenter.warehouseCount > 0) throw new Error("Este centro de custo está vinculado a almoxarifados. Inative-o ou remova os vínculos antes de excluir.");
     await db.delete(costCenters).where(eq(costCenters.id, id));

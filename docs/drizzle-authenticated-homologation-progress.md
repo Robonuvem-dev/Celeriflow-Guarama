@@ -2,6 +2,12 @@
 
 ## Estado em 2026-10-28
 
+### Execução integrada em 29/10/2026
+
+Após `npm run build` integral aprovado, o servidor de produção local foi iniciado em `http://localhost:3309` com `CELERIFLOW_PUBLIC_BASE_URL` correspondente. `node scripts/drizzle-final-homologation.mjs --origin=http://localhost:3309 --crud` concluiu com **PASS**: **20/20 domínios**, autenticação da conta existente, cookie/principal, dashboard, auditoria de login, criação/leitura/atualização/exclusão do catálogo e **cleanup PASS**. Logout e restauração da fronteira anônima também aprovados. O servidor local foi encerrado depois do ensaio.
+
+Este resultado é homologação local autenticada do build servido, contra o banco configurado. Não equivale à confirmação de deploy Vercel nem à execução de todos os fluxos de negócio de cada domínio. Correções posteriores de runtime serão verificadas pelos respectivos recortes e build final.
+
 **Script publicado em `scripts/drizzle-final-homologation.mjs`; homologação autenticada ainda NÃO executada nesta frente.** A cópia foi criada via patch a partir da leitura integral de `.agent/drizzle-final-homologation.mjs`, preservado como histórico local. Apenas o caminho exibido em `--help` mudou no script; ambos os diretórios estão no mesmo nível, portanto `../` continua resolvendo a raiz e seu `package.json`.
 
 O parent informou preflight read-only PASS: conta Firebase existente, ativa e com e-mail verificado; um Usuário Neon ativo, perfil ativo `SYSTEM_ADMINISTRATOR`, UID coincidente. Essa evidência é do parent; esta frente não repetiu consultas de identidade, autenticação, HTTP, CRUD, acesso remoto ou abertura de browser/servidor.

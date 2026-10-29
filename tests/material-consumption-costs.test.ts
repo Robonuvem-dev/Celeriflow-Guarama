@@ -5,10 +5,11 @@ import { configureMunicipalCosts, recordMunicipalCostSource, reduceMunicipalCost
 import { reduceStockMunicipalCosts } from "../src/lib/financeiro/cost-stock-bridge";
 import { readMunicipalCosts } from "../src/lib/financeiro/cost-overview";
 import { cancelSettlementMunicipalCosts } from "../src/lib/financeiro/cost-settlement-bridge";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { withDatabaseTransaction } from "../src/db/transaction";
 import { Decimal } from "../src/db/decimal";
-import { materialMovements } from "../src/db/schema/assets-stock";
+import { materialCategories, materials, materialMovements, materialStocks, warehouses } from "../src/db/schema/assets-stock";
+import { budgetAppropriations, commitments } from "../src/db/schema/finance-budget";
+import { settlements } from "../src/db/schema/finance-settlements";
 import { monthlyAccountingCloses } from "../src/db/schema/finance-accounting";
 import { municipalCostSources, municipalCostSourceReductions } from "../src/db/schema/finance-costs";
 import { financialYears } from "../src/db/schema/finance-years";
@@ -20,15 +21,24 @@ const date = new Date("2026-06-01T12:00:00Z");
 
 test("materiais: devoluções sucessivas conservam os centavos do consumo e memória Decimal", async () => {
   const f = await createPlanningAccountingFixture();
-  let transport: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
   try {
-    transport = await connectFinanceDrizzleFixture(f.pg);
-    const connection = transport.connection;
+    const { connection } = f;
     const db = connection.db;
     await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
     await db.update(users).set({ ativo: true }).where(eq(users.id, actor.usuarioId));
     await db.insert(userBudgetUnits).values({ usuarioId: actor.usuarioId, budgetUnitId: "ug" });
     await configureMunicipalCosts(connection, actor, { financialYearId: "ano", enabled: true, sourceTypes: ["STOCK_CONSUMPTION"], effectiveFrom: new Date("2026-01-01"), reason: "Consumo conciliado da fixture" });
+    await f.pg.exec(`
+      INSERT INTO "Company" (id,"corporateName",cnpj,"updatedAt") VALUES ('empresa-consumo','Fornecedor do consumo','11222333000181',NOW());
+      INSERT INTO "Supplier" (id,"companyId",status,"updatedAt") VALUES ('fornecedor-consumo','empresa-consumo','Ativo',NOW());
+    `);
+    await db.insert(budgetAppropriations).values({ id: "dotacao-consumo", code: "CONSUMO.1", financialYearId: "ano", budgetUnitId: "ug", expenseNatureId: "despesa", resourceSourceId: "livre", initialValueDecimal: new Decimal("0.05"), updatedValueDecimal: new Decimal("0.05") });
+    await db.insert(commitments).values({ id: "empenho-consumo", number: "NE-CONSUMO", date, value: 0.05, valueDecimal: new Decimal("0.05"), history: "Origem documental do material consumido", appropriationId: "dotacao-consumo", supplierId: "fornecedor-consumo" });
+    await db.insert(settlements).values({ id: "comprovacao", commitmentId: "empenho-consumo", authorId: "servidora-ana", date, value: 0.05, valueDecimal: new Decimal("0.05") });
+    await db.insert(warehouses).values({ id: "almoxarifado", name: "Almoxarifado municipal" });
+    await db.insert(materialCategories).values({ id: "categoria-consumo", code: "CONSUMO", name: "Material de consumo" });
+    await db.insert(materials).values({ id: "material", code: "MAT-CONSUMO", name: "Material consumido", categoryId: "categoria-consumo" });
+    await db.insert(materialStocks).values({ id: "estoque-consumo", warehouseId: "almoxarifado", materialId: "material", quantity: 0 });
     const [original] = await db.insert(materialMovements).values({ id: "consumo", type: "Saída", operation: "REGULAR", warehouseId: "almoxarifado", materialId: "material", quantity: 3, quantityDecimal: new Decimal("3"), unitValue: 0.016667, unitValueDecimal: new Decimal("0.016667"), totalValueDecimal: new Decimal("0.05"), settlementId: "comprovacao", reason: "CONSUMO_ORCAMENTARIO:Consumo municipal", date }).returning();
     const source = await withDatabaseTransaction(connection, tx => recordMunicipalCostSource(tx, actor, { financialYearId: "ano", budgetUnitId: "ug", sourceType: "STOCK_CONSUMPTION", sourceId: original.id, expenseDate: date, amount: new Decimal("0.05"), dimensions: {}, evidence: { movementId: original.id, settlementId: original.settlementId } }));
     assert.ok(source);
@@ -39,7 +49,7 @@ test("materiais: devoluções sucessivas conservam os centavos do consumo e mem�
     });
     const reductions = await db.select().from(municipalCostSourceReductions).orderBy(asc(municipalCostSourceReductions.idempotencyKey));
     assert.deepEqual(reductions.map(reduction => reduction.amount.toFixed(2)), ["0.02", "0.01", "0.02"]);
-    const view = await readMunicipalCosts(transport.connection, actor, "ano");
+    const view = await readMunicipalCosts(connection, actor, "ano");
     assert.equal(view.sources[0].amount, "0.05"); assert.equal(view.sources[0].netAmount, "0.00"); assert.equal(view.sources[0].pending, "0.00");
     assert.equal((await db.select().from(materialMovements).where(eq(materialMovements.id, original.id)))[0].quantityDecimal?.toFixed(6), "3.000000");
     await assert.rejects(withDatabaseTransaction(connection, async tx => {
@@ -49,15 +59,13 @@ test("materiais: devoluções sucessivas conservam os centavos do consumo e mem�
     assert.equal((await db.select({ total: count() }).from(materialMovements).where(eq(materialMovements.id, "excess")))[0].total, 0);
     await withDatabaseTransaction(connection, tx => cancelSettlementMunicipalCosts(tx, actor, "comprovacao"));
     assert.equal((await db.select().from(municipalCostSources).where(eq(municipalCostSources.id, source.id)))[0].status, "CANCELLED");
-  } finally { try { await transport?.close(); } finally { await f.close(); } }
+  } finally { await f.close(); }
 });
 
 test("materiais: devolução em exercício posterior conserva a origem encerrada e exige período corrente aberto do mesmo ente", async () => {
   const f = await createPlanningAccountingFixture();
-  let transport: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
   try {
-    transport = await connectFinanceDrizzleFixture(f.pg);
-    const connection = transport.connection;
+    const { connection } = f;
     const db = connection.db;
     await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
     await configureMunicipalCosts(connection, actor, { financialYearId: "ano", enabled: true, sourceTypes: ["STOCK_CONSUMPTION"], effectiveFrom: new Date("2026-01-01"), reason: "Reconhecimento do consumo original" });
@@ -79,12 +87,12 @@ test("materiais: devolução em exercício posterior conserva a origem encerrada
     assert.ok(original);
     assert.equal(original.financialYearId, "ano");
     assert.equal(original.amount.toFixed(2), "10.01");
-    const current = await readMunicipalCosts(transport.connection, actor, "ano-2027");
+    const current = await readMunicipalCosts(connection, actor, "ano-2027");
     assert.equal(current.sources.length, 0);
     assert.equal(current.priorYearCorrections.length, 1);
     assert.equal(current.priorYearCorrections[0].amount, "-3.34");
     assert.equal(current.priorYearCorrections[0].originFinancialYearId, "ano");
     await db.update(financialYears).set({ status: "Encerrado" }).where(eq(financialYears.id, "ano-2027"));
     assert.equal((await withDatabaseTransaction(connection, tx => reduceMunicipalCostSource(tx, actor, input))).id, reduction.id);
-  } finally { try { await transport?.close(); } finally { await f.close(); } }
+  } finally { await f.close(); }
 });
