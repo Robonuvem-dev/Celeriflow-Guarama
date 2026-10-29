@@ -1,6 +1,6 @@
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadMigrationSet } from "./database-migrate-files.mjs";
+import { loadMigrationSet, repositoryRoot } from "./database-migrate-files.mjs";
 import { loadBaselineCatalog } from "./database-migrate-catalog.mjs";
 import { MigrationBlockedError, runDatabaseMigrations } from "./database-migrate-core.mjs";
 import { openMigrationConnection } from "./database-migrate-driver.mjs";
@@ -83,7 +83,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       process.exitCode = error.report.result === "OUTCOME_UNKNOWN" ? 1 : 2;
     } else {
       // Do not print driver messages/stack traces or connection strings.
-      console.error(JSON.stringify({ result: "ERROR", message: error.code ? "PostgreSQL migration connection/operation failed" : error.message, code: error.code ?? null }, null, 2));
+      const localPath = typeof error.path === "string" ? relative(repositoryRoot, error.path) : null;
+      const fileFailure = localPath !== null && !isAbsolute(localPath) && !localPath.startsWith("..")
+        && ["open", "scandir", "stat", "lstat", "read"].includes(error.syscall);
+      console.error(JSON.stringify({
+        result: "ERROR",
+        message: fileFailure ? "SQL migration file operation failed" : error.code ? "PostgreSQL migration connection/operation failed" : error.message,
+        code: error.code ?? null,
+        ...(fileFailure ? { file: localPath.replaceAll("\\", "/") } : {}),
+      }, null, 2));
       process.exitCode = 1;
     }
   }

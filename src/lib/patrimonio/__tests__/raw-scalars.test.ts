@@ -59,7 +59,7 @@ test("raw settlement chronology blocks one millisecond early and preserves the e
   const f = await fixture();
   try {
     await f.pg.exec(`ALTER TABLE "Settlement" ADD COLUMN date TIMESTAMP(3), ADD COLUMN "commitmentId" TEXT;
-      ALTER TABLE "Commitment" ADD COLUMN "purchaseReceiptId" TEXT, ADD COLUMN "reservationId" TEXT;
+      ALTER TABLE "Commitment" ADD COLUMN "reservationId" TEXT;
       ALTER TABLE "BudgetAppropriation" ADD COLUMN "financialYearId" TEXT, ADD COLUMN "expenseNatureId" TEXT;
       CREATE TABLE "ExpenseNature" (id TEXT PRIMARY KEY, code TEXT);
       CREATE TABLE "BudgetReservation" (id TEXT PRIMARY KEY, "expenseId" TEXT);

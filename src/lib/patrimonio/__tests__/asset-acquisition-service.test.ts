@@ -15,7 +15,7 @@ async function fixture() {
   const f = await createAssetsFixture();
   await f.pg.exec(`UPDATE "Material" SET type='PATRIMONIO', name='Notebook administrativo', description='Notebook para atendimento';
     INSERT INTO "Contract" VALUES ('contract-1','supplier-1');
-    INSERT INTO "PurchaseReceipt" VALUES ('receipt-1','NF-DEMO-0052','2026-09-10 12:00:00','APPROVED','contract-1',NULL);
+    INSERT INTO "PurchaseReceipt" (id,number,"receivedAt",status,"contractId") VALUES ('receipt-1','NF-DEMO-0052','2026-09-10 12:00:00','APPROVED','contract-1');
     INSERT INTO "PurchaseReceiptItem" (id,"purchaseReceiptId","materialId","warehouseId",quantity,"unitCost","batchNumber",brand,model,"serialNumber","updatedAt") VALUES ('receipt-item-1','receipt-1','material-1','warehouse-1',1,4800,'LOTE-1','Dell','Latitude','SN-001',CURRENT_TIMESTAMP);
     INSERT INTO "MaterialStock" (id,"warehouseId","materialId",quantity,"batchNumber","unitCost","updatedAt") VALUES ('stock-1','warehouse-1','material-1',1,'LOTE-1',4800,CURRENT_TIMESTAMP);`);
   return f;

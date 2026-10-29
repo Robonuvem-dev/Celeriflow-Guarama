@@ -3,9 +3,12 @@
 .env.*
 
 # Development references stay in GitHub for both notebooks.
-# Only the root archive is excluded; public/docs remains available to the app.
-/docs/
+# Keep the offline SQL migration evidence required by scripts/build.mjs.
 /docs/*
+!/docs/drizzle-inventory/
+/docs/drizzle-inventory/*
+!/docs/drizzle-inventory/migration-history.json
+!/docs/drizzle-inventory/recovery.json
 /image/
 /AGENTS.md
 /CLAUDE.md
