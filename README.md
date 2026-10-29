@@ -4,6 +4,8 @@ Teste de commit - teste 4
 
 ## Getting Started
 
+Para instalação, validação e operação do banco deste projeto, consulte [Drizzle — operação](docs/DRIZZLE_OPERACAO.md).
+
 First, run the development server:
 
 ```bash

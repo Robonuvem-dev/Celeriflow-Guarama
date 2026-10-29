@@ -71,7 +71,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       assert.equal(beforePayment.rows[0].availableBalance, "10.50");
       assert.equal(beforePayment.rows[0].commitmentsPayable, "2.25");
       assert.equal(beforePayment.rows[0].deficitSurplus, "8.25");
-      await db.insert(retentionRules).values({ id: "availability-retention", code: "IRRF-AVAILABILITY", type: "IRRF", description: "Retenção", beneficiaryName: "Ente", calculationBasePercentage: 100, ratePercentage: 20, financialYearId: "ano", effectiveFrom: new Date("2026-01-01"), isActive: true });
+      await db.insert(retentionRules).values({ id: "availability-retention", code: "IRRF-AVAILABILITY", type: "IRRF", description: "Retenção", beneficiaryName: "Ente", calculationBasePercentage: new Decimal("100"), ratePercentage: new Decimal("20"), financialYearId: "ano", effectiveFrom: new Date("2026-01-01"), isActive: true });
       const settlement = await createSettlement(connection, f.actor, { date, value: "2.25", commitmentId: commitment.id, authorId: "servidora-ana", documentId: "documento-fiscal", retentionRuleIds: ["availability-retention"] });
       const payment = await createPayment(connection, f.actor, { date, orderNumber: "OP-AVAILABILITY", value: "2.25", commitmentId: commitment.id, settlementId: settlement.id, bankAccountId: "banco", supplierId: "fornecedor", paymentMethod: "Transferência" });
       await updatePaymentStatus(connection, f.actor, payment.id, "Paga");

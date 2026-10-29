@@ -38,8 +38,10 @@ export async function parseP1OfficialSource(source: OfficialCatalogSource, direc
   let found = false;
   let headings: string[] = [];
   for await (const sheet of reader) {
+    // ExcelJS populates this from workbook XML metadata, but omits it from WorksheetReader's declarations.
+    const sheetName = "name" in sheet && typeof sheet.name === "string" ? sheet.name : undefined;
     for await (const row of sheet) {
-      if (sheet.name !== source.sheet) continue;
+      if (sheetName !== source.sheet) continue;
       found = true;
       if (row.number === source.header) {
         headings = Array.from({ length: source.kind === "ACCOUNT" ? 28 : source.kind === "REVENUE" ? 24 : 14 }, (_, index) => cellText(row.getCell(index + 1).value));

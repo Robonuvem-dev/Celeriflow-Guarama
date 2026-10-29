@@ -8,6 +8,10 @@
 - `npm run typecheck:auxiliary` passa a cobrir scripts/testes excluídos do build de produção, em partições sequenciais, com manifesto em `.next/cache/auxiliary-typecheck`; incluído no CI. O comando substitui a dependência operacional do checker privado `.agent`.
 - Ensaio de savepoints/rollback restaurado como teste versionado; métricas opcionais de processos disponíveis por preload `scripts/lib/process-metrics.cjs`, registrando heap/RSS amostrados e maxRSS do SO. Amostras não são picos certificados de todas as alocações.
 - Aceite integrado, memória fria/com cache, homologação HTTP e deploy permanecem pendentes até os respectivos resultados. Os registros seguintes são histórico; não representam aprovação da árvore final.
+- Primeiro gate consolidado: **3.789 fontes, zero arquivos/ocorrências/dependências Prisma, PASS**; verificação dos 156 históricos/dois futuros aprovada. Catálogo declarado: **924 tabelas/1.193 declarações/12.145 colunas/367 FKs, zero diferenças**.
+- Primeira checagem auxiliar integral: **589 fontes/10 partições**, nove reprovadas e partição 10 aprovada, **176 diagnósticos**, nenhum OOM. Maior memória reportada pelo compilador: 2.256.246 KiB; maior heap amostrado: 2,109 GiB; maxRSS do SO: 2.490,457 MiB. Não é aprovação de tipos nem do build de produção. Diagnósticos por partição em `.next/cache/auxiliary-typecheck`; correções reunidas antes do reteste.
+- Alertas de dependências: novo advisory high de `re2js` tratado por atualização transitiva permitida 2.8.6 → 2.9.1; audit do lock voltou a zero high/critical e oito moderate. Instalação física final iniciada depois de encerrar todos os compiladores da primeira rodada.
+- A `main` avançou externamente para `dc6e539` durante a validação. O histórico foi preservado, sem commit/push por esta sessão. A versão consolidada ainda precisa de todas as aprovações restantes.
 
 ## Retomada para sincronização de `main` e `feat` — 28/10/2026
 

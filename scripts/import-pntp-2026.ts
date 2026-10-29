@@ -14,7 +14,7 @@ async function main() {
   const response = await fetch(source, { signal: AbortSignal.timeout(60000) }); if (!response.ok) throw new Error(`Matriz PNTP HTTP ${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer()), sourceHash = createHash("sha256").update(bytes).digest("hex"), zip = await JSZip.loadAsync(bytes);
   const file = Object.values(zip.files).find(file => !file.dir && file.name.endsWith(".xlsx")); if (!file) throw new Error("Planilha oficial não encontrada.");
-  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(await file.async("nodebuffer"));
+  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(await file.async("arraybuffer"));
   const sheet = workbook.worksheets.find(sheet => sheet.getRow(1).getCell(1).text === "MATRIZ"); if (!sheet) throw new Error("Cabeçalho da matriz mudou.");
   const rows: { id: string; matrix: string; dimension: string; code: string; title: string; importance: string; facets: Record<string, boolean>; applicableEntities: string[] }[] = [];
   sheet.eachRow((row, number) => {

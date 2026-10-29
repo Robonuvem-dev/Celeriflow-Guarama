@@ -39,7 +39,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       await configureAccountingPostingRule(connection, f.actor, { eventCode: "RAP_NAO_PROCESSADO_LIQUIDACAO", eventName: "Liquidação de RAP não processado", debitAccountId: "debito", creditAccountId: "credito", isReference: true });
       const costPolicy = { financialYearId: "current-year", enabled: true, sourceTypes: ["SETTLEMENT" as const], effectiveFrom: new Date("2026-01-01"), reason: "Custos municipais no exercício corrente" };
       await assert.rejects(configureMunicipalCosts(connection, f.actor, costPolicy), /unidades gestoras autorizadas/);
-      await configureMunicipalCosts(connection, { usuarioId: f.actor.usuarioId, employeeId: f.actor.employeeId }, costPolicy);
+      await configureMunicipalCosts(connection, { usuarioId: f.actor.usuarioId }, costPolicy);
       const concurrent = await Promise.allSettled([createSettlement(connection, f.actor, input), createSettlement(connection, f.actor, input)]);
       assert.equal(concurrent.filter(result => result.status === "fulfilled").length, 1);
       const first = concurrent.find(result => result.status === "fulfilled");

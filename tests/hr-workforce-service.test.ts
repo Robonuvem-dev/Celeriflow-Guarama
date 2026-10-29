@@ -5,6 +5,7 @@ import { z } from "zod";
 import { and, asc, count, eq, inArray, like, sql, sum, type SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { Decimal } from "../src/db/decimal";
+import type { JsonObject } from "../src/db/json";
 import { withDatabaseTransaction, type DatabaseExecutor } from "../src/db/transaction";
 import { employees } from "../src/db/schema/administration";
 import { people } from "../src/db/schema/people";
@@ -657,10 +658,11 @@ test("PostgreSQL RH: simulação isolada, revisão, replay, movimentos, fechamen
     assert.equal(new Decimal((await executor.select({ total: sum(hrRightEntries.quantity) }).from(hrRightEntries).where(and(eq(hrRightEntries.contractId, contract.id), eq(hrRightEntries.kind, "BANCO_HORAS"))))[0].total!).toString(), "0");
     assert.equal((await required(executor.select().from(hrRightEntries).where(eq(hrRightEntries.id, originalCredit.id)))).quantity.toString(), "2.0001", "estorno preserva crédito original");
     await executor.update(hrPayrollRules).set({ isActive: false }).where(eq(hrPayrollRules.id, "contract-limit"));
-    const customPolicy = { origin: "CAMPOS_CONTRATO", legalReference: "Política sintética de campos", fields: [
+    const customFields: JsonObject[] = [
       { code: "ATO", label: "Ato de nomeação", type: "TEXTO", required: true, maxLength: 60 },
       { code: "CLASSE", label: "Classe", type: "OPCAO", required: true, options: [{ value: "A", label: "Classe A" }, { value: "B", label: "Classe B" }] },
-    ] };
+    ];
+    const customPolicy = { origin: "CAMPOS_CONTRATO", legalReference: "Política sintética de campos", fields: customFields };
     await executor.insert(hrPayrollRules).values({ id: "custom-rule", ruleSetId: "set", code: "CAMPOS_CONTRATO", name: "Campos sintéticos", category: "GERAL", valueType: "JSON", value: customPolicy, isActive: true });
     const customInput = { ...input, registration: "CUSTOM-1", details: { annotation: "Informação preservada", customFieldsPolicy: { forged: true } }, customFields: { ATO: "Portaria sintética", CLASSE: "A" }, customFieldsPolicyHash: contractCustomFieldsPolicyHash(customPolicy) };
     const customContract = await saveEmploymentContract(db, "actor", customInput);
@@ -741,7 +743,7 @@ test("PostgreSQL RH: simulação isolada, revisão, replay, movimentos, fechamen
     assert.equal(report.rows.at(-1)?.[0], "EXPORT-500");
     assert.match((await renderHrReport(report, "CSV")).bytes.toString(), /EXPORT-500/);
     const spreadsheet = new ExcelJS.Workbook();
-    await spreadsheet.xlsx.load((await renderHrReport(report, "XLSX")).bytes);
+    await spreadsheet.xlsx.load(Uint8Array.from((await renderHrReport(report, "XLSX")).bytes).buffer);
     assert.equal(spreadsheet.worksheets[0].rowCount, 502);
     assert.equal(spreadsheet.worksheets[0].getCell("A502").value, "EXPORT-500");
     const reportPdf = await renderHrReport(report, "PDF");

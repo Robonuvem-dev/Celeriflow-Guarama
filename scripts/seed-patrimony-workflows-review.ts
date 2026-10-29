@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import { and, asc, count, eq, exists, gt, gte, inArray, isNotNull, like, ne, sql } from "drizzle-orm";
 import { createDatabaseConnection } from "../src/db/connection";
 import { withDatabaseTransaction } from "../src/db/transaction";
+import { Decimal } from "../src/db/decimal";
 import { assetCategories, assets as assetTable, assetValueAdjustments, assetWriteOffs } from "../src/db/schema/assets";
 import { equipmentCustodies, materials as materialTable, materialCategories, materialMovements, materialStocks, warehouses as warehouseTable } from "../src/db/schema/assets-stock";
 import { materialRequests, materialRequestItems } from "../src/db/schema/assets-requests";
@@ -96,7 +97,7 @@ async function main() {
           const unitCost = reference?.cost || otherStock?.unitCost || 12;
           const expirationDate = material.isPerishable ? new Date(Date.now() + (60 + position * 21 + warehouseIndex * 7) * 86400000) : undefined;
           const [stock] = await tx.insert(materialStocks).values({ warehouseId: warehouse.id, materialId: material.id, batchNumber, quantity, unitCost, expirationDate }).returning();
-          await tx.insert(materialMovements).values({ idempotencyKey: `${dataset}:opening:${stock.id}`, type: "Entrada", materialId: material.id, warehouseId: warehouse.id, stockId: stock.id, quantity, quantityDecimal: quantity, unitValue: unitCost, unitValueDecimal: unitCost, totalValueDecimal: (quantity * unitCost).toFixed(2), reason: "Distribuição inicial demonstrativa de estoques — revisão autorizada do Almoxarifado.", actorUsuarioId: actor.id, actorEmployeeId: actor.employeeId });
+          await tx.insert(materialMovements).values({ idempotencyKey: `${dataset}:opening:${stock.id}`, type: "Entrada", materialId: material.id, warehouseId: warehouse.id, stockId: stock.id, quantity, quantityDecimal: new Decimal(quantity), unitValue: unitCost, unitValueDecimal: new Decimal(unitCost), totalValueDecimal: new Decimal(quantity).times(unitCost).toDecimalPlaces(2), reason: "Distribuição inicial demonstrativa de estoques — revisão autorizada do Almoxarifado.", actorUsuarioId: actor.id, actorEmployeeId: actor.employeeId });
           newStocks++;
         }
       }
@@ -127,7 +128,7 @@ async function main() {
       for (const [index, item] of assetExamples.entries()) {
         const id = `${dataset}-asset-${index + 1}`;
         if ((await tx.select({ id: assetTable.id }).from(assetTable).where(eq(assetTable.id, id)).limit(1)).length) continue;
-        await tx.insert(assetTable).values({ id, code: await nextEquipmentCode(tx), patrimonyNumber: await nextAssetPatrimonyNumber(tx), name: item.name, categoryId: item.categoryId, status: item.status, description: "Exemplo demonstrativo do ciclo patrimonial com equipamento plausível. Valores e ocorrências de referência.", serialNumber: `REV2026-${String(index + 1).padStart(4, "0")}`, acquisitionDate: new Date("2026-06-15T12:00:00Z"), incorporationDate: new Date("2026-06-15T12:00:00Z"), acquisitionValue: item.value, currentValue: item.value, acquisitionValueDecimal: item.value, currentValueDecimal: item.value, departmentId: department.id, responsibleId: actor.employeeId, budgetUnitId: budgetUnit.id });
+        await tx.insert(assetTable).values({ id, code: await nextEquipmentCode(tx), patrimonyNumber: await nextAssetPatrimonyNumber(tx), name: item.name, categoryId: item.categoryId, status: item.status, description: "Exemplo demonstrativo do ciclo patrimonial com equipamento plausível. Valores e ocorrências de referência.", serialNumber: `REV2026-${String(index + 1).padStart(4, "0")}`, acquisitionDate: new Date("2026-06-15T12:00:00Z"), incorporationDate: new Date("2026-06-15T12:00:00Z"), acquisitionValue: item.value, currentValue: item.value, acquisitionValueDecimal: new Decimal(item.value), currentValueDecimal: new Decimal(item.value), departmentId: department.id, responsibleId: actor.employeeId, budgetUnitId: budgetUnit.id });
         newAssets++;
       }
       const totals = { extraMaterials, newStocks, normalizedAssetCodes, normalizedRequestCodes, newAssets };

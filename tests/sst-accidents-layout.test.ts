@@ -96,9 +96,9 @@ test("cron secret and real provider configuration fail closed; HTTP sends use id
   assert.equal(restrictionCronAuthorized(`Bearer ${secret}`,secret),true);
   assert.equal(restrictionCronAuthorized("Bearer wrong",secret),false);
   assert.equal(restrictionCronAuthorized("Bearer short","short"),false);
-  assert.throws(()=>configuredRestrictionEmailSender({}),/Configure/);
+  assert.throws(()=>configuredRestrictionEmailSender({NODE_ENV:"test"}),/Configure/);
   let called=0;
-  const env={SST_RESTRICTION_EMAIL_PROVIDER:"RESEND",RESEND_API_KEY:"test-key",SST_RESTRICTION_EMAIL_FROM:"sst@example.invalid"};
+  const env={NODE_ENV:"test" as const,SST_RESTRICTION_EMAIL_PROVIDER:"RESEND",RESEND_API_KEY:"test-key",SST_RESTRICTION_EMAIL_FROM:"sst@example.invalid"};
   const send=configuredRestrictionEmailSender(env,async (url,init)=>{called++;assert.equal(url,"https://api.resend.com/emails");assert.equal((init!.headers as Record<string,string>)["Idempotency-Key"],"sst-restriction/outbox");const body=JSON.parse(String(init!.body));assert.deepEqual(body.to,["responsible@example.invalid"]);return Response.json({id:"actual-provider-response"});});
   assert.deepEqual(await send({to:"responsible@example.invalid",subject:"Vencimento",text:"Consulte a ficha autorizada",idempotencyKey:"outbox"}),{receipt:"actual-provider-response"});
   assert.equal(called,1);

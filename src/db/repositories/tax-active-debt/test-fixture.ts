@@ -33,7 +33,7 @@ export async function createActiveDebtDrizzleFixture() {
     await db.execute(sql`INSERT INTO "Tax" (id,name,"taxType","updatedAt") VALUES ('tax','Tributo DA','Imposto',CURRENT_TIMESTAMP)`);
     await db.execute(sql`INSERT INTO "RealEstate" (id,"municipalInsc","streetName",number,"taxpayerId","updatedAt") VALUES ('property','IM-DA','Rua da Memória','10','payer',CURRENT_TIMESTAMP)`);
     await db.execute(sql`INSERT INTO "EconomicRegistration" (id,"municipalInsc","taxpayerId","updatedAt") VALUES ('registration','EC-DA','payer',CURRENT_TIMESTAMP)`);
-    const actor: ActiveDebtActor = { usuarioId: "ana", employeeId: "debt-employee", allowedBudgetUnitIds: ["ug"] };
+    const actor = { usuarioId: "ana", employeeId: "debt-employee", allowedBudgetUnitIds: ["ug"] } satisfies ActiveDebtActor;
     async function assessment(id: string, amount = "100.00", extra: Partial<typeof taxAssessments.$inferInsert> = {}) {
       return (await db.insert(taxAssessments).values({ id, year: 2026, originalValue: Number(amount), originalValueDecimal: new Decimal(amount), finalValueDecimal: new Decimal(amount), taxId: "tax", taxpayerId: "payer", status: "Lançado", calculationSnapshot: { governmentEntityId: "ente", budgetUnitId: "ug" }, ...extra }).returning())[0];
     }

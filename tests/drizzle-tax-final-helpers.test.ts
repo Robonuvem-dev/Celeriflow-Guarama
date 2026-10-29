@@ -22,6 +22,7 @@ import { taxScopeSnapshot as object } from "../src/lib/tributacao/scope";
 import { inspectHrMigrations, hrMigrationSelection } from "../scripts/deploy-hr-migrations";
 import { inspectCemeteryMigrations } from "../scripts/deploy-cemetery-migrations";
 import { loadMigrationSet } from "../scripts/database-migrate-files.mjs";
+import { prepareMigrationSql } from "../scripts/database-migrate-sql.mjs";
 import { runDatabaseMigrations } from "../scripts/database-migrate-core.mjs";
 import { openMigrationConnection } from "../scripts/database-migrate-driver.mjs";
 import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
@@ -84,6 +85,7 @@ async function fixture() {
     const url = f.connection.pool.options.connectionString; assert.ok(url);
     migrationConnection = await openMigrationConnection(url);
     const replay = await runDatabaseMigrations(migrationConnection, set, { command: "replay" });
+    assert.ok(replay);
     assert.equal(replay.result, "PASS");
     await f.database.exec(`
       INSERT INTO "ConfiguracaoPerfil" (id,codigo,nome,permissoes,"updatedAt") VALUES ('tf-profile','TF_OPERATOR','Tributação','{}',CURRENT_TIMESTAMP),('tf-admin-profile','SYSTEM_ADMINISTRATOR','Administrador','{}',CURRENT_TIMESTAMP) ON CONFLICT (codigo) DO NOTHING;
@@ -291,10 +293,22 @@ test("Tax final helpers: real scoped subjects, balances, files, worker, seed and
       }
       assert.equal((await inspectCemeteryMigrations(c, set)).migrations.length, 2);
       assert.equal((await inspectCemeteryMigrations(c, set, true)).execution, "SQL_AUTHORITY_NOOP");
-      const lfSet: MigrationInspectionSet = { ...set, migrations: set.migrations.map((migration: { historical: boolean; checksum: string; lfChecksum: string }) => ({ ...migration, checksum: migration.historical ? migration.lfChecksum : migration.checksum })) };
+      const lfSet: MigrationInspectionSet = { ...set, migrations: set.migrations.map(migration => ({ ...migration, checksum: migration.historical ? migration.lfChecksum : migration.checksum })) };
       assert.equal((await inspectCemeteryMigrations(c, lfSet, true)).execution, "SQL_AUTHORITY_NOOP");
       const futureSql = 'CREATE TABLE "tf_wrapper_must_not_apply" (id text PRIMARY KEY)';
-      const future = { name: "20990101000000_tax_final_future", source: "db/migrations/20990101000000_tax_final_future/migration.sql", historical: false, checksum: sha(futureSql), lfChecksum: sha(futureSql), executionSql: futureSql };
+      const futureName = "20990101000000_tax_final_future";
+      const future = {
+        name: futureName,
+        source: `db/migrations/${futureName}/migration.sql`,
+        historical: false,
+        checksum: sha(futureSql),
+        lfChecksum: sha(futureSql),
+        byteVariants: [sha(futureSql)],
+        provenance: null,
+        classification: null,
+        historicalProof: null,
+        ...prepareMigrationSql(futureSql, { name: futureName }),
+      } satisfies MigrationInspectionSet["migrations"][number];
       const pendingSet: MigrationInspectionSet = { ...set, migrations: [...set.migrations, future], future: [...set.future, future] };
       assert.equal((await inspectCemeteryMigrations(c, pendingSet)).migrations[0].state, "APPLIED_CHECKSUM_VERIFIED");
       await assert.rejects(inspectCemeteryMigrations(c, pendingSet, true), /npm run db:migrate:deploy explicitamente/);

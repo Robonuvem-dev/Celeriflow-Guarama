@@ -32,7 +32,7 @@ test("bootstrap TEST real: reset público, replay de 156 históricos e SQLs futu
   const { db } = fixture.connection;
   const url = fixture.connection.pool.options.connectionString;
   assert.ok(url);
-  const environment = { TEST_DATABASE_URL: url };
+  const environment: NodeJS.ProcessEnv = { NODE_ENV: "test", TEST_DATABASE_URL: url };
   try {
     await fixture.database.exec("CREATE TABLE public.bootstrap_reset_sentinel (id text PRIMARY KEY); INSERT INTO public.bootstrap_reset_sentinel VALUES ('disposable-test-only'); CREATE SCHEMA bootstrap_external; CREATE TABLE bootstrap_external.dependant (id text REFERENCES public.bootstrap_reset_sentinel(id));");
     await t.test("reset não alcança outro schema e reverte a tentativa recusada", async () => {

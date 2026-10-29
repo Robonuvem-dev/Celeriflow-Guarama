@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Decimal } from "../src/db/decimal";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
 import { approveExpenseRequest, createExpenseRequest, createBudgetReservation, createCommitment, createSettlement, cancelSettlement, createRevenue, createPayment, updatePaymentStatus, reversePayment } from "../src/lib/financeiro";
 import { accountPayrollProvision } from "../src/lib/rh/provision-accounting";
@@ -25,9 +26,9 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
   try {
     await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
     await db.insert(payrolls).values({ id: "payroll-provision", competence: "03/2026" });
-    await db.insert(hrPayrollRuns).values({ id: "run-provision", payrollId: "payroll-provision", requestKey: "provision-run", mode: "OFICIAL", scope: "PRODUCAO", status: "FECHADA", ruleSetId: "rules", snapshot: {}, gross: 10, deductions: 0, net: 10, employer: 0, actorId: "ana" });
-    await db.insert(hrEmploymentContracts).values({ id: "contract-provision", employeeId: "servidora-ana", registration: "PROV-001", regimeId: "regime", roleId: "cargo", workLocation: "Sede", admittedAt: new Date("2026-01-01"), salary: 1000, details: {} });
-    const origin = await requiredPersonnelRow(db.insert(hrRightEntries).values({ contractId: "contract-provision", sourceKey: "origin-provision", kind: "PROVISAO_13", periodStart: new Date("2026-03-01"), periodEnd: new Date("2026-03-31T23:59:59.999Z"), quantity: 1, amount: 2, actorId: "ana", details: { operation: "APROPRIACAO", scope: "PRODUCAO", runId: "run-provision", competence: "03/2026" } }).returning());
+    await db.insert(hrPayrollRuns).values({ id: "run-provision", payrollId: "payroll-provision", requestKey: "provision-run", mode: "OFICIAL", scope: "PRODUCAO", status: "FECHADA", ruleSetId: "rules", snapshot: {}, gross: new Decimal("10"), deductions: new Decimal("0"), net: new Decimal("10"), employer: new Decimal("0"), actorId: "ana" });
+    await db.insert(hrEmploymentContracts).values({ id: "contract-provision", employeeId: "servidora-ana", registration: "PROV-001", regimeId: "regime", roleId: "cargo", workLocation: "Sede", admittedAt: new Date("2026-01-01"), salary: new Decimal("1000"), details: {} });
+    const origin = await requiredPersonnelRow(db.insert(hrRightEntries).values({ contractId: "contract-provision", sourceKey: "origin-provision", kind: "PROVISAO_13", periodStart: new Date("2026-03-01"), periodEnd: new Date("2026-03-31T23:59:59.999Z"), quantity: new Decimal("1"), amount: new Decimal("2"), actorId: "ana", details: { operation: "APROPRIACAO", scope: "PRODUCAO", runId: "run-provision", competence: "03/2026" } }).returning());
     const context = { ...f.reviewer, database: db } as unknown as AppContext;
     const input = { entryId: origin.id, budgetUnitId: "ug", expenseAccountId: "debito", liabilityAccountId: "credito", date: "2026-03-31", reason: "Apropriação municipal do décimo terceiro" };
     const accounted = await accountPayrollProvision(connection, context, input);
@@ -39,7 +40,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     await approveExpenseRequest(connection, f.financeReviewer, expense.id);
     const reservation = await createBudgetReservation(connection, f.financeReviewer, { number: "PROV-RES", date, value: 2, appropriationId: f.appropriationId, expenseId: expense.id });
     const commitment = await createCommitment(connection, f.financeReviewer, { number: "PROV-EMP", date, value: 2, type: "Ordinário", history: "Pagamento do décimo terceiro provisionado", appropriationId: f.appropriationId, supplierId: "fornecedor", reservationId: reservation.id });
-    const consumed = await requiredPersonnelRow(db.insert(hrRightEntries).values({ contractId: origin.contractId, sourceKey: "reserved-provision", kind: origin.kind, periodStart: origin.periodStart, periodEnd: origin.periodEnd, quantity: 0, amount: -2, actorId: "ana", details: { operation: "BAIXA_EMPENHO", scope: "PRODUCAO", commitmentId: commitment.id, appropriationEntryId: origin.id } }).returning());
+    const consumed = await requiredPersonnelRow(db.insert(hrRightEntries).values({ contractId: origin.contractId, sourceKey: "reserved-provision", kind: origin.kind, periodStart: origin.periodStart, periodEnd: origin.periodEnd, quantity: new Decimal("0"), amount: new Decimal("-2"), actorId: "ana", details: { operation: "BAIXA_EMPENHO", scope: "PRODUCAO", commitmentId: commitment.id, appropriationEntryId: origin.id } }).returning());
     const settlementInput = { date, value: 2, commitmentId: commitment.id, documentId: "documento-fiscal", documentRef: "Décimo terceiro", authorId: "servidora-ana" };
     const before = (await db.select({ count: count() }).from(accountingTransactions))[0].count;
     await f.pg.exec(`CREATE FUNCTION fail_provision_release() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."eventType"='PROVISOES_BAIXADAS_LIQUIDACAO' THEN RAISE EXCEPTION 'injected provision failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_provision_release BEFORE INSERT ON "HrIntegrationEvent" FOR EACH ROW EXECUTE FUNCTION fail_provision_release();`);
@@ -91,7 +92,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     for (const event of activeRelease) assert.equal((event.payload as { rows: Array<{ amount: string }> }).rows[0].amount, "1.00");
     await cancelSettlement(connection, f.financeReviewer, partialOne.id);
     await cancelSettlement(connection, f.financeReviewer, partialTwo.id);
-    await db.insert(hrRightEntries).values({ contractId: origin.contractId, sourceKey: "restored-provision", kind: origin.kind, periodStart: origin.periodStart, periodEnd: origin.periodEnd, quantity: 0, amount: 2, actorId: context.user.id, details: { operation: "ESTORNO_BAIXA", scope: "PRODUCAO", appropriationEntryId: origin.id, originalEntryId: consumed.id, commitmentId: commitment.id } });
+    await db.insert(hrRightEntries).values({ contractId: origin.contractId, sourceKey: "restored-provision", kind: origin.kind, periodStart: origin.periodStart, periodEnd: origin.periodEnd, quantity: new Decimal("0"), amount: new Decimal("2"), actorId: context.user.id, details: { operation: "ESTORNO_BAIXA", scope: "PRODUCAO", appropriationEntryId: origin.id, originalEntryId: consumed.id, commitmentId: commitment.id } });
     const actor = { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: ["ug"] };
     const reversalInput = { entryId: origin.id, reason: "Estorno fundamentado da apropriação patrimonial" };
     const reversed = await reversePayrollProvision(connection, context.user.id, reversalInput, actor);
@@ -99,14 +100,14 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     assert.equal((await db.select({ count: count() }).from(accountingTransactions).where(eq(accountingTransactions.reversalOfId, accounted.transactionId)))[0].count, 1);
     assert.equal((await requiredPersonnelRow(db.select().from(hrIntegrationEvents).where(eq(hrIntegrationEvents.sourceKey, `CONTABIL:PROVISAO:${origin.id}`)))).status, "ESTORNADA");
     await db.insert(accountingPlans).values([{ id: "employer-vpd", code: "ISOLATED.EMPLOYER.D", name: "VPD encargo da fixture", type: "Despesa" }, { id: "employer-liability", code: "ISOLATED.EMPLOYER.C", name: "Passivo encargo da fixture", type: "Passivo" }]);
-    const vacation = await requiredPersonnelRow(db.insert(hrRightEntries).values({ contractId: origin.contractId, sourceKey: "vacation-with-employer", kind: "PROVISAO_FERIAS", periodStart: origin.periodStart, periodEnd: origin.periodEnd, quantity: 1, amount: 2, actorId: "ana", details: { operation: "APROPRIACAO", scope: "PRODUCAO", runId: "run-provision", competence: "03/2026", memory: { remuneration: "1.50", employer: "0.50", total: "2.00" } } }).returning());
+    const vacation = await requiredPersonnelRow(db.insert(hrRightEntries).values({ contractId: origin.contractId, sourceKey: "vacation-with-employer", kind: "PROVISAO_FERIAS", periodStart: origin.periodStart, periodEnd: origin.periodEnd, quantity: new Decimal("1"), amount: new Decimal("2"), actorId: "ana", details: { operation: "APROPRIACAO", scope: "PRODUCAO", runId: "run-provision", competence: "03/2026", memory: { remuneration: "1.50", employer: "0.50", total: "2.00" } } }).returning());
     await assert.rejects(accountPayrollProvision(connection, context, { ...input, entryId: vacation.id }), /encargos patronais/i);
     const vacationPosting = await accountPayrollProvision(connection, context, { ...input, entryId: vacation.id, employerExpenseAccountId: "employer-vpd", employerLiabilityAccountId: "employer-liability" });
     const vacationEntries = await db.select().from(accountingEntries).where(eq(accountingEntries.transactionId, vacationPosting.transactionId));
     assert.equal(vacationEntries.length, 4);
     assert.equal(vacationEntries.find((entry) => entry.accountId === "employer-vpd")!.valueDecimal!.toFixed(2), "0.50");
     assert.equal(vacationEntries.find((entry) => entry.accountId === "debito")!.valueDecimal!.toFixed(2), "1.50");
-    await db.insert(hrRightEntries).values({ contractId: vacation.contractId, sourceKey: "reserved-vacation", kind: vacation.kind, periodStart: vacation.periodStart, periodEnd: vacation.periodEnd, quantity: 0, amount: -2, actorId: "ana", details: { operation: "BAIXA_EMPENHO", scope: "PRODUCAO", commitmentId: commitment.id, appropriationEntryId: vacation.id } });
+    await db.insert(hrRightEntries).values({ contractId: vacation.contractId, sourceKey: "reserved-vacation", kind: vacation.kind, periodStart: vacation.periodStart, periodEnd: vacation.periodEnd, quantity: new Decimal("0"), amount: new Decimal("-2"), actorId: "ana", details: { operation: "BAIXA_EMPENHO", scope: "PRODUCAO", commitmentId: commitment.id, appropriationEntryId: vacation.id } });
     const wages = await createSettlement(connection, f.financeReviewer, { ...settlementInput, value: "1.50" });
     const charges = await createSettlement(connection, f.financeReviewer, { ...settlementInput, value: "0.50" });
     const chargeEvent = await requiredPersonnelRow(db.select().from(hrIntegrationEvents).where(eq(hrIntegrationEvents.sourceKey, `CONTABIL:PROVISAO:BAIXA:${charges.id}`)));
@@ -122,8 +123,8 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     await cancelSettlement(connection, f.financeReviewer, charges.id);
     await cancelSettlement(connection, f.financeReviewer, revisedWages.id);
     const vacationReservation = await requiredPersonnelRow(db.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, "reserved-vacation")));
-    await db.insert(hrRightEntries).values({ contractId: vacation.contractId, sourceKey: "restored-vacation", kind: vacation.kind, periodStart: vacation.periodStart, periodEnd: vacation.periodEnd, quantity: 0, amount: 2, actorId: "ana", details: { operation: "ESTORNO_BAIXA", scope: "PRODUCAO", originalEntryId: vacationReservation.id, appropriationEntryId: vacation.id, commitmentId: commitment.id } });
-    await db.insert(hrPayrollStatements).values({ runId: "run-provision", contractId: vacation.contractId, snapshot: {}, gross: "1.50", deductions: 0, net: "1.50", employer: "0.50" });
+    await db.insert(hrRightEntries).values({ contractId: vacation.contractId, sourceKey: "restored-vacation", kind: vacation.kind, periodStart: vacation.periodStart, periodEnd: vacation.periodEnd, quantity: new Decimal("0"), amount: new Decimal("2"), actorId: "ana", details: { operation: "ESTORNO_BAIXA", scope: "PRODUCAO", originalEntryId: vacationReservation.id, appropriationEntryId: vacation.id, commitmentId: commitment.id } });
+    await db.insert(hrPayrollStatements).values({ runId: "run-provision", contractId: vacation.contractId, snapshot: {}, gross: new Decimal("1.50"), deductions: new Decimal("0"), net: new Decimal("1.50"), employer: new Decimal("0.50") });
     const employerExpense = await createExpenseRequest(connection, f.actor, { date, description: "Encargos da folha de férias", value: "0.50", appropriationId: f.appropriationId, supplierId: "fornecedor", secretariatId: "secretaria", sourceModule: "RH", sourceType: "PAYROLL_RUN", sourceId: "run-provision", eventType: "FOLHA_FECHADA", idempotencyKey: "employer-expense" });
     await approveExpenseRequest(connection, f.financeReviewer, employerExpense.id);
     const employerReservation = await createBudgetReservation(connection, f.financeReviewer, { number: "EMPLOYER-RES", date, value: "0.50", appropriationId: f.appropriationId, expenseId: employerExpense.id });

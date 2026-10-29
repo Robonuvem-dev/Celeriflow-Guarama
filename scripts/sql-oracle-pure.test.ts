@@ -17,7 +17,7 @@ test("physical SQL values retain UTC, exact Decimal/bigint, NULL and opaque JSON
   const numeric = sqlOracleValue(1700, "9007199254740993.01");
   assert.ok(numeric instanceof Decimal);
   assert.equal(numeric.toString(), "9007199254740993.01");
-  assert.equal(sqlOracleValue(20, "9007199254740993"), 9007199254740993n);
+  assert.equal(sqlOracleValue(20, "9007199254740993"), BigInt("9007199254740993"));
   assert.equal(sqlOracleValue(1114, null), null);
   assert.equal(sqlOracleValue(1700, null), null);
   const json = { when: "2026-10-28T00:00:00.000Z", number: "9007199254740993.01", nested: [null] };

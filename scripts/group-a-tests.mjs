@@ -4,9 +4,10 @@ import { existsSync } from "node:fs";
 const groupATestRoots = [
   "tests",
   "src/lib",
+  "scripts",
 ];
 
-const groupATestPattern = /^(?:tests|src\/lib)\/.*\.(?:test|spec)\.(?:[cm]?[jt]sx?)$/;
+const groupATestPattern = /^(?:tests|src\/lib|scripts)\/.*\.(?:test|spec)\.(?:[cm]?[jt]sx?)$/;
 
 export function findGroupATests() {
   // Include new tests before staging, with the same selection in local and CI

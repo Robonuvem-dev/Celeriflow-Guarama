@@ -22,7 +22,7 @@ async function main() {
   if (!entry || entry.compressed > 20000000 || entry.uncompressed > 50000000) throw new Error("Planilha de avaliações não localizada ou acima do limite.");
   const local = await bytes(entry.offset, entry.offset + 29), start = entry.offset + 30 + local.readUInt16LE(26) + local.readUInt16LE(28), compressed = await bytes(start, start + entry.compressed - 1), data = entry.method === 8 ? inflateRawSync(compressed) : compressed;
   if (data.length !== entry.uncompressed) throw new Error("Tamanho da planilha divergente.");
-  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(data);
+  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(Uint8Array.from(data).buffer);
   for (const sheet of workbook.worksheets) {
     const headers: string[] = []; sheet.getRow(1).eachCell((cell, index) => { headers[index] = cell.text; });
     sheet.eachRow((row, index) => { if (index === 1) return; const values: Record<string, string> = {}; row.eachCell((cell, column) => { values[headers[column] || String(column)] = cell.text; }); if (Object.values(values).some(value => /\bIbema\b/i.test(value))) console.log(JSON.stringify({ source: url, cycle: 2025, row: values })); });

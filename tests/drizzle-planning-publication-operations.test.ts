@@ -59,6 +59,12 @@ function hasMessage(pattern: RegExp) {
   };
 }
 
+function requiredRow<T>(rows: readonly T[]): T {
+  const row = rows[0];
+  assert.ok(row);
+  return row;
+}
+
 test("publication physical: full 156 SQL history, Neon/Drizzle, independent SQL evidence and transaction origin", { timeout: 240_000 }, async t => {
   // Dynamic imports keep the pure selection free of PGlite, application services
   // and historical replay. The only database is this isolated local transport.
@@ -82,12 +88,13 @@ test("publication physical: full 156 SQL history, Neon/Drizzle, independent SQL 
     modulePermissions: ["PLANEJAMENTO", "TRANSPARENCIA", "CAMARA"].map(code => ({ code, canView: true, canEdit: true })), allowedBudgetUnitIds: ["po-unit-a", "po-restricted"], employeeId: null, departmentId: null, secretariatId: null,
   } };
   const narrow = { ...context, user: { ...context.user, allowedBudgetUnitIds: ["po-unit-a"] } };
-  const rows = async (text: string, params: unknown[] = []) => (await postgres.query(text, params)).rows;
-  const artifact = async (snapshotId: string, format = "CSV") => (await rows('SELECT * FROM "PlanningReportPublication" WHERE "snapshotId"=$1 AND format=$2', [snapshotId, format]))[0];
-  const eventTypes = async (id: unknown) => (await rows('SELECT type FROM "PlanningPublicationEvent" WHERE "publicationId"=$1 ORDER BY "createdAt",id', [id])).map(row => row.type).sort();
+  const rows = async <T = Record<string, unknown>>(text: string, params: unknown[] = []) => (await postgres.query<T>(text, params)).rows;
+  type ArtifactRow = { id: string; status: string; kind: string; attempts: number; leaseToken: string | null; lastError: string | null; reason: string; requestedById: string; publicKey: string; publishedAt: string | null; withdrawnAt: string | null };
+  const artifact = async (snapshotId: string, format = "CSV") => (await rows<ArtifactRow>('SELECT * FROM "PlanningReportPublication" WHERE "snapshotId"=$1 AND format=$2', [snapshotId, format]))[0];
+  const eventTypes = async (id: unknown) => (await rows<{ type: string }>('SELECT type FROM "PlanningPublicationEvent" WHERE "publicationId"=$1 ORDER BY "createdAt",id', [id])).map(row => row.type).sort();
   const preserve = async () => {
     const tables = ["PlanningInstrument", "MultiYearPlan", "BudgetGuideline", "AnnualBudgetLaw", "PlanningBudgetLine", "PlanningLineMovement", "PlanningVersion", "PlanningReportSnapshot", "PlanningIntegrationCommand", "BudgetAppropriation", "BudgetMovement", "AccountingTransaction", "AccountingEntry", "InternalControlEvent", "FinancialAuditLog"];
-    return Object.fromEntries(await Promise.all(tables.map(async table => [table, (await rows(`SELECT md5(COALESCE(jsonb_agg(to_jsonb(t) ORDER BY id),'[]'::jsonb)::text) AS hash FROM "${table}" t`))[0].hash])));
+    return Object.fromEntries(await Promise.all(tables.map(async table => [table, requiredRow(await rows<{ hash: string }>(`SELECT md5(COALESCE(jsonb_agg(to_jsonb(t) ORDER BY id),'[]'::jsonb)::text) AS hash FROM "${table}" t`)).hash])));
   };
   const snapshot = async (id: string, instrumentId = "po-ppa-a", options: { filters?: object; hash?: string; at?: string } = {}) => {
     const filters = { instrumentIds: instrumentId, type: "REVENUE", asOf: "2026-09-30", snapshotUnitIds: ["po-unit-a"], ...options.filters };
@@ -161,7 +168,7 @@ test("publication physical: full 156 SQL history, Neon/Drizzle, independent SQL 
       const record = await artifact("po-main"); assert.equal(record.status, "PUBLISHED"); assert.equal(record.kind, "REVIEW_COPY"); assert.equal(record.attempts, 1); assert.equal(record.leaseToken, null); assert.equal(record.lastError, null);
       assert.equal(record.reason, input.reason); assert.equal(record.requestedById, context.user.id);
       assert.deepEqual(await eventTypes(published.id), ["ARCHIVE_REQUESTED", "PUBLISHED"]);
-      const events = await rows('SELECT payload FROM "PlanningPublicationEvent" WHERE "publicationId"=$1', [published.id]); assert.ok(events.every(row => (row.payload as { datasetHash: string }).datasetHash === datasetHash));
+      const events = await rows<{ payload: { datasetHash: string } }>('SELECT payload FROM "PlanningPublicationEvent" WHERE "publicationId"=$1', [published.id]); assert.ok(events.every(row => row.payload.datasetHash === datasetHash));
       const privateFile = await publication.readPlanningArchivedFile(context, "po-main", "CSV", stored.storage); assert.ok(privateFile);
       const publicFile = await publication.readPlanningPublishedFile(db, String(record.publicKey), stored.storage); assert.deepEqual(publicFile, privateFile); assert.equal(publicFile.hash, sha(publicFile.bytes));
       assert.match(new TextDecoder().decode(publicFile.bytes), /90071992547409.91/);
@@ -283,8 +290,8 @@ test("publication physical: full 156 SQL history, Neon/Drizzle, independent SQL 
       const listed = await publication.listPlanningPublications(db, { year: 2025, entity: "po_%", page: 999 }); assert.equal(listed.total, 21); assert.equal(listed.page, 2); assert.equal(listed.records[0].url, "/api/transparencia/planejamento/po-page-20-key"); assert.equal(listed.records[0].publishedAt, instant);
       assert.equal((await publication.listPlanningPublications(db, { year: 2025, entity: "' OR true --" })).total, 0);
       assert.equal((await publication.listPlanningPublications(db, { year: 2025, entity: "not_%" })).total, 0);
-      const oracle = (await rows('SELECT "originalValue"::text AS money,"physicalTarget"::text AS physical FROM "PlanningBudgetLine" WHERE id=\'po-line\''))[0]; assert.equal(oracle.money, "90071992547409.91"); assert.equal(oracle.physical, "12345678901234.1234");
-      const preserved = (await rows('SELECT dataset,hash FROM "PlanningReportSnapshot" WHERE id=\'po-main\''))[0]; assert.deepEqual(preserved.dataset, dataset); assert.equal(preserved.hash, datasetHash);
+      const oracle = requiredRow(await rows<{ money: string; physical: string }>('SELECT "originalValue"::text AS money,"physicalTarget"::text AS physical FROM "PlanningBudgetLine" WHERE id=\'po-line\'')); assert.equal(oracle.money, "90071992547409.91"); assert.equal(oracle.physical, "12345678901234.1234");
+      const preserved = requiredRow(await rows<{ dataset: unknown; hash: string }>('SELECT dataset,hash FROM "PlanningReportSnapshot" WHERE id=\'po-main\'')); assert.deepEqual(preserved.dataset, dataset); assert.equal(preserved.hash, datasetHash);
       await assert.rejects(withDatabaseTransaction(connection, async tx => {
         await tx.execute(sql`ALTER TABLE "PlanningReportPublication" RENAME TO "po_temporarily_unavailable"`);
         assert.deepEqual(await publication.listPlanningPublications(tx, { page: 999 }), { total: 0, page: 1, records: [] });

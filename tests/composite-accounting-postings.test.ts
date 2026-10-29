@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { and, count, eq } from "drizzle-orm";
+import { Decimal } from "../src/db/decimal";
 import { accountingComponents, accountingEntries, accountingPlans, accountingTransactions } from "../src/db/schema/finance-accounting";
 import { financialYears } from "../src/db/schema/finance-years";
 import { payments } from "../src/db/schema/finance-payments";
@@ -48,7 +49,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       const entries = (id: string) => db.select().from(accountingEntries).where(eq(accountingEntries.transactionId, id));
       assert.equal((await entries(commitmentPosting.id)).length, 4);
       for (const type of ["Reforço", "Anulação"] as const) await createCommitmentMovement(connection, f.actor, { commitmentId: commitment.id, date: new Date("2026-09-01"), type, value: "0.25", justification: "Ajuste fundamentado do saldo" });
-      await db.insert(retentionRules).values({ id: "retention", code: "IRRF-COMP", type: "IRRF", description: "Retenção municipal de ensaio", beneficiaryName: "Ente municipal", calculationBasePercentage: 100, ratePercentage: 20, financialYearId: "ano", effectiveFrom: new Date("2026-01-01"), isActive: true });
+      await db.insert(retentionRules).values({ id: "retention", code: "IRRF-COMP", type: "IRRF", description: "Retenção municipal de ensaio", beneficiaryName: "Ente municipal", calculationBasePercentage: new Decimal("100"), ratePercentage: new Decimal("20"), financialYearId: "ano", effectiveFrom: new Date("2026-01-01"), isActive: true });
       const settlement = await createSettlement(connection, f.actor, { date: new Date("2026-09-02"), value: "2.25", commitmentId: commitment.id, authorId: "servidora-ana", documentId: "documento-fiscal", retentionRuleIds: ["retention"] });
       const date = new Date("2026-09-03");
       const payment = await createPayment(connection, f.actor, { orderNumber: "OP-COMP", date, value: "2.25", commitmentId: commitment.id, settlementId: settlement.id, bankAccountId: "banco", supplierId: "fornecedor", paymentMethod: "Transferência" });

@@ -10,7 +10,8 @@ import { accountingTransactions } from "../src/db/schema/finance-accounting";
 import { budgetReservations, commitments } from "../src/db/schema/finance-budget";
 import { financialDocuments } from "../src/db/schema/finance-documents";
 import { expenses } from "../src/db/schema/finance-expenses";
-import { payments, treasuryMovements } from "../src/db/schema/finance-payments";
+import { payments } from "../src/db/schema/finance-payments";
+import { reconciliationTreasuryMovements as treasuryMovements } from "../src/db/schema/finance-reconciliation";
 import { Decimal } from "../src/db/decimal";
 import { requiredPersonnelRow } from "./helpers/personnel-financial-regression-queries";
 

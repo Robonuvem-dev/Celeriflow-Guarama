@@ -1,8 +1,8 @@
-# Homologação HTTP autenticada — preparo entregue ao parent
+# Homologação HTTP autenticada — script versionável entregue ao parent
 
 ## Estado em 2026-10-28
 
-**Script preparado; homologação autenticada ainda NÃO executada.** Arquivo: `.agent/drizzle-final-homologation.mjs`.
+**Script publicado em `scripts/drizzle-final-homologation.mjs`; homologação autenticada ainda NÃO executada nesta frente.** A cópia foi criada via patch a partir da leitura integral de `.agent/drizzle-final-homologation.mjs`, preservado como histórico local. Apenas o caminho exibido em `--help` mudou no script; ambos os diretórios estão no mesmo nível, portanto `../` continua resolvendo a raiz e seu `package.json`.
 
 O parent informou preflight read-only PASS: conta Firebase existente, ativa e com e-mail verificado; um Usuário Neon ativo, perfil ativo `SYSTEM_ADMINISTRATOR`, UID coincidente. Essa evidência é do parent; esta frente não repetiu consultas de identidade, autenticação, HTTP, CRUD, acesso remoto ou abertura de browser/servidor.
 
@@ -18,7 +18,7 @@ $env:CELERIFLOW_PUBLIC_BASE_URL = "http://localhost:3309"
 npm run start -- --hostname localhost --port 3309
 
 # Homologação completa solicitada: sessão, 20 domínios e um CRUD reversível
-node .agent/drizzle-final-homologation.mjs --origin=http://localhost:3309 --crud
+node scripts/drizzle-final-homologation.mjs --origin=http://localhost:3309 --crud
 ```
 
 `--origin` é obrigatório. Allowlist exata:
@@ -109,13 +109,15 @@ Pesquisa encontrou um contrato HTTP dedutível e limitado, portanto o CRUD foi i
 
 Essas actions alteram apenas o cadastro e revalidam páginas; não executam pagamentos, envio de e-mail, notificações, movimentos de estoque ou vinculação de outros registros. O script usa exatamente os guards existentes. As actions desse catálogo não inserem auditoria administrativa própria; a entrega não inventa essa garantia.
 
-Contrato Next **16.2.12 instalado**, conferido antes da implementação:
+Contrato revisto com Next **16.4.3 instalado** (`node_modules/next/package.json`), atualizando a pesquisa anterior feita em 16.2.12. A revisão local de guias e implementação não encontrou diferença que exija alterar o protocolo do script; isso não constitui execução ou validação runtime:
 
 - guias `node_modules/next/dist/docs/01-app/02-guides/forms.md` e `server-actions.md`;
 - `next/dist/server/lib/server-action-request-meta.js`: native actions **multipart**, não URL-encoded;
 - `next/dist/server/app-render/action-handler.js`: `decodeAction(formData, serverModuleMap)`, bind preservado e redirect nativo 303;
 - `next/dist/compiled/react-server-dom-webpack/...client.node.production.js`: `defaultEncodeFormAction`, `$ACTION_ID_`, `$ACTION_REF_`, metadata prefixada e `multipart/form-data`;
 - `next/dist/client/components/router-reducer/reducers/server-action-reducer.js`: fetch POST de action com `Next-Action`, `Accept: text/x-component` e encoder `encodeReply`.
+
+O entry point `next/dist/compiled/react-server-dom-webpack/client.node.js` continua selecionando a implementação Node por `NODE_ENV`, com export `encodeReply`. O manifesto tipado em `next/dist/build/webpack/plugins/flight-client-entry-plugin.d.ts` mantém `node`/`edge`, workers e os metadados opcionais `exportedName`/`filename` usados pela resolução fail-closed. O reducer também envia estado de router para atualização da UI; o script não reproduz hydration/navegação, conferindo o efeito por GETs independentes. Para o argumento escalar de exclusão (`[ownId]`), não são necessárias referências temporárias de objetos. Campos bound continuam copiados opacos, e o handler conserva `decodeAction` multipart e redirect nativo `SeeOther` (303).
 
 O script resolve três IDs **no momento da execução** pelo manifesto `.next/server/server-reference-manifest.json`, com nome exportado, arquivo e worker exatos. Criação: GET do formulário real, um `$ACTION_ID_<id>` conferido com o manifesto, cópia dos hidden fields e POST multipart para a mesma URL. Edição: GET da URL do ID encontrado, conferência dos valores originais e cópia **verbatim** dos campos `$ACTION_REF_`/`$ACTION_*` e dos argumentos bound. Não há reconstrução de closures; eventual material criptografado permanece opaco.
 
@@ -138,8 +140,10 @@ Se a resposta de criação for ambígua e o registro não for encontrado nas tr�
 
 ## Verificação local desta frente
 
-- `node --check .agent/drizzle-final-homologation.mjs`: **PASS**, após a revisão final.
-- `node node_modules/eslint/bin/eslint.js .agent/drizzle-final-homologation.mjs --max-warnings=0`: **PASS**, zero erros/warnings.
+- `node --check scripts/drizzle-final-homologation.mjs`: **PASS**, exit code 0.
+- `node node_modules/eslint/bin/eslint.js scripts/drizzle-final-homologation.mjs --max-warnings=0`: **PASS**, zero erros/warnings, exit code 0.
+- `node scripts/drizzle-final-homologation.mjs --help`: **PASS**, exit code 0, com o comando versionável; esse caminho não carrega ambiente, artefatos ou SDKs nem inicia HTTP/autenticação.
+- Comparação local com o original via `git diff --no-index`: única diferença no script é o caminho exibido em `--help`; contratos, sanitização, allowlist e cleanup permanecem idênticos.
 - HTTP, emissão/exchange de token, sessão, audit read, CRUD, servidor, browser, PGlite, typecheck e build: **não executados nesta frente**.
 
 A entrega prepara o procedimento; não é evidência de homologação autenticada PASS. O parent deve registrar o JSON sanitizado e o resultado depois do build final e da execução efetiva.

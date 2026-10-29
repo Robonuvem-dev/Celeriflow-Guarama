@@ -33,12 +33,12 @@ async function setup() {
     await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
     const actor = { ...f.actor, allowedBudgetUnitIds: ["ug", "ug-restrita"] };
     await db.insert(costCenters).values({ id: "centro-folha", code: "FOLHA", name: "Centro da folha", governmentEntityId: "ente", secretariatId: "secretaria" });
-    for (const id of ["vinculo-1", "vinculo-2"]) await db.insert(hrEmploymentContracts).values({ id, employeeId: "servidora-ana", registration: id, regimeId: "regime", roleId: "cargo", costCenterId: "centro-folha", workLocation: "LOCAL_FECHADO", admittedAt: new Date("2020-01-01"), salary: "15.00", details: {} });
-    await db.insert(payrolls).values({ id: "folha", competence: "09/2026", type: "Mensal", status: "Fechada", totalValueDecimal: "30.00" });
-    await db.insert(hrPayrollRuns).values({ id: "run", payrollId: "folha", requestKey: "run-costs", ruleSetId: "regras", mode: "OFICIAL", scope: "PRODUCAO", status: "FECHADA", gross: "30.00", deductions: "0", net: "30.00", employer: "6.00", actorId: "ana", snapshot: {} });
+    for (const id of ["vinculo-1", "vinculo-2"]) await db.insert(hrEmploymentContracts).values({ id, employeeId: "servidora-ana", registration: id, regimeId: "regime", roleId: "cargo", costCenterId: "centro-folha", workLocation: "LOCAL_FECHADO", admittedAt: new Date("2020-01-01"), salary: new Decimal("15.00"), details: {} });
+    await db.insert(payrolls).values({ id: "folha", competence: "09/2026", type: "Mensal", status: "Fechada", totalValueDecimal: new Decimal("30.00") });
+    await db.insert(hrPayrollRuns).values({ id: "run", payrollId: "folha", requestKey: "run-costs", ruleSetId: "regras", mode: "OFICIAL", scope: "PRODUCAO", status: "FECHADA", gross: new Decimal("30.00"), deductions: new Decimal("0"), net: new Decimal("30.00"), employer: new Decimal("6.00"), actorId: "ana", snapshot: {} });
     await db.insert(hrPayrollStatements).values([
-      { id: "stmt-1", runId: "run", contractId: "vinculo-1", gross: "15.00", deductions: "0", net: "15.00", employer: "3.00", snapshot: snapshot("vinculo-1", [{ code: "SALARIO_BASE", value: "10.00" }, { code: "GRATIFICACAO", value: "5.00" }]) },
-      { id: "stmt-2", runId: "run", contractId: "vinculo-2", gross: "15.00", deductions: "0", net: "15.00", employer: "3.00", snapshot: snapshot("vinculo-2", [{ code: "SALARIO_BASE", value: "15.00" }]) },
+      { id: "stmt-1", runId: "run", contractId: "vinculo-1", gross: new Decimal("15.00"), deductions: new Decimal("0"), net: new Decimal("15.00"), employer: new Decimal("3.00"), snapshot: snapshot("vinculo-1", [{ code: "SALARIO_BASE", value: "10.00" }, { code: "GRATIFICACAO", value: "5.00" }]) },
+      { id: "stmt-2", runId: "run", contractId: "vinculo-2", gross: new Decimal("15.00"), deductions: new Decimal("0"), net: new Decimal("15.00"), employer: new Decimal("3.00"), snapshot: snapshot("vinculo-2", [{ code: "SALARIO_BASE", value: "15.00" }]) },
     ]);
     const expense = await createExpenseRequest(financeTransport.connection, f.actor, { date, value: "30.00", description: "Folha individual", appropriationId: f.appropriationId, supplierId: "fornecedor", secretariatId: "secretaria", sourceModule: "RH", sourceType: "PAYROLL_RUN", sourceId: "run", eventType: "FOLHA_FECHADA", idempotencyKey: "payroll-cost-expense" });
     await approveExpenseRequest(financeTransport.connection, f.financeReviewer, expense.id);
@@ -135,7 +135,7 @@ test("provisão: reconhecimento nativo gera verbas individuais e estorno exige d
   const f = await setup();
   try {
     await f.database.update(accountingPlans).set({ code: "3.1.1.1.1.01.00" }).where(eq(accountingPlans.id, "debito"));
-    const origin = await requiredPersonnelRow(f.database.insert(hrRightEntries).values({ contractId: "vinculo-1", sourceKey: "cost-provision", kind: "PROVISAO_13", periodStart: new Date("2026-01-01"), periodEnd: new Date("2026-12-31"), quantity: 1, amount: "0.03", actorId: "ana", details: { operation: "APROPRIACAO", scope: "PRODUCAO", runId: "run", statementId: "stmt-1", competence: "09/2026", memory: { base: "15.00", remuneration: "0.03", employer: "0.00", total: "0.03", items: [{ code: "SALARIO_BASE", type: "PROVENTO", value: "10.00" }, { code: "GRATIFICACAO", type: "PROVENTO", value: "5.00" }] } } }).returning());
+    const origin = await requiredPersonnelRow(f.database.insert(hrRightEntries).values({ contractId: "vinculo-1", sourceKey: "cost-provision", kind: "PROVISAO_13", periodStart: new Date("2026-01-01"), periodEnd: new Date("2026-12-31"), quantity: new Decimal("1"), amount: new Decimal("0.03"), actorId: "ana", details: { operation: "APROPRIACAO", scope: "PRODUCAO", runId: "run", statementId: "stmt-1", competence: "09/2026", memory: { base: "15.00", remuneration: "0.03", employer: "0.00", total: "0.03", items: [{ code: "SALARIO_BASE", type: "PROVENTO", value: "10.00" }, { code: "GRATIFICACAO", type: "PROVENTO", value: "5.00" }] } } }).returning());
     const context = { ...f.reviewer, database: f.database } as unknown as AppContext;
     const input = { entryId: origin.id, budgetUnitId: "ug", expenseAccountId: "debito", liabilityAccountId: "credito", date: "2026-09-30", reason: "Reconhecimento da provisão com custo individual" };
     const posted = await accountPayrollProvision(f.financeConnection, context, input);

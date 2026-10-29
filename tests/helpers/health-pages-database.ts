@@ -19,6 +19,7 @@ export async function createHealthPagesDatabase() {
     assert.ok(url);
     authority = await openMigrationConnection(url);
     const replay = await runDatabaseMigrations(authority, set, { command: "replay" });
+    assert.ok(replay);
     assert.equal(replay.result, "PASS");
     await authority.close(); authority = undefined;
     await fixture.connection.pool.query(`

@@ -20,7 +20,7 @@ export async function countTaxRows(database: DatabaseExecutor, table: string, pr
   return firstTaxRow(result.rows).total;
 }
 
-export async function readTaxChainRecord<T extends Record<string, unknown>>(database: DatabaseExecutor, query: SQL): Promise<T> {
+export async function readTaxChainRecord<T extends Record<string, unknown>>(database: DatabaseExecutor, query: SQL) {
   return firstTaxRow((await database.execute<T>(query)).rows);
 }
 

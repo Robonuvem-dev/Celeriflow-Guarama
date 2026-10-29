@@ -29,6 +29,7 @@ async function fixture() {
     const url = f.connection.pool.options.connectionString; assert.ok(url);
     authority = await openMigrationConnection(url);
     const replay = await runDatabaseMigrations(authority, set, { command: "replay" });
+    assert.ok(replay);
     assert.equal(replay.result, "PASS");
     await authority.close(); authority = undefined;
     // Nominal statements follow original SQL, independently of runtime mappings.

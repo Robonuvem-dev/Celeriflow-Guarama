@@ -129,13 +129,13 @@ test("Planning execution operations: original SQL, real executor and immutable l
     });
 
     await t.test("exact cents agree with an independent integer oracle, including large values and UTC dates", () => {
-      for (const cents of [5n, 10001n, 12345678901234567n]) {
-        const weights = Array.from({ length: 12 }, (_, index) => BigInt(index + 1)), sum = 78n;
+      for (const cents of [BigInt("5"), BigInt("10001"), BigInt("12345678901234567")]) {
+        const weights = Array.from({ length: 12 }, (_, index) => BigInt(index + 1)), sum = BigInt("78");
         const floors = weights.map(weight => cents * weight / sum), remainders = weights.map(weight => cents * weight % sum);
-        const extra = Number(cents - floors.reduce((total, value) => total + value, 0n));
+        const extra = Number(cents - floors.reduce((total, value) => total + value, BigInt("0")));
         const winners = [...weights.keys()].sort((a, b) => Number(remainders[b] - remainders[a]) || a - b).slice(0, extra);
         const expected = floors.map((value, at) => (value + BigInt(winners.includes(at))));
-        const total = `${cents / 100n}.${String(cents % 100n).padStart(2, "0")}`;
+        const total = `${cents / BigInt("100")}.${String(cents % BigInt("100")).padStart(2, "0")}`;
         assert.deepEqual(distributePlanningMonths(total, weights.map(String)).map(value => BigInt(value.mul(100).toFixed(0))), expected);
       }
       assert.deepEqual(distributePlanningMonths("0.05", Array<string>(12).fill("1")).map(value => value.toFixed(2)), [...Array<string>(5).fill("0.01"), ...Array<string>(7).fill("0.00")]);

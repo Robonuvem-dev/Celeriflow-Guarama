@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Decimal } from "../src/db/decimal";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
 import { requestTravelAllowance, decideTravelAllowance, accountForTravelAllowance, buildTravelAllowanceDocument, reopenTravelAllowanceReport } from "../src/lib/rh/travel-allowance";
 import { dispatchTravelAllowanceExpense } from "../src/lib/rh/travel-finance";
@@ -46,7 +47,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     await db.insert(people).values({ id: "pessoa-ana", fullName: "Ana Paula Martins", cpf: "12345678909" });
     await db.update(employees).set({ personId: "pessoa-ana", name: "Ana Paula Martins" }).where(eq(employees.id, "servidora-ana"));
     await db.update(suppliers).set({ companyId: null, personId: "pessoa-ana" }).where(eq(suppliers.id, "fornecedor"));
-    const contract = await requiredPersonnelRow(db.insert(hrEmploymentContracts).values({ id: "travel-contract", employeeId: "servidora-ana", registration: "DIARIA-001", regimeId: "travel-regime", roleId: "cargo", costCenterId: "travel-center", workLocation: "Sede", admittedAt: new Date("2026-01-01"), salary: 1000, details: {} }).returning());
+    const contract = await requiredPersonnelRow(db.insert(hrEmploymentContracts).values({ id: "travel-contract", employeeId: "servidora-ana", registration: "DIARIA-001", regimeId: "travel-regime", roleId: "cargo", costCenterId: "travel-center", workLocation: "Sede", admittedAt: new Date("2026-01-01"), salary: new Decimal("1000"), details: {} }).returning());
     await db.insert(hrEmploymentRevisions).values({ contractId: contract.id, version: 1, effectiveFrom: contract.admittedAt, actorId: "ana", reason: "Vínculo municipal inicial", snapshot: JSON.parse(JSON.stringify(contract)) });
     const input = { requestKey: "municipal-trip", contractId: contract.id, ruleId: "travel-policy", budgetUnitId: "ug", destination: "Capacitação regional", destinationType: "INTERIOR", departureAt: "2026-09-01T07:00:00-03:00", returnAt: "2026-09-01T18:00:00-03:00", distanceKm: "100", overnight: "NAO", purpose: "Capacitação de servidores municipais" };
     const request = await requestTravelAllowance(connection, "ana", input, context);
@@ -206,7 +207,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
     assert.equal((await requiredPersonnelRow(db.select().from(hrIntegrationEvents).where(eq(hrIntegrationEvents.sourceKey, `ADIANTAMENTO:REVISAO:${advance.id}`)))).status, "ESTORNADA");
     assert.equal((await requiredPersonnelRow(db.select().from(hrIntegrationEvents).where(eq(hrIntegrationEvents.sourceKey, `ADIANTAMENTO:PRESTACAO:${advance.id}`)))).status, "ESTORNADA");
     await assert.rejects(requestMunicipalAdvance(connection, context, { ...advanceInput, requestKey: "after-reversal-advance" }), /pendente/);
-    await cancelSettlement(connection, f.financeReviewer, advanceSettlement.id, "Cancelamento da liquidação após estorno do pagamento");
+    await cancelSettlement(connection, f.financeReviewer, advanceSettlement.id);
     await cancelCommitment(connection, f.financeReviewer, advanceCommitment.commitmentId);
     assert.equal((await requiredPersonnelRow(db.select().from(hrPortalRequests).where(eq(hrPortalRequests.id, advance.id)))).status, "CANCELADA");
     const nextAdvance = await requestMunicipalAdvance(connection, context, { ...advanceInput, requestKey: "regularized-new-advance" });

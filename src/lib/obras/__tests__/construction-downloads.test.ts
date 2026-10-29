@@ -18,6 +18,7 @@ import { auditEvents } from "@/db/schema/audit";
 import { findActiveConstructionPortalIdentity, findConstructionCaseForAccess, findConstructionCaseForPortal } from "@/db/repositories/infrastructure/construction-access";
 import { createAssetsFixture } from "@/lib/patrimonio/__tests__/drizzle-fixture";
 import type { AppContext } from "@/lib/platform/tenant-context";
+import { Decimal } from "@/db/decimal";
 import { assertConstructionGedSignature } from "../construction-documents-service";
 import { assertConstructionProjectStampDownload, findConstructionProjectStampByFile, getConstructionProjectStamp, listConstructionProjectStamps, publishConstructionProjectStamp, stampConstructionApprovedProject } from "../construction-project-stamp";
 import { resolveConstructionComplementArtifact } from "../construction-document-downloads";
@@ -44,14 +45,19 @@ test("Construção: habilitação vigente, ACL, carimbo transacional e download 
     assert.equal(await findActiveConstructionPortalIdentity(db, principal, new Date("2026-10-28T00:00:00Z")), null);
     await db.update(people).set({ status: "Ativo" }).where(eq(people.id, "person"));
     await db.insert(processes).values({ id: "process", protocolNumber: "CIV/2026/1", processTypeId: "type", subjectId: "subject", status: "Em Análise", currentDepartmentId: "department", personId: "person" });
-    await db.insert(core.constructionCases).values({ id: "case", requestKey: randomUUID(), processId: "process", configurationId: "config", category: "BUILDING", locationType: "URBAN", catalogSnapshot: {}, existingArea: "0", expandedArea: "100.0001", irregularArea: "0", renovationArea: "0", demolitionArea: "0", totalArea: "100.0001", calculationSnapshot: {}, createdBy: "actor", reviewStatus: "APPROVED" });
+    await db.insert(core.constructionCases).values({ id: "case", requestKey: randomUUID(), processId: "process", configurationId: "config", category: "BUILDING", locationType: "URBAN", catalogSnapshot: {}, existingArea: new Decimal("0"), expandedArea: new Decimal("100.0001"), irregularArea: new Decimal("0"), renovationArea: new Decimal("0"), demolitionArea: new Decimal("0"), totalArea: new Decimal("100.0001"), calculationSnapshot: {}, createdBy: "actor", reviewStatus: "APPROVED" });
     await db.insert(core.constructionParticipants).values({ caseId: "case", identityId: "identity", role: "TECHNICAL", reason: "Vínculo", createdBy: "actor", startsAt: new Date("2030-01-01T00:00:00Z") });
     assert.ok(await findConstructionCaseForPortal(db, "case", "identity"), "ACL legado não filtra startsAt");
     assert.equal(await findConstructionCaseForPortal(db, "case", "other"), null);
     const access = { administrator: false, employeeId: "employee", departmentId: "department", roles: ["MANAGER"] };
     assert.equal(await findConstructionCaseForAccess(db, "case", { ...access, departmentId: "other" }), null);
     assert.equal(await findConstructionCaseForAccess(db, "case", { ...access, roles: [] }), null);
-    const context = { user: { id: "actor", employeeId: "employee", departmentId: "department" } } as AppContext;
+    const context: AppContext = { user: {
+      id: "actor", firebaseUid: "actor-uid", email: "actor@example.invalid", name: "Gestor",
+      role: "Gestor", profileCode: "CONSTRUCTION_TEST", permissions: "{}",
+      modulePermissions: [{ code: "OBRAS", canView: true, canEdit: true }], allowedBudgetUnitIds: [],
+      employeeId: "employee", departmentId: "department", secretariatId: null,
+    } };
     await fixture.pg.exec(`INSERT INTO "Department" (id,name) VALUES ('department','Engenharia'); INSERT INTO "Employee" (id,"departmentId") VALUES ('employee','department');`);
     await db.insert(accessProfiles).values({ id: "profile", codigo: "CONSTRUCTION_TEST", nome: "Gestor", permissoes: "{}" });
     await db.insert(users).values({ id: "actor", nome: "Gestor", email: "actor@example.invalid", perfilId: "profile", employeeId: "employee" });

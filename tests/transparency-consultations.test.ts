@@ -84,7 +84,7 @@ test("remuneração usa competência, não data de admissão; diária conserva u
 test("arquivos PDF/XLSX/DOCX/TXT são binários reais e contêm o conjunto completo",async()=>{
  const dataset=exampleTransparencyDataset(collection,query);
  const pdf=await renderTransparencyFile(collection,dataset,query,"pdf");assert.equal(pdf.bytes.subarray(0,5).toString(),"%PDF-");
- const xlsx=await renderTransparencyFile(collection,dataset,query,"xlsx");assert.equal(xlsx.bytes.subarray(0,2).toString(),"PK");const {default:ExcelJS}=await import("exceljs");const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(xlsx.bytes);assert.equal(workbook.getWorksheet("Consulta")!.rowCount,181);
+ const xlsx=await renderTransparencyFile(collection,dataset,query,"xlsx");assert.equal(xlsx.bytes.subarray(0,2).toString(),"PK");const {default:ExcelJS}=await import("exceljs");const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(Uint8Array.from(xlsx.bytes).buffer);assert.equal(workbook.getWorksheet("Consulta")!.rowCount,181);
  const docx=await renderTransparencyFile(collection,dataset,query,"docx");assert.equal(docx.bytes.subarray(0,2).toString(),"PK");
  const txt=await renderTransparencyFile(collection,dataset,query,"txt");assert.ok(txt.bytes.toString().includes("180 registros"));
  assert.deepEqual(Buffer.from(await new Response(byteStream(pdf.bytes)).arrayBuffer()),pdf.bytes);

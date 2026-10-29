@@ -149,7 +149,11 @@ async function apply(connection, migrations, offset) {
   return applied;
 }
 
-export async function runDatabaseMigrations(connection, set, { command, baselineCatalog, baselineManifestDigest, statementTimeoutMs = 300_000, lockTimeoutMs = 10_000 } = {}) {
+/**
+ * @param {{ command?: "plan" | "adopt" | "baseline" | "replay" | "deploy", baselineCatalog?: object, baselineManifestDigest?: string, statementTimeoutMs?: number, lockTimeoutMs?: number }} [options]
+ */
+export async function runDatabaseMigrations(connection, set, options = {}) {
+  const { command, baselineCatalog, baselineManifestDigest, statementTimeoutMs = 300_000, lockTimeoutMs = 10_000 } = options;
   if (!["plan", "adopt", "baseline", "replay", "deploy"].includes(command)) throw new Error("Expected plan, adopt, baseline, replay or deploy");
   if (baselineManifestDigest !== undefined && !["plan", "baseline"].includes(command)) throw new Error("Explicit baseline manifest digest is only valid for plan/baseline");
   for (const value of [statementTimeoutMs, lockTimeoutMs]) if (!Number.isSafeInteger(value) || value <= 0) throw new Error("Migration timeouts must be positive safe integer milliseconds");

@@ -37,7 +37,7 @@ test("Diagnostics · complete mappings match independent installed catalog", () 
       assert.ok(physical, fk.getName());
       assert.ok(normalize(physical.definition).includes(normalize(`FOREIGN KEY (${reference.columns.map(column => column.name).join(",")}) REFERENCES ${getTableConfig(reference.foreignTable).name}(${reference.foreignColumns.map(column => column.name).join(",")})`)));
       for (const [kind, action] of [["DELETE", fk.onDelete], ["UPDATE", fk.onUpdate]]) {
-        const installed = physical.definition.match(new RegExp(`ON ${kind} (CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)`))?.[1] ?? "NO ACTION";
+        const installed: string = physical.definition.match(new RegExp(`ON ${kind} (CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)`))?.[1] ?? "NO ACTION";
         assert.equal((action ?? "no action").toUpperCase(), installed, fk.getName());
       }
       foreignKeysChecked++;

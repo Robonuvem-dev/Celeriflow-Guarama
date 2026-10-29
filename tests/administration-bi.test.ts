@@ -38,7 +38,7 @@ test("Excel, CSV e Power BI preservam somente a secretaria selecionada e os tipo
   assert.match(datasetCsv({ name: "Safety", columns: ["nome"], rows: [["=HYPERLINK(\"https://invalid.example\")"]] }), /'=HYPERLINK/);
   const excel = await exportAdministrationBi(data, "xlsx");
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(excel.body));
+  await workbook.xlsx.load(Uint8Array.from(excel.body).buffer);
   assert.equal(workbook.getWorksheet("Secretarias")?.rowCount, 2);
   assert.equal(workbook.getWorksheet("Secretarias")?.getCell("H2").value, 20);
   const powerbi = await exportAdministrationBi(data, "powerbi");

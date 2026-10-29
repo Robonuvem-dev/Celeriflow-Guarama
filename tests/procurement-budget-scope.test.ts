@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { eq } from "drizzle-orm";
+import { Decimal } from "../src/db/decimal";
 import { createProcurementWorkflowFixture } from "./helpers/procurement-workflow-fixture";
 import { approvePurchaseRequest, approvePurchaseReceipt, createPurchaseProcessFromApprovedRequests } from "../src/lib/compras/procurement-lifecycle";
 import { purchaseRequests, purchaseRequestItems, purchaseRequestBudgetAllocations, procurementLifecycleEvents } from "../src/db/schema/procurement-requests";
@@ -16,7 +17,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       const other = { ...authorized, allowedBudgetUnitIds: ["ug-restrita"] };
       const [request] = await db.insert(purchaseRequests).values({ number: "SUP-2026-001", object: "Material de expediente", justification: "Reposição administrativa", secretariatId: "secretaria", departmentId: "setor", requesterId: "servidora-ana", estimatedValue: 10 }).returning();
       const [item] = await db.insert(purchaseRequestItems).values({ purchaseRequestId: request.id, customName: "Papel A4", materialId: "papel", quantity: 1, estimatedUnitValue: 10 }).returning();
-      await db.insert(purchaseRequestBudgetAllocations).values({ purchaseRequestItemId: item.id, budgetAppropriationId: f.appropriationId, quantity: 1, valueDecimal: "10" });
+      await db.insert(purchaseRequestBudgetAllocations).values({ purchaseRequestItemId: item.id, budgetAppropriationId: f.appropriationId, quantity: 1, valueDecimal: new Decimal("10") });
       await assert.rejects(approvePurchaseRequest(f.connection, other, request.id), /unidades gestoras autorizadas/);
       assert.equal((await db.select().from(purchaseRequests).where(eq(purchaseRequests.id, request.id)))[0].status, "Rascunho");
       await assert.rejects(approvePurchaseRequest(f.connection, { ...authorized, employeeId: request.requesterId }, request.id), /própria solicitação/);

@@ -78,3 +78,52 @@ Esses checks não afirmam login HTTP real nem cobertura integral dos SDKs; build
 6. **XML e relatórios:** Mammoth/DOCX com namespaces, tabelas e acentos; XML malformado e limites; roundtrip XLSX, ZIP/globs, CSS/PostCSS/source maps. Rodar `tests/administration-bi.test.ts`, `tests/report-engine.test.ts` e a regressão de transparência. Smoke do CLI shadcn se usado operacionalmente.
 
 Detalhes das APIs, advisories e matriz T1–T8 permanecem em `docs/drizzle-dependency-audit-gate-progress.md`. Nenhuma validação funcional acima é declarada concluída por este handoff.
+
+## Adendo — novo advisory re2js em 28/10/2026
+
+A rodada central encontrou o novo **GHSA-gg6h-894w-4m9c / CVE-2026-116795**, publicado em 28/10/2026: high (CVSS 7.5), DoS quadrático com `LOOKBEHINDS` opt-in combinado a matching repetido (`find`, `matchAll`, `split`, `replaceAll`). O intervalo vulnerável é `>=2.2.0 <2.8.7`; a primeira correção é **2.8.7**. Fonte: <https://github.com/advisories/GHSA-gg6h-894w-4m9c>.
+
+Correção transitiva permitida: **Firebase 12.17.0 → @firebase/firestore 4.17.0 → re2js `^2.8.3`**, resolvendo agora **2.9.1**, sem direto ou override novo. O requisito Node de re2js muda de `>=18.0.0` para `>=20.0.0`, já exigido pelo próprio Firestore e atendido pelo CI Node 22. A release 2.9.1 também corrige declarações de tipos do método `re` da 2.9.0.
+
+### Comando e comparação integral
+
+```powershell
+npm view re2js@2.9.1 version dist.integrity dist.tarball engines dependencies --json
+npm update re2js --package-lock-only --ignore-scripts --no-fund --no-audit
+npm audit --omit=dev --audit-level=high --json
+```
+
+Todos esses comandos terminaram com exit 0. O resolver também mudou `devOptional: true` para `dev: true` nos oito nós já enumerados neste documento. Cada delta foi inspecionado e essas oito mudanças incidentais foram revertidas por patch explícito, preservando a classificação original. A comparação read-only de **todos os 1.150 registros** e dos metadados de topo do lock confirmou **um único nó diferente**, sem adições, remoções ou outros upgrades/downgrades. Comparação linha a linha: somente estas quatro linhas diferem do snapshot imediatamente anterior ao adendo:
+
+```text
+node_modules/re2js.version:   2.8.6 → 2.9.1
+node_modules/re2js.resolved:  https://registry.npmjs.org/re2js/-/re2js-2.8.6.tgz
+                          → https://registry.npmjs.org/re2js/-/re2js-2.9.1.tgz
+node_modules/re2js.integrity: sha512-xLgQil4kIUCrAzVk9fRSkxkFNwmygLFjVxXrLc65aE1F0+Zsb8rxumFBy4XKyvgMCTL6kilDq3EZ0piE2dP/Dg==
+                          → sha512-JIT3bEEUZTOR2YS1walNEIfH4cF/cQeZcBUFq7ldqO6lR6g0X5CBq/S8rsa9omzZcsNf8qc36jCkWpKKtncrZg==
+node_modules/re2js.engines.node: >=18.0.0 → >=20.0.0
+```
+
+`package.json` ficou **byte a byte preservado**, incluindo o novo `typecheck:auxiliary: node scripts/typecheck-auxiliary.mjs` do parent. As comparações com candidato/HEAD e hashes das seções anteriores são evidência histórica da primeira rodada; este adendo registra o estado posterior ao script do parent e à correção re2js.
+
+Audit final read-only: **exit 0; 0 high, 0 critical, 8 moderate** (os mesmos oito listados acima); re2js e sua propagação para Firestore/Firebase não aparecem mais no relatório. Não foi executado `audit fix`.
+
+### Compatibilidade dos consumidores e execução posterior
+
+Validação integrada posterior: `npm ci --no-fund --no-audit` concluiu com 981 pacotes. O smoke abaixo passou contra **re2js 2.9.1 fisicamente instalado**, incluindo full match, substring, Unicode e rejeição de sintaxe inválida. `npm audit --omit=dev --audit-level=high --json` repetido após a instalação: **exit 0, zero high/critical, oito moderate**. Isso valida as APIs de expressão regular consumidas, sem substituir a homologação completa do Firestore.
+
+Inspeção explícita de `node_modules/@firebase/firestore/dist/common-OLC1ri4Q.node.cjs.js:23572–23610`: `CoreLike` usa `RE2JS.compile(regexPattern).matches(value)`; `CoreRegexContains` usa `compile(search).test(value)`; `CoreRegexMatch` usa `compile(search).matches(value)`. São chamadas sem flags, com captura de erro de padrão inválido. As variantes ESM/RN inspecionadas usam as mesmas APIs. Não foram encontrados imports diretos de re2js/RE2JS ou uso de `LOOKBEHINDS` no código do projeto. As declarações publicadas de 2.9.1 preservam `compile(regex: string, flags?: number): RE2JS`, `matches(input): boolean` e `test(input): boolean`, com full match versus substring documentados: <https://unpkg.com/re2js@2.9.1/build/index.d.ts>.
+
+A instalação física continuou em **re2js 2.8.6**; não houve `npm ci`, build, typecheck, testes pesados ou operações git nesta correção. Após o parent instalar o lock final com `npm ci`, executar o smoke abaixo e os checks centrais já previstos; o smoke valida exatamente as APIs consumidas e rejeição de sintaxe inválida, sem rede:
+
+```powershell
+node -e "const a=require('node:assert/strict'),fs=require('node:fs'),p=require('node:path'); const {RE2JS:R}=require('re2js'); a.equal(JSON.parse(fs.readFileSync(p.join(p.dirname(require.resolve('re2js')),'../package.json'),'utf8')).version,'2.9.1'); a.equal(R.compile('^Jo.*.$').matches('João'),true); a.equal(R.compile('abc').matches('xabcx'),false); a.equal(R.compile('abc').test('xabcx'),true); a.equal(R.compile('abc').test('xyz'),false); a.throws(()=>R.compile('[')); console.log('re2js Firestore API smoke OK');"
+npm audit --omit=dev --audit-level=high --json
+```
+
+SHA-256 após o adendo (manifest preservado em relação ao início desta correção):
+
+```text
+package.json       ea3f66e1d3fd5427f4695bfc902cc88097874c5ca7840c3163d55f41274ada39
+package-lock.json  98d4bb533f22b84c1e036b693502618366ca0e232e6e03d88421fb8ddd2e894e
+```

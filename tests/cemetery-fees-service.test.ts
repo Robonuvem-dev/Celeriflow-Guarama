@@ -20,7 +20,7 @@ test("PostgreSQL: versões, fatos imutáveis, responsável real, replay, rollbac
     await db.insert(cemeteryDeceased).values({ id: "deceased", fullName: "Falecido", deathDate: new Date("2026-10-09T00:00:00Z"), cemeteryId: "cemetery", doctorName: "Médico", doctorCrm: "TEST", groups: {}, createdByUsuarioId: "operator" });
     await db.insert(cemeteryProcesses).values({ id: "burial", receiptCode: "R1", processType: "SEPULTAMENTO", status: "SEPULTADO", deceasedId: "deceased", cemeteryId: "cemetery", declarantTaxpayerId: "declarant", scheduledAt: new Date("2026-10-10T12:00:00Z"), performedAt: new Date("2026-10-10T14:00:00Z"), declarantDebtSnapshot: {}, createdByUsuarioId: "operator" });
     await db.insert(financialYears).values({ id: "year", year: 2026, status: "Aberto", startDate: new Date("2026-01-01T00:00:00Z"), endDate: new Date("2026-12-31T23:59:59Z") });
-    const actor = { usuarioId: "operator" };
+    const actor = { usuarioId: "operator", employeeId: null };
     const rule = { cemeteryId: "", eventType: "ACQUISICAO_LOTE", label: "Aquisição", formula: "BASE_X_QUANTIDADE", baseAmount: "10.10", dueDays: 30, taxId: "tax", validFrom: "2026-01-01", validUntil: "", legalBasis: "Lei municipal 123" };
     const first = await publishCemeteryFeeRule(client, actor, rule);
     const input = { eventType: "ACQUISICAO_LOTE", sourceType: "LOTE" as const, sourceId: "lot", quantity: "3" };

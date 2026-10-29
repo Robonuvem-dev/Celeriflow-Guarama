@@ -33,7 +33,7 @@ export async function seedMunicipalTaxCases(connection: DatabaseConnection, appl
               if (JSON.stringify(linked) !== JSON.stringify({ ...assessment, realEstateId: property.id, updatedAt: linked.updatedAt })) throw new Error("Vínculo cadastral alterou campos fora do escopo; transação revertida.");
               await tx.insert(financialAuditLogs).values({ action: "MUNICIPAL_TAX_PROPERTY_LINKED", entityType: "TaxAssessment", entityId: assessment.id, authorUsuarioId: user.id, payload: { fictional: true, before: { realEstateId: null }, after: { realEstateId: property.id }, monetaryValuesPreserved: true, originalSnapshotsPreserved: true } });
             } else if (assessment.realEstateId !== key("property", i)) throw new Error("Imóvel do caso alterado pelo operador; nenhuma substituição automática.");
-            rows.push({ case: caseId, ...data, reused: true }); continue;
+            rows.push({ case: caseId, assessmentId: data.assessmentId, guideId: data.guideId, reused: true }); continue;
           }
           const assessment = await createTaxAssessmentInTransaction(tx, actor, { year: 2026, taxId: "tax_iptu", taxpayerId: key("taxpayer", i), realEstateId: key("property", i), taxableBase: 80000 + i * 3500, rate: "0.5", competence: new Date("2026-10-01T12:00:00Z") });
           const guide = await generateTaxGuideInTransaction(tx, actor, { assessmentId: assessment.id, dueDate: new Date("2026-11-20T12:00:00Z") });

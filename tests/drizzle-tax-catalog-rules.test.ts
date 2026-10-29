@@ -34,8 +34,8 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
   const s3 = await import("../src/lib/tributacao/s3-service");
   const f = await createDrizzleTaxAccountingFixture();
   f.connection.pool.options.max = 1; // PGlite has one backend: queued callers, not multibackend contention proof.
-  const rows = async (sql: string, params: unknown[] = []) => (await f.database.query(sql, params)).rows;
-  const count = async (table: string) => Number((await rows(`SELECT count(*)::int AS n FROM "${table}"`))[0].n);
+  const rows = async <Row>(query: Promise<{ rows: Row[] }>) => (await query).rows;
+  const count = async (table: string) => Number((await rows(f.database.query<{ n: number }>(`SELECT count(*)::int AS n FROM "${table}"`)))[0].n);
   const snapshot = async () => {
     const tables = ["TaxAssessment", "TaxIntegrationEvent", "TaxRegistryEntry", "TaxGuide", "TaxAuditLog", "AccountingTransaction", "AccountingEntry", "ItbiEvent", "ItbiParty", "Document"];
     return Object.fromEntries(await Promise.all(tables.map(async table => [table, await count(table)])));
@@ -66,11 +66,11 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       assert.deepEqual(await snapshot(), before, "assessment + accounting + origin + audit roll back with the caller");
       const [created, replay] = await Promise.all([s2.createParametrizedAssessment(f.connection, f.actor, input), s2.createParametrizedAssessment(f.connection, f.actor, input)]);
       assessmentId = created.id; assert.equal(replay.id, created.id);
-      const [oracle] = await rows('SELECT "originalValueDecimal"::text AS amount,rate::text,"competence"::text,"calculationSnapshot" AS memory FROM "TaxAssessment" WHERE id=$1', [created.id]);
+      const [oracle] = await rows(f.database.query<{ amount: string; rate: string; competence: string; memory: Record<string, unknown> }>('SELECT "originalValueDecimal"::text AS amount,rate::text,"competence"::text,"calculationSnapshot" AS memory FROM "TaxAssessment" WHERE id=$1', [created.id]));
       assert.equal(oracle.amount, "10.00"); assert.equal(oracle.rate, "4.000000");
       assert.equal(databaseTimestamp(String(oracle.competence)).toISOString(), input.competence.toISOString());
       assert.equal(created.competence?.toISOString(), input.competence.toISOString());
-      const memory = oracle.memory as Record<string, unknown>;
+      const memory = oracle.memory;
       assert.equal(memory.legalBasis, "Lei municipal de ensaio"); assert.equal(memory.financialYearId, "ta-year"); assert.equal(memory.fixedValue, null);
       await assert.rejects(s2.createParametrizedAssessment(f.connection, blockedActor, input), /autorizadas/);
       await assert.rejects(s2.createParametrizedAssessment(f.connection, f.actor, { ...input, taxableBase: "251" }), /outros dados/);
@@ -116,7 +116,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       assert.equal((await s2.processCollectionReturn(f.connection, f.actor, returnedInput)).id, returned.id);
       const result = returned.result as Record<string, string>; creditId = result.creditEntryId;
       assert.equal(result.applied, "9.00"); assert.equal(result.excess, "2.00");
-      assert.equal((await rows('SELECT "amountPaidDecimal"::text AS amount FROM "TaxPayment" WHERE "idempotencyKey"=$1', ['BANK_RETURN:cr-return']))[0].amount, "9.00");
+      assert.equal((await rows(f.database.query<{ amount: string }>('SELECT "amountPaidDecimal"::text AS amount FROM "TaxPayment" WHERE "idempotencyKey"=$1', ['BANK_RETURN:cr-return'])))[0].amount, "9.00");
       const reference = await s2.sendAccountingReference(f.connection, f.actor, { sourceType: "ARRECADACAO", sourceId: returned.id, amount: "11", competence: returnedInput.occurredAt });
       assert.equal(reference.status, "PROCESSADO");
       assert.equal((await s2.sendAccountingReference(f.connection, f.actor, { sourceType: "ARRECADACAO", sourceId: returned.id, amount: "11", competence: returnedInput.occurredAt })).id, reference.id);
@@ -137,8 +137,8 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       const requestId = (refund.result as Record<string, string>).movementId;
       await s2.approveRefundRequest(f.connection, f.actor, { requestId, approved: false, reason: "Pedido indeferido" });
       await assert.rejects(s2.approveRefundRequest(f.connection, f.actor, { requestId, approved: false, reason: "Pedido indeferido" }), /pendente/);
-      const [credit] = await rows('SELECT data,status FROM "TaxRegistryEntry" WHERE id=$1', [creditId]);
-      assert.equal((credit.data as Record<string, string>).available, "1.00"); assert.equal(credit.status, "DISPONIVEL");
+      const [credit] = await rows(f.database.query<{ data: Record<string, string>; status: string }>('SELECT data,status FROM "TaxRegistryEntry" WHERE id=$1', [creditId]));
+      assert.equal(credit.data.available, "1.00"); assert.equal(credit.status, "DISPONIVEL");
       const target = await f.assessment("cr-compensated", "1");
       const compensationInput = { creditId, operation: "COMPENSAR" as const, assessmentId: target.id, amount: "1", reason: "Compensação fundamentada", idempotencyKey: "cr-compensate" };
       const compensation = await s2.applyTaxCredit(f.connection, f.actor, compensationInput);
@@ -151,7 +151,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       assert.equal((await s2.getAssessmentAccount(f.db, target.id)).position.balance.toFixed(2), "1.00");
       const agreement = await s2.configureCollectionAgreement(f.connection, f.actor, { code: " cr ", name: "Convênio", bankAccountId: "ta-bank" });
       const next = await s2.configureCollectionAgreement(f.connection, f.actor, { code: "CR", name: "Nova vigência" });
-      assert.equal(next.version, 2); assert.equal((await rows('SELECT status FROM "TaxRegistryEntry" WHERE id=$1', [agreement.id]))[0].status, "SUBSTITUIDO");
+      assert.equal(next.version, 2); assert.equal((await rows(f.database.query<{ status: string }>('SELECT status FROM "TaxRegistryEntry" WHERE id=$1', [agreement.id])))[0].status, "SUBSTITUIDO");
       const reconciliation = await s2.createReconciliation(f.connection, f.actor, { agreementId: "CR", date: new Date("2026-03-01"), paymentTotal: "10.01", remittanceTotal: "10" });
       await assert.rejects(s2.closeReconciliation(f.connection, f.actor, reconciliation.id), /diferença/);
       await s2.resolveReconciliation(f.connection, f.actor, { id: reconciliation.id, adjustment: "0.01", reason: "Diferença saneada" });
@@ -159,7 +159,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       const before = await count("TaxRegistryEntry");
       await f.database.exec(`CREATE FUNCTION cr_fail_agreement() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='CONFIGURE_AGREEMENT' THEN RAISE EXCEPTION 'agreement audit rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER cr_fail_agreement BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION cr_fail_agreement();`);
       await assert.rejects(s2.configureCollectionAgreement(f.connection, f.actor, { code: "CR", name: "Edição revertida" }), /agreement audit rollback/);
-      assert.equal(await count("TaxRegistryEntry"), before); assert.equal((await rows('SELECT status FROM "TaxRegistryEntry" WHERE id=$1', [next.id]))[0].status, "ATIVO");
+      assert.equal(await count("TaxRegistryEntry"), before); assert.equal((await rows(f.database.query<{ status: string }>('SELECT status FROM "TaxRegistryEntry" WHERE id=$1', [next.id])))[0].status, "ATIVO");
       await f.database.exec('DROP TRIGGER cr_fail_agreement ON "TaxAuditLog"; DROP FUNCTION cr_fail_agreement();');
     });
 
@@ -182,21 +182,21 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       assert.equal((await s3.analyzeItbiDeclaration(f.connection, f.actor, { declarationId: rejected.id, approved: false, notes: "Indeferimento fundamentado" })).status, "INDEFERIDA");
       const declaration = await s3.createItbiDeclaration(f.connection, f.actor, input);
       assert.equal(declaration.parties.length, 3); assert.equal(declaration.appliedRate.toFixed(6), "2.123456"); assert.equal(declaration.cadastralUpdateMode, "AUTO_ON_PAYMENT");
-      const [oracle] = await rows('SELECT round("declaredPropertyValue"*"transmittedFraction"/100,2)::text AS base,round(round("declaredPropertyValue"*"transmittedFraction"/100,2)*"appliedRate"/100,2)::text AS tax,"calculationSnapshot" AS memory FROM "ItbiDeclaration" WHERE id=$1', [declaration.id]);
+      const [oracle] = await rows(f.database.query<{ base: string; tax: string; memory: Record<string, unknown> }>('SELECT round("declaredPropertyValue"*"transmittedFraction"/100,2)::text AS base,round(round("declaredPropertyValue"*"transmittedFraction"/100,2)*"appliedRate"/100,2)::text AS tax,"calculationSnapshot" AS memory FROM "ItbiDeclaration" WHERE id=$1', [declaration.id]));
       assert.equal(declaration.taxableBase.toFixed(2), oracle.base); assert.equal(declaration.taxAmount.toFixed(2), oracle.tax);
-      assert.equal((oracle.memory as Record<string, unknown>).valuationMemory, null); assert.equal((oracle.memory as Record<string, unknown>).legalBasis, "Lei ITBI municipal");
+      assert.equal(oracle.memory.valuationMemory, null); assert.equal(oracle.memory.legalBasis, "Lei ITBI municipal");
       await s3.transmitItbiDeclaration(f.connection, f.actor, declaration.id);
-      const before = await snapshot(), historyBefore = await rows('SELECT id FROM "TaxRegistryEntry" WHERE category=\'ITBI_FIELD_HISTORY\' ORDER BY id');
+      const before = await snapshot(), historyBefore = await rows(f.database.query<{ id: string }>('SELECT id FROM "TaxRegistryEntry" WHERE category=\'ITBI_FIELD_HISTORY\' ORDER BY id'));
       await f.database.exec(`CREATE FUNCTION cr_fail_itbi_document() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."documentType"='ITBI' THEN RAISE EXCEPTION 'ITBI GED rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER cr_fail_itbi_document BEFORE INSERT ON "Document" FOR EACH ROW EXECUTE FUNCTION cr_fail_itbi_document();`);
       await assert.rejects(s3.confirmItbiWithDocuments(f.connection, f.actor, { declarationId: declaration.id, notes: "Aprovado" }), /ITBI GED rollback/);
-      assert.deepEqual(await snapshot(), before); assert.deepEqual(await rows('SELECT id FROM "TaxRegistryEntry" WHERE category=\'ITBI_FIELD_HISTORY\' ORDER BY id'), historyBefore);
-      assert.equal((await rows('SELECT status,"assessmentId" FROM "ItbiDeclaration" WHERE id=$1', [declaration.id]))[0].status, "PROTOCOLADA");
+      assert.deepEqual(await snapshot(), before); assert.deepEqual(await rows(f.database.query<{ id: string }>('SELECT id FROM "TaxRegistryEntry" WHERE category=\'ITBI_FIELD_HISTORY\' ORDER BY id')), historyBefore);
+      assert.equal((await rows(f.database.query<{ status: string; assessmentId: string | null }>('SELECT status,"assessmentId" FROM "ItbiDeclaration" WHERE id=$1', [declaration.id])))[0].status, "PROTOCOLADA");
       await f.database.exec('DROP TRIGGER cr_fail_itbi_document ON "Document"; DROP FUNCTION cr_fail_itbi_document();');
       const confirmed = await s3.confirmItbiWithDocuments(f.connection, f.actor, { declarationId: declaration.id, notes: "Aprovado" });
       assert.deepEqual(await s3.confirmItbiWithDocuments(f.connection, f.actor, { declarationId: declaration.id, notes: "Replay" }), confirmed);
       assert.equal((await s3.issueItbiDam(f.connection, f.actor, declaration.id)).id, confirmed.guideId);
       assert.equal((await s3.generateItbiDocument(f.connection, f.actor, declaration.id)).id, confirmed.documentId);
-      assert.equal((await rows('SELECT "taxpayerId" FROM "RealEstate" WHERE id=\'cr-property\''))[0].taxpayerId, "ta-payer", "approval and document emission do not transfer ownership");
+      assert.equal((await rows(f.database.query<{ taxpayerId: string | null }>('SELECT "taxpayerId" FROM "RealEstate" WHERE id=\'cr-property\'')))[0].taxpayerId, "ta-payer", "approval and document emission do not transfer ownership");
     });
 
     await t.test("DTE confirmation/access hashes, event rollback, notices vs reading/ack, UTC deadline/retention and power history", async () => {
@@ -213,7 +213,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       await assert.rejects(s3.validateDteAccessGrant(f.db, { accessCode, authorizedTaxpayerId: "cr-buyer2" }), /inválido/);
       await s3.revokeDteAccessGrant(f.connection, grant.id);
       await assert.rejects(s3.validateDteAccessGrant(f.db, { accessCode, authorizedTaxpayerId: "cr-buyer" }), /revogado/);
-      const [{ id: categoryId }] = await rows('SELECT id FROM "DteCategory" WHERE code=\'AVISO\'');
+      const [{ id: categoryId }] = await rows(f.database.query<{ id: string }>('SELECT id FROM "DteCategory" WHERE code=\'AVISO\''));
       const sendInput = { mailboxIds: [active.id, active.id], categoryId: String(categoryId), subject: "Aviso", body: "Comunicação fiscal", idempotencyBase: "cr-dte" };
       await f.database.exec(`CREATE FUNCTION cr_fail_dte() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'DTE event rollback'; END $$; CREATE TRIGGER cr_fail_dte BEFORE INSERT ON "DteMessageEvent" FOR EACH ROW EXECUTE FUNCTION cr_fail_dte();`);
       await assert.rejects(s3.sendDteMessages(f.connection, f.actor, sendInput), /DTE event rollback/); assert.equal(await count("DteMessage"), 0);
@@ -235,7 +235,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       assert.equal(power.status, "PENDENTE_ACEITE"); assert.equal((await s3.transitionDtePowerOfAttorney(f.connection, f.actor, power.id, "ACEITAR")).status, "ATIVA");
       assert.equal((await s3.transitionDtePowerOfAttorney(f.connection, f.actor, power.id, "REVOGAR")).status, "REVOGADA");
       await assert.rejects(s3.transitionDtePowerOfAttorney(f.connection, f.actor, power.id, "ACEITAR"), /transição/);
-      assert.equal((await rows('SELECT count(*)::int AS n FROM "DtePowerOfAttorneyEvent" WHERE "powerOfAttorneyId"=$1', [power.id]))[0].n, 3);
+      assert.equal((await rows(f.database.query<{ n: number }>('SELECT count(*)::int AS n FROM "DtePowerOfAttorneyEvent" WHERE "powerOfAttorneyId"=$1', [power.id])))[0].n, 3);
     });
   } finally { await f.close(); }
 });
