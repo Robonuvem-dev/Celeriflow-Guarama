@@ -260,7 +260,7 @@ test("Dívida ativa: núcleo S9 e notificações sobre todo o SQL histórico", a
 
     await t.test("cemitério: agendamento, finalização, transferência, replay e rollback do fato gerador", async () => {
       const defaults = await ensureS9Defaults(db, actor);
-      const chapel = await createCemeteryChapel(connection, { cemeteryId: defaults.cemetery.id, name: "Capela", responsibleTaxpayerId: "payer" });
+      const chapel = await createCemeteryChapel(connection, { cemeteryId: defaults.cemetery.id, name: "Capela", personTaxpayerId: "payer", responsibleTaxpayerId: "payer" });
       const lot = await createCemeteryLot(connection, actor, { cemeteryId: defaults.cemetery.id, identifier: "DA-LOT", ownerTaxpayerId: "payer", graveLimit: 2 });
       const otherLot = await createCemeteryLot(connection, actor, { cemeteryId: defaults.cemetery.id, identifier: "DA-OTHER-LOT", ownerTaxpayerId: "payer", graveLimit: 1 });
       const grave = await createGrave(connection, actor, { cemeteryId: defaults.cemetery.id, lotId: lot.id, code: "DA-1", graveType: "COVA", capacity: 1 });

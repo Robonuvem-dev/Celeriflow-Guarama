@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { getPlanningContext } from "@/lib/planejamento/access";
+import { planningConnection } from "@/lib/planejamento/database";
 import { jurisdictionSchema, planningBasePath } from "@/lib/planejamento/policy";
 import { addPlanningAction, addPlanningLine, addPlanningMemory, addPlanningProgram, addPlanningWaiver, configurePlanningEntity, createPlanningInstrument } from "@/lib/planejamento/service";
 import { AccessError } from "@/lib/platform/tenant-context";
@@ -98,8 +99,8 @@ export async function savePlanningRecord(jurisdiction: string, operation: string
       case "waiverSync": id = await synchronizePlanningWaiver(context, clean); break;
       case "annualProjection": id = await projectPlanningAnnualMemory(context, clean); break;
       case "reportLayout": id = await configurePlanningReportLayout(context, clean); break;
-      case "reportPublish": id = (await publishPlanningReport(context, clean)).id; break;
-      case "reportWithdraw": id = await withdrawPlanningPublication(context, clean); break;
+      case "reportPublish": id = (await publishPlanningReport({ ...context, connection: planningConnection(context) }, clean)).id; break;
+      case "reportWithdraw": id = await withdrawPlanningPublication({ ...context, connection: planningConnection(context) }, clean); break;
       case "memory": id = await addPlanningMemory(context, clean); break;
       case "waiver": id = await addPlanningWaiver(context, clean); break;
       case "scope": await configurePlanningEntity(context, clean.governmentEntityId, clean.budgetUnitId); break;

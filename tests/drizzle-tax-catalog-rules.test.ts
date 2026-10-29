@@ -7,6 +7,7 @@ import { databaseTimestamp } from "../src/db/temporal";
 import * as catalogMappings from "../src/db/schema/tax-catalog-rules";
 import * as itbiMappings from "../src/db/schema/tax-itbi";
 import * as dteMappings from "../src/db/schema/taxation-dte";
+import { postgresError } from "./helpers/postgres-assertion";
 
 test("pure catalog rules: complete physical mappings match the independent installed catalog", () => {
   const { catalog } = JSON.parse(readFileSync(new URL("./fixtures/installed-physical-catalog.json", import.meta.url), "utf8")) as { catalog: { columns: { schema: string; table_name: string; name: string; type: string; not_null: boolean }[] } };
@@ -89,7 +90,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       const revision = { assessmentId, imposedValue: "9", reason: "Revisão fundamentada", idempotencyKey: "cr-revision" };
       const before = await snapshot();
       await f.database.exec(`CREATE FUNCTION cr_fail_revision() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='REVISE' THEN RAISE EXCEPTION 'revision audit rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER cr_fail_revision BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION cr_fail_revision();`);
-      await assert.rejects(s2.reviseTaxAssessment(f.connection, f.actor, revision), /revision audit rollback/);
+      await assert.rejects(s2.reviseTaxAssessment(f.connection, f.actor, revision), postgresError("P0001", "revision audit rollback"));
       assert.deepEqual(await snapshot(), before); assert.equal((await s2.getAssessmentAccount(f.db, assessmentId)).position.balance.toFixed(2), "7.00");
       await f.database.exec('DROP TRIGGER cr_fail_revision ON "TaxAuditLog"; DROP FUNCTION cr_fail_revision();');
       const revised = await s2.reviseTaxAssessment(f.connection, f.actor, revision);
@@ -109,7 +110,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       const returnedInput = { guideNumber, amount: "11", occurredAt: new Date("2026-03-01T12:34:56.789Z"), status: "CONFIRMADO" as const, idempotencyKey: "cr-return" };
       const before = await snapshot();
       await f.database.exec(`CREATE FUNCTION cr_fail_return() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='PROCESS_BANK_RETURN' THEN RAISE EXCEPTION 'bank audit rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER cr_fail_return BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION cr_fail_return();`);
-      await assert.rejects(s2.processCollectionReturn(f.connection, f.actor, returnedInput), /bank audit rollback/);
+      await assert.rejects(s2.processCollectionReturn(f.connection, f.actor, returnedInput), postgresError("P0001", "bank audit rollback"));
       assert.deepEqual(await snapshot(), before); assert.equal(await count("TaxPayment"), 0); assert.equal(await count("Revenue"), 0); assert.equal(await count("TreasuryMovement"), 0);
       await f.database.exec('DROP TRIGGER cr_fail_return ON "TaxAuditLog"; DROP FUNCTION cr_fail_return();');
       const returned = await s2.processCollectionReturn(f.connection, f.actor, returnedInput);
@@ -158,13 +159,16 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       const closed = await s2.closeReconciliation(f.connection, f.actor, reconciliation.id); assert.equal(closed.status, "FECHADA");
       const before = await count("TaxRegistryEntry");
       await f.database.exec(`CREATE FUNCTION cr_fail_agreement() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='CONFIGURE_AGREEMENT' THEN RAISE EXCEPTION 'agreement audit rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER cr_fail_agreement BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION cr_fail_agreement();`);
-      await assert.rejects(s2.configureCollectionAgreement(f.connection, f.actor, { code: "CR", name: "Edição revertida" }), /agreement audit rollback/);
+      await assert.rejects(s2.configureCollectionAgreement(f.connection, f.actor, { code: "CR", name: "Edição revertida" }), postgresError("P0001", "agreement audit rollback"));
       assert.equal(await count("TaxRegistryEntry"), before); assert.equal((await rows(f.database.query<{ status: string }>('SELECT status FROM "TaxRegistryEntry" WHERE id=$1', [next.id])))[0].status, "ATIVO");
       await f.database.exec('DROP TRIGGER cr_fail_agreement ON "TaxAuditLog"; DROP FUNCTION cr_fail_agreement();');
     });
 
     await t.test("ITBI parties/six decimals/legal snapshots, debt origin, transmission, approval+DAM+GED rollback and replay", async () => {
-      await f.database.exec(`INSERT INTO "Tax" (id,name,"taxType","updatedAt") VALUES ('cr-itbi','ITBI','Imposto',CURRENT_TIMESTAMP);
+      // Historical migrations may install an ITBI tax; this scenario owns its
+      // explicitly mapped tax and requires exactly one active ITBI candidate.
+      await f.database.exec(`UPDATE "Tax" SET "isActive"=false WHERE lower(name)='itbi';
+        INSERT INTO "Tax" (id,name,"taxType","updatedAt") VALUES ('cr-itbi','ITBI','Imposto',CURRENT_TIMESTAMP);
         INSERT INTO "TaxFinancialMapping" (id,"taxId","revenueNatureId","resourceSourceId","defaultBankAccountId","updatedAt") VALUES ('cr-itbi-map','cr-itbi','ta-nature','ta-source','ta-bank',CURRENT_TIMESTAMP);
         INSERT INTO "ProcessType" (id,name,"updatedAt") VALUES ('cr-process-type','ITBI',CURRENT_TIMESTAMP);
         INSERT INTO "Subject" (id,name,"processTypeId","updatedAt") VALUES ('cr-subject','Transmissão','cr-process-type',CURRENT_TIMESTAMP);
@@ -188,7 +192,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       await s3.transmitItbiDeclaration(f.connection, f.actor, declaration.id);
       const before = await snapshot(), historyBefore = await rows(f.database.query<{ id: string }>('SELECT id FROM "TaxRegistryEntry" WHERE category=\'ITBI_FIELD_HISTORY\' ORDER BY id'));
       await f.database.exec(`CREATE FUNCTION cr_fail_itbi_document() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."documentType"='ITBI' THEN RAISE EXCEPTION 'ITBI GED rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER cr_fail_itbi_document BEFORE INSERT ON "Document" FOR EACH ROW EXECUTE FUNCTION cr_fail_itbi_document();`);
-      await assert.rejects(s3.confirmItbiWithDocuments(f.connection, f.actor, { declarationId: declaration.id, notes: "Aprovado" }), /ITBI GED rollback/);
+      await assert.rejects(s3.confirmItbiWithDocuments(f.connection, f.actor, { declarationId: declaration.id, notes: "Aprovado" }), postgresError("P0001", "ITBI GED rollback"));
       assert.deepEqual(await snapshot(), before); assert.deepEqual(await rows(f.database.query<{ id: string }>('SELECT id FROM "TaxRegistryEntry" WHERE category=\'ITBI_FIELD_HISTORY\' ORDER BY id')), historyBefore);
       assert.equal((await rows(f.database.query<{ status: string; assessmentId: string | null }>('SELECT status,"assessmentId" FROM "ItbiDeclaration" WHERE id=$1', [declaration.id])))[0].status, "PROTOCOLADA");
       await f.database.exec('DROP TRIGGER cr_fail_itbi_document ON "Document"; DROP FUNCTION cr_fail_itbi_document();');
@@ -216,7 +220,7 @@ test("catalog rules physical: original SQL, real Neon/Drizzle, independent SQL r
       const [{ id: categoryId }] = await rows(f.database.query<{ id: string }>('SELECT id FROM "DteCategory" WHERE code=\'AVISO\''));
       const sendInput = { mailboxIds: [active.id, active.id], categoryId: String(categoryId), subject: "Aviso", body: "Comunicação fiscal", idempotencyBase: "cr-dte" };
       await f.database.exec(`CREATE FUNCTION cr_fail_dte() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'DTE event rollback'; END $$; CREATE TRIGGER cr_fail_dte BEFORE INSERT ON "DteMessageEvent" FOR EACH ROW EXECUTE FUNCTION cr_fail_dte();`);
-      await assert.rejects(s3.sendDteMessages(f.connection, f.actor, sendInput), /DTE event rollback/); assert.equal(await count("DteMessage"), 0);
+      await assert.rejects(s3.sendDteMessages(f.connection, f.actor, sendInput), postgresError("P0001", "DTE event rollback")); assert.equal(await count("DteMessage"), 0);
       await f.database.exec('DROP TRIGGER cr_fail_dte ON "DteMessageEvent"; DROP FUNCTION cr_fail_dte();');
       const [message] = await s3.sendDteMessages(f.connection, f.actor, sendInput);
       assert.equal((await s3.sendDteMessages(f.connection, f.actor, sendInput))[0].id, message.id);

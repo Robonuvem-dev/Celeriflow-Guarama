@@ -2,6 +2,15 @@
 
 ## Consolidação final após revisão da `main` — 28/10/2026
 
+### Validação integrada posterior — base `bed3a2b`
+
+- O proprietário publicou as alterações anteriores em `bed3a2b`; esta sessão não executou commit/push. A orientação atual é concluir as verificações locais e entregar o conteúdo ao proprietário para publicação.
+- Gate global repetido: **3.790 fontes, zero acessos/dependências/scripts/nós de lock Prisma**. Conferência física de instalação: ausentes `node_modules/prisma`, `node_modules/@prisma`, `node_modules/.prisma` e `src/lib/prisma.ts`.
+- Typecheck auxiliar completo aprovado: **589 fontes, dez partições, zero diagnósticos/OOM**. Digest das raízes: `cae74562b1ede23df04556d2b4c0ec367c7d51af7625c046bd83157326f87685`. Novas alterações posteriores exigem retestes correspondentes.
+- Build integrado encontrou consumidores tributários passando `Database` onde o wrapper exige `DatabaseConnection` e uma união JSON com propriedades `undefined`. Correções em andamento; esse build **não foi aprovado**.
+- Suíte geral interrompida por timeout de ferramenta após 30 minutos; retomada encontrou falhas fiscais e bloqueio na fixture de inspeção SQL. Logs parciais não são aprovação da suíte. Diagnósticos/fixes estão sendo executados por recortes com resultado explícito.
+- Banco Neon: plano confirmou baseline instalada e somente dois SQLs futuros pendentes. Pré-verificação encontrou **zero chaves de notificação duplicadas**. Aplicação explícita transacional da autoridade SQL concluiu e uma nova conexão lógica de plano confirmou **158 recibos, zero pendências, PASS**. Aplicados `20261028193000_construction_document_rejection` e `20261028193100_notification_recipient_dedupe`; nenhum histórico reexecutado nem baseline repetida. Evidência local em `.next/cache/final-validation/sql-deploy.json`. A diferença de proveniência clínica permanece explícita e não foi reclassificada.
+
 - Base desta rodada: `main` em `aeccb6c`. O proprietário autorizou corrigir as pendências conhecidas antes de uma rodada integrada principal, mantendo apenas checks leves durante a edição. Sem repetir suíte/build a cada handoff.
 - Alterações locais de Saúde já existentes foram preservadas: SISAB, páginas TFD e fixture/teste de readers administrativos. As três frentes atuais têm arquivos exclusivos (oráculos, Aurora Compras, fixtures RH/Planejamento); integração e validação pesada centralizadas.
 - Ajustes centrais: snapshot de `ExpenseNature` volta a carregar `procurementOriginPolicy` físico; leitor de consistência aceita executor de leitura; JSON de versão é validado antes do filtro por UG, preservando campos adicionais. Nenhum DDL novo para esses ajustes.

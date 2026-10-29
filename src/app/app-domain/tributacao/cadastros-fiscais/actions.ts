@@ -2,6 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
+import type { JsonObject } from "@/db/json";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { taxActionContext } from "@/db/repositories/tax-actions/context";
 import { actionFiscalEntityExists, actionProcessExists, actionDocumentExists, actionOriginExists, latestActionRegistryEntry, actionRegistryEntry, insertActionRegistryEntries, reviewActionRegistryEntry, insertActionAudit } from "@/db/repositories/tax-actions/registry";
@@ -283,7 +284,7 @@ export async function registerRedesimEvent(input: {
 
       const currentProfile = registration ? await latestActionRegistryEntry(tx, "ECONOMIC_REGISTRATION", registration.id, "ECONOMIC_PROFILE") : null;
       const recordedOrigin = taxScopeSnapshot(currentProfile?.data);
-      const eventScope = typeof recordedOrigin.governmentEntityId === "string" && typeof recordedOrigin.budgetUnitId === "string" ? { governmentEntityId: recordedOrigin.governmentEntityId, budgetUnitId: recordedOrigin.budgetUnitId } : {};
+      const eventScope: JsonObject = typeof recordedOrigin.governmentEntityId === "string" && typeof recordedOrigin.budgetUnitId === "string" ? { governmentEntityId: recordedOrigin.governmentEntityId, budgetUnitId: recordedOrigin.budgetUnitId } : {};
       const event = await insertActionIntegration(tx, {
           integrationCode: "REDESIM",
           eventType,

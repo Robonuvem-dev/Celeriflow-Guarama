@@ -18,6 +18,7 @@ import { classifyBenefitForAnnualReport, readAnnualTaxSummary } from "../src/lib
 import { issueScheduledAssessmentGuides } from "../src/lib/tributacao/scheduled-guides";
 import { processTaxAnnualCron } from "../src/lib/tributacao/annual-batch-cron";
 import { configureTaxAccountingProfile } from "../src/lib/tributacao/accounting-profile";
+import { postgresError } from "./helpers/postgres-assertion";
 
 test("pure annual: physical mapping agrees with the independent installed catalog; Decimal and Date contracts", () => {
   const { catalog } = JSON.parse(readFileSync(new URL("./fixtures/installed-physical-catalog.json", import.meta.url), "utf8")) as { catalog: { columns: { schema: string; table_name: string; name: string; type: string; not_null: boolean }[] } };
@@ -155,7 +156,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
         const before = await total("AccountingTransaction"), beforePayments = await total("TaxPayment");
         const sequencesBefore = await f.database.query('SELECT year,"documentType","currentValue" FROM "TaxDocumentSequence" ORDER BY year,"documentType"');
         await f.database.exec(`CREATE FUNCTION annual_fail_guide_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='ISSUE_SCHEDULED_TAX_GUIDES' THEN RAISE EXCEPTION 'annual guide audit rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER annual_fail_guide_audit BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION annual_fail_guide_audit();`);
-        await assert.rejects(issueScheduledAssessmentGuides(f.connection, f.actor, input), /annual guide audit rollback/);
+        await assert.rejects(issueScheduledAssessmentGuides(f.connection, f.actor, input), postgresError("P0001", "annual guide audit rollback"));
         assert.equal(await total("TaxGuide", sql`"assessmentId"=${current.id}`), 0);
         assert.equal((await readScheduledAssessment(f.db, current.id)).status, "Lançado");
         assert.deepEqual((await f.database.query('SELECT year,"documentType","currentValue" FROM "TaxDocumentSequence" ORDER BY year,"documentType"')).rows, sequencesBefore.rows, "row sequence increments share the guide/audit rollback");

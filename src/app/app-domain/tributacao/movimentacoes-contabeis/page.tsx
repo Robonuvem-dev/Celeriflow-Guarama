@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { readTaxAccountingMovements, taxAccountingFilters } from "@/lib/tributacao/accounting-movements";
 import PrintMovements from "./PrintMovements";
-import { db } from "@/db/client";
+import { databaseConnection, db } from "@/db/client";
 import { listFiscalPlanningUnits, listFiscalTaxLabels, listFiscalYears } from "@/db/repositories/taxation-pages/lookups";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export default async function TaxAccountingMovementsPage({ searchParams }: { sea
   const filters = parsed.data;
   if (filters.budgetUnitId && !entityUnits.some(unit => unit.budgetUnitId === filters.budgetUnitId)) return <p className="p-5">UG fora do acesso autorizado.</p>;
   let result: Awaited<ReturnType<typeof readTaxAccountingMovements>>;
-  try { result = await readTaxAccountingMovements(database, { allowedBudgetUnitIds }, filters); }
+  try { result = await readTaxAccountingMovements(databaseConnection, { allowedBudgetUnitIds }, filters); }
   catch (error) { return <section className="p-5"><Link href="/tributacao">Tributação</Link><p>{error instanceof Error ? error.message : "Não foi possível consultar as partidas tributárias."}</p></section>; }
   const taxes = await listFiscalTaxLabels(database, "name-id");
   const href = (page: number) => {

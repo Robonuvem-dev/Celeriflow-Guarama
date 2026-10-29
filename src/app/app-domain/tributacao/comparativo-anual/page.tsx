@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { annualComparisonFilters, readAnnualTaxComparison } from "@/lib/tributacao/annual-comparison";
 import PrintMovements from "../movimentacoes-contabeis/PrintMovements";
-import { db } from "@/db/client";
+import { databaseConnection, db } from "@/db/client";
 import { listFiscalPlanningUnits, listFiscalTaxLabels } from "@/db/repositories/taxation-pages/lookups";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export default async function AnnualComparisonPage({ searchParams }: { searchPar
   const parsed = annualComparisonFilters.safeParse({ firstYear: new Date().getFullYear() - 1, secondYear: new Date().getFullYear(), governmentEntityId: entities[0]?.[0], ...raw });
   if (!parsed.success) return <p className="p-4">{parsed.error.issues[0]?.message ?? "Selecione um ente autorizado."}</p>;
   let report: Awaited<ReturnType<typeof readAnnualTaxComparison>>;
-  try { report = await readAnnualTaxComparison(database, { allowedBudgetUnitIds }, parsed.data); } catch (error) { return <p className="p-4">{error instanceof Error ? error.message : "Não foi possível consultar."}</p>; }
+  try { report = await readAnnualTaxComparison(databaseConnection, { allowedBudgetUnitIds }, parsed.data); } catch (error) { return <p className="p-4">{error instanceof Error ? error.message : "Não foi possível consultar."}</p>; }
   const taxes = await listFiscalTaxLabels(database, "name");
   const field = "block w-full rounded border p-1.5 text-xs";
   const query = new URLSearchParams(Object.entries(parsed.data).map(([key, value]) => [key, String(value)]));

@@ -1,7 +1,7 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { ensureTributarioS3Defaults } from "@/lib/tributacao/s3-service";
 import DteClient from "./DteClient";
-import { db } from "@/db/client";
+import { databaseConnection, db } from "@/db/client";
 import { listPageTaxpayers } from "@/db/repositories/taxation-pages/registry";
 import { listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
 import { readDtePage } from "@/db/repositories/taxation-pages/dte";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 function name(item: { person: { fullName: string; cpf: string | null } | null; company: { corporateName: string; cnpj: string } | null }) { return item.company ? `${item.company.corporateName} · ${item.company.cnpj}` : item.person ? `${item.person.fullName} · ${item.person.cpf || "CPF não informado"}` : "Contribuinte sem identificação"; }
 
 export default async function DtePage() {
-  const context = await getTenantContextForModule("TRIBUTACAO"); const database = context.database ?? db; await ensureTributarioS3Defaults(database);
+  const context = await getTenantContextForModule("TRIBUTACAO"); const database = context.database ?? db; await ensureTributarioS3Defaults(databaseConnection);
   const [taxpayers, { mailboxes, categories, messages, powers, documents, accessGrants }, processes] = await Promise.all([
     listPageTaxpayers(database, { active: true, order: "created-desc", limit: 500 }),
     readDtePage(database),

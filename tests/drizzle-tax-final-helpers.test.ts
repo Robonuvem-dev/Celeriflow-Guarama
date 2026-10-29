@@ -15,7 +15,7 @@ import { taxActiveDebts, taxPayments } from "../src/db/schema/tax-accounting";
 import { financialAuditLogs } from "../src/db/schema/finance-identity";
 import { accessProfiles, modules, userBudgetUnits, userModulePermissions, users } from "../src/db/schema/identity";
 import { auditTaxFinal, insertTaxFinalRegistryEntry, taxFinalJson } from "../src/db/repositories/tax-final-helpers/records";
-import { inspectTaxFinalMigrationAuthority, type MigrationInspectionSet } from "../src/db/repositories/tax-final-helpers/migration-inspection";
+import type { MigrationInspectionSet } from "../src/db/repositories/tax-final-helpers/migration-inspection";
 import { readCertificateSubjects, readEconomicRegistrationSubjects, evaluateCertificateInTransaction } from "../src/lib/tributacao/certificate-subjects";
 import { publishSimplesOptionLayout, importSimplesOptionFile, decideSimplesOptionCompany, simplesOptionLayoutSchema } from "../src/lib/tributacao/simples-option-files";
 import { taxScopeSnapshot as object } from "../src/lib/tributacao/scope";
@@ -282,7 +282,7 @@ test("Tax final helpers: real scoped subjects, balances, files, worker, seed and
       assert.deepEqual(await resolveTaxWorkerActor(db, actor.usuarioId), actor);
     });
 
-    await suite.test("HR/Cemetery wrappers inspect read-only, apply only synchronized noop, honor core lock/provenance and block every future SQL", async () => {
+    await suite.test("HR/Cemetery wrappers inspect read-only, apply only synchronized noop, honor provenance and block every future SQL", async () => {
       const { migrationConnection: c, set } = f;
       const receipts = async () => (await c.query("SELECT row_to_json(m)::text AS row FROM public._celeriflow_sql_migrations m ORDER BY position")).rows;
       const before = await receipts();
@@ -325,11 +325,8 @@ test("Tax final helpers: real scoped subjects, balances, files, worker, seed and
       await c.query("UPDATE public._celeriflow_sql_migrations SET checksum=$1 WHERE name=$2", ["0".repeat(64), receipt.name]);
       try { await assert.rejects(inspectCemeteryMigrations(c, set, true), /receipt|source/i); }
       finally { await c.query("UPDATE public._celeriflow_sql_migrations SET checksum=$1 WHERE name=$2", [receipt.checksum, receipt.name]); }
-      const lockClient = await connection.pool.connect();
-      try {
-        await lockClient.query("BEGIN"); await lockClient.query("SELECT pg_advisory_xact_lock($1::integer,$2::integer)", [1866280812, 1936813409]);
-        await assert.rejects(inspectTaxFinalMigrationAuthority(c, set, ["20261011010000_cemetery_integrity"]), /lock/i);
-      } finally { await lockClient.query("ROLLBACK"); lockClient.release(); }
+      // Cross-session lock contention runs in drizzle-tax-migration-lock.test.ts
+      // against real PostgreSQL: PGlite serializes sockets behind the open tx.
       assert.deepEqual(await receipts(), before);
     });
 

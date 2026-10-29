@@ -74,7 +74,7 @@ export async function POST(req: Request) {
           entityType: "BankStatementItem",
           entityId: created.id,
           authorUsuarioId: technicalUser.id,
-          budgetUnitId: account.budgetUnitId,
+          budgetUnitId: account.budgetUnitId ?? undefined,
           payload: { siglaReceita, valor, autenticacaoBancaria, bankAccountId: account.id },
       });
       await insertBankException(tx, {

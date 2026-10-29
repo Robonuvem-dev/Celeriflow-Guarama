@@ -24,6 +24,7 @@ import { reverseTaxPayment } from "../src/lib/tributacao/payment-reversal";
 import { applyConditionalGuideDiscount, assertPaymentOptionDebtEligibility, reverseConditionalPaymentDiscount } from "../src/lib/tributacao/conditional-discounts";
 import { postAccountingTransactionInTransaction } from "../src/lib/financeiro";
 import { createDrizzleTaxAccountingFixture, taxAccountingDate as date, taxAccountingScope as scope } from "./helpers/drizzle-tax-accounting-fixture";
+import { postgresError } from "./helpers/postgres-assertion";
 
 test("Tax accounting: physical columns/numerics/temporal/FKs match the independent installed catalog", () => {
   const { catalog } = JSON.parse(readFileSync(new URL("./fixtures/installed-physical-catalog.json", import.meta.url), "utf8")) as {
@@ -155,7 +156,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
         const input = { requestId: "ta-refund", date, bankAccountId: "ta-bank", proofDocumentId: "ta-proof", idempotencyKey: "ta-refund-payment" };
         await assert.rejects(executeTaxRefund(f.connection, { ...f.actor, allowedBudgetUnitIds: [] }, input), /autorizadas/);
         await f.database.exec(`CREATE FUNCTION ta_fail_refund_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='PAY_REFUND' THEN RAISE EXCEPTION 'injected refund audit rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER ta_fail_refund_audit BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION ta_fail_refund_audit();`);
-        await assert.rejects(executeTaxRefund(f.connection, f.actor, input), /injected refund audit rollback/);
+        await assert.rejects(executeTaxRefund(f.connection, f.actor, input), postgresError("P0001", "injected refund audit rollback"));
         assert.equal((await readTaxRegistryEntry(f.db, "ta-refund")).status, "APROVADA_AGUARDANDO_TESOURARIA");
         assert.equal(await postingCount("ta-refund"), 0);
         assert.equal((await f.db.select().from(reconciliationTreasuryMovements).where(eq(reconciliationTreasuryMovements.sourceId, "ta-refund"))).length, 0);
@@ -187,7 +188,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
         const input = { paymentId: payment.id, date, reason: "Estorno documentado do pagamento", idempotencyKey: "ta-payment-reversal" };
         await assert.rejects(reverseTaxPayment(f.connection, { ...f.actor, allowedBudgetUnitIds: [] }, input), /autorizadas/);
         await f.database.exec(`CREATE FUNCTION ta_fail_payment_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='REVERSE_PAYMENT' THEN RAISE EXCEPTION 'injected payment audit rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER ta_fail_payment_audit BEFORE INSERT ON "TaxAuditLog" FOR EACH ROW EXECUTE FUNCTION ta_fail_payment_audit();`);
-        await assert.rejects(reverseTaxPayment(f.connection, f.actor, input), /injected payment audit rollback/);
+        await assert.rejects(reverseTaxPayment(f.connection, f.actor, input), postgresError("P0001", "injected payment audit rollback"));
         assert.equal((await f.db.select().from(mappings.taxPayments).where(eq(mappings.taxPayments.id, payment.id)))[0].status, "Confirmado");
         assert.equal((await f.db.select().from(revenues).where(eq(revenues.id, "ta-reversal-revenue")))[0].stage, "ARRECADADA");
         assert.equal((await f.db.select().from(reconciliationTreasuryMovements).where(eq(reconciliationTreasuryMovements.idempotencyKey, "FINANCEIRO:REVENUE:ta-reversal-revenue:REVERSED"))).length, 0);

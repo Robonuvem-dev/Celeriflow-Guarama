@@ -2,6 +2,7 @@ import "server-only";
 import { ZodError } from "zod";
 import { AccessError } from "@/lib/platform/tenant-context";
 import { getPlanningContext } from "./access";
+import { planningConnection } from "./database";
 import type { PlanningJurisdiction } from "./policy";
 import { generatePlanningReport, persistPlanningReport, readPreservedPlanningReport } from "./reports";
 import { generateReportPdf } from "@/lib/financeiro/report-export";
@@ -37,7 +38,7 @@ export async function planningReportSnapshotResponse(request: Request, jurisdict
   try {
     const context = await getPlanningContext(jurisdiction); const input = await request.json(); const snapshot = await persistPlanningReport(context, input);
     if (input.publishSimultaneous === true || input.publishSimultaneous === "true") {
-      try { const published = await publishPlanningReport(context, { snapshotId: snapshot.id, format: input.format ?? "PDF", reason: input.publicationReason ?? "Publicação solicitada na emissão orçamentária" }); return Response.json({ id: snapshot.id, hash: snapshot.hash, status: snapshot.status, publicationStatus: published.status, publicUrl: published.publicUrl, fileHash: published.fileHash }); }
+      try { const published = await publishPlanningReport({ ...context, connection: planningConnection(context) }, { snapshotId: snapshot.id, format: input.format ?? "PDF", reason: input.publicationReason ?? "Publicação solicitada na emissão orçamentária" }); return Response.json({ id: snapshot.id, hash: snapshot.hash, status: snapshot.status, publicationStatus: published.status, publicUrl: published.publicUrl, fileHash: published.fileHash }); }
       catch (error) { return Response.json({ id: snapshot.id, hash: snapshot.hash, status: snapshot.status, publicationStatus: "FAILED", publicationError: error instanceof Error && !error.message.includes("Invalid `") ? error.message : "Publicação não confirmada; o documento interno foi preservado." }); }
     }
     return Response.json({ id: snapshot.id, hash: snapshot.hash, status: snapshot.status });

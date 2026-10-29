@@ -1,6 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { z } from "zod";
-import { db } from "@/db/client";
+import { databaseConnection, db } from "@/db/client";
 import { getCitizenApiAccount, portalApiError } from "@/lib/portal-cidadao/api-access";
 import { validPortalUploadPath } from "@/lib/portal-cidadao/evidence-policy";
 import { isSameOriginRequest } from "@/lib/transparencia/request-origin";
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     if (body.operation === "confirmar") {
       if (!isSameOriginRequest(request)) return Response.json({ error: "Origem inválida." }, { status: 403 });
       const account = await getCitizenApiAccount(); const input = itbiDraftUploadSchema.parse(body.payload);
-      return Response.json(await registerOnlineItbiDraftUpload(db, account.id, { ...input, url: z.url().parse(body.url) }), { headers: { "Cache-Control": "private, no-store" } });
+      return Response.json(await registerOnlineItbiDraftUpload(databaseConnection, account.id, { ...input, url: z.url().parse(body.url) }), { headers: { "Cache-Control": "private, no-store" } });
     }
     return Response.json(await handleUpload({ body: body as HandleUploadBody, request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
         if (!validPortalUploadPath(pathname, itbiDraftUploadPrefix(account.id, input.requestKey))) throw new Error("Destino de upload inválido.");
         return { allowedContentTypes: itbiUploadTypes, maximumSizeInBytes: itbiUploadLimit, addRandomSuffix: true, tokenPayload: JSON.stringify({ ...input, usuarioId: account.id }) };
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => { const { usuarioId, ...input } = itbiDraftUploadSchema.extend({ usuarioId: z.string().min(1) }).parse(JSON.parse(tokenPayload || "{}")); await registerOnlineItbiDraftUpload(db, usuarioId, { ...input, url: blob.url }); },
+      onUploadCompleted: async ({ blob, tokenPayload }) => { const { usuarioId, ...input } = itbiDraftUploadSchema.extend({ usuarioId: z.string().min(1) }).parse(JSON.parse(tokenPayload || "{}")); await registerOnlineItbiDraftUpload(databaseConnection, usuarioId, { ...input, url: blob.url }); },
     }));
   } catch (error) { return portalApiError(error); }
 }

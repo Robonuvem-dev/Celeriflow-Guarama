@@ -19,7 +19,10 @@ const password = randomUUID();
 const databaseDir = join(temporaryParent, `planning-pg-${randomUUID()}`);
 // Own cleanup so transient Windows file locks can be retried after the server exits.
 // Prisma's timestamp-without-time-zone values use UTC, including trigger-generated timestamps.
-const database = new EmbeddedPostgres({ databaseDir, user: "postgres", password, port, persistent: true, createPostgresUser: false, initdbFlags: ["--encoding=UTF8"], postgresFlags: ["-h", "127.0.0.1", "-c", "timezone=UTC"], onLog: () => {}, onError: (error) => console.error(String(error).replaceAll(password, "[redacted]")) });
+// Full historical replay/cleanup touches thousands of tables, indexes and
+// sequences in one transaction. PostgreSQL's default lock table is too small
+// for this fixture; this is independent of the application's V8 heap budget.
+const database = new EmbeddedPostgres({ databaseDir, user: "postgres", password, port, persistent: true, createPostgresUser: false, initdbFlags: ["--encoding=UTF8"], postgresFlags: ["-h", "127.0.0.1", "-c", "timezone=UTC", "-c", "max_locks_per_transaction=4096", "-c", "max_connections=20"], onLog: () => {}, onError: (error) => console.error(String(error).replaceAll(password, "[redacted]")) });
 let testExitCode = 1;
 try {
   await database.initialise();

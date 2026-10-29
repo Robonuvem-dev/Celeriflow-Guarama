@@ -379,7 +379,7 @@ export async function processConstitutionalRevenueAction(statementItemId: string
           entityType: "Revenue",
           entityId: revenue.id,
           authorUsuarioId: context.user.id,
-          budgetUnitId: account.budgetUnitId,
+          budgetUnitId: account.budgetUnitId ?? undefined,
           payload: { statementItemId: item.id, ruleId: rule.id, treasuryMovementId: revenue.treasuryMovement.id, deducaoAplicavel: rule.deducaoAplicavel },
       });
       return { treasuryMovementId: revenue.treasuryMovement.id, revenueId: revenue.id, alreadyProcessed: false };
