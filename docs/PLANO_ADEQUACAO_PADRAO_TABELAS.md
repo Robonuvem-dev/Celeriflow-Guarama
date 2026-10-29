@@ -1,10 +1,21 @@
-# CeleriFlow — auditoria e plano de adequação das tabelas
+# CeleriFlow — auditoria e plano de adequação das tabelas — progresso final
 
 **Data:** 28/10/2026  
 **Base de código inspecionada:** `0831a93` — `ajuste de links e cards`  
 **Referência de requisitos:** [Padrão de Tabelas.md](Padr%C3%A3o%20de%20Tabelas.md), versão 1.1.
 
-**Estado:** diagnóstico e planejamento; nenhuma tela foi alterada nesta auditoria.
+**Estado atualizado em 29/10/2026:** implementação concluída no escopo reconciliado: **330/330 operacionais, 6/6 legados e 32/32 grades de edição/seleção**, com **7 formatos especiais preservados**. A entrega e as evidências estão consolidadas em [ENTREGA_PADRAO_TABELAS.md](ENTREGA_PADRAO_TABELAS.md).
+
+## Progresso final — atualização de 29/10/2026
+
+- Scanner estrito: **PASS**; 395 definições de renderização, 377 caminhos de rota válidos, dos quais 371 operacionais. Das 340 rotas históricas, 335 mantêm o destino, uma foi realocada e quatro eram associações apenas por importação. Essas métricas não substituem nem ampliam o inventário histórico de **343 estruturas** abaixo.
+- Validação efetiva: 318 casos da base no navegador, 11 de filtros e um de edição de Compras aprovados; Saúde com 28 wrappers e 104 observações de composição aprovadas. Na revalidação pública do build final, passaram os nove cenários e os 12 painéis, com 42 capturas; as duas falhas iniciais de largura foram corrigidas e confirmadas em produção local recompilada.
+- Testes offline: rodada de 20 testes de topo aprovada; 47 verificações de contratos históricos aprovadas. O agregador final executou **50/50 testes em 12 suítes**, incluindo as regressões adicionais e os cinco testes clínicos em caminho Next `[id]`.
+- **Build final: PASS**, após os últimos ajustes. Foram aprovadas 14 partições de tipos, 3.245 fontes e 938 validações; Next.js 16.4.3 compilou 95 páginas estáticas. Execução local em `VERCEL_ENV=preview`, sem deploy SQL.
+- A implementação completa não equivale à homologação visual global: faltam navegação integral autenticada (sem sessão disponível) e confirmação da matriz real de zoom. Tablets e celulares podem usar rolagem por decisão do usuário; desktop mantém paginação/filtros sem rolagem livre e depende do orçamento mínimo de área útil.
+- Drizzle como única dependência ORM, zero imports Prisma e gate aprovado; histórico SQL de 156 + 2 arquivos verificado e preservado. Integração e referências Git detalhadas na entrega consolidada. Sem autorização para novo commit, push ou deploy.
+
+**Leitura do restante deste plano:** as seções 1–9 registram o diagnóstico, as contagens, as evidências e o planejamento do snapshot original `0831a93`. Expressões como “execução futura” e “nenhuma tela alterada” pertencem àquela auditoria histórica; o estado corrente é o progresso acima e a entrega consolidada. O inventário histórico permanece intacto.
 
 **Revisão do plano após a validação do piloto:** o menu deve recolher para uma barra de ícones, como na entrada de Água e Saneamento, e não desaparecer. Ícones nas células são condicionais: só quando o valor não cabe ou quando o campo precisa de visualização composta. Uma barra de ícones funcional não é um desvio de R10, e texto integral que cabe não deve receber acionador redundante. As contagens e medições abaixo continuam identificadas pelo snapshot original; a interpretação e os próximos ajustes seguem a revisão 1.1.
 

@@ -1,5 +1,6 @@
 /** Full-page, GET-only evidence. Never starts Next, authenticates, imports ORM, or seeds.
  * --plan: inventory without network. --run: use an already running app.localhost server.
+ * --public-only --run: only the three reviewed public pages; no full manifest inventory.
  * See docs/tabelas-lotes/rotas-reais-readonly.md for safety boundaries and inputs.
  */
 import assert from "node:assert/strict";
@@ -131,7 +132,7 @@ const publicReviewed = new Set(["/portal/planejamento", "/portal/licitacoes-e-co
 const publicReadChain = {
   "src/app/portal/planejamento/page.tsx": "d32c963c95f2607751a5c01be8753f313e49cbf717b5456fb0ca0667ba971930",
   "src/app/portal/licitacoes-e-contratos/page.tsx": "ad007ab042d3500bacd74b9ae80ccf38c8cd0f73d6d24f577be75c3563ec0f90",
-  "src/app/portal/portaldatransparencia/estatisticas/page.tsx": "0398487ce234230f336a393864e2df763cb60ef304ee7dc5e2f3d83fb3f0bc2c",
+  "src/app/portal/portaldatransparencia/estatisticas/page.tsx": "9e570822ac8fa74219aa934704b8263ec15133542d0b5182b62920f64d48f2ae",
   "src/app/portal/layout.tsx": "bc4dc958dc026e1cd9a7c9d3a55bbeef4c73aeaeb1c4877d4632c2d09af9b385",
   "src/app/layout.tsx": "9bf34b5c292fa52cd472794995ab5fb01f8f4aefb88c2a2c51c525f535a56bb4",
   "src/lib/transparencia/planning-publications.ts": "0d950d890acda0bad450403c631e8535322c5ac04b5a322c589e45dd79ca10a1",
@@ -142,12 +143,21 @@ const publicReadChain = {
   "src/components/transparencia/PageFeedbackSummary.tsx": "b6676dfc7dd94d56fafc7acbc89bd7fbaf7cf96797481862ed0e4153b5b10f3d",
   "src/db/repositories/platform/transparency-statistics.ts": "31fd62aeabe09bb2bd0486310476a75102f880a80cb508c317a99b361cc1b620",
   "src/lib/transparencia/page-feedback.ts": "729c378aaa3fcac75381c14c1cb2833a6078283d40b656c64441c847abe2c0fd",
-  "src/components/portal-institucional/PortalShell.tsx": "a312158ea94e89b060d0693a93f11812a4c18cea11f1f56068ff05997c0652c0",
+  "src/components/portal-institucional/PortalShell.tsx": "a41e894ce86f1849358e8af6f52a930482cc2ced9c995eb9fb437f78c6e9994c",
   "src/components/lgpd/CookieConsent.tsx": "a4a8c8086f7efb5be4d8b52ccd12d954351f59891f485fa3ceb65811b2d23157",
   "src/app/portal/PublicTableViews.tsx": "d8ac63d643063463c5455e2b4ce24702e77b7c110dca5237827e05eec025c75b",
   "src/app/portal/PublicOperationalList.tsx": "f68e9f1357ee4252254223fddac9d243affd9544706a4fc45ed127173af31f9e",
 };
 const publicReviewStillCurrent = () => Object.entries(publicReadChain).every(([file, expected]) => sourceHash(file) === expected);
+function publicInventory() {
+  // Final-build regression scope: do not enumerate administrative pages/manifests.
+  report.inventory = [...publicReviewed].sort().map(pathname => {
+    const page = `src/app${pathname}/page.tsx`;
+    return { pathname, page, pageSha256: sourceHash(page), dynamic: false, categories: ["reviewed-public-panel"], readReview: mutationClues(page) };
+  });
+  report.counts = { selectedPublicRoutes: report.inventory.length, uniqueRoutes: report.inventory.length };
+  for (const file of Object.keys(publicReadChain)) report.sources[file] = sourceHash(file);
+}
 const additionalReviews = process.env.OPERATIONAL_ROUTE_REVIEWS ? readJson(process.env.OPERATIONAL_ROUTE_REVIEWS) : [];
 function reviewed(item) {
   if (!item.page || item.readReview.length) return false;
@@ -435,7 +445,8 @@ function summarize(file) {
 
 if (process.argv.includes("--summary")) summarize(process.argv[process.argv.indexOf("--summary") + 1]);
 else try {
-  await inventory();
+  if (process.argv.includes("--public-only")) publicInventory();
+  else await inventory();
   if (existsSync(join(root, ".next/BUILD_ID"))) report.localBuildArtifact = {
     buildIdSha256: sourceHash(".next/BUILD_ID"), modifiedAt: statSync(join(root, ".next/BUILD_ID")).mtime.toISOString(),
     provesServerMatchesSources: false,

@@ -1,6 +1,91 @@
 # Páginas públicas reais — evidência após o build de 29/10/2026
 
-## Resultado
+## Resultado final — revalidação das duas correções
+
+**9/9 cenários com HTTP 200 e sem falha geométrica detectada; 12/12 painéis com `data-fit="ready"`. Código de saída do runner: 0.**
+
+Execução em Chromium **156.0.8078.73**, sem sessão, de **2026-10-29T16:59:59.015Z** a **2026-10-29T17:00:41.621Z**. Foram repetidas exatamente as três páginas públicas nos viewports desktop **1280×720, 1366×768 e 800×600**, com Licitações/Contratos nas duas abas reais: **9 páginas, 12 aberturas de painéis e 42 screenshots** (viewport + documento completo).
+
+| Página | 1280×720 | 1366×768 | 800×600 | Painéis executados |
+| --- | --- | --- | --- | --- |
+| `/portal/licitacoes-e-contratos` | HTTP 200; geometria sem falha | HTTP 200; geometria sem falha | HTTP 200; geometria sem falha | Licitações e Contratos em cada tamanho |
+| `/portal/planejamento` | HTTP 200; geometria sem falha | HTTP 200; geometria sem falha | HTTP 200; geometria sem falha | Planejamento em cada tamanho |
+| `/portal/portaldatransparencia/estatisticas` | HTTP 200; geometria sem falha | HTTP 200; geometria sem falha | **HTTP 200; tabela renderizada; `fit=ready`** | Estatísticas em cada tamanho |
+
+### Regressões anteriores resolvidas no build final
+
+1. **Menu institucional em 1280 px:** overflow horizontal do documento passou de **6 para 0 px**, nas três páginas. Nos outros tamanhos também foi **0 px**. Screenshot real de confirmação: `operational-route-2026-10-29T16-59-59-014Z-1-1.png`.
+2. **Estatísticas em 800×600:** mínimo horizontal passou de **880 para 760 px**. O corpo disponível continua **800×504 px**, com **40 px de margem horizontal**, sem redução da fonte ou ocultação de colunas. Renderiza **4 linhas, 9 colunas**, fonte **13 px**, linhas **24 px**; última linha em `bottom=188`, antes do limite do corpo em `572` e do rodapé em `600`. Screenshot real: `operational-route-2026-10-29T16-59-59-014Z-9-2.png`.
+
+Mínimos horizontais observados no build final: Licitações **600**, Contratos **710**, Planejamento **690**, Estatísticas **760 px**.
+
+### Contagens e geometria finais
+
+- **HTTP:** 9 respostas 200; zero respostas HTTP ≥400 registradas.
+- **Runtime:** zero erros JavaScript; stderr do servidor vazio; zero falhas/bloqueios de execução no relatório.
+- **Painéis:** 12 com `fit=ready`; zero overflow horizontal/vertical do corpo; zero colunas ocultas; zero cabeçalhos truncados sem acionador de acesso integral.
+- **Interação:** 12/12 retornos de foco ao acionador; 12/12 probes de roda sem movimentar o documento de fundo. O `body` do portal fica bloqueado por `overflow:hidden` enquanto o modal está aberto.
+- **Rodapé:** termina exatamente em `720`, `768` e `600`, respectivamente; altura **28 px**. Corpo da tabela começa em `y=68`, com alturas **624**, **672** e **504 px**.
+- **Recursos necessários:** zero requisições não-prefetch bloqueadas. Foram bloqueados **159 GETs de prefetch para páginas fora do recorte revisado**, sem carregar essas páginas.
+- **Dados existentes:** Licitações, Contratos e Planejamento vazios; Estatísticas com quatro linhas agregadas e contagens zeradas. Não havia 20+1 registros naturais nem outra página de dados para exercitar. Nenhum dado foi criado.
+- **Escopo:** modo `--public-only`; inventário de somente três rotas. Não foi repetido o inventário administrativo nem produzida uma lista de 393 bloqueios. Autenticação administrativa/CDP não foi tentada.
+
+### Servidor final e cleanup
+
+Antes de parar o preview anterior, confirmou-se por CIM que **PID 11528**, informado como iniciado pelo principal, executava exatamente:
+
+`node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3100`
+
+Somente esse PID anterior foi encerrado, conforme autorização, para eliminar o processo com build antigo em memória. Iniciou-se um único `next start` temporário sobre o build final, **PID 22104**, escutando em `127.0.0.1:3100`. O listener desse PID foi confirmado **antes e depois** dos nove cenários. A navegação manteve a origem normal **`http://app.localhost:3100`**.
+
+O PID próprio 22104 foi encerrado no `finally`. A verificação posterior retornou **`PreviewStopped: True`**, sem listener na porta 3100. **Preview parado.** Nenhum build/dev foi executado nesta revalidação, e nenhum outro processo foi encerrado.
+
+### Artefato e hashes SHA-256 da execução final
+
+Build principal informado como totalmente aprovado: 14 partições, 3245 fontes, 938 validações de rotas e 95 páginas estáticas. O ensaio executou esse artefato existente, sem recompilá-lo.
+
+| Artefato/arquivo | SHA-256 |
+| --- | --- |
+| `.next/BUILD_ID` — modificado em `2026-10-29T16:57:11.063Z` | `2487db8873110d0c1281cb5e28e1e1a3a2bc78f442106393c8e6427d59dab426` |
+| `src/app/portal/portaldatransparencia/estatisticas/page.tsx` | `9e570822ac8fa74219aa934704b8263ec15133542d0b5182b62920f64d48f2ae` |
+| `src/components/portal-institucional/PortalShell.tsx` | `a41e894ce86f1849358e8af6f52a930482cc2ced9c995eb9fb437f78c6e9994c` |
+| `scripts/verify-operational-routes.mjs` | `1685b70b1437c8feb1e2597ade9fc770e3126cd4edc05aa1a91cdad31228f2c6` |
+| Relatório JSON final | `63612b4f4048b1622118ce1b1b017f824c39fcb743d288625db8cd00e45a2a81` |
+| Digest geométrico final | `320fc1fb64d4cfe4d07d1449ec18ee8097408a0e804037685edbbe2d3fdb96df` |
+
+Os dois arquivos de aplicação corrigidos foram apenas lidos nesta frente para renovar os hashes da revisão do runner. No runner, acrescentou-se o recorte `--public-only` para não reconstruir o inventário administrativo. Sintaxe e ESLint direcionado passaram; a execução real retornou **0**. Não houve alteração funcional de produção, domínio, base compartilhada, autenticação ou configuração.
+
+### Evidências finais e reprodução
+
+Diretório: `C:\Users\thiag\AppData\Local\Temp\opencode\`
+
+- **Relatório final:** `operational-routes-2026-10-29T16-59-59-014Z.json`.
+- **Digest:** `operational-routes-2026-10-29T16-59-59-014Z-digest.json`.
+- **42 screenshots:** `operational-route-2026-10-29T16-59-59-014Z-*.png`.
+- **Logs deste preview:** `operational-final-next.stdout.log` e `operational-final-next.stderr.log`.
+
+Para execução contra um preview já iniciado do build confirmado:
+
+```powershell
+$env:OPERATIONAL_ROUTES_SIZES = '1280x720,1366x768,800x600'
+node scripts/verify-operational-routes.mjs --public-only --run
+```
+
+Para ler a evidência sem servidor/navegador:
+
+```powershell
+node scripts/verify-operational-routes.mjs --summary 'C:\Users\thiag\AppData\Local\Temp\opencode\operational-routes-2026-10-29T16-59-59-014Z.json'
+```
+
+O resultado final confirma as duas correções nos estados e tamanhos observados. Não certifica rotas administrativas, zoom/dispositivos móveis ou paginação de 20+1 sem dados disponíveis. Nenhuma credencial foi solicitada/exibida, e não houve login, seed ou mutação intencional.
+
+---
+
+## Histórico anterior às correções — execução de 15:10 UTC
+
+**Os resultados abaixo foram superados pela revalidação final acima e permanecem como proveniência das falhas corrigidas.**
+
+### Resultado anterior
 
 **Executadas três páginas completas reais em Chromium 156.0.8078.73, com seus painéis de consulta, nos viewports desktop 1280×720, 1366×768 e 800×600.**
 
