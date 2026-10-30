@@ -192,9 +192,12 @@ test("A1 complete signing pipeline on same connection, historical certificate sn
     const integration = await withDatabaseTransaction(fixture.connection, tx => saveCentralA1Integration({ ...context, database: tx as unknown as Database, user: { ...context.user, profileCode: "SYSTEM_ADMINISTRATOR" } }, {
       kind: "A1_ECPF", alias: "Backend fixture", ownerName: "Nome declarado não probatório", documentId: "52998224725", credentialReference: "CENTRAL_BACKEND_A1_FIXTURE", certificatePem: certificates.cpf.certificatePem, intermediatePems: certificates.intermediatePems, trustedRootPem: certificates.trustedRootPem, active: true,
     }));
-    const record = await signCentralFile(context, { ...input(), method: "A1_ECPF", integrationId: integration.id }, storage);
+    const certificateContext = { ...context, user: { ...context.user, id: "signer-account", employeeId: "employee" } };
+    const certificateInput = { ...input(), password: "", method: "A1_ECPF" as const, integrationId: integration.id };
+    await assert.rejects(signCentralFile(context, certificateInput, storage), /vinculado à sua conta/);
+    const record = await signCentralFile(certificateContext, certificateInput, storage);
     assert.equal(record.method, "A1_ECPF");
-    const receipt = await getCentralReceipt(context, record.id);
+    const receipt = await getCentralReceipt(certificateContext, record.id);
     assert.equal(receipt.verified, true);
     assert.equal(receipt.evidence?.kind, "A1");
     if (receipt.evidence?.kind !== "A1") throw new Error("expected A1 proof");
@@ -213,7 +216,8 @@ test("A1 complete signing pipeline on same connection, historical certificate sn
     const companyIntegration = await withDatabaseTransaction(fixture.connection, tx => saveCentralA1Integration({ ...context, database: tx as unknown as Database, user: { ...context.user, profileCode: "SYSTEM_ADMINISTRATOR" } }, {
       kind: "A1_ECNPJ", alias: "Empresa manual backend", ownerName: "Empresa", documentId: "11222333000181", credentialReference: "CENTRAL_BACKEND_A1_FIXTURE", certificatePem: certificates.cnpj.certificatePem, intermediatePems: certificates.intermediatePems, trustedRootPem: certificates.trustedRootPem, active: true,
     }));
-    const companyRecord = await signCentralFile(context, { ...input(), signerId: manualCompanyId, method: "A1_ECNPJ", integrationId: companyIntegration.id }, storage);
+    await fixture.database.exec(`INSERT INTO "Person" ("id","fullName","cpf","email") VALUES ('company-person','Empresa','11222333000181','offline@example.test'); UPDATE "SignatureCentralSigner" SET "accountUserId"='actor' WHERE id='${manualCompanyId}';`);
+    const companyRecord = await signCentralFile(context, { ...input(), password: "", signerId: manualCompanyId, method: "A1_ECNPJ", integrationId: companyIntegration.id }, storage);
     assert.equal(companyRecord.method, "A1_ECNPJ"); assert.equal(companyRecord.signerDocument, "11222333000181");
     const companyReceipt = await getCentralReceipt(context, companyRecord.id);
     assert.equal(companyReceipt.verified, true); assert.equal(companyReceipt.evidence!.envelope.signer.personId, null);
@@ -325,6 +329,20 @@ test("future migration enforces FK, status, size and proof state using real Post
   await assert.rejects(fixture.connection.db.execute(sql`UPDATE "SignatureCentralSigner" SET "employeeId"=NULL WHERE id=${signerId}`));
   await assert.rejects(fixture.connection.db.execute(sql`UPDATE "SignatureCentralSigner" SET "employeeId"='employee' WHERE id=${manualCompanyId}`));
   await assert.rejects(fixture.connection.db.execute(sql`UPDATE "SignatureCentralSigner" SET kind='INVALID' WHERE id=${manualCompanyId}`));
+});
+
+test("initial document types preserve existing registrations and deactivations on replay", async () => {
+  const migration = await readFile(new URL("../db/migrations/20261030120000_signature_central_document_types/migration.sql", import.meta.url), "utf8");
+  const before = await fixture.database.query(`SELECT id FROM "SignatureCentralDocumentType"`);
+  await fixture.database.exec(migration);
+  const existing = await fixture.database.query<{ id: string }>(`SELECT id FROM "SignatureCentralDocumentType" WHERE name='Contrato'`);
+  assert.equal(existing.rows[0].id, typeId);
+  await fixture.database.exec(`UPDATE "SignatureCentralDocumentType" SET active=false WHERE name='Ofício'`);
+  await fixture.database.exec(migration);
+  const types = await fixture.database.query<{ name: string; active: boolean }>(`SELECT name, active FROM "SignatureCentralDocumentType"`);
+  assert.equal(types.rows.length, before.rows.length + 10);
+  assert.equal(types.rows.find(type => type.name === "Ofício")?.active, false);
+  assert.equal(types.rows.find(type => type.name === "Requerimento")?.active, true);
 });
 
 test("API boundaries: multipart single-file, masked public validation, private endpoints and cron", async () => {

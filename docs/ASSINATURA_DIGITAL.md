@@ -1,5 +1,7 @@
 # Assinatura Digital — central e retenção de 90 dias
 
+**Atualização de produção:** migrações, Blob privado, chave interna e cron provisionados e verificados no domínio real. Deploy `dpl_AMVQWqQMvXXzCSfpahq7nC1TSqui`/SHA `1e1e44e2`. O proprietário informou que ainda não possui os certificados A1. Evidências em [ASSINATURA_DIGITAL_PRODUCAO.md](ASSINATURA_DIGITAL_PRODUCAO.md).
+
 ## Entrega
 
 O módulo abre em `/assinatura-digital/assine-agora`. O menu oferece:
@@ -40,7 +42,7 @@ Migrações SQL futuras incluídas:
 - `20261029190000_signature_central`: assinadores, tipos e registros/evidências/retenção.
 - `20261029190100_signature_central_a1`: integrações A1 vinculadas ao inventário de certificados.
 
-Executar pelo fluxo SQL explícito do projeto; os testes usam bancos descartáveis. As migrações não foram aplicadas ao banco real nesta implementação.
+Executar pelo fluxo SQL explícito do projeto; os testes usam bancos descartáveis. As migrações foram posteriormente aplicadas com sucesso pelo deploy de produção, conforme o registro de provisionamento acima.
 
 Variáveis necessárias, sem valores secretos no código:
 
@@ -49,7 +51,7 @@ Variáveis necessárias, sem valores secretos no código:
 - `CRON_SECRET` para a rotina de retenção.
 - Para cada integração A1: `<REFERENCIA>_PRIVATE_KEY_PEM` e, quando aplicável, `<REFERENCIA>_PRIVATE_KEY_PASSPHRASE`. Certificado/cadeia públicos são cadastrados na tela; a chave privada permanece no provedor de segredos.
 
-Configuração ausente resulta em indisponibilidade, nunca em assinatura simulada. Certificados comerciais, conectividade Blob real e execução do cron na Vercel precisam de homologação no ambiente configurado. Testes com cadeia criptográfica real isolada não substituem esse ensaio.
+Configuração ausente resulta em indisponibilidade, nunca em assinatura simulada. A conectividade do Blob privado e a execução autorizada do cron já foram conferidas em produção. A homologação A1 comercial aguarda os certificados do titular, que o proprietário informou ainda não possuir. Testes com cadeia criptográfica isolada não substituem esse ensaio.
 
 ## Verificações executadas
 

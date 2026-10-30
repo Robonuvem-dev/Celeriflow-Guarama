@@ -18,7 +18,7 @@ test("lote multipart sequencial: falha individual, arquivo retido, UUID estável
     const body = init?.body as FormData;
     const id = String(body.get("requestId")); calls.push(id);
     assert.equal(await (body.get("file") as File).text(), "original");
-    assert.equal(body.get("password"), "senha-do-assinador");
+    assert.equal(body.get("password"), null);
     assert.equal(body.get("signerId"), "signer");
     assert.equal(body.get("documentTypeId"), "type");
     assert.equal(body.get("method"), "A1_ECPF");
@@ -50,6 +50,8 @@ test("limites físicos da UI e autorização por validade/estado", () => {
   assert.match(signerProblem({ ...signer, active: false }, now), /inativo/);
   assert.match(signerProblem({ ...signer, validUntil: "2020-01-01" }, now), /vencido/);
   assert.match(signerProblem({ ...signer, hasPassword: false }, now), /sem senha/);
+  assert.equal(signerProblem({ ...signer, hasPassword: false }, now, "A1_ECPF"), "");
+  assert.equal(signerProblem({ ...signer, hasPassword: false }, now, "A1_ECNPJ"), "");
   const integration = { kind: "A1_ECPF", active: true, validFrom: "2020-01-01", validTo: "2030-01-01" } as CentralA1Integration;
   assert.equal(integrationProblem(integration, "A1_ECPF", now), "");
   assert.ok(integrationProblem(integration, "A1_ECNPJ", now));

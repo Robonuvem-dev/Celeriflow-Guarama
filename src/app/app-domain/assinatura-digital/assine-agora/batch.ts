@@ -12,11 +12,11 @@ export function fileError(file: File): string | undefined {
   if (!/\.(pdf|jpe?g|png|txt|docx?|odt)$/i.test(file.name)) return "Formato não permitido. Use PDF, JPEG, PNG, TXT, DOC, DOCX ou ODT.";
 }
 
-export function signerProblem(signer: CentralSigner | undefined, now = Date.now()): string {
+export function signerProblem(signer: CentralSigner | undefined, now = Date.now(), method: CentralSignatureMethod = "INTERNAL"): string {
   if (!signer) return "Selecione um assinador.";
   if (!signer.active) return "Assinador inativo.";
   if (!Number.isFinite(Date.parse(signer.validUntil)) || Date.parse(signer.validUntil) <= now) return "Prazo do assinador vencido.";
-  if (!signer.hasPassword) return "Assinador sem senha pessoal cadastrada.";
+  if (method === "INTERNAL" && !signer.hasPassword) return "Assinador sem senha pessoal cadastrada.";
   return "";
 }
 
@@ -41,7 +41,7 @@ export async function submitBatch(items: readonly BatchItem[], options: BatchOpt
     body.set("documentTypeId", options.documentTypeId);
     body.set("method", options.method);
     if (options.method !== "INTERNAL") body.set("integrationId", options.integrationId);
-    body.set("password", options.password);
+    if (options.method === "INTERNAL") body.set("password", options.password);
     body.set("requestId", item.requestId);
     try {
       const response = await request("/api/assinatura-digital/assinar", { method: "POST", body, cache: "no-store" });

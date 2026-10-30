@@ -156,7 +156,11 @@ export async function signCentralFile(context: AppContext, input: SignInput, sto
   async function authorizedSigner(tx: DatabaseExecutor) {
     const [signer] = await tx.select().from(centralSigners).where(eq(centralSigners.id, input.signerId)).for("share");
     if (!signer || !signer.active || signer.validUntil <= new Date()) throw new CentralError("Assinador inativo ou fora da validade.", 403);
-    if (!await verifyCentralPassword(input.password, signer.passwordHash)) throw new CentralCredentialError();
+    if (input.method === "INTERNAL") {
+      if (!await verifyCentralPassword(input.password, signer.passwordHash)) throw new CentralCredentialError();
+    } else if (signer.accountUserId !== context.user.id && !(!signer.accountUserId && context.user.employeeId && signer.employeeId === context.user.employeeId)) {
+      throw new CentralError("Selecione um assinador vinculado à sua conta para usar o certificado digital.", 403);
+    }
     const origin = await canonicalOrigin(tx, { ...signer, kind: signer.kind as CentralSignerKind });
     await assertSignerAccount(tx, signer.accountUserId, origin, signer.kind as CentralSignerKind);
     return signer;

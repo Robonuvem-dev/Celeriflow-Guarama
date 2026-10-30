@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
+import postcss from "postcss";
+import tailwindcss from "@tailwindcss/postcss";
 import test from "node:test";
 import { build } from "esbuild";
 
@@ -12,6 +15,7 @@ const { chromium } = require(process.env.CENTRAL_UI_PLAYWRIGHT || "playwright");
 
 test("controles reais: retenção de rascunho, multipart sequencial/retry e validação pública", async () => {
   const bundle = await build({ entryPoints: ["tests/central-operation-browser.fixture.tsx"], bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"development"' }, tsconfig: "tsconfig.json" });
+  const stylesheet = await postcss([tailwindcss()]).process(await readFile("src/app/globals.css", "utf8"), { from: "src/app/globals.css" });
   const calls = [];
   let active = 0;
   let peak = 0;
@@ -22,6 +26,7 @@ test("controles reais: retenção de rascunho, multipart sequencial/retry e vali
   const record = { id: "record", code: "CFS-test", filename: "original.txt", mimeType: "text/plain", byteLength: 8, hashSha256: "a".repeat(64), documentTypeName: "Contrato", signerName: "Assinador de teste", signerRole: "Servidor", signerDocumentMasked: "***.***.247-**", method: "A1_ECPF", signedAt: "2026-10-29T10:00:00Z", expiresAt: "2027-01-27T10:00:00Z", storageDeletedAt: null, valid: true };
   const server = createServer(async (req, res) => {
     if (req.url === "/bundle.js") { res.setHeader("Content-Type", "application/javascript"); res.end(bundle.outputFiles[0].text); return; }
+    if (req.url === "/styles.css") { res.setHeader("Content-Type", "text/css"); res.end(stylesheet.css); return; }
     if (req.url?.startsWith("/api/")) {
       if (req.method === "GET") {
         downloads.push(req.url);
@@ -47,7 +52,7 @@ test("controles reais: retenção de rascunho, multipart sequencial/retry e vali
       }
       return;
     }
-    res.setHeader("Content-Type", "text/html"); res.end('<!doctype html><html><body><div id="root"></div><script src="/bundle.js"></script></body></html>');
+    res.setHeader("Content-Type", "text/html"); res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/styles.css"></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>');
   });
   server.listen(0, "127.0.0.1"); await once(server, "listening");
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -59,6 +64,17 @@ test("controles reais: retenção de rascunho, multipart sequencial/retry e vali
     await page.goto(base);
     await page.waitForTimeout(300);
     assert.deepEqual(errors, [], "a fixture deve renderizar sem erro de JavaScript");
+    assert.equal(await page.getByLabel("Assinador", { exact: true }).inputValue(), "signer");
+    const controls = await page.locator("form select").evaluateAll(elements => elements.map(element => element.labels[0].textContent));
+    assert.equal(controls[0], "Método");
+    for (const width of [768, 1024, 1366, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `sem rolagem horizontal em ${width}px`);
+      const bounds = await page.locator('section[aria-labelledby="assine-title"]').boundingBox();
+      assert.ok(bounds.width >= width - 1, `formulário aproveita a largura em ${width}px`);
+    }
+    assert.ok(await page.getByRole("complementary", { name: "Armazenamento e retenção" }).evaluate(element => parseFloat(getComputedStyle(element).fontSize) < 14));
+    await page.getByLabel("Senha do assinador", { exact: true }).fill("senha-pessoal");
     await page.getByLabel("Assinador", { exact: true }).selectOption("inactive");
     assert.match(await page.getByRole("status").innerText(), /inativo/);
     await page.getByLabel("Assinador", { exact: true }).selectOption("expired");
@@ -67,13 +83,14 @@ test("controles reais: retenção de rascunho, multipart sequencial/retry e vali
     await page.getByLabel("Tipo de documento", { exact: true }).selectOption("type");
     await page.getByLabel("Método", { exact: true }).selectOption("A1_ECPF");
     await page.getByLabel("Integração A1", { exact: true }).selectOption("a1");
-    const upload = page.getByLabel("Arquivos (até 20, máximo 3 MiB cada)");
+    const upload = page.getByLabel("Selecionar arquivos", { exact: true });
     await upload.setInputFiles(Array.from({ length: 21 }, (_, index) => ({ name: `${index}.txt`, mimeType: "text/plain", buffer: Buffer.from("x") })));
     assert.match(await page.getByRole("alert").innerText(), /máximo 20/);
     await upload.setInputFiles(["one.txt", "two.txt"].map(name => ({ name, mimeType: "text/plain", buffer: Buffer.from("ORIGINAL") })));
-    await page.getByLabel("Senha pessoal do assinador", { exact: true }).fill("senha-pessoal");
+    assert.equal(await page.getByLabel("Senha do assinador", { exact: true }).count(), 0);
     // Mudanças de controles não desmontam/perdem a lista de arquivos.
     await page.getByLabel("Método", { exact: true }).selectOption("INTERNAL");
+    assert.equal(await page.getByLabel("Senha do assinador", { exact: true }).inputValue(), "");
     await page.getByLabel("Método", { exact: true }).selectOption("A1_ECPF");
     await page.getByLabel("Integração A1", { exact: true }).selectOption("a1");
     assert.equal(await page.locator("article").count(), 2);
@@ -81,16 +98,15 @@ test("controles reais: retenção de rascunho, multipart sequencial/retry e vali
     await page.getByText("Falha temporária de teste", { exact: true }).waitFor();
     assert.equal(peak, 1);
     assert.equal(calls.length, 2);
-    assert.equal(calls[0].password, "senha-pessoal");
+    assert.equal(calls[0].password, null);
     assert.equal(calls[0].signerId, "signer");
     assert.equal(calls[0].type, "type");
     assert.equal(calls[0].method, "A1_ECPF");
     assert.equal(calls[0].integrationId, "a1");
     assert.equal(calls[0].bytes, "ORIGINAL");
-    assert.equal(await page.getByLabel("Senha pessoal do assinador", { exact: true }).inputValue(), "");
+    assert.equal(await page.getByLabel("Senha do assinador", { exact: true }).count(), 0);
     assert.equal(await page.locator("article").count(), 2);
     failSecond = false;
-    await page.getByLabel("Senha pessoal do assinador", { exact: true }).fill("senha-pessoal");
     await page.getByRole("button", { name: "Repetir pendentes/falhas", exact: true }).click();
     await page.getByText("2 concluídos · 0 pendentes/falhas · 2 arquivos", { exact: true }).waitFor();
     assert.equal(calls.length, 3);
