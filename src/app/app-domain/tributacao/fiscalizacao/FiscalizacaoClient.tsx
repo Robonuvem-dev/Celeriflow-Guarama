@@ -149,6 +149,7 @@ type Data = {
     code: string;
     name: string;
     kind: string;
+    body: string;
     version: number;
     status: string;
   }[];
@@ -173,6 +174,8 @@ const secondary =
 const money = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export default function FiscalizacaoClient({ data }: { data: Data }) {
+  const [templateId, setTemplateId] = useState("");
+  const editingTemplate = data.templates.find(row => row.id === templateId);
   const [tab, setTab] = useState("planejamento");
   const [message, setMessage] = useState("");
   const [pending, start] = useTransition();
@@ -915,6 +918,7 @@ export default function FiscalizacaoClient({ data }: { data: Data }) {
         {tab === "parametros" && (
           <div className="grid gap-2 xl:grid-cols-2">
             <form
+              key={templateId}
               className="grid content-start gap-2 rounded-lg border bg-white p-3 dark:border-slate-800 dark:bg-slate-950"
               onSubmit={submit((form) =>
                 run(() =>
@@ -931,13 +935,16 @@ export default function FiscalizacaoClient({ data }: { data: Data }) {
                 <Settings2 className="size-4" />
                 Modelo fiscal versionado
               </h2>
+              <label>Consultar / editar modelo<select className={input} value={templateId} onChange={event => setTemplateId(event.target.value)}><option value="">Novo modelo</option>{data.templates.map(row=><option key={row.id} value={row.id}>{row.code} · {row.name} · v{row.version}</option>)}</select></label>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   className={input}
                   name="code"
-                  defaultValue="TIAF_PADRAO"
+                  readOnly={Boolean(editingTemplate)}
+                  defaultValue={editingTemplate?.code ?? "TIAF_PADRAO"}
                 />
-                <select className={input} name="kind">
+                <select className={input} name="kind" defaultValue={editingTemplate?.kind}>
+                  <option>ORDEM</option><option>TERMO_FISCAL</option>
                   <option>TIAF</option>
                   <option>MAPA</option>
                   <option>AUTO_PRINCIPAL</option>
@@ -948,12 +955,12 @@ export default function FiscalizacaoClient({ data }: { data: Data }) {
               <input
                 className={input}
                 name="name"
-                defaultValue="Modelo TIAF municipal"
+                defaultValue={editingTemplate?.name ?? "Modelo TIAF municipal"}
               />
               <textarea
                 className={`${input} h-24 py-2`}
                 name="body"
-                defaultValue="Termo referente à OS {{orderNumber}}, contribuinte {{subject}}, fiscal {{inspector}}."
+                defaultValue={editingTemplate?.body ?? "Termo referente à OS {{orderNumber}}, contribuinte {{subject}}, fiscal {{inspector}}."}
               />
               <button className={primary}>Salvar nova versão</button>
               {data.templates.slice(0, 10).map((row) => (

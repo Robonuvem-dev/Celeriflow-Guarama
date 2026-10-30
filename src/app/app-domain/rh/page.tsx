@@ -21,7 +21,7 @@ export default async function RHDashboard() {
 
   return (
     <PageFrame className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">
-      <PageHeader title="RH e Folha" icon={<Users className="size-4 shrink-0 text-violet-600" />} />
+      <PageHeader title="RH e Folha" icon={<Users className="size-4 shrink-0 text-violet-600" />} action={<Link href="/rh/cadastros">Cadastros de RH e ponto</Link>} />
 
       <div className="min-h-0 flex-1 space-y-2 overflow-auto rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">

@@ -32,6 +32,7 @@ export default async function PriceResearchDetailPage({ params }: { params: Prom
   return (
     <PageFrame className="flex h-[calc(100vh-4rem)] min-h-0 flex-col gap-2 overflow-hidden">
       <ErpPageTitle title="Pesquisa de Preços" icon={<SearchCheck className="size-4 shrink-0 text-emerald-700" />} action={<Link href="/compras/pesquisas-precos" className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"><ArrowLeft className="size-3.5" />Voltar</Link>} />
+      <Link className="text-sm underline" href={`/compras/pesquisas-precos/${id}/relatorio`}>Emitir relatório por SD</Link>
       <PriceResearchDetailClient
         research={{
           id: research.id,

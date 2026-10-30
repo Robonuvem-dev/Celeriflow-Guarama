@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { saveDiaryAction, saveGradesAction } from "./actions";
+import { canRecordAttendance } from "@/lib/educacao/enrollment-lifecycle";
 import { diaryPayload, gradesPayload, type GradeDraft } from "./entry-drafts";
 import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
 import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
@@ -11,7 +12,7 @@ import { OPERATIONAL_PAGE_SIZE, type OperationalColumn } from "@/lib/operational
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import styles from "@/components/app-ui/operational/operational.module.css";
 
-type Student = { id: string; name: string; code: string; status: string; enrollmentDate: string };
+type Student = { id: string; name: string; code: string; status: string; enrollmentDate: string; endDate?: string | null };
 type ClassData = { id: string; label: string; subjects: { id: string; name: string }[]; students: Student[] };
 type Assessment = { id: string; label: string; mode: string; maxScore: number | null; students: Student[]; grades: Record<string, { value: number | null; concept: string; absent: boolean; recoveryValue: number | null; feedback: string }> };
 const emptyLesson = { subjectId: "", date: "", stage: "1º Bimestre", lessonCount: "1", contentTaught: "", observations: "" };
@@ -52,7 +53,7 @@ export function ProfessorEntryGrids({ teacherId, classes, assessments }: { teach
     if (mode === "attendance") {
       Object.entries(lesson).forEach(([key, value]) => data.set(key, value));
       data.set("classId", classId); data.set("subjectId", subjectId);
-      data.set("attendances", JSON.stringify(diaryPayload(activeClass?.students || [], presence[classId] || {})));
+      data.set("attendances", JSON.stringify(diaryPayload((activeClass?.students || []).filter(s => canRecordAttendance(s, lesson.date)), presence[classId] || {})));
     } else {
       data.set("assessmentId", assessmentId);
       data.set("grades", JSON.stringify(gradesPayload(activeAssessment?.students || [], activeAssessment?.grades || {}, gradeDraft[assessmentId] || {})));
@@ -78,7 +79,7 @@ export function ProfessorEntryGrids({ teacherId, classes, assessments }: { teach
             <OperationalTable caption={mode === "attendance" ? "Chamada — presença dos alunos" : "Notas, conceitos e recuperação"} preferenceId={`educacao-professor-${mode}`} columns={mode === "attendance" ? attendanceColumns : gradeColumns} rows={students.slice(start, start + OPERATIONAL_PAGE_SIZE).map((student, index) => {
               const old = activeAssessment?.grades[student.id], draft = gradeDraft[assessmentId]?.[student.id] || {};
               const update = (part: GradeDraft) => setGradeDraft((current) => ({ ...current, [assessmentId]: { ...current[assessmentId], [student.id]: { ...current[assessmentId]?.[student.id], ...part } } }));
-              return { id: student.id, label: student.name, values: { name: student.name, order: String(start + index + 1), present: presence[classId]?.[student.id] !== false ? "Sim" : "Não", value: String(draft.value ?? old?.value ?? ""), concept: draft.concept ?? old?.concept ?? "", absent: (draft.absent ?? old?.absent) ? "Sim" : "Não", recoveryValue: String(draft.recoveryValue ?? old?.recoveryValue ?? "") }, cells: mode === "attendance" ? { present: <input aria-label={`Presença de ${student.name}`} disabled={pending} type="checkbox" checked={presence[classId]?.[student.id] !== false} onChange={(event) => { const checked = event.target.checked; setPresence((current) => ({ ...current, [classId]: { ...current[classId], [student.id]: checked } })); }} /> } : {
+              return { id: student.id, label: student.name, values: { name: `${student.name}${student.status !== "Matriculado" ? ` · ${student.status}` : ""}`, order: String(start + index + 1), present: !canRecordAttendance(student, lesson.date) ? "Inabilitado" : presence[classId]?.[student.id] !== false ? "Sim" : "Não", value: String(draft.value ?? old?.value ?? ""), concept: draft.concept ?? old?.concept ?? "", absent: (draft.absent ?? old?.absent) ? "Sim" : "Não", recoveryValue: String(draft.recoveryValue ?? old?.recoveryValue ?? "") }, cells: mode === "attendance" ? { present: <input aria-label={`Presença de ${student.name}`} disabled={pending || !canRecordAttendance(student, lesson.date)} type="checkbox" checked={canRecordAttendance(student, lesson.date) && presence[classId]?.[student.id] !== false} onChange={(event) => { const checked = event.target.checked; setPresence((current) => ({ ...current, [classId]: { ...current[classId], [student.id]: checked } })); }} /> } : {
                 value: <input form={gridFormId} aria-label={`Nota de ${student.name}`} disabled={pending} type="number" step="0.01" max={activeAssessment?.maxScore ?? undefined} value={draft.value ?? old?.value ?? ""} onChange={(event) => update({ value: event.target.value })} className={field} />,
                 concept: <input aria-label={`Conceito de ${student.name}`} disabled={pending} value={draft.concept ?? old?.concept ?? ""} onChange={(event) => update({ concept: event.target.value })} className={field} />,
                 absent: <input aria-label={`Ausência de ${student.name}`} disabled={pending} type="checkbox" checked={draft.absent ?? old?.absent ?? false} onChange={(event) => update({ absent: event.target.checked })} />,

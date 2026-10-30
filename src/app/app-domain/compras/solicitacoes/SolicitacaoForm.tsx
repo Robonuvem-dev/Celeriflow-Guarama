@@ -33,6 +33,7 @@ type BudgetAllocation = {
 };
 
 type RequestData = {
+  externalAdhesion?: { organization: string; processNumber: string; minutesNumber: string } | null;
   id: string;
   number: string;
   secretariatId: string;
@@ -84,6 +85,7 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
   const [secretariatId, setSecretariatId] = useState(data?.secretariatId || initialOrigin?.secretariatId || "");
   const [departmentId, setDepartmentId] = useState(data?.departmentId || initialOrigin?.departmentId || "");
   const [priority, setPriority] = useState(data?.priority || "Normal");
+  const [externalAdhesion, setExternalAdhesion] = useState(Boolean(data?.externalAdhesion));
   const availableBudgetAppropriations = budgetAppropriations.filter((appropriation) => appropriation.secretariatId === secretariatId);
   const estimatedTotal = items.length > 0
     ? items.reduce((acc, curr) => acc + (curr.quantity * (curr.estimatedUnitValue ?? 0)), 0)
@@ -167,6 +169,7 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
       items,
       secretariatId,
       departmentId,
+      externalAdhesion: externalAdhesion ? { organization: String(formData.get("adhesionOrganization") ?? ""), processNumber: String(formData.get("adhesionProcess") ?? ""), minutesNumber: String(formData.get("adhesionMinutes") ?? "") } : null,
     };
 
     const result = await savePurchaseRequest(payload);
@@ -190,6 +193,10 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
         </CardHeader>
         <CardContent className="p-3">
           <form onSubmit={handleSubmit} className="space-y-4">
+            <fieldset className="space-y-2 rounded border p-3">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={externalAdhesion} onChange={event => setExternalAdhesion(event.target.checked)} />Despesa decorrente de adesão externa</label>
+              {externalAdhesion && <div className="grid gap-3 md:grid-cols-3"><label>Órgão gerenciador<Input name="adhesionOrganization" required maxLength={200} defaultValue={data?.externalAdhesion?.organization} /></label><label>Processo externo<Input name="adhesionProcess" required maxLength={100} defaultValue={data?.externalAdhesion?.processNumber} /></label><label>Ata de registro de preços<Input name="adhesionMinutes" required maxLength={100} defaultValue={data?.externalAdhesion?.minutesNumber} /></label></div>}
+            </fieldset>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="number">Número da Solicitação</Label>

@@ -6,6 +6,7 @@ export type PermissionUser = {
   role: string;
   profileCode: string;
   permissions?: string | null;
+  additionalProfiles?: { id: string; code: string; name: string; permissions: string }[];
   modulePermissions: { code: string; canView: boolean; canEdit: boolean }[];
   allowedBudgetUnitIds: string[];
   allowedHealthUnitIds?: string[];
@@ -31,6 +32,7 @@ export type IdentityRecord = {
   email: string;
   ativo: boolean;
   perfil: { id: string; nome: string; codigo: string; ativo: boolean; permissoes: string };
+  additionalProfiles?: { id: string; codigo: string; nome: string; permissoes: string }[];
   employee: { id: string; departmentId: string | null; secretariatId: string | null } | null;
   modulePermissions: { code: string; canView: boolean; canEdit: boolean }[];
   allowedBudgetUnitIds: string[];

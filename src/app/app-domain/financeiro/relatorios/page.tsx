@@ -20,7 +20,7 @@ export default async function FinanceiroRelatoriosPage() {
         <h1 className="text-sm font-bold tracking-tight text-slate-900">Relatórios Financeiros</h1>
         <p className="mt-0.5 text-xs text-slate-500">Prévia e emissão em PDF, CSV, XLSX, TXT ou impressão dos relatórios disponíveis.</p>
       </header>
-      <nav className="flex flex-wrap gap-3 px-3 text-sm"><Link href="/financeiro/relatorios/pessoal-fiscal" className="underline">Pessoal/RCL ajustada — composição e memória</Link><Link href="/financeiro/relatorios/indices-constitucionais" className="underline">Índices constitucionais</Link></nav>
+      <nav className="flex flex-wrap gap-3 px-3 text-sm"><Link href="/financeiro/relatorios/fontes" className="underline">Listagem de fontes de recurso</Link><Link href="/financeiro/cheques" className="underline">Talões e cheques</Link><Link href="/financeiro/relatorios/ensino-decendial" className="underline">Ensino — demonstrativo decendial</Link><Link href="/financeiro/relatorios/cadastros" className="underline">Cadastro de relatórios gerenciais</Link><Link href="/financeiro/relatorios/pessoal-fiscal" className="underline">Pessoal/RCL ajustada — composição e memória</Link><Link href="/financeiro/relatorios/indices-constitucionais" className="underline">Índices constitucionais</Link></nav>
       <section className="rounded-md border border-slate-200 bg-white p-3">
         <h2 className="font-semibold text-slate-800">Emitir relatório básico</h2>
         {canIssue ? (

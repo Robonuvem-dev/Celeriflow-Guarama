@@ -44,6 +44,6 @@ export interface FiscalInspectionPageSource {
   rawTaxpayers: FiscalTaxpayerSource[]; properties: FiscalPropertySource[];
   employees: { id: string; name: string; registration: string | null; salaryBase: number }[];
   plans: FiscalPlanSource[]; orders: FiscalOrderSource[]; findings: FiscalFindingSource[]; periods: FiscalProductivitySource[];
-  templates: { id: string; code: string; name: string; documentKind: string; version: number; status: string }[];
+  templates: { id: string; code: string; name: string; documentKind: string; bodyTemplate: string; version: number; status: string }[];
   rules: { id: string; code: string; name: string; obligationType: string; penaltyRate: Decimal; discountRate: Decimal; interestRate: Decimal; correctionRate: Decimal; legalBasis: string }[];
 }

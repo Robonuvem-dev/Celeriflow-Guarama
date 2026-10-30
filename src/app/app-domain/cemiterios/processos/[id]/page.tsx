@@ -35,6 +35,7 @@ export default async function CemeteryProcessPage({ params }: { params: Promise<
       <p>Declarante: {declarant?.person?.fullName || declarant?.company?.corporateName || process.declarantTaxpayerId}</p>
       <p>Consulta de débitos: {debt.checkedAt} · R$ {debt.total || "0.00"} · {debt.hasDebt ? "Com débitos" : "Sem débitos"}</p>
       {metadata?.exceptionReason && <p>Exceção registrada: {metadata.exceptionReason}</p>}
+      {metadata?.burialType === "NATIMORTO" && <p>Registro de natimorto · Mãe: {process.deceased.motherName || "Não informada"}</p>}
       {metadata?.burialType === "MEMBRO" && <p>Sepultamento de membro · {metadata.memberOwnerDeceased ? "Proprietário também falecido" : "Proprietário vivo — sem aplicação de óbito/espólio"}</p>}
       {linked?.person && <p>Cadastro Único atual: {linked.person.fullName} · Óbito cadastrado: {linked.person.deathDate ? civilDate(linked.person.deathDate) : "Não registrado"} · Espólio: {linked.person.estateApplied ? "Sim" : "Não"}</p>}
       <p>{process.notes}</p>

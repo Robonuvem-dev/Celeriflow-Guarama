@@ -16,6 +16,7 @@ const navigation: ModuleNavGroup[] = [
   { title: "Gestão Ambiental", items: [
     { title: "Áreas Verdes", href: "/meio-ambiente/areas-verdes", icon: "sprout" },
     { title: "Controle de Resíduos", href: "/meio-ambiente/residuos", icon: "trash2" },
+    { title: "Cadastros de Reciclagem", href: "/meio-ambiente/residuos/cadastros", icon: "folderOpen" },
     { title: "Educação Ambiental", href: "/meio-ambiente/educacao", icon: "graduationCap" },
     { title: "Documentos Oficiais", href: "/meio-ambiente/documentos", icon: "folderOpen" },
   ] },

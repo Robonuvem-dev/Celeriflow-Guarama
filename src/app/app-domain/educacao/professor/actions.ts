@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenantContextForModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, ne, sql, inArray } from "drizzle-orm";
 import { db, databaseConnection } from "@/db/client";
 import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction";
 import { classDiaries, enrollments, schoolClasses, teacherClassAssignments, teachers } from "@/db/schema/education-core";
 import { educationAssessments, educationAttendances, educationGrades, learningActivities, learningQuestions, learningSubmissions, teacherAcademicRecords } from "@/db/schema/education-teaching";
+
+import { canRecordAttendance } from "@/lib/educacao/enrollment-lifecycle";
 
 export type ProfessorActionResult = { error: string | null; message?: string };
 const value = (data: FormData, key: string) => String(data.get(key) || "").trim();
@@ -35,8 +37,8 @@ export async function saveDiaryAction(data: FormData): Promise<ProfessorActionRe
     const classId = value(data, "classId"), subjectId = value(data, "subjectId"), rawDate = value(data, "date");
     await assertAssignment(db, teacherId, classId, subjectId);
     const entries = JSON.parse(value(data, "attendances") || "[]") as { studentId: string; isPresent: boolean; absenceGroup?: string; justification?: string }[];
-    const enrolled = await db.select({ studentId: enrollments.studentId }).from(enrollments).where(and(eq(enrollments.classId, classId), eq(enrollments.status, "Matriculado")));
-    const allowed = new Set(enrolled.map((item) => item.studentId));
+    const enrolled = await db.select({ studentId: enrollments.studentId, enrollmentDate: enrollments.enrollmentDate, endDate: enrollments.endDate }).from(enrollments).where(and(eq(enrollments.classId, classId), inArray(enrollments.status, ["Matriculado", "Falecido", "Abandono"])));
+    const allowed = new Set(enrolled.filter(item => canRecordAttendance({ enrollmentDate: item.enrollmentDate.toISOString(), endDate: item.endDate?.toISOString() }, rawDate)).map((item) => item.studentId));
     if (!entries.length || entries.some((item) => !allowed.has(item.studentId))) throw new Error("A lista de chamada não corresponde à turma selecionada.");
     await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [existing] = await tx.select().from(classDiaries).where(and(eq(classDiaries.classId, classId), eq(classDiaries.subjectId, subjectId), eq(classDiaries.teacherId, teacherId), eq(classDiaries.date, date(rawDate)))).limit(1);

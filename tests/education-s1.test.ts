@@ -24,3 +24,13 @@ test("valida intervalos e conflitos de horário", () => {
 test("gera código de matrícula determinístico", () => {
   assert.equal(makeSupportCode(2026, "ALU-0001"), "MAT-2026-ALU0001");
 });
+
+test("diário preserva datas anteriores e bloqueia dias sucessores ao falecimento ou abandono", async () => {
+  const { canRecordAttendance, consecutiveAbsentDays } = await import("../src/lib/educacao/enrollment-lifecycle");
+  const student = {enrollmentDate:"2026-02-01",endDate:"2026-05-10"};
+  assert.equal(canRecordAttendance(student,"2026-05-10"),true);
+  assert.equal(canRecordAttendance(student,"2026-05-11"),false);
+  assert.equal(canRecordAttendance(student,"2026-01-31"),false);
+  assert.equal(consecutiveAbsentDays([{date:"2026-05-01",isPresent:true},{date:"2026-05-02",isPresent:false},{date:"2026-05-03",isPresent:false}]),2);
+  assert.equal(consecutiveAbsentDays([{date:"2026-05-02",isPresent:false},{date:"2026-05-03",isPresent:null}]),0);
+});

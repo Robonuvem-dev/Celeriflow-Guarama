@@ -4,6 +4,9 @@ import { and, asc, desc, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { processes, processMovements, processEvents, processWorkflowStages, processDispatches, processDocuments } from "@/db/schema/processes";
 import { employees, departments } from "@/db/schema/administration";
 import { users } from "@/db/schema/identity";
+import { people } from "@/db/schema/people";
+import { processRegistrationDetails } from "@/db/schema/process-reference-catalog";
+import { processRegistrationDetailSchema } from "@/lib/protocols/registration-details";
 import { getProtocolContext, getProtocolContextForOperation, protocolScopeCondition } from "@/lib/protocols/access";
 import { notifyProtocolDepartment, notifyProtocolUsers } from "@/lib/protocols/notifications";
 import { createValidatedProcess } from "@/lib/protocols/service";
@@ -66,16 +69,27 @@ export async function createProtocol(formData: FormData): Promise<void> {
   const subjectId = String(formData.get("subjectId") || "");
   const personId = String(formData.get("personId") || "") || null;
   const companyId = String(formData.get("companyId") || "") || null;
+  const otherApplicantId = String(formData.get("otherApplicantId") || "") || null;
   const selectedDepartmentId = String(formData.get("initialDepartmentId") || "") || null;
   const requestedPriority = String(formData.get("priority") || "");
   const description = String(formData.get("description") || "").trim() || null;
 
   if (!processTypeId || !subjectId) throw new Error("Selecione o Tipo e o Assunto do processo.");
-  if (personId && companyId) throw new Error("Selecione apenas um interessado: pessoa ou empresa.");
+  if ([personId,companyId,otherApplicantId].filter(Boolean).length > 1) throw new Error("Selecione apenas um interessado: pessoa, empresa ou outro requerente.");
 
-  const process = await withDatabaseTransaction(databaseConnection, (tx) => createValidatedProcess(tx, employee, user.id, {
-    processTypeId, subjectId, personId, companyId, initialDepartmentId: selectedDepartmentId, priority: requestedPriority, description,
-  }), { timeoutMs: 5_000 });
+  const details = processRegistrationDetailSchema.parse({ representativePersonId: String(formData.get("representativePersonId") || "") || null, declaredValue: String(formData.get("declaredValue") || "") || null });
+  const process = await withDatabaseTransaction(databaseConnection, async (tx) => {
+    if (details.representativePersonId) {
+      const [representative] = await tx.select({ id: people.id }).from(people).where(and(eq(people.id, details.representativePersonId), eq(people.status, "Ativo"))).limit(1);
+      if (!representative) throw new Error("Selecione um representante ativo do cadastro de pessoas.");
+      if (!personId && !companyId && !otherApplicantId) throw new Error("Informe o requerente representado.");
+    }
+    const created = await createValidatedProcess(tx, employee, user.id, {
+      processTypeId, subjectId, personId, companyId, otherApplicantId, initialDepartmentId: selectedDepartmentId, priority: requestedPriority, description,
+    });
+    if (details.representativePersonId || details.declaredValue !== null || otherApplicantId) await tx.insert(processRegistrationDetails).values({ processId: created.id, otherApplicantId, ...details });
+    return created;
+  }, { timeoutMs: 5_000 });
 
   revalidateProtocolPages();
   redirect(`/protocolos/processos/${process.id}`);

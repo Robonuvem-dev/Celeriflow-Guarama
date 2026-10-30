@@ -1,0 +1,16 @@
+import {getTenantContextForModule,isSystemAdministrator} from "@/lib/platform/tenant-context";
+import {taxActionConnection} from "@/db/repositories/tax-actions/context";
+import {readManagedDesifInfraction} from "@/lib/tributacao/desif-infraction-management";
+import {listFiscalEntries} from "@/db/repositories/taxation-pages/registry";
+import {taxReferenceSchema,latestTaxReferences,renderReferenceConclusion} from "@/lib/tributacao/reference-catalog";
+import PrintReport from "@/app/app-domain/tributacao/relatorios-cadastrais/PrintReport";
+import {updateDesifInfractionAction} from "./actions";
+export const dynamic="force-dynamic";
+export default async function DesifInfraction({params}:{params:Promise<{id:string}>}){
+ const {id}=await params;const context=await getTenantContextForModule("TRIBUTACAO");const database=taxActionConnection(context).db;const user=context.user;
+ const actor={usuarioId:user.id,employeeId:user.employeeId,allowedBudgetUnitIds:isSystemAdministrator(user)?undefined:user.allowedBudgetUnitIds};
+ const row=await readManagedDesifInfraction(database,actor,id);
+ const configurations=await listFiscalEntries(database,{entityType:"TAX_REFERENCE",categories:["TAX_REFERENCE"],data:{kind:"orgao-configuracao",budgetUnitId:row.scope.budgetUnitId??undefined},allowedBudgetUnitIds:actor.allowedBudgetUnitIds});
+ const brand=latestTaxReferences(configurations.map(entry=>({id:entry.entityId,version:entry.version,deleted:entry.status==="EXCLUIDO",data:taxReferenceSchema.parse(entry.data)}))).find(entry=>!entry.deleted)?.data;
+ return <main className="mx-auto max-w-4xl space-y-4 p-6"><header>{brand?.coatUrl&&<picture><img src={brand.coatUrl} alt={`Brasão ${brand.name}`} width={90} height={90}/></picture>}{brand&&<><h2>{brand.name}</h2><p>{brand.details}</p></>}<h1 className="text-xl font-bold">Auto de infração — ISS Bancário</h1></header><dl><dt>Identificação</dt><dd>{row.id}</dd><dt>Instituição</dt><dd>{row.institutionName}</dd><dt>Competência</dt><dd>{row.competence}</dd><dt>Infração</dt><dd>{row.infractionType}</dd><dt>Valor original do auto</dt><dd>{row.penalty}</dd><dt>Prazo de defesa</dt><dd>{row.defenseDeadline?.toLocaleDateString("pt-BR")??"Não informado"}</dd><dt>Situação administrativa</dt><dd>{row.status}</dd></dl>{brand?.conclusionTemplate&&<p>{renderReferenceConclusion(brand.conclusionTemplate,row.id,row.institutionName)}</p>}<PrintReport/><form action={updateDesifInfractionAction} className="grid gap-3 rounded border p-4 print:hidden"><h2>Manutenção administrativa do auto</h2><p>Valores, lançamento e guia conservam a apuração de origem. Cancelamento e revisão financeira seguem procedimento próprio.</p><input type="hidden" name="caseId" value={id}/><input type="hidden" name="expectedUpdatedAt" value={row.updatedAt.toISOString()}/><label>Descrição da infração<input name="infractionType" required maxLength={240} defaultValue={row.infractionType}/></label><label>Situação<select name="status" defaultValue={row.status}>{["Emitido","Defesa apresentada","Em análise","Julgado"].map(status=><option key={status}>{status}</option>)}</select></label><label>Fundamentação<textarea name="reason" required minLength={10} maxLength={4000}/></label><button disabled={row.status==="Julgado"}>Salvar alteração</button></form></main>;
+}

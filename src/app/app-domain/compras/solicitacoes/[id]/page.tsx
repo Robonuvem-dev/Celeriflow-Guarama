@@ -13,6 +13,7 @@ import { db } from "@/db/client";
 import { loadPurchaseRequestDetail } from "@/db/repositories/procurement/purchase-requests";
 import { ComprasPanelTable } from "../../_components/ComprasPanelTable";
 import { comprasColumn as column } from "../../_components/columns";
+import { loadExternalAdhesion } from "@/db/repositories/procurement/external-adhesion";
 
 export default async function SolicitacaoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
@@ -23,6 +24,7 @@ export default async function SolicitacaoDetalhesPage({ params }: { params: Prom
   if (!solicitacao) {
     notFound();
   }
+  const adhesion = await loadExternalAdhesion(context.database ?? db, solicitacao.id);
 
   return (
     <PageFrame className="space-y-2">
@@ -33,6 +35,7 @@ export default async function SolicitacaoDetalhesPage({ params }: { params: Prom
       />
 
       <Card className="rounded-md">
+        {adhesion && <section className="space-y-1 border-b p-3"><h2 className="font-semibold">Origem: adesão externa</h2><p>Órgão gerenciador: {adhesion.organization}</p><p>Processo: {adhesion.processNumber} · Ata: {adhesion.minutesNumber}</p></section>}
         <CardHeader className="border-b p-3">
           <CardTitle className="text-sm">Informações Gerais</CardTitle>
         </CardHeader>

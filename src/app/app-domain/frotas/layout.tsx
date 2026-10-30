@@ -32,6 +32,7 @@ const navigation: ModuleNavGroup[] = fleetNavigationGroups.map((group) => ({
     },
   })),
 }));
+navigation.push({ title: "Cadastros", items: [{ title: "Cadastros auxiliares", href: "/frotas/cadastros", icon: "clipboardList" }] });
 
 export default function FrotasLayout({ children }: { children: React.ReactNode }) {
   const workspace = useOptionalOperationalWorkspace();

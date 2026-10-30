@@ -20,6 +20,7 @@ export default async function EducacaoDashboardPage() {
     <PageFrame className="space-y-2 px-1 py-1 md:px-2">
       <PageHeader
         title="Educação"
+        action={<Link href="/educacao/licencas">Licenças e férias</Link>}
         icon={<GraduationCap className="size-4 shrink-0 text-blue-600" />}
         className="dark:border-gray-700 dark:bg-gray-800 dark:[&>h1]:text-white"
       />

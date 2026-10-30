@@ -24,6 +24,7 @@ export async function resolveIdentityUser(db: DatabaseExecutor, principal: Sessi
     role: usuario.perfil.nome,
     profileCode: usuario.perfil.codigo,
     permissions: usuario.perfil.permissoes ?? null,
+    additionalProfiles: usuario.additionalProfiles?.map(profile => ({ id: profile.id, code: profile.codigo, name: profile.nome, permissions: profile.permissoes })),
     modulePermissions: usuario.modulePermissions.map(permission => ({ ...permission, code: permission.code.toUpperCase() })),
     allowedBudgetUnitIds: usuario.allowedBudgetUnitIds,
     allowedHealthUnitIds: getCurrentHealthUnitIds(healthAccessScopes),

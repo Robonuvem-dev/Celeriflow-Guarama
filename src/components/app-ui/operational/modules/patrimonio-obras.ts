@@ -39,6 +39,8 @@ export const operationalModules: OperationalModuleConfig[] = [
       ] },
       { title: "Patrimônio", items: [
         { title: "Bens patrimoniais", href: "/patrimonio/bens", icon: "archive" },
+        { title: "Cadastros auxiliares", href: "/patrimonio/cadastros", icon: "archive" },
+        { title: "Relatórios", href: "/patrimonio/relatorios", icon: "clipboardList" },
         { title: "Ciclo de vida", href: "/patrimonio/ciclo-vida", icon: "chartNoAxesCombined" },
       ] },
     ],

@@ -34,6 +34,7 @@ export default async function TributacaoDashboardPage() {
       />
 
       <Link href="/tributacao/movimentacoes-contabeis" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Movimentações tributárias e partidas contábeis</Link>
+      <Link href="/tributacao/referencias" className="ml-2 inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Cadastros e parâmetros fiscais</Link>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (

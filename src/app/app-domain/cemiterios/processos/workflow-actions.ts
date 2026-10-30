@@ -51,7 +51,7 @@ export async function saveWorkflow(form: FormData) {
         cemeteryId: text(form, "cemeteryId"), graveId: text(form, "graveId"), deceasedTaxpayerId: optional(form, "deceasedTaxpayerId"), declarantTaxpayerId,
         funeralHomeId: optional(form, "funeralHomeId"), causeId: optional(form, "causeId"), chapelId: optional(form, "chapelId"),
         doctorName: text(form, "doctorName"), doctorCrm: text(form, "doctorCrm"), scheduledAt: new Date(text(form, "scheduledAt")),
-        burialType: text(form, "burialType") as "NORMAL" | "MEMBRO" | "NAO_RECLAMADO", unidentified: form.get("unidentified") === "on",
+        burialType: text(form, "burialType") as "NORMAL" | "MEMBRO" | "NAO_RECLAMADO" | "NATIMORTO", unidentified: form.get("unidentified") === "on",
         memberOwnerDeceased: form.get("memberOwnerDeceased") === "on", exceptionReason: optional(form, "exceptionReason"), finalizeNow: false, requestKey,
         groups: Object.fromEntries(["falecido", "nascimento", "documentos", "endereco", "obito", "local", "medico", "causas", "funeraria", "sepultamento", "observacoes"].map(key => [key, { observacao: text(form, `group_${key}`) }])),
       });

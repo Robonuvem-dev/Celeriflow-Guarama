@@ -28,7 +28,7 @@ export async function requestCitizenAccess(db: DatabaseConnection, principal: Se
 }
 
 export async function decideCitizenAccess(db: DatabaseConnection, actorId: string, raw: unknown) {
-  const input = z.object({ id: z.string().min(1), approved: z.boolean(), taxpayerId: z.string().default(""), scopes: z.array(z.enum(["EXTRATO", "DAM", "CERTIDOES", "IPTU", "PARCELAMENTO", "DIVIDA", "PROCESSOS", "EMPRESA", "IMOVEL", "ITBI", "NOTIFICACOES", "PAGAMENTOS", "DOCUMENTOS", "ALVARAS", "NFSE", "CADASTRO"])).max(30), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
+  const input = z.object({ id: z.string().min(1), approved: z.boolean(), taxpayerId: z.string().default(""), scopes: z.array(z.enum(["EXTRATO", "DAM", "CERTIDOES", "IPTU", "PARCELAMENTO", "DIVIDA", "PROCESSOS", "EMPRESA", "IMOVEL", "ITBI", "NOTIFICACOES", "PAGAMENTOS", "DOCUMENTOS", "ALVARAS", "NFSE", "DESIF", "DECLARACOES_DIVERSOS", "DECLARACOES_CARTORIO", "CADASTRO"])).max(30), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
   return withDatabaseTransaction(db, async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`CITIZEN_ACCESS_DECISION:${input.id}`}))`);
     const [application] = await tx.select().from(citizenAccessApplications).where(eq(citizenAccessApplications.id, input.id)).limit(1);

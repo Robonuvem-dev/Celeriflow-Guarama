@@ -42,6 +42,7 @@ export async function createStudentAction(data: FormData): Promise<EducationActi
         personId,
         studentCode,
         specialNeeds: required(data, "specialNeeds") || null,
+        dietaryRestrictions: required(data, "dietaryRestrictions").slice(0, 4000) || null,
         usesSchoolTransport: data.get("usesSchoolTransport") === "on",
         needsSpecialMeal: data.get("needsSpecialMeal") === "on",
       }).returning({ id: students.id });
@@ -131,7 +132,7 @@ export async function moveEnrollmentAction(data: FormData): Promise<EducationAct
     const enrollmentId = required(data, "enrollmentId");
     const type = required(data, "type");
     const targetClassId = required(data, "targetClassId") || null;
-    await withDatabaseTransaction(databaseConnection, tx => moveEducationEnrollment(tx, { enrollmentId, type, targetClassId, effectiveDate: asDate(required(data, "effectiveDate")), reason: required(data, "reason") || null, destinationMunicipality: required(data, "destinationMunicipality") || null, actorName: user.name }), { isolationLevel: "serializable" });
+    await withDatabaseTransaction(databaseConnection, tx => moveEducationEnrollment(tx, { enrollmentId, type, targetClassId, effectiveDate: asDate(required(data, "effectiveDate")), reason: required(data, "reason") || null, destinationMunicipality: required(data, "destinationMunicipality") || null, actorName: user.name, minimumConsecutiveAbsences: Number(required(data, "minimumConsecutiveAbsences")) || undefined }), { isolationLevel: "serializable" });
     refreshEducation();
     return { error: null, message: "Movimentação registrada sem perder o histórico da matrícula." };
   } catch (error) { return { error: messageFor(error) }; }
