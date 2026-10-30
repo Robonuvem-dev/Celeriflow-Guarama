@@ -5,6 +5,7 @@ import { canManagePurchaseRequest, canSelectAnyPurchaseRequestOrigin, purchaseRe
 import { db } from "@/db/client";
 import { loadPurchaseRequestFormOptions } from "@/db/repositories/procurement/purchase-requests";
 import { loadPurchaseRequestsWithAllocations } from "@/db/repositories/procurement/lifecycle";
+import { loadExternalAdhesion } from "@/db/repositories/procurement/external-adhesion";
 
 export default async function EditarSolicitacaoPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
@@ -22,6 +23,7 @@ export default async function EditarSolicitacaoPage({ params }: { params: Promis
 
   const mappedSolicitacao = {
     ...solicitacao,
+    externalAdhesion: await loadExternalAdhesion(context.database ?? db, solicitacao.id),
     items: solicitacao.items.map((item) => ({
       id: item.id,
       catalogItemId: item.catalogItemId ?? (item.customName ? "custom" : ""),

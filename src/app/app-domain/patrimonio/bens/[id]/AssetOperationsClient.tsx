@@ -31,8 +31,9 @@ export function AssetOperationsClient({ assetId, version, canUpdate, maintenance
         <label className="block text-sm">Justificativa<textarea name="reason" required maxLength={10000} className={fieldClass + " mt-1 min-h-20"} /></label>
         <button disabled={pending} className="min-h-9 rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Confirmar transferência</button>
       </form>
-      <form className="space-y-3 rounded-md border bg-white p-4" onSubmit={event => { event.preventDefault(); const values = new FormData(event.currentTarget); confirm({ kind: "startMaintenance", assetId, version, description: String(values.get("description") || ""), startDate: String(values.get("startDate") || "") }); }}>
+      <form className="space-y-3 rounded-md border bg-white p-4" onSubmit={event => { event.preventDefault(); const values = new FormData(event.currentTarget); confirm({ kind: "startMaintenance", assetId, version, description: `[${values.get("maintenanceType") === "PREVENTIVA" ? "PREVENTIVA" : "CORRETIVA"}] ${String(values.get("description") || "")}`, startDate: String(values.get("startDate") || "") }); }}>
         <h2 className="font-semibold">Iniciar manutenção patrimonial</h2><p className="text-xs text-slate-500">A unidade vinculada fica em manutenção. Se há OS de Frotas, inicie pela própria OS para preservar o plano de origem.</p>
+        <label className="block text-sm">Tipo<select name="maintenanceType" required className={fieldClass}><option value="PREVENTIVA">Preventiva</option><option value="CORRETIVA">Corretiva</option></select></label>
         <label className="block text-sm">Data de início<input name="startDate" type="date" defaultValue={today} required className={fieldClass + " mt-1"} /></label>
         <label className="block text-sm">Serviços / descrição<textarea name="description" required maxLength={10000} className={fieldClass + " mt-1 min-h-20"} /></label>
         <button disabled={pending} className="min-h-9 rounded border border-amber-600 px-4 py-2 text-sm font-medium text-amber-700 disabled:opacity-50">Iniciar manutenção</button>

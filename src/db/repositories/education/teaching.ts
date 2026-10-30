@@ -14,7 +14,7 @@ export async function findTeachingWorkspaceIdentity(database: DatabaseExecutor, 
 
 async function listTeachingEnrollments(database: DatabaseExecutor, classIds: string[]): Promise<(TeachingEnrollment & { classId: string | null })[]> {
   if (!classIds.length) return [];
-  const rows = await database.select({ classId: enrollments.classId, status: enrollments.status, enrollmentDate: enrollments.enrollmentDate, student: { id: students.id, studentCode: students.studentCode }, fullName: people.fullName }).from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId)).innerJoin(people, eq(people.id, students.personId)).where(and(inArray(enrollments.classId, classIds), eq(enrollments.status, "Matriculado"))).orderBy(asc(people.fullName));
+  const rows = await database.select({ classId: enrollments.classId, status: enrollments.status, enrollmentDate: enrollments.enrollmentDate, endDate: enrollments.endDate, student: { id: students.id, studentCode: students.studentCode }, fullName: people.fullName }).from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId)).innerJoin(people, eq(people.id, students.personId)).where(and(inArray(enrollments.classId, classIds), inArray(enrollments.status, ["Matriculado", "Falecido", "Abandono"]))).orderBy(asc(people.fullName));
   return rows.map(({ fullName, student, ...row }) => ({ ...row, student: { ...student, person: { fullName } } }));
 }
 

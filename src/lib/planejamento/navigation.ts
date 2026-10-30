@@ -11,6 +11,7 @@ export function planningNavigation(jurisdiction: PlanningJurisdiction): ModuleNa
       { title: "Orçamento Anual — LOA", href: `${base}/loa`, icon: "fileText" },
     ] },
     { title: "Cadastros", items: [
+      ...(jurisdiction === "EXECUTIVE" ? [{ title: "Ações regionalizadas", href: `${base}/regionalizacao`, icon: "fileText" as const }] : []),
       { title: "Fontes de recursos", href: `${base}/cadastros/source`, icon: "landmark" },
       { title: "Naturezas de receita", href: `${base}/cadastros/revenue`, icon: "fileText" },
       { title: "Naturezas de despesa", href: `${base}/cadastros/expense`, icon: "fileText" },

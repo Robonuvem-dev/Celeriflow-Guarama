@@ -41,7 +41,8 @@ export function validateWorkflowDate(date: Date, label: string) {
 
 export function validateBurialIdentity(input: { burialType?: string | null; unidentified?: boolean; deceasedTaxpayerId?: string | null; exceptionReason?: string; memberOwnerDeceased?: boolean }) {
   const type = input.burialType ?? (input.unidentified ? "NAO_RECLAMADO" : "NORMAL");
-  if (!["NORMAL", "MEMBRO", "NAO_RECLAMADO"].includes(type)) throw new TributarioS9Error("Tipo de sepultamento inválido.");
+  if (!["NORMAL", "MEMBRO", "NAO_RECLAMADO", "NATIMORTO"].includes(type)) throw new TributarioS9Error("Tipo de sepultamento inválido.");
+  if (type === "NATIMORTO" && (input.deceasedTaxpayerId || input.unidentified)) throw new TributarioS9Error("Natimorto deve ser registrado sem CPF ou vínculo fictício de pessoa física.");
   if (input.unidentified && input.deceasedTaxpayerId) throw new TributarioS9Error("Pessoa não identificada não pode ter cadastro de pessoa física fictício.");
   if (type === "NORMAL" && (!input.deceasedTaxpayerId || input.unidentified)) throw new TributarioS9Error("Sepultamento normal exige pessoa física identificada no Cadastro Único.");
   if (type === "MEMBRO" && (!input.deceasedTaxpayerId || input.unidentified)) throw new TributarioS9Error("Sepultamento de membro exige o cadastro da pessoa proprietária do membro.");

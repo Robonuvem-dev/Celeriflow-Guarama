@@ -33,6 +33,7 @@ export default async function ComprasDashboard() {
         icon={<ShoppingCart className="size-4 shrink-0 text-emerald-600" />}
         action={(
           <>
+            <Link href="/compras/cadastros" className={buttonVariants({ variant: "outline", size: "sm" })}>Cadastros</Link>
             <Link href="/compras/solicitacoes/novo" aria-label="Nova Solicitação" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <ShoppingCart className="size-3.5" />
               <span className="hidden sm:inline">Nova Solicitação</span>

@@ -73,7 +73,9 @@ export function currentMasterMetadataReader(source: string) {
   const page = file.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "renderMasterDataPage");
   assert.ok(page && ts.isFunctionDeclaration(page) && page.body);
   const start = page.body.statements.findIndex(node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === "columns"));
-  const end = page.body.statements.findIndex(node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === "tabLinks"));
+  // Metadata construction ends before rendering. The page now passes tabs
+  // straight to its client component instead of declaring a tabLinks local.
+  const end = page.body.statements.findIndex((node, index) => index > start && (ts.isReturnStatement(node) || (ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === "tabLinks"))));
   assert.ok(start >= 0 && end > start);
   const statements = page.body.statements.slice(start, end);
   return (catalog: MasterDataCatalog, options: Record<string, MasterDataOption[]>) => {

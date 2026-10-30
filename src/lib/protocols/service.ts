@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import type { DatabaseTransaction } from "@/db/transaction";
 import { processTypes, processSubjects, processes, processSequences, processMovements, processEvents, processWorkflowStages, genericWorkflowDefinitions, genericWorkflowStages, genericWorkflowInstances, genericWorkflowEvents } from "@/db/schema/processes";
+import { processReferenceCatalog } from "@/db/schema/process-reference-catalog";
 import { departments } from "@/db/schema/administration";
 import { getGenericWorkflowInstanceTimeZone } from "@/lib/protocols/generic-workflow-definition-service";
 import { calculateGenericWorkflowDeadline } from "@/lib/protocols/generic-workflow-policy";
@@ -15,6 +16,7 @@ export type ProcessOpeningInput = {
   subjectId: string;
   personId?: string | null;
   companyId?: string | null;
+  otherApplicantId?: string | null;
   initialDepartmentId?: string | null;
   priority?: string | null;
   description?: string | null;
@@ -26,13 +28,18 @@ type OperationalEmployee = { id: string };
 export async function createValidatedProcess(tx: DatabaseTransaction, employee: OperationalEmployee, actorUsuarioId: string, input: ProcessOpeningInput): Promise<{ id: string; protocolNumber: string; expectedCompletionAt: Date | null }> {
   const { processTypeId, subjectId, personId = null, companyId = null, initialDepartmentId: selectedDepartmentId = null, priority: requestedPriority = null, description = null } = input;
   if (!processTypeId || !subjectId) throw new Error("Selecione o Tipo e o Assunto do processo.");
-  if (personId && companyId) throw new Error("Selecione apenas um interessado: pessoa ou empresa.");
+  const otherApplicantId = input.otherApplicantId || null;
+  if ([personId, companyId, otherApplicantId].filter(Boolean).length > 1) throw new Error("Selecione apenas um interessado: pessoa, empresa ou outro requerente.");
+  if (otherApplicantId) {
+    const [other] = await tx.select({id:processReferenceCatalog.id}).from(processReferenceCatalog).where(and(eq(processReferenceCatalog.id,otherApplicantId),eq(processReferenceCatalog.kind,"OTHER_APPLICANT"),eq(processReferenceCatalog.isActive,true))).limit(1);
+    if (!other) throw new Error("Outro requerente deve estar cadastrado e ativo.");
+  }
 
   const [subjectRow] = await tx.select({ subject: processSubjects, processType: processTypes }).from(processSubjects).innerJoin(processTypes, eq(processTypes.id, processSubjects.processTypeId)).where(and(eq(processSubjects.id, subjectId), eq(processSubjects.processTypeId, processTypeId), eq(processSubjects.isActive, true))).limit(1);
   const subject = subjectRow ? { ...subjectRow.subject, processType: subjectRow.processType } : null;
   if (!subject || !subject.processType.isActive) throw new Error("O Assunto selecionado nao pertence a um Tipo de Processo ativo.");
   if (!subject.allowsInternalOpening || !subject.processType.allowsInternalOpening) throw new Error("Este processo nao permite abertura interna.");
-  if ((subject.requiresInterested || subject.processType.requiresInterested) && !personId && !companyId) {
+  if ((subject.requiresInterested || subject.processType.requiresInterested) && !personId && !companyId && !otherApplicantId) {
     throw new Error("Este processo exige a selecao de um interessado.");
   }
 

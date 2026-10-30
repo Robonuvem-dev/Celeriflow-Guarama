@@ -1,7 +1,9 @@
 import { and, asc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
 import type { DatabaseExecutor } from "@/db/transaction";
-import { employees, roles } from "@/db/schema/administration";
+import { hrReferenceRecords } from "@/db/schema/personnel-reference-records";
+import { budgetAppropriations } from "@/db/schema/finance-budget";
+import { employees, roles, departments } from "@/db/schema/administration";
 import { hrEmploymentRegimes } from "@/db/schema/personnel-configuration";
 import { hrEmploymentContracts, hrEmploymentRevisions, hrPayrollRuns, hrPayrollStatements, hrRightEntries, payrolls } from "@/db/schema/personnel-workforce";
 import ExcelJS from "exceljs";
@@ -11,9 +13,10 @@ import { resolveContractRevision } from "./contract-timeline";
 import { payrollPeriod } from "./calculation-engine";
 import { buildPocAnnualIncomeReport } from "./poc-payment";
 import { allocateProratedStatementLocations } from "./prorated-statement-locations";
+import { consignmentMarginSchema } from "./consignment-margin";
 
 export const hrReportInputSchema = z.object({
-  kind: z.enum(["CONTRATOS", "FOLHA", "DIREITOS", "RESUMO_CONTABIL", "PREVIDENCIA", "IRRF", "PENSOES", "REMESSA_SALARIAL_POC", "INFORME_ANUAL_POC", "CONTRATOS_MULTIPLOS", "SERVIDORES_ATIVOS", "QUANTIDADE_SERVIDORES"]), format: z.enum(["CSV", "XLSX", "PDF"]),
+  kind: z.enum(["CONTRATOS", "FOLHA", "DIREITOS", "RESUMO_CONTABIL", "PREVIDENCIA", "IRRF", "PENSOES", "REMESSA_SALARIAL_POC", "INFORME_ANUAL_POC", "CONTRATOS_MULTIPLOS", "SERVIDORES_ATIVOS", "QUANTIDADE_SERVIDORES", "CADASTRO_GERAL", "CADASTRO_LOTACAO", "CADASTRO_LOCAL", "MARGEM_CONSIGNAVEL", "CADASTRO_DOTACAO"]), format: z.enum(["CSV", "XLSX", "PDF"]),
   q: z.string().max(200).default(""), competence: z.string().regex(/^(0[1-9]|1[0-2])\/\d{4}$/).optional(),
   referenceDate: z.iso.date().optional(),
   payrollId: z.string().min(1).optional(),
@@ -35,6 +38,19 @@ async function historicalReportContracts(db: DatabaseExecutor, where: SQL | unde
 }
 
 export async function buildHrReport(db: DatabaseExecutor, input: z.infer<typeof hrReportInputSchema>, payrollScope?: SQL): Promise<Report> {
+  if (input.kind === "CADASTRO_DOTACAO") {
+    if (input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("Relatório de dotação usa o cadastro atual; remova filtros de folha/vigência.");
+    const rows = await db.select({employee:employees.name,cpf:employees.cpf,registration:employees.registration,appropriation:budgetAppropriations.code}).from(employees).leftJoin(hrReferenceRecords,and(eq(hrReferenceRecords.kind,"LOTACAO_ORCAMENTARIA"),sql`${hrReferenceRecords.details}->>'employeeId' = ${employees.id}`)).leftJoin(budgetAppropriations,sql`${budgetAppropriations.id} = ${hrReferenceRecords.details}->>'appropriationId'`).where(input.q ? or(sql`strpos(lower(${employees.name}),lower(${input.q})) > 0`, sql`strpos(lower(coalesce(${budgetAppropriations.code},'')),lower(${input.q})) > 0`) : undefined).orderBy(asc(budgetAppropriations.code),asc(employees.name));
+    return {title:"Cadastro pessoal por dotação orçamentária — vínculos explicitamente cadastrados",headers:["Dotação","Servidor","CPF","Matrícula"],rows:rows.map(r=>[r.appropriation || "Sem dotação vinculada",r.employee,r.cpf || "",r.registration || ""])};
+  }
+  if (["CADASTRO_GERAL", "CADASTRO_LOTACAO", "CADASTRO_LOCAL"].includes(input.kind)) {
+    if (input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("Relatório cadastral atual não aceita filtros de folha ou vigência.");
+    const rows = await db.select({ id: employees.id, name: employees.name, cpf: employees.cpf, registration: employees.registration, email: employees.email, phone: employees.phone, active: employees.isActive, department: departments.name, role: roles.name, workLocation: hrEmploymentContracts.workLocation }).from(employees).leftJoin(departments, eq(departments.id, employees.departmentId)).leftJoin(roles, eq(roles.id, employees.roleId)).leftJoin(hrEmploymentContracts, and(eq(hrEmploymentContracts.employeeId, employees.id), eq(hrEmploymentContracts.status, "ATIVO"))).where(input.q ? or(sql`strpos(lower(${employees.name}),lower(${input.q})) > 0`, sql`strpos(coalesce(${employees.cpf},''),${input.q}) > 0`) : undefined).orderBy(asc(employees.name), asc(hrEmploymentContracts.workLocation));
+    const general = input.kind === "CADASTRO_GERAL";
+    const unique = new Map<string, typeof rows[number]>();
+    for (const row of rows) unique.set(general ? row.id : `${row.id}:${row.department || ""}:${row.workLocation || ""}`, row);
+    return { title: input.kind === "CADASTRO_LOTACAO" ? "Cadastro pessoal por lotação atual" : input.kind === "CADASTRO_LOCAL" ? "Cadastro pessoal por local de trabalho atual" : "Cadastro pessoal geral", headers: ["Nome", "CPF", "Matrícula", "Cargo", "Lotação", "Local de trabalho", "Email", "Telefone", "Situação"], rows: [...unique.values()].map(r => [r.name, r.cpf || "", r.registration || "", r.role || "Não informado", r.department || "Não informada", r.workLocation || "Não informado", r.email || "", r.phone || "", r.active ? "Ativo" : "Inativo"]) };
+  }
   if (input.kind === "INFORME_ANUAL_POC") {
     if (input.q || input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("Informe anual POC usa ano de pagamento e acesso orçamentário; remova os demais filtros.");
     return buildPocAnnualIncomeReport(db, input.year ?? new Date().getUTCFullYear(), payrollScope);
@@ -91,9 +107,21 @@ export async function buildHrReport(db: DatabaseExecutor, input: z.infer<typeof 
     const roleNames = new Map(selectedRoles.map(role => [role.id, role.name]));
     return { title: "Relação de servidores/vínculos ativos — referência documental Ibema; nomes de cargo/regime do cadastro atual", headers: ["Referência", "Matrícula", "Nome", "Cargo/Função", "Lotação", "Situação", "Regime", "Admissão", "Faixa salarial", "Jornada mensal (horas)", "Versão contratual"], rows: active.map(contract => [date, contract.registration, contract.employee.name, roleNames.get(contract.roleId) || contract.roleId, contract.workLocation, contract.status, regimeNames.get(contract.regimeId) || contract.regimeId, contract.admittedAt.toISOString().slice(0, 10), contract.salaryLevel || "", String(contract.monthlyHours), String(contract.version)]) };
   }
-  if (["FOLHA", "RESUMO_CONTABIL", "PREVIDENCIA", "IRRF", "PENSOES", "REMESSA_SALARIAL_POC"].includes(input.kind)) {
+  if (["FOLHA", "RESUMO_CONTABIL", "PREVIDENCIA", "IRRF", "PENSOES", "REMESSA_SALARIAL_POC", "MARGEM_CONSIGNAVEL"].includes(input.kind)) {
     const selected = await db.select({ statement: hrPayrollStatements, registration: hrEmploymentContracts.registration, employeeName: employees.name, payroll: { competence: payrolls.competence, type: payrolls.type }, scope: hrPayrollRuns.scope }).from(hrPayrollStatements).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrPayrollStatements.contractId)).innerJoin(employees, eq(employees.id, hrEmploymentContracts.employeeId)).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(and(contractWhere, eq(hrPayrollRuns.mode, "OFICIAL"), eq(hrPayrollRuns.status, "FECHADA"), input.payrollId ? eq(hrPayrollRuns.payrollId, input.payrollId) : undefined, payrollScope, input.competence ? eq(payrolls.competence, input.competence) : undefined)).orderBy(asc(hrPayrollRuns.createdAt), asc(hrPayrollStatements.id));
     const rows = selected.map(row => ({ ...row.statement, contract: { registration: row.registration, employee: { name: row.employeeName } }, run: { payroll: row.payroll, scope: row.scope } }));
+    if (input.kind === "MARGEM_CONSIGNAVEL") {
+      const seen = new Set<string>();
+      const result: string[][] = [];
+      for (const row of rows) {
+        const margin = z.object({ consignmentMargin: consignmentMarginSchema.nullable().optional() }).parse(row.snapshot).consignmentMargin;
+        const key = `${row.runId}:${margin?.contractIds.join(",") || row.contractId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push([row.run.payroll.competence, row.run.payroll.type, row.contract.employee.name, margin?.contractIds.join("; ") || row.contract.registration, margin?.remuneration || "", margin?.compulsoryDeductions || "", margin?.base || "", margin?.rate || "", margin?.limit || "", margin?.used || "", margin?.available || "", margin?.excess || "", margin?.policy.legalReference || "Margem não configurada neste cálculo", margin?.memory.map(m => `${m.contractId}/${m.rubricCode}/${m.purpose}: ${m.value}`).join("; ") || ""]);
+      }
+      return { title: "Análise de consignados — memória das rubricas e margem compartilhada por pessoa/cálculo", headers: ["Competência", "Tipo", "Servidor", "Contratos", "Remuneração BRL", "Obrigatórios BRL", "Base BRL", "Limite %", "Limite BRL", "Utilizado BRL", "Disponível BRL", "Excesso BRL", "Fundamento / situação", "Memória por rubrica"], rows: result };
+    }
     if (input.kind === "PENSOES") {
       const pensionSnapshot = z.object({ pensions: z.array(z.object({ id: z.string(), courtReference: z.string(), method: z.string(), basis: z.string(), base: z.string(), value: z.string(), amount: z.string(), deductFromIncomeTax: z.boolean(), beneficiary: z.object({ id: z.string(), fullName: z.string(), cpf: z.string() }) })).optional().default([]) });
       return { title: "Pensões calculadas — beneficiários e memória; não comprova repasse", headers: ["Competência", "Tipo", "Escopo", "Matrícula", "Servidor", "Pensão", "Beneficiário", "CPF beneficiário", "Processo", "Método", "Base", "Base BRL", "Parâmetro", "Desconto BRL", "Dedutível IRRF", "Demonstrativo"], rows: rows.flatMap(row => {

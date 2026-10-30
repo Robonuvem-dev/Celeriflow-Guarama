@@ -1,0 +1,51 @@
+import "./helpers/fleet-test-environment";
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
+import { mergeTaxRegistries } from "../src/lib/tributacao/registry-merge";
+import type { PermissionUser } from "../src/lib/contracts/identity";
+const user: PermissionUser = { id: "admin", firebaseUid: "admin", email: "admin@test.invalid", name: "Administrador", role: "Administrador", profileCode: "SYSTEM_ADMINISTRATOR", modulePermissions: [], allowedBudgetUnitIds: [], employeeId: null, departmentId: null, secretariatId: null };
+
+test("agrupamento transfere todos os consumidores físicos e preserva origem auditável", async () => {
+  const fixture = await createLocalDrizzleDatabase();
+  try {
+    await fixture.database.exec(`CREATE TABLE "City" (id TEXT PRIMARY KEY,name TEXT,"stateId" TEXT,status TEXT,"updatedAt" TIMESTAMP);
+    INSERT INTO "City" VALUES ('city-source','São José','PR','ATIVA',CURRENT_TIMESTAMP),('city-target','Sao Jose','PR','ATIVA',CURRENT_TIMESTAMP),('city-other','São José','SC','ATIVA',CURRENT_TIMESTAMP);
+    CREATE TABLE "Neighborhood" (id TEXT PRIMARY KEY,name TEXT,city TEXT,state TEXT,"cityId" TEXT REFERENCES "City"(id),status TEXT,"updatedAt" TIMESTAMP);
+    INSERT INTO "Neighborhood" VALUES ('hood-source','Centro','São José','PR','city-source','Ativo',CURRENT_TIMESTAMP),('hood-target','CENTRO','São José','PR','city-target','Ativo',CURRENT_TIMESTAMP);
+    CREATE TABLE "VafAccountant" (id TEXT PRIMARY KEY,name TEXT,"cpfCnpj" TEXT,active BOOLEAN,"updatedAt" TIMESTAMP);
+    INSERT INTO "VafAccountant" VALUES ('accountant-source','Escritório','12.345.678/0001-90',true,CURRENT_TIMESTAMP),('accountant-target','Escritório','12345678000190',true,CURRENT_TIMESTAMP);
+    CREATE TABLE "Address" (id TEXT PRIMARY KEY,"zipCode" TEXT,"neighborhoodId" TEXT REFERENCES "Neighborhood"(id)); INSERT INTO "Address" VALUES ('address','12345-678','hood-source');
+    CREATE TABLE "ScalarLocation" (id TEXT,"cityId" TEXT); INSERT INTO "ScalarLocation" VALUES ('scalar','city-source');
+    CREATE TABLE "VafCompany" (id TEXT,"accountantId" TEXT REFERENCES "VafAccountant"(id)); INSERT INTO "VafCompany" VALUES ('company','accountant-source');`);
+    await fixture.database.exec(readFileSync("db/migrations/20261030130000_tax_registry_merge/migration.sql", "utf8"));
+    const base = { reason: "Consolidação de cadastro duplicado conferida" };
+    await assert.rejects(mergeTaxRegistries(fixture.connection, { ...user, profileCode: "USER" }, { ...base, kind: "cidade", source: "city-source", target: "city-target" }), /administrador/);
+    await assert.rejects(mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cidade", source: "city-source", target: "city-other" }), /diferentes/);
+    const city = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cidade", source: "city-source", target: "city-target" });
+    assert.equal(city.moved.ScalarLocation, 1); assert.equal(city.moved.Neighborhood, 1);
+    const neighborhood = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "bairro", source: "hood-source", target: "hood-target" });
+    assert.equal(neighborhood.moved.Address, 1);
+    const accountant = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "contador", source: "accountant-source", target: "accountant-target" });
+    assert.equal(accountant.moved.VafCompany, 1);
+    await assert.rejects(mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cep", source: "12345-678", target: "87654321" }), /mesmo CEP/);
+    const cep = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cep", source: "12345-678", target: "12345678" });
+    assert.equal(cep.moved.Address, 1);
+    const state = await fixture.database.query<{ status: string }>('SELECT status FROM "City" WHERE id=\'city-source\''); assert.equal(state.rows[0].status, "Agrupado");
+    const archived = await fixture.database.query<{ active: boolean }>('SELECT active FROM "VafAccountant" WHERE id=\'accountant-source\''); assert.equal(archived.rows[0].active, false);
+    const audit = await fixture.database.query<{ total: number }>('SELECT count(*)::int total FROM "TaxRegistryMerge"'); assert.equal(audit.rows[0].total, 4);
+    const refs = await fixture.database.query<{ zipCode: string; neighborhoodId: string }>('SELECT "zipCode","neighborhoodId" FROM "Address"'); assert.deepEqual(refs.rows[0], { zipCode: "12345678", neighborhoodId: "hood-target" });
+    await fixture.database.exec(`CREATE TABLE "Person" (id TEXT PRIMARY KEY,cpf TEXT); INSERT INTO "Person" VALUES ('person-source','123.456.789-01'),('person-target','12345678901');
+      CREATE TABLE "Company" (id TEXT PRIMARY KEY,cnpj TEXT);
+      CREATE TABLE "Taxpayer" (id TEXT PRIMARY KEY,"personId" TEXT,"companyId" TEXT,status TEXT); INSERT INTO "Taxpayer" VALUES ('taxpayer-source','person-source',null,'Ativo'),('taxpayer-target','person-target',null,'Ativo');
+      CREATE TABLE "EconomicRegistration" (id TEXT PRIMARY KEY); INSERT INTO "EconomicRegistration" VALUES ('registration');
+      CREATE TABLE "TaxRegistryEntry" (id TEXT PRIMARY KEY,"entityType" TEXT,"entityId" TEXT,category TEXT,title TEXT,data JSONB,status TEXT,source TEXT,"actorUsuarioId" TEXT,version INTEGER,"updatedAt" TIMESTAMP);
+      INSERT INTO "TaxRegistryEntry" VALUES ('accountant-fiscal-source','TAXPAYER','taxpayer-source','ACCOUNTANT','CRC','{"crc":"CRC1"}','ATIVO','INTERNO','admin',1,CURRENT_TIMESTAMP),('accountant-fiscal-target','TAXPAYER','taxpayer-target','ACCOUNTANT','CRC','{"crc":"CRC1"}','ATIVO','INTERNO','admin',1,CURRENT_TIMESTAMP),('profile','ECONOMIC_REGISTRATION','registration','ECONOMIC_PROFILE','Perfil','{"accountantTaxpayerId":"taxpayer-source","companyType":"LTDA"}','ATIVO','INTERNO','admin',1,CURRENT_TIMESTAMP);`);
+    const fiscal = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "contador", source: "taxpayer-source", target: "taxpayer-target" });
+    assert.equal(fiscal.moved.economicProfiles, 1);
+    const profile = await fixture.database.query<{ version: number; data: { accountantTaxpayerId: string; companyType: string } }>('SELECT version,data FROM "TaxRegistryEntry" WHERE category=\'ECONOMIC_PROFILE\' ORDER BY version DESC');
+    assert.equal(profile.rows.length, 2); assert.equal(profile.rows[0].version, 2); assert.equal(profile.rows[0].data.accountantTaxpayerId, "taxpayer-target"); assert.equal(profile.rows[0].data.companyType, "LTDA");
+    const old = await fixture.database.query<{ data: { accountantTaxpayerId: string } }>('SELECT data FROM "TaxRegistryEntry" WHERE id=\'profile\''); assert.equal(old.rows[0].data.accountantTaxpayerId, "taxpayer-source");
+  } finally { await fixture.close(); }
+});

@@ -81,3 +81,15 @@ test("supplier certificate report derives validity without declaring regularity 
   assert.match(csv, /"'=FORNECEDOR DEMO"/);
   assert.match(csv, /"Vence em 20\/09\/2026"/);
 });
+
+test("supplier report supports stable alphabetical, numeric document and bank ordering", async () => {
+  const { sortSupplierReportRows } = await import("../src/app/app-domain/cadastros/fornecedores/supplier-report");
+  const row = (id: string, name: string, cpf: string, bankData: string): SupplierListItem => ({ id, category: null, businessBranch: null, bankData, certificationsValidUntil: null, notes: null, status: "Ativo", person: { fullName: name, cpf, documents: [] }, company: null });
+  const rows = [row("a", "Zilda", "002", "Banco 1"), row("b", "Ana", "010", "Banco 9")];
+  assert.deepEqual(sortSupplierReportRows(rows, "alfabetica").map(x => x.id), ["b", "a"]);
+  assert.deepEqual(sortSupplierReportRows(rows, "numerica").map(x => x.id), ["a", "b"]);
+  assert.deepEqual(sortSupplierReportRows(rows, "bancaria").map(x => x.id), ["a", "b"]);
+  assert.match(buildSupplierCertificationCsv(rows), /Dados bancários/);
+  assert.match(buildSupplierCertificationCsv(rows), /Banco 9/);
+  assert.deepEqual(rows.map(x => x.id), ["a", "b"]);
+});

@@ -27,6 +27,7 @@ export function buildSupplierCertificationCsv(suppliers: SupplierListItem[], ref
     "Validade das certidões",
     "Situação da validade",
     "Evidências da identidade",
+    "Dados bancários",
   ];
   const rows = suppliers.map((supplier) => {
     const identity = supplierIdentity(supplier);
@@ -47,7 +48,15 @@ export function buildSupplierCertificationCsv(suppliers: SupplierListItem[], ref
       supplier.certificationsValidUntil ? formatDate(supplier.certificationsValidUntil) : "",
       certification.label,
       evidence,
+      supplier.bankData ?? "",
     ];
   });
   return `${[headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
+}
+
+export function sortSupplierReportRows(suppliers: SupplierListItem[], order: string | null): SupplierListItem[] {
+  const key = (supplier: SupplierListItem) => order === "numerica"
+    ? (supplier.person?.cpf ?? supplier.company?.cnpj ?? "").replace(/\D/g, "")
+    : order === "bancaria" ? supplier.bankData ?? "" : supplierIdentity(supplier).name;
+  return [...suppliers].sort((a, b) => key(a).localeCompare(key(b), "pt-BR", { numeric: true }) || supplierIdentity(a).name.localeCompare(supplierIdentity(b).name, "pt-BR") || a.id.localeCompare(b.id));
 }

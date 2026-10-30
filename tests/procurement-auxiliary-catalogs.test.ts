@@ -1,0 +1,90 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import { parseProcurementAuxiliaryRecord, isProcurementAuxiliaryCatalog, canAccessFinalRequester } from "../src/lib/compras/auxiliary-catalogs";
+import { listProcurementAuxiliaryRecords, saveProcurementAuxiliaryRecord } from "../src/db/repositories/procurement/auxiliary-catalogs";
+import type { DatabaseTransaction } from "../src/db/transaction";
+import { saveExternalAdhesion, loadExternalAdhesion } from "../src/db/repositories/procurement/external-adhesion";
+
+test("cadastros de compras validam quantidades e impedem campos de outro catálogo", () => {
+  assert.equal(isProcurementAuxiliaryCatalog("__proto__"), false);
+  assert.throws(() => parseProcurementAuxiliaryRecord("condicoes-pagamento", { code: "30", name: "30 dias", fields: { dias: "-1" } }));
+  assert.throws(() => parseProcurementAuxiliaryRecord("embalagens-unidades", { code: "CX", name: "Caixa", fields: { unidade: "UN", quantidadeEmbalagem: "0", saidaMinima: "1" } }));
+  assert.throws(() => parseProcurementAuxiliaryRecord("classes-itens", { code: "A", name: "A", fields: { secret: "x" } }));
+  assert.throws(() => parseProcurementAuxiliaryRecord("crc", { code: "A", name: "A", fields: { fornecedorId: "F", cadastro: "2026-02-30", validade: "2026-12-31" } }));
+  assert.throws(() => parseProcurementAuxiliaryRecord("alienacoes", { code: "A", name: "A", fields: { modalidade: "PREGAO", data: "2026-10-30", fundamento: "Lei" } }));
+  assert.throws(() => parseProcurementAuxiliaryRecord("atas-desconto", { code: "A", name: "A", fields: { processoId: "P", fornecedores: "F", tabela: "Tabela", percentualDesconto: "101" } }));
+  assert.equal(canAccessFinalRequester("user", false, { usuarios: "other, user" }), true);
+  assert.equal(canAccessFinalRequester("stranger", false, { usuarios: "other, user" }), false);
+  assert.equal(canAccessFinalRequester("admin", true, { usuarios: "" }), true);
+});
+test("remanejamento preserva saldos, rejeita excesso e mantém atomicidade; PCA e cotações conferem origem", async () => {
+  const database = new PGlite();
+  await database.exec(`CREATE TABLE "ConfiguracaoInstancia" (id text primary key, "createdAt" timestamp default now()); INSERT INTO "ConfiguracaoInstancia" VALUES ('cidade');
+    CREATE TABLE "ConfiguracaoParametroInstancia" (id text primary key, "configuracaoInstanciaId" text not null, chave text not null, valor jsonb not null, "createdAt" timestamp default now(), "updatedAt" timestamp default now(), UNIQUE ("configuracaoInstanciaId", chave));
+    CREATE TABLE "Employee" (id text primary key, "isActive" boolean); INSERT INTO "Employee" VALUES ('ana',true),('bia',true);
+    CREATE TABLE "Usuario" (id text primary key, ativo boolean); INSERT INTO "Usuario" VALUES ('user',true);
+    CREATE TABLE "AdministrativeUnit" (id text primary key, "isActive" boolean); INSERT INTO "AdministrativeUnit" VALUES ('unidade',true);
+    CREATE TABLE "Supplier" (id text primary key); INSERT INTO "Supplier" VALUES ('fornecedor');
+    CREATE TABLE "PurchaseProcess" (id text primary key); INSERT INTO "PurchaseProcess" VALUES ('processo');
+    CREATE TABLE "Contract" (id text primary key, "processId" text); INSERT INTO "Contract" VALUES ('contrato','processo');
+    CREATE TABLE "PurchaseProcessItem" (id text primary key, "purchaseProcessId" text, quantity double precision); INSERT INTO "PurchaseProcessItem" VALUES ('item','processo',10);
+    CREATE TABLE "PurchaseReceipt" (id text primary key, "purchaseProcessId" text, "receivedAt" timestamp); INSERT INTO "PurchaseReceipt" VALUES ('recibo','processo','2026-01-01');
+    CREATE TABLE "PriceResearch" (id text primary key, "createdAt" timestamp default now(), "updatedAt" timestamp default now(), date timestamp default now(), "estimatedValue" double precision, status text, "processId" text); INSERT INTO "PriceResearch" (id,"processId") VALUES ('pesquisa','processo');`);
+  const db = drizzle(database);
+  const save = (catalog: Parameters<typeof saveProcurementAuxiliaryRecord>[1], id: string | null, value: unknown) => db.transaction(tx => saveProcurementAuxiliaryRecord(tx as unknown as DatabaseTransaction, catalog, id, value));
+  const list = (catalog: Parameters<typeof listProcurementAuxiliaryRecords>[1]) => listProcurementAuxiliaryRecords(db as never, catalog);
+  try {
+    const allocation = (code: string, employee: string, quantity: string) => ({ code, name: code, fields: { contratoId: "contrato", itemProcessoId: "item", funcionarioId: employee, quantidade: quantity } });
+    const source = (await save("cotas-requisitantes", null, allocation("A", "ana", "8"))).split(":")[2];
+    const target = (await save("cotas-requisitantes", null, allocation("B", "bia", "2"))).split(":")[2];
+    await assert.rejects(save("cotas-requisitantes", source, allocation("A", "ana", "9")), /excede/);
+    const transfer = { code: "AP-1", name: "Remanejamento", fields: { contratoId: "contrato", cotaOrigemId: source, cotaDestinoId: target, quantidade: "8", data: "2026-10-30", fundamento: "Necessidade administrativa" } };
+    const movement = (await save("remanejamentos", null, transfer)).split(":")[2];
+    let balances = await list("cotas-requisitantes");
+    assert.equal(balances.find(row => row.id === source)?.fields.quantidade, "0");
+    assert.equal(balances.find(row => row.id === target)?.fields.quantidade, "10");
+    await assert.rejects(save("remanejamentos", movement, transfer), /imutáveis/);
+    await assert.rejects(save("remanejamentos", null, { ...transfer, code: "AP-2", fields: { ...transfer.fields, quantidade: "1" } }), /Saldo insuficiente/);
+    await assert.rejects(save("cotas-requisitantes", source, allocation("A", "ana", "0")), /apostilamentos/);
+    await database.exec(`CREATE FUNCTION reject_movement() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.chave LIKE 'COMPRAS_CADASTRO:remanejamentos:%' THEN RAISE EXCEPTION 'movement rejected'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_movement BEFORE INSERT ON "ConfiguracaoParametroInstancia" FOR EACH ROW EXECUTE FUNCTION reject_movement();`);
+    await assert.rejects(save("remanejamentos", null, { ...transfer, code: "AP-3", fields: { ...transfer.fields, cotaOrigemId: target, cotaDestinoId: source, quantidade: "2" } }));
+    balances = await list("cotas-requisitantes");
+    assert.equal(balances.find(row => row.id === source)?.fields.quantidade, "0");
+    assert.equal(balances.find(row => row.id === target)?.fields.quantidade, "10");
+    await save("pca-requisitantes", null, { code: "PCA-1", name: "Plano 2027", fields: { funcionarioId: "ana", exercicio: "2027", processoId: "processo", itemProcessoId: "item", quantidade: "5", valorUnitario: "10" } });
+    await assert.rejects(save("pca-requisitantes", null, { code: "PCA-2", name: "Plano inválido", fields: { funcionarioId: "ana", exercicio: "2025", processoId: "processo", itemProcessoId: "item", quantidade: "5", valorUnitario: "10" } }), /anterior ao exercício/);
+    await save("cotacoes-itens", null, { code: "COT-1", name: "Cotação", fields: { pesquisaId: "pesquisa", fornecedorId: "fornecedor", itemProcessoId: "item", valorUnitario: "12,50", data: "2026-10-30" } });
+    await assert.rejects(save("cotacoes-itens", null, { code: "COT-2", name: "Cotação inválida", fields: { pesquisaId: "pesquisa", fornecedorId: "fornecedor", itemProcessoId: "outro", valorUnitario: "12,50", data: "2026-10-30" } }), /não pertence/);
+    await save("requisitantes-finais", null, { code: "REQ", name: "Requisitante", fields: { funcionarioId: "ana", usuarios: "user" } });
+    await save("usuarios-unidades", null, { code: "US", name: "Vínculo", fields: { usuarioId: "user", unidadeAdministrativaId: "unidade" } });
+    assert.equal((await list("pca-requisitantes")).length, 1);
+    assert.equal((await list("cotacoes-itens")).length, 1);
+  } finally { await database.close(); }
+});
+test("persistência de cadastros, duplicidade e integridade dos subgrupos", async () => {
+  const database = new PGlite();
+  await database.exec(`CREATE TABLE "ConfiguracaoInstancia" (id text primary key, "createdAt" timestamp default now()); INSERT INTO "ConfiguracaoInstancia" VALUES ('cidade'); CREATE TABLE "ConfiguracaoParametroInstancia" (id text primary key, "configuracaoInstanciaId" text not null, chave text not null, valor jsonb not null, "createdAt" timestamp default now(), "updatedAt" timestamp default now(), UNIQUE ("configuracaoInstanciaId", chave));`);
+  const db = drizzle(database);
+  const save = (catalog: Parameters<typeof saveProcurementAuxiliaryRecord>[1], id: string | null, value: unknown) => db.transaction(tx => saveProcurementAuxiliaryRecord(tx as unknown as DatabaseTransaction, catalog, id, value));
+  try {
+    const key = await save("grupos-itens", null, { code: "A", name: "Materiais", fields: { grupoPai: "" } });
+    const id = key.split(":")[2];
+    await save("grupos-itens", null, { code: "A.1", name: "Papel", fields: { grupoPai: "A" } });
+    await assert.rejects(save("grupos-itens", id, { code: "B", name: "Outro", fields: { grupoPai: "" } }), /Preserve/);
+    await assert.rejects(save("grupos-itens", null, { code: "a", name: "Duplicado", fields: {} }), /já cadastrado/);
+    await assert.rejects(save("grupos-itens", null, { code: "C", name: "Sem grupo", fields: { grupoPai: "FALTA" } }), /existente/);
+    await save("condicoes-pagamento", null, { code: "30", name: "Trinta dias", fields: { dias: "30" } });
+    assert.equal((await listProcurementAuxiliaryRecords(db as never, "grupos-itens")).length, 2);
+    assert.equal((await listProcurementAuxiliaryRecords(db as never, "condicoes-pagamento"))[0].fields.dias, "30");
+    const alienationKey = await save("alienacoes", null, { code: "ALI-1", name: "Alienação de bens", fields: { modalidade: "LEILAO", data: "2026-10-30", fundamento: "Lei 14.133" } });
+    await save("alienacoes-produtos", null, { code: "ITEM-1", name: "Veículo", fields: { processoAlienacaoId: alienationKey.split(":")[2], unidade: "UN", quantidade: "1", valorUnitario: "10000" } });
+    await assert.rejects(save("alienacoes-atas", null, { code: "ATA-1", name: "Ata inválida", fields: { processoAlienacaoId: "inexistente", data: "2026-10-30", conteudo: "Ata" } }), /não encontrado/);
+    assert.equal((await listProcurementAuxiliaryRecords(db as never, "alienacoes-produtos")).length, 1);
+    await db.transaction(tx => saveExternalAdhesion(tx as unknown as DatabaseTransaction, "request", { organization: "Município gerenciador", processNumber: "001/2026", minutesNumber: "002/2026" }));
+    assert.equal((await loadExternalAdhesion(db as never, "request"))?.minutesNumber, "002/2026");
+    await db.transaction(tx => saveExternalAdhesion(tx as unknown as DatabaseTransaction, "request", null));
+    assert.equal(await loadExternalAdhesion(db as never, "request"), null);
+  } finally { await database.close(); }
+});

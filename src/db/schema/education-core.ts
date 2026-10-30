@@ -15,7 +15,7 @@ export const schools = pgTable("School", {
 }, t => [uniqueIndex("School_inepCode_key").on(t.inepCode), uniqueIndex("School_addressId_key").on(t.addressId)]);
 export const students = pgTable("Student", {
   id: text("id").primaryKey().$defaultFn(createId), studentCode: text("studentCode").notNull(),
-  specialNeeds: text("specialNeeds"), usesSchoolTransport: boolean("usesSchoolTransport").notNull().default(false),
+  specialNeeds: text("specialNeeds"), dietaryRestrictions: text("dietaryRestrictions"), usesSchoolTransport: boolean("usesSchoolTransport").notNull().default(false),
   needsSpecialMeal: boolean("needsSpecialMeal").notNull().default(false), status: text("status").notNull().default("Ativo"),
   personId: text("personId").notNull(), ...timestamps(),
 }, t => [uniqueIndex("Student_studentCode_key").on(t.studentCode), uniqueIndex("Student_personId_key").on(t.personId)]);
@@ -37,7 +37,7 @@ export const academicPeriods = pgTable("AcademicPeriod", {
 }, t => [uniqueIndex("AcademicPeriod_schoolId_code_key").on(t.schoolId, t.code)]);
 export const schoolSubjects = pgTable("SchoolSubject", {
   id: text("id").primaryKey().$defaultFn(createId), name: text("name").notNull(), code: text("code"),
-  description: text("description"), isActive: boolean("isActive").notNull().default(true), ...timestamps(),
+  description: text("description"), abbreviation: text("abbreviation"), isActive: boolean("isActive").notNull().default(true), ...timestamps(),
 }, t => [uniqueIndex("SchoolSubject_code_key").on(t.code)]);
 export const curriculumMatrices = pgTable("CurriculumMatrix", {
   id: text("id").primaryKey().$defaultFn(createId), name: text("name").notNull(), stage: text("stage").notNull(), grade: text("grade").notNull(),

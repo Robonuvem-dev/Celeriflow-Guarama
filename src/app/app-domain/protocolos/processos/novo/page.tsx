@@ -10,6 +10,7 @@ import { processTypes, processSubjects } from "@/db/schema/processes";
 import { people } from "@/db/schema/people";
 import { companies } from "@/db/schema/registry";
 import { departments } from "@/db/schema/administration";
+import { processReferenceCatalog } from "@/db/schema/process-reference-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function NovoProtocoloPage() {
   const pessoas = await db.select({ id: people.id, fullName: people.fullName, cpf: people.cpf }).from(people).where(eq(people.status, "Ativo")).limit(100);
   const empresas = await db.select({ id: companies.id, corporateName: companies.corporateName, cnpj: companies.cnpj }).from(companies).where(eq(companies.status, "Ativo")).orderBy(asc(companies.corporateName)).limit(100);
   const departamentos = await db.select({ id: departments.id, name: departments.name }).from(departments).where(eq(departments.isActive, true)).orderBy(asc(departments.name));
+  const otherApplicants = await db.select({id:processReferenceCatalog.id,name:processReferenceCatalog.name}).from(processReferenceCatalog).where(and(eq(processReferenceCatalog.kind,"OTHER_APPLICANT"),eq(processReferenceCatalog.isActive,true))).orderBy(asc(processReferenceCatalog.name));
 
   return (
     <PageFrame className="max-w-5xl space-y-2">
@@ -57,6 +59,9 @@ export default async function NovoProtocoloPage() {
                 </select>
               </div>
 
+              <div className="space-y-2"><label className="block text-sm font-semibold text-slate-700">Outro requerente<select name="otherApplicantId" className="w-full rounded-lg border p-2 text-sm"><option value="">Sem outro requerente</option>{otherApplicants.map(applicant=><option key={applicant.id} value={applicant.id}>{applicant.name}</option>)}</select></label><Link href="/protocolos/cadastros?kind=OTHER_APPLICANT" className="text-xs underline">Cadastrar outro requerente</Link></div>
+              <div className="space-y-2"><label className="block text-sm font-semibold text-slate-700">Representante do requerente<select name="representativePersonId" className="w-full rounded-lg border p-2 text-sm"><option value="">Sem representante</option>{pessoas.map(person => <option key={person.id} value={person.id}>{person.fullName} (CPF: {person.cpf})</option>)}</select></label></div>
+              <div className="space-y-2"><label className="block text-sm font-semibold text-slate-700">Valor do processo (opcional)<input name="declaredValue" type="number" min="0" max="9999999999999999.99" step="0.01" className="w-full rounded-lg border p-2 text-sm" /></label></div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 block">Tipo de Processo *</label>
                 <select name="processTypeId" required className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all">

@@ -1,0 +1,85 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createLocalDrizzleDatabase} from "./helpers/local-drizzle-database";
+import {readManagedDesifInfraction,updateManagedDesifInfraction} from "../src/lib/tributacao/desif-infraction-management";
+import {saveComplementaryDeclaration} from "../src/lib/tributacao/complementary-declarations";
+import {saveTaxReference} from "../src/lib/tributacao/reference-catalog-service";
+import {searchTaxReferences,taxReferenceSchema,type TaxReferenceRow} from "../src/lib/tributacao/reference-catalog";
+
+test("referências fiscais persistem versões, escopo e exclusão com auditoria",async()=>{
+ const fixture=await createLocalDrizzleDatabase();
+ try{
+ await fixture.database.exec(`CREATE TABLE "PlanningEntityUnit" ("budgetUnitId" text PRIMARY KEY,"governmentEntityId" text NOT NULL);
+ INSERT INTO "PlanningEntityUnit" VALUES ('ug','ente');
+ CREATE TABLE "TaxRegistryEntry" (id text PRIMARY KEY,"entityType" text NOT NULL,"entityId" text NOT NULL,category text NOT NULL,title text NOT NULL,data jsonb NOT NULL,status text NOT NULL,source text NOT NULL DEFAULT 'INTERNO',"effectiveFrom" timestamp NOT NULL DEFAULT now(),"effectiveUntil" timestamp,"processId" text,"documentId" text,"actorUsuarioId" text,"reviewedByUsuarioId" text,"reviewedAt" timestamp,version int NOT NULL,"createdAt" timestamp DEFAULT now(),"updatedAt" timestamp DEFAULT now());
+ CREATE TABLE "Usuario" (id text PRIMARY KEY,ativo boolean); INSERT INTO "Usuario" VALUES ('user',true);
+ CREATE TABLE "Taxpayer" (id text PRIMARY KEY); INSERT INTO "Taxpayer" VALUES ('contribuinte');
+ CREATE TABLE "NfseCredentialRequest" (id text PRIMARY KEY,"taxpayerId" text,status text);
+ CREATE TABLE "TaxAuditLog" (id text PRIMARY KEY,action text,"entityType" text,"entityId" text,payload jsonb,"authorUsuarioId" text,"authorEmployeeId" text,"createdAt" timestamp DEFAULT now());`);
+ const actor={usuarioId:"user",employeeId:null,allowedBudgetUnitIds:["ug"]};
+ const data=taxReferenceSchema.parse({kind:"cosif",code:"1",name:"Conta",budgetUnitId:"ug",governmentEntityId:"ente"});
+ const id=await saveTaxReference(fixture.connection,actor,data,0);
+ await assert.rejects(saveTaxReference(fixture.connection,actor,data,0),/Código já/);
+ await assert.rejects(saveTaxReference(fixture.connection,actor,{...data,name:"Concorrente"},0,id),/alterado/);
+ await assert.rejects(saveTaxReference(fixture.connection,{...actor,allowedBudgetUnitIds:[]},data,1,id),/acesso/);
+ await assert.rejects(saveTaxReference(fixture.connection,actor,{...data,governmentEntityId:"outro"},1,id),/não pertence/);
+ await saveTaxReference(fixture.connection,actor,{...data,name:"Conta atualizada"},1,id);
+ await saveTaxReference(fixture.connection,actor,{...data,name:"Conta atualizada"},2,id,true);
+ await assert.rejects(saveTaxReference(fixture.connection,actor,data,3,id),/já excluído/);
+ const entries=await fixture.database.query<{version:number;status:string}>(`SELECT version,status FROM "TaxRegistryEntry" ORDER BY version`);
+ assert.deepEqual(entries.rows.map(r=>[r.version,r.status]),[[1,"ATIVO"],[2,"ATIVO"],[3,"EXCLUIDO"]]);
+ const audits=await fixture.database.query(`SELECT * FROM "TaxAuditLog"`);assert.equal(audits.rows.length,3);
+ await saveTaxReference(fixture.connection,actor,data,0);
+ const equipment={...data,kind:"equipamento-credenciado",code:"EQ1",taxpayerId:"contribuinte",model:"M1",serialNumber:"SER1"};
+ await assert.rejects(saveTaxReference(fixture.connection,actor,equipment,0),/credenciamento/);
+ await fixture.database.exec(`INSERT INTO "NfseCredentialRequest" VALUES ('cred','contribuinte','HABILITADO')`);
+ const municipalUser={...data,kind:"usuario-municipal",code:"USER1",userId:"user",position:"Fiscal",registration:"100"};
+ await saveTaxReference(fixture.connection,actor,municipalUser,0);
+ await assert.rejects(saveTaxReference(fixture.connection,actor,{...municipalUser,userId:"missing",code:"USER2"},0),/não está ativo/);
+ await fixture.database.exec(`CREATE TABLE "Infraction" (id text PRIMARY KEY,"infractionType" text,status text,"penaltyValueDecimal" numeric,"penaltyValue" double precision,"taxpayerId" text,"defenseDeadline" timestamp,"updatedAt" timestamp);
+ CREATE TABLE "DesifFinancialInstitution" (id text PRIMARY KEY,name text);
+ CREATE TABLE "DesifAssessment" (id text PRIMARY KEY,"taxAssessmentId" text);
+ CREATE TABLE "TaxAssessment" (id text PRIMARY KEY,"taxId" text,"calculationSnapshot" jsonb);
+ CREATE TABLE "DesifFiscalCase" (id text PRIMARY KEY,"infractionId" text,"institutionId" text,"assessmentId" text,competence text,status text);
+ CREATE TABLE "DesifFiscalEvent" (id text PRIMARY KEY,"fiscalCaseId" text,"eventType" text,description text,payload jsonb,"actorUsuarioId" text,"createdAt" timestamp);
+ INSERT INTO "Infraction" VALUES ('inf','Descrição inicial','Emitido',100.25,100.25,'contribuinte','2026-12-01','2026-10-01');
+ INSERT INTO "DesifFinancialInstitution" VALUES ('bank','Banco');
+ INSERT INTO "DesifAssessment" VALUES ('desif-assessment','tax-assessment');
+ INSERT INTO "TaxAssessment" VALUES ('tax-assessment','tax','{"governmentEntityId":"ente","budgetUnitId":"ug"}');
+ INSERT INTO "DesifFiscalCase" VALUES ('case','inf','bank','desif-assessment','10/2026','COMUNICADA');`);
+ const auto=await readManagedDesifInfraction(fixture.connection.db,actor,"case");
+ await assert.rejects(readManagedDesifInfraction(fixture.connection.db,{...actor,allowedBudgetUnitIds:[]},"case"),/fora das unidades/);
+ await updateManagedDesifInfraction(fixture.connection,actor,{caseId:"case",expectedUpdatedAt:auto.updatedAt.toISOString(),infractionType:"Descrição corrigida",status:"Em análise",reason:"Correção administrativa fundamentada"});
+ await assert.rejects(updateManagedDesifInfraction(fixture.connection,actor,{caseId:"case",expectedUpdatedAt:auto.updatedAt.toISOString(),infractionType:"Conflito",status:"Em análise",reason:"Fundamento para verificar conflito"}),/alterado/);
+ const after=await readManagedDesifInfraction(fixture.connection.db,actor,"case");assert.equal(after.status,"Em análise");assert.equal(after.penalty,"100.25");
+ await updateManagedDesifInfraction(fixture.connection,actor,{caseId:"case",expectedUpdatedAt:after.updatedAt.toISOString(),infractionType:after.infractionType,status:"Julgado",reason:"Julgamento administrativo registrado"});
+ const judged=await readManagedDesifInfraction(fixture.connection.db,actor,"case");
+ await assert.rejects(updateManagedDesifInfraction(fixture.connection,actor,{caseId:"case",expectedUpdatedAt:judged.updatedAt.toISOString(),infractionType:"Reabertura",status:"Emitido",reason:"Tentativa de reabertura indevida"}),/Transição/);
+ assert.equal((await fixture.database.query<{status:string}>(`SELECT status FROM "DesifFiscalCase"`)).rows[0].status,"COMUNICADA");
+ const declaration={type:"CARTORIO",taxpayerId:"contribuinte",competence:"2026-10",protocol:"CART-01",status:"REGISTRADA",amount:"100.25",documentRef:"Ato 1",description:"Serviços cartorários",governmentEntityId:"ente",budgetUnitId:"ug"};
+ const declarationId=await saveComplementaryDeclaration(fixture.connection,actor,declaration,0);
+ await assert.rejects(saveComplementaryDeclaration(fixture.connection,actor,declaration,0),/Protocolo já/);
+ await assert.rejects(saveComplementaryDeclaration(fixture.connection,actor,{...declaration,taxpayerId:"inexistente"},1,declarationId),/Contribuinte/);
+ await assert.rejects(saveComplementaryDeclaration(fixture.connection,{...actor,allowedBudgetUnitIds:[]},declaration,1,declarationId),/autorizada/);
+ await saveComplementaryDeclaration(fixture.connection,actor,{...declaration,status:"CANCELADA"},1,declarationId);
+ await assert.rejects(saveComplementaryDeclaration(fixture.connection,actor,declaration,2,declarationId),/cancelada/);
+ const equipmentId=await saveTaxReference(fixture.connection,actor,equipment,0);assert.ok(equipmentId);
+ }finally{await fixture.close();}
+});
+test("consulta não ressuscita versões excluídas e pesquisa nome parcial",()=>{
+ const data=taxReferenceSchema.parse({kind:"atividade",code:"01",name:"Comércio varejista",budgetUnitId:"ug",governmentEntityId:"ente"});
+ const rows:TaxReferenceRow[]=[{id:"a",version:1,deleted:false,data},{id:"a",version:2,deleted:true,data},{id:"b",version:1,deleted:false,data:{...data,code:"02"}}];
+ assert.deepEqual(searchTaxReferences(rows,"atividade","VAREJISTA").map(r=>r.id),["b"]);
+ assert.equal(searchTaxReferences(rows,"cosif","").length,0);
+ assert.throws(()=>taxReferenceSchema.parse({...data,code:" "}));
+});
+
+test("painéis exigem link seguro e validade real; conclusão substitui somente tags conhecidas",async()=>{
+ const {renderReferenceConclusion}=await import("../src/lib/tributacao/reference-catalog");
+ const base={kind:"painel",code:"P1",name:"Consulta",budgetUnitId:"ug",governmentEntityId:"ente"};
+ assert.throws(()=>taxReferenceSchema.parse({...base,url:"javascript:alert(1)",validUntil:"2026-12-31"}));
+ assert.throws(()=>taxReferenceSchema.parse({...base,url:"https://example.com",validUntil:"2026-02-31"}));
+ assert.throws(()=>taxReferenceSchema.parse({...base,url:"https://example.com"}));
+ assert.equal(taxReferenceSchema.parse({...base,url:"https://example.com",validUntil:"2026-12-31"}).url,"https://example.com");
+ assert.equal(renderReferenceConclusion("{{codigo}} · {{nome}} · {{outro}}","01","Município"),"01 · Município · {{outro}}");
+});

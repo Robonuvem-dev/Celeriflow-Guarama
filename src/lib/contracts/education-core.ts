@@ -1,8 +1,8 @@
 export type EducationSchoolOption = { id: string; name: string };
 export type EducationPersonOption = { id: string; fullName: string; cpf: string | null };
 export type EducationStudentRow = {
-  id: string; studentCode: string; status: string; usesSchoolTransport: boolean; needsSpecialMeal: boolean;
-  person: EducationPersonOption;
+  id: string; studentCode: string; status: string; dietaryRestrictions: string | null; usesSchoolTransport: boolean; needsSpecialMeal: boolean;
+  person: EducationPersonOption & { birthDate: Date | null; motherName: string | null; fatherName: string | null; motherUnknown: boolean; fatherUnknown: boolean };
   guardians: { kinship: string; person: EducationPersonOption }[];
   enrollments: { school: EducationSchoolOption; schoolClass: EducationSchoolOption | null }[];
 };

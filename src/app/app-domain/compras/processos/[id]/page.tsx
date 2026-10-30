@@ -23,6 +23,7 @@ export default async function ProcessoDetalhesPage({ params }: { params: Promise
 
   return (
     <PageFrame className="space-y-2">
+      <Link className="text-sm underline" href={`/compras/cadastros/autorizacoes-compra?processoId=${encodeURIComponent(processo.id)}`}>Consultar autorizações de compra e serviços deste processo</Link>
       <PageHeader title="Detalhes do Processo" icon={<ClipboardList className="size-4 shrink-0 text-blue-600" />} action={<><Link href="/compras/processos" aria-label="Voltar"><Button variant="outline" size="icon"><ArrowLeft className="size-4" /></Button></Link><Link href={`/compras/processos/${processo.id}/editar`}><Button variant="outline" size="sm"><Edit className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button></Link></>} />
 
       <Card className="rounded-md">

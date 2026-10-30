@@ -65,7 +65,7 @@ export async function saveEconomicEvent(db: DatabaseConnection, actor: TaxActor,
     if (!type.active || definition.version !== input.expectedTypeVersion || type.governmentEntityId !== input.governmentEntityId || type.budgetUnitId !== input.budgetUnitId) throw new Error("Tipo de evento inativo, alterado ou de outra origem.");
     const responsible = await taxpayer(tx, input.responsibleTaxpayerId);
     if (input.registrationId) await assertRegistration(tx, input.registrationId, input);
-    const values = validateFiscalFields(type.fields, input.values);
+    const values = validateFiscalFields(type.fields, input.values, taxScopeSnapshot(taxScopeSnapshot(previous?.data).values));
     const entry = await appendEconomicEntry(tx, { entityType: "ECONOMIC_EVENT", entityId: id, category: "ECONOMIC_EVENT", title: input.name, version: input.expectedVersion + 1, actorUsuarioId: actor.usuarioId, data: economicSnapshot({ ...input, values, typeVersionId: definition.id, typeVersion: definition.version, fields: type.fields, responsibleName: responsible.name, previousId: previous?.id ?? null }) });
     await appendEconomicAudit(tx, { action: "SAVE_ECONOMIC_EVENT", entityType: "TaxRegistryEntry", entityId: entry.id, authorUsuarioId: actor.usuarioId, authorEmployeeId: actor.employeeId, payload: { previousId: previous?.id ?? null, reason: input.reason } });
     return entry;

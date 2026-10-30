@@ -15,6 +15,7 @@ import { departments, employees } from "@/db/schema/administration";
 import { modules } from "@/db/schema/identity";
 import { RecordHistoryPanel } from "../../_components/RecordHistoryPanel";
 import { operationalColumns } from "../../_components/operational-columns";
+import { reviseRequestAction } from "../revision-action";
 
 export default async function RequisicaoMaterialDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: routeId } = await params;
@@ -44,6 +45,12 @@ export default async function RequisicaoMaterialDetalhePage({ params }: { params
       <PageHeader title={`Requisição ${request.number}`} action={<Link href="/patrimonio/requisicoes" className="text-xs font-semibold text-slate-600 underline">Voltar à listagem</Link>} />
       <div className="grid gap-2 rounded border bg-white p-3 text-xs sm:grid-cols-2"><p><strong>Origem:</strong> {request.sourceWarehouse?.name || "Registro anterior: origem definida pelos lotes de entrega"}</p><p><strong>Destino:</strong> {request.department.name}</p><p><strong>Solicitante / recebedor:</strong> {request.requester.name}</p><p><strong>Situação:</strong> {request.status}</p><p><strong>Aprovado por:</strong> {request.approvedByEmployee?.name || "Aguardando análise"}</p><p><strong>Última entrega por:</strong> {request.issuedByEmployee?.name || "Sem entrega"}</p></div>
       {request.justification && <p className="rounded-md border bg-white p-3 text-sm"><span className="font-medium">Justificativa:</span> {request.justification}</p>}
+      {canPerformModuleOperation(user, "PATRIMONIO", "update") && !request.issuedAt && request.items.every(item => item.quantityDelivered === 0) && <form action={reviseRequestAction} className="space-y-3 rounded border bg-white p-3 text-sm">
+        <h2 className="font-semibold">Alteração e cancelamento</h2><input type="hidden" name="requestId" value={request.id} />
+        <label className="block">Operação<select name="operation" className="ml-2 rounded border p-2">{request.status === "Pendente" && <option value="edit">Alterar justificativa e quantidades</option>}{["Pendente", "Aprovada", "Recusada"].includes(request.status) && <option value="cancel">Cancelar requisição</option>}{request.status === "Cancelada" && <option value="restore">Estornar cancelamento</option>}</select></label>
+        {request.status === "Pendente" && <><label className="block">Justificativa<textarea className="block w-full rounded border p-2" name="justification" defaultValue={request.justification || ""} /></label>{request.items.map(item => <label key={item.id} className="block">{item.material.name} — quantidade<input className="ml-2 rounded border p-2" type="number" min="0.000001" step="any" name={`quantity_${item.id}`} required defaultValue={item.quantityRequested} /></label>)}</>}
+        <label className="block">Motivo da operação<input name="reason" minLength={3} maxLength={2000} required className="block w-full rounded border p-2" /></label><button className="rounded border p-2">Confirmar operação</button>
+      </form>}
       <MaterialRequestWorkflowClient
         key={request.id}
         canApprove={canPerformModuleOperation(user, "PATRIMONIO", "update") && Boolean(user.employeeId) && user.employeeId !== request.requesterId}

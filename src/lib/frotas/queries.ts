@@ -45,7 +45,7 @@ export async function queryFleet(context: AppContext, q: FleetQuery, full = fals
   let page = q.page;
   const paginate = (count: number) => { total = count; page = Math.min(q.page, Math.max(1, Math.ceil(count / q.pageSize))); return { offset: full ? 0 : (page - 1) * q.pageSize, limit: full ? 2147483647 : q.pageSize }; };
   if (area === "frota") {
-    const where = and(unit, q.status ? eq(f.fleetUnits.status, q.status) : undefined, fleetSearch(q.q, f.fleetUnits.code, f.fleetUnits.name, f.fleetUnits.plate));
+    const where = and(unit, q.area === "relatorios" ? fleetDates(f.fleetUnits.createdAt, q.from, q.to) : undefined, q.status ? eq(f.fleetUnits.status, q.status) : undefined, fleetSearch(q.q, f.fleetUnits.code, f.fleetUnits.name, f.fleetUnits.plate));
     const paging = paginate(await countFleetRecords(db, f.fleetUnits, where));
     const records = await readFleetUnits(db, where, { ...paging, byId: true });
     const events = await readFleetAssetEvents(db, records.map(v => v.id));
@@ -88,7 +88,9 @@ export async function queryFleet(context: AppContext, q: FleetQuery, full = fals
   } else if (area === "consumos") {
     const fuelReport = q.area === "relatorios" && q.report === "abastecimentos";
     const where = and(inArray(f.fleetConsumptions.unitId, unitIds), fuelReport ? inArray(f.fleetConsumptions.unitId, db.select({ id: f.fleetUnits.id }).from(f.fleetUnits).where(eq(f.fleetUnits.category, "VEICULO"))) : undefined, fleetDates(f.fleetConsumptions.occurredAt, q.from, q.to), fuelReport || q.type ? eq(f.fleetConsumptions.type, fuelReport ? "COMBUSTIVEL" : q.type) : undefined, q.origin ? eq(f.fleetConsumptions.origin, q.origin) : undefined, q.q ? or(inArray(f.fleetConsumptions.unitId, byUnitSearch), fleetSearch(q.q, f.fleetConsumptions.material, f.fleetConsumptions.supplierName, f.fleetConsumptions.reference)) : undefined);
-    const [count, [sums], groups] = await Promise.all([countFleetRecords(db, f.fleetConsumptions, where), db.select({ cost: sum(f.fleetConsumptions.cost) }).from(f.fleetConsumptions).where(where), db.select({ measurementUnit: f.fleetConsumptions.measurementUnit, quantity: sum(f.fleetConsumptions.quantity) }).from(f.fleetConsumptions).where(where).groupBy(f.fleetConsumptions.measurementUnit)]);
+    const count = await countFleetRecords(db, f.fleetConsumptions, where);
+    const [sums] = await db.select({ cost: sum(f.fleetConsumptions.cost).as("totalCost") }).from(f.fleetConsumptions).where(where);
+    const groups = await db.select({ measurementUnit: f.fleetConsumptions.measurementUnit, quantity: sum(f.fleetConsumptions.quantity).as("totalQuantity") }).from(f.fleetConsumptions).where(where).groupBy(f.fleetConsumptions.measurementUnit);
     missingCosts = await countFleetRecords(db, f.fleetConsumptions, and(where, isNull(f.fleetConsumptions.cost))); amount = new Decimal(sums.cost || 0).toFixed(2);
     quantities = Object.fromEntries(groups.map(g => [g.measurementUnit, new Decimal(g.quantity || 0).toString()]));
     const paging = paginate(count);

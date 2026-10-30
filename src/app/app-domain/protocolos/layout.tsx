@@ -25,6 +25,8 @@ const navigation: ModuleNavGroup[] = [
   {
     title: "Gestão",
     items: [
+      { title: "Cadastros de processos", href: "/protocolos/cadastros", icon: "fileBox" },
+      { title: "Estrutura e responsáveis", href: "/protocolos/estrutura", icon: "settings2" },
       { title: "Assinaturas", href: "/protocolos/assinaturas", icon: "fileSignature" },
       { title: "Relatórios", href: "/protocolos/relatorios", icon: "barChart3" },
       { title: "Arquivados", href: "/protocolos/arquivados", icon: "archive" },

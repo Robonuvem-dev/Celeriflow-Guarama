@@ -791,7 +791,7 @@ export async function registerDeceased(connection: DatabaseConnection, actor: Ac
   fullName: string; birthDate?: Date; deathDate: Date; deathTime?: string; gender?: string; document?: string; maritalStatus?: string; fatherName?: string; motherName?: string; address?: string;
   cemeteryId: string; graveId: string; funeralHomeId?: string; funeralHomeName?: string; causeId?: string; causeText?: string;
   doctorName: string; doctorCrm: string; groups?: Record<string, unknown>; taxpayerId?: string; deceasedTaxpayerId?: string; declarantTaxpayerId?: string; unidentified?: boolean;
-  scheduledAt?: Date; burialType?: "MEMBRO" | "NORMAL" | "NAO_RECLAMADO"; chapelId?: string; finalizeNow?: boolean;
+  scheduledAt?: Date; burialType?: "MEMBRO" | "NORMAL" | "NAO_RECLAMADO" | "NATIMORTO"; chapelId?: string; finalizeNow?: boolean;
   exceptionReason?: string; memberOwnerDeceased?: boolean; requestKey?: string;
 }) {
   if (!input.fullName.trim()) throw new TributarioS9Error("Nome do falecido é obrigatório.");
@@ -800,6 +800,7 @@ export async function registerDeceased(connection: DatabaseConnection, actor: Ac
   if (input.scheduledAt) validateWorkflowDate(input.scheduledAt, "Data do agendamento");
   if (input.birthDate && input.birthDate > input.deathDate) throw new TributarioS9Error("Nascimento posterior ao óbito.");
   const burialType = validateBurialIdentity(input);
+  if (burialType === "NATIMORTO" && !input.motherName?.trim()) throw new TributarioS9Error("Informe o nome da mãe para o registro de natimorto.");
   if ((!input.funeralHomeId || !input.causeId || !input.chapelId) && !(input.unidentified && input.exceptionReason?.trim())) throw new TributarioS9Error("Funerária, causa do óbito e capela são obrigatórias; a exceção para não identificado exige motivo.");
   const result = await withDatabaseTransaction(connection, async (tx) => {
     const request = await workflowRequest(tx, "registerDeceased", input.requestKey, input);

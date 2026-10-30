@@ -9,6 +9,7 @@ import { createReportTemplatePresentation, type ReportEmissionMetadata, type Rep
 import { databaseConnection, db } from "@/db/client";
 import { findFinancialScopeUnits, findFinancialScopeYear } from "@/db/repositories/finance/report-scopes";
 import { findReportTemplate } from "@/db/repositories/platform/report-template";
+import { readFinancialReportEmitter } from "@/db/repositories/finance/report-emitter";
 import { readFinanceReportInstitution } from "@/db/repositories/finance/report-delivery";
 
 export const financeInternalReportKey = "finance.internal";
@@ -52,7 +53,7 @@ export const financeInternalReportDefinition: ReportDefinition<FinanceReportInpu
       if (!bindings.length) throw new AccessError("Exercício fora das entidades autorizadas.", 403);
     }
 
-    const [report, institution, storedTemplate] = await Promise.all([
+    const [report, institution, storedTemplate, emitter] = await Promise.all([
       generateInternalReportDataset(
         databaseConnection,
         input.reportType,
@@ -63,6 +64,7 @@ export const financeInternalReportDefinition: ReportDefinition<FinanceReportInpu
       ),
       readFinanceReportInstitution(database),
       findReportTemplate(database, "GLOBAL"),
+      readFinancialReportEmitter(database, context.user.id, context.user.name),
     ]);
     const template = createReportTemplatePresentation(storedTemplate);
     return {
@@ -70,7 +72,7 @@ export const financeInternalReportDefinition: ReportDefinition<FinanceReportInpu
       presentation: {
         institution,
         template,
-        emission: template.includeEmissionMetadata ? { issuedAt: new Date().toISOString(), issuedBy: context.user.name } : null,
+        emission: template.includeEmissionMetadata ? { issuedAt: new Date().toISOString(), issuedBy: emitter } : null,
       },
     };
   },

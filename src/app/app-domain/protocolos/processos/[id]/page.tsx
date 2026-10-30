@@ -6,11 +6,15 @@ import { and, asc, eq } from "drizzle-orm";
 import { departments } from "@/db/schema/administration";
 import { documentClasses as classTable } from "@/db/schema/document-workflow";
 import { processes } from "@/db/schema/processes";
+import { processRegistrationDetails, processPrintSettings, processReferenceCatalog } from "@/db/schema/process-reference-catalog";
+import { saveProcessPrintSetting } from "./print-actions";
+import { people } from "@/db/schema/people";
 import { readOperationalProcess, listProtocolSigners, listProcessCitizenAccesses, citizenTrackingEligibleCondition } from "@/db/repositories/processes/details";
 import { canViewModule } from "@/lib/platform/tenant-context";
 import { notFound } from "next/navigation";
 import ProcessControls from "./ProcessControls";
 import CitizenAccessPanel from "./CitizenAccessPanel";
+import { JunctionPanel } from "./JunctionPanel";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +38,8 @@ export default async function ProcessoDetalhesPage({
   if (!processo) {
     notFound();
   }
+  const [registrationDetail] = await db.select({ declaredValue: processRegistrationDetails.declaredValue, representative: people.fullName, otherApplicant: processReferenceCatalog.name }).from(processRegistrationDetails).leftJoin(people, eq(people.id, processRegistrationDetails.representativePersonId)).leftJoin(processReferenceCatalog,eq(processReferenceCatalog.id,processRegistrationDetails.otherApplicantId)).where(eq(processRegistrationDetails.processId, id)).limit(1);
+  const [printSettings] = await db.select().from(processPrintSettings).where(eq(processPrintSettings.processTypeId, processo.processTypeId)).limit(1);
 
   const [departamentos, documentClasses, signers] = await Promise.all([
     db.select({ id: departments.id, name: departments.name }).from(departments).where(eq(departments.isActive, true)).orderBy(asc(departments.name)),
@@ -120,8 +126,12 @@ export default async function ProcessoDetalhesPage({
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
             <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Descrição Inicial</h3>
             <p className="text-slate-700 whitespace-pre-wrap">{processo.description || "Nenhuma descrição fornecida na abertura do protocolo."}</p>
+            <Link href={`/protocolos/processos/${id}/impressao`} className="mt-3 inline-block font-semibold text-emerald-800 underline">Imprimir abertura e movimentações</Link>
+            {context.protocolAccess.isAdmin && <details className="mt-3 rounded border p-3"><summary>Parametrizar relatório deste tipo de processo</summary><form action={saveProcessPrintSetting} className="mt-3 flex flex-wrap items-center gap-3"><input type="hidden" name="processId" value={id}/><label><input type="checkbox" name="includeOpening" defaultChecked={printSettings?.includeOpening??true}/> Abertura do processo</label><label><input type="checkbox" name="includeMovements" defaultChecked={printSettings?.includeMovements??true}/> Movimentações</label><button className="rounded border px-3 py-2">Salvar parametrização</button></form></details>}
+            {registrationDetail && <dl className="mt-3 space-y-2">{registrationDetail.otherApplicant&&<><dt className="font-semibold">Outro requerente</dt><dd>{registrationDetail.otherApplicant}</dd></>}<dt className="font-semibold">Representante</dt><dd>{registrationDetail.representative || "Não informado"}</dd><dt className="font-semibold">Valor informado do processo</dt><dd>{registrationDetail.declaredValue === null ? "Não informado" : `R$ ${registrationDetail.declaredValue.replace(".", ",")}`}</dd></dl>}
           </div>
 
+          <JunctionPanel processId={id} context={context} canOperate={canOperate} />
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-slate-50/50">
               <h3 className="text-sm font-semibold text-slate-800">Despachos e Pareceres</h3>
@@ -245,7 +255,7 @@ export default async function ProcessoDetalhesPage({
           
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-slate-50/50">
-              <h3 className="text-sm font-semibold text-slate-800">Histórico de Tramitação</h3>
+              <h3 className="text-sm font-semibold text-slate-800">Remessas, recebimentos e histórico de tramitação</h3>
             </div>
             <div className="p-4 space-y-4">
               {processo.movements.length === 0 ? (

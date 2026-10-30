@@ -1,0 +1,20 @@
+import Link from "next/link";
+import { asc } from "drizzle-orm";
+import { db } from "@/db/client";
+import { ombudsmanReferenceCatalog as catalog } from "@/db/schema/ombudsman-reference-catalog";
+import { getAttendanceContext } from "@/lib/attendance/access";
+import { ombudsmanReferenceKinds,ombudsmanRequestTypes } from "@/lib/attendance/reference-catalog";
+import { saveOmbudsmanReference } from "./actions";
+export const dynamic="force-dynamic";
+const style="rounded border p-2 text-sm";
+type RecordData=typeof catalog.$inferSelect;
+function Fields({kind,record,records}:{kind:keyof typeof ombudsmanReferenceKinds;record?:RecordData;records:RecordData[]}){
+ return <><input type="hidden" name="kind" value={kind}/><input type="hidden" name="id" value={record?.id??""}/><label>Tipo de solicitação<select name="requestType" defaultValue={record?.requestType??"Reclamação"} className={style}>{ombudsmanRequestTypes.map(type=><option key={type}>{type}</option>)}</select></label><label>Descrição<input name="name" required maxLength={200} defaultValue={record?.name} className={style}/></label>{kind!=="SUBJECT"&&<label>Assunto<select name="subjectId" required defaultValue={record?.subjectId??""} className={style}><option value="">Selecione assunto do tipo informado</option>{records.filter(row=>row.kind==="SUBJECT").map(row=><option key={row.id} value={row.id}>{row.requestType} — {row.name}</option>)}</select></label>}{kind==="JUSTIFICATION"&&<label>Subassunto<select name="subsubjectId" required defaultValue={record?.subsubjectId??""} className={style}><option value="">Selecione subassunto</option>{records.filter(row=>row.kind==="SUBSUBJECT").map(row=><option key={row.id} value={row.id}>{row.requestType} — {records.find(parent=>parent.id===row.subjectId)?.name} — {row.name}</option>)}</select></label>}<label><input name="isActive" type="checkbox" defaultChecked={record?.isActive??true}/> Ativo</label><button className={style}>{record?"Salvar":"Cadastrar"}</button></>;
+}
+export default async function OmbudsmanCatalogPage({searchParams}:{searchParams:Promise<{kind?:string;q?:string}>}){
+ const context=await getAttendanceContext("edit");if(!context.attendanceAccess.isManager)throw new Error("Somente gestores podem configurar Atendimento.");
+ const database=context.database??db,query=await searchParams,kind=query.kind&&Object.hasOwn(ombudsmanReferenceKinds,query.kind)?query.kind as keyof typeof ombudsmanReferenceKinds:"SUBJECT",q=typeof query.q==="string"?query.q.trim().slice(0,200):"";
+ const records=await database.select().from(catalog).orderBy(asc(catalog.requestType),asc(catalog.name));
+ const visible=records.filter(row=>row.kind===kind&&(!q||`${row.name} ${row.requestType}`.toLocaleLowerCase("pt-BR").includes(q.toLocaleLowerCase("pt-BR"))));
+ return <main className="space-y-5 p-4"><h1 className="text-xl font-bold">Ouvidoria — {ombudsmanReferenceKinds[kind]}</h1><nav className="flex gap-3">{Object.entries(ombudsmanReferenceKinds).map(([value,label])=><Link key={value} className={style} href={`/atendimento/cadastros?kind=${value}`}>{label}</Link>)}</nav><form method="get" className="flex gap-2"><input type="hidden" name="kind" value={kind}/><input name="q" aria-label="Descrição ou tipo" defaultValue={q} className={style}/><button className={style}>Pesquisar</button><Link href={`/atendimento/cadastros?kind=${kind}`} className={style}>Limpar</Link></form><section className="space-y-3"><h2 className="font-semibold">Novo cadastro</h2><form action={saveOmbudsmanReference} className="flex flex-wrap items-end gap-3 rounded border p-3"><Fields kind={kind} records={records}/></form></section><section className="space-y-3"><h2 className="font-semibold">Registros ({visible.length})</h2>{visible.map(record=><form key={record.id} action={saveOmbudsmanReference} className="flex flex-wrap items-end gap-3 rounded border p-3"><Fields kind={kind} record={record} records={records}/></form>)}{!visible.length&&<p>Nenhum registro encontrado.</p>}</section><Link href="/atendimento/configuracoes">Canais e assuntos de atendimento</Link></main>;
+}

@@ -27,6 +27,7 @@ export default async function FornecedoresPage({ searchParams }: { searchParams:
     <PageHeader title="Fornecedores" icon={<Truck className="size-4" />} />
     <OperationalListFrame actions={<>
       {canIssueReports && <Link href={reportHref} prefetch={false} aria-label="Baixar relatório CSV de fornecedores" className={styles.dialogButton}><Download />Relatório CSV</Link>}
+      {canIssueReports && <form action="/cadastros/fornecedores/relatorio" method="get" className="flex gap-2">{Object.entries(queryValues).map(([key, value]) => <input type="hidden" key={key} name={key} value={value} />)}<label>Ordenar relatório<select className="rounded border p-1" name="ordem"><option value="alfabetica">Alfabética</option><option value="numerica">Numérica (CPF/CNPJ)</option><option value="bancaria">Dados bancários</option></select></label><button className={styles.dialogButton}>Emitir CSV ordenado</button></form>}
       {canCreate && <Link href="/cadastros/fornecedores/novo" aria-label="Adicionar fornecedor" className={styles.newButton}><Plus /><span className={styles.newLabel}>Adicionar fornecedor</span></Link>}
     </>} toolbar={<>
       <form method="get" className={styles.searchForm}>{Object.entries(queryValues).filter(([key]) => key !== "q").map(([key, value]) => <input key={key} name={key} value={value} type="hidden" />)}<input name="q" type="search" defaultValue={filters.query} aria-label="Buscar fornecedor" placeholder="Nome, CPF, CNPJ, ME/EPP ou situação" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form>

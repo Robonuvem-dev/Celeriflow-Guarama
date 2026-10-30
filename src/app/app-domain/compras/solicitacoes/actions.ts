@@ -14,6 +14,8 @@ import { approvePurchaseRequest as approveOfficialPurchaseRequest, ProcurementLi
 import { assertPurchaseRequestOrigin, canManagePurchaseRequest, PurchaseRequestOriginError } from "@/lib/compras/purchase-request-policy";
 import { normalizePurchaseRequestItemBudgetAllocations, PurchaseRequestBudgetError, totalPurchaseRequestBudgetAllocations } from "@/lib/compras/purchase-request-budget";
 import { normalizePurchaseItems, PurchaseItemInputError } from "../processos/purchase-item-input";
+import { externalAdhesionSchema, type ExternalAdhesion } from "@/lib/compras/external-adhesion";
+import { saveExternalAdhesion } from "@/db/repositories/procurement/external-adhesion";
 
 async function getTenantContext(operation: ModuleOperation) {
   return getTenantContextForModuleOperation("COMPRAS", operation);
@@ -33,6 +35,7 @@ type PurchaseRequestItemInput = {
 };
 
 type PurchaseRequestInput = {
+  externalAdhesion?: ExternalAdhesion | null;
   id?: string;
   number: string;
   object: string;
@@ -57,6 +60,7 @@ export async function deletePurchaseRequest(id: string) {
       if (existing.items.length) {
         await tx.delete(purchaseRequestBudgetAllocations).where(inArray(purchaseRequestBudgetAllocations.purchaseRequestItemId, existing.items.map(item => item.id)));
       }
+      await saveExternalAdhesion(tx, id, null);
       await tx.delete(purchaseRequests).where(eq(purchaseRequests.id, id));
       return { success: true };
     });
@@ -72,6 +76,7 @@ export async function deletePurchaseRequest(id: string) {
 export async function savePurchaseRequest(payload: PurchaseRequestInput) {
   try {
     const { id, number, object, justification, priority = "Normal", items, secretariatId, departmentId } = payload;
+    const adhesion = payload.externalAdhesion ? externalAdhesionSchema.parse(payload.externalAdhesion) : null;
     if (!purchaseRequestPriorities.has(priority)) {
       return { success: false, error: "Prioridade de planejamento invalida." };
     }
@@ -175,6 +180,7 @@ export async function savePurchaseRequest(payload: PurchaseRequestInput) {
           if (allocations.length) await tx.insert(purchaseRequestBudgetAllocations).values(allocations.map(allocation => ({ purchaseRequestItemId: created.id, ...allocation })));
         }
       }
+      if (payload.externalAdhesion !== undefined) await saveExternalAdhesion(tx, request.id, adhesion);
       return { id: request.id };
     }, { isolationLevel: "serializable" });
 

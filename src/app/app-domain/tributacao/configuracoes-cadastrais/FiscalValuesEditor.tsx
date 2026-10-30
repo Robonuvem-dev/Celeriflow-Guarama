@@ -5,7 +5,7 @@ import { OperationalTablePanel } from "@/components/app-ui/operational/Operation
 import { TaxOperationalTable } from "../TaxOperationalTable";
 import { TaxDraftText, taxDraftInput } from "../TaxDraftControls";
 
-type Field = { key: string; label: string; type: "TEXT" | "NUMBER" | "DATE" | "BOOLEAN" | "LIST"; required: boolean; options: string[] };
+import { orderedFiscalFields, type FiscalFieldDefinition as Field } from "@/lib/tributacao/fiscal-field-definition";
 export function FiscalValuesEditor({ id, title, fields, values, prefix = "", nullableBoolean = false, enforceRequired = true }: {
   id: string; title: string; fields: Field[]; values?: Record<string, unknown>; prefix?: string;
   nullableBoolean?: boolean; enforceRequired?: boolean;
@@ -21,6 +21,7 @@ export function FiscalValuesEditor({ id, title, fields, values, prefix = "", nul
     const validate = (event: Event) => {
       const invalid = fields.find(field => {
         const value = draft[field.key] ?? "";
+        if (field.visible === false || field.enabled === false) return false;
         return invalidInputs[field.key] || (enforceRequired && field.required && field.type !== "BOOLEAN" && !value)
           || (field.type === "NUMBER" && value !== "" && !Number.isFinite(Number(value)))
           || (field.type === "LIST" && value !== "" && !field.options.includes(value));
@@ -37,12 +38,12 @@ export function FiscalValuesEditor({ id, title, fields, values, prefix = "", nul
     <OperationalTablePanel title={title} triggerLabel={`Preencher campos (${fields.length})`} description="Os valores de todas as páginas ficam no componente de origem e são enviados integralmente pelo formulário, inclusive depois de fechar este painel.">
       <TaxOperationalTable id={id}
         columns={[["label", "Campo", 100, 300], ["type", "Tipo", 72, 130], ["required", "Obrigatório", 64, 90], ["value", "Valor", 120, 450]]}
-        rows={fields.map(field => ({ id: field.key, label: field.label, values: { label: field.label, type: field.type, required: field.required ? "Sim" : "Não", value: currentValue(field) }, cells: { value: field.type === "BOOLEAN" ? nullableBoolean
+        rows={orderedFiscalFields(fields).filter(field => field.visible !== false).map(field => ({ id: field.key, label: field.label, values: { label: field.label, type: field.type, required: field.required ? "Sim" : "Não", value: currentValue(field) }, cells: { value: field.enabled === false ? <span aria-label={`${field.label} bloqueado para digitação`}>{currentValue(field) || "Não informado"}</span> : field.type === "BOOLEAN" ? nullableBoolean
           ? <select aria-label={field.label} value={currentValue(field)} onChange={event => setDraft(current => ({ ...current, [field.key]: event.target.value }))} className={taxDraftInput}><option value="">Não informado</option><option value="true">Sim</option><option value="false">Não</option></select>
           : <input type="checkbox" aria-label={field.label} checked={currentValue(field) === "true"} onChange={event => setDraft(current => ({ ...current, [field.key]: String(event.target.checked) }))} />
           : field.type === "LIST" ? <select aria-label={field.label} value={currentValue(field)} onChange={event => setDraft(current => ({ ...current, [field.key]: event.target.value }))} className={taxDraftInput}><option value="">Selecione</option>{field.options.map(option => <option key={option}>{option}</option>)}</select>
-          : field.type === "TEXT" ? <TaxDraftText label={field.label} value={currentValue(field)} maxLength={4000} onChange={value => setDraft(current => ({ ...current, [field.key]: value }))} />
-          : <input aria-label={field.label} type={field.type === "DATE" ? "date" : "number"} step={field.type === "NUMBER" ? "any" : undefined} value={currentValue(field)} onChange={event => { const value = event.target.value; const invalid = !event.target.validity.valid; setDraft(current => ({ ...current, [field.key]: value })); setInvalidInputs(current => ({ ...current, [field.key]: invalid })); }} className={taxDraftInput} /> } }))} />
+          : field.type === "TEXT" ? <TaxDraftText label={field.label} value={currentValue(field)} maxLength={field.maxLength ?? 4000} onChange={value => setDraft(current => ({ ...current, [field.key]: value }))} />
+          : <input aria-label={field.label} type={field.type === "DATE" ? "date" : "number"} maxLength={field.maxLength} step={field.type === "NUMBER" ? field.numberType === "INTEGER" ? "1" : field.numberType === "CURRENCY" ? "0.01" : "any" : undefined} value={currentValue(field)} onChange={event => { const value = event.target.value; const invalid = !event.target.validity.valid; setDraft(current => ({ ...current, [field.key]: value })); setInvalidInputs(current => ({ ...current, [field.key]: invalid })); }} className={taxDraftInput} /> } }))} />
     </OperationalTablePanel>
   </div>;
 }

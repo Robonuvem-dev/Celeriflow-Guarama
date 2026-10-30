@@ -13,7 +13,8 @@ import { enforceEconomicProfileDebtPolicy } from "./economic-debt-policy";
 import { linkItbiPropertyAttachments } from "./itbi-attachments";
 
 import { fiscalCatalogKinds, fiscalCatalogEntityType } from "./fiscal-catalog-kinds";
-export const fiscalFieldSchema = z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,59}$/), label: z.string().trim().min(1).max(120), type: z.enum(["TEXT", "NUMBER", "DATE", "BOOLEAN", "LIST"]), required: z.boolean(), options: z.array(z.string().trim().min(1).max(120)).max(100).default([]) }).refine(field => field.type !== "LIST" || field.options.length > 0, "Campo de lista exige opções.");
+import { fiscalFieldSchema } from "./fiscal-field-definition";
+export { fiscalFieldSchema } from "./fiscal-field-definition";
 export const fiscalCatalogSchema = z.object({
   catalogId: z.string().optional(), expectedVersion: z.number().int().nonnegative(), governmentEntityId: z.string().min(1), budgetUnitId: z.string().min(1),
   kind: z.enum(fiscalCatalogKinds), code: z.string().trim().min(1).max(80), name: z.string().trim().min(1).max(240), active: z.boolean(),
@@ -29,18 +30,19 @@ export const fiscalCatalogSchema = z.object({
   .refine(value => new Set(value.zoningActivities?.map(row => row.cnae)).size === (value.zoningActivities?.length ?? 0), "Informe um único tratamento por CNAE no zoneamento.");
 export const fiscalRecordSchema = z.object({ catalogId: z.string().min(1), entityType: z.enum(["REAL_ESTATE", "ECONOMIC_REGISTRATION", "ITBI_DECLARATION"]), entityId: z.string().min(1), expectedVersion: z.number().int().nonnegative(), active: z.boolean(), values: z.record(z.string(), z.unknown()), processId: z.string().nullable(), documentIds: z.array(z.string().min(1)).max(50), frontage: z.string().nullable(), occurrenceId: z.uuid().optional() });
 
-export function validateFiscalFields(fields: z.infer<typeof fiscalFieldSchema>[], values: Record<string, unknown>) {
+export function validateFiscalFields(fields: z.infer<typeof fiscalFieldSchema>[], values: Record<string, unknown>, previousValues: Record<string, unknown> = {}, configureDefaults = false) {
   const result: Record<string, string | boolean | null> = {};
   const keys = new Set(fields.map(field => field.key));
   if (Object.keys(values).some(key => !keys.has(key))) throw new Error("O formulário contém campos não configurados.");
   for (const field of fields) {
-    const value = values[field.key];
-    if (value === undefined || value === null || value === "") { if (field.required) throw new Error(`${field.label} é obrigatório.`); result[field.key] = null; continue; }
+    const locked = field.visible === false || field.enabled === false;
+    const value = locked && !configureDefaults ? previousValues[field.key] : values[field.key];
+    if (value === undefined || value === null || value === "") { if (field.required && (!locked || configureDefaults)) throw new Error(`${field.label} é obrigatório.`); result[field.key] = null; continue; }
     if (field.type === "BOOLEAN") { if (typeof value !== "boolean") throw new Error(`${field.label} deve ser verdadeiro ou falso.`); result[field.key] = value; }
     else {
-      if (typeof value !== "string" || value.length > 4000) throw new Error(`${field.label} inválido.`);
+      if (typeof value !== "string" || value.length > (field.maxLength ?? 4000)) throw new Error(`${field.label} inválido.`);
       if (!value.trim()) { if (field.required) throw new Error(`${field.label} é obrigatório.`); result[field.key] = null; continue; }
-      if (field.type === "NUMBER") { let parsed: Decimal; try { parsed = new Decimal(value); } catch { throw new Error(`${field.label} deve ser numérico.`); } if (!parsed.isFinite()) throw new Error(`${field.label} deve ser finito.`); result[field.key] = parsed.toString(); }
+      if (field.type === "NUMBER") { let parsed: Decimal; try { parsed = new Decimal(value); } catch { throw new Error(`${field.label} deve ser numérico.`); } if (!parsed.isFinite()) throw new Error(`${field.label} deve ser finito.`); if (field.numberType === "INTEGER" && !parsed.isInteger()) throw new Error(`${field.label} deve ser inteiro.`); if (field.numberType === "CURRENCY" && parsed.decimalPlaces() > 2) throw new Error(`${field.label} deve ter até duas casas decimais.`); result[field.key] = parsed.toString(); }
       else if (field.type === "DATE") { const date = new Date(`${value}T12:00:00.000Z`); if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== value) throw new Error(`${field.label} deve ser uma data válida.`); result[field.key] = value; }
       else if (field.type === "LIST") { if (!field.options.includes(value)) throw new Error(`${field.label} não pertence à lista configurada.`); result[field.key] = value; }
       else result[field.key] = value.trim();
@@ -60,7 +62,7 @@ export async function publishFiscalCatalog(db: DatabaseConnection, actor: TaxAct
 
 export async function publishFiscalCatalogInTransaction(tx: DatabaseTransaction, actor: TaxActor, raw: z.input<typeof fiscalCatalogSchema>): Promise<ConfiguredFiscalEntry> {
   const input = fiscalCatalogSchema.parse(raw);
-  if (input.catalogValues !== undefined) input.catalogValues = validateFiscalFields(input.fields, input.catalogValues);
+  if (input.catalogValues !== undefined) input.catalogValues = validateFiscalFields(input.fields, input.catalogValues, {}, true);
     await authorize(tx, actor, input.governmentEntityId, input.budgetUnitId);
     if (input.kind === "ZONEAMENTO") await lockConfiguredFiscalKey(tx, `ECONOMIC_ACTIVITY:${input.budgetUnitId}`);
     const id = input.catalogId ?? randomUUID();
@@ -126,7 +128,7 @@ export async function saveConfiguredFiscalRecordInTransaction(tx: DatabaseTransa
     const recordKey = inspection ? `${input.catalogId}:${input.occurrenceId}` : input.catalogId;
     const previous = await readLatestConfiguredFiscalEntry(tx, input.entityType, input.entityId, "TYPED_FISCAL_RECORD", recordKey);
     if ((previous?.version ?? 0) !== input.expectedVersion) throw new Error("O formulário foi alterado. Recarregue antes de salvar.");
-    const values = validateFiscalFields(catalog.fields, input.values);
+    const values = validateFiscalFields(catalog.fields, input.values, { ...(catalog.catalogValues ?? {}), ...taxScopeSnapshot(taxScopeSnapshot(previous?.data).values) });
     if (input.entityType === "ECONOMIC_REGISTRATION" && catalog.kind !== "SITUACAO_EMPRESA") await enforceEconomicProfileDebtPolicy(tx, actor, input.entityId);
     if (input.entityType === "REAL_ESTATE") {
       const profile = await readLatestConfiguredFiscalEntry(tx, input.entityType, input.entityId, "PROPERTY_PROFILE");

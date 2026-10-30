@@ -9,6 +9,7 @@ import { and, asc, count as rowCount, desc, eq, inArray, sql } from "drizzle-orm
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client";
 import { assets, assetMaintenances, assetTransfers } from "@/db/schema/assets";
+import { assetCatalogRecords } from "@/db/schema/assets-catalogs";
 import { departments, employees } from "@/db/schema/administration";
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
@@ -29,6 +30,7 @@ export default async function AssetDetailPage({ params, searchParams }: { params
     .where(and(eq(assets.id, id), scope.departmentId ? eq(assets.departmentId, scope.departmentId) : undefined)).limit(1);
   const asset = loaded ? { ...loaded.asset, department: loaded.department, responsible: loaded.responsible, fleetUnit: loaded.fleetUnit } : undefined;
   if (!asset) notFound();
+  const patrimonialAccounts = await db.select().from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, "contas"), eq(assetCatalogRecords.active, true), sql`${assetCatalogRecords.details}->>'assetId' = ${id}`, asset.departmentId ? eq(assetCatalogRecords.departmentId, asset.departmentId) : undefined));
   const fromDepartments = alias(departments, "transfer_origin"), toDepartments = alias(departments, "transfer_destination");
   const maintenanceSelection = { maintenance: assetMaintenances, fleetOrderId: sql<string | null>`(SELECT o.id FROM "FleetWorkOrder" o WHERE o."assetMaintenanceId"="AssetMaintenance"."id")` };
   const count = await db.select({ count: rowCount() }).from(assetMaintenances).where(eq(assetMaintenances.assetId, id)).then(rows => rows[0].count);
@@ -46,6 +48,7 @@ export default async function AssetDetailPage({ params, searchParams }: { params
   return <PageFrame className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
     <PageHeader title={`${asset.code || asset.patrimonyNumber} · ${asset.name}`} action={<Link href="/patrimonio/bens" className="rounded border bg-white px-3 py-2 text-sm">Bens patrimoniais</Link>} />
     <p className="text-xs text-slate-600">Código do equipamento: {asset.code || "Não identificado"} · Tombamento: {asset.patrimonyNumber}</p>
+    {patrimonialAccounts.length > 0 && <section className="rounded border bg-white p-3"><h2 className="font-semibold">Contas patrimoniais vinculadas</h2>{patrimonialAccounts.map(account => <p key={account.id}>{account.details.account} · {account.name} · {account.details.classification}</p>)}</section>}
     <dl className="grid gap-3 rounded-md border bg-white p-4 text-sm sm:grid-cols-3">{Object.entries({ "Setor de origem": asset.department?.name || "Sem setor", "Responsável": asset.responsible?.name || "Não informado", "Situação patrimonial": asset.status, "Marca / modelo": [asset.brand, asset.model].filter(Boolean).join(" / ") || "—", "Documento de aquisição": asset.invoiceNumber || "—", "Valor contábil": asset.currentValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) }).map(([title, value]) => <div key={title}><dt className="text-xs text-slate-500">{title}</dt><dd className="mt-1 font-medium">{value}</dd></div>)}</dl>
     {asset.fleetUnit && canViewModule(context.user, "FROTAS") && <Link href={`/frotas?unitId=${encodeURIComponent(asset.fleetUnit.id)}`} className="block rounded border border-teal-200 bg-teal-50 p-3 text-sm text-teal-900">Abrir unidade em Frotas · {asset.fleetUnit.code} · {asset.fleetUnit.name}</Link>}
     <AssetOperationsClient key={asset.updatedAt.toISOString()} assetId={id} version={asset.updatedAt.toISOString()} canUpdate={!['Baixado', 'Inativo'].includes(asset.status) && canPerformModuleOperation(context.user, "PATRIMONIO", "update")} maintenances={open.map(m => ({ id: m.id, description: m.description, startDate: m.startDate.toISOString().slice(0, 10), status: m.status, fleetOrderId: m.fleetOrder?.id || null }))} />

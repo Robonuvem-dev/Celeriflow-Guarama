@@ -132,3 +132,32 @@ test("cemetery workflow: transactional finalization, current location, destinati
     });
   } finally { await fixture.close(); }
 });
+
+test("natimorto registra processo sem pessoa física fictícia e preserva a mãe", { timeout: 180000 }, async () => {
+  const fixture = await createCemeteryDatabase("actor");
+  const { connection } = fixture;
+  const db = connection.db;
+  try {
+    await db.insert(cemeteries).values({ id: "nat-cem", code: "N", name: "Municipal" });
+    await db.insert(people).values({ id: "nat-mother", fullName: "Mãe declarante", cpf: "123" });
+    await db.insert(taxpayers).values({ id: "nat-decl", personId: "nat-mother", status: "Ativo", taxpayerType: "PF", municipalInsc: "N1" });
+    await db.insert(cemeteryLots).values({ id: "nat-lot", cemeteryId: "nat-cem", identifier: "N", ownerTaxpayerId: "nat-decl", graveLimit: 2 });
+    await db.insert(cemeteryGraves).values({ id: "nat-grave", cemeteryId: "nat-cem", lotId: "nat-lot", code: "N1", graveType: "COVA", status: "LIVRE", active: true, capacity: 2 });
+    await db.insert(cemeteryFuneralHomes).values({ id: "nat-home", name: "Funerária" });
+    await db.insert(cemeteryDeathCauses).values({ id: "nat-cause", code: "N", description: "Morte fetal" });
+    await db.insert(cemeteryChapels).values({ id: "nat-chapel", cemeteryId: "nat-cem", name: "Capela", responsibleTaxpayerId: "nat-decl" });
+    const input = { fullName: "Natimorto de Mãe declarante", motherName: "Mãe declarante", deathDate: new Date("2026-01-01"), scheduledAt: new Date("2026-01-02"), burialType: "NATIMORTO" as const, cemeteryId: "nat-cem", graveId: "nat-grave", declarantTaxpayerId: "nat-decl", doctorName: "Doutor", doctorCrm: "123", causeId: "nat-cause", funeralHomeId: "nat-home", chapelId: "nat-chapel", finalizeNow: true, requestKey: "nat-request" };
+    await assert.rejects(registerDeceased(connection, { usuarioId: "actor" }, { ...input, motherName: "" }), /nome da mãe/);
+    await assert.rejects(registerDeceased(connection, { usuarioId: "actor" }, { ...input, deceasedTaxpayerId: "nat-decl" }), /sem CPF/);
+    const row = await registerDeceased(connection, { usuarioId: "actor" }, input);
+    assert.equal(row.deceasedTaxpayerId, null);
+    assert.equal(row.motherName, "Mãe declarante");
+    assert.equal(row.status, "SEPULTADO");
+    assert.equal((await registerDeceased(connection, { usuarioId: "actor" }, input)).id, row.id);
+    const [mother] = await db.select().from(people).where(eq(people.id, "nat-mother"));
+    assert.equal(mother.deathDate, null);
+    assert.equal(mother.estateApplied, false);
+    const [process] = await db.select().from(cemeteryProcesses).where(eq(cemeteryProcesses.deceasedId, row.id));
+    assert.equal(process.burialType, "NATIMORTO");
+  } finally { await fixture.close(); }
+});

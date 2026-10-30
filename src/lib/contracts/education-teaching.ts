@@ -1,5 +1,5 @@
 export type TeachingSubject = { id: string; name: string };
-export type TeachingEnrollment = { status: string; enrollmentDate: Date; student: { id: string; studentCode: string; person: { fullName: string } } };
+export type TeachingEnrollment = { status: string; enrollmentDate: Date; endDate: Date | null; student: { id: string; studentCode: string; person: { fullName: string } } };
 export type TeachingClass = {
   id: string; name: string; teacherId: string | null; school: { name: string }; period: { name: string } | null;
   matrix: { subjects: { subjectId: string; subject: TeachingSubject }[] } | null;

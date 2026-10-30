@@ -9,7 +9,7 @@ export async function createEducationServiceFixture() {
   try {
     const baseline = readFileSync("prisma/migrations-ibema/20261009232000_baseline/migration.sql", "utf8");
     const tables = new Set([
-      "Person", "Employee", "Teacher", "TeacherClassAssignment", "School", "Student", "EducationalGuardian", "AcademicPeriod", "CurriculumMatrix", "CurriculumMatrixSubject", "SchoolSubject", "SchoolClass", "Enrollment", "ClassDiary", "Attendance", "Grade", "EducationAssessment", "TeacherAcademicRecord", "LearningActivity", "LearningQuestion", "LearningSubmission",
+      "Person", "Employee", "Teacher", "TeacherClassAssignment", "School", "Student", "EducationalGuardian", "AcademicPeriod", "CurriculumMatrix", "CurriculumMatrixSubject", "SchoolSubject", "SchoolClass", "Enrollment", "EnrollmentMovement", "ClassDiary", "Attendance", "Grade", "EducationAssessment", "TeacherAcademicRecord", "LearningActivity", "LearningQuestion", "LearningSubmission",
       "PreEnrollmentProcess", "PreEnrollment", "AcademicDocumentIssue", "EducationLibraryTitle", "EducationLibraryCopy", "EducationLibraryLoan", "EducationLibraryReservation",
       "PedagogicalCatalogItem", "PedagogicalRelease", "PedagogicalAttempt", "EducationFinancialAccount", "EducationFinancialMovement", "EducationApplicationPlan",
       "MaterialCategory", "Material", "Warehouse", "BankAccount", "FleetRoute", "FleetUnit", "EducationSchoolMenu", "EducationFoodMovement", "EducationTransportRoute", "EducationTransportStop", "EducationTransportStudent", "EducationTransportJourney", "EducationTransportEvent",
@@ -28,6 +28,10 @@ export async function createEducationServiceFixture() {
     }
     for (const match of baseline.matchAll(/ALTER TABLE "([A-Za-z0-9_]+)" ADD CONSTRAINT [^;]+ REFERENCES "([A-Za-z0-9_]+)"[^;]+;/g)) {
       if (tables.has(match[1]) && tables.has(match[2])) await fixture.database.exec(match[0]);
+    }
+    // Apply current additive education DDL after the preserved baseline.
+    for (const migration of ["20261030120100_education_subject_abbreviation", "20261030120200_student_dietary_restrictions"]) {
+      await fixture.database.exec(readFileSync(`db/migrations/${migration}/migration.sql`, "utf8"));
     }
     return fixture;
   } catch (error) { await fixture.close(); throw error; }

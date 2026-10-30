@@ -1,3 +1,4 @@
+import { assertTaxPasswordConfirmation } from "@/lib/tributacao/password-confirmation";
 import { cookies } from "next/headers";
 import { getIdTokenPrincipal, getSessionPrincipal, SESSION_COOKIE_NAME, type SessionPrincipal } from "@/lib/platform/session";
 import { SYSTEM_ADMIN_PROFILE_CODE } from "@/lib/administration/c3-policy";
@@ -74,7 +75,8 @@ function getModuleProfilePermission(rolePermissions: RolePermissions | null, mod
   };
 }
 
-export function isModuleBlockedForUser(user: AppContext["user"], moduleCode: string) {
+export function isModuleBlockedForUser(user: AppContext["user"], moduleCode: string): boolean {
+  if (user.additionalProfiles?.length) return [user.permissions, ...user.additionalProfiles.map(profile=>profile.permissions)].every(permissions=>isModuleBlockedForUser({...user,permissions,additionalProfiles:undefined},moduleCode));
   if (isSystemAdministrator(user)) return false;
   const codeUpper = moduleCode.toUpperCase();
   const rolePermissions = parseRolePermissions(user.permissions);
@@ -90,7 +92,8 @@ export function canShowDashboardCard(user: AppContext["user"], moduleCode: strin
   return true;
 }
 
-export function canViewModule(user: AppContext["user"], moduleCode: string) {
+export function canViewModule(user: AppContext["user"], moduleCode: string): boolean {
+  if (user.additionalProfiles?.length) return [user.permissions, ...user.additionalProfiles.map(profile=>profile.permissions)].some(permissions=>canViewModule({...user,permissions,additionalProfiles:undefined},moduleCode));
   if (isSystemAdministrator(user)) return true;
 
   const codeUpper = moduleCode.toUpperCase();
@@ -111,7 +114,8 @@ export function canViewModule(user: AppContext["user"], moduleCode: string) {
   );
 }
 
-export function canEditModule(user: AppContext["user"], moduleCode: string) {
+export function canEditModule(user: AppContext["user"], moduleCode: string): boolean {
+  if (user.additionalProfiles?.length) return [user.permissions, ...user.additionalProfiles.map(profile=>profile.permissions)].some(permissions=>canEditModule({...user,permissions,additionalProfiles:undefined},moduleCode));
   if (isSystemAdministrator(user)) return true;
 
   const codeUpper = moduleCode.toUpperCase();
@@ -137,7 +141,8 @@ export function canPerformModuleOperation(
   user: AppContext["user"],
   moduleCode: string,
   operation: ModuleOperation,
-) {
+): boolean {
+  if (user.additionalProfiles?.length) return [user.permissions, ...user.additionalProfiles.map(profile=>profile.permissions)].some(permissions=>canPerformModuleOperation({...user,permissions,additionalProfiles:undefined},moduleCode,operation));
   if (isSystemAdministrator(user)) return true;
 
   const codeUpper = moduleCode.toUpperCase();
@@ -239,6 +244,7 @@ export async function getTenantContextForModuleOperation(
   if (!canPerformModuleOperation(context.user, moduleCode, operation)) {
     throw new AccessError(`Acesso negado para ${operation} no módulo ${moduleCode}.`, 403);
   }
+  if (moduleCode.toUpperCase() === "TRIBUTACAO" && ["create", "update", "delete"].includes(operation)) await assertTaxPasswordConfirmation(context.database ?? db, context.user.id);
   return context;
 }
 

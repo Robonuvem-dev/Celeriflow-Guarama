@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { readAdditionalProfiles } from "./additional-profiles";
 import type { DatabaseExecutor } from "../../transaction";
 import { accessProfiles, modules, userBudgetUnits, userModulePermissions, users } from "../../schema/identity";
 import { employees } from "../../schema/administration";
@@ -25,7 +26,8 @@ async function loadIdentity(db: DatabaseExecutor, field: "firebaseUid" | "email"
     includeBudgetUnits ? db.select({ budgetUnitId: userBudgetUnits.budgetUnitId }).from(userBudgetUnits).where(eq(userBudgetUnits.usuarioId, record.id)) : Promise.resolve([]),
   ]);
   const scopes: HealthAccessScopeRecord[] = healthAccessScopes;
-  return { ...record, modulePermissions, healthAccessScopes: scopes, allowedBudgetUnitIds: budgetUnits.map(unit => unit.budgetUnitId) };
+  const additionalProfiles = await readAdditionalProfiles(db, record.id);
+  return { ...record, additionalProfiles, modulePermissions, healthAccessScopes: scopes, allowedBudgetUnitIds: budgetUnits.map(unit => unit.budgetUnitId) };
 }
 
 export async function findIdentityByFirebaseUid(db: DatabaseExecutor, firebaseUid: string): Promise<IdentityRecord | null> {
