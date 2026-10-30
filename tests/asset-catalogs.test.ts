@@ -29,7 +29,7 @@ test("SQL e CRUD persistente, concorrência, escopo e cópia idempotente de exer
       CREATE TABLE "MaterialRequestItem" (id TEXT PRIMARY KEY, "quantityRequested" DOUBLE PRECISION, "quantityApproved" DOUBLE PRECISION DEFAULT 0, "quantityDelivered" DOUBLE PRECISION DEFAULT 0, "requestId" TEXT, "materialId" TEXT, "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
       INSERT INTO "MaterialRequest" (id,number,status,"departmentId") VALUES ('request','1','Pendente','dept');
       INSERT INTO "MaterialRequestItem" (id,"requestId","quantityRequested") VALUES ('item','request',2);`);
-    await fixture.database.exec(readFileSync("db/migrations/20261030120000_asset_catalog_records/migration.sql", "utf8"));
+    await fixture.database.exec(readFileSync("db/migrations/20261030120001_asset_catalog_records/migration.sql", "utf8"));
     const input = { kind: "requisitantes", code: "R1", name: "Requisitante", year: 2026, departmentId: "dept", details: { employeeId: "employee", authorization: "Portaria 1" } };
     const id = await saveAssetCatalog(fixture.connection, user, input);
     const stored = await fixture.database.query<{ updatedAt: Date }>('SELECT "updatedAt" FROM "AssetCatalogRecord" WHERE id=$1', [id]);

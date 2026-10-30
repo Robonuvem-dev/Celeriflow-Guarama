@@ -19,7 +19,7 @@ test("PostgreSQL local persiste equipe/faixa/escala, impede referências inexist
   const pg = new PGlite();
   try {
     await pg.exec('CREATE TABLE "Employee" ("id" text primary key, "name" text, "cpf" text, "registration" text); INSERT INTO "Employee" VALUES (\'e1\',\'Ana\',\'123\',\'001\');');
-    await pg.exec(readFileSync("db/migrations/20261030120000_personnel_reference_records/migration.sql", "utf8"));
+    await pg.exec(readFileSync("db/migrations/20261030120002_personnel_reference_records/migration.sql", "utf8"));
     await pg.exec('CREATE TABLE "BudgetAppropriation" (id text primary key,code text); INSERT INTO "BudgetAppropriation" VALUES (\'b1\',\'2026.001\');');
     const db = drizzle(pg) as unknown as DatabaseExecutor;
     await saveReferenceRecord(db, undefined, { kind: "LICENCA_EDUCACAO", code: "FERIAS", name: "Férias docentes", details: { maximumDays: "30", legalReference: "Estatuto municipal" } });

@@ -11,7 +11,7 @@ test("cadastros de processos validam assunto e preservam unicidade sem apagar hi
   const database = new PGlite();
   try {
     await database.exec('CREATE TABLE "Subject" (id text PRIMARY KEY); INSERT INTO "Subject" VALUES (\'parent\');');
-    await database.exec(await readFile(new URL("../db/migrations/20261030120000_process_reference_catalog/migration.sql", import.meta.url), "utf8"));
+    await database.exec(await readFile(new URL("../db/migrations/20261030120003_process_reference_catalog/migration.sql", import.meta.url), "utf8"));
     await assert.rejects(database.exec(`INSERT INTO "ProcessReferenceCatalog" (id,kind,name) VALUES ('missing','SUBJECT_CHILD','Filho')`));
     await database.exec(`INSERT INTO "ProcessReferenceCatalog" (id,kind,name,"subjectId") VALUES ('child','SUBJECT_CHILD','Filho','parent')`);
     await assert.rejects(database.exec(`INSERT INTO "ProcessReferenceCatalog" (id,kind,name,"subjectId") VALUES ('duplicate','SUBJECT_CHILD',' FILHO ','parent')`));
@@ -72,7 +72,7 @@ test("outros requerentes são cadastráveis e vinculados ao detalhe por chave es
  const database=new PGlite();
  try {
   await database.exec('CREATE TABLE "Subject" (id text PRIMARY KEY); CREATE TABLE "Process" (id text PRIMARY KEY); CREATE TABLE "Person" (id text PRIMARY KEY); INSERT INTO "Process" VALUES (\'p\');');
-  for(const path of ["20261030120000_process_reference_catalog","20261030120100_process_registration_details","20261030120400_process_other_applicant"]) await database.exec(await readFile(new URL(`../db/migrations/${path}/migration.sql`,import.meta.url),"utf8"));
+  for(const path of ["20261030120003_process_reference_catalog","20261030120100_process_registration_details","20261030120400_process_other_applicant"]) await database.exec(await readFile(new URL(`../db/migrations/${path}/migration.sql`,import.meta.url),"utf8"));
   await database.exec(`INSERT INTO "ProcessReferenceCatalog" (id,kind,name) VALUES ('other','OTHER_APPLICANT','Associação sem personalidade jurídica'); INSERT INTO "ProcessRegistrationDetail" ("processId","otherApplicantId") VALUES ('p','other')`);
   await assert.rejects(database.exec(`UPDATE "ProcessRegistrationDetail" SET "otherApplicantId"='missing'`));
   assert.equal((await database.query('SELECT * FROM "ProcessRegistrationDetail"')).rows.length,1);
