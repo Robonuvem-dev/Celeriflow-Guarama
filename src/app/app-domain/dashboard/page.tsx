@@ -24,7 +24,7 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Church,
-  ClipboardCheck,
+  FileSignature,
   Headset,
   Globe
 } from "lucide-react";
@@ -34,6 +34,7 @@ import { listModuleActivations } from "@/db/repositories/platform/identity";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import styles from "./dashboard.module.css";
+import { compareDashboardCards } from "@/lib/platform/dashboard-order";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ const menuItems: MenuItem[] = [
   { code: "CEMITERIOS", name: "Cemitérios", description: "Gestão cemiterial", href: "/cemiterios", icon: Church, color: "text-[#57534E]", bg: "bg-[#E7E5E4]", solid: "bg-[#57534E]" },
   { code: "CAMARA", name: "Câmara Municipal", description: "Gestão Legislativa", href: "/camara", icon: Landmark, color: "text-[#9333EA]", bg: "bg-[#F3E8FF]", solid: "bg-[#9333EA]" },
   { code: "SEGURANCA", name: "Segurança e Mobilidade", description: "Guarda e trânsito", href: "/seguranca", icon: Shield, color: "text-[#0F766E]", bg: "bg-[#CCFBF1]", solid: "bg-[#0F766E]" },
-  { code: "AUDITORIA", name: "Auditoria", description: "Controle e conformidade", href: "/auditoria", icon: ClipboardCheck, color: "text-[#7C3AED]", bg: "bg-[#EDE9FE]", solid: "bg-[#7C3AED]" },
+  { code: "ASSINATURA_DIGITAL", name: "Assinatura Digital", description: "Central de assinatura de documentos", href: "/assinatura-digital", icon: FileSignature, color: "text-[#7C3AED]", bg: "bg-[#EDE9FE]", solid: "bg-[#7C3AED]" },
   { code: "SUPORTE_TECNICO", name: "Suporte Técnico", description: "Atendimento técnico especializado", href: "/suporte-tecnico", icon: Headset, color: "text-[#0369A1]", bg: "bg-[#E0F2FE]", solid: "bg-[#0369A1]" },
   { code: "CONFIGURACOES", name: "Configurações", description: "Gestão do sistema", href: "/configuracoes", icon: Settings, color: "text-[#475569]", bg: "bg-[#E2E8F0]", solid: "bg-[#475569]" },
 ];
@@ -94,21 +95,7 @@ export default async function PainelPage() {
   const visibleMenuItems = menuItems
     .filter((item) => moduleActivationByCode.get(item.accessCode ?? item.code) !== false)
     .filter((item) => context && canShowDashboardCard(context.user, item.accessCode ?? item.code))
-    .sort((left, right) => {
-      const pinnedOrder: Record<string, number> = {
-        ADMINISTRACAO: -1,
-        PORTAL_SERVIDOR: 1,
-        TRANSPARENCIA: 2,
-        SUPORTE_TECNICO: 3,
-        CONFIGURACOES: 4,
-      };
-      const leftPinned = pinnedOrder[left.code];
-      const rightPinned = pinnedOrder[right.code];
-      if (leftPinned !== undefined || rightPinned !== undefined) {
-        return (leftPinned ?? 0) - (rightPinned ?? 0);
-      }
-      return left.name.localeCompare(right.name, "pt-BR");
-    });
+    .sort(compareDashboardCards);
 
   return (
     <PageFrame className={`${styles.frame} flex min-h-0 flex-col gap-2 px-1 py-1 md:px-2`}>

@@ -300,6 +300,7 @@ function reviewed(file, pairs, reason, targetFile = file) {
     else overrides.set(originals[0].id, { target: targets[0].id, targets: targets.map(item => item.id), reason });
   }
 }
+reviewed("auditoria/page.tsx", [[223, "auditoria-evidencias"]], "audit evidence moved under Administration with the same filters, fields and source", "administracao/auditoria/page.tsx");
 reviewed("camara/sessoes/SessoesClient.tsx", [[116, "camara.sessoes"], [183, "camara.sessoes"]], "sessions/propositions selected by activeTab; independent columns and row projections");
 reviewed("camara/vereadores/VereadoresClient.tsx", [[110, "camara.parlamentares"], [162, "camara.parlamentares"], [200, "camara.parlamentares"]], "members/board/offices selected by activeTab, distinct row projections");
 reviewed("cemiterios/taxas/page.tsx", [[36, "cemiterios.taxas.regras"], [38, "cemiterios.taxas.eventos"]], "rules.rows / events.rows preserved separately");

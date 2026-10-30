@@ -10,7 +10,7 @@ import { insertAuditEvent } from "./audit";
 export async function loadConfigurationTotals(db: DatabaseExecutor): Promise<{ instancias: number; totalModulosAtivos: number; totalPerfis: number }> {
   const [[instances], [activeModules], [profiles]] = await Promise.all([
     db.select({ value: sql<number>`count(*)::int` }).from(systemInstances),
-    db.select({ value: sql<number>`count(*)::int` }).from(modules).where(and(eq(modules.ativo, true), ne(modules.codigo, "DOCUMENTOS"))),
+    db.select({ value: sql<number>`count(*)::int` }).from(modules).where(and(eq(modules.ativo, true), ne(modules.codigo, "DOCUMENTOS"), ne(modules.codigo, "AUDITORIA"))),
     db.select({ value: sql<number>`count(*)::int` }).from(accessProfiles),
   ]);
   return { instancias: instances.value, totalModulosAtivos: activeModules.value, totalPerfis: profiles.value };

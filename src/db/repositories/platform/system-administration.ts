@@ -102,5 +102,5 @@ export async function deleteAccessProfile(tx: DatabaseTransaction, id: string, a
 }
 
 export async function listSystemModules(db: DatabaseExecutor): Promise<SystemModuleRecord[]> {
-  return db.select().from(modules).where(ne(modules.codigo, "DOCUMENTOS")).orderBy(asc(modules.nome));
+  return db.select().from(modules).where(and(ne(modules.codigo, "DOCUMENTOS"), ne(modules.codigo, "AUDITORIA"))).orderBy(asc(modules.nome));
 }

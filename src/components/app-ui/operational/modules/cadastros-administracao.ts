@@ -1,20 +1,10 @@
 import type { OperationalModuleConfig } from "../routes";
+import { administrationNavigation } from "@/app/app-domain/administracao/navigation";
 
 export const operationalModules: OperationalModuleConfig[] = [
   {
     key: "administracao", moduleTitle: "Administração Geral", moduleCaption: "Gestão institucional", moduleIcon: "building2",
-    navigation: [
-      { title: "Administração", items: [
-        { title: "Painel", href: "/administracao", icon: "layoutDashboard", exact: true },
-        { title: "Dados da Prefeitura", href: "/administracao/instituicao", icon: "landmark" },
-        { title: "Secretarias", href: "/administracao/secretarias", icon: "building2" },
-        { title: "Departamentos", href: "/administracao/departamentos", icon: "network" },
-        { title: "Unidades", href: "/administracao/unidades", icon: "mapPin" },
-        { title: "Cargos e Funções", href: "/administracao/cargos", icon: "briefcase" },
-        { title: "Calendário", href: "/administracao/calendario", icon: "calendarDays" },
-      ] },
-      { title: "Inteligência gerencial", items: [{ title: "Business Intelligence", href: "/administracao/indicadores", icon: "barChart3" }] },
-    ],
+    navigation: administrationNavigation,
     // /administracao and /administracao/indicadores keep the analytical shell;
     // their migrated comparison uses the self-provided OperationalTablePanel.
     // /administracao/demandas remains a redirect; its legacy client is migrated in a panel.
@@ -25,6 +15,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { pathname: "/administracao/cargos", title: "Cargos e Funções" },
       { pathname: "/administracao/calendario", title: "Calendário Institucional" },
       { pathname: "/administracao/servidores", title: "Servidores" },
+      { pathname: "/administracao/auditoria", title: "Auditoria" },
     ],
   },
   {

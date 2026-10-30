@@ -10,8 +10,9 @@ import { operationalModules as environment } from "./saneamento-ambiente";
 import { operationalModules as health } from "./saude-servidor";
 import { operationalModules as social } from "./social-educacao-publico";
 import { operationalModules as taxes } from "./tributacao";
+import { operationalModules as signatures } from "./assinatura-digital";
 
 export const operationalModules = [
   ...registry, ...planning, ...procurement, ...documents, ...specialized,
-  ...finance, ...assets, ...personnel, ...environment, ...health, ...social, ...taxes,
+  ...finance, ...assets, ...personnel, ...environment, ...health, ...social, ...taxes, ...signatures,
 ];

@@ -70,6 +70,23 @@ test("rotas internas continuam exigindo sessão e preservando o destino", () => 
   assert.equal(destination.searchParams.get("returnTo"), "/compras?pagina=2");
 });
 
+test("validação da Central é pública em todos os hosts, sem liberar a área administrativa", () => {
+  for (const [index, hostname] of ["app.localhost", "guarama.celeriflow.com.br", "celeriflow.vercel.app", "www.ibema.celeriflow.com.br"].entries()) {
+    for (const path of ["/validar-assinatura", "/validar-assinatura/12345678-1234-4123-8123-123456789abc"]) {
+      const response = proxy(new NextRequest(`https://${hostname}${path}`, { headers: { host: hostname, "x-forwarded-for": `192.0.2.${200 + index}` } }));
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("x-middleware-next"), "1");
+      assert.equal(response.headers.get("x-middleware-rewrite"), null);
+      assert.equal(response.headers.get("location"), null);
+    }
+  }
+  const privatePage = proxy(new NextRequest("https://app.localhost/assinatura-digital/validacao", { headers: { host: "app.localhost" } }));
+  assert.equal(privatePage.status, 307);
+  assert.equal(new URL(privatePage.headers.get("location")!).searchParams.get("returnTo"), "/assinatura-digital/validacao");
+  const nested = proxy(new NextRequest("https://app.localhost/validar-assinatura/codigo/administracao", { headers: { host: "app.localhost" } }));
+  assert.equal(nested.status, 307);
+});
+
 test("autenticidade de alvará permanece pública nos hosts internos sem contornar rotas administrativas",()=>{
   for(const hostname of ["app.localhost","celeriflow.vercel.app"]) {
     const response=proxy(new NextRequest(`https://${hostname}/validar-alvara/12345678-1234-4123-8123-123456789abc`,{headers:{host:hostname,"x-forwarded-for":"192.0.2.181"}}));

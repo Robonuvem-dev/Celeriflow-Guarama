@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "incremental": false, "plugins": [] },
+  "include": [
+    "../src/db/schema/signature-central.ts",
+    "../src/db/repositories/documents/central.ts",
+    "../src/lib/signatures/central-service.ts",
+    "../src/lib/signatures/central-evidence.ts",
+    "../src/lib/signatures/central-password.ts",
+    "../src/lib/signatures/central-storage.ts",
+    "../src/lib/signatures/central-retention.ts",
+    "../src/lib/signatures/central-http.ts",
+    "../src/lib/signatures/central-rate-limit.ts",
+    "../src/app/api/assinatura-digital/assinar/route.ts",
+    "../src/app/api/assinatura-digital/validar/route.ts",
+    "../src/app/api/assinatura-digital/documentos/[id]/route.ts",
+    "../src/app/api/assinatura-digital/comprovantes/[id]/route.ts",
+    "../src/app/api/assinatura-digital/retencao/route.ts",
+    "signature-central-backend.test.ts"
+  ],
+  "exclude": ["../node_modules"]
+}

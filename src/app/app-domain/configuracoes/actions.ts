@@ -120,7 +120,7 @@ export async function ensureDefaultModulos() {
     { codigo: "CAMARA", nome: "Câmara Municipal" },
     { codigo: "SEGURANCA", nome: "Segurança e Mobilidade" },
     { codigo: "CEMITERIOS", nome: "Cemitérios" },
-    { codigo: "AUDITORIA", nome: "Auditoria" },
+    { codigo: "ASSINATURA_DIGITAL", nome: "Assinatura Digital" },
     { codigo: "SUPORTE_TECNICO", nome: "Suporte Técnico" },
     { codigo: "CONFIGURACOES", nome: "Configurações" },
   ];

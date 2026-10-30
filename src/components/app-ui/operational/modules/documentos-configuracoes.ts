@@ -60,14 +60,4 @@ export const operationalModules: OperationalModuleConfig[] = [
       { pathname: "/atendimento/ouvidoria", title: "Ouvidoria" },
     ],
   },
-  {
-    key: "auditoria",
-    moduleTitle: "Auditoria",
-    moduleCaption: "Controle e conformidade",
-    moduleIcon: "clipboardCheck",
-    navigation: [{ title: "Auditoria", items: [
-      { title: "Evidências", href: "/auditoria", icon: "clipboardCheck", exact: true },
-    ] }],
-    routes: [{ pathname: "/auditoria", title: "Auditoria" }],
-  },
 ];
