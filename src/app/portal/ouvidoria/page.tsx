@@ -5,6 +5,9 @@ import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell"
 import { MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipality-identity";
 import { CitizenRequestForm } from "@/components/transparencia/CitizenRequestForm";
 import {CitizenServiceInformation} from "@/components/transparencia/CitizenServiceInformation";
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "@/db/client";
+import { ombudsmanReferenceCatalog as catalog } from "@/db/schema/ombudsman-reference-catalog";
 
 export const metadata: Metadata = {
   title: `Ouvidoria | ${MUNICIPALITY_INSTITUTION_NAME}`,
@@ -15,11 +18,12 @@ const CHANNELS = [
    { title: "Denúncias", description: "Comunicação de irregularidades ou atos ilícitos.", href: "#manifestacao" },
    { title: "Reclamações", description: "Insatisfação com serviços ou atendimento.", href: "#manifestacao" },
    { title: "Sugestões", description: "Propostas de melhoria dos serviços públicos.", href: "#manifestacao" },
-  { title: "Solicitações e informações", description: "Pedidos de informação pública via e-SIC.", href: "/portal/acesso-informacao" },
+  { title: "Solicitações e ocorrências", description: "Serviços urbanos, rua e bairro, lixo e limpeza e outras ocorrências.", href: "#manifestacao" },
 ];
 
 export const dynamic="force-dynamic";
 export default async function OuvidoriaPage() {
+  const publicCatalog = await db.select().from(catalog).where(and(eq(catalog.isActive, true), eq(catalog.isOnline, true), inArray(catalog.kind, ["SUBJECT", "SUBSUBJECT"])));
   return (
     <main className="mx-auto max-w-5xl px-4 py-9 sm:px-6">
       <PortalBreadcrumb current="Ouvidoria" />
@@ -42,7 +46,8 @@ export default async function OuvidoriaPage() {
         <h2 className="font-bold text-slate-900">Como acompanhar</h2>
          <p className="mt-2">Guarde o protocolo e a chave de acompanhamento. A equipe responde no canal privado de consulta abaixo. Consulte também as <Link href="/portal/noticias" className="font-bold text-[#0e4c7e] hover:underline">notícias oficiais</Link> e o <Link href="/portal/portaldatransparencia" className="font-bold text-[#0e4c7e] hover:underline">Portal da Transparência</Link>.</p>
        </div>
-       <div id="manifestacao" className="mt-6"><CitizenRequestForm type="RECLAMACAO" /></div>
+       <p className="mt-5 text-sm"><Link href="/portal/cadastrar" className="font-semibold text-[#0e4c7e] underline">Criar meu cadastro</Link> · O cadastro não é necessário para manifestações anônimas. Para pedidos de informação pública, utilize o <Link href="/portal/acesso-informacao" className="font-semibold underline">e-SIC</Link>.</p>
+       <div id="manifestacao" className="mt-6"><CitizenRequestForm type="RECLAMACAO" publicCatalog={publicCatalog} /></div>
        <div className="mt-6"><CitizenServiceInformation/></div>
     </main>
   );

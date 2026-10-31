@@ -90,15 +90,21 @@ export async function createPerson(formData: FormData): Promise<void> {
   const zipCode = textValue(formData, "zipCode");
   const streetName = textValue(formData, "streetName");
   const number = textValue(formData, "number");
+  const status = textValue(formData, "status") || "Ativo";
   if (!fullName) throw new Error("Nome completo é obrigatório.");
+  if (!["Ativo", "Inativo"].includes(status)) throw new Error("Situação cadastral inválida.");
   if (!birthDate || !gender || !raceColor || !motherName || !zipCode || !streetName || !number) throw new Error("Nascimento, sexo, raça/cor, nome da mãe e endereço residencial são obrigatórios.");
   await withDatabaseTransaction(databaseConnection, async tx => {
     const person = await registry.insertPersonWithAddress(tx, {
         fullName, cpf, gender, raceColor, motherName,
         email: textValue(formData, "email") || null,
         phonePrimary: textValue(formData, "phonePrimary") || null,
+        phoneSecondary: textValue(formData, "phoneSecondary") || null,
+        whatsapp: textValue(formData, "whatsapp") || null,
+        maritalStatus: textValue(formData, "maritalStatus") || null,
+        nationality: textValue(formData, "nationality") || null,
         birthDate: new Date(`${birthDate}T12:00:00.000Z`),
-        status: "Ativo",
+        status,
     }, { zipCode, streetName, number, complement: textValue(formData, "complement") || null });
     await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PERSON", targetId: person.id });
   });

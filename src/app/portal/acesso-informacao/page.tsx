@@ -5,6 +5,9 @@ import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell"
 import { MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipality-identity";
 import { CitizenRequestForm } from "@/components/transparencia/CitizenRequestForm";
 import {CitizenServiceInformation} from "@/components/transparencia/CitizenServiceInformation";
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "@/db/client";
+import { ombudsmanReferenceCatalog as catalog } from "@/db/schema/ombudsman-reference-catalog";
 
 export const metadata: Metadata = {
   title: `Acesso à Informação | ${MUNICIPALITY_INSTITUTION_NAME}`,
@@ -13,6 +16,7 @@ export const metadata: Metadata = {
 
 export const dynamic="force-dynamic";
 export default async function AcessoInformacaoPage() {
+  const publicCatalog = await db.select().from(catalog).where(and(eq(catalog.isActive, true), eq(catalog.isOnline, true), inArray(catalog.kind, ["SUBJECT", "SUBSUBJECT"])));
   return (
     <main className="mx-auto max-w-4xl px-4 py-9 sm:px-6">
       <PortalBreadcrumb current="Acesso à Informação" />
@@ -37,7 +41,7 @@ export default async function AcessoInformacaoPage() {
           <Link href="/portal-transparencia" className="mt-3 inline-block rounded-md bg-[#00843d] px-4 py-2 text-sm font-bold text-white hover:bg-[#006e33]">Abrir Portal da Transparência</Link>
         </article>
        </div>
-       <div className="mt-6"><CitizenRequestForm /></div>
+       <div className="mt-6"><CitizenRequestForm publicCatalog={publicCatalog} /></div>
        <div className="mt-6"><CitizenServiceInformation/></div>
     </main>
   );

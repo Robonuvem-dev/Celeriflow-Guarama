@@ -17,9 +17,10 @@ import { departments, employees } from "@/db/schema/administration";
 import { people } from "@/db/schema/people";
 import { companies } from "@/db/schema/registry";
 import { users } from "@/db/schema/identity";
+import { ombudsmanConfigurations } from "@/db/schema/ombudsman-reference-catalog";
 
 const TICKET_STATUSES = new Set(["Aberto", "Encaminhado", "Aguardando Recebimento", "Em Atendimento", "Aguardando Informação", "Resolvido", "Concluído", "Cancelado", "Reaberto"]);
-const OMBUDSMAN_STATUSES = new Set(["Recebida", "Em Triagem", "Encaminhada", "Em Apuração", "Aguardando Resposta", "Concluída"]);
+const OMBUDSMAN_STATUSES = new Set(["Recebida", "Em Triagem", "Encaminhada", "Em Apuração", "Aguardando Resposta", "Concluída", "Cancelada"]);
 
 function stringValue(formData: FormData, name: string) {
   return String(formData.get(name) || "").trim();
@@ -149,7 +150,7 @@ export async function createOmbudsman(formData: FormData): Promise<void> {
   const departmentId = stringValue(formData, "departmentId") || null;
   const isAnonymous = formData.get("isAnonymous") === "on";
   const isConfidential = formData.get("isConfidential") === "on";
-  if (!new Set(["Denúncia", "Reclamação", "Sugestão", "Elogio"]).has(type) || !subject || !description || !channelId) {
+  if (!new Set(["Denúncia", "Reclamação", "Sugestão", "Elogio", "Solicitação", "Ocorrência"]).has(type) || !subject || !description || !channelId) {
     throw new Error("Informe tipo, canal, assunto e descricao da manifestacao.");
   }
 
@@ -372,17 +373,61 @@ export async function forwardOmbudsman(formData: FormData): Promise<void> {
   const id = stringValue(formData, "ombudsmanId");
   const toDepartmentId = stringValue(formData, "toDepartmentId");
   const reason = stringValue(formData, "reason");
+  const toAssigneeId = stringValue(formData, "toAssigneeId") || null;
   const { context, ombudsman } = await scopedOmbudsman(id);
-  if (!context.attendanceAccess.isOmbudsman || !toDepartmentId || !reason) throw new Error("Informe o setor de destino e o motivo do encaminhamento.");
-  if (!["Em Triagem", "Em Apuração", "Aguardando Resposta"].includes(ombudsman.status)) throw new Error("A manifestação precisa estar em triagem ou apuração antes do encaminhamento.");
-  if (ombudsman.departmentId === toDepartmentId) throw new Error("Selecione um setor diferente do atual.");
+  if ((!context.attendanceAccess.isOmbudsman && context.departmentId !== ombudsman.departmentId) || !toDepartmentId || !reason) throw new Error("Informe o setor de destino e o motivo; somente a Ouvidoria ou o setor atual pode tramitar.");
+  if (!["Em Triagem", "Encaminhada", "Em Apuração", "Aguardando Resposta"].includes(ombudsman.status)) throw new Error("A manifestação precisa estar em triagem ou apuração antes do encaminhamento.");
+  if (ombudsman.departmentId === toDepartmentId && ombudsman.assigneeId === toAssigneeId) throw new Error("Selecione outro setor ou operador.");
   const [destination] = await db.select({ id: departments.id, name: departments.name }).from(departments).where(and(eq(departments.id, toDepartmentId), eq(departments.isActive, true))).limit(1);
   if (!destination) throw new Error("Setor de destino invalido ou inativo.");
+  if (toAssigneeId) {
+    const [assignee] = await db.select({ id: employees.id }).from(employees).where(and(eq(employees.id, toAssigneeId), eq(employees.departmentId, toDepartmentId), eq(employees.isActive, true))).limit(1);
+    if (!assignee) throw new Error("O operador precisa estar ativo e vinculado ao setor de destino.");
+  }
   await withDatabaseTransaction(databaseConnection, async (tx) => {
-    await tx.update(ombudsmans).set({ departmentId: destination.id, assigneeId: null, status: "Encaminhada" }).where(eq(ombudsmans.id, id));
+    await tx.update(ombudsmans).set({ departmentId: destination.id, assigneeId: toAssigneeId, status: "Encaminhada" }).where(eq(ombudsmans.id, id));
     await tx.insert(ombudsmanMovements).values({ ombudsmanId: id, fromDepartmentId: ombudsman.departmentId, toDepartmentId: destination.id, employeeId: context.employee.id, reason });
     await tx.insert(ombudsmanInteractions).values({ ombudsmanId: id, type: "Encaminhamento", message: `Encaminhada para ${destination.name}: ${reason}`, employeeId: context.employee.id });
-    await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.employee.id, action: "FORWARDED", details: { fromDepartmentId: ombudsman.departmentId, toDepartmentId, reason } });
+    await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.employee.id, action: "FORWARDED", details: { fromDepartmentId: ombudsman.departmentId, toDepartmentId, fromAssigneeId: ombudsman.assigneeId, toAssigneeId, reason } });
+  }, { timeoutMs: 5_000 });
+  revalidateOmbudsman(id);
+}
+
+export async function classifyOmbudsman(formData: FormData): Promise<void> {
+  const id = stringValue(formData, "ombudsmanId");
+  const { context, ombudsman } = await scopedOmbudsman(id);
+  if (!context.attendanceAccess.isOmbudsman) throw new Error("Classificação restrita à Ouvidoria.");
+  const priority = stringValue(formData, "priority");
+  const complaintTeam = stringValue(formData, "complaintTeam").slice(0, 160) || null;
+  const complaintProfessionalId = stringValue(formData, "complaintProfessionalId") || null;
+  if (!["Baixa", "Normal", "Alta", "Urgente"].includes(priority)) throw new Error("Prioridade inválida.");
+  if (ombudsman.type !== "Reclamação" && (complaintTeam || complaintProfessionalId)) throw new Error("Equipe e profissional reclamados são exclusivos de reclamações.");
+  if (complaintProfessionalId) {
+    const [professional] = await db.select({ id: employees.id }).from(employees).where(and(eq(employees.id, complaintProfessionalId), eq(employees.isActive, true))).limit(1);
+    if (!professional) throw new Error("Profissional inválido ou inativo.");
+  }
+  await withDatabaseTransaction(databaseConnection, async (tx) => {
+    await tx.update(ombudsmans).set({ priority, complaintTeam, complaintProfessionalId }).where(eq(ombudsmans.id, id));
+    await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.employee.id, action: "CLASSIFIED", details: { priority, complaintTeam, complaintProfessionalId } });
+    await tx.insert(ombudsmanInteractions).values({ ombudsmanId: id, type: "Classificação", message: `Prioridade: ${priority}.`, employeeId: context.employee.id });
+  }, { timeoutMs: 5_000 });
+  revalidateOmbudsman(id);
+}
+
+export async function applyOmbudsmanSituation(formData: FormData): Promise<void> {
+  const id = stringValue(formData, "ombudsmanId");
+  const { context, ombudsman } = await scopedOmbudsman(id);
+  if (!context.attendanceAccess.isOmbudsman) throw new Error("Alteração de situação restrita à Ouvidoria.");
+  const [situation] = await db.select().from(ombudsmanConfigurations).where(and(eq(ombudsmanConfigurations.id, stringValue(formData, "situationId")), eq(ombudsmanConfigurations.kind, "STATUS"), eq(ombudsmanConfigurations.isActive, true))).limit(1);
+  if (!situation) throw new Error("Selecione uma situação ativa.");
+  const settings = situation.settings as { status?: string; availableToApplicant?: boolean };
+  const status = settings.status === "Cancelado" ? "Cancelada" : settings.status === "Encerrado" ? "Concluída" : settings.status === "Movimentado" ? "Em Apuração" : null;
+  if (!status || ["Concluída", "Cancelada"].includes(ombudsman.status)) throw new Error("Situação incompatível com o estado da manifestação.");
+  if (status === "Concluída" && !ombudsman.response) throw new Error("Registre a resposta antes de encerrar.");
+  await withDatabaseTransaction(databaseConnection, async (tx) => {
+    await tx.update(ombudsmans).set({ status, ...(status === "Concluída" ? { concludedAt: new Date(), concludedById: context.employee.id } : {}) }).where(eq(ombudsmans.id, id));
+    await tx.insert(ombudsmanInteractions).values({ ombudsmanId: id, type: "Situação", message: situation.name, isInternal: !settings.availableToApplicant, employeeId: context.employee.id });
+    await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.employee.id, action: "SITUATION_CHANGED", details: { situationId: situation.id, status } });
   }, { timeoutMs: 5_000 });
   revalidateOmbudsman(id);
 }

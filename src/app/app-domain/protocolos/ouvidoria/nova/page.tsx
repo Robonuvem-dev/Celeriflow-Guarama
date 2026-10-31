@@ -27,7 +27,7 @@ export default async function NovaManifestacaoProtocolosPage() {
       <form action={createOmbudsman} className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <input type="hidden" name="originModule" value="PROCESSOS" />
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="field">Tipo *<select name="type" required className="input"><option>Denúncia</option><option>Reclamação</option><option>Sugestão</option><option>Elogio</option></select></label>
+          <label className="field">Tipo *<select name="type" required className="input"><option>Denúncia</option><option>Reclamação</option><option>Sugestão</option><option>Elogio</option><option>Solicitação</option><option>Ocorrência</option></select></label>
           <label className="field">Canal *<select name="channelId" required className="input">{channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}</select></label>
           <label className="field">Setor inicial<select name="departmentId" className="input"><option value="">Manter em triagem da Ouvidoria</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
           <label className="field">Assunto *<input name="subject" required className="input" /></label>
