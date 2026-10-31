@@ -2,6 +2,8 @@
 
 Data: 31/10/2026. Referência: [plano de implantação](PLANO_IMPLANTACAO_BI_SMARTTV.md).
 
+**Situação da primeira entrega: concluída e conferida em produção.** Player público: <https://guarama.celeriflow.com.br/Smarttv>. Editor autenticado: <https://guarama.celeriflow.com.br/administracao/bi/smarttv>.
+
 ## Funcionalidades implementadas
 
 - Administração → Smart TV: configuração da programação municipal, até 40 páginas, escolha de indicadores e gráficos existentes, imagens institucionais e páginas mistas.
@@ -73,8 +75,9 @@ O proxy libera somente a entrada exata e o alias. O consentimento de cookies glo
 - Partição auxiliar 4: 65 raízes, zero diagnósticos TypeScript.
 - ESLint dirigido: aprovado.
 - Evidência de navegador conectado: `docs/BI_SMARTTV_HOMOLOGACAO_RESULTADO.json`, run `7d7c52e1-b257-401f-9632-ca377e4be552`: **PASS em 14 verificações**. Editor autenticado, publicação/retirada, isolamento do rascunho, upload, HD/Full HD/4K/celular sem overflow, rotação/pausa, reconexão, composição mista com seis indicadores e categorias longas, atualização de versão com página única, expiração e tabela com paginação 20/1. Ensaios de composição/expiração usam respostas públicas controladas no navegador; os demais fluxos usam Firebase/Neon reais.
-- Primeira programação municipal com três páginas publicada no banco configurado; a repetição da homologação restaura essa programação ao terminar. A disponibilidade no domínio depende da publicação do código.
-- Build completo atualizado será registrado após a conclusão da validação.
+- Primeira programação municipal com três páginas publicada e disponível no domínio; a repetição da homologação local restaura essa programação ao terminar.
+- `npm run build`: **PASS**, com as 15 partições TypeScript aprovadas, compilação de produção e geração de 104 páginas estáticas. Rotas `/Smarttv`, editor administrativo e endpoints públicos/privados reconhecidos no resultado do Next.js. A checagem TypeScript levou 704 segundos e a etapa Next.js, 365 segundos.
+- Smoke test do build otimizado com `next start`: **PASS**, `/Smarttv` HTTP 200, programação publicada com três páginas, logo carregada e zero erros JavaScript em 1920×1080.
 
 ### Ajuste de ordem por atualização concorrente do repositório
 
@@ -82,7 +85,21 @@ Durante a implementação, entrou o merge `cded3f8` com duas migrações da Ouvi
 
 As duas migrações ainda não aplicadas foram renomeadas para `20261031140100_ombudsman_configuration` e `20261031140200_ombudsman_classification`, mantendo o SQL integral e atualizando a referência em `REQUISITOS_POC_300.md`. Nenhum recibo instalado foi alterado. Conferência final `plan`: **PASS, 181 recibos**, com somente essas duas migrações da Ouvidoria pendentes para o fluxo de deploy. A migração Smart TV permanece reconhecida e não será reaplicada.
 
+Conferência após o início do deploy de produção: `plan` **PASS, 183 recibos e nenhuma migração pendente**. As duas migrações seguintes foram aplicadas pelo fluxo de produção e o prefixo instalado permanece íntegro.
+
 Ensaio conectado: `node --conditions=react-server --import tsx scripts/bi-smarttv-homologation.mjs`, com aplicação local na porta 3312, Firebase e banco configurados. Usa a conta administrativa existente e restaura a programação anterior ao final. A opção `--publish-initial` deixa uma programação inicial publicada quando ainda não há publicação ativa; não usar sobre uma programação publicada existente. Imagens/publicações do ensaio são mantidas no histórico de auditoria.
+
+### Conferência da publicação no domínio
+
+Comando: `node scripts/bi-smarttv-production-verify.mjs`. Aguarda o resultado do deploy GitHub → Vercel do commit atual e confere o domínio `https://guarama.celeriflow.com.br`.
+
+O ensaio verifica a entrada `/Smarttv` sem login, o redirecionamento `/smarttv`, o manifesto e a imagem publicados, a identidade institucional, quatro resoluções, a rotação e os comandos do player. Também verifica a proteção do editor e sua abertura com a identidade administrativa existente, sem salvar ou publicar alterações de conteúdo. A sessão do ensaio é encerrada ao final.
+
+Resultado: `docs/BI_SMARTTV_PRODUCAO_RESULTADO.json`. As capturas ficam no diretório local de evidências indicado nesse arquivo. Um resultado PASS do ensaio local não substitui essa conferência do domínio publicado.
+
+Resultado final no domínio: **PASS em 10 verificações**, run `ca201730-4c97-4aab-b2fc-62e8e2456d85`, finalizado em `2026-10-31T21:26:36.599Z`. Deploy do commit `7c0c80682c19bfd83261e7da2afa7b7d5a5825a5` confirmado como sucesso pela integração Vercel. Player, alias, dados, imagens, logo, quatro resoluções, rotação, atalhos de teclado/pausa, proteção do editor e acesso administrativo aprovados; zero erros JavaScript e logout confirmado.
+
+A identificação exibida é a do cadastro institucional: **Prefeitura Municipal de Aurora das Veredas**, conforme a base atual. Nome e logo podem ser conferidos em Dados da Prefeitura; o nome de exibição também pode ser ajustado em Identidade e publicação do editor.
 
 ## Próximas etapas do plano
 

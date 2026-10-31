@@ -1,0 +1,82 @@
+{
+  "run": "ca201730-4c97-4aab-b2fc-62e8e2456d85",
+  "at": "2026-10-31T21:25:48.254Z",
+  "origin": "https://guarama.celeriflow.com.br",
+  "commit": "7c0c80682c19bfd83261e7da2afa7b7d5a5825a5",
+  "status": "PASS",
+  "checks": [
+    "github_vercel_deployment_success",
+    "anonymous_canonical_page_and_alias",
+    "published_public_dataset_and_institutional_identity",
+    "published_media_is_readable_anonymously",
+    "four_public_viewports_logo_no_overlay_no_scroll_no_session",
+    "production_automatic_rotation",
+    "production_remote_keys_and_pause",
+    "no_public_browser_runtime_errors",
+    "administration_requires_login",
+    "authenticated_production_editor_and_saved_programme"
+  ],
+  "viewports": [
+    {
+      "name": "hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "overflow": false
+    },
+    {
+      "name": "full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "overflow": false
+    },
+    {
+      "name": "4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "overflow": false
+    },
+    {
+      "name": "mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "overflow": false
+    }
+  ],
+  "evidenceDirectory": "C:\\Users\\trici\\AppData\\Local\\Temp\\opencode\\bi-smarttv-production-ca201730-4c97-4aab-b2fc-62e8e2456d85",
+  "deployment": {
+    "state": "success",
+    "url": "https://vercel.com/celeriflow-dev/celeriflow-guarama/73RXpgK5DsDQtsiFTmMBnL9ntK3S"
+  },
+  "programme": {
+    "version": "eef9c42e-2a73-41be-8062-2b0c42a80d57",
+    "pages": 3,
+    "title": "Gestão municipal em números",
+    "municipality": "Prefeitura Municipal de Aurora das Veredas"
+  },
+  "loggedOut": true,
+  "finishedAt": "2026-10-31T21:26:36.599Z"
+}

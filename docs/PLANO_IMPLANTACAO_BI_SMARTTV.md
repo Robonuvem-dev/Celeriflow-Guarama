@@ -187,7 +187,7 @@ Publicar/retirar conteúdo invalida o manifesto, e o TTL público máximo dele a
 
 ## 5. Etapas de implantação e aceite
 
-A fundação de publicação/consulta agregada e a primeira TV operacional da E2 estão implementadas e homologadas em navegador conectado. Os demais componentes da E1, as etapas E3–E5 e a homologação em TV real/entrada em produção da E6 seguem pendentes. As dependências definem a sequência de trabalho; não representam prazo fechado.
+A fundação de publicação/consulta agregada e a primeira TV operacional da E2 estão implementadas e conferidas em produção em `/Smarttv`, com build aprovado e dez verificações no domínio público. Evidências em `docs/BI_SMARTTV_PRODUCAO_RESULTADO.json`. Os demais componentes da E1, as etapas E3–E5 e a homologação integral da E6, incluindo o ensaio em TV real, seguem pendentes. As dependências definem a sequência de trabalho; não representam prazo fechado.
 
 | Etapa | Entregas executáveis | Dependências | Critério de conclusão |
 | --- | --- | --- | --- |
