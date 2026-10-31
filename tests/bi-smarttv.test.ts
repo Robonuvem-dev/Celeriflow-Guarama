@@ -100,6 +100,22 @@ test("visão municipal inclui registros sem lotação e mantém soma do comparat
   assert.equal(dataset.metrics.resolvedDemands! + dataset.metrics.cancelledDemands! + dataset.metrics.openDemands!, dataset.metrics.demands);
 });
 
+test("gráficos da TV identificam o recorte e incluem meses zerados sem alterar os totais", async () => {
+  const timeline = await queryDisplayDataset(fixture.connection.db, { ...config.slides[0], secretariatId: "", chart: "timeline" }, now);
+  assert.equal(timeline.scopeLabel, "Prefeitura inteira");
+  assert.equal(timeline.chart.length, 10);
+  assert.deepEqual(timeline.chart[0], { name: "2026-01", value: 0 });
+  // The entry at 2026-10-01 00:00 UTC belongs to September in São Paulo.
+  assert.deepEqual(timeline.chart[8], { name: "2026-09", value: 1 });
+  assert.deepEqual(timeline.chart[9], { name: "2026-10", value: 5 });
+  assert.equal(timeline.chartTotal, timeline.metrics.demands);
+  assert.equal(timeline.chartCategories, 10);
+  const workforce = await queryDisplayDataset(fixture.connection.db, { ...config.slides[0], chart: "employees", metrics: ["employees"] }, now);
+  assert.equal(workforce.scopeLabel, "Educação");
+  assert.equal(workforce.periodLabel, "Posição atual do cadastro");
+  assert.equal(workforce.chartTotal, workforce.metrics.employees);
+});
+
 test("imagem de rascunho não abre publicamente; retirada e restauração preservam versões", async () => {
   const asset = await saveDisplayImage(context, new Uint8Array([1, 2, 3]), "Comunicado");
   assert.equal(await readDisplayImage(asset.id, undefined, fixture.connection), null);

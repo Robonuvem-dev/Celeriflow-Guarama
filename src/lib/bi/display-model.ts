@@ -38,6 +38,11 @@ export type DisplayDataset = {
   metrics: Partial<Record<DisplayMetric, number>>;
   chart: { name: string; value: number }[];
   chartMax?: number;
+  scopeLabel?: string;
+  periodKey?: string;
+  chartTotal?: number;
+  chartCategories?: number;
+  chartOffset?: number;
   periodLabel: string;
 };
 export type PublicDisplaySlide = Pick<DisplaySlide, "id" | "title" | "subtitle" | "kind" | "duration" | "caption" | "source" | "imageFit" | "startsAt" | "endsAt" | "chart"> & {

@@ -2,34 +2,44 @@
 
 /* Native images support institutional data URLs and publication-checked media endpoints. */
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Maximize, Pause, Play } from "lucide-react";
-import { displayMetrics, displaySlideIsActive, type PublicDisplay, type PublicDisplaySlide } from "@/lib/bi/display-model";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Building2, CalendarClock, CheckCheck, ChevronLeft, ChevronRight, CircleX, Clock3, Inbox, Landmark, Maximize, Network, Pause, Play, TriangleAlert, Users } from "lucide-react";
+import { displayMetrics, displaySlideIsActive, type DisplayMetric, type PublicDisplay, type PublicDisplaySlide } from "@/lib/bi/display-model";
+import DisplayCharts from "./DisplayCharts";
 import styles from "./display-player.module.css";
 
 const formatNumber = (value: number) => value.toLocaleString("pt-BR");
 const formatDate = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const metricAppearance = {
+  employees: { icon: Users, color: "#147eb3", detail: "Equipe ativa no cadastro atual" },
+  secretariats: { icon: Landmark, color: "#17a394", detail: "Estrutura administrativa ativa" },
+  departments: { icon: Network, color: "#8655b4", detail: "Departamentos ativos no cadastro" },
+  units: { icon: Building2, color: "#547da5", detail: "Unidades administrativas ativas" },
+  demands: { icon: Inbox, color: "#147eb3", detail: "Cadastradas no período selecionado" },
+  openDemands: { icon: Clock3, color: "#e7a124", detail: "Em aberto, incluindo as vencidas" },
+  resolvedDemands: { icon: CheckCheck, color: "#17a394", detail: "Concluídas, sem as canceladas" },
+  cancelledDemands: { icon: CircleX, color: "#8655b4", detail: "Canceladas no recorte selecionado" },
+  overdueDemands: { icon: TriangleAlert, color: "#e3657d", detail: "Abertas com prazo vencido" },
+} satisfies Record<DisplayMetric, { icon: typeof Users; color: string; detail: string }>;
 
 export function DisplayContent({ slide }: { slide: PublicDisplaySlide }) {
   const dataset = slide.dataset;
   const values = dataset ? slide.metricOrder.filter(key => dataset.metrics[key] !== undefined).map(key => [key, dataset.metrics[key]!] as const) : [];
-  const max = Math.max(1, dataset?.chartMax ?? 0, ...dataset?.chart.map(item => item.value) ?? []);
   return <div className={`${styles.content} ${slide.kind === "mixed" ? styles.mixed : ""}`}>
     {(slide.kind === "image" || slide.kind === "mixed") && <figure className={styles.image}>
       {slide.imageUrl ? <img key={slide.imageUrl} src={slide.imageUrl} alt={slide.caption || slide.title} style={{ objectFit: slide.imageFit }} onError={event => { event.currentTarget.style.display = "none"; }} /> : null}
       <span className={styles.imageFallback}>Informação institucional</span>
     </figure>}
-    {slide.kind !== "image" && <div className={styles.data}>
+    {slide.kind !== "image" && <div className={styles.data} data-only-metrics={slide.chart === "none"}>
       {!dataset ? <div className={styles.empty}>Dados temporariamente indisponíveis.</div> : <>
-        {values.length > 0 && <div className={styles.metrics} data-count={values.length}>{values.map(([key, value]) => <article key={key} className={styles.metric}>
-          <span>{displayMetrics[key as keyof typeof displayMetrics]}</span><strong>{formatNumber(value!)}</strong>
-        </article>)}</div>}
-        {slide.chart !== "none" && <section className={styles.chart} aria-label={slide.chart === "employees" ? "Servidores por secretaria" : slide.chart === "timeline" ? "Demandas por mês" : "Demandas por secretaria"}>
-          <h3>{slide.chart === "employees" ? "Servidores por secretaria" : slide.chart === "timeline" ? "Demandas por mês" : "Demandas por secretaria"}</h3>
-          {!dataset.chart.length ? <p>Nenhum registro neste período.</p> : dataset.chart.map((item, index) => <div className={styles.barRow} key={`${item.name}-${index}`}>
-            <span>{item.name}</span><div className={styles.barTrack}><div style={{ width: `${item.value / max * 100}%` }} /></div><strong>{formatNumber(item.value)}</strong>
-          </div>)}
-        </section>}
+        {values.length > 0 && <div className={styles.metrics} data-count={values.length}>{values.map(([key, value]) => {
+          const appearance = metricAppearance[key];
+          return <article key={key} className={styles.metric} style={{ "--metric-color": appearance.color } as CSSProperties}>
+            <div className={styles.metricTop}><span>{displayMetrics[key]}</span><appearance.icon aria-hidden="true" /></div>
+            <strong>{formatNumber(value)}</strong><small>{appearance.detail}</small>
+          </article>;
+        })}</div>}
+        <DisplayCharts slide={slide} />
       </>}
     </div>}
   </div>;
@@ -51,7 +61,7 @@ export default function DisplayPlayer({ initial, live = true }: { initial: Publi
   const dead = live && now >= Date.parse(display.validUntil);
   const pages = dead ? [] : display.slides.filter(slide => displaySlideIsActive(slide, now)).flatMap(slide => {
     const total = slide.dataset?.chart.length ?? 0;
-    const rowsPerPage = slide.kind === "mixed" ? (compact ? 1 : 2) : (compact ? 2 : 4);
+    const rowsPerPage = slide.chart === "timeline" ? (compact ? 4 : slide.kind === "mixed" ? 6 : 12) : slide.kind === "mixed" ? (compact ? 2 : 3) : (compact ? 2 : 4);
     const metricsPerPage = slide.kind === "mixed" || compact ? 4 : 6;
     const chartPages = Math.max(1, Math.ceil(total / rowsPerPage));
     const metricPages = slide.dataset ? Math.max(1, Math.ceil(slide.metricOrder.length / metricsPerPage)) : 1;
@@ -59,7 +69,9 @@ export default function DisplayPlayer({ initial, live = true }: { initial: Publi
     return Array.from({ length: count }, (_, index) => ({ ...slide,
       metricOrder: slide.metricOrder.slice(index % metricPages * metricsPerPage, (index % metricPages + 1) * metricsPerPage),
       subtitle: `${slide.subtitle}${count > 1 ? `${slide.subtitle ? " · " : ""}${metricPages > 1 ? "Conteúdo" : "Comparativo"} ${index + 1}/${count}` : ""}`,
-      dataset: slide.dataset ? { ...slide.dataset, chart: slide.dataset.chart.slice(index % chartPages * rowsPerPage, (index % chartPages + 1) * rowsPerPage) } : null }));
+      dataset: slide.dataset ? { ...slide.dataset,
+        chartTotal: slide.dataset.chart.reduce((sum, item) => sum + item.value, 0), chartCategories: total, chartOffset: index % chartPages * rowsPerPage,
+        chart: slide.dataset.chart.slice(index % chartPages * rowsPerPage, (index % chartPages + 1) * rowsPerPage) } : null }));
   });
   const index = position % Math.max(1, pages.length);
   const original = pages[index];
@@ -146,11 +158,11 @@ export default function DisplayPlayer({ initial, live = true }: { initial: Publi
         {display.municipality.logoUrl && <img src={display.municipality.logoUrl} alt="Brasão do município" onError={event => { event.currentTarget.style.display = "none"; }} />}
         <div><small>ADMINISTRAÇÃO MUNICIPAL</small><strong>{display.municipality.name}</strong></div>
       </div>
-      <span className={styles.programme}>{live ? display.title : `PRÉVIA · ${display.title}`}</span>
+      <div className={styles.programme}><span><i />{live ? "INFORMAÇÃO PÚBLICA" : "PRÉVIA DA PROGRAMAÇÃO"}</span><strong>{display.title}</strong></div>
     </header>
     <main className={styles.main}>
       {slide ? <>
-        <div className={styles.pageHeading}><div><h1>{slide.title}</h1>{slide.subtitle && <p>{slide.subtitle}</p>}</div><span>{slide.dataset?.periodLabel ?? (slide.kind === "image" ? "Informação institucional" : "")}</span></div>
+        <div className={styles.pageHeading}><div><small>{slide.dataset?.scopeLabel ?? "PAINEL MUNICIPAL"}</small><h1>{slide.title}</h1>{slide.subtitle && <p>{slide.subtitle}</p>}</div><span><CalendarClock aria-hidden="true" />{slide.dataset?.periodLabel ?? (slide.kind === "image" ? "Informação institucional" : "")}</span></div>
         <DisplayContent slide={slide} />
       </> : <div className={styles.empty}><h1>{dead ? "Reconectando a programação" : "Informações municipais"}</h1><p>{dead ? "Aguardando uma atualização válida para continuar." : "A programação será exibida assim que houver páginas publicadas e vigentes."}</p></div>}
     </main>

@@ -69,7 +69,7 @@ export async function getPublicDisplay(connection = databaseConnection, now = ne
     const config = displayConfigSchema.parse(version.config);
     const active = config.slides.filter(slide => displaySlideIsActive(slide, now.getTime()));
     let [snapshot] = await tx.select().from(biDisplaySnapshots).where(eq(biDisplaySnapshots.versionId, version.id));
-    const missingActive = () => active.some(slide => slide.kind !== "image" && (!snapshot?.datasets[slide.id] || !snapshot.datasets[slide.id].periodLabel.startsWith(displayPeriod(slide.period, now).label)));
+    const missingActive = () => active.some(slide => slide.kind !== "image" && snapshot?.datasets[slide.id]?.periodKey !== `${slide.period}:${displayPeriod(slide.period, now).start ?? "all"}`);
     if (!snapshot || snapshot.expiresAt <= now || missingActive()) {
       const lock = await tx.execute<{ acquired: boolean }>(sql`SELECT pg_try_advisory_xact_lock(hashtext(${`bi-display:${version.id}`})) AS acquired`);
       if (lock.rows[0].acquired) {

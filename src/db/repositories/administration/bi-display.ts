@@ -31,6 +31,8 @@ export async function queryDisplayDataset(db: DatabaseExecutor, slide: DisplaySl
   const period = displayPeriod(slide.period, now);
   if (slide.kind === "image") return { metrics: {}, chart: [], periodLabel: "Informação institucional" };
   const selection = slide.secretariatId;
+  const [selectedScope] = selection ? await db.select({ name: secretariats.name }).from(secretariats).where(eq(secretariats.id, selection)).limit(1) : [];
+  const scopeLabel = selection ? selectedScope?.name ?? "Secretaria selecionada" : "Prefeitura inteira";
   const demandScope = selection ? sql`COALESCE(d."secretariatId", dep."secretariatId") = ${selection}` : sql`TRUE`;
   const start = period.start ? sql`AND d."createdAt" >= (${period.start}::date::timestamp AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC'` : sql``;
   const status = sql`translate(lower(trim(d.status)), 'áàâãéêíóôõúüç', 'aaaaeeiooouuc')`;
@@ -65,6 +67,21 @@ export async function queryDisplayDataset(db: DatabaseExecutor, slide: DisplaySl
       WHERE ${demandScope} ${start} AND d."createdAt" <= ${now.toISOString()}::timestamp
       GROUP BY ${group} ORDER BY ${slide.chart === "timeline" ? sql`name ASC` : sql`value DESC, name ASC`}`);
     chart = result.rows.map(row => ({ name: row.name, value: Number(row.value) }));
+    if (slide.chart === "timeline") {
+      // A missing month means zero entries, not a missing time interval. Use
+      // the selected municipal calendar range and never project future months.
+      const lastMonth = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(now).slice(0, 7);
+      const firstMonth = period.start?.slice(0, 7) ?? chart[0]?.name ?? lastMonth;
+      const counts = new Map(chart.map(item => [item.name, item.value]));
+      const [year, month] = firstMonth.split("-").map(Number);
+      const cursor = new Date(Date.UTC(year, month - 1, 1));
+      chart = [];
+      while (cursor.toISOString().slice(0, 7) <= lastMonth) {
+        const name = cursor.toISOString().slice(0, 7);
+        chart.push({ name, value: counts.get(name) ?? 0 });
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+    }
   } else if (slide.chart === "employees") {
     const result = await db.execute<{ name: string; value: number }>(sql`SELECT COALESCE(s.name, 'Sem secretaria') AS name, count(*)::int AS value
       FROM "Employee" e LEFT JOIN "Secretariat" s ON s.id=e."secretariatId"
@@ -72,5 +89,5 @@ export async function queryDisplayDataset(db: DatabaseExecutor, slide: DisplaySl
       GROUP BY s.name ORDER BY value DESC, name ASC`);
     chart = result.rows.map(row => ({ name: row.name, value: Number(row.value) }));
   }
-  return { metrics, chart, chartMax: Math.max(1, ...chart.map(item => item.value)), periodLabel: `${period.label}${slide.metrics.some(key => ["employees", "secretariats", "departments", "units"].includes(key)) || slide.chart === "employees" ? " · Estrutura/equipe: posição atual" : ""}` };
+  return { metrics, chart, scopeLabel, periodKey: `${slide.period}:${period.start ?? "all"}`, chartTotal: chart.reduce((sum, item) => sum + item.value, 0), chartCategories: chart.length, chartMax: Math.max(1, ...chart.map(item => item.value)), periodLabel: !needsDemands ? "Posição atual do cadastro" : `${period.label}${slide.metrics.some(key => ["employees", "secretariats", "departments", "units"].includes(key)) || slide.chart === "employees" ? " · Estrutura/equipe: posição atual" : ""}` };
 }

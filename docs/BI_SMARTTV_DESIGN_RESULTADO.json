@@ -1,0 +1,373 @@
+{
+  "run": "4e7aa4f9-fd3c-40cc-9058-dbc1b666261a",
+  "origin": "http://localhost:3312",
+  "at": "2026-10-31T22:07:49.374Z",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "real-hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "real-full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "real-4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "real-mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "employees-hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "employees-full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "employees-4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "employees-mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "demands-hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "demands-full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "demands-4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "demands-mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "timeline-hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "timeline-full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "timeline-4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "timeline-mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "none-hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "none-full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "none-4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "none-mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "empty-hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "empty-full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "empty-4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "empty-mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "mixed-hd",
+      "page": [
+        1280,
+        720
+      ],
+      "viewport": [
+        1280,
+        720
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "mixed-full-hd",
+      "page": [
+        1920,
+        1080
+      ],
+      "viewport": [
+        1920,
+        1080
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "mixed-4k",
+      "page": [
+        3840,
+        2160
+      ],
+      "viewport": [
+        3840,
+        2160
+      ],
+      "footerVisible": true,
+      "overflow": []
+    },
+    {
+      "name": "mixed-mobile",
+      "page": [
+        390,
+        844
+      ],
+      "viewport": [
+        390,
+        844
+      ],
+      "footerVisible": true,
+      "overflow": []
+    }
+  ],
+  "screenshots": "C:\\Users\\trici\\AppData\\Local\\Temp\\opencode\\smarttv-design-4e7aa4f9-fd3c-40cc-9058-dbc1b666261a"
+}
