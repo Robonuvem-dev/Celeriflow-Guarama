@@ -7,6 +7,7 @@ import { normalizeRestrictiveProfilePermissions, SYSTEM_ADMIN_PROFILE_CODE } fro
 import { databaseConnection, db } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { countProfileUsers, deleteAccessProfile, findAccessProfile, findDuplicateProfileName, saveAccessProfile, setAccessProfileStatus } from "@/db/repositories/platform/system-administration";
+import { gedCapabilities } from "@/lib/documents/ged-policy";
 
 const MODULE_CODES = new Set([
   "ADMINISTRACAO", "CADASTROS", "PROCESSOS", "ATENDIMENTO", "TRANSPARENCIA", "TRIBUTACAO", "FINANCEIRO", "COMPRAS", "RH",
@@ -15,7 +16,13 @@ const MODULE_CODES = new Set([
 ]);
 
 function normalizePermissions(value: string | undefined) {
-  return normalizeRestrictiveProfilePermissions(value, MODULE_CODES);
+  const normalized = JSON.parse(normalizeRestrictiveProfilePermissions(value, MODULE_CODES));
+  const source = value ? JSON.parse(value).modules?.ASSINATURA_DIGITAL?.ged : undefined;
+  if (source !== undefined) {
+    if (!source || typeof source !== "object" || Array.isArray(source)) throw new Error("Capacidades documentais inválidas.");
+    if (normalized.modules.ASSINATURA_DIGITAL) normalized.modules.ASSINATURA_DIGITAL.ged = Object.fromEntries(gedCapabilities.map(key => [key, !normalized.modules.ASSINATURA_DIGITAL.blocked && source[key] === true]));
+  }
+  return JSON.stringify(normalized);
 }
 
 function createCustomProfileCode() {

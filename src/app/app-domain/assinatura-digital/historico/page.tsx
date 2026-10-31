@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { db } from "@/db/client";
 import { listMySignatureHistory } from "@/db/repositories/documents/signature-history";
 import { OperationalLinkPagination, OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
 import type { OperationalColumn } from "@/lib/operational-tables";
 import styles from "@/components/app-ui/operational/operational.module.css";
+import { getUnifiedSignatureContext } from "@/lib/documents/ged-access";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ const columns: OperationalColumn[] = [
 const statuses: Record<string, string> = { SIGNED: "Assinada", REJECTED: "Recusada", CANCELLED: "Cancelada" };
 
 export default async function SignatureHistoryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const context = await getTenantContextForModule("ASSINATURA_DIGITAL");
+  const context = await getUnifiedSignatureContext();
   const params = await searchParams;
   const list = await listMySignatureHistory(context.database ?? db, context.user.id, Number(params.page), typeof params.q === "string" ? params.q : "");
   return <OperationalListFrame label="Meu histórico de assinaturas"

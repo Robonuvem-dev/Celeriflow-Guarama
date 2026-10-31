@@ -2,13 +2,13 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { getIdTokenPrincipal } from "@/lib/platform/session";
 import { registerInternalDocumentSignature } from "@/lib/signatures/internal-signature";
+import { getUnifiedSignatureContext } from "@/lib/documents/ged-access";
 
 export async function signPendingDocument(documentId: string, reauthenticationToken: string): Promise<{ error: string | null }> {
   try {
-    const context = await getTenantContextForModuleOperation("ASSINATURA_DIGITAL", "create");
+    const context = await getUnifiedSignatureContext(true);
     if (!documentId || !reauthenticationToken) throw new Error("Selecione o documento e confirme sua senha.");
     const principal = await getIdTokenPrincipal(reauthenticationToken);
     if (!principal || principal.firebaseUid !== context.user.firebaseUid) throw new Error("A confirmação de senha não corresponde à sessão atual.");
@@ -24,6 +24,7 @@ export async function signPendingDocument(documentId: string, reauthenticationTo
     revalidatePath("/assinatura-digital/historico");
     revalidatePath("/documentos/assinaturas");
     revalidatePath("/documentos/ged");
+    revalidatePath("/assinatura-digital/acervo", "layout");
     revalidatePath("/protocolos/assinaturas");
     return { error: null };
   } catch (error) {

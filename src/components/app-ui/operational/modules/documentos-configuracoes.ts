@@ -2,23 +2,6 @@ import type { OperationalModuleConfig } from "../routes";
 
 export const operationalModules: OperationalModuleConfig[] = [
   {
-    key: "documentos",
-    moduleTitle: "Documentos e GED",
-    moduleCaption: "Gestão eletrônica",
-    moduleIcon: "folder",
-    navigation: [{ title: "Documentos", items: [
-      { title: "Painel", href: "/documentos", icon: "layoutDashboard", exact: true },
-      { title: "GED", href: "/documentos/ged", icon: "folder" },
-      { title: "Modelos", href: "/documentos/modelos", icon: "fileText" },
-      { title: "Assinaturas", href: "/documentos/assinaturas", icon: "fileSignature" },
-    ] }],
-    routes: [
-      { pathname: "/documentos/ged", title: "Gerenciamento Eletrônico de Documentos" },
-      { pathname: "/documentos/modelos", title: "Modelos de Documentos" },
-      { pathname: "/documentos/assinaturas", title: "Assinaturas Eletrônicas" },
-    ],
-  },
-  {
     key: "configuracoes",
     moduleTitle: "Configurações",
     moduleCaption: "Integrações e sistema",

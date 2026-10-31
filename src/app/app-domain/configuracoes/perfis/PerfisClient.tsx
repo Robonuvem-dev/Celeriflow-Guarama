@@ -13,6 +13,7 @@ import { OperationalListFrame } from "@/components/app-ui/operational/Operationa
 import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
 import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
 import styles from "@/components/app-ui/operational/operational.module.css";
+import { gedCapabilities, gedCapabilityLabels, type GedCapability } from "@/lib/documents/ged-policy";
 
 const columns: OperationalColumn[] = [
   { key: "name", label: "Nome do perfil", type: "text", initialWidth: 240, minWidth: 130, resizable: true, sortable: false, details: "overflow" },
@@ -38,7 +39,7 @@ const MODULES_LIST = [
   { code: "PATRIMONIO", label: "Almoxarifado e Patrimônio", icon: Package, color: "text-amber-500" },
   { code: "SOCIAL", label: "Assistência Social", icon: HeartHandshake, color: "text-pink-500" },
   { code: "ATENDIMENTO", label: "Atendimento ao Cidadão", icon: HeadphonesIcon, color: "text-orange-500" },
-  { code: "ASSINATURA_DIGITAL", label: "Assinatura Digital", icon: FileSignature, color: "text-violet-600" },
+  { code: "ASSINATURA_DIGITAL", label: "GED e Assinatura Digital", icon: FileSignature, color: "text-violet-600" },
   { code: "SANEAMENTO", label: "Água e Saneamento", icon: Droplets, color: "text-blue-600" },
   { code: "CADASTROS", label: "Cadastros", icon: FileText, color: "text-purple-500" },
   { code: "CAMARA", label: "Câmara Municipal & Legislação", icon: Landmark, color: "text-violet-500" },
@@ -65,6 +66,7 @@ const MODULES_LIST = [
 ];
 
 type ModulePermission = {
+  ged?: Partial<Record<GedCapability, boolean>>;
   showDashboardCard: boolean;
   blocked: boolean;
   create: boolean;
@@ -73,7 +75,7 @@ type ModulePermission = {
   issueReports: boolean;
 };
 
-type PermissionKey = keyof Omit<ModulePermission, "blocked" | "showDashboardCard">;
+type PermissionKey = keyof Omit<ModulePermission, "blocked" | "showDashboardCard" | "ged">;
 const ACTIONS_LABELS: { key: PermissionKey; label: string }[] = [
   { key: "create", label: "Criar" },
   { key: "update", label: "Editar" },
@@ -153,6 +155,7 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
             update: !blocked && permission.update === true,
             delete: !blocked && permission.delete === true,
             issueReports: !blocked && permission.issueReports === true,
+            ...(moduleItem.code === "ASSINATURA_DIGITAL" && permission.ged && typeof permission.ged === "object" ? { ged: Object.fromEntries(gedCapabilities.map(key => [key, !blocked && permission.ged?.[key] === true])) } : {}),
           };
         }
         return finalizeMap();
@@ -530,9 +533,10 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
                              );
                               })}
                              </div>
-                           ) : (
-                             <p className="text-xs text-rose-700 dark:text-rose-300">Módulo bloqueado: as permissões operacionais ficam indisponíveis até o desbloqueio.</p>
-                           )}
+                            ) : (
+                              <p className="text-xs text-rose-700 dark:text-rose-300">Módulo bloqueado: as permissões operacionais ficam indisponíveis até o desbloqueio.</p>
+                            )}
+                            {moduleItem.code === "ASSINATURA_DIGITAL" && !permission.blocked && <fieldset className="grid grid-cols-2 gap-2 border-t pt-2 md:grid-cols-3"><legend className="text-xs font-semibold">Capacidades do acervo GED</legend>{gedCapabilities.map(key => <label key={key} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={permission.ged?.[key] === true} onChange={event => { const checked = event.target.checked; setFormData(previous => ({ ...previous, permissionsMap: { ...previous.permissionsMap, ASSINATURA_DIGITAL: { ...permission, ged: { ...permission.ged, [key]: checked } } } })); }} />{gedCapabilityLabels[key]}</label>)}</fieldset>}
                         </div>
                       );
                     })}

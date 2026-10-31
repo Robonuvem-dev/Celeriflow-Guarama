@@ -3,7 +3,8 @@ import type { CentralSignatureMethod, CentralSignatureRecord, CentralSigner, Cen
 export const MAX_FILE_BYTES = 3 * 1024 * 1024;
 export const MAX_BATCH_FILES = 20;
 export const FILE_ACCEPT = ".pdf,.jpg,.jpeg,.png,.txt,.doc,.docx,.odt";
-export type BatchItem = { requestId: string; file: File; status: "pending" | "sending" | "success" | "error"; error?: string; record?: CentralSignatureRecord };
+export type GedBatchSource = { documentId: string; versionId: string; filename: string; byteLength: number; mimeType: string; requestId: string };
+export type BatchItem = { requestId: string; file: File; gedSource?: GedBatchSource; status: "pending" | "sending" | "success" | "error"; error?: string; record?: CentralSignatureRecord };
 export type BatchOptions = { signerId: string; documentTypeId: string; method: CentralSignatureMethod; integrationId: string; password: string };
 
 export function fileError(file: File): string | undefined {
@@ -32,11 +33,12 @@ export function integrationProblem(integration: CentralA1Integration | undefined
 export async function submitBatch(items: readonly BatchItem[], options: BatchOptions, update: (item: BatchItem) => void, request: typeof fetch = fetch): Promise<void> {
   for (const item of items) {
     if (item.status === "success") continue;
-    const invalid = fileError(item.file);
+    const invalid = item.gedSource ? item.gedSource.byteLength > MAX_FILE_BYTES ? "O original GED excede 3 MiB." : undefined : fileError(item.file);
     if (invalid) { update({ ...item, status: "error", error: invalid }); continue; }
     update({ ...item, status: "sending", error: undefined });
     const body = new FormData();
-    body.set("file", item.file);
+    if (item.gedSource) { body.set("gedDocumentId", item.gedSource.documentId); body.set("gedVersionId", item.gedSource.versionId); }
+    else body.set("file", item.file);
     body.set("signerId", options.signerId);
     body.set("documentTypeId", options.documentTypeId);
     body.set("method", options.method);
@@ -44,7 +46,7 @@ export async function submitBatch(items: readonly BatchItem[], options: BatchOpt
     if (options.method === "INTERNAL") body.set("password", options.password);
     body.set("requestId", item.requestId);
     try {
-      const response = await request("/api/assinatura-digital/assinar", { method: "POST", body, cache: "no-store" });
+      const response = await request(item.gedSource ? "/api/assinatura-digital/ged/sign" : "/api/assinatura-digital/assinar", { method: "POST", body, cache: "no-store" });
       const result = await response.json() as { record?: CentralSignatureRecord; error?: string };
       if (!response.ok || !result.record?.id) throw new Error(result.error || "Resposta de assinatura indisponível. Tente novamente com o mesmo lote.");
       update({ ...item, status: "success", error: undefined, record: result.record });

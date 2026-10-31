@@ -1,5 +1,29 @@
 # Migração integral para Drizzle — situação
 
+## Retestes e builds finais — 29/10/2026
+
+Esta seção é o resultado mais recente; as seções abaixo preservam os diagnósticos históricos.
+
+| Verificação | Resultado final |
+| --- | --- |
+| Gate de remoção Prisma | PASS: 3.793 fontes, zero acessos, dependências, scripts ou nós de lock legados |
+| Suíte geral completa | 1.576 testes: 1.562 PASS, uma falha, 13 skips; duração 6.906 s. A falha foi corrigida e retestada conforme abaixo, sem alegar uma segunda execução integral verde |
+| Reteste após correção da fixture | 7/7 PASS, zero skips: notas extras nos dois poderes, aquisição patrimonial e escalares brutos |
+| PostgreSQL real local | 16/16 PASS, zero skips: Planejamento, fechamento contábil e lock dos wrappers SQL, duração 353 s |
+| Neon real, somente leitura | SST e ITBI: 2/2 PASS, zero skips |
+| Educação e Portal/SST em fixture isolada | 2/2 PASS sobre replay histórico integral em PGlite com transporte Neon/Drizzle; não é ensaio de concorrência em PostgreSQL externo |
+| Build frio | PASS: cache Turbopack anterior movido ao temporário aprovado; typecheck 403 s + Next build 263 s; heap máximo amostrado 2,214 GiB, maxRSS 2.751,25 MiB |
+| Build com cache | PASS: typecheck 417 s + Next build 82 s; heap máximo amostrado 2,255 GiB, maxRSS 2.550,63 MiB |
+| Homologação do último build | PASS: 20/20 domínios, autenticação, CRUD de catálogo, cleanup e logout |
+
+A única falha da execução geral ocorreu em `annual-extra-note-transport.test.ts`, que ainda criava uma segunda ponte para o mesmo PGlite. O teste agora usa `fixture.connection` e fecha somente a fixture original, preservando todas as verificações de valores, concorrência, replay e desmovimentação. Ambos os poderes passaram no reteste. Nenhuma mudança de runtime foi necessária nesta rodada.
+
+Dos 13 skips gerais, oito cenários dependentes de PostgreSQL externo foram executados com sucesso no launcher real; dois contratos Neon foram executados no banco configurado em modo de leitura; dois cenários Educação/Portal foram executados na fixture isolada descrita acima. A comparação visual opcional com `FINANCE_PAGES_VISUAL_BASE` permanece sem execução por falta de uma base visual aprovada configurada. Os limites originais do ensaio e os resultados complementares permanecem explícitos.
+
+Logs locais: `.next/cache/unit-acceptance.tap`, `acceptance-retest.tap`, `acceptance-postgres.tap`, `acceptance-neon.tap`, `acceptance-personnel-education.tap`, `acceptance-build-cold.log`, `acceptance-build-warm.log`, `acceptance-homologation.json`. Métricas agregadas em `.next/cache/final-validation/acceptance-results.json`. O heap configurado nos builds é 4.096 MiB; as métricas amostradas não certificam o pico de todas as alocações.
+
+Os builds e a homologação local solicitados estão concluídos. A confirmação do deploy Vercel permanece posterior à publicação pelo proprietário. A ressalva histórica da proveniência clínica continua preservada; não foi alegada recuperação de bytes ou checksum original.
+
 ## Consolidação final após revisão da `main` — 28/10/2026
 
 ### Validação integrada posterior — base `bed3a2b`

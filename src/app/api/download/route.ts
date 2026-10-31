@@ -16,6 +16,11 @@ import { resolveConstructionAccess } from "@/lib/obras/construction-access";
 import { getPlanningContext } from "@/lib/planejamento/access";
 import { readPlanningDocument } from "@/lib/planejamento/documents";
 import { planningDocumentResponse } from "@/lib/planejamento/document-response";
+import { eq } from "drizzle-orm";
+import { gedEntries } from "@/db/schema/ged-management";
+import { documentVersions } from "@/db/schema/document-workflow";
+import { getGedContext } from "@/lib/documents/ged-access";
+import { requireManagedDocument } from "@/db/repositories/documents/ged";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +36,18 @@ export async function GET(request: NextRequest) {
   try {
     const context = await getCurrentTenantContext();
     const database = context.database ?? db;
+    // The compatibility URL must enforce the same scope as GED/ZIP, including
+    // immutable earlier versions that no longer match Document.fileUrl.
+    const [managed] = await database.select({ id: gedEntries.documentId, versionId: documentVersions.id }).from(gedEntries)
+      .innerJoin(documentVersions, eq(documentVersions.documentId, gedEntries.documentId)).where(eq(documentVersions.fileUrl, url)).limit(1);
+    if (managed) {
+      const ged = await getGedContext();
+      await requireManagedDocument(ged, managed.id);
+      const target = new URL("/api/assinatura-digital/ged/download", request.url);
+      target.searchParams.set("items", JSON.stringify([{ id: managed.id, versionId: managed.versionId }]));
+      target.searchParams.set("inline", "1");
+      return NextResponse.redirect(target);
+    }
     const constructionProjectStamp = await findConstructionProjectStampByFile(database, url);
     if (constructionProjectStamp && !constructionProjectStamp.publishedAt) throw new AccessError("Cópia derivada urbanística ainda não publicada.", 403);
     const constructionArtifact = await findDownloadConstructionArtifact(database, url);

@@ -7,6 +7,7 @@ import { downloadCentralFile } from "../assine-agora/batch";
 import styles from "@/components/app-ui/operational/operational.module.css";
 import { OperationalPagedContent } from "@/components/app-ui/operational/OperationalPagedContent";
 import { useOperationalWorkspace } from "@/components/app-ui/operational/OperationalContext";
+import { gedCommand } from "@/components/signatures/ged/ged-client";
 
 export default function RecordActions({ record }: { record: CentralSignatureRecord }) {
   const { device } = useOperationalWorkspace();
@@ -14,6 +15,8 @@ export default function RecordActions({ record }: { record: CentralSignatureReco
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [archiveCode, setArchiveCode] = useState("");
+  const [archivedId, setArchivedId] = useState("");
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const expired = !!record.storageDeletedAt || Date.parse(record.expiresAt) <= now;
@@ -32,6 +35,7 @@ export default function RecordActions({ record }: { record: CentralSignatureReco
         <button type="button" className={styles.filterButton} disabled={busy} onClick={() => void download("comprovantes")}>Comprovante JSON</button>
         <a className={styles.filterButton} href={`/validar-assinatura/${encodeURIComponent(record.code)}`} target="_blank" rel="noopener noreferrer">Validar</a>
         <button type="button" className={styles.filterButton} onClick={() => setOpen(false)}>Fechar</button>
+        {archivedId && <a className={styles.filterButton} href={`/assinatura-digital/acervo/${archivedId}`}>Abrir documento arquivado</a>}
         {error && <p role="alert" className="w-full break-words text-sm">{error}</p>}
       </div>}>
       <dl className="space-y-2 text-sm">
@@ -47,6 +51,7 @@ export default function RecordActions({ record }: { record: CentralSignatureReco
         <div data-operational-block><dt className="font-semibold">Original expira em</dt><dd>{new Date(record.expiresAt).toLocaleString("pt-BR")} · {expired ? "Download indisponível" : "Dentro do prazo de retenção"}</dd></div>
       </dl>
       <p className="text-sm">Blob privado por 90 dias. O comprovante JSON destacado e a validação permanecem após esse prazo. O original é preservado; não é um PDF com assinatura PAdES incorporada.</p>
+      {!expired && <div data-operational-block className="grid gap-2 border-t pt-2"><label className="text-sm">Código da classe GED para arquivamento<input className="block w-full rounded border p-2" value={archiveCode} onChange={event => setArchiveCode(event.target.value)} placeholder="Código cadastrado em Classes e políticas" /></label><button disabled={busy || !archiveCode} className={styles.filterButton} onClick={async () => { setBusy(true); setError(""); try { const result = await gedCommand("archive-central", record.id, { classCode: archiveCode }); setArchivedId(result.documentId); } catch (failure) { setError(failure instanceof Error ? failure.message : "Falha ao arquivar."); } finally { setBusy(false); } }}>Preservar original no acervo GED</button><p className="text-xs">A cópia documental segue a retenção do GED e mantém o comprovante original da Central.</p></div>}
       </OperationalPagedContent>
     </DialogContent></Dialog>
   </>;

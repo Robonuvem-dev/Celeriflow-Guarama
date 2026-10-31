@@ -35,6 +35,7 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import styles from "./dashboard.module.css";
 import { compareDashboardCards } from "@/lib/platform/dashboard-order";
+import { canUseGed } from "@/lib/documents/ged-access";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,7 @@ const menuItems: MenuItem[] = [
   { code: "CEMITERIOS", name: "Cemitérios", description: "Gestão cemiterial", href: "/cemiterios", icon: Church, color: "text-[#57534E]", bg: "bg-[#E7E5E4]", solid: "bg-[#57534E]" },
   { code: "CAMARA", name: "Câmara Municipal", description: "Gestão Legislativa", href: "/camara", icon: Landmark, color: "text-[#9333EA]", bg: "bg-[#F3E8FF]", solid: "bg-[#9333EA]" },
   { code: "SEGURANCA", name: "Segurança e Mobilidade", description: "Guarda e trânsito", href: "/seguranca", icon: Shield, color: "text-[#0F766E]", bg: "bg-[#CCFBF1]", solid: "bg-[#0F766E]" },
-  { code: "ASSINATURA_DIGITAL", name: "Assinatura Digital", description: "Central de assinatura de documentos", href: "/assinatura-digital", icon: FileSignature, color: "text-[#7C3AED]", bg: "bg-[#EDE9FE]", solid: "bg-[#7C3AED]" },
+  { code: "ASSINATURA_DIGITAL", name: "GED e Assinatura Digital", description: "Acervo, gestão documental e assinaturas", href: "/assinatura-digital", icon: FileSignature, color: "text-[#7C3AED]", bg: "bg-[#EDE9FE]", solid: "bg-[#7C3AED]" },
   { code: "SUPORTE_TECNICO", name: "Suporte Técnico", description: "Atendimento técnico especializado", href: "/suporte-tecnico", icon: Headset, color: "text-[#0369A1]", bg: "bg-[#E0F2FE]", solid: "bg-[#0369A1]" },
   { code: "CONFIGURACOES", name: "Configurações", description: "Gestão do sistema", href: "/configuracoes", icon: Settings, color: "text-[#475569]", bg: "bg-[#E2E8F0]", solid: "bg-[#475569]" },
 ];
@@ -93,7 +94,7 @@ export default async function PainelPage() {
   }
 
   const visibleMenuItems = menuItems
-    .filter((item) => moduleActivationByCode.get(item.accessCode ?? item.code) !== false)
+    .filter((item) => item.code === "ASSINATURA_DIGITAL" ? (moduleActivationByCode.get(item.code) ?? moduleActivationByCode.get("DOCUMENTOS")) !== false : moduleActivationByCode.get(item.accessCode ?? item.code) !== false)
     .filter((item) => context && canShowDashboardCard(context.user, item.accessCode ?? item.code))
     .sort(compareDashboardCards);
 
@@ -103,7 +104,8 @@ export default async function PainelPage() {
       <div className={`${styles.grid} grid w-full grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7`}>
         {visibleMenuItems.map((item) => {
           const accessCode = item.accessCode ?? item.code;
-          const isProfileBlocked = !context || isModuleBlockedForUser(context.user, accessCode) || !canViewModule(context.user, accessCode);
+          const hasDocumentAccess = item.code === "ASSINATURA_DIGITAL" && context && canUseGed(context.user);
+          const isProfileBlocked = !hasDocumentAccess && (!context || isModuleBlockedForUser(context.user, accessCode) || !canViewModule(context.user, accessCode));
 
           if (isProfileBlocked) {
             return (

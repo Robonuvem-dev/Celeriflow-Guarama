@@ -4,14 +4,14 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import type { CentralA1Integration, CentralDocumentType, CentralSignatureMethod, CentralSigner } from "@/lib/contracts/signature-central";
 import { Button } from "@/components/ui/button";
 import { FileSignature, ShieldCheck, Upload } from "lucide-react";
-import { BatchItem, BatchOptions, downloadCentralFile, FILE_ACCEPT, fileError, integrationProblem, MAX_BATCH_FILES, signerProblem, submitBatch } from "./batch";
+import { BatchItem, BatchOptions, type GedBatchSource, downloadCentralFile, FILE_ACCEPT, fileError, integrationProblem, MAX_BATCH_FILES, signerProblem, submitBatch } from "./batch";
 
 const date = (value: string) => new Date(value).toLocaleString("pt-BR");
 const field = "mt-1 block min-h-10 w-full min-w-0 rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60";
 
-export default function AssineAgoraClient({ signers, documentTypes, integrations, canCreate, currentUserName }: { signers: CentralSigner[]; documentTypes: CentralDocumentType[]; integrations: CentralA1Integration[]; canCreate: boolean; currentUserName?: string }) {
+export default function AssineAgoraClient({ signers, documentTypes, integrations, canCreate, currentUserName, gedSource }: { signers: CentralSigner[]; documentTypes: CentralDocumentType[]; integrations: CentralA1Integration[]; canCreate: boolean; currentUserName?: string; gedSource?: GedBatchSource }) {
   const id = useId();
-  const [items, setItems] = useState<BatchItem[]>([]);
+  const [items, setItems] = useState<BatchItem[]>(() => gedSource ? [{ requestId: gedSource.requestId, file: new File([], gedSource.filename, { type: gedSource.mimeType }), gedSource, status: "pending" }] : []);
   const [signerId, setSignerId] = useState(() => (signers.find(signer => signer.active && Date.parse(signer.validUntil) > Date.now()) ?? signers[0])?.id ?? "");
   const [documentTypeId, setDocumentTypeId] = useState("");
   const [method, setMethod] = useState<CentralSignatureMethod>("INTERNAL");
@@ -36,7 +36,7 @@ export default function AssineAgoraClient({ signers, documentTypes, integrations
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (running.current) return;
-    const currentProblem = signerProblem(signer, Date.now(), method) || integrationProblem(integration, method);
+    const currentProblem = signerProblem(signer, now, method) || integrationProblem(integration, method, now);
     if (problem || currentProblem || (needsPassword && !password) || !pending) { setMessage(problem || currentProblem || (needsPassword && !password ? "Informe a senha pessoal do assinador." : "Selecione arquivos pendentes.")); return; }
     running.current = true; setBusy(true); setMessage("");
     lockedOptions.current ??= { signerId, documentTypeId, method, integrationId };
@@ -91,7 +91,7 @@ export default function AssineAgoraClient({ signers, documentTypes, integrations
     <div className="min-w-0 space-y-3" aria-live="polite" aria-label="Resultados individuais do lote">
       <p>{items.filter(item => item.status === "success").length} concluídos · {pending} pendentes/falhas · {items.length} arquivos</p>
       {items.map(item => <article key={item.requestId} className="rounded-md border p-3">
-        <h2 className="break-all font-semibold">{item.file.name}</h2><p>{item.file.size.toLocaleString("pt-BR")} bytes · {({ pending: "Pendente", sending: "Enviando…", success: "Assinado", error: "Falha" })[item.status]}</p>
+        <h2 className="break-all font-semibold">{item.file.name}</h2><p>{(item.gedSource?.byteLength ?? item.file.size).toLocaleString("pt-BR")} bytes · {item.gedSource ? "Original GED · " : ""}{({ pending: "Pendente", sending: "Enviando…", success: "Assinado", error: "Falha" })[item.status]}</p>
         {item.error && <p role="alert">{item.error}</p>}
         {!locked && <Button type="button" variant="outline" size="sm" className="max-w-full" aria-label={`Remover ${item.file.name}`} onClick={() => setItems(current => current.filter(value => value.requestId !== item.requestId))}>Remover</Button>}
         {item.record && <><p>Código: {item.record.code} · Assinado em {date(item.record.signedAt)} · Original expira em {date(item.record.expiresAt)}</p><p className="break-all">SHA-256: {item.record.hashSha256}</p><div className="mt-2 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={downloadBusy || !!item.record.storageDeletedAt || Date.parse(item.record.expiresAt) <= now} onClick={() => void download(item, "documentos")}>Baixar original preservado</Button><Button type="button" size="sm" disabled={downloadBusy} onClick={() => void download(item, "comprovantes")}>Baixar comprovante JSON destacado</Button><a className="underline" href={`/validar-assinatura/${encodeURIComponent(item.record.code)}`} target="_blank" rel="noopener noreferrer">Validação pública</a></div></>}

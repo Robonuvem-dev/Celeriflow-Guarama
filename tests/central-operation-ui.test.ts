@@ -59,6 +59,22 @@ test("limites físicos da UI e autorização por validade/estado", () => {
   assert.ok(integrationProblem({ ...integration, validTo: "2021-01-01" }, "A1_ECPF", now));
 });
 
+test("origem GED envia somente identificadores imutáveis e usa o endpoint documental sem reenviar bytes", async () => {
+  const source = { documentId: "doc", versionId: "version", filename: "contrato.txt", byteLength: 100, mimeType: "text/plain", requestId: "stable" };
+  const item: BatchItem = { requestId: "stable", file: new File([], source.filename), gedSource: source, status: "pending" };
+  const statuses: string[] = [];
+  const request = (async (url, init) => {
+    assert.equal(url, "/api/assinatura-digital/ged/sign");
+    const body = init?.body as FormData;
+    assert.equal(body.get("file"), null);
+    assert.equal(body.get("gedDocumentId"), "doc"); assert.equal(body.get("gedVersionId"), "version");
+    assert.equal(body.get("requestId"), "stable");
+    return Response.json({ record: { id: "record" } });
+  }) as typeof fetch;
+  await submitBatch([item], { signerId: "signer", documentTypeId: "type", method: "INTERNAL", integrationId: "", password: "fixture" }, next => statuses.push(next.status), request);
+  assert.deepEqual(statuses, ["sending", "success"]);
+});
+
 test("registros: busca em todo conjunto antes de paginar 20, total e página corrigida", () => {
   const records = Array.from({ length: 47 }, (_, index) => ({ id: String(index), code: `CFS-${index}`, filename: `arquivo-${index}.pdf`, documentTypeName: "Contrato", signerName: index === 46 ? "Alvo" : "Outro", signerRole: "Servidor", signerDocument: "123", method: "INTERNAL", hashSha256: "hash" })) as CentralSignatureRecord[];
   assert.equal(selectRecords(records, "", 1).records.length, 20);

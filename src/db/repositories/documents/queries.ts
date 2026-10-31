@@ -16,18 +16,18 @@ export async function getDocumentDashboard(db: DatabaseExecutor): Promise<{ tota
   return { totalDocuments: total.value, totalFolders: folders.value, pendentesAssinatura: pending.value };
 }
 export async function listDocumentModels(db: DatabaseExecutor): Promise<DocumentRecord[]> {
-  return db.select().from(documents).where(eq(documents.documentType, "Modelo")).orderBy(desc(documents.updatedAt));
+  return db.select().from(documents).where(and(eq(documents.documentType, "Modelo"), sql`NOT EXISTS(SELECT 1 FROM "GedEntry" e WHERE e."documentId"=${documents.id})`)).orderBy(desc(documents.updatedAt));
 }
 export async function listGedDocuments(db: DatabaseExecutor, folderId: string | null, recent: boolean): Promise<DocumentRecord[]> {
-  return db.select().from(documents).where(folderId ? eq(documents.folderId, folderId) : and(ne(documents.documentType, "Modelo"), recent ? undefined : isNull(documents.folderId))).orderBy(desc(documents.createdAt));
+  return db.select().from(documents).where(and(folderId ? eq(documents.folderId, folderId) : and(ne(documents.documentType, "Modelo"), recent ? undefined : isNull(documents.folderId)), sql`NOT EXISTS(SELECT 1 FROM "GedEntry" e WHERE e."documentId"=${documents.id})`)).orderBy(desc(documents.createdAt));
 }
 export async function readGedFolder(db: DatabaseExecutor, id: string): Promise<(DocumentFolder & { parent: DocumentFolder | null }) | null> {
   const parent = alias(documentFolders, "parent");
-  const [row] = await db.select({ folder: documentFolders, parent }).from(documentFolders).leftJoin(parent, eq(parent.id, documentFolders.parentId)).where(eq(documentFolders.id, id)).limit(1);
+  const [row] = await db.select({ folder: documentFolders, parent }).from(documentFolders).leftJoin(parent, eq(parent.id, documentFolders.parentId)).where(and(eq(documentFolders.id, id), sql`NOT EXISTS(SELECT 1 FROM "GedFolderAccess" a WHERE a."folderId"=${documentFolders.id})`)).limit(1);
   return row ? { ...row.folder, parent: row.parent } : null;
 }
 export async function listGedFolders(db: DatabaseExecutor, parentId: string | null): Promise<DocumentFolderWithCounts[]> {
-  const rows = await db.select({ folder: documentFolders, documentCount: sql<number>`(SELECT count(*)::int FROM "Document" d WHERE d."folderId"="Folder"."id")`, childrenCount: sql<number>`(SELECT count(*)::int FROM "Folder" f WHERE f."parentId"="Folder"."id")` }).from(documentFolders).where(parentId ? eq(documentFolders.parentId, parentId) : isNull(documentFolders.parentId)).orderBy(asc(documentFolders.name));
+  const rows = await db.select({ folder: documentFolders, documentCount: sql<number>`(SELECT count(*)::int FROM "Document" d WHERE d."folderId"="Folder"."id" AND NOT EXISTS(SELECT 1 FROM "GedEntry" e WHERE e."documentId"=d.id))`, childrenCount: sql<number>`(SELECT count(*)::int FROM "Folder" f WHERE f."parentId"="Folder"."id" AND NOT EXISTS(SELECT 1 FROM "GedFolderAccess" a WHERE a."folderId"=f.id))` }).from(documentFolders).where(and(parentId ? eq(documentFolders.parentId, parentId) : isNull(documentFolders.parentId), sql`NOT EXISTS(SELECT 1 FROM "GedFolderAccess" a WHERE a."folderId"=${documentFolders.id})`)).orderBy(asc(documentFolders.name));
   return rows.map(row => ({ ...row.folder, _count: { documents: row.documentCount, children: row.childrenCount } }));
 }
 export async function listGedSelectors(db: DatabaseExecutor): Promise<{ documentClasses: { code: string; label: string; signaturePolicy: string }[]; signers: { id: string; nome: string; email: string }[] }> {

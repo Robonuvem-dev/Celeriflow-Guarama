@@ -182,7 +182,8 @@ async function createInternalDocumentSignatures(
   const [document] = await tx.select({ id: documents.id, signaturePolicy: documentClasses.signaturePolicy }).from(documents).leftJoin(documentClasses, eq(documentClasses.id, documents.documentClassId)).where(eq(documents.id, documentId)).limit(1);
   if (!document) throw new Error("Documento nao encontrado.");
   assertInternalSigningAllowed(document.signaturePolicy);
-  const [version] = await tx.select({ id: documentVersions.id, hashSha256: documentVersions.hashSha256, publicValidationCode: documentVersions.publicValidationCode }).from(documentVersions).where(and(eq(documentVersions.documentId, documentId), eq(documentVersions.status, "FINAL"), isNull(documentVersions.lockedAt), typeof metadata?.planningDocumentVersionId === "string" ? eq(documentVersions.id, metadata.planningDocumentVersionId) : undefined)).orderBy(desc(documentVersions.versionNumber)).limit(1);
+  const exactVersionId = typeof metadata?.planningDocumentVersionId === "string" ? metadata.planningDocumentVersionId : typeof metadata?.gedDocumentVersionId === "string" ? metadata.gedDocumentVersionId : undefined;
+  const [version] = await tx.select({ id: documentVersions.id, hashSha256: documentVersions.hashSha256, publicValidationCode: documentVersions.publicValidationCode }).from(documentVersions).where(and(eq(documentVersions.documentId, documentId), eq(documentVersions.status, "FINAL"), isNull(documentVersions.lockedAt), exactVersionId ? eq(documentVersions.id, exactVersionId) : undefined)).orderBy(desc(documentVersions.versionNumber)).limit(1);
   if (!version) throw new Error("O documento nao possui uma versao final disponivel para assinatura.");
 
   const signers = await tx.select({ id: users.id, nome: users.nome, email: users.email, employeeId: users.employeeId }).from(users).where(and(inArray(users.id, uniqueSignerIds), eq(users.ativo, true)));

@@ -9,7 +9,6 @@ import { retentionRules } from "../src/db/schema/finance-settlements";
 import { withholdingPayables } from "../src/db/schema/finance-payments";
 import { taxRegistryEntries } from "../src/db/schema/taxation-registry";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
-import { connectFinanceDrizzleFixture } from "./helpers/finance-drizzle-connection";
 import { createCommitment, createSettlement, createPayment, createRevenue, updatePaymentStatus, configureAccountingPostingRule, settleWithholdingPayable } from "../src/lib/financeiro";
 import { executeAnnualExtraNoteTransport, undoAnnualExtraNoteTransport } from "../src/lib/financeiro/annual-extra-note-transport";
 import { readResourceAvailability } from "../src/lib/financeiro/resource-availability";
@@ -17,10 +16,8 @@ import { readResourceAvailability } from "../src/lib/financeiro/resource-availab
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
   test(`Notas extra ${jurisdiction}: cópia documental, dívida única, replay e desmovimentação separada`, async context => {
     const f = await createPlanningExecutionFixture(2026, 2, jurisdiction);
-    let finance: Awaited<ReturnType<typeof connectFinanceDrizzleFixture>> | undefined;
     try {
-      finance = await connectFinanceDrizzleFixture(f.pg);
-      const { connection } = finance;
+      const { connection } = f;
       const db = connection.db;
       const actor = { usuarioId: f.actor.usuarioId, employeeId: f.actor.employeeId, allowedBudgetUnitIds: undefined };
       await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
@@ -63,6 +60,6 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) {
       await assert.rejects(undoAnnualExtraNoteTransport(connection, actor, { stageId: repeated.stageId, reason: "Tentativa após recolhimento" }), /pagamento, restituição/);
       await assert.rejects(settleWithholdingPayable(connection, f.actor, { withholdingPayableId: payable.id, bankAccountId: "banco", paymentDate: new Date("2027-09-01"), receiptDocumentId: "documento-fiscal" }), /já recolhida/);
       assert.equal((await db.select().from(financialYears).where(eq(financialYears.id, "ano")))[0].status, "Encerrado");
-    } finally { context.mock.timers.reset(); try { await finance?.close(); } finally { await f.close(); } }
+    } finally { context.mock.timers.reset(); await f.close(); }
   });
 }

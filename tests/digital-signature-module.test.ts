@@ -100,6 +100,7 @@ test("assinatura central: permissão própria, identidade da sessão e reautenti
   const loaded = { exports: {} as { signPendingDocument: (id: string, token: string) => Promise<{ error: string | null }> } };
   const output = ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   vm.runInNewContext(output, { exports: loaded.exports, module: loaded, Date, Error, require: (name: string) => {
+    if (name === "@/lib/documents/ged-access") return { getUnifiedSignatureContext: async (create: boolean) => { assert.equal(create, true); calls.push("ASSINATURA_DIGITAL:create"); if (denied) throw new Error("Acesso negado"); return { user: { id: "actor", firebaseUid: "session-user" } }; } };
     if (name === "@/lib/platform/tenant-context") return { getTenantContextForModuleOperation: async (code: string, operation: string) => { calls.push(`${code}:${operation}`); if (denied) throw new Error("Acesso negado"); return { user: { id: "actor", firebaseUid: "session-user" } }; } };
     if (name === "@/lib/platform/session") return { getIdTokenPrincipal: async () => principal };
     if (name === "@/lib/signatures/internal-signature") return { registerInternalDocumentSignature: async (_context: unknown, id: string) => { calls.push(`signed:${id}`); } };
@@ -118,4 +119,37 @@ test("assinatura central: permissão própria, identidade da sessão e reautenti
   assert.match((await sign("document-1", "token")).error ?? "", /expirou/);
   calls.length = 0; denied = true;
   assert.match((await sign("document-1", "token")).error ?? "", /Acesso negado/); assert.deepEqual(calls, ["ASSINATURA_DIGITAL:create"]);
+});
+
+test("ações de modelos anteriores não alteram documentos comuns ou gerenciados e aceitam somente os campos do cadastro", async () => {
+  const pg = new PGlite();
+  try {
+    await pg.exec(`CREATE TABLE "Document" (id text PRIMARY KEY,title text NOT NULL,"documentType" text NOT NULL,"fileUrl" text NOT NULL,notes text,status text,"updatedAt" timestamp DEFAULT now());
+      CREATE TABLE "GedEntry" ("documentId" text PRIMARY KEY);
+      INSERT INTO "Document" VALUES ('legacy','Modelo anterior','Modelo','original:legacy',NULL,'Ativo',now()),('managed','Modelo gerenciado','Modelo','original:managed',NULL,'Ativo',now()),('ordinary','Contrato','Arquivo','original:contract',NULL,'Válido',now());
+      INSERT INTO "GedEntry" VALUES ('managed');`);
+    const database = drizzle(pg);
+    const filename = resolve("src/app/app-domain/documentos/modelos/actions.ts");
+    const require = createRequire(filename);
+    const loaded = { exports: {} as { updateModelo: (id: string, data: Record<string, unknown>) => Promise<void>; deleteModelo: (id: string) => Promise<void> } };
+    const output = ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+    vm.runInNewContext(output, { exports: loaded.exports, module: loaded, require: (name: string) => {
+      if (name === "@/db/client") return { db: database };
+      if (name === "@/db/schema/registry") return require(resolve("src/db/schema/registry.ts"));
+      if (name === "@/lib/platform/tenant-context") return { getTenantContextForModuleOperation: async (code: string, operation: string) => { assert.equal(code, "DOCUMENTOS"); assert(["update", "delete"].includes(operation)); } };
+      if (name === "next/cache") return { revalidatePath: () => {} };
+      return require(name);
+    } }, { filename });
+    await loaded.exports.updateModelo("legacy", { title: "Modelo revisto", fileUrl: "changed:forbidden", documentType: "Arquivo" });
+    const [legacy] = (await pg.query<{ title: string; fileUrl: string; documentType: string }>('SELECT title,"fileUrl","documentType" FROM "Document" WHERE id=\'legacy\'')).rows;
+    assert.equal(legacy.title, "Modelo revisto"); assert.equal(legacy.fileUrl, "original:legacy"); assert.equal(legacy.documentType, "Modelo");
+    for (const id of ["managed", "ordinary"]) {
+      await assert.rejects(loaded.exports.updateModelo(id, { title: "Alteração indevida" }), /não encontrado/);
+      await assert.rejects(loaded.exports.deleteModelo(id), /não encontrado/);
+    }
+    await assert.rejects(loaded.exports.updateModelo("legacy", { status: "Assinado" }));
+    await loaded.exports.deleteModelo("legacy");
+    const remaining = (await pg.query<{ id: string }>('SELECT id FROM "Document" ORDER BY id')).rows.map(row => row.id);
+    assert.deepEqual(remaining, ["managed", "ordinary"]);
+  } finally { await pg.close(); }
 });
