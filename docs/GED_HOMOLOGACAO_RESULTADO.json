@@ -1,0 +1,207 @@
+{
+  "run": "c85f11c1-1aa6-4cca-a472-323b67617ac3",
+  "date": "2026-10-31T19:46:50.016Z",
+  "origin": "http://localhost:3309",
+  "scope": "REAL_NEON_BLOB_TESSERACT_AUTHENTICATED_HTTP_AND_BROWSER",
+  "status": "PASS",
+  "checks": [
+    {
+      "check": "existing_verified_identity_and_application_session",
+      "passed": true
+    },
+    {
+      "check": "anonymous_and_cross_origin_boundaries",
+      "passed": true
+    },
+    {
+      "check": "page/painel",
+      "passed": true
+    },
+    {
+      "check": "page/acervo",
+      "passed": true
+    },
+    {
+      "check": "page/pesquisa",
+      "passed": true
+    },
+    {
+      "check": "page/pastas-inteligentes",
+      "passed": true
+    },
+    {
+      "check": "page/importacoes",
+      "passed": true
+    },
+    {
+      "check": "page/processamento",
+      "passed": true
+    },
+    {
+      "check": "page/tarefas",
+      "passed": true
+    },
+    {
+      "check": "page/fluxos",
+      "passed": true
+    },
+    {
+      "check": "page/modelos",
+      "passed": true
+    },
+    {
+      "check": "page/classes",
+      "passed": true
+    },
+    {
+      "check": "page/thesaurus",
+      "passed": true
+    },
+    {
+      "check": "page/pendentes",
+      "passed": true
+    },
+    {
+      "check": "page/historico",
+      "passed": true
+    },
+    {
+      "check": "page/registros",
+      "passed": true
+    },
+    {
+      "check": "page/assine-agora",
+      "passed": true
+    },
+    {
+      "check": "page/validacao",
+      "passed": true
+    },
+    {
+      "check": "page/acervo/integrados",
+      "passed": true
+    },
+    {
+      "check": "page/modelos/anteriores",
+      "passed": true
+    },
+    {
+      "check": "real_private_blob_upload_idempotency_hash_full_text_and_thesaurus",
+      "passed": true
+    },
+    {
+      "check": "real_scanned_pdf_tesseract_zone_confidence_and_search",
+      "passed": true
+    },
+    {
+      "check": "checkin_creates_version_two_historical_original_and_zip_hashes_preserved",
+      "passed": true
+    },
+    {
+      "check": "docx_bytes_import_markers_version_two_and_generated_searchable_original",
+      "passed": true
+    },
+    {
+      "check": "four_editorial_stages_dynamic_saved_query_exact_version_and_reauthenticated_signature",
+      "passed": true
+    },
+    {
+      "check": "central_signature_original_version_link_idempotent_receipt_public_proof_and_permanent_archive",
+      "passed": true
+    },
+    {
+      "check": "audit_events_and_all_document_details_readable",
+      "passed": true
+    },
+    {
+      "check": "hydrated_browser_batch_upload_visual_zone_version_panel_and_four_viewports",
+      "passed": true
+    },
+    {
+      "check": "logout",
+      "passed": true
+    },
+    {
+      "check": "production_logout",
+      "passed": true
+    }
+  ],
+  "documents": [
+    "cmvwtbrzh0031yshyqiejh8ow",
+    "cmvwtbzi1003gyshyvayfj1b3",
+    "cmvwtcje5004jyshywxre7u3p",
+    "cmvwtdqpo006eyshy4879fmts",
+    "cmvwtec42007pyshypz84pyub",
+    "cmvwte91w007iyshy7vzb3a06"
+  ],
+  "limitations": [
+    "A1 real depende de certificado e credencial disponibilizados.",
+    "Tesseract local: publicação HTTPS do serviço ainda necessária para Vercel."
+  ],
+  "retention": "Documentos sintéticos HML e evidências mantidos para conferência; nenhum registro preexistente alterado.",
+  "browser": {
+    "engine": "chromium",
+    "viewportChecks": [
+      {
+        "device": "desktop",
+        "viewport": 1440,
+        "pageWidth": 1440,
+        "tableWidth": 1384,
+        "tableLeft": 56,
+        "tableRight": 1440,
+        "rows": 2,
+        "fontSize": "13px",
+        "passed": true
+      },
+      {
+        "device": "notebook",
+        "viewport": 1366,
+        "pageWidth": 1366,
+        "tableWidth": 1310,
+        "tableLeft": 56,
+        "tableRight": 1366,
+        "rows": 2,
+        "fontSize": "13px",
+        "passed": true
+      },
+      {
+        "device": "tablet",
+        "viewport": 820,
+        "pageWidth": 820,
+        "tableWidth": 764,
+        "tableLeft": 56,
+        "tableRight": 820,
+        "rows": 2,
+        "fontSize": "13px",
+        "passed": true
+      },
+      {
+        "device": "mobile",
+        "viewport": 390,
+        "pageWidth": 390,
+        "tableWidth": 590,
+        "tableLeft": 56,
+        "tableRight": 646,
+        "rows": 2,
+        "fontSize": "13px",
+        "passed": true
+      }
+    ],
+    "documents": [
+      "cmvwtec42007pyshypz84pyub",
+      "cmvwte91w007iyshy7vzb3a06"
+    ],
+    "evidenceDirectory": "C:\\Users\\trici\\AppData\\Local\\Temp\\opencode\\ged-homologation-c85f11c1-1aa6-4cca-a472-323b67617ac3",
+    "browserBatch": true,
+    "visualZone": true,
+    "versionPanel": true,
+    "resizeAndDetails": true,
+    "versionPanelGeometry": {
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  "completedAt": "2026-10-31T19:49:34.004Z"
+}

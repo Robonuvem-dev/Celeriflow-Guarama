@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const isProductionBuild = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
-  // PDFKit resolves its bundled font metrics through Node filesystem paths.
-  serverExternalPackages: ["pdfkit"],
+  // PDFKit metrics and PDF.js' Node worker resolve relative to their packages.
+  serverExternalPackages: ["pdfkit", "pdfjs-dist"],
   experimental: {
     serverActions: { bodySizeLimit: "4mb" },
     // Page-data workers each load the server graph; keep builds within 8 GB.
@@ -51,6 +51,11 @@ const nextConfig: NextConfig = {
     ],
   },
   outputFileTracingIncludes: {
+    "/api/assinatura-digital/ged": [
+      "./node_modules/pdfjs-dist/package.json",
+      "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+      "./node_modules/@napi-rs/canvas*/**/*",
+    ],
     "/api/transparencia/consultas/*": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/transparencia/exemplos/*/*": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/financeiro/relatorios": ["./node_modules/pdfkit/js/data/**/*"],

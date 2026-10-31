@@ -1,0 +1,10 @@
+*
+!package.json
+!package-lock.json
+!scripts/
+scripts/*
+!scripts/ged-ocr-engine.mjs
+!scripts/ged-ocr-server.mjs
+!services/
+!services/ged-ocr/
+!services/ged-ocr/Dockerfile

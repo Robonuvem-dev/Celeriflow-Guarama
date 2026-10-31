@@ -1,0 +1,7 @@
+.action { flex-shrink: 0; white-space: nowrap; }
+.searchIcon { display: none; }
+@media (max-width: 639px) {
+  .action { width: 28px; padding-inline: 0; }
+  .actionLabel { display: none; }
+  .searchIcon { display: block; }
+}

@@ -50,7 +50,7 @@ Migrações novas:
 1. `db/migrations/20261031120000_ged_management/migration.sql` — entradas, arquivos por versão, pastas/ACL, intenções/lotes, checkout, texto/GIN, jobs, consultas salvas, thesaurus, editorial, modelos e geração.
 2. `db/migrations/20261031120100_ged_central_archive/migration.sql` — vínculos entre acervo, arquivos preservados e comprovantes da Central.
 
-As migrações foram executadas em fixtures locais descartáveis. Aplicação na base configurada/produção precisa do destino explícito `DATABASE_MIGRATION_URL` e do executor oficial `npm run db:migrate:deploy`. Não foram executadas migrações em banco externo nesta entrega.
+Após a solicitação de ativação, o executor oficial foi executado contra a conexão direta Neon configurada, informada explicitamente como `DATABASE_MIGRATION_URL`. `plan` e `deploy` retornaram **PASS**, com 180 recibos, nenhuma migração pendente e nenhuma reaplicação: as duas migrações GED já estavam instaladas. A conferência conectada confirmou as tabelas `GedEntry`, `GedOperationLease` e `GedCentralSignature` e o módulo ativo. A baseline histórica existente foi preservada.
 
 ### Protocolo OCR
 
@@ -62,13 +62,15 @@ Resposta: `{ pages: [{ page,text,confidence?,label? }] }`, com confiança de 0 a
 
 Processamento é acionado na interface, com job persistido, tentativas, lease e repetição após expiração/falha. Não há um worker agendado de OCR nesta versão.
 
+Por escolha do proprietário, foi implementado e configurado um serviço próprio Tesseract para homologação local. O teste real de imagem, PDF digitalizado e zona passou; instalação, operação e publicação permanente estão descritas em [GED_OCR_TESSERACT.md](GED_OCR_TESSERACT.md).
+
 ## Verificações
 
 Rodada de regressão dirigida: **61 testes aprovados, zero falhas e zero skips**, abrangendo dez arquivos de teste. Após a troca do bloqueio de assinatura pela lease compatível com transaction pooling, o recorte de assinatura GED e gestão documental foi repetido: **11 aprovados, zero falhas**. Um teste adicional das actions do cadastro anterior comprovou que documentos comuns/gerenciados não podem ser editados ou excluídos por esse caminho e que campos fora do cadastro são descartados. ESLint dos fontes alterados passou. A checagem TypeScript dirigida cobriu 64 raízes de fontes/testes, sem diagnósticos; o ajuste final das actions e seu teste também passaram em checagem dirigida.
 
 As duas execuções integrais de `npm run build` terminaram com código **0**, incluindo as 15 partições de tipos, compilação de produção e geração das 103 páginas estáticas. A segunda execução consolidou a validação das correções finais: checagem de tipos concluída em 496 segundos e etapa Next concluída em 181 segundos. As rotas do acervo, processamento, modelos, tarefas e assinatura GED foram incluídas no build.
 
-O scanner estático reconheceu duas estruturas compartilhadas novas (workspace e histórico), com mapeamento das dez listagens e do detalhe. Não encontrou contêiner ancestral de scroll nem células empilhadas nessas estruturas; o dimensionamento real não foi medido no navegador.
+O scanner estático reconheceu duas estruturas compartilhadas novas (workspace e histórico), com mapeamento das dez listagens e do detalhe. Não encontrou contêiner ancestral próprio de scroll nem células empilhadas nessas estruturas. Após a ativação, houve medição no navegador Chromium autenticado em quatro viewports e no histórico em tela cheia; resultados em `docs/GED_HOMOLOGACAO_RESULTADO.json`.
 
 - `tests/ged-management.test.ts`: escopo/setor e ausência de vazamento nos totais, paginação 20/20/1, full text/frase/fragmento/proximidade, thesaurus, concorrência de checkout, quatro níveis e ciclos, pasta vazia/movimentação, consenso com vários participantes, homologação e consulta dinâmica.
 - `tests/ged-storage.test.ts`: extração de PDFs/DOCX reais e contrato OCR com servidor HTTP local controlado; rejeição de resposta de outra região/página.
@@ -77,4 +79,16 @@ O scanner estático reconheceu duas estruturas compartilhadas novas (workspace e
 - Regressões dirigidas de assinatura, fluxo documental, consultas correlacionadas e download por origem.
 - ESLint dos arquivos alterados, checagem de tipos dirigida, auditoria estática das tabelas e build integral integram a verificação final. O resultado final do build deve ser consultado na entrega da execução, não inferido desta lista de comandos.
 
-Homologação visual autenticada, precisão OCR em arquivos da POC, Blob real, certificados reais e deploy não são comprovados pelos testes com fixtures. A comparação de viewport ainda precisa de navegação autenticada em ambiente com as migrações aplicadas.
+### Homologação conectada após ativação
+
+O runner `scripts/ged-homologation.mjs` concluiu com **PASS**, usando a conta Firebase administrativa existente, Neon e Blob privado configurados e Tesseract real. Foram exercitados importação/hash/idempotência, pesquisa com frase e thesaurus, PDF digitalizado e zona, check-in com duas versões, preservação do original, ZIP/manifesto/hash, modelos DOCX importados/versionados/gerados, consulta salva dinâmica, quatro fases editoriais, assinatura da versão exata e validação pública.
+
+A assinatura de origem GED pela Central foi enviada ao domínio publicado, usando a chave estável protegida na Vercel, e o original foi preservado no GED com hash conferido. As demais operações foram feitas no build de produção local. O ensaio utilizou nova autenticação Firebase de identidade existente; não digitou senha pessoal na interface. Não houve uso de certificado A1 real.
+
+O navegador Chromium executou upload real de dois arquivos, seleção de zona por arraste com texto e confiança retornados e abertura do histórico em tela cheia. Capturas e métricas de desktop/notebook/tablet/celular foram registradas. A inspeção visual levou ao ajuste das ações compactas no celular; o pacote de produção passa a incluir explicitamente o worker e dependências nativas necessárias ao PDF.js.
+
+A rodada dirigida desta ativação aprovou **21 testes**, incluindo motor OCR real e regressão da solicitação interna sem transações concorrentes. ESLint e auditoria estática de tabelas passaram; a partição auxiliar que contém o teste alterado verificou 65 raízes sem diagnósticos. O último build integral aprovado terminou com código **0**, incluindo 15 partições de tipos (639 segundos) e 103 páginas estáticas (etapa Next em 114 segundos). O manifesto de arquivos de produção foi conferido e contém o worker PDF.js e as dependências nativas de canvas.
+
+O ensaio conectado final, após esses ajustes, aprovou **30 verificações**, com execução completa entre 19:46 e 19:49 UTC em 31/10/2026. O navegador confirmou também redimensionamento e persistência de colunas, detalhes de célula truncada, busca/ações utilizáveis no celular e rolagem interna permitida nesse dispositivo.
+
+O resultado sanitizado e os identificadores sintéticos de ensaio estão em `docs/GED_HOMOLOGACAO_RESULTADO.json`. Os registros `HML-GED-<UUID>` e suas evidências foram preservados para rastreabilidade. O proprietário escolheu manter OCR local nesta etapa; detalhes em `docs/GED_OCR_TESSERACT.md`. Permanecem fora deste aceite: acurácia em digitalizados reais da POC, certificado A1 real e publicação das correções locais por deploy.

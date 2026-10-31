@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db, databaseConnection } from "@/db/client";
 import type { DatabaseConnection } from "@/db/connection";
 import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
+import { inDatabaseTransactionScope } from "@/db/transaction-scope";
 import { documents } from "@/db/schema/registry";
 import { documentClasses, documentFolders, documentVersions } from "@/db/schema/document-workflow";
 import { users } from "@/db/schema/identity";
@@ -357,8 +358,9 @@ export async function requestGedSignatures(context: AppContext, id: string, sign
     await lockDocument(tx, id);
     const document = await requireManagedDocument(context, id, tx);
     if (document.checkoutOwnerId || document.editorialStatus !== "HOMOLOGADO") throw new Error("Homologue a versão e encerre reservas antes de solicitar assinatura.");
-    const { requestInternalDocumentSignatures } = await import("./document-flow-service");
-    return requestInternalDocumentSignatures(context, id, signerIds, { gedDocumentVersionId: document.versionId });
+    const { requestDocumentSignaturesForActor } = await import("./document-flow-service");
+    const connection = (context as AppContext & { databaseConnection?: DatabaseConnection }).databaseConnection ?? databaseConnection;
+    return inDatabaseTransactionScope(connection, tx, () => requestDocumentSignaturesForActor(connection, context.user.id, id, signerIds, { gedDocumentVersionId: document.versionId }));
   });
 }
 

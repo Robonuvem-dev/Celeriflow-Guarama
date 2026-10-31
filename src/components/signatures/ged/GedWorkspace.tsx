@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { Download, Eye, FolderTree, MoreHorizontal, Plus, RefreshCw, Upload } from "lucide-react";
+import { Download, Eye, FolderTree, MoreHorizontal, Plus, RefreshCw, Save, Search, Upload } from "lucide-react";
 import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalPagination, OperationalTable } from "@/components/app-ui/operational/OperationalTable";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import type { OperationalColumn } from "@/lib/operational-tables";
 import type { GedBootstrap, GedDocumentItem, GedListResponse, GedSection } from "@/lib/contracts/ged";
 import { gedFileType, parseGedManifest, type GedManifestItem, type GedQuery } from "@/lib/documents/ged-policy";
 import styles from "@/components/app-ui/operational/operational.module.css";
+import workspaceStyles from "./GedWorkspace.module.css";
 import { gedCommand } from "./ged-client";
 
 const labels: Record<GedSection, string> = { acervo: "Documentos e pastas", pesquisa: "Pesquisa avançada", "pastas-inteligentes": "Pastas inteligentes", importacoes: "Importações e lotes", processamento: "OCR e indexação", tarefas: "Minhas tarefas", fluxos: "Fluxos documentais", modelos: "Modelos de documentos", thesaurus: "Thesaurus", classes: "Classes documentais" };
@@ -104,19 +105,19 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
   const uploadStatus = items.map(i => `${i.file.name}: ${i.status}${i.error ? ` — ${i.error}` : ""}`);
   return <>
     <OperationalListFrame label={labels[section]} actions={<>
-      {(isCollection || section === "importacoes") && bootstrap.capabilities.import && <button className={styles.newButton} onClick={() => { setPanel("import"); if (!batchId) setBatchId(crypto.randomUUID()); }}><Upload />Importar lote</button>}
-      {isCollection && bootstrap.capabilities.import && <button className={styles.newButton} onClick={() => { setName(""); setPanel("folder"); }}><Plus />Pasta</button>}
-      {isCollection && <button className={styles.newButton} onClick={() => { setName(""); setPanel("smart"); }}>Salvar consulta</button>}
-      {isCollection && Object.keys(selected).length > 0 && <a className={styles.newButton} href={`/api/assinatura-digital/ged/download?zip=1&items=${encodeURIComponent(JSON.stringify(Object.entries(selected).map(([id, versionId]) => ({ id, versionId }))))}`}><Download />ZIP ({Object.keys(selected).length})</a>}
-      {section === "modelos" && bootstrap.capabilities.models && <button className={styles.newButton} onClick={() => { setTemplate(null); setName(""); setContent(""); setPanel("template"); }}><Plus />Criar / importar modelo</button>}
-      {section === "thesaurus" && bootstrap.capabilities.configure && <button className={styles.newButton} onClick={() => { setName(""); setContent(""); setPanel("term"); }}><Plus />Termo</button>}
+      {(isCollection || section === "importacoes") && bootstrap.capabilities.import && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Importar lote" title="Importar lote" onClick={() => { setPanel("import"); if (!batchId) setBatchId(crypto.randomUUID()); }}><Upload /><span className={workspaceStyles.actionLabel}>Importar lote</span></button>}
+      {isCollection && bootstrap.capabilities.import && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Pasta" title="Nova pasta" onClick={() => { setName(""); setPanel("folder"); }}><Plus /><span className={workspaceStyles.actionLabel}>Pasta</span></button>}
+      {isCollection && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Salvar consulta" title="Salvar consulta" onClick={() => { setName(""); setPanel("smart"); }}><Save /><span className={workspaceStyles.actionLabel}>Salvar consulta</span></button>}
+      {isCollection && Object.keys(selected).length > 0 && <a className={`${styles.newButton} ${workspaceStyles.action}`} aria-label={`Baixar ZIP (${Object.keys(selected).length})`} title={`Baixar ZIP (${Object.keys(selected).length})`} href={`/api/assinatura-digital/ged/download?zip=1&items=${encodeURIComponent(JSON.stringify(Object.entries(selected).map(([id, versionId]) => ({ id, versionId }))))}`}><Download /><span className={workspaceStyles.actionLabel}>ZIP ({Object.keys(selected).length})</span></a>}
+      {section === "modelos" && bootstrap.capabilities.models && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Criar / importar modelo" title="Criar / importar modelo" onClick={() => { setTemplate(null); setName(""); setContent(""); setPanel("template"); }}><Plus /><span className={workspaceStyles.actionLabel}>Criar / importar modelo</span></button>}
+      {section === "thesaurus" && bootstrap.capabilities.configure && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Termo" title="Novo termo" onClick={() => { setName(""); setContent(""); setPanel("term"); }}><Plus /><span className={workspaceStyles.actionLabel}>Termo</span></button>}
     </>} toolbar={<>
       <form className="flex min-w-0 flex-1 gap-2" onSubmit={event => { event.preventDefault(); setSmartId(""); void load(1, query, ""); }}>
         <input aria-label="Buscar documentos ou registros" placeholder={isCollection ? "Pesquisar no conteúdo dos documentos" : "Buscar por nome"} className={styles.searchInput} value={query.text} onChange={event => setQuery({ ...query, text: event.target.value })} />
-        <button type="submit" className={styles.dialogButton} disabled={busy}>Buscar</button>
+        <button type="submit" className={`${styles.dialogButton} ${workspaceStyles.action}`} aria-label="Buscar" title="Buscar" disabled={busy}><Search className={workspaceStyles.searchIcon} /><span className={workspaceStyles.actionLabel}>Buscar</span></button>
       </form>
       {isCollection && <><button className={styles.iconButton} onClick={() => void openTree()} aria-label="Explorar árvore de pastas"><FolderTree /></button>
-        <OperationalFilters label="Filtros de pesquisa" activeCount={Number(Boolean(query.status)) + Number(Boolean(query.folderId)) + Number(query.mode !== "words") + Number(query.thesaurus)}>
+        <OperationalFilters label="Filtros" activeCount={Number(Boolean(query.status)) + Number(Boolean(query.folderId)) + Number(query.mode !== "words") + Number(query.thesaurus)}>
           <label className={styles.filterFields}>Modo<select value={query.mode} onChange={event => setQuery({ ...query, mode: event.target.value as GedQuery["mode"] })}><option value="words">Todas as palavras</option><option value="phrase">Frase exata</option><option value="fragment">Fragmento literal</option><option value="proximity">Proximidade (duas palavras)</option></select></label>
           <label className={styles.filterFields}>Máximo de palavras entre termos<input type="number" min={0} max={50} value={query.distance} onChange={event => setQuery({ ...query, distance: Number(event.target.value) })} /></label>
           <label className={styles.filterFields}><input type="checkbox" checked={query.thesaurus} onChange={event => setQuery({ ...query, thesaurus: event.target.checked })} />Expandir equivalentes do thesaurus</label>

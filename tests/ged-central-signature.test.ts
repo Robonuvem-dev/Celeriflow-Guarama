@@ -11,6 +11,7 @@ import { centralRecords } from "../src/db/schema/signature-central";
 import { saveCentralDocumentType, saveCentralSigner, verifyCentralRecord } from "../src/lib/signatures/central-service";
 import { signGedVersionInCentral } from "../src/lib/documents/ged-central-signature";
 import { gedHash } from "../src/lib/documents/ged-storage";
+import { requestGedSignatures } from "../src/lib/documents/ged-service";
 import type { AppContext } from "../src/lib/platform/tenant-context";
 import type { CentralBlobStore } from "../src/lib/signatures/central-storage";
 
@@ -66,4 +67,16 @@ test("origem GED recusa acesso cruzado e política ICP para método interno ante
   await fixture.connection.db.update(documentClasses).set({ signaturePolicy: "ICP_REQUIRED" }).where(eq(documentClasses.code, "GED_TEST"));
   await assert.rejects(signGedVersionInCentral(context, input, dependencies), /política/);
   assert.equal((await fixture.connection.db.execute<{ total: number }>(sql`SELECT count(*)::int AS total FROM "SignatureCentralRecord"`)).rows[0].total, 1);
+});
+
+test("solicitação interna compartilha a transação GED e reserva somente a versão homologada vigente", { timeout: 15_000 }, async () => {
+  const [documentClass] = await fixture.connection.db.insert(documentClasses).values({ code: "GED_REQUEST_TEST", label: "Teste de solicitação", signaturePolicy: "INTERNAL_ALLOWED" }).returning();
+  await fixture.connection.db.insert(documents).values({ id: "ged-request", title: "Versão exata", documentType: "Arquivo", fileUrl: "fixture:request", documentClassId: documentClass.id });
+  await fixture.connection.db.insert(documentVersions).values([1, 2].map(number => ({ id: `ged-request-v${number}`, documentId: "ged-request", versionNumber: number, fileUrl: "fixture:request", hashSha256: gedHash(bytes), publicValidationCode: `CFV-${String(number).repeat(20)}` })));
+  await fixture.connection.db.insert(gedEntries).values({ documentId: "ged-request", ownerId: context.user.id, departmentId: "one", filename: "contrato.txt", mimeType: "text/plain", byteLength: bytes.length, editorialStatus: "HOMOLOGADO" });
+  const requested = await requestGedSignatures(context, "ged-request", [context.user.id]);
+  assert.equal(requested.documentVersionId, "ged-request-v2");
+  const rows = await fixture.connection.db.select().from(documentVersions).where(eq(documentVersions.documentId, "ged-request"));
+  assert.equal(rows.find(row => row.id === "ged-request-v1")?.status, "FINAL");
+  assert.equal(rows.find(row => row.id === "ged-request-v2")?.status, "PENDING_SIGNATURE");
 });
