@@ -12,6 +12,7 @@ export const administrationNavigation: ModuleNavGroup[] = [
   ] },
   { title: "Inteligência gerencial", items: [
     { title: "Business Intelligence", href: "/administracao/indicadores", icon: "barChart3" },
+    { title: "Smart TV", href: "/administracao/bi/smarttv", icon: "layoutDashboard" },
     { title: "Auditoria", href: "/administracao/auditoria", icon: "clipboardCheck" },
   ] },
 ];

@@ -1,0 +1,80 @@
+{
+  "run": "7d7c52e1-b257-401f-9632-ca377e4be552",
+  "at": "2026-10-31T20:55:33.395Z",
+  "status": "PASS",
+  "checks": [
+    "authenticated_editor_loaded",
+    "draft_does_not_replace_publication",
+    "image_uploaded_and_live_dataset_preview",
+    "three_page_programme_published_from_ui",
+    "anonymous_player_no_overlay_no_overflow_four_viewports",
+    "automatic_rotation",
+    "remote_keys_and_pause",
+    "offline_retention_and_reconnection",
+    "mixed_image_six_metrics_long_category_labels_hd_and_mobile",
+    "single_page_programme_receives_new_version",
+    "expired_public_manifest_stops_display",
+    "shared_operational_table_20_1_pagination",
+    "withdrawal_removes_public_media_and_programme",
+    "no_browser_runtime_errors"
+  ],
+  "viewports": [
+    {
+      "name": "hd",
+      "viewport": [
+        1280,
+        720
+      ],
+      "page": [
+        1280,
+        720
+      ],
+      "mainBottom": 657.046875,
+      "footerTop": 657.046875,
+      "overflow": false
+    },
+    {
+      "name": "full-hd",
+      "viewport": [
+        1920,
+        1080
+      ],
+      "page": [
+        1920,
+        1080
+      ],
+      "mainBottom": 986.09375,
+      "footerTop": 986.09375,
+      "overflow": false
+    },
+    {
+      "name": "4k",
+      "viewport": [
+        3840,
+        2160
+      ],
+      "page": [
+        3840,
+        2160
+      ],
+      "mainBottom": 1973.125,
+      "footerTop": 1973.125,
+      "overflow": false
+    },
+    {
+      "name": "mobile",
+      "viewport": [
+        390,
+        844
+      ],
+      "page": [
+        390,
+        844
+      ],
+      "mainBottom": 769.6875,
+      "footerTop": 769.6875,
+      "overflow": false
+    }
+  ],
+  "evidenceDirectory": "C:\\Users\\trici\\AppData\\Local\\Temp\\opencode\\bi-smarttv-7d7c52e1-b257-401f-9632-ca377e4be552"
+}

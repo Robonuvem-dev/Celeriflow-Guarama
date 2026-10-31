@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Cookie, X } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -58,6 +59,7 @@ function getServerConsentSnapshot(): ConsentSnapshot {
 }
 
 export function CookieConsent() {
+  const pathname = usePathname();
   const storedPreference = useSyncExternalStore(
     subscribeToConsent,
     readStoredConsent,
@@ -93,7 +95,8 @@ export function CookieConsent() {
     return () => window.removeEventListener(REVIEW_CONSENT_EVENT, openReview);
   }, []);
 
-  if (!isReady) return null;
+  // The public TV player has no optional tracking or administrative session.
+  if (!isReady || pathname === "/Smarttv" || pathname === "/smarttv") return null;
 
   return (
     <>
