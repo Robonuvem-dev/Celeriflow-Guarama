@@ -15,7 +15,7 @@ function hasChanges(input: object): boolean {
   return Object.values(input).some(value => value !== undefined);
 }
 
-export async function insertPersonWithAddress(tx: DatabaseTransaction, person: Pick<PersonRecord, "fullName" | "cpf" | "gender" | "raceColor" | "motherName" | "email" | "phonePrimary" | "birthDate" | "status">, address: { zipCode: string; streetName: string; number: string; complement: string | null }): Promise<PersonRecord> {
+export async function insertPersonWithAddress(tx: DatabaseTransaction, person: Pick<PersonRecord, "fullName" | "cpf" | "gender" | "raceColor" | "motherName" | "email" | "phonePrimary" | "birthDate" | "status"> & Partial<Pick<PersonRecord, "maritalStatus" | "nationality" | "phoneSecondary" | "whatsapp">>, address: { zipCode: string; streetName: string; number: string; complement: string | null }): Promise<PersonRecord> {
   const record = requireRow(await tx.insert(people).values(person).returning());
   await tx.insert(addresses).values({ ...address, personId: record.id, addressType: "Residencial" });
   return record;

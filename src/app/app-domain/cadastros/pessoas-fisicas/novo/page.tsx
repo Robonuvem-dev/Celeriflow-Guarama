@@ -13,12 +13,17 @@ export default function NovaPessoaFisicaPage() {
         <div className="grid grid-cols-1 gap-2 rounded border border-slate-300 bg-white p-3 shadow-sm md:grid-cols-2">
           <label className="field md:col-span-2">Nome completo *<input name="fullName" required className="input" /></label>
           <label className="field">CPF *<MaskedInput maskType="cpf" name="cpf" required placeholder="000.000.000-00" className="input" /></label>
-          <label className="field">Data de nascimento<input name="birthDate" type="date" className="input" /></label>
+          <label className="field">Data de nascimento *<input name="birthDate" type="date" required className="input" /></label>
           <label className="field">Sexo *<select name="gender" required className="input"><option value="">Selecione</option><option>Feminino</option><option>Masculino</option><option>Outro</option><option>Não informado</option></select></label>
+          <label className="field">Estado civil<select name="maritalStatus" className="input"><option value="">Não informado</option><option>Solteiro(a)</option><option>Casado(a)</option><option>União estável</option><option>Separado(a)</option><option>Divorciado(a)</option><option>Viúvo(a)</option></select></label>
+          <label className="field">Nacionalidade<input name="nationality" maxLength={100} className="input" /></label>
+          <label className="field">Situação cadastral<select name="status" defaultValue="Ativo" className="input"><option>Ativo</option><option>Inativo</option></select></label>
           <label className="field">Raça/cor *<select name="raceColor" required className="input"><option value="">Selecione</option><option>Branca</option><option>Preta</option><option>Parda</option><option>Amarela</option><option>Indígena</option><option>Não informada</option></select></label>
           <label className="field md:col-span-2">Nome da mãe *<input name="motherName" required className="input" /></label>
           <label className="field">E-mail<input name="email" type="email" className="input" /></label>
           <label className="field">Telefone<MaskedInput maskType="phone" name="phonePrimary" className="input" /></label>
+          <label className="field">Telefone secundário<MaskedInput maskType="phone" name="phoneSecondary" className="input" /></label>
+          <label className="field">WhatsApp<MaskedInput maskType="phone" name="whatsapp" className="input" /></label>
           <label className="field">CEP residencial *<MaskedInput maskType="cep" name="zipCode" required className="input" /></label>
           <label className="field">Logradouro residencial *<input name="streetName" required className="input" /></label>
           <label className="field">Número *<input name="number" required className="input" /></label>

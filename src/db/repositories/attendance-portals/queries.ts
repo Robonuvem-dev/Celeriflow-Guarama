@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { DatabaseExecutor } from "../../transaction";
 import { departments, employees } from "../../schema/administration";
@@ -17,9 +17,9 @@ export async function listAttendanceTickets(db: DatabaseExecutor, where: SQL | u
 
 export async function listOmbudsmanSummaries(db: DatabaseExecutor, where: SQL | undefined, userId: string, options: { limit?: number; offset?: number; stableOrder?: boolean } = {}) {
   // Only the legacy direct identity relation belongs to this listing's DTO.
-  const query = db.select({ id: ombudsmans.id, protocolNumber: ombudsmans.protocolNumber, type: ombudsmans.type, subject: ombudsmans.subject, isAnonymous: ombudsmans.isAnonymous, isConfidential: ombudsmans.isConfidential, status: ombudsmans.status, createdAt: ombudsmans.createdAt, person: { fullName: people.fullName }, grant: { canViewIdentity: ombudsmanAccessGrants.canViewIdentity } }).from(ombudsmans)
+  const query = db.select({ id: ombudsmans.id, protocolNumber: ombudsmans.protocolNumber, type: ombudsmans.type, subject: ombudsmans.subject, priority: ombudsmans.priority, isAnonymous: ombudsmans.isAnonymous, isConfidential: ombudsmans.isConfidential, status: ombudsmans.status, createdAt: ombudsmans.createdAt, person: { fullName: people.fullName }, grant: { canViewIdentity: ombudsmanAccessGrants.canViewIdentity } }).from(ombudsmans)
     .leftJoin(people, eq(people.id, ombudsmans.personId)).leftJoin(ombudsmanAccessGrants, and(eq(ombudsmanAccessGrants.ombudsmanId, ombudsmans.id), eq(ombudsmanAccessGrants.userId, userId)))
-    .where(where).orderBy(desc(ombudsmans.createdAt), ...(options.stableOrder ? [desc(ombudsmans.id)] : [])).$dynamic();
+    .where(where).orderBy(sql`CASE ${ombudsmans.priority} WHEN 'Urgente' THEN 0 WHEN 'Alta' THEN 1 WHEN 'Normal' THEN 2 ELSE 3 END`, desc(ombudsmans.createdAt), ...(options.stableOrder ? [desc(ombudsmans.id)] : [])).$dynamic();
   const rows = await (options.limit === undefined ? query : query.limit(options.limit).offset(options.offset ?? 0));
   return rows.map(({ grant, ...row }) => ({ ...row, accessGrants: grant ? [grant] : [] }));
 }

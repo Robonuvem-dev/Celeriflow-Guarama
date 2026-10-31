@@ -16,6 +16,7 @@ export const tickets = pgTable("Ticket", {
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(), updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
 });
 export const ombudsmans = pgTable("Ombudsman", {
+  priority: text("priority").notNull().default("Normal"), complaintTeam: text("complaintTeam"), complaintProfessionalId: text("complaintProfessionalId"),
   id: text("id").primaryKey().$defaultFn(createId), protocolNumber: text("protocolNumber").notNull().unique(), type: text("type").notNull(), subject: text("subject").notNull(), description: text("description").notNull(), isAnonymous: boolean("isAnonymous").notNull().default(false), isConfidential: boolean("isConfidential").notNull().default(false), status: text("status").notNull().default("Recebida"),
   channelId: text("channelId").notNull(), personId: text("personId"), departmentId: text("departmentId"), assigneeId: text("assigneeId"), processId: text("processId").unique(), response: text("response"), respondedAt: timestamp("respondedAt", { precision: 3 }), respondedById: text("respondedById"), concludedAt: timestamp("concludedAt", { precision: 3 }), concludedById: text("concludedById"),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(), updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
