@@ -18,10 +18,12 @@ export const transparencySettingsKey = "TRANSPARENCY_PUBLIC_PRESENTATION";
 export function defaultTransparencySettings(): TransparencySettings {
    // Câmara: código confirmado em camaraibema.pr.gov.br/portal-da-transparencia/,
    // link oficial "Informações a partir de 2023" aponta para ?entidade=2.
-   return transparencySettingsSchema.parse({ initialYear: 2025, availableYears: [2026, 2025], defaultSource: "API_IBEMA", countAccess: false, nativePersonnelPublication: false, openingHours: "", radarUrl: "https://pntp.atricon.org.br/consultar/", entities: [{ key: "prefeitura", name: MUNICIPALITY_INSTITUTION_NAME, enabled: true, nativeIds: [], externalCode: 1 }, { key: "camara", name: `Câmara Municipal de ${MUNICIPALITY_NAME}`, enabled: true, nativeIds: [], externalCode: 2 }], queries: {},customQueries:[], popup: { title: "", text: "", imageUrl: null, startsAt: null, endsAt: null, enabled: false } });
+   return transparencySettingsSchema.parse({ initialYear: 2025, availableYears: [2026, 2025], defaultSource: "NATIVO", countAccess: false, nativePersonnelPublication: false, openingHours: "", radarUrl: "https://pntp.atricon.org.br/consultar/", entities: [{ key: "prefeitura", name: MUNICIPALITY_INSTITUTION_NAME, enabled: true, nativeIds: [], externalCode: 1 }, { key: "camara", name: `Câmara Municipal de ${MUNICIPALITY_NAME}`, enabled: true, nativeIds: [], externalCode: 2 }], queries: {},customQueries:[], popup: { title: "", text: "", imageUrl: null, startsAt: null, endsAt: null, enabled: false } });
 }
 export async function getTransparencySettings(db: DatabaseExecutor) {
   const parameter = await readTransparencyParameter(db, transparencySettingsKey);
   if (!parameter) return defaultTransparencySettings();
-  return transparencySettingsSchema.parse(parameter.valor);
+  const settings=transparencySettingsSchema.parse(parameter.valor);
+  if(settings.defaultSource==="EXEMPLO")settings.defaultSource="NATIVO";
+  return settings;
 }

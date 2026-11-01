@@ -103,7 +103,8 @@ export default function IntegrationConnectionsClient({ catalog, connections }: {
   };
 
   const test = async () => {
-    if (!selectedConnection) return alert("Salve a conexão antes de testá-la.");
+    if (!selectedConnection) return alert("Salve a conexão antes de consultá-la.");
+    if(form.environment==="MOCK"||form.environment==="DEMO")return alert("Configure um canal externo para consultar a conexão. A validação local não realiza transmissão.");
     setPending(true);
     const result = await testIntegrationConnection(selectedConnection.id);
     setPending(false);
@@ -121,8 +122,8 @@ export default function IntegrationConnectionsClient({ catalog, connections }: {
 
   return (
     <PageFrame className="space-y-3 bg-slate-950 px-1 py-1 text-slate-100 md:px-2">
-      <PageHeader title="Console Técnico de Integrações" icon={<Cable className="size-4 shrink-0 text-indigo-400" />} action={<><Link href="/compras/exportacoes" className="hidden rounded-md border border-indigo-800/40 bg-indigo-950/40 px-2 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-900/60 sm:inline">Pacotes de Compras</Link><span className="hidden items-center gap-2 rounded-md border border-indigo-800/40 bg-indigo-950/40 px-2 py-1 font-mono text-xs text-indigo-300 sm:flex"><Layers className="h-3.5 w-3.5" />Modo POC ativo</span></>} className="border-slate-800 bg-slate-900 text-white [&>h1]:text-white" />
-      <p className="text-sm text-slate-400">Catálogo central de ambientes, parâmetros e evidências técnicas auditáveis para a comissão de avaliação da POC.</p>
+      <PageHeader title="Console Técnico de Integrações" icon={<Cable className="size-4 shrink-0 text-indigo-400" />} action={<><Link href="/compras/exportacoes" className="hidden rounded-md border border-indigo-800/40 bg-indigo-950/40 px-2 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-900/60 sm:inline">Pacotes de Compras</Link><span className="hidden items-center gap-2 rounded-md border border-indigo-800/40 bg-indigo-950/40 px-2 py-1 font-mono text-xs text-indigo-300 sm:flex"><Layers className="h-3.5 w-3.5" />Configuração da instância</span></>} className="border-slate-800 bg-slate-900 text-white [&>h1]:text-white" />
+      <p className="text-sm text-slate-400">Catálogo central de ambientes, parâmetros, conexões externas e histórico de processamento.</p>
 
       <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="rounded-lg border border-slate-800 bg-slate-900/80 p-3 backdrop-blur-md">
@@ -179,9 +180,9 @@ export default function IntegrationConnectionsClient({ catalog, connections }: {
                 >
                   {integrationEnvironments.map((environment) => (
                     <option key={environment} value={environment} disabled={!isEnvironmentAllowedForIntegration(selectedCode, environment)}>
-                       {environment === "MOCK" ? "Mock Local (Simulação POC)" : null}
-                       {environment === "DEMO" ? "Demonstração controlada" : null}
-                      {environment === "SANDBOX" ? "Sandbox Banco Virtual Robonuvem" : null}
+                        {environment === "MOCK" ? "Validação local — sem transmissão" : null}
+                        {environment === "DEMO" ? "Prévia de configuração" : null}
+                       {environment === "SANDBOX" ? "Homologação bancária" : null}
                       {environment === "HOMOLOGACAO" ? "Homologação Órgão Externo (bloqueada)" : null}
                       {environment === "PRODUCAO" ? "Produção Real (bloqueada)" : null}
                     </option>
@@ -228,7 +229,7 @@ export default function IntegrationConnectionsClient({ catalog, connections }: {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Cenário Mock (JSON)</Label>
+                <Label className="text-slate-300">Parâmetros de validação local (JSON)</Label>
                 <Textarea
                   className="min-h-32 font-mono text-xs bg-slate-950 border-slate-800 text-emerald-300"
                   value={form.mockScenarioJson}
@@ -239,7 +240,7 @@ export default function IntegrationConnectionsClient({ catalog, connections }: {
 
             {procurementConfiguration.supported ? (
               <div className={`rounded-xl border p-3.5 text-xs ${procurementConfiguration.ready ? "border-emerald-500/30 bg-emerald-950/30 text-emerald-200" : "border-amber-500/30 bg-amber-950/30 text-amber-200"}`}>
-                <p className="font-semibold">Pacotes de Compras {procurementConfiguration.ready ? "liberados para preparo POC" : "bloqueados por configuracao"}</p>
+                <p className="font-semibold">Pacotes de Compras {procurementConfiguration.ready ? "disponíveis para preparação" : "pendentes de configuração"}</p>
                 <p className="mt-1 leading-5">TCE e PNCP exigem referencia de credencial, leiaute identificado e operacoes declaradas. O preparo gera somente um pacote para entrega externa manual; nao transmite nem confirma remessa.</p>
                 {procurementConfiguration.issues.length ? <ul className="mt-2 list-disc space-y-1 pl-4">{procurementConfiguration.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : <p className="mt-2">Escopo declarado: {procurementConfiguration.operations.join(", ")}.</p>}
               </div>
@@ -249,8 +250,8 @@ export default function IntegrationConnectionsClient({ catalog, connections }: {
               <Button onClick={save} disabled={pending} className="bg-indigo-600 hover:bg-indigo-500 text-white">
                 <Save className="mr-2 h-4 w-4" /> Salvar Conexão
               </Button>
-              <Button variant="outline" onClick={test} disabled={pending || !selectedConnection || (procurementConfiguration.supported && !procurementConfiguration.ready)} className="border-slate-700 text-slate-200 hover:bg-slate-800">
-                <FlaskConical className="mr-2 h-4 w-4 text-emerald-400" /> Testar Execução
+              <Button variant="outline" onClick={test} disabled={pending || !selectedConnection || form.environment==="MOCK" || form.environment==="DEMO" || (procurementConfiguration.supported && !procurementConfiguration.ready)} className="border-slate-700 text-slate-200 hover:bg-slate-800">
+                <FlaskConical className="mr-2 h-4 w-4 text-emerald-400" /> Consultar conexão
               </Button>
             </div>
 

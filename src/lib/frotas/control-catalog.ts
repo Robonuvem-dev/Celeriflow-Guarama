@@ -60,6 +60,7 @@ export async function saveFleetDriver(tx: FleetControlTx, scope: FleetScope, raw
   }
   const values = { personId, employeeId: employee?.id || null, departmentId: input.departmentId, outsourced: input.outsourced, cnhNumber: input.cnhNumber, cnhCategories: [...new Set(input.cnhCategories)], cnhExpiresAt: dateOnly(input.cnhExpiresAt), active: input.active, suspensionUntil: input.suspensionUntil ? dateOnly(input.suspensionUntil) : null, pointLimit: input.pointLimit, pointWindowMonths: input.pointWindowMonths, policyReference: input.policyReference };
   const driver = requiredFleetRecord(previous ? await tx.update(fleetDrivers).set(values).where(eq(fleetDrivers.id, previous.id)).returning() : await tx.insert(fleetDrivers).values({ ...values, createdById: scope.actorId }).returning());
+  if (input.firstLicenseAt) await tx.update(fleetDrivers).set({ firstLicenseAt: dateOnly(input.firstLicenseAt) }).where(eq(fleetDrivers.id, driver.id));
   return { id: driver.id, type: "DRIVER" };
 }
 

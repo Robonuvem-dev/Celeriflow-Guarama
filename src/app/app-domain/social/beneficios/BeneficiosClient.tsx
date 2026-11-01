@@ -5,6 +5,7 @@ import { Gift, Plus, CheckCircle, Package } from "lucide-react";
 import { createSocialBenefit, createSocialProgram } from "../actions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import { SocialBenefitCatalogTable } from "./SocialBenefitCatalogTable";
 
 type SocialBenefit = { id: string; name: string; description: string | null; isRecurrent: boolean };
 type SocialProgram = { id: string; name: string; description: string | null; sphere: string };
@@ -97,25 +98,7 @@ export default function BeneficiosClient({ beneficiosInicial, programasInicial, 
             </button>
           </div>
 
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-              {beneficios.length > 0 ? (
-                beneficios.map((beneficio) => (
-                  <li key={beneficio.id} className="flex items-start justify-between gap-3 p-3 hover:bg-slate-50/50">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-800">{beneficio.name}</p>
-                      <p className="mt-0.5 text-sm text-slate-500">{beneficio.description || 'Sem descrição'}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${beneficio.isRecurrent ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {beneficio.isRecurrent ? 'Recorrente' : 'Eventual'}
-                      </span>
-                    </div>
-                  </li>
-                ))
-              ) : (
-                <li className="p-6 text-center text-slate-500 text-sm">Nenhum benefício cadastrado.</li>
-              )}
-            </ul>
+            <SocialBenefitCatalogTable title="Benefícios eventuais" items={beneficios.map(b => ({ id: b.id, name: b.name, description: b.description || "", tag: b.isRecurrent ? "Recorrente" : "Eventual" }))} />
         </section>
 
         <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -129,25 +112,7 @@ export default function BeneficiosClient({ beneficiosInicial, programasInicial, 
             </button>
           </div>
 
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-              {programas.length > 0 ? (
-                programas.map((programa) => (
-                  <li key={programa.id} className="flex items-start justify-between gap-3 p-3 hover:bg-slate-50/50">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-800">{programa.name}</p>
-                      <p className="text-sm text-slate-500 mt-0.5">{programa.description || 'Sem descrição'}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="px-2 py-1 text-xs font-medium rounded bg-emerald-100 text-emerald-700 border border-emerald-200">
-                        {programa.sphere}
-                      </span>
-                    </div>
-                  </li>
-                ))
-              ) : (
-                <li className="p-6 text-center text-slate-500 text-sm">Nenhum programa cadastrado.</li>
-              )}
-            </ul>
+            <SocialBenefitCatalogTable title="Programas governamentais" items={programas.map(p => ({ id: p.id, name: p.name, description: p.description || "", tag: p.sphere }))} />
         </section>
       </div>
 

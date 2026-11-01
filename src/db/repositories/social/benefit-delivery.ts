@@ -3,7 +3,7 @@ import type { DatabaseTransaction } from "../../transaction";
 import { socialBenefits, socialBenefitQuotas, socialBenefitRequestItems, socialBenefitRequests, socialBenefitStockMovements, socialBenefitStocks, socialUnits } from "../../schema/social";
 import { assertSocialUnitAccess, type SocialAccess } from "@/lib/social/access-policy";
 
-export async function deliverBenefitInTransaction(tx: DatabaseTransaction, access: SocialAccess, input: { itemId: string; actorId: string; reason: string; today: Date }): Promise<string> {
+export async function deliverBenefitInTransaction(tx: DatabaseTransaction, access: SocialAccess, input: { itemId: string; actorId: string; reason: string; today: Date; deliveredAt?: Date; requestedAt?: Date }): Promise<string> {
   const [initial] = await tx.select({ requestId: socialBenefitRequestItems.requestId }).from(socialBenefitRequestItems).where(eq(socialBenefitRequestItems.id, input.itemId));
   if (!initial) throw new Error("Item não encontrado.");
   await tx.execute(sql`SELECT "id" FROM "SocialBenefitRequest" WHERE "id" = ${initial.requestId} FOR UPDATE`);
@@ -28,6 +28,9 @@ export async function deliverBenefitInTransaction(tx: DatabaseTransaction, acces
     if (stock.length !== 1) throw new Error("Estoque insuficiente. O item continua autorizado e aguardando reposição.");
     await tx.insert(socialBenefitStockMovements).values({ benefitId: item.benefitId, unitId: request.unitId, direction: "OUT", quantity: item.quantity, requestItemId: item.id, createdBy: input.actorId });
   }
-  await tx.update(socialBenefitRequestItems).set({ status: "DELIVERED", deliveredAt: new Date(), deliveredBy: input.actorId, deliveryReason: input.reason }).where(eq(socialBenefitRequestItems.id, item.id));
+  const deliveredAt = input.deliveredAt || new Date();
+  const requestedAt = input.requestedAt || new Date(current.request.createdAt.toISOString().slice(0, 10) + "T00:00:00Z");
+  if (deliveredAt > new Date() || deliveredAt < requestedAt) throw new Error("Data de entrega futura ou anterior à solicitação.");
+  await tx.update(socialBenefitRequestItems).set({ status: "DELIVERED", deliveredAt, deliveredBy: input.actorId, deliveryReason: input.reason }).where(eq(socialBenefitRequestItems.id, item.id));
   return item.id;
 }

@@ -21,6 +21,7 @@ const tones = {
 };
 
 export function TransparencyCard({ item, tone = "blue", sectionTitle }: { item: DiscoveryItem; tone?: DiscoverySection["tone"]; sectionTitle?: string }) {
+  if(item.source==="EXEMPLO")return null;
   const Icon = icons[item.icon] || FileText;
   return (
     <Link id={item.id === "radar" ? "radar" : undefined} href={item.href} prefetch={false} className="group flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-5 text-left transition-[border-color,box-shadow] hover:border-sky-700 hover:shadow-md focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-sky-800 motion-reduce:transition-none">
@@ -29,7 +30,6 @@ export function TransparencyCard({ item, tone = "blue", sectionTitle }: { item: 
       <h3 className="text-base font-bold leading-snug text-slate-900 [overflow-wrap:anywhere]">{item.title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">{item.description}</p>
       {item.source === "API_IBEMA" && <span className="mt-3 text-xs font-semibold text-slate-600">Dados de referência · API de Ibema</span>}
-      {item.source === "EXEMPLO" && <span className="mt-3 text-xs font-semibold text-amber-800">Demonstração · dados fictícios</span>}
       <span className="mt-auto flex items-center gap-2 pt-4 text-sm font-bold text-[#0e4c7e]">{item.external ? <>Acessar site externo <ArrowUpRight className="size-4" aria-hidden="true" /></> : <>Acessar <ArrowRight className="size-4" aria-hidden="true" /></>}</span>
     </Link>
   );

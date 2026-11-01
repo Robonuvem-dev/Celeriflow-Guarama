@@ -73,7 +73,7 @@ export default async function LicitacaoDetalhesPage({ params }: { params: Promis
             <div><p className="font-medium text-muted-foreground">Publicação</p><p>{formatDate(licitacao.publicationDate, "dd/MM/yyyy")}</p></div>
             <div><p className="font-medium text-muted-foreground">Prazo para lances</p><p>{formatDate(licitacao.sessionDate, "dd/MM/yyyy HH:mm")}</p></div>
           </div>
-          <p className="border-t pt-3 text-xs text-muted-foreground">No POC, a data da sessão é o limite para apresentação de lances no portal do fornecedor.</p>
+          <p className="border-t pt-3 text-xs text-muted-foreground">A data da sessão é o limite para apresentação de lances no portal do fornecedor.</p>
         </CardContent>
       </Card>
 

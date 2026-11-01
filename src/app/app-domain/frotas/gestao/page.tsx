@@ -7,7 +7,10 @@ import { queryFleetControl } from "@/lib/frotas/control-queries";
 import { fleetControlForms } from "./forms";
 import type { FleetControlOperation } from "@/lib/frotas/control-policy";
 import { FleetControlForm } from "./FleetControlForm";
-import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
+import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import type { OperationalColumn } from "@/lib/operational-tables";
 
 export const dynamic = "force-dynamic";
 const areas = [["cadastro", "Cadastro / marcadores"], ["debitos", "Débitos / obrigações"], ["motoristas", "Motoristas / CNH"], ["agenda", "Agenda"], ["destinos", "Destinos"], ["guarita", "Viagens / guarita"], ["abastecimento", "Autorizações de combustível"], ["saldos", "Saldos contratuais"], ["autorizacoes", "Serviços / oficinas"], ["componentes", "Pneus / baterias"], ["multas", "Multas / pagamentos"], ["sinistros", "Ocorrências / sinistros"], ["catalogos", "Catálogos FIPE / CTB"], ["infracoes", "Tabela de infrações CTB"], ["modelos", "Modelos FIPE"], ["tiposMaquina", "Tipos de máquina"], ["anexos", "Anexos"], ["relatorios", "Dossiê / análises"]];
@@ -32,6 +35,12 @@ const operations: Record<string, FleetControlOperation[]> = {
   componentes: ["component", "installComponent", "removeComponent"], debitos: ["debtSettings", "debtDocument", "payDebt", "reverseDebtPayment"], multas: ["fine", "payFine", "reverseFinePayment", "fineStatus"],
   sinistros: ["occurrence", "claim", "claimStatus"], catalogos: ["catalog"], tiposMaquina: ["machineType"], destinos: ["destination"], saldos: ["fuelAgreement"], anexos: [], relatorios: [],
 };
+const managementColumns: OperationalColumn[] = [
+  { key: "label", label: "Registro", type: "identifier", initialWidth: 260, minWidth: 120, resizable: true, sortable: false, details: "overflow" },
+  { key: "status", label: "Situação", type: "status", initialWidth: 130, minWidth: 90, resizable: true, sortable: false, details: "overflow" },
+  { key: "detail", label: "Dados, origens e histórico", type: "text", initialWidth: 380, minWidth: 150, resizable: true, sortable: false, details: "overflow" },
+  { key: "actions", label: "Ações", type: "actions", initialWidth: 260, minWidth: 180, resizable: false, sortable: false, details: "none" },
+];
 export default async function FleetManagementPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const context = await getTenantContextForModule("FROTAS"), scope = fleetScope(context);
   const raw = Object.fromEntries(Object.entries(await searchParams).map(([key, value]) => [key, Array.isArray(value) ? key === "unitIds" ? value.join(",") : value[0] : value]));
@@ -39,7 +48,6 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
   const selected = typeof raw.edit === "string" ? result.rows.find((row) => row.id === raw.edit) : undefined;
   const canEdit = canPerformModuleOperation(context.user, "FROTAS", "update"), canCreate = canPerformModuleOperation(context.user, "FROTAS", "create");
   const filters = { area: result.query.area, q: result.query.q, unitId: result.query.unitId, unitIds: result.query.unitIds, departmentId: result.query.departmentId, driverId: result.query.driverId, catalogVersionId: result.query.catalogVersionId, nature: result.query.nature, from: result.query.from, to: result.query.to, status: result.query.status };
-  const href = (page: number) => `?${new URLSearchParams({ ...filters, page: String(page) })}`;
   const { departments, unitOptions, catalogOptions } = await fleetManagementOptions(fleetDatabase(context), scope, result.query.departmentId, result.query.area === "infracoes");
   const drivers = (await queryFleetControl(context, { area: "motoristas", departmentId: result.query.departmentId }, true)).rows;
   return <main className="mx-auto max-w-7xl space-y-5 p-3 sm:p-5">
@@ -55,7 +63,7 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
     {result.catalog && <section className="rounded border bg-white p-4 text-sm"><h2 className="font-semibold">{result.catalog.reference} · {result.catalog.records} enquadramentos</h2><p className="mt-1">{result.catalog.complete ? "Catálogo integral da edição declarada" : "Catálogo parcial/amostra"} · {result.catalog.sourceReference}</p></section>}
     {(canCreate || canEdit) && <div className="flex flex-wrap gap-2">{(operations[result.query.area] || []).map((name) => <Link key={name} href={`?${new URLSearchParams({ area: result.query.area, operation: name, unitId: result.query.unitId })}`} className="rounded border border-teal-300 bg-white px-3 py-2 text-sm font-semibold text-teal-800">{fleetControlForms[name].title}</Link>)}</div>}
     {operation && (canCreate || canEdit) && <FleetControlForm key={`${operation}:${selected?.id || "new"}`} operation={operation} initial={selected?.data || { unitId: result.query.unitId }} departmentId={scope.departmentId || ""} />}
-    <div className="space-y-3">{result.rows.map((row) => <article key={row.id} className="rounded-lg border border-slate-200 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><h2 className="font-semibold text-slate-900">{row.label}</h2><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{row.status}</span></div><p className="mt-1 text-xs text-slate-500">Registro: {row.id}</p><details className="mt-3"><summary className="cursor-pointer text-sm font-semibold text-teal-800">Dados, origens e histórico</summary><dl className="mt-3 grid gap-3 sm:grid-cols-2">{Object.entries(row.detail).map(([label, value]) => <div key={label}><dt className="text-xs font-semibold text-slate-500">{label}</dt><dd className="mt-1 break-words whitespace-pre-wrap text-sm text-slate-800">{value}</dd></div>)}</dl></details><div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold">
+    <OperationalTablePanel title={`Gestão de Frotas — ${result.query.area}`} triggerLabel={`Consultar ${result.total} registros em tabela`}><OperationalListFrame toolbar={<p className="text-sm">Filtro aplicado: {result.query.q || "todos"} · {result.total} registros</p>} pagination={<OperationalLinkPagination pathname="/frotas/gestao" page={result.page} total={result.total} values={filters} />}><OperationalTable preferenceId={`frotas-gestao-${result.query.area}`} caption={`Gestão de Frotas — ${result.query.area}`} columns={managementColumns} rows={result.rows.map(row => ({ id: row.id, label: row.label, values: { label: row.label, status: row.status, detail: Object.entries({ ...row.detail, ...(row.type === "DRIVER" && row.data.firstLicenseAt ? { "Primeira habilitação": String(row.data.firstLicenseAt) } : {}) }).map(([label,value]) => `${label}: ${value}`).join("\n") }, actions: <div className="flex gap-2 text-xs">
       {canEdit && row.type === "UNIT_CONTROL" && <Link href={`?area=cadastro&operation=unitControl&edit=${row.id}&unitId=${row.unitId}`} className="text-teal-800 underline">Configurar ficha</Link>}
       {row.type === "UNIT_CONTROL" && typeof row.data.assetId === "string" && row.data.assetId && <Link href={`/patrimonio/bens/${encodeURIComponent(row.data.assetId)}`} className="text-teal-800 underline">Abrir bem no Patrimônio</Link>}
       {canEdit && row.type === "DRIVER" && <Link href={`?area=motoristas&operation=driver&edit=${row.id}`} className="text-teal-800 underline">Editar CNH/política</Link>}
@@ -65,9 +73,8 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
       {row.type === "TRIP" && <a href={`/api/frotas/controle/relatorios?documentType=trip&documentId=${row.id}&format=pdf`} className="text-teal-800 underline">Planilha de acompanhamento</a>}
       {row.type === "ATTACHMENT" && <a href={`/api/frotas/controle/anexos/${row.id}`} className="text-teal-800 underline">Baixar arquivo protegido</a>}
       {row.unitId && <Link href={`/frotas?unitId=${row.unitId}`} className="text-teal-800 underline">Origem na Frota</Link>}
-    </div></article>)}</div>
+    </div> }))} /></OperationalListFrame></OperationalTablePanel>
     {!result.rows.length && result.query.area !== "relatorios" && <p className="rounded border border-dashed p-5 text-sm text-slate-600">Nenhum registro encontrado nos filtros e na repartição autorizada.</p>}
-    <ErpPagination page={result.page} total={result.total} pageSize={20} previousHref={href(result.page - 1)} nextHref={href(result.page + 1)} label="registros" />
     <section className="flex flex-wrap gap-4 rounded border bg-white p-4 text-sm font-semibold">{["pdf", "xlsx", "csv", "txt", "print"].map(format => <a key={format} href={`/api/frotas/controle/relatorios?${new URLSearchParams({ ...filters, format })}`} className="text-teal-800 underline">{format === "print" ? "Imprimir filtro" : `Relatório ${format.toUpperCase()}`}</a>)}<a href="/api/frotas/controle/relatorios?documentType=blankFuel&format=pdf" className="text-teal-800 underline">Autorização de abastecimento em branco</a><a href="/api/frotas/controle/relatorios?documentType=blankTrip&format=pdf" className="text-teal-800 underline">Planilha de viagem em branco</a><a href={`/api/frotas/controle/relatorios?${new URLSearchParams({ ...filters, area: "relatorios", format: "pdf" })}`} className="text-teal-800 underline">Dossiê das unidades selecionadas</a></section>
     {result.query.area === "anexos" && <Link href="/frotas/gestao/anexos" className="inline-block rounded bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Anexar arquivo ao registro da Frota</Link>}
     <p className="text-xs leading-6 text-slate-500">FIPE/CTB importados como amostra ficam identificados como parciais. Não há remessa SAGRES/TCE-PB nem alteração do Portal geral nesta integração.</p>

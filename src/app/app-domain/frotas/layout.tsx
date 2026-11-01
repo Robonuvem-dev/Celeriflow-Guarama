@@ -38,13 +38,13 @@ export default function FrotasLayout({ children }: { children: React.ReactNode }
   const workspace = useOptionalOperationalWorkspace();
   if (workspace) return <>{children}</>;
   return (
-    <ModuleShell
+    <div className="contents fleet-module-shell"><ModuleShell
       moduleTitle="Frotas"
       moduleCaption="Gestão operacional"
       moduleIcon="truck"
       navigation={navigation}
     >
       {children}
-    </ModuleShell>
+    </ModuleShell><style jsx global>{`.fleet-module-shell > [data-module-shell] { width: 100%; max-width: 100%; }`}</style></div>
   );
 }

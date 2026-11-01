@@ -113,7 +113,7 @@ export default function IntegrationRunModal({
         {/* Footer Actions */}
         <div className="flex items-center justify-between border-t border-slate-800 pt-4">
           <span className="text-xs text-slate-400">
-            Evidência técnica auditável para comissão de licitação / avaliação POC.
+            Registro técnico auditável do processamento da integração.
           </span>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={onClose} className="border-slate-700 bg-slate-800 text-slate-200">

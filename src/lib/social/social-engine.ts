@@ -2,6 +2,8 @@ import { eq, or } from "drizzle-orm";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { cadUnicoRecords, suasProntuarioRma } from "@/db/schema/social";
 import type { SuasRmaRecord } from "@/lib/contracts/social";
+import { socialCadastreSnapshots } from "@/db/schema/social-operation-models";
+import { readSocialParameters } from "@/db/repositories/social/parameters";
 
 export interface CadUnicoQueryResult {
   nis: string;
@@ -21,6 +23,9 @@ export async function queryCadUnicoMds(
   searchNisOrCpf: string
 ): Promise<CadUnicoQueryResult> {
   const cleanSearch = searchNisOrCpf.replace(/\D/g, "");
+  const {parameters}=await readSocialParameters(database);
+  const [snapshot]=await database.select().from(socialCadastreSnapshots).where(or(eq(socialCadastreSnapshots.cpf,cleanSearch),eq(socialCadastreSnapshots.nis,cleanSearch))).limit(1);
+  if(snapshot){const renda=Number(snapshot.perCapitaIncome);return {nis:snapshot.nis||"",cpf:snapshot.cpf,nomeCompleto:snapshot.name,rendaPerCapita:renda,composicaoFamiliar:snapshot.composition,municipio:snapshot.municipality,uf:snapshot.uf,statusCadastral:"IMPORTADO",elegivelBolsaFamilia:renda<=Number(parameters.bolsaFamiliaIncomeLimit),elegivelBPC:renda<=Number(parameters.bpcIncomeLimit)};}
 
   const [record] = await database.select().from(cadUnicoRecords).where(or(eq(cadUnicoRecords.nis, cleanSearch), eq(cadUnicoRecords.cpf, cleanSearch), eq(cadUnicoRecords.nis, searchNisOrCpf), eq(cadUnicoRecords.cpf, searchNisOrCpf))).limit(1);
 
@@ -37,8 +42,8 @@ export async function queryCadUnicoMds(
     municipio: record.municipio,
     uf: record.uf,
     statusCadastral: record.statusCadastral,
-    elegivelBolsaFamilia: renda <= 218.0,
-    elegivelBPC: renda <= 353.0,
+    elegivelBolsaFamilia: renda <= Number(parameters.bolsaFamiliaIncomeLimit),
+    elegivelBPC: renda <= Number(parameters.bpcIncomeLimit),
   };
 }
 

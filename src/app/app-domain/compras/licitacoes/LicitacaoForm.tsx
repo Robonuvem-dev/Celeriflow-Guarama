@@ -146,7 +146,7 @@ export function LicitacaoForm({ data, processos = [] }: { data?: BiddingData; pr
                   type="datetime-local" 
                   defaultValue={data?.sessionDate ? format(new Date(data.sessionDate), "yyyy-MM-dd'T'HH:mm") : ""} 
                 />
-                <p className="text-xs text-muted-foreground">No POC, esta data limita os lances enviados pelo portal do fornecedor.</p>
+                <p className="text-xs text-muted-foreground">Esta data limita os lances enviados pelo portal do fornecedor.</p>
               </div>
             </div>
 

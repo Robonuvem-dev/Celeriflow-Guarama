@@ -88,9 +88,9 @@ export default async function RHDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Link href="/rh/poc" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
+              <Link href="/rh/parametrizacoes" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <FileText className="mr-3 size-5 text-blue-500" />
-                <div><div className="font-semibold">Demonstração POC</div><div className="text-xs text-muted-foreground">Base fictícia, nove tipos de folha e parâmetros documentais</div></div>
+                <div><div className="font-semibold">Parametrizações da folha</div><div className="text-xs text-muted-foreground">Regimes, rubricas, critérios e vigências de cálculo</div></div>
               </Link>
               <Link href="/rh/diarias" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <FileText className="mr-3 size-5 text-blue-500" />

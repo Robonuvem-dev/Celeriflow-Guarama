@@ -41,13 +41,13 @@ test("registros socioassistenciais rejeitam datas e valores inválidos", () => {
   assert.equal(financialEntrySchema.safeParse({ ...base, value: "100.10" }).success, true);
 });
 
-test("modelos POC têm referências e identificadores de campo sem colisão", () => {
+test("modelos municipais têm referências e identificadores de campo sem colisão", () => {
   const codes = socialDocumentTemplates.map((template) => template.code);
   assert.equal(new Set(codes).size, codes.length);
   for (const template of socialDocumentTemplates) {
     const keys = template.sections.flatMap((section) => section.fields.map((field) => field.key));
     assert.equal(new Set(keys).size, keys.length, template.code);
-    assert.equal(template.version, "POC-1.0");
+    assert.equal(template.version, "1.0");
     assert.match(template.source, /^https:\/\//);
     assert.ok(template.signatures.length);
   }

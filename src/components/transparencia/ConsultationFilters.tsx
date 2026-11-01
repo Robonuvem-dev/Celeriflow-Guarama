@@ -6,7 +6,7 @@ import type { TransparencySettings } from "@/lib/transparencia/presentation-sett
 import { publicTransparencyPath } from "@/lib/transparencia/publication-policy";
 import { SourceSelector } from "./SourceSelector";
 
-export const transparencySourceLabels = { DOCUMENTOS: "Documentos municipais publicados", NATIVO: "Registros nativos Celeriflow", API_IBEMA: "API pública de Ibema — dados de referência", EXEMPLO: "Exemplos fictícios para apresentação" };
+export const transparencySourceLabels = { DOCUMENTOS: "Documentos municipais publicados", NATIVO: "Registros nativos Celeriflow", API_IBEMA: "API pública de Ibema — dados de referência", EXEMPLO: "Fonte desativada" };
 const field = "mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-sky-800";
 
 export function ConsultationFilters({ query, collection, settings }: { query: TransparencyQuery; collection: PublicCollection; settings: TransparencySettings }) {

@@ -11,6 +11,7 @@ export async function createFleetTestDatabase(history = true) {
     if (history) for (const directory of readdirSync("prisma/migrations-ibema", { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort()) {
       await fixture.database.exec(readFileSync(`prisma/migrations-ibema/${directory}/migration.sql`, "utf8"));
     }
+    if (history) await fixture.database.exec(readFileSync("db/migrations/20261101181000_fleet_documentary_fields/migration.sql", "utf8"));
     return fixture;
   } catch (error) { await fixture.close(); throw error; }
 }

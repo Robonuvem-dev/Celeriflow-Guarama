@@ -9,14 +9,12 @@ import { readPensionConfiguration } from "@/db/repositories/personnel-pages/cata
 export const dynamic = "force-dynamic";
 export default async function PayrollPensionsPage() {
   const context = await getTenantContextForModule("RH");
-  const { sets, regimes, contracts } = await readPensionConfiguration(context.database ?? db);
+  const { sets, contracts } = await readPensionConfiguration(context.database ?? db);
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-    <ErpPageTitle title="Pensões alimentícias — configuração e cálculo" description="Beneficiário, processo, vigência, valor fixo/percentual, base e dedução fiscal explícitos." action={<Link href="/rh/poc">Pacote POC</Link>} />
-    <p className="rounded border bg-blue-50 p-3 text-xs">Escolha BRUTO, APOS_PREVIDENCIA ou APOS_IRRF. A base APOS_IRRF não permite dedução do próprio IRRF. Valores/julgados de exemplo são demonstrativos; os descontos aparecem no cálculo, recibo e relatório de pensões. A política JSON abaixo substitui a lista inteira do conjunto.</p>
+    <ErpPageTitle title="Pensões alimentícias — configuração e cálculo" description="Beneficiário, processo, vigência, valor fixo/percentual, base e dedução fiscal explícitos." action={<Link href="/rh/parametrizacoes">Parametrizações</Link>} />
+    <p className="rounded border bg-blue-50 p-3 text-xs">Configure os beneficiários e critérios conforme a decisão judicial. Escolha BRUTO, APOS_PREVIDENCIA ou APOS_IRRF. A base APOS_IRRF não permite dedução do próprio IRRF. A política abaixo substitui a lista inteira do conjunto.</p>
     {sets.map(set => {
-      const eligible = contracts.filter(contract => regimes.find(regime => regime.id === contract.regimeId)?.ruleSetId === set.id);
-      const source = eligible.find(contract => contract.employee.personId), beneficiary = eligible.find(contract => contract.employee.personId && contract.employee.personId !== source?.employee.personId);
-      const model = { origin: "PENSOES_FOLHA", legalReference: "POC: modelo judicial fictício, substituir pelos termos da decisão na implantação", entries: source && beneficiary ? [{ id: "MODELO_01", contractId: source.id, beneficiaryPersonId: beneficiary.employee.personId, courtReference: "PROCESSO FICTÍCIO POC-001/2026", startsAt: "2026-01-01", endsAt: null, payrollTypes: ["Mensal", "13º", "Férias"], method: "PERCENTUAL", value: "20.00", basis: "APOS_PREVIDENCIA", deductFromIncomeTax: true }] : [] };
+      const model = { origin: "PENSOES_FOLHA", legalReference: "Informar decisão judicial e vigência", entries: [] };
       return <section key={set.id} className="rounded border bg-white p-3 text-xs"><h2 className="mb-2 font-semibold">{set.name} · {set.id}</h2>
         <OperationForm command="pensoes-configurar" title="Gravar lista de pensões deste conjunto" fields={[{ name: "ruleSetId", label: "Conjunto", type: "hidden", value: set.id }, { name: "requestKey", label: "Chave da alteração", value: randomUUID(), required: true }, { name: "policy", label: "Política e beneficiários (JSON)", type: "textarea", value: JSON.stringify(set.rules[0]?.value ?? model, null, 2), required: true }]} />
       </section>;
