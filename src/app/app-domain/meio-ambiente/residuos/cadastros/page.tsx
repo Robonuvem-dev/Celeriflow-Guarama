@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db/client";
 import { findOperationalInstance } from "@/db/repositories/platform/instance-configuration";
-import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { parseRecyclingEntries, recyclingCatalogs, type RecyclingEntry } from "@/lib/environment/recycling-catalog";
 import { saveRecyclingEntry } from "./actions";
 
@@ -19,6 +19,8 @@ function EntryForm({ kind, entry }: { kind: RecyclingEntry["kind"]; entry?: Recy
 }
 export default async function RecyclingCatalogPage({ searchParams }: { searchParams: Promise<{ catalog?: string; q?: string }> }) {
   const context = await getTenantContextForModule("MEIO_AMBIENTE");
+  const canCreate = canPerformModuleOperation(context.user, "MEIO_AMBIENTE", "create");
+  const canUpdate = canPerformModuleOperation(context.user, "MEIO_AMBIENTE", "update");
   const query = await searchParams;
   const kind: RecyclingEntry["kind"] = Object.hasOwn(recyclingCatalogs, query.catalog ?? "") ? query.catalog as RecyclingEntry["kind"] : "units";
   const instance = await findOperationalInstance(context.database ?? db);
@@ -27,7 +29,7 @@ export default async function RecyclingCatalogPage({ searchParams }: { searchPar
   return <main className="space-y-5 p-5"><h1 className="text-xl font-semibold">Cadastros de reciclagem</h1>
     <nav className="flex flex-wrap gap-3">{Object.entries(recyclingCatalogs).map(([key, label]) => <Link aria-current={key === kind ? "page" : undefined} className="underline" key={key} href={`?catalog=${key}`}>{label}</Link>)}</nav>
     <h2>{recyclingCatalogs[kind]}</h2><form><input type="hidden" name="catalog" value={kind} /><input aria-label="Buscar cadastro" name="q" defaultValue={query.q} className="rounded border p-2" /><button className="p-2">Buscar</button></form>
-    {!instance ? <p>Configure a instância municipal para habilitar os cadastros.</p> : <><details><summary>Novo cadastro</summary><EntryForm kind={kind} /></details>
-    <ul className="space-y-3">{entries.map(entry => <li key={entry.code} className="rounded border p-3"><p>{entry.code} · {entry.name} · {entry.active ? "Ativo" : "Inativo"}</p><p>{entry.description} {entry.address}</p><details><summary>Editar cadastro</summary><EntryForm kind={kind} entry={entry} /></details></li>)}</ul>{!entries.length && <p>Nenhum cadastro encontrado.</p>}</>}
+    {!instance ? <p>Configure a instância municipal para habilitar os cadastros.</p> : <>{canCreate && <details><summary>Novo cadastro</summary><EntryForm kind={kind} /></details>}
+    <ul className="space-y-3">{entries.map(entry => <li key={entry.code} className="rounded border p-3"><p>{entry.code} · {entry.name} · {entry.active ? "Ativo" : "Inativo"}</p><p>{entry.description} {entry.address}</p>{canUpdate && <details><summary>Editar cadastro</summary><EntryForm kind={kind} entry={entry} /></details>}</li>)}</ul>{!entries.length && <p>Nenhum cadastro encontrado.</p>}</>}
   </main>;
 }
