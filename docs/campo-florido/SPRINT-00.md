@@ -99,6 +99,8 @@ As observações abaixo foram recuperadas da planilha após a auditoria estátic
 
 ## Backlog real prioritário
 
+Atualização da Sprint 01: catálogos e permissões foram publicados em 185fdd7; movimentos/saldos ambientais foram implementados no incremento seguinte descrito em [SPRINT-01.md](SPRINT-01.md). A matriz acima preserva a avaliação do commit-base. Resultados novos não transformam inspeção estática em homologação oficial.
+
 1. Validar catálogos com persistência real isolada, duplicidade, instâncias, concorrência e falha de auditoria; ajustar UI às operações permitidas.
 2. Definir movimentos e saldos ambientais preservando as regras patrimoniais; somente então relatórios/vendas/gráficos (S01/S02).
 3. Vincular originais e anexos às normas existentes e ampliar autorização/formatos (S03); depois pesquisa, relações, impressão e comentários (S04).

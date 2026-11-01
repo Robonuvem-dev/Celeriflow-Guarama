@@ -22,11 +22,14 @@ Este plano registra entregas incrementais; nenhuma sprint está homologada apena
 - [x] Condicionar formulários de inclusão e edição às operações permitidas (10.4).
 - [x] Testar os cinco catálogos, estabilidade de ID, instâncias, parâmetros alheios, duplicidade, concorrência e rollback da inclusão/edição.
 - [ ] Testar no navegador os perfis consulta/criação/edição e requisições sem autorização; coletar evidência funcional (10.4).
-- [ ] Confirmar vínculos necessários de material/tipo/unidade/depósito/centro sem criar outros catálogos (10.5–10.9).
-- [ ] Projetar e implementar entrada de recicláveis e saldo por depósito, preservando proteção do patrimônio e regras contábeis (10.10).
-- [ ] Implementar saída para centro/destinação, quantidade, valor financeiro, saldo atualizado e histórico desde coleta (10.11).
-- [ ] Validar idempotência, estoque insuficiente, concorrência, isolamento e rollback dos movimentos.
-- [x] Build completo e regressão deste incremento aprovados; checkpoint pronto para publicação somente na branch autorizada.
+- [x] Confirmar vínculos necessários de material/tipo/unidade/depósito/centro sem criar outros catálogos (10.5–10.9).
+- [x] Implementar entrada de recicláveis e saldo por depósito/total do material, preservando proteção do patrimônio e regras contábeis (10.10).
+- [x] Implementar saída para centro/destinação, quantidade, valor financeiro, saldo atualizado e histórico desde coleta (10.11).
+- [x] Validar idempotência, estoque insuficiente, concorrência, isolamento, histórico imutável e rollback dos movimentos em banco isolado.
+- [x] Testar renderização de consulta/operação, destinos ativos, saída sem saldo e escape de texto.
+- [x] Concluir regressão/build do incremento de movimentos e registrar evidências em SPRINT-01.md/CHECKPOINT.md.
+- [ ] Homologar o fluxo com sessão autenticada e migração aplicada somente ao banco isolado de homologação; avaliar estorno vinculado antes do uso definitivo.
+- [x] Build completo e regressão do incremento de catálogos 185fdd7 aprovados e publicados somente na branch autorizada.
 
 ## Sprint 02 — CF10 relatórios e gráficos
 

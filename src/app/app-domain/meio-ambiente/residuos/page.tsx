@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { NewWasteSheet } from "../components/NewWasteSheet";
 import { WasteRowActions } from "../components/WasteRowActions";
@@ -31,7 +32,7 @@ export default async function ResiduosPage(props: { searchParams: Promise<{ [key
     values: { generator: waste.generatorName, type: waste.wasteType, quantity: `${waste.quantityKg.toLocaleString("pt-BR")} kg`, destination: waste.destination, date: new Date(waste.date).toLocaleDateString("pt-BR") },
     actions: <WasteRowActions waste={waste} enterprises={enterprises} />,
   }));
-  return <OperationalListFrame label="Lista de resíduos" actions={<NewWasteSheet enterprises={enterprises} />}
+  return <OperationalListFrame label="Lista de resíduos" actions={<div className="flex items-center gap-3"><Link className="text-sm underline" href="/meio-ambiente/residuos/estoque">Estoque de recicláveis</Link><NewWasteSheet enterprises={enterprises} /></div>}
     toolbar={<EnvironmentListToolbar pathname="/meio-ambiente/residuos" values={searchParams} placeholder="Buscar registros..." filters={[{ name: "tipo", label: "Tipo", options: ["Organico", "Reciclavel", "Perigoso", "Eletronico"] }]} />}
     pagination={<OperationalLinkPagination pathname="/meio-ambiente/residuos" values={searchParams} page={list.currentPage} total={list.filtered.length} />}>
     <OperationalTable columns={columns} rows={rows} preferenceId="environment-waste" caption="Controle de resíduos" emptyMessage="Nenhum registro de resíduo encontrado." />
