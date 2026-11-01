@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function PasswordChangeForm({ email, firebaseUid }: { email: string; firebaseUid: string }) {
+export function PasswordChangeForm({ email, firebaseUid, returnTo = "/portal-servidor/entrar" }: { email: string; firebaseUid: string; returnTo?: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +27,7 @@ export function PasswordChangeForm({ email, firebaseUid }: { email: string; fire
       const logout = await fetch("/api/auth/session/logout", { method: "POST" });
       if (!logout.ok) throw new Error("A senha foi alterada, mas não foi possível encerrar a sessão. Utilize Sair antes de entrar novamente.");
       await signOut(auth);
-      router.replace("/portal-servidor/entrar"); router.refresh();
+      router.replace(returnTo); router.refresh();
     } catch (failure) {
       setError(failure instanceof Error && !failure.message.startsWith("Firebase:") ? failure.message : "Não foi possível atualizar a senha. Confira a senha atual e a política de senha da sua conta.");
     } finally { setPending(false); }

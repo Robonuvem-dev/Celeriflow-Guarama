@@ -7,6 +7,8 @@ import { OperationalListFrame } from "@/components/app-ui/operational/Operationa
 import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
 import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
 import styles from "@/components/app-ui/operational/operational.module.css";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase/client";
 
 const columns: OperationalColumn[] = [
   { key: "name", label: "Nome", type: "text", initialWidth: 220, minWidth: 110, resizable: true, sortable: false, details: "overflow" },
@@ -112,6 +114,10 @@ export default function UsuariosClient({
       alert(result.error);
     } else {
       setIsModalOpen(false);
+      if (!formData.id && formData.ativo) {
+        try { await sendPasswordResetEmail(auth, formData.email.trim()); }
+        catch { alert("Usuário salvo. Não foi possível enviar a definição de senha; utilize a recuperação no login."); }
+      }
     }
     setIsSubmitting(false);
   }
@@ -223,6 +229,8 @@ export default function UsuariosClient({
 
               <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
                 Os acessos a módulos e operações são definidos exclusivamente pelas permissões do perfil selecionado.
+                {!formData.id && <p>O usuário ativo receberá um link individual para definir a senha. Senhas não são enviadas em texto por e-mail.</p>}
+                {formData.id && <button type="button" className="mt-2 underline" onClick={async () => { try { await sendPasswordResetEmail(auth, formData.email.trim()); alert("Instruções de redefinição solicitadas para o e-mail do usuário."); } catch { alert("Não foi possível enviar. Utilize a recuperação no login."); } }}>Enviar redefinição de senha por e-mail</button>}
               </div>
             </form>
 

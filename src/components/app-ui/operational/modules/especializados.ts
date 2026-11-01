@@ -30,10 +30,11 @@ export const operationalModules: OperationalModuleConfig[] = [
       { title: "Estrutura", items: structureKinds.filter(kind => !["LOTE", "SEPULTURA"].includes(kind)).map(kind => ({ title: structureConfig[kind].title, href: `/cemiterios/estrutura?tipo=${kind}`, icon: "building2", query: { key: "tipo", values: [kind] } })) },
       { title: "Ocupação", items: ["LOTE", "SEPULTURA"].map(kind => ({ title: kind === "LOTE" ? "Lotes" : "Sepulturas / Lóculos", href: `/cemiterios/ocupacao?tipo=${kind}`, icon: "mapPin", query: { key: "tipo", values: [kind] } })) },
       { title: "Atendimento", items: [{ title: "Processos funerários", href: "/cemiterios/processos", icon: "calendarClock" }, { title: "Transferências", href: "/cemiterios/transferencias", icon: "arrowRightLeft" }] },
-      { title: "Tributário e análises", items: [{ title: "Taxas e guias", href: "/cemiterios/taxas", icon: "receiptText" }, { title: "Consulta unificada", href: "/cemiterios/consulta", icon: "search" }, { title: "Relatório de sepultados", href: "/cemiterios/relatorio", icon: "barChart3" }] },
+      { title: "Tributário e análises", items: [{ title: "Taxas e guias", href: "/cemiterios/taxas", icon: "receiptText" }, { title: "Consulta unificada", href: "/cemiterios/consulta", icon: "search" }, { title: "Relatório de sepultados", href: "/cemiterios/relatorio", icon: "barChart3" }, { title: "Relatórios e mapa", href: "/cemiterios/complementos", icon: "mapPin" }] },
     ],
     routes: [
       { pathname: "/cemiterios/consulta", title: "Consulta unificada de processos funerários" },
+      { pathname: "/cemiterios/complementos", title: "Relatórios e mapa cemiterial" },
       { pathname: "/cemiterios/processos", title: "Processos funerários", excludeQuery: { view: ["novo"] } },
       { pathname: "/cemiterios/taxas", title: "Taxas cemiteriais por evento", excludeQuery: { view: ["nova-regra", "adicional"] } },
     ],

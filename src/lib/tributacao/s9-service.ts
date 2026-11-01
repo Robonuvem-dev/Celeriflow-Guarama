@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
 import { JsonNull } from "@/db/json";
@@ -23,6 +24,7 @@ import { postTaxAssessmentAdjustment, reclassifyActiveDebtInTransaction, returnA
 import { MUNICIPALITY_LABEL, MUNICIPALITY_NAME } from "@/lib/municipality-identity";
 import { lockWorkflowRows, validateBurialIdentity, validateTransferPair, validateWorkflowDate, workflowRequest } from "../cemeteries/workflow";
 import { recordCemeteryFeeEvent, chargeCemeteryFeeEvent } from "../cemeteries/fees-service";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
 
 const fullActor = (actor: Actor) => ({ usuarioId: actor.usuarioId, employeeId: actor.employeeId ?? null, allowedBudgetUnitIds: actor.allowedBudgetUnitIds });
 const money = (value: number | string | Decimal) => new Decimal(String(value)).toDecimalPlaces(2);
@@ -800,6 +802,10 @@ export async function registerDeceased(connection: DatabaseConnection, actor: Ac
   if (input.scheduledAt) validateWorkflowDate(input.scheduledAt, "Data do agendamento");
   if (input.birthDate && input.birthDate > input.deathDate) throw new TributarioS9Error("Nascimento posterior ao óbito.");
   const burialType = validateBurialIdentity(input);
+  const burialDetails = input.groups?.sepultamento;
+  const externalEntry = burialDetails && typeof burialDetails === "object" && !Array.isArray(burialDetails) && "natureza" in burialDetails && burialDetails.natureza === "ENTRADA_EXTERNA"
+    ? z.object({ natureza: z.literal("ENTRADA_EXTERNA"), cemiterioOrigem: z.string().trim().min(1).max(2000), documentoTranslado: z.string().trim().min(1).max(500), dataTranslado: z.iso.date() }).parse(burialDetails) : null;
+  if (externalEntry && (externalEntry.dataTranslado < input.deathDate.toISOString().slice(0, 10) || externalEntry.dataTranslado > (input.scheduledAt ?? new Date()).toISOString().slice(0, 10))) throw new TributarioS9Error("Data do translado deve estar entre o óbito e o sepultamento agendado.");
   if (burialType === "NATIMORTO" && !input.motherName?.trim()) throw new TributarioS9Error("Informe o nome da mãe para o registro de natimorto.");
   if ((!input.funeralHomeId || !input.causeId || !input.chapelId) && !(input.unidentified && input.exceptionReason?.trim())) throw new TributarioS9Error("Funerária, causa do óbito e capela são obrigatórias; a exceção para não identificado exige motivo.");
   const result = await withDatabaseTransaction(connection, async (tx) => {
@@ -842,6 +848,10 @@ export async function registerDeceased(connection: DatabaseConnection, actor: Ac
     const deceased = requiredDebtRow((reusable ? await tx.update(cemeteryDeceased).set(deceasedData).where(eq(cemeteryDeceased.id, reusable.id)).returning() : await tx.insert(cemeteryDeceased).values(deceasedData).returning())[0]);
     const scheduledAt = input.scheduledAt ?? new Date();
     const [process] = await tx.insert(cemeteryProcesses).values({ receiptCode: code("AG-CEM"), processType: "SEPULTAMENTO", status: finalizeNow ? "SEPULTADO" : "AGENDADO", burialType: input.burialType ?? (input.unidentified ? "NAO_RECLAMADO" : "NORMAL"), deceasedId: deceased.id, cemeteryId: input.cemeteryId, graveId: grave.id, chapelId: input.chapelId || null, funeralHomeId: input.funeralHomeId || null, declarantTaxpayerId, declarantDebtSnapshot: json(debtSnapshot), scheduledAt, performedAt: finalizeNow ? scheduledAt : null, createdByUsuarioId: actor.usuarioId }).returning();
+    if (externalEntry) {
+      await tx.insert(cemeteryChangeHistory).values({ targetType: "SEPULTAMENTO", targetId: process.id, fieldName: "ingressoExterno", newValue: json({ ...externalEntry, deceasedId: deceased.id, cemeteryId: input.cemeteryId, graveId: grave.id, status: process.status }), actorUsuarioId: actor.usuarioId });
+      await insertAuditEvent(tx, { actorUsuarioId: actor.usuarioId, eventType: "CEMETERY_EXTERNAL_ENTRY_REGISTERED", targetType: "CEMETERY_PROCESS", targetId: process.id });
+    }
     if (finalizeNow) {
       const occupantCount = grave.occupantCount + 1;
       await tx.update(cemeteryGraves).set({ occupantCount, status: occupantCount >= grave.capacity ? "OCUPADA" : grave.status }).where(eq(cemeteryGraves.id, grave.id));

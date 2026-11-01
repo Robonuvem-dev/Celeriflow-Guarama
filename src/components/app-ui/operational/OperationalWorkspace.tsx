@@ -79,6 +79,7 @@ export function OperationalWorkspace({ title, moduleTitle, moduleCaption, module
           <DropdownMenuContent align="end" className="w-64 overflow-y-hidden">
             <DropdownMenuLabel>{userName}</DropdownMenuLabel>
             <DropdownMenuLabel>{userRole} · CeleriFlow {APP_VERSION}</DropdownMenuLabel>
+            <DropdownMenuItem render={<Link href="/configuracoes/conta" />}><UserRound />Minha conta e senha</DropdownMenuItem>
             <DropdownMenuItem render={<Link href="/notificacoes" />}><Bell />Notificações internas</DropdownMenuItem>
             <DropdownMenuItem onClick={() => void onLogout()}><LogOut />Sair</DropdownMenuItem>
           </DropdownMenuContent>

@@ -210,6 +210,7 @@ export default function FiscalizacaoClient({ data }: { data: Data }) {
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
       <OperationalHeaderActions>
         <div className="flex gap-1">
+          <a href="/tributacao/fiscalizacao/gestao" className={input}>Gestão, prazos e relatórios</a>
           <input
             className={`${input} w-28`}
             value={competence}

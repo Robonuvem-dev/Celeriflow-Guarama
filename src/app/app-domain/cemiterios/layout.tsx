@@ -8,7 +8,7 @@ const navigation: ModuleNavGroup[] = [
   { title: "Estrutura", items: structureKinds.filter(k => !["LOTE", "SEPULTURA"].includes(k)).map(k => ({ title: structureConfig[k].title, href: `/cemiterios/estrutura?tipo=${k}`, icon: "building2", query: { key: "tipo", values: [k] } })) },
   { title: "Ocupação", items: ["LOTE", "SEPULTURA"].map(k => ({ title: k === "LOTE" ? "Lotes" : "Sepulturas / Lóculos", href: `/cemiterios/ocupacao?tipo=${k}`, icon: "mapPin", query: { key: "tipo", values: [k] } })) },
   { title: "Atendimento", items: [{ title: "Processos funerários", href: "/cemiterios/processos", icon: "calendarClock" }, { title: "Transferências", href: "/cemiterios/transferencias", icon: "arrowRightLeft" }] },
-  { title: "Tributário e análises", items: [{ title: "Taxas e guias", href: "/cemiterios/taxas", icon: "receiptText" }, { title: "Consulta unificada", href: "/cemiterios/consulta", icon: "search" }, { title: "Relatório de sepultados", href: "/cemiterios/relatorio", icon: "barChart3" }] },
+  { title: "Tributário e análises", items: [{ title: "Taxas e guias", href: "/cemiterios/taxas", icon: "receiptText" }, { title: "Consulta unificada", href: "/cemiterios/consulta", icon: "search" }, { title: "Relatório de sepultados", href: "/cemiterios/relatorio", icon: "barChart3" }, { title: "Relatórios e mapa", href: "/cemiterios/complementos", icon: "mapPin" }] },
 ];
 export default function CemeteryLayout({ children }: { children: React.ReactNode }) {
   const search = useSearchParams();

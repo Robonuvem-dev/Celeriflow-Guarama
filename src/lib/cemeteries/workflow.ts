@@ -56,7 +56,7 @@ export function validateTransferPair(input: { movementType: string; toGraveId?: 
   if (!["OUTRO_LOTE", "OSSUARIO", "EXUMACAO", "MUDANCA_CIDADE", "MUDANCA_CEMITERIO", "DESAPROPRIACAO", "CREMACAO", "OUTRO"].includes(type)) throw new TributarioS9Error("Tipo de movimentação inválido.");
   if (input.toGraveId && input.ossuaryId) throw new TributarioS9Error("Informe apenas um destino.");
   if (type === "OUTRO_LOTE") {
-    if (!destination || !destination.lotId || destination.lotId === origin.lotId || destination.cemeteryId !== origin.cemeteryId) throw new TributarioS9Error("Outro lote exige sepultura em lote distinto no mesmo cemitério.");
+    if (!destination || !destination.lotId || destination.cemeteryId !== origin.cemeteryId) throw new TributarioS9Error("Translado interno exige outra sepultura em lote do mesmo cemitério.");
   } else if (type === "MUDANCA_CEMITERIO") {
     if (destination && destination.cemeteryId === origin.cemeteryId) throw new TributarioS9Error("Mudança de cemitério exige outro cemitério.");
     if (input.ossuaryId || (!destination && !input.destinationDescription?.trim())) throw new TributarioS9Error("Informe o cemitério de destino.");
