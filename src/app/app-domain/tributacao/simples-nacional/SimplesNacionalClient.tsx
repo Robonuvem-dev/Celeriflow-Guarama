@@ -144,6 +144,7 @@ export default function SimplesNacionalClient({ data }: { data: Data }) {
           Reprocessar {competence}
         </button>
       </OperationalHeaderActions>
+      <div className="flex gap-3 text-xs print:hidden"><a className="underline" href="/tributacao/simples-nacional/consulta">Consulta fiscal por contribuinte / exportações</a><a className="underline" href="/tributacao/simples-nacional/arquivos">Arquivos de opção e pendências</a></div>
       {!listView && navigation}
       {message && !listView && (
         <button

@@ -15,6 +15,7 @@ export default async function CemeteryProcessPage({ params }: { params: Promise<
   const debt = process.declarantDebtSnapshot as { total?: string; hasDebt?: boolean; checkedAt?: string };
   const groups = process.deceased.groups as Record<string, unknown>;
   const metadata = groups._workflow as { burialType?: string; exceptionReason?: string; memberOwnerDeceased?: boolean } | undefined;
+  const externalEntry = groups.sepultamento as { natureza?: string; cemiterioOrigem?: string; documentoTranslado?: string; dataTranslado?: string } | undefined;
   const [declarant, funeralHome, linked] = await Promise.all([
     readWorkflowTaxpayer(database, process.declarantTaxpayerId),
     process.funeralHomeId ? readWorkflowFuneralHome(database, process.funeralHomeId) : null,
@@ -35,6 +36,7 @@ export default async function CemeteryProcessPage({ params }: { params: Promise<
       <p>Declarante: {declarant?.person?.fullName || declarant?.company?.corporateName || process.declarantTaxpayerId}</p>
       <p>Consulta de débitos: {debt.checkedAt} · R$ {debt.total || "0.00"} · {debt.hasDebt ? "Com débitos" : "Sem débitos"}</p>
       {metadata?.exceptionReason && <p>Exceção registrada: {metadata.exceptionReason}</p>}
+      {externalEntry?.natureza === "ENTRADA_EXTERNA" && <p>Entrada de cemitério externo: {externalEntry.cemiterioOrigem} · Documento/referência: {externalEntry.documentoTranslado} · Data do translado: {externalEntry.dataTranslado} · Situação do ingresso: {process.status}</p>}
       {metadata?.burialType === "NATIMORTO" && <p>Registro de natimorto · Mãe: {process.deceased.motherName || "Não informada"}</p>}
       {metadata?.burialType === "MEMBRO" && <p>Sepultamento de membro · {metadata.memberOwnerDeceased ? "Proprietário também falecido" : "Proprietário vivo — sem aplicação de óbito/espólio"}</p>}
       {linked?.person && <p>Cadastro Único atual: {linked.person.fullName} · Óbito cadastrado: {linked.person.deathDate ? civilDate(linked.person.deathDate) : "Não registrado"} · Espólio: {linked.person.estateApplied ? "Sim" : "Não"}</p>}
