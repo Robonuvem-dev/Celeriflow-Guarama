@@ -1,0 +1,10 @@
+"use client";
+import { useEffect, useState } from "react";
+import { gedManage } from "./ged-management-client";
+
+type Summary = { storage: { documents: number; versions: number; originalBytes: string; artifacts: number; archived: number }; providers: Record<string, boolean>; jobs: { id: string; title: string; steps: Record<string, string>; nextAttemptAt: string; versionNumber: number }[] };
+export function GedOperationsSummary() {
+  const [data, setData] = useState<Summary | null>(null), [error, setError] = useState("");
+  useEffect(() => { void gedManage<Summary>("administration").then(setData).catch(e => setError(e.message)); }, []);
+  return <div className="space-y-3">{error && <p role="alert">{error}</p>}{data && <><dl className="grid gap-3 rounded border p-3 sm:grid-cols-3">{Object.entries({ Documentos: data.storage.documents, Versões: data.storage.versions, "Originais (MiB)": (Number(data.storage.originalBytes) / 1048576).toFixed(2), Derivados: data.storage.artifacts, "Na lixeira": data.storage.archived }).map(([label, value]) => <div key={label}><dt className="text-xs">{label}</dt><dd className="font-semibold">{value}</dd></div>)}</dl><h3 className="font-semibold">Provedores configurados no servidor</h3><ul className="flex flex-wrap gap-3 text-sm">{Object.entries(data.providers).map(([provider, configured]) => <li key={provider}>{provider}: {configured ? "configurado" : "não informado"}</li>)}</ul><p className="text-xs">Configuração não comprova disponibilidade. Os executáveis locais também podem ser encontrados pelo PATH.</p><details><summary>Etapas e próxima tentativa (até 100 trabalhos)</summary><ul className="space-y-2 text-xs">{data.jobs.map(job => <li key={job.id} className="border-b py-2"><strong>{job.title} · v{job.versionNumber}</strong><p>{Object.entries(job.steps ?? {}).map(([name, status]) => `${name}: ${status}`).join(" · ") || "Aguardando processamento"}</p><p>Próxima tentativa: {new Date(job.nextAttemptAt).toLocaleString("pt-BR")}</p></li>)}</ul></details></>}</div>;
+}

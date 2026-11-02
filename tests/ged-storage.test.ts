@@ -5,6 +5,7 @@ import { once } from "node:events";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { Document, Packer, Paragraph } from "docx";
 import { extractGedText, inspectGedBytes, requestGedOcr } from "../src/lib/documents/ged-storage";
+import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
 
 test("extração lê bytes PDF/DOCX reais e preserva número de página e conteúdo pesquisável", async () => {
   const pdf = await PDFDocument.create();
@@ -22,6 +23,11 @@ test("extração lê bytes PDF/DOCX reais e preserva número de página e conte�
 });
 
 test("adaptador OCR envia coordenadas/idioma e rejeita resposta de região ou página diferente", async () => {
+  const fixture = await createLocalDrizzleDatabase();
+  await fixture.database.exec('CREATE TABLE "GedSetting" (key text PRIMARY KEY,value jsonb NOT NULL)');
+  const globals = globalThis as typeof globalThis & { celeriflowDatabase?: typeof fixture.connection };
+  const previousDatabase = globals.celeriflowDatabase;
+  globals.celeriflowDatabase = fixture.connection;
   const previous = process.env.GED_OCR_ENDPOINT;
   const previousKey = process.env.GED_OCR_API_KEY;
   let returnedPage = 2;
@@ -46,10 +52,12 @@ test("adaptador OCR envia coordenadas/idioma e rejeita resposta de região ou p�
     returnedPage = 1;
     await assert.rejects(requestGedOcr(Buffer.from("fixture"), "application/pdf", [2], zone), /não corresponde/);
     delete process.env.GED_OCR_ENDPOINT;
-    await assert.rejects(requestGedOcr(Buffer.from("fixture"), "application/pdf", []), /Configure/);
+    await assert.rejects(requestGedOcr(Buffer.from("fixture"), "application/pdf", []), /processamento interno/);
   } finally {
     if (previous === undefined) delete process.env.GED_OCR_ENDPOINT; else process.env.GED_OCR_ENDPOINT = previous;
     if (previousKey === undefined) delete process.env.GED_OCR_API_KEY; else process.env.GED_OCR_API_KEY = previousKey;
     server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()));
+    globals.celeriflowDatabase = previousDatabase;
+    await fixture.close();
   }
 });

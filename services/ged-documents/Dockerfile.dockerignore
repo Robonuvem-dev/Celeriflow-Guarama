@@ -1,0 +1,11 @@
+*
+!package.json
+!package-lock.json
+!scripts/
+scripts/*
+!scripts/ged-document-engine.mjs
+!scripts/ged-document-server.mjs
+!services/
+services/*
+!services/ged-documents/
+!services/ged-documents/auto-install.xml

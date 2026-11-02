@@ -8,10 +8,12 @@ import { gedQuerySchema, type GedQuery, type GedCapability, type GedZone } from 
 import { checkoutGed, confirmGedUpload, createGedFolder, decideGedReview, generateGedTemplate, listManagedFolders, moveGedFolder, processGedVersion, readGedDetail, recognizeGedZone, saveGedSmartFolder, saveGedTemplate, saveGedTerm, startGedReview, requestGedSignatures, resumeGedUpload } from "@/lib/documents/ged-service";
 import { AccessError } from "@/lib/platform/access-error";
 import { deleteManagedFolder, moveManagedDocument } from "@/lib/documents/ged-service";
+import { gedUsesVercelSandbox } from "@/lib/documents/ged-internal-runtime";
+import { dispatchGedVercelWorker } from "@/lib/documents/ged-vercel-dispatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 function failure(error: unknown) {
   if (error instanceof AccessError) return Response.json({ error: error.message }, { status: error.status });
   if (error instanceof z.ZodError) return Response.json({ error: "Revise os campos informados.", fields: error.issues.map(i => i.path.join(".")) }, { status: 400 });
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
       return Response.json({ id: template.id, templateKey: template.templateKey, name: template.name, content: template.content, markers: template.markers, version: template.version });
     }
     const section = z.enum(["acervo", "pesquisa", "pastas-inteligentes", "importacoes", "processamento", "tarefas", "fluxos", "modelos", "thesaurus", "classes"]).parse(params.get("section") || "acervo");
-    let query: GedQuery = gedQuerySchema.parse({ text: params.get("text") || "", mode: params.get("mode") || "words", distance: params.get("distance") || 5, thesaurus: params.get("thesaurus") === "true", status: params.get("status") || "", folderId: params.get("folderId") || "" });
+    let query: GedQuery = gedQuerySchema.parse({ ...Object.fromEntries(params), text: params.get("text") || "", mode: params.get("mode") || "words", distance: params.get("distance") || 5, thesaurus: params.get("thesaurus") === "true", descendants: params.get("descendants") === "true", favorites: params.get("favorites") === "true", history: params.get("history") === "true", deleted: params.get("deleted") === "true", metadata: JSON.parse(params.get("metadata") || "{}") });
     if (params.get("smartId")) {
       const [folder] = await (context.database ?? db).select().from(gedSmartFolders).where(eq(gedSmartFolders.id, params.get("smartId")!));
       if (!folder || (!folder.shared && folder.ownerId !== context.user.id)) throw new Error("Pasta inteligente não encontrada.");
@@ -66,16 +68,18 @@ export async function POST(request: Request) {
       case "process": {
         const [job] = await (context.database ?? db).select().from(gedJobs).where(eq(gedJobs.id, id));
         if (!job) throw new Error("Processamento não encontrado.");
-        await processGedVersion(context, job.versionId); break;
+        if (gedUsesVercelSandbox()) result = await dispatchGedVercelWorker(context, job.versionId);
+        else await processGedVersion(context, job.versionId);
+        break;
       }
-      case "index-document": { const document = await requireManagedDocument(context, id); await processGedVersion(context, document.versionId); break; }
+      case "index-document": { const document = await requireManagedDocument(context, id); if (gedUsesVercelSandbox()) result = await dispatchGedVercelWorker(context, document.versionId); else await processGedVersion(context, document.versionId); break; }
       case "ocr-zone": result = await recognizeGedZone(context, id, data as GedZone); break;
       case "save-smart": result = await saveGedSmartFolder(context, text("name"), data.query, data.shared === true); break;
       case "save-term": await saveGedTerm(context, text("term"), z.array(z.string()).parse(data.equivalents)); break;
       case "start-review": result = await startGedReview(context, id, data.assignments, text("dueAt")); break;
       case "decide-review": await decideGedReview(context, id, z.enum(["APPROVE", "RETURN"]).parse(data.decision), text("comment")); break;
       case "save-template": result = await saveGedTemplate(context, text("name"), text("content"), undefined, text("templateKey") || undefined); break;
-      case "generate-template": result = await generateGedTemplate(context, id, z.record(z.string(), z.string().max(5000)).parse(data.values), text("classCode")); break;
+      case "generate-template": result = await generateGedTemplate(context, id, z.record(z.string(), z.string().max(5000)).parse(data.values), text("classCode"), z.record(z.string(), z.unknown()).parse(data.indexValues ?? {})); break;
       case "sign-request": {
         requireCapability("edit");
         result = await requestGedSignatures(context, id, z.array(z.string().min(1)).min(1).max(20).parse(data.signerIds));
@@ -89,7 +93,17 @@ export async function POST(request: Request) {
         result = { documentId: review.documentId }; break;
       }
       case "delete-smart": await (context.database ?? db).delete(gedSmartFolders).where(and(eq(gedSmartFolders.id, id), eq(gedSmartFolders.ownerId, context.user.id))); break;
-      default: throw new Error("Operação documental desconhecida.");
+      default: {
+        if (["save-type", "save-group", "save-acl", "metadata", "archive", "restore", "favorite", "comment", "preference", "edit-smart"].includes(command)) {
+          const { gedGovernanceCommand } = await import("@/lib/documents/ged-governance"); result = await gedGovernanceCommand(context, command, id, data);
+        } else if (["save-flow", "start-flow", "decide-flow", "save-rule"].includes(command)) {
+          const { gedWorkflowCommand } = await import("@/lib/documents/ged-workflow"); result = await gedWorkflowCommand(context, command, id, data);
+        } else if (["save-event", "delete-event", "complete-task", "save-settings", "save-providers", "save-appearance", "validate-pdfa", "combine-images", "purge", "dispose-files"].includes(command)) {
+          const { gedOperationsCommand } = await import("@/lib/documents/ged-operations"); result = await gedOperationsCommand(context, command, id, data);
+        } else if (["publish-document", "withdraw-publication"].includes(command)) {
+          const { gedPublicationCommand } = await import("@/lib/documents/ged-publication"); result = await gedPublicationCommand(context, command, id, data);
+        } else throw new Error("Operação documental desconhecida.");
+      }
     }
     return Response.json({ error: null, result }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return failure(error); }

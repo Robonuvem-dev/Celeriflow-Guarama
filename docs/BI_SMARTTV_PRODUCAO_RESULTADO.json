@@ -1,8 +1,8 @@
 {
-  "run": "ca201730-4c97-4aab-b2fc-62e8e2456d85",
-  "at": "2026-10-31T21:25:48.254Z",
+  "run": "d207111e-8d25-402c-a829-135d7083370a",
+  "at": "2026-10-31T22:21:16.083Z",
   "origin": "https://guarama.celeriflow.com.br",
-  "commit": "7c0c80682c19bfd83261e7da2afa7b7d5a5825a5",
+  "commit": "d7dde959d59c97da8be5e99cebbff9be9d9650dd",
   "status": "PASS",
   "checks": [
     "github_vercel_deployment_success",
@@ -66,10 +66,10 @@
       "overflow": false
     }
   ],
-  "evidenceDirectory": "C:\\Users\\trici\\AppData\\Local\\Temp\\opencode\\bi-smarttv-production-ca201730-4c97-4aab-b2fc-62e8e2456d85",
+  "evidenceDirectory": "C:\\Users\\trici\\AppData\\Local\\Temp\\opencode\\bi-smarttv-production-d207111e-8d25-402c-a829-135d7083370a",
   "deployment": {
     "state": "success",
-    "url": "https://vercel.com/celeriflow-dev/celeriflow-guarama/73RXpgK5DsDQtsiFTmMBnL9ntK3S"
+    "url": "https://vercel.com/celeriflow-dev/celeriflow-guarama/Do8tzcP4G2apWGZC7A6oYd2o63J5"
   },
   "programme": {
     "version": "eef9c42e-2a73-41be-8062-2b0c42a80d57",
@@ -78,5 +78,5 @@
     "municipality": "Prefeitura Municipal de Aurora das Veredas"
   },
   "loggedOut": true,
-  "finishedAt": "2026-10-31T21:26:36.599Z"
+  "finishedAt": "2026-10-31T22:31:11.372Z"
 }

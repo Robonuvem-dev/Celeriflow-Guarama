@@ -9,6 +9,7 @@ const navigation: ModuleNavGroup[] = [
   { title: "Execução da Despesa", items: [
     { title: "Empenhos", href: "/financeiro/empenhos", icon: "fileText" },
     { title: "Liquidações", href: "/financeiro/liquidacoes", icon: "receipt" },
+    { title: "Documentos no GED", href: "/assinatura-digital/origens?module=FINANCEIRO", icon: "fileText" },
     { title: "Pagamentos", href: "/financeiro/pagamentos", icon: "walletCards" },
     { title: "Restos a Pagar", href: "/financeiro/restos-a-pagar", icon: "clipboardList" },
     { title: "Gestão e Controle de Custos", href: "/financeiro/custos", icon: "scale" },

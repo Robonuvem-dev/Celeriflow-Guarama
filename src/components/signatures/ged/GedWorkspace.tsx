@@ -11,7 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { OperationalColumn } from "@/lib/operational-tables";
 import type { GedBootstrap, GedDocumentItem, GedListResponse, GedSection } from "@/lib/contracts/ged";
-import { gedFileType, parseGedManifest, type GedManifestItem, type GedQuery } from "@/lib/documents/ged-policy";
+import { gedFileType, gedMimeTypes, gedQuerySchema, parseGedManifest, type GedManifestItem, type GedQuery } from "@/lib/documents/ged-policy";
+import { GedExplorerTree } from "./GedExplorerTree";
+import { GedIndexFields } from "./GedIndexFields";
+import { GedSearchFields } from "./GedSearchFields";
+import { GedImageCombine } from "./GedImageCombine";
 import styles from "@/components/app-ui/operational/operational.module.css";
 import workspaceStyles from "./GedWorkspace.module.css";
 import { gedCommand } from "./ged-client";
@@ -45,13 +49,15 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
   const [classCode, setClassCode] = useState(bootstrap.classes[0]?.code || ""), [name, setName] = useState(""), [content, setContent] = useState("");
   const [legacyReference, setLegacyReference] = useState(""), [template, setTemplate] = useState<Template | null>(null), [markerValues, setMarkerValues] = useState<Record<string, string>>({});
   const [manifest, setManifest] = useState<Record<string, GedManifestItem>>({});
+  const [indexValues, setIndexValues] = useState<Record<string, string | number | boolean>>({});
+  const [treeRevision, setTreeRevision] = useState(0), [sharedSmart, setSharedSmart] = useState(false), [editingSmart, setEditingSmart] = useState("");
   const [folders, setFolders] = useState<Array<{ id: string; name: string; children: number; parentId: string | null }>>([]), [path, setPath] = useState<Array<{ id: string; name: string }>>([]);
   const [movingFolder, setMovingFolder] = useState<{ id: string; name: string } | null>(null);
   const isCollection = section === "acervo" || section === "pesquisa";
   const load = useCallback(async (page = 1, nextQuery = query, nextSmartId = smartId) => {
     setBusy(true); setMessage(""); setLoadError(false);
     try {
-      const params = new URLSearchParams({ section, page: String(page), ...Object.fromEntries(Object.entries(nextQuery).map(([key, value]) => [key, String(value)])) });
+      const params = new URLSearchParams({ section, page: String(page), ...Object.fromEntries(Object.entries(nextQuery).map(([key, value]) => [key, typeof value === "object" ? JSON.stringify(value) : String(value)])) });
       if (nextSmartId) params.set("smartId", nextSmartId);
       const response = await fetch(`/api/assinatura-digital/ged?${params}`);
       const data = await response.json();
@@ -62,7 +68,7 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
   }, [query, section, smartId]);
   async function perform(command: string, id = "", data: Record<string, unknown> = {}) {
     setBusy(true); setMessage("");
-    try { const value = await gedCommand(command, id, data); setPanel(null); await load(result.page, result.query); return value; }
+    try { const value = await gedCommand(command, id, data); setPanel(null); setTreeRevision(v => v + 1); await load(result.page, result.query); return value; }
     catch (error) { setMessage(error instanceof Error ? error.message : "Falha na operação."); }
     finally { setBusy(false); }
   }
@@ -85,7 +91,7 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
         if (!url) {
           const metadata = manifest[item.file.name];
           const blob = await upload(`${bootstrap.documentPrefix}ged/${bootstrap.userId}/${item.id}/${safe}`, item.file, { access: "private", contentType: gedFileType(item.file.name), handleUploadUrl: "/api/assinatura-digital/ged/upload",
-            clientPayload: JSON.stringify({ id: item.id, batchId, filename: item.file.name, title: metadata?.title || item.title, classCode: metadata?.classCode || classCode, folderId: query.folderId || null, folderPath: metadata?.folderPath || [], legacyReference: metadata?.legacyReference || legacyReference }) });
+            clientPayload: JSON.stringify({ id: item.id, batchId, filename: item.file.name, title: metadata?.title || item.title, classCode: metadata?.classCode || classCode, folderId: query.folderId || null, folderPath: metadata?.folderPath || [], legacyReference: metadata?.legacyReference || legacyReference, indexValues }) });
           url = blob.url; update({ url });
         }
         await gedCommand("confirm-upload", item.id, { url });
@@ -93,7 +99,8 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
       } catch (error) { failures++; update({ status: "FAILED", error: error instanceof Error ? error.message : "Falha no envio." }); }
     }
     setBusy(false); await load(result.page);
-    setMessage(failures ? `${failures} arquivo(s) com falha. Repita para reenviar somente os pendentes.` : "Lote importado. Execute a indexação em OCR e indexação.");
+    setTreeRevision(v => v + 1);
+    setMessage(failures ? `${failures} arquivo(s) com falha. Repita para reenviar somente os pendentes.` : "Lote importado e enfileirado para indexação automática pelo worker.");
   }
   async function openTemplate(id: string, generate: boolean) {
     try { const response = await fetch(`/api/assinatura-digital/ged?templateId=${encodeURIComponent(id)}`); const data = await response.json(); if (!response.ok) throw new Error(data.error); setTemplate(data); setName(data.name); setContent(data.content); setMarkerValues({}); setPanel(generate ? "generate" : "template"); }
@@ -103,11 +110,15 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
     return <Link href={`/assinatura-digital/acervo/${document.id}`} className={styles.iconButton} aria-label={`Abrir ${document.title}`}><Eye className="size-4" /></Link>;
   }
   const uploadStatus = items.map(i => `${i.file.name}: ${i.status}${i.error ? ` — ${i.error}` : ""}`);
-  return <>
+  function chooseFiles(files: File[]) { setBatchId(crypto.randomUUID()); setItems(files.map(file => ({ id: crypto.randomUUID(), file, title: file.name.replace(/\.[^.]+$/, ""), status: "PENDING" }))); }
+  return <><div className={isCollection ? "grid min-h-0 gap-3 lg:grid-cols-[240px_minmax(0,1fr)]" : ""}>
+    {isCollection && <GedExplorerTree key={treeRevision} selected={query.folderId} onSelect={folderId => { const next = { ...query, folderId }; setQuery(next); setSmartId(""); void load(1, next, ""); }} />}
     <OperationalListFrame label={labels[section]} actions={<>
       {(isCollection || section === "importacoes") && bootstrap.capabilities.import && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Importar lote" title="Importar lote" onClick={() => { setPanel("import"); if (!batchId) setBatchId(crypto.randomUUID()); }}><Upload /><span className={workspaceStyles.actionLabel}>Importar lote</span></button>}
       {isCollection && bootstrap.capabilities.import && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Pasta" title="Nova pasta" onClick={() => { setName(""); setPanel("folder"); }}><Plus /><span className={workspaceStyles.actionLabel}>Pasta</span></button>}
-      {isCollection && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Salvar consulta" title="Salvar consulta" onClick={() => { setName(""); setPanel("smart"); }}><Save /><span className={workspaceStyles.actionLabel}>Salvar consulta</span></button>}
+      {isCollection && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Salvar consulta" title="Salvar consulta" onClick={() => { setName(""); setEditingSmart(""); setSharedSmart(false); setPanel("smart"); }}><Save /><span className={workspaceStyles.actionLabel}>Salvar consulta</span></button>}
+      {isCollection && <select aria-label="Exportar pesquisa" className="max-w-32 rounded border text-xs" defaultValue="" onChange={event => { if (event.target.value) window.location.href = `/api/assinatura-digital/ged/report?format=${event.target.value}&query=${encodeURIComponent(JSON.stringify(result.query))}`; event.target.value = ""; }}><option value="">Relatório</option><option value="pdf">PDF</option><option value="csv">CSV</option><option value="xlsx">XLSX</option></select>}
+      {isCollection && Object.keys(selected).length > 0 && bootstrap.capabilities.import && <GedImageCombine key={JSON.stringify(selected)} items={Object.entries(selected).map(([id, versionId]) => ({ id, versionId }))} bootstrap={bootstrap} disabled={busy} submit={data => perform("combine-images", "", data)} />}
       {isCollection && Object.keys(selected).length > 0 && <a className={`${styles.newButton} ${workspaceStyles.action}`} aria-label={`Baixar ZIP (${Object.keys(selected).length})`} title={`Baixar ZIP (${Object.keys(selected).length})`} href={`/api/assinatura-digital/ged/download?zip=1&items=${encodeURIComponent(JSON.stringify(Object.entries(selected).map(([id, versionId]) => ({ id, versionId }))))}`}><Download /><span className={workspaceStyles.actionLabel}>ZIP ({Object.keys(selected).length})</span></a>}
       {section === "modelos" && bootstrap.capabilities.models && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Criar / importar modelo" title="Criar / importar modelo" onClick={() => { setTemplate(null); setName(""); setContent(""); setPanel("template"); }}><Plus /><span className={workspaceStyles.actionLabel}>Criar / importar modelo</span></button>}
       {section === "thesaurus" && bootstrap.capabilities.configure && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Termo" title="Novo termo" onClick={() => { setName(""); setContent(""); setPanel("term"); }}><Plus /><span className={workspaceStyles.actionLabel}>Termo</span></button>}
@@ -118,48 +129,59 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
       </form>
       {isCollection && <><button className={styles.iconButton} onClick={() => void openTree()} aria-label="Explorar árvore de pastas"><FolderTree /></button>
         <OperationalFilters label="Filtros" activeCount={Number(Boolean(query.status)) + Number(Boolean(query.folderId)) + Number(query.mode !== "words") + Number(query.thesaurus)}>
-          <label className={styles.filterFields}>Modo<select value={query.mode} onChange={event => setQuery({ ...query, mode: event.target.value as GedQuery["mode"] })}><option value="words">Todas as palavras</option><option value="phrase">Frase exata</option><option value="fragment">Fragmento literal</option><option value="proximity">Proximidade (duas palavras)</option></select></label>
+          <label className={styles.filterFields}>Modo<select value={query.mode} onChange={event => setQuery({ ...query, mode: event.target.value as GedQuery["mode"] })}><option value="words">Todas as palavras</option><option value="phrase">Frase exata</option><option value="fragment">Fragmento literal</option><option value="proximity">Proximidade (duas palavras)</option><option value="boolean">Booleanos / campos (AND OR NOT)</option><option value="wildcard">Curingas (* e ?)</option><option value="fuzzy">Grafia semelhante</option><option value="semantic">Semântica por significado</option></select></label>
+          <p className="text-xs">Campos: titulo:, arquivo:, tipo:, conteudo: e meta.chave:. Exemplo: titulo:contrato AND NOT meta.situacao:cancelado.</p>
+          <label className={styles.filterFields}>Tipo<select value={query.classCode} onChange={e => setQuery({ ...query, classCode: e.target.value })}><option value="">Todos</option>{bootstrap.classes.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label>
+          <label className={styles.filterFields}><input type="checkbox" checked={query.descendants} onChange={e => setQuery({ ...query, descendants: e.target.checked })} />Incluir subpastas</label>
+          <label className={styles.filterFields}><input type="checkbox" checked={query.favorites} onChange={e => setQuery({ ...query, favorites: e.target.checked })} />Favoritos</label>
+          <label className={styles.filterFields}><input type="checkbox" checked={query.history} onChange={e => setQuery({ ...query, history: e.target.checked })} />Pesquisar versões históricas</label>
+          {bootstrap.capabilities.delete && <label className={styles.filterFields}><input type="checkbox" checked={query.deleted} onChange={e => setQuery({ ...query, deleted: e.target.checked })} />Lixeira</label>}
+          <label className={styles.filterFields}>De<input type="date" value={query.from} onChange={e => setQuery({ ...query, from: e.target.value })} /></label><label className={styles.filterFields}>Até<input type="date" value={query.to} onChange={e => setQuery({ ...query, to: e.target.value })} /></label>
           <label className={styles.filterFields}>Máximo de palavras entre termos<input type="number" min={0} max={50} value={query.distance} onChange={event => setQuery({ ...query, distance: Number(event.target.value) })} /></label>
           <label className={styles.filterFields}><input type="checkbox" checked={query.thesaurus} onChange={event => setQuery({ ...query, thesaurus: event.target.checked })} />Expandir equivalentes do thesaurus</label>
           <label className={styles.filterFields}>Situação<select value={query.status} onChange={event => setQuery({ ...query, status: event.target.value })}><option value="">Todas</option>{["RASCUNHO", "ELABORACAO", "CONSENSO", "APROVACAO", "HOMOLOGACAO", "HOMOLOGADO", "DEVOLVIDO", "Pendente Assinatura", "Assinado"].map(status => <option key={status}>{status}</option>)}</select></label>
           <button className={styles.dialogButton} onClick={() => { setSmartId(""); void load(1, query, ""); }}>Aplicar</button>
-          <button className={styles.dialogButton} onClick={() => { const clean = { ...query, text: "", status: "", folderId: "", mode: "words" as const, thesaurus: false }; setQuery(clean); setSelected({}); setSmartId(""); void load(1, clean, ""); }}>Limpar filtros</button>
+          <GedSearchFields bootstrap={bootstrap} query={query} onChange={setQuery} />
+          <button className={styles.dialogButton} onClick={() => { const clean = gedQuerySchema.parse({}); setQuery(clean); setSelected({}); setSmartId(""); void load(1, clean, ""); }}>Limpar filtros</button>
         </OperationalFilters></>}
       <button className={styles.iconButton} onClick={() => void load(result.page, result.query)} aria-label="Atualizar consulta" disabled={busy}><RefreshCw /></button>
       {message && <span role="status" className="max-w-52 truncate text-xs" title={message}>{message}</span>}
     </>} pagination={<OperationalPagination page={result.page} total={result.total} pending={busy} onPageChange={page => void load(page, result.query)} />}>
       <OperationalTable columns={isCollection ? documentColumns : listColumns} preferenceId={`ged-assinatura-${section}`} caption={labels[section]} state={busy ? "loading" : loadError ? "error" : "ready"} onRetry={() => void load(result.page)} errorMessage={message} emptyMessage="Nenhum registro encontrado neste escopo."
-        rows={isCollection ? result.documents.map(document => ({ id: document.id, label: document.title,
-          values: { selected: selected[document.id] ? "Selecionado" : "", title: document.title, folder: document.folderName || "Raiz", version: String(document.versionNumber), status: document.checkoutOwnerId ? "Em edição" : document.status === "Assinado" ? document.status : document.editorialStatus, content: document.snippet || document.legacyReference || "Indexação pendente" },
-          cells: { selected: <input type="checkbox" aria-label={`Selecionar ${document.title}`} checked={Boolean(selected[document.id])} onChange={event => setSelected(current => { const next = { ...current }; if (event.target.checked) next[document.id] = document.versionId; else delete next[document.id]; return next; })} /> }, actions: documentActions(document),
+        rows={isCollection ? result.documents.map(document => ({ id: `${document.id}:${document.versionId}`, label: document.title,
+          values: { selected: selected[document.id] ? "Selecionado" : "", title: document.title, folder: document.folderName || "Raiz", version: String(document.versionNumber), status: document.checkoutOwnerId ? "Em edição" : document.status === "Assinado" ? document.status : document.editorialStatus, content: `${document.score ? `Relevância ${Number(document.score).toFixed(3)} · ` : ""}${document.snippet || document.legacyReference || "Indexação pendente"}` },
+          cells: { selected: <input type="checkbox" aria-label={`Selecionar ${document.title}`} checked={Boolean(selected[document.id])} onChange={event => setSelected(current => { const next = { ...current }; if (event.target.checked) next[document.id] = document.versionId; else delete next[document.id]; return next; })} /> }, actions: query.deleted ? <><button onClick={() => void perform("restore", document.id)}>Restaurar</button>{bootstrap.capabilities.configure && <button onClick={() => void perform("purge", document.id)}>Solicitar descarte</button>}</> : documentActions(document),
         })) : result.rows.map(row => ({ id: row.id, label: row.title, values: { title: row.title, kind: row.kind, status: row.status, detail: row.detail }, actions: <DropdownMenu>
           <DropdownMenuTrigger render={<button className={styles.iconButton} aria-label={`Ações de ${row.title}`} />}><MoreHorizontal /></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {section === "pastas-inteligentes" && <><DropdownMenuItem render={<Link href={`/assinatura-digital/pesquisa?smartId=${row.id}`} />}>Abrir consulta</DropdownMenuItem><DropdownMenuItem onClick={() => void perform("delete-smart", row.id)}>Excluir minha consulta</DropdownMenuItem></>}
+            {section === "pastas-inteligentes" && <><DropdownMenuItem render={<Link href={`/assinatura-digital/pesquisa?smartId=${row.id}`} />}>Abrir consulta</DropdownMenuItem><DropdownMenuItem onClick={() => { try { setQuery(JSON.parse(row.detail)); setName(row.title); setSharedSmart(row.status === "Compartilhada"); setEditingSmart(row.id); setPanel("smart"); } catch { setMessage("Consulta inválida."); } }}>Editar regra / nome</DropdownMenuItem><DropdownMenuItem onClick={() => void perform("delete-smart", row.id)}>Excluir minha consulta</DropdownMenuItem></>}
             {section === "processamento" && bootstrap.capabilities.edit && <DropdownMenuItem onClick={() => void perform("process", row.id)}>Processar / repetir</DropdownMenuItem>}
             {(section === "tarefas" || section === "fluxos") && <DropdownMenuItem onClick={() => { void gedCommand("review-document", row.id).then(value => { router.push(`/assinatura-digital/acervo/${value.documentId}`); }).catch(error => setMessage(error.message)); }}>Abrir documento e tarefa</DropdownMenuItem>}
             {section === "modelos" && <><DropdownMenuItem onClick={() => void openTemplate(row.id, true)}>Gerar documento</DropdownMenuItem>{bootstrap.capabilities.models && <DropdownMenuItem onClick={() => void openTemplate(row.id, false)}>Editar / nova versão</DropdownMenuItem>}</>}
             {(section === "classes" || section === "importacoes" || section === "thesaurus") && <DropdownMenuItem onClick={() => setMessage(`${row.title}: ${row.detail}`)}>Consultar detalhes</DropdownMenuItem>}
           </DropdownMenuContent></DropdownMenu> }))} />
     </OperationalListFrame>
+    </div>
     <Dialog open={panel !== null} onOpenChange={open => { if (!open && !busy) setPanel(null); }}>
       <DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>{panel === "tree" ? "Árvore de pastas" : panel === "import" ? "Importar acervo digitalizado" : panel === "folder" ? "Nova pasta" : panel === "smart" ? "Salvar pasta inteligente" : panel === "term" ? "Termo e equivalentes" : panel === "generate" ? "Gerar documento do modelo" : panel === "move-folder" ? "Mover / renomear pasta" : "Criar / importar modelo"}</DialogTitle>
-        <DialogDescription>{panel === "import" ? "Envio direto ao Blob privado, até 20 MiB por arquivo. Itens concluídos não são reenviados." : "As operações respeitam seu escopo documental e preservam o histórico."}</DialogDescription></DialogHeader>
+        <DialogDescription>{panel === "import" ? "Arraste arquivos para a área de envio ou use o seletor. Até 20 MiB por arquivo; itens concluídos não são reenviados." : "As operações respeitam seu escopo documental e preservam o histórico."}</DialogDescription></DialogHeader>
       {message && <p role="alert" className="break-words text-sm text-red-700">{message}</p>}
       {panel === "tree" && <div className="space-y-3"><nav aria-label="Caminho da pasta" className="flex flex-wrap gap-1"><button onClick={() => { setPath([]); void browse(null); }}>Raiz</button>{path.map((part, index) => <button key={part.id} onClick={() => { setPath(path.slice(0, index + 1)); void browse(part.id); }}> / {part.name}</button>)}</nav>
         <select aria-label="Subpastas" size={Math.min(8, Math.max(2, folders.length))} className="w-full rounded border p-2" onChange={event => { const folder = folders.find(f => f.id === event.target.value); if (folder) { setPath([...path, { id: folder.id, name: folder.name }]); void browse(folder.id); } }} value=""><option value="" disabled>Selecione uma subpasta para expandir</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name} ({folder.children} subpastas)</option>)}</select>
         <div className="flex gap-2"><button className={styles.primaryButton} onClick={() => { const next = { ...query, folderId: path.at(-1)?.id || "" }; setQuery(next); setSmartId(""); setPanel(null); void load(1, next, ""); }}>Abrir documentos desta pasta</button>
           {path.length > 0 && bootstrap.capabilities.edit && <><button className={styles.dialogButton} onClick={() => { setMovingFolder(path.at(-1)!); setName(path.at(-1)!.name); setContent(""); setPanel("move-folder"); }}>Mover / renomear</button><button className={styles.dialogButton} disabled={busy} onClick={() => void perform("delete-folder", path.at(-1)!.id)}>Excluir pasta vazia</button></>}</div></div>}
-      {(panel === "folder" || panel === "smart" || panel === "term" || panel === "move-folder") && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); if (panel === "folder") void perform("create-folder", "", { name, parentId: query.folderId }); if (panel === "smart") void perform("save-smart", "", { name, query }); if (panel === "term") void perform("save-term", "", { term: name, equivalents: content.split(",").map(s => s.trim()).filter(Boolean) }); if (panel === "move-folder") void perform("move-folder", movingFolder?.id, { name, parentId: content.trim() }); }}>
+      {(panel === "folder" || panel === "smart" || panel === "term" || panel === "move-folder") && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); if (panel === "folder") void perform("create-folder", "", { name, parentId: query.folderId }); if (panel === "smart") void perform(editingSmart ? "edit-smart" : "save-smart", editingSmart, { name, query, shared: sharedSmart }); if (panel === "term") void perform("save-term", "", { term: name, equivalents: content.split(",").map(s => s.trim()).filter(Boolean) }); if (panel === "move-folder") void perform("move-folder", movingFolder?.id, { name, parentId: content.trim() }); }}>
         <label>Nome / termo<input required maxLength={150} className="block w-full rounded border p-2" value={name} onChange={event => setName(event.target.value)} /></label>
+        {panel === "smart" && <><label>Expressão<input className="block w-full rounded border p-2" value={query.text} onChange={e => setQuery({ ...query, text: e.target.value })} /></label><label>Situação<input className="block w-full rounded border p-2" value={query.status} onChange={e => setQuery({ ...query, status: e.target.value })} /></label>{bootstrap.capabilities.configure && <label><input type="checkbox" checked={sharedSmart} onChange={e => setSharedSmart(e.target.checked)} />Compartilhar regra (sem conceder acesso aos documentos)</label>}</>}
         {panel === "term" && <label>Equivalentes separados por vírgula<input required className="block w-full rounded border p-2" value={content} onChange={event => setContent(event.target.value)} /></label>}
         {panel === "move-folder" && <label>ID da pasta de destino (vazio para raiz)<input className="block w-full rounded border p-2" value={content} onChange={event => setContent(event.target.value)} /></label>}
         <button disabled={busy} className={styles.primaryButton}>Salvar</button></form>}
-      {panel === "import" && <div className="grid gap-3">
+      {panel === "import" && <div className="grid gap-3 rounded border-2 border-dashed p-3" onDragOver={event => { event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (!busy) chooseFiles(Array.from(event.dataTransfer.files)); }}>
         <label>Classe documental<select disabled={busy || items.some(item => item.status !== "PENDING")} className="block w-full rounded border p-2" value={classCode} onChange={event => setClassCode(event.target.value)}>{bootstrap.classes.map(item => <option key={item.code} value={item.code}>{item.label}</option>)}</select></label>
         <label>Referência do legado / origem<input disabled={busy || items.some(item => item.status !== "PENDING")} maxLength={300} className="block w-full rounded border p-2" value={legacyReference} onChange={event => setLegacyReference(event.target.value)} /></label>
         <label className="text-sm">Manifesto CSV opcional (filename, title, folderPath, classCode, legacyReference)<input type="file" accept=".csv" disabled={busy || items.some(item => item.status !== "PENDING")} onChange={async event => { const file = event.target.files?.[0]; if (!file) return; try { const rows = parseGedManifest(await file.text()); setManifest(Object.fromEntries(rows.map(row => [row.filename, row]))); setMessage(`${rows.length} metadados carregados. Pastas do manifesto serão criadas na importação.`); } catch (error) { setMessage(error instanceof Error ? error.message : "Manifesto inválido."); } }} /></label>
-        <label>Arquivos PDF, imagens, TXT ou DOCX<input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.txt,.docx" disabled={busy} onChange={event => { setBatchId(crypto.randomUUID()); setItems(Array.from(event.target.files || []).map(file => ({ id: crypto.randomUUID(), file, title: file.name.replace(/\.[^.]+$/, ""), status: "PENDING" }))); }} /></label>
+        <GedIndexFields fields={bootstrap.classes.find(c => c.code === classCode)?.fields ?? []} values={indexValues} onChange={setIndexValues} />
+        <label>Arraste documentos aqui ou selecione os arquivos<input type="file" multiple accept={Object.keys(gedMimeTypes).map(ext => `.${ext}`).join(",")} disabled={busy} onChange={event => chooseFiles(Array.from(event.target.files || []))} /></label>
         <textarea readOnly aria-label="Resultado individual do lote" rows={5} className="w-full rounded border p-2 text-xs" value={uploadStatus.join("\n")} />
         <button className={styles.primaryButton} disabled={busy || !items.length || !classCode} onClick={() => void importFiles()}>{busy ? "Enviando…" : "Importar / repetir pendentes"}</button></div>}
       {panel === "template" && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); void perform("save-template", "", { name, content, templateKey: template?.templateKey || "" }); }}>
@@ -170,8 +192,10 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
           try { const body = new FormData(); body.set("file", file); body.set("name", name || file.name); if (template) body.set("templateKey", template.templateKey); const response = await fetch("/api/assinatura-digital/ged/upload", { method: "POST", body }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setPanel(null); await load(); }
           catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao importar modelo."); } finally { setBusy(false); }
         }} /></label></div></form>}
-      {panel === "generate" && template && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); void perform("generate-template", template.id, { values: markerValues, classCode }); }}>
+      {panel === "generate" && template && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); void perform("generate-template", template.id, { values: markerValues, classCode, indexValues }); }}>
         <p>{template.name} — versão {template.version}</p>
+        <p className="text-sm">Geração textual em novo DOCX; o layout do arquivo importado não é reproduzido.</p>
+        <GedIndexFields fields={bootstrap.classes.find(c => c.code === classCode)?.fields ?? []} values={indexValues} onChange={setIndexValues} />
         {template.markers.map(marker => <label key={marker}>{marker}<input required maxLength={5000} className="block w-full rounded border p-2" value={markerValues[marker] || ""} onChange={event => setMarkerValues({ ...markerValues, [marker]: event.target.value })} /></label>)}
         <label>Classe<select className="block w-full rounded border p-2" value={classCode} onChange={event => setClassCode(event.target.value)}>{bootstrap.classes.map(item => <option key={item.code} value={item.code}>{item.label}</option>)}</select></label>
         <button disabled={busy} className={styles.primaryButton}>Gerar DOCX e registrar no acervo</button></form>}

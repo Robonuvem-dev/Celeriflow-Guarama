@@ -32,6 +32,7 @@ const sidebarNavItems = [
   { title: "Férias", href: "/rh/ferias", icon: CalendarDays },
   { title: "Licenças", href: "/rh/licencas", icon: HeartPulse },
   { title: "Atos de Pessoal", href: "/rh/atos", icon: FileSignature },
+  { title: "Documentos no GED", href: "/assinatura-digital/origens?module=RH", icon: FileSignature },
   { title: "Serviços funcionais", href: "/rh/servicos-funcionais", icon: SlidersHorizontal },
   { title: "Gestão do Portal funcional", href: "/rh/portal-funcional", icon: SlidersHorizontal },
   { title: "Requerimentos funcionais", href: "/rh/requerimentos-funcionais", icon: FileSignature },

@@ -1,0 +1,235 @@
+{
+  "generatedAt": "2026-11-01T18:44:56.592Z",
+  "status": "DADOS_PREPARADOS_TESTES_NAO_EXECUTADOS",
+  "files": [
+    {
+      "filename": "educacao.txt",
+      "bytes": 91,
+      "sha256": "c8e99fd3b203b4d604ef78f67468f044265fa8d65ef533c31826e1684a0df5dd",
+      "purpose": "Texto UTF-8 e pesquisa lexical/semantica",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "educacao-utf16.txt",
+      "bytes": 184,
+      "sha256": "10555d68c4296d3f10c9877aae92b53d37bc3a98a4621d8f1fb9bb8f0c4b40ed",
+      "purpose": "Normalizacao UTF-16",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "administracao.txt",
+      "bytes": 55,
+      "sha256": "685093ffcae00f89c9a79dacd959cc722cc85793fd74e791a91341e02c56a437",
+      "purpose": "Outro setor",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "restrito.txt",
+      "bytes": 50,
+      "sha256": "7f956c5abde7eca878dd402bc013eca237f5ce675a159b7403986b8b7b41c3ad",
+      "purpose": "Pesquisa negativa e isolamento",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "educacao.rtf",
+      "bytes": 104,
+      "sha256": "9799c41788a508027d7e7fe503fb8078c9aae43e91f41786a3dbbdd7fc2fe13d",
+      "purpose": "RTF real",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "educacao.html",
+      "bytes": 209,
+      "sha256": "875487a17577db8ee293c827fb22e0911852382b5288b6379fbef876cf965567",
+      "purpose": "HTML real",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "modelo.docx",
+      "bytes": 8574,
+      "sha256": "4dd24fe8e3553df975d677f41d72e2817d8c36249290e39112215d1046516362",
+      "purpose": "Modelo e formato DOCX",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "educacao.xlsx",
+      "bytes": 6485,
+      "sha256": "08e108f6f51d0a5e11a2891dc9b2a5422cc472749c7b8ba68d493cc3e78065bf",
+      "purpose": "Planilha real",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "educacao.pdf",
+      "bytes": 944,
+      "sha256": "272e8fb452ba6526d22fc54ca8b9bb84e0b7e60dec5181cb76ddf6e71b19cd6d",
+      "purpose": "PDF com texto e nao declarado PDF/A",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "pagina-1.png",
+      "bytes": 17779,
+      "sha256": "58710bccbdd3ea0e850d0da9d8d99a134f5020da5e3300e44e3cebc47c8f5652",
+      "purpose": "Digitalizacao sintetica pagina 1",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "pagina-1.jpg",
+      "bytes": 15270,
+      "sha256": "462c1763f5d83c35771a220269448fbd8bdb85d3b218c8506a0f4dc671f50ab4",
+      "purpose": "JPEG",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "pagina-1.gif",
+      "bytes": 11055,
+      "sha256": "8b3e6170ba3ae7ad1ac59e36031ba2f8f100fbb884744b7621afb63aee5232e7",
+      "purpose": "GIF",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "pagina-1.tiff",
+      "bytes": 21930,
+      "sha256": "ff0cba6ed1fbacdca933e60163c9bfd066810d49207fe784babd752d17cdb155",
+      "purpose": "TIFF",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "pagina-2.png",
+      "bytes": 17915,
+      "sha256": "df667cfd68625b67373b12c612be0620060f7a6d312b79de1b485c0f1be5136d",
+      "purpose": "Digitalizacao sintetica pagina 2 e reordenacao",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "pagina-1.bmp",
+      "bytes": 2100054,
+      "sha256": "57162babef7f8527975ce18d675b60394c48fc5d33801b8621a412a2d0fbb1e5",
+      "purpose": "BMP Windows sem compressao 24 bits",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "duas-paginas.tiff",
+      "bytes": 44064,
+      "sha256": "9134502ab0f5f16502978237f6f3c5afbaad9ec375a9755a32fd9e535fdd5517",
+      "purpose": "TIFF multipagina sintetico",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "digitalizado-sem-texto.pdf",
+      "bytes": 17664,
+      "sha256": "e5f2b4565c46bccd94e550f383778e25b7f1843229d33d87cd9b00d9366e1f7a",
+      "purpose": "OCR e derivado pesquisavel",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "educacao.odt",
+      "bytes": 1186,
+      "sha256": "cb76cae690a7551c04f3efb81113f254fa56b4ae02c005fd4f1feaf45773647e",
+      "purpose": "ODF texto real",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "formula.odf",
+      "bytes": 1010,
+      "sha256": "ac8f3000a53ab9c53234d49ddbe410e6c0121a0d2836cae9aadbb35cbebc0430",
+      "purpose": "ODF formula sintetica",
+      "status": "GERADO_NAO_HOMOLOGADO"
+    },
+    {
+      "filename": "referencia.doc",
+      "bytes": 13312,
+      "sha256": "96acd04bd4a8c196e8d18df0f7b15aadd40c3c7a67b60828f95203877eb848c1",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/LibreOffice/core/master/sw/qa/extras/ww8import/data/changes-in-footnote.doc",
+      "sourceProject": "LibreOffice/core"
+    },
+    {
+      "filename": "referencia.xls",
+      "bytes": 25088,
+      "sha256": "4722bfa239b04667d88a30a99ccb4eb09223dfa52373ccd3cfadcb4c26c34ceb",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/LibreOffice/core/master/sc/qa/unit/data/xls/cell-borders.xls",
+      "sourceProject": "LibreOffice/core"
+    },
+    {
+      "filename": "referencia.pptx",
+      "bytes": 39915,
+      "sha256": "e639064968d29c4cf5cc3ad4dae28e825ec9d2567ae78aac895c870e91170d71",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/3columns.pptx",
+      "sourceProject": "LibreOffice/core"
+    },
+    {
+      "filename": "referencia.ods",
+      "bytes": 79920,
+      "sha256": "41d2fba49ec54dcda69d606e255969a074559fe38e99d122708b1639b8fcf677",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/LibreOffice/core/master/sc/qa/unit/data/ods/3AnchorTypes.ods",
+      "sourceProject": "LibreOffice/core"
+    },
+    {
+      "filename": "referencia.odp",
+      "bytes": 12191,
+      "sha256": "7a460ad065006627ee5d07934836eee699237673a9028720b65b328a47028fb9",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/TextFitting.odp",
+      "sourceProject": "LibreOffice/core"
+    },
+    {
+      "filename": "referencia-pdfa-1b-pass.pdf",
+      "bytes": 2564,
+      "sha256": "2a5ba3a4c85ace9bbece0543634ba5447eb51276572424c1a9715d5b758a12a2",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/veraPDF/veraPDF-corpus/377728596647e40edf16003d68d620773ce96ec5/PDF_A-1b/6.2%20Graphics/6.2.3.3%20Uncalibrated%20color%20space/veraPDF%20test%20suite%206-2-3-3-t03-pass-d.pdf",
+      "sourceProject": "veraPDF/veraPDF-corpus"
+    },
+    {
+      "filename": "referencia-pdfa-1b-fail.pdf",
+      "bytes": 2676,
+      "sha256": "00b0e09bd58e8dd691e42cf9e67a65dfd8c9830f65019f35802163c32824651a",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/veraPDF/veraPDF-corpus/377728596647e40edf16003d68d620773ce96ec5/PDF_A-1b/6.2%20Graphics/6.2.3.3%20Uncalibrated%20color%20space/veraPDF%20test%20suite%206-2-3-3-t01-fail-c.pdf",
+      "sourceProject": "veraPDF/veraPDF-corpus"
+    },
+    {
+      "filename": "referencia-pdfa-2b-pass.pdf",
+      "bytes": 2392,
+      "sha256": "5297b152a1a0cbc348084a58c90ceb6b24d6ac20093708a0b87769758fc379ae",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/veraPDF/veraPDF-corpus/377728596647e40edf16003d68d620773ce96ec5/PDF_A-2b/6.1%20File%20structure/6.1.13%20Implementation%20limits/veraPDF%20test%20suite%206-1-13-t09-pass-b.pdf",
+      "sourceProject": "veraPDF/veraPDF-corpus"
+    },
+    {
+      "filename": "referencia-pdfa-2b-fail.pdf",
+      "bytes": 2296,
+      "sha256": "38fb31a67c32d558e96ca97f762756b7197bc034e1615c4db06ea4e6490ffd02",
+      "purpose": "Arquivo publico de referencia; resultado local nao executado",
+      "status": "GERADO_NAO_HOMOLOGADO",
+      "sourceUrl": "https://raw.githubusercontent.com/veraPDF/veraPDF-corpus/377728596647e40edf16003d68d620773ce96ec5/PDF_A-2b/6.6%20Metadata/6.6.2%20Metadata%20streams/6.6.2.1%20General/veraPDF%20test%20suite%206-6-2-1-t01-fail-a.pdf",
+      "sourceProject": "veraPDF/veraPDF-corpus"
+    },
+    {
+      "filename": "referencia-fapes-prazos-pitch-gov.pps",
+      "bytes": 198656,
+      "sha256": "db9601be6f74487c265718de1c9c49d5e2efc97c4bc35b0a34d5b34acb4be215",
+      "purpose": "Apresentacao publica Prazos Pit Gov (10/09/2021), FAPES, em PPS binario legado; extracao/conversao pelo GED ainda nao executadas",
+      "status": "PREPARADO_NAO_HOMOLOGADO",
+      "sourcePage": "https://fapes.es.gov.br/orientacoes",
+      "sourceUrl": "https://fapes.es.gov.br/media/Importacao/Arquivos/Prazos%20Pit%20Gov.pps",
+      "sourceProject": "Fundacao de Amparo a Pesquisa e Inovacao do Espirito Santo (FAPES), Governo do Estado do Espirito Santo",
+      "retrievedAt": "2026-11-01T19:09:31.644Z"
+    }
+  ],
+  "requiredAdditionalFixtures": [
+    "Versoes/assinaturas/vinculos gerados pelo fluxo da aplicacao na fase 11"
+  ],
+  "updatedAt": "2026-11-01T19:09:31.655Z"
+}

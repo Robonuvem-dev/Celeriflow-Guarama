@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Copy, Eye, ExternalLink, ImagePlus, Plus, Save, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Eye, ExternalLink, ImagePlus, Pencil, Plus, Save, Trash2, Upload } from "lucide-react";
 import { displayConfigSchema, displayMetrics, metricKeys, newDisplaySlide, type DisplayConfig, type DisplayEditorState, type DisplaySlide, type PublicDisplay } from "@/lib/bi/display-model";
 import DisplayPlayer from "@/components/bi/DisplayPlayer";
+import { DialogClose } from "@/components/ui/dialog";
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalPagination, OperationalTable } from "@/components/app-ui/operational/OperationalTable";
@@ -25,6 +26,7 @@ export default function SmartTvEditor({ initial, canEdit, canPublish }: { initia
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [preview, setPreview] = useState<PublicDisplay | null>(null);
+  const [previewPage, setPreviewPage] = useState("");
   const [tab, setTab] = useState<"page" | "settings">("page");
   const selected = config.slides.find(slide => slide.id === selectedId) ?? config.slides[0];
   const selectedIndex = config.slides.indexOf(selected);
@@ -56,13 +58,19 @@ export default function SmartTvEditor({ initial, canEdit, canPublish }: { initia
     } catch { setError("Falha de conexão. Confira o estado salvo antes de repetir."); }
     finally { setBusy(false); }
   }
-  async function showPreview() {
-    const validation = displayConfigSchema.safeParse(config);
+  async function showPreview(slideId?: string) {
+    const pageToPreview = slideId ? config.slides.find(slide => slide.id === slideId) : null;
+    if (slideId && !pageToPreview) return;
+    // An individual editorial preview must show the selected page even when
+    // its publication window has not started or has already ended.
+    const previewConfig = pageToPreview ? { ...config, slides: [{ ...pageToPreview, startsAt: "", endsAt: "" }] } : config;
+    if (pageToPreview) { setSelectedId(pageToPreview.id); setTab("page"); }
+    const validation = displayConfigSchema.safeParse(previewConfig);
     if (!validation.success) { setError(validation.error.issues[0].message); return; }
-    setBusy(true); setError("");
-    try { const result = await previewSmartTv(config); if (result.display) setPreview(result.display); else setError(result.error ?? "Prévia indisponível."); }
+    setBusy(true); setError(""); setMessage("Carregando prévia da Smart TV…");
+    try { const result = await previewSmartTv(previewConfig); if (result.display) { setPreview(result.display); setPreviewPage(pageToPreview?.title ?? ""); } else setError(result.error ?? "Prévia indisponível."); }
     catch { setError("Não foi possível carregar a prévia."); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setMessage(""); }
   }
   async function upload(file?: File) {
     if (!file) return;
@@ -87,7 +95,7 @@ export default function SmartTvEditor({ initial, canEdit, canPublish }: { initia
       </div>
     </header>
     {(error || message) && <div className={error ? styles.error : styles.message} role={error ? "alert" : "status"}>{error || message}</div>}
-    {preview ? <div className={styles.previewArea}><button type="button" onClick={() => setPreview(null)}>Voltar à edição</button><div className={styles.preview}><DisplayPlayer key={preview.validatedAt} initial={preview} live={false} /></div></div> : <>
+    {preview ? <div className={styles.previewArea}><div className={styles.actions}><button type="button" onClick={() => setPreview(null)}><Pencil />Voltar à edição</button><span>{previewPage ? `Prévia da página: ${previewPage} · Vigência desconsiderada nesta prévia` : "Prévia da programação"}</span></div><div className={styles.preview}><DisplayPlayer key={preview.validatedAt} initial={preview} live={false} /></div></div> : <>
       <div className={styles.toolbar}>
         <button type="button" aria-pressed={tab === "page"} onClick={() => setTab("page")}>Conteúdo das páginas</button>
         <button type="button" aria-pressed={tab === "settings"} onClick={() => setTab("settings")}>Identidade e publicação</button>
@@ -97,7 +105,8 @@ export default function SmartTvEditor({ initial, canEdit, canPublish }: { initia
             <OperationalTable columns={columns} preferenceId="bi-smarttv-paginas" caption="Páginas da programação municipal" rows={config.slides.slice((Math.min(page, Math.ceil(config.slides.length / 20)) - 1) * 20, Math.min(page, Math.ceil(config.slides.length / 20)) * 20).map((slide, offset) => {
               const index = (Math.min(page, Math.ceil(config.slides.length / 20)) - 1) * 20 + offset;
               return { id: slide.id, label: slide.title, values: { order: String(index + 1), title: slide.title, kind: kindLabels[slide.kind], duration: `${slide.duration} s` }, actions: <div className={operational.rowActions}>
-                <button type="button" className={operational.iconButton} aria-label={`Editar ${slide.title}`} onClick={() => { setSelectedId(slide.id); setTab("page"); }}><Eye /></button>
+                <DialogClose render={<button type="button" className={operational.iconButton} aria-label={`Visualizar ${slide.title}`} title="Visualizar página na Smart TV" disabled={busy} onClick={() => void showPreview(slide.id)} />}><Eye /></DialogClose>
+                <DialogClose render={<button type="button" className={operational.iconButton} style={{ width: "auto", padding: "0 5px", gap: 4 }} aria-label={`Editar ${slide.title}`} title="Editar página" disabled={busy || !canEdit} onClick={() => { setSelectedId(slide.id); setTab("page"); setPreview(null); }} />}><Pencil />Editar</DialogClose>
                 <button type="button" className={operational.iconButton} aria-label={`Subir ${slide.title}`} disabled={busy || !canEdit || index === 0} onClick={() => move(slide.id, -1)}><ArrowUp /></button>
                 <button type="button" className={operational.iconButton} aria-label={`Descer ${slide.title}`} disabled={busy || !canEdit || index === config.slides.length - 1} onClick={() => move(slide.id, 1)}><ArrowDown /></button>
               </div> };
@@ -119,6 +128,7 @@ export default function SmartTvEditor({ initial, canEdit, canPublish }: { initia
         </div> : <>
           <div className={styles.pageSelector}><label>Página em edição<select value={selected.id} onChange={event => setSelectedId(event.target.value)}>{config.slides.map((slide, index) => <option key={slide.id} value={slide.id}>{index + 1}. {slide.title}</option>)}</select></label>
             <div className={styles.actions}>
+              <button type="button" onClick={() => void showPreview(selected.id)}><Eye />Visualizar página</button>
               <button type="button" disabled={config.slides.length >= 40} onClick={() => addSlide()}><Plus />Página</button>
               <button type="button" disabled={config.slides.length >= 40} onClick={() => { const next = { ...selected, id: crypto.randomUUID(), title: `${selected.title.slice(0, 80)} (cópia)` }; updateConfig({ slides: [...config.slides, next] }); setSelectedId(next.id); }}><Copy />Duplicar</button>
               <button type="button" disabled={config.slides.length <= 1} onClick={() => updateConfig({ slides: config.slides.filter(slide => slide.id !== selected.id) })}><Trash2 />Remover</button>

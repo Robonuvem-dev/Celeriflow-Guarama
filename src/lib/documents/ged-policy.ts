@@ -1,17 +1,22 @@
 import { z } from "zod";
 
-export const gedCapabilities = ["read", "import", "edit", "review", "models", "configure"] as const;
+export const gedCapabilities = ["read", "import", "edit", "review", "models", "configure", "delete", "share"] as const;
 export type GedCapability = typeof gedCapabilities[number];
 export const gedCapabilityLabels: Record<GedCapability, string> = {
   read: "Consultar acervo", import: "Importar documentos", edit: "Editar e reservar versões",
   review: "Revisar e homologar", models: "Gerenciar modelos", configure: "Configurar GED",
+  delete: "Excluir e restaurar documentos", share: "Compartilhar e administrar acessos",
 };
 export const gedQuerySchema = z.object({
   text: z.string().trim().max(300).default(""),
-  mode: z.enum(["words", "phrase", "fragment", "proximity"]).default("words"),
+  mode: z.enum(["words", "phrase", "fragment", "proximity", "boolean", "wildcard", "fuzzy", "semantic"]).default("words"),
   distance: z.coerce.number().int().min(0).max(50).default(5),
   thesaurus: z.boolean().default(false), status: z.string().max(50).default(""),
   folderId: z.string().max(100).default(""),
+  descendants: z.boolean().default(false), classCode: z.string().max(100).default(""),
+  departmentId: z.string().max(100).default(""), from: z.string().regex(/^(?:\d{4}-\d{2}-\d{2})?$/).default(""), to: z.string().regex(/^(?:\d{4}-\d{2}-\d{2})?$/).default(""),
+  history: z.boolean().default(false), favorites: z.boolean().default(false), deleted: z.boolean().default(false),
+  metadata: z.record(z.string().regex(/^[a-z][a-z0-9_]{0,49}$/), z.string().max(500)).default({}),
 });
 export type GedQuery = z.infer<typeof gedQuerySchema>;
 export const gedStages = ["ELABORACAO", "CONSENSO", "APROVACAO", "HOMOLOGACAO"] as const;
@@ -26,11 +31,17 @@ export type GedZone = z.infer<typeof gedZoneSchema>;
 export const gedMimeTypes = {
   pdf: "application/pdf", txt: "text/plain", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+  odf: "application/vnd.oasis.opendocument.formula", odt: "application/vnd.oasis.opendocument.text",
+  ods: "application/vnd.oasis.opendocument.spreadsheet", odp: "application/vnd.oasis.opendocument.presentation",
+  doc: "application/msword", rtf: "application/rtf", xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation", pps: "application/vnd.ms-powerpoint",
+  html: "text/html", htm: "text/html", tif: "image/tiff", tiff: "image/tiff", bmp: "image/bmp", gif: "image/gif",
 } as const;
 export function gedFileType(filename: string) {
   const extension = filename.split(".").pop()?.toLowerCase();
   const mime = gedMimeTypes[extension as keyof typeof gedMimeTypes];
-  if (!mime) throw new Error("Envie PDF, TXT, DOCX, PNG ou JPEG.");
+  if (!mime) throw new Error("Formato documental não suportado.");
   return mime;
 }
 export function normalizeGedText(value: string) {

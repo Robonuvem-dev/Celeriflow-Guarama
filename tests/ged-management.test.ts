@@ -25,9 +25,12 @@ before(async () => {
     CREATE TABLE "DocumentVersion" (id text PRIMARY KEY,"documentId" text NOT NULL,"versionNumber" integer NOT NULL,"fileUrl" text NOT NULL,"hashSha256" text NOT NULL,status text DEFAULT 'FINAL',"lockedAt" timestamp,"finalizedAt" timestamp DEFAULT now(),"publicValidationCode" text,"createdAt" timestamp DEFAULT now(),UNIQUE("documentId","versionNumber"));
     CREATE TABLE "AuditEvent" (id text PRIMARY KEY,"eventType" text,"targetType" text,"targetId" text,"actorUsuarioId" text,"createdAt" timestamp DEFAULT now());
     CREATE TABLE "ProtocolNotification" (id text PRIMARY KEY,"userId" text,"processId" text,"sourceModule" text,"entityType" text,"entityId" text,type text,title text,message text,priority text,"dedupeKey" text,"readAt" timestamp,"createdAt" timestamp DEFAULT now());
+    CREATE TABLE "DocumentClass" (id text PRIMARY KEY,code text,label text,"retentionMonths" integer DEFAULT 60,"requiresIcp" boolean DEFAULT false,"publicLabel" text DEFAULT 'Documento');
+    CREATE TABLE "TransparencyPublication" (id text PRIMARY KEY);
     CREATE UNIQUE INDEX dedupe ON "ProtocolNotification"("userId","dedupeKey") WHERE "dedupeKey" IS NOT NULL;
   `);
   await fixture.database.exec(await readFile("db/migrations/20261031120000_ged_management/migration.sql", "utf8"));
+  await fixture.database.exec(await readFile("db/migrations/20261102130000_ged_poc_internal/migration.sql", "utf8"));
   await fixture.database.exec('CREATE TABLE "GedOperationLease" ("documentId" text PRIMARY KEY,token text NOT NULL,"expiresAt" timestamptz NOT NULL)');
   await fixture.database.exec(`
     INSERT INTO "Document" (id,title,"documentType","fileUrl") SELECT 'doc-'||i,'Arquivo '||i,'PDF','https://storage.invalid/'||i FROM generate_series(1,44) i;
@@ -73,7 +76,10 @@ test("full text diferencia conteúdo, frase, fragmento e distância e expande th
   assert.deepEqual(await search("quisic", "fragment"), ["doc-1", "doc-2"]);
   assert.deepEqual(await search("contrato aquisicao", "proximity", 3), ["doc-1"]);
   assert.deepEqual(await search("contrato aquisicao", "proximity", 0), []);
-  assert.deepEqual(await search("arquivo"), []); // present only in title/filename
+  const byTitle = await listManagedDocuments(a, gedQuerySchema.parse({ text: "arquivo" }));
+  assert.equal(byTitle.total, 41); // unified search now includes title/filename
+  assert(byTitle.documents.every(document => document.page === null));
+  assert.deepEqual(await search("conteudo:arquivo", "boolean"), []);
   const admin = { ...a, user: { ...a.user, profileCode: "SYSTEM_ADMINISTRATOR" } };
   await saveGedTerm(admin, "carros", ["automóveis"]);
   assert.deepEqual(await search("carros"), []);
@@ -97,13 +103,15 @@ test("árvore aceita quatro níveis e recusa ciclos sem modificar a estrutura", 
   const year = await createGedFolder(a, "2026", root.id);
   const type = await createGedFolder(a, "Contratos", year.id);
   const leaf = await createGedFolder(a, "Compras", type.id);
+  const deleter = { ...a, user: { ...a.user, profileCode: "SYSTEM_ADMINISTRATOR" } };
   await assert.rejects(moveGedFolder(a, root.id, leaf.id, "Secretaria"), /descendente/);
-  await assert.rejects(deleteManagedFolder(a, root.id), /Realocar/);
+  await assert.rejects(deleteManagedFolder(a, root.id), /Sem capacidade/);
+  await assert.rejects(deleteManagedFolder(deleter, root.id), /Realocar/);
   await moveGedFolder(a, leaf.id, root.id, "Compras realocadas");
   await moveManagedDocument(a, "doc-1", leaf.id);
-  await assert.rejects(deleteManagedFolder(a, leaf.id), /Realocar/);
+  await assert.rejects(deleteManagedFolder(deleter, leaf.id), /Realocar/);
   await moveManagedDocument(a, "doc-1", null);
-  await deleteManagedFolder(a, leaf.id);
+  await deleteManagedFolder(deleter, leaf.id);
 });
 
 test("consenso espera todos os participantes; homologação exige quatro fases e preserva versão vinculada", async () => {

@@ -62,9 +62,11 @@ export function createGedOcrEngine({ cachePath, timeoutMs = 55_000 } = {}) {
           if (cropWidth < 2 || cropHeight < 2) throw new Error("Zona muito pequena.");
           image = await sharp(image).extract({ left, top, width: cropWidth, height: cropHeight }).png().toBuffer();
         }
-        const { data } = await worker.recognize(image);
+        const { data } = await worker.recognize(image, {}, { text: true, blocks: true });
+        const dimensions = await sharp(image).metadata();
+        const words = (data.blocks ?? []).flatMap(block => block.paragraphs ?? []).flatMap(paragraph => paragraph.lines ?? []).flatMap(line => line.words ?? []).filter(word => word.text?.trim() && word.bbox.x1 > word.bbox.x0 && word.bbox.y1 > word.bbox.y0).map(word => ({ text: word.text, x: word.bbox.x0 / dimensions.width, y: word.bbox.y0 / dimensions.height, width: (word.bbox.x1 - word.bbox.x0) / dimensions.width, height: (word.bbox.y1 - word.bbox.y0) / dimensions.height }));
         if (data.text.length > 100_000 || (textLength += data.text.length) > 2_000_000) throw new Error("Texto superior ao limite documental.");
-        pages.push({ page: number, text: data.text, confidence: Math.max(0, Math.min(1, data.confidence / 100)), ...(zone ? { label: zone.label } : {}) });
+        pages.push({ page: number, text: data.text, words, confidence: Math.max(0, Math.min(1, data.confidence / 100)), ...(zone ? { label: zone.label } : {}) });
       }
       return { pages };
     };

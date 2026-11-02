@@ -13,7 +13,7 @@ export async function GedSectionPage({ section, searchParams }: { section: GedSe
   const context = await getGedContext();
   const params = await searchParams;
   const value = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
-  let query = gedQuerySchema.parse({ text: value("text"), mode: value("mode") || "words", distance: value("distance") || 5, thesaurus: value("thesaurus") === "true", status: value("status"), folderId: value("folderId") });
+  let query = gedQuerySchema.parse({ ...params, text: value("text"), mode: value("mode") || "words", distance: value("distance") || 5, thesaurus: value("thesaurus") === "true", descendants: value("descendants") === "true", favorites: value("favorites") === "true", history: value("history") === "true", deleted: value("deleted") === "true", metadata: JSON.parse(value("metadata") || "{}") });
   if (value("smartId")) {
     const [folder] = await (context.database ?? db).select().from(gedSmartFolders).where(eq(gedSmartFolders.id, value("smartId")));
     if (!folder || (!folder.shared && folder.ownerId !== context.user.id)) throw new Error("Pasta inteligente não encontrada.");

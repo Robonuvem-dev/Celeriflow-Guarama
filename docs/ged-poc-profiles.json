@@ -1,0 +1,18 @@
+{
+  "status": "PREPARADO_NAO_APLICADO",
+  "users": "Associar somente a contas de homologacao fornecidas pelo responsavel; nao altera usuarios reais automaticamente.",
+  "profiles": [
+    { "code": "GED_POC_ADMIN", "name": "POC GED - administrador", "sector": "ADMINISTRACAO", "ged": { "read": true, "import": true, "edit": true, "review": true, "models": true, "configure": true, "delete": true, "share": true } },
+    { "code": "GED_POC_OPERATOR", "name": "POC GED - operador", "sector": "EDUCACAO", "ged": { "read": true, "import": true, "edit": true, "review": false, "models": true, "configure": false, "delete": true, "share": true } },
+    { "code": "GED_POC_READER", "name": "POC GED - leitor", "sector": "EDUCACAO", "ged": { "read": true, "import": false, "edit": false, "review": false, "models": false, "configure": false, "delete": false, "share": false } },
+    { "code": "GED_POC_REVIEWER", "name": "POC GED - revisor", "sector": "EDUCACAO", "ged": { "read": true, "import": false, "edit": false, "review": true, "models": false, "configure": false, "delete": false, "share": false } },
+    { "code": "GED_POC_APPROVER", "name": "POC GED - aprovador", "sector": "ADMINISTRACAO", "ged": { "read": true, "import": false, "edit": false, "review": true, "models": false, "configure": false, "delete": false, "share": false } },
+    { "code": "GED_POC_OTHER", "name": "POC GED - outro setor", "sector": "SETOR_B", "ged": { "read": true, "import": true, "edit": true, "review": false, "models": false, "configure": false, "delete": false, "share": false } }
+  ],
+  "groups": [
+    { "name": "POC Indexadores", "profiles": ["GED_POC_OPERATOR"] },
+    { "name": "POC Equipe A", "profiles": ["GED_POC_OPERATOR", "GED_POC_READER", "GED_POC_REVIEWER"] },
+    { "name": "POC Revisores", "profiles": ["GED_POC_REVIEWER", "GED_POC_APPROVER"] },
+    { "name": "POC Equipe B", "profiles": ["GED_POC_OTHER"] }
+  ]
+}

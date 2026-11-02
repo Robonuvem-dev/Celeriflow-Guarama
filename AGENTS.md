@@ -32,3 +32,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Configure a identidade **local deste repositório** como `Robonuvem-dev <343586278+Robonuvem-dev@users.noreply.github.com>` e selecione a credencial GitHub `Robonuvem-dev` antes de enviar.
 - O remoto de deploy é `https://github.com/Robonuvem-dev/Celeriflow-Guarama.git`; publique pelo fluxo GitHub → Vercel conectado ao projeto.
 - Para republicar uma versão existente com a identidade correta, crie um novo commit com essa identidade e confirme o resultado do deploy; preserve o histórico já publicado.
+
+## 6. Preservar o padrão de todos os módulos
+- Antes de criar ou alterar tabelas de tela, formulários ou layouts, ler `docs/Padrão de Tabelas.md` e a seção "Como adicionar uma nova tabela" de `docs/ENTREGA_PADRAO_TABELAS.md`; comparar também com uma tela equivalente já implementada.
+- Reutilizar o shell operacional e os componentes de `src/components/app-ui/operational/`: `OperationalListFrame`, `OperationalTable`, paginação e `OperationalFilters`. Usar `OPERATIONAL_PAGE_SIZE` (20), identidade de preferência estável, texto integral e ações/permissões preservadas. Não criar tabela HTML ou listagem operacional em cartões como implementação paralela.
+- Em formulários e grades de edição/seleção, preservar todos os campos, rascunhos e payloads ao paginar ou abrir/fechar painéis. Reutilizar `OperationalTablePanel` para tabelas contextuais e a organização paginada existente para conteúdo complexo; não aninhar formulários.
+- Preservar header, faixa compacta de filtros, geometria e tokens compartilhados. Não acrescentar faixas decorativas sobre listagens nem CSS específico do módulo que sobrescreva altura/padding de `td`/`th`. Personalização deve respeitar o contrato global.
+- Manter o menu recolhível para ícones e a política de dispositivos: desktop/notebook sem rolagem livre nas listagens; tablet/celular seguem a exceção documentada. Calendários, diagramas e documentos preservam sua semântica própria, sem transformar tudo em tabela.
+- Registrar separadamente alterações de banco (migração/schema) e tabelas visuais. Informar desvios encontrados e distinguir inspeção de código de validação visual; respeitar o sequenciamento de testes acordado com o usuário.

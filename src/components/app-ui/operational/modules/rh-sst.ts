@@ -17,6 +17,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { title: "Férias", href: "/rh/ferias", icon: "calendarDays" },
       { title: "Licenças", href: "/rh/licencas", icon: "heartPulse" },
       { title: "Atos de Pessoal", href: "/rh/atos", icon: "fileSignature" },
+      { title: "Documentos no GED", href: "/assinatura-digital/origens?module=RH", icon: "fileSignature" },
       { title: "Serviços funcionais", href: "/rh/servicos-funcionais", icon: "settings2" },
       { title: "Gestão do Portal funcional", href: "/rh/portal-funcional", icon: "settings2" },
       { title: "Requerimentos funcionais", href: "/rh/requerimentos-funcionais", icon: "fileSignature" },

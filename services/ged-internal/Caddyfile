@@ -1,0 +1,24 @@
+{
+  email {$GED_TLS_EMAIL}
+}
+
+{$GED_SERVICES_DOMAIN} {
+  request_body {
+    max_size 29MB
+  }
+  @ocr path /ocr
+  handle @ocr {
+    reverse_proxy ocr:3310
+  }
+  @semantic path /embed
+  handle @semantic {
+    reverse_proxy semantic:3311
+  }
+  @documents path /convert /pdfa
+  handle @documents {
+    reverse_proxy documents:3312
+  }
+  handle {
+    respond "Not found" 404
+  }
+}

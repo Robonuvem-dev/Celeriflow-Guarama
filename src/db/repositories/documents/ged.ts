@@ -1,17 +1,26 @@
 import { and, asc, eq, or, sql, type SQL } from "drizzle-orm";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { db } from "@/db/client";
-import { documentClasses } from "@/db/schema/document-workflow";
 import { users } from "@/db/schema/identity";
 import { gedThesaurus } from "@/db/schema/ged-management";
 import { gedEntryScope } from "@/lib/documents/ged-access";
 import { gedTokens, normalizeGedText, type GedQuery } from "@/lib/documents/ged-policy";
 import type { AppContext } from "@/lib/platform/tenant-context";
 import type { GedDocumentItem, GedListResponse, GedListRow, GedSection } from "@/lib/contracts/ged";
+import { gedUnifiedCondition, gedRank } from "@/lib/documents/ged-search";
 
 const collectionFrom = sql`FROM "GedEntry" e JOIN "Document" d ON d.id=e."documentId"
   JOIN LATERAL (SELECT * FROM "DocumentVersion" v0 WHERE v0."documentId"=d.id ORDER BY v0."versionNumber" DESC LIMIT 1) v ON TRUE
   LEFT JOIN "Folder" f ON f.id=d."folderId"
+  LEFT JOIN "GedVersionFile" vf ON vf."versionId"=v.id
+  LEFT JOIN "GedMetadata" gm ON gm."documentId"=d.id
+  LEFT JOIN "DocumentClass" dc ON dc.id=d."documentClassId"
+  LEFT JOIN LATERAL (SELECT * FROM "GedTypeDefinition" td0 WHERE td0."classId"=dc.id ORDER BY td0.version DESC LIMIT 1) td ON true
+  LEFT JOIN "GedCheckout" c ON c."documentId"=d.id AND c."closedAt" IS NULL`;
+const historicalFrom = sql`FROM "GedEntry" e JOIN "Document" d ON d.id=e."documentId" JOIN "DocumentVersion" v ON v."documentId"=d.id
+  LEFT JOIN "GedVersionFile" vf ON vf."versionId"=v.id
+  LEFT JOIN "Folder" f ON f.id=d."folderId" LEFT JOIN "GedMetadata" gm ON gm."documentId"=d.id LEFT JOIN "DocumentClass" dc ON dc.id=d."documentClassId"
+  LEFT JOIN LATERAL (SELECT * FROM "GedTypeDefinition" td0 WHERE td0."classId"=dc.id ORDER BY td0.version DESC LIMIT 1) td ON true
   LEFT JOIN "GedCheckout" c ON c."documentId"=d.id AND c."closedAt" IS NULL`;
 
 async function gedPageCondition(database: DatabaseExecutor, query: GedQuery): Promise<SQL> {
@@ -49,21 +58,36 @@ export async function gedContentCondition(database: DatabaseExecutor, query: Ged
 
 export async function listManagedDocuments(context: AppContext, query: GedQuery, requestedPage = 1): Promise<GedListResponse> {
   const database = context.database ?? db;
-  const content = await gedContentCondition(database, query);
+  let content = query.mode === "proximity" ? await gedContentCondition(database, query) : await gedUnifiedCondition(database, query);
+  let rank = gedRank(query);
+  if (query.mode === "semantic" && query.text) {
+    const { embedGedText } = await import("@/lib/documents/ged-processing");
+    const embedding = await embedGedText(query.text);
+    const semantic = sql`coalesce((SELECT max(ged_cosine(ge.vector,${JSON.stringify(embedding.vector)}::jsonb)) FROM "GedEmbedding" ge WHERE ge."versionId"=v.id AND ge.model=${embedding.model}),0)`;
+    rank = sql`(${semantic}*0.8+least(${rank},4)*0.05)`;
+    content = sql`(${semantic}>=0.3 OR ${content})`;
+  }
   const pageContent = await gedPageCondition(database, query);
-  const condition = sql`${gedEntryScope(context)} AND NOT e.archived AND ${content}
-    ${query.folderId ? sql`AND d."folderId"=${query.folderId}` : sql``}
+  const condition = sql`${gedEntryScope(context)} AND e.archived=${query.deleted === true} AND gm."purgedAt" IS NULL AND ${content}
+    ${query.folderId ? query.descendants ? sql`AND d."folderId" IN (WITH RECURSIVE branch AS (SELECT id FROM "Folder" WHERE id=${query.folderId} UNION ALL SELECT f.id FROM "Folder" f JOIN branch b ON f."parentId"=b.id) SELECT id FROM branch)` : sql`AND d."folderId"=${query.folderId}` : sql``}
+    ${query.classCode ? sql`AND dc.code=${query.classCode}` : sql``}
+    ${query.departmentId ? sql`AND e."departmentId"=${query.departmentId}` : sql``}
+    ${query.from ? sql`AND d."createdAt">=${query.from}::date` : sql``}
+    ${query.to ? sql`AND d."createdAt"<${query.to}::date+interval '1 day'` : sql``}
+    ${query.favorites ? sql`AND EXISTS(SELECT 1 FROM "GedFavorite" fav WHERE fav."documentId"=d.id AND fav."userId"=${context.user.id})` : sql``}
+    ${sql.join(Object.entries(query.metadata ?? {}).map(([key, value]) => sql`AND ged_normalize(gm.values->>${key})=ged_normalize(${value})`), sql` `)}
     ${query.status ? sql`AND (e."editorialStatus"=${query.status} OR d.status=${query.status})` : sql``}`;
-  const count = await database.execute<{ total: number }>(sql`SELECT count(*)::int AS total ${collectionFrom} WHERE ${condition}`);
+  const from = query.history ? historicalFrom : collectionFrom;
+  const count = await database.execute<{ total: number }>(sql`SELECT count(*)::int AS total ${from} WHERE ${condition}`);
   const total = count.rows[0]?.total ?? 0;
   const page = Math.max(1, Math.min(requestedPage, Math.max(1, Math.ceil(total / 20))));
-  const result = await database.execute<GedDocumentItem>(sql`SELECT d.id,d.title,d."documentType",d.status,e."editorialStatus",
-    e.filename,e."mimeType",e."byteLength",e.origin,e."legacyReference",d."folderId",f.name AS "folderName",
+  const result = await database.execute<GedDocumentItem>(sql`SELECT d.id,d.title,d."documentType",d.status,e."editorialStatus",${rank} AS score,
+    coalesce(vf.filename,e.filename) AS filename,coalesce(vf."mimeType",e."mimeType") AS "mimeType",coalesce(vf."byteLength",e."byteLength") AS "byteLength",e.origin,e."legacyReference",d."folderId",f.name AS "folderName",
     v.id AS "versionId",v."versionNumber",v."hashSha256",v.status AS "versionStatus",c."ownerId" AS "checkoutOwnerId",d."createdAt"::text AS "createdAt",
     (SELECT p.page FROM "GedTextPage" p WHERE p."versionId"=v.id AND (${pageContent}) ORDER BY p.page LIMIT 1) AS page,
     (SELECT substring(p.text FROM greatest(1,strpos(p.normalized,${normalizeGedText(query.text)})-70) FOR 240)
       FROM "GedTextPage" p WHERE p."versionId"=v.id AND (${pageContent}) ORDER BY (strpos(p.normalized,${normalizeGedText(query.text)})>0) DESC,p.page LIMIT 1) AS snippet
-    ${collectionFrom} WHERE ${condition} ORDER BY d."createdAt" DESC,d.id LIMIT 20 OFFSET ${(page - 1) * 20}`);
+    ${from} WHERE ${condition} ORDER BY score DESC,d."createdAt" DESC,d.id,v."versionNumber" DESC LIMIT 20 OFFSET ${(page - 1) * 20}`);
   return { documents: result.rows, rows: [], total, page, query };
 }
 
@@ -104,8 +128,9 @@ export async function listGedSection(context: AppContext, section: GedSection, q
 export async function gedSelectors(context: AppContext) {
   const database = context.database ?? db;
   const [classes, people] = await Promise.all([
-    database.select({ code: documentClasses.code, label: documentClasses.label }).from(documentClasses).where(eq(documentClasses.isActive, true)).orderBy(asc(documentClasses.label)),
+    database.execute<{ code: string; label: string; fields: import("@/lib/documents/ged-admin-policy").IndexField[] }>(sql`SELECT c.code,c.label,coalesce(t.fields,'[]') fields FROM "DocumentClass" c LEFT JOIN LATERAL (SELECT fields FROM "GedTypeDefinition" WHERE "classId"=c.id ORDER BY version DESC LIMIT 1) t ON true WHERE c."isActive" ORDER BY c.label`),
     database.select({ id: users.id, name: users.nome }).from(users).where(and(eq(users.ativo, true), context.user.profileCode === "SYSTEM_ADMINISTRATOR" ? sql`TRUE` : or(eq(users.id, context.user.id), context.user.departmentId ? sql`EXISTS(SELECT 1 FROM "Employee" emp WHERE emp.id=${users.employeeId} AND emp."departmentId"=${context.user.departmentId})` : sql`FALSE`))).orderBy(asc(users.nome)).limit(200),
   ]);
-  return { classes, users: people };
+  const departments = await database.execute<{ id: string; name: string }>(sql`SELECT DISTINCT dp.id,dp.name FROM "GedEntry" e JOIN "Department" dp ON dp.id=e."departmentId" WHERE ${gedEntryScope(context)} ORDER BY dp.name`);
+  return { classes: classes.rows, users: people, departments: departments.rows };
 }

@@ -1,0 +1,6 @@
+"use client";
+import { useState } from "react";
+export function GedAppearanceEditor({ initial, save }: { initial: Record<string, unknown>; save: (command: string, id: string, data: Record<string, unknown>) => Promise<void> }) {
+  const [institution, setInstitution] = useState(String(initial.institution ?? "Gestão documental")), [accent, setAccent] = useState(String(initial.accent ?? "#4338ca")), [density, setDensity] = useState(String(initial.density ?? "comfortable"));
+  return <form className="flex flex-wrap items-end gap-3 rounded border p-3" onSubmit={e => { e.preventDefault(); void save("save-appearance", "", { institution, accent, density }); }}><label>Identidade institucional<input className="block rounded border p-2" value={institution} maxLength={150} onChange={e => setInstitution(e.target.value)} /></label><label>Cor de destaque<input className="block" type="color" value={accent} onChange={e => setAccent(e.target.value)} /></label><label>Apresentação<select className="block rounded border p-2" value={density} onChange={e => setDensity(e.target.value)}><option value="comfortable">Confortável</option><option value="compact">Compacta</option></select></label><button className="rounded border px-3 py-2">Salvar aparência</button></form>;
+}
