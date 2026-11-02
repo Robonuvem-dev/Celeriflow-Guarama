@@ -6,6 +6,7 @@ import { buildOwnPersonalReport, personalReportQuerySchema } from "@/lib/portal-
 import { renderHrReport } from "@/lib/rh/report-service";
 import { auditEventTypes } from "@/lib/platform/audit-evidence";
 import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { recordEmployeePortalActivity, employeePortalRequestMetadata } from "@/lib/portal-servidor/activity-audit";
 import { db } from "@/db/client";
 
 export const runtime = "nodejs";
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest) {
     const input = personalReportQuerySchema.parse(values);
     const report = await buildOwnPersonalReport(access.context, input);
     const file = await renderHrReport(report, input.format);
-    await writeAuditEvent(access.context.database ?? db, {
+    if (input.kind === "FICHA_FINANCEIRA" || input.kind === "INFORME_RENDIMENTOS") await recordEmployeePortalActivity(access.context.database ?? db, { action: input.kind === "FICHA_FINANCEIRA" ? "FINANCIAL_STATEMENT_PRINT" : "INCOME_STATEMENT_PRINT", userId: access.context.user.id, employeeId: access.employee.id, targetId: `${input.kind}:${input.from}:${input.until}`, ...employeePortalRequestMetadata(request) });
+    else await writeAuditEvent(access.context.database ?? db, {
       actorUsuarioId: access.context.user.id,
       eventType: auditEventTypes.reportIssued,
       targetType: "EMPLOYEE_PERSONAL_REPORT",

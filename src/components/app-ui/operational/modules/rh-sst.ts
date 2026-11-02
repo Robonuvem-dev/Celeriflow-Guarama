@@ -21,6 +21,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { title: "Documentos no GED", href: "/assinatura-digital/origens?module=RH", icon: "fileSignature" },
       { title: "Serviços funcionais", href: "/rh/servicos-funcionais", icon: "settings2" },
       { title: "Gestão do Portal funcional", href: "/rh/portal-funcional", icon: "settings2" },
+      { title: "Locais e documentos do Portal", href: "/rh/portal-conteudos", icon: "fileText" },
       { title: "Requerimentos funcionais", href: "/rh/requerimentos-funcionais", icon: "fileSignature" },
       { title: "Emissões funcionais", href: "/rh/emissoes-funcionais", icon: "fileSignature" },
       { title: "Publicação funcional da folha", href: "/rh/publicacao-funcional", icon: "walletCards" },
@@ -28,6 +29,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { title: "Concursos e PSS", href: "/rh/concursos", icon: "users" },
     ] }],
     routes: [
+      { pathname: "/rh/portal-conteudos", title: "Locais e documentos do Portal" },
       { pathname: "/rh/atividades-funcionais", title: "Capacitação e avaliações funcionais", excludeQuery: { view: ["manage"], tab: ["inscricoes"] } },
       { pathname: "/rh/atos", title: "Atos de Pessoal" },
       { pathname: "/rh/beneficios", title: "Benefícios" },

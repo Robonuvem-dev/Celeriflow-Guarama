@@ -1,0 +1,19 @@
+import Link from "next/link";
+import { db } from "@/db/client";
+import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
+import { readPersonnelBudgetUnits } from "@/db/repositories/personnel-pages/catalog";
+import { listPortalContents } from "@/lib/portal-servidor/content-catalog";
+import { RhTablePanel } from "../_components/RhTablePanel";
+import { portalColumn } from "../../portal-servidor/operational-columns";
+import { createPortalContent, togglePortalContent } from "./actions";
+export const dynamic = "force-dynamic";
+export default async function PortalContentManagement() {
+  const context = await getTenantContextForModule("RH"), database = context.database ?? db;
+  const units = await readPersonnelBudgetUnits(database, context.user), allowed = new Set(units.map(unit => unit.id));
+  const rows = (await listPortalContents(database)).filter(row => allowed.has(row.data.budgetUnitId));
+  const canCreate = canPerformModuleOperation(context.user, "RH", "create"), canEdit = canPerformModuleOperation(context.user, "RH", "update");
+  return <main className="space-y-3 p-4"><h1 className="text-lg font-semibold">Locais e biblioteca do Portal do Servidor</h1><Link href="/rh/portal-funcional" className="text-sm underline">Gestão do portal</Link>
+    {canCreate && <form action={createPortalContent} className="grid gap-3 rounded border bg-white p-3 text-sm sm:grid-cols-2"><label>Tipo<select name="kind" className="block w-full rounded border p-2"><option value="LOCAL">Local de atendimento</option><option value="DOCUMENTO">Documento</option><option value="NORMA">Norma</option><option value="MANUAL">Manual</option></select></label><label>Unidade responsável<select name="budgetUnitId" required className="block w-full rounded border p-2">{units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></label><label className="sm:col-span-2">Descrição<input name="title" required minLength={3} maxLength={200} className="block w-full rounded border p-2" /></label><label>Endereço do local<input name="address" maxLength={500} className="block w-full rounded border p-2" /></label><label>Horário de atendimento<input name="hours" maxLength={500} className="block w-full rounded border p-2" /></label><label>Contato<input name="contact" maxLength={250} className="block w-full rounded border p-2" /></label><label>Arquivo (documentos, normas e manuais)<input name="file" type="file" accept=".pdf,.doc,.docx,.odt,.txt" className="block w-full" /><span className="text-xs">Até 4 MB; arquivo privado disponível somente aos servidores do órgão.</span></label><button className="w-fit rounded border px-3 py-2">Cadastrar e disponibilizar</button></form>}
+    <RhTablePanel title="Locais e publicações" preferenceId="rh-portal-conteudos" columns={[portalColumn("name", "Descrição", 260, 120), portalColumn("kind", "Tipo", 130, 90), portalColumn("unit", "Unidade", 210, 100), portalColumn("address", "Endereço / arquivo", 260, 110), portalColumn("hours", "Horário / contato", 220, 100), portalColumn("status", "Situação", 100, 85), portalColumn("actions", "Ações", 110, 90, "actions")]} rows={rows.map(row => ({ id: row.id, label: row.data.title, values: { name: row.data.title, kind: row.data.kind, unit: units.find(unit => unit.id === row.data.budgetUnitId)?.name || row.data.budgetUnitId, address: row.data.kind === "LOCAL" ? row.data.address : row.data.fileName || "", hours: [row.data.hours, row.data.contact].filter(Boolean).join(" · "), status: row.active ? "Ativo" : "Inativo", actions: "" }, cells: canEdit ? { actions: <form action={togglePortalContent}><input type="hidden" name="id" value={row.id} /><input type="hidden" name="active" value={String(!row.active)} /><button className="underline">{row.active ? "Inativar" : "Ativar"}</button></form> } : undefined }))} />
+  </main>;
+}

@@ -5,8 +5,7 @@ import { createSession, SESSION_COOKIE_NAME, SESSION_DURATION_MS } from "@/lib/p
 import { AccessError, authorizeIdToken } from "@/lib/platform/tenant-context";
 import { assertEmployeePortalLogin } from "@/lib/portal-servidor/login-policy";
 import { checkRateLimit } from "@/lib/platform/rate-limit";
-import { auditEventTypes } from "@/lib/platform/audit-evidence";
-import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { recordEmployeePortalActivity, employeePortalRequestMetadata } from "@/lib/portal-servidor/activity-audit";
 
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
@@ -18,11 +17,12 @@ export async function POST(request: NextRequest) {
     const user = await authorizeIdToken(idToken);
     const employee = await assertEmployeePortalLogin(db, user);
     const session = await createSession(idToken);
-    await writeAuditEvent(db, { actorUsuarioId: user.id, eventType: auditEventTypes.sessionLogin, targetType: "EMPLOYEE_PORTAL_SESSION", targetId: employee.id });
+    await recordEmployeePortalActivity(db, { action: "LOGIN", userId: user.id, employeeId: employee.id, ...employeePortalRequestMetadata(request) });
     const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "private, no-store" } });
     response.cookies.set(SESSION_COOKIE_NAME, session, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: Math.floor(SESSION_DURATION_MS / 1000), path: "/" });
     return response;
   } catch (error) {
+    await recordEmployeePortalActivity(db, { action: "LOGIN_FAILURE", ...employeePortalRequestMetadata(request) });
     if (error instanceof AccessError) return NextResponse.json({ error: error.message }, { status: error.status });
     if (error instanceof z.ZodError) return NextResponse.json({ error: "Confira os dados de autenticação." }, { status: 400 });
     console.error("Falha no acesso funcional", error);

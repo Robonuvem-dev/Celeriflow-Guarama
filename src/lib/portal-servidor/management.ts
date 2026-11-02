@@ -16,8 +16,10 @@ import { partnerDiscountPolicySchema } from "@/lib/rh/partner-discounts";
 import { auditEventTypes } from "@/lib/platform/audit-evidence";
 import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 import { cleanUnusedFunctionalUploads } from "./upload-maintenance";
+import { portalDataAccessPolicySchema } from "./data-access-policy";
 
 export const managedPortalPolicySchemas = {
+  CONTROLE_ACESSO_DADOS_FUNCIONAIS: portalDataAccessPolicySchema,
   MODELO_DOCUMENTO_FUNCIONAL: documentLayoutPolicySchema,
   TOTALIZADORES_PONTO_FUNCIONAL: attendanceTotalsPolicySchema,
   CAMPANHA_RECADASTRAMENTO: recertificationCampaignSchema,
@@ -37,6 +39,10 @@ export async function saveManagedPortalPolicy(context: AppContext, raw: unknown,
     const set = await portalRequired<{ status: string }>(tx, sql`SELECT status FROM "HrPayrollRuleSet" WHERE id=${input.ruleSetId}`);
     if (set.status !== "ATIVA") throw new Error("Configuração RH ativa obrigatória.");
     const unit = await portalRequired<{ secretariatId: string | null }>(tx, sql`SELECT "secretariatId" FROM "BudgetUnit" WHERE id=${input.budgetUnitId}`);
+    if ("departmentIds" in policy) {
+      const departments = [...new Set(policy.departmentIds)];
+      if (await portalCount(tx, sql`SELECT count(*) FROM "Department" WHERE id=ANY(${sql.param(departments)}::text[]) AND "isActive" AND "secretariatId" IS NOT DISTINCT FROM ${unit.secretariatId}`) !== departments.length) throw new Error("Lotação fora da unidade responsável ou inativa.");
+    }
     const employeeIds = "employeeIds" in policy ? policy.employeeIds : "viewerEmployeeIds" in policy ? [...policy.viewerEmployeeIds, ...policy.publishedEmployeeIds] : [];
     const unique = [...new Set(employeeIds)];
     if (unique.length && await portalCount(tx, sql`SELECT count(*) FROM "Employee" WHERE id=ANY(${sql.param(unique)}::text[]) AND "isActive" AND "secretariatId" IS NOT DISTINCT FROM ${unit.secretariatId}`) !== unique.length) throw new Error("Público funcional fora da unidade ou com cadastro inativo.");

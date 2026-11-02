@@ -16,6 +16,7 @@ import { assertPayrollBudgetScope } from "@/lib/rh/payroll-access";
 import { enqueueHrIntegration } from "@/lib/rh/workforce-service";
 import { auditEventTypes } from "@/lib/platform/audit-evidence";
 import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { statementDataAccessAllowed } from "./data-access-policy";
 
 type Db = DatabaseExecutor;
 export const portalPayrollPublicationPolicySchema = z.object({ origin: z.literal("DISPONIBILIZACAO_FOLHA_FUNCIONAL"), budgetUnitId: z.string().min(1), payrollTypes: z.array(z.string().min(1)).min(1), regimeIds: z.array(z.string().min(1)).min(1), scopes: z.array(z.enum(["PRODUCAO", "HOMOLOGACAO", "DEMONSTRACAO"])).min(1), allowBeforeClosure: z.boolean() }).strict();
@@ -28,6 +29,7 @@ export function payrollSnapshotHash(statement: { snapshot: JsonValue; gross: Dec
 
 export async function personalStatementPublicationAllowed(db: Db, statement: { id: string; snapshot: JsonValue; gross: DecimalJs.Value; deductions: DecimalJs.Value; net: DecimalJs.Value; employer: DecimalJs.Value; releaseAt: Date | null; revokedAt: Date | null; run: { mode: string; status: string } }, employeeId: string) {
   if (!await arePortalPayrollStatementsEnabled(db) || !statement.releaseAt || statement.releaseAt > new Date() || statement.revokedAt || statement.run.mode !== "OFICIAL") return false;
+  if (!await statementDataAccessAllowed(db, statement.id, employeeId)) return false;
   if (!["FECHADA", "CALCULADA"].includes(statement.run.status)) return false;
   const proof = await portalEvent(db, sql`"sourceKey"=${`PORTAL:PUBLICACAO_DEMONSTRATIVO:${statement.id}`}`);
   if (!proof) return statement.run.status === "FECHADA";

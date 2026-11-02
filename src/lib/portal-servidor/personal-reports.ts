@@ -15,6 +15,7 @@ import { ownReleasedStatementIds } from "./payroll-publication";
 import { attendanceTotalsPolicySchema, configuredAttendanceTotals } from "./attendance-totals";
 import { buildPocAnnualIncomeReport } from "@/lib/rh/poc-payment";
 import { annualIncomeCertificate } from "@/lib/rh/income-certificate";
+import { portalDataAccessAllowed } from "./data-access-policy";
 
 export const personalReportKinds = ["FICHA_FINANCEIRA", "CONTRIBUICOES", "SALARIOS_CONTRIBUICAO", "PONTO", "FERIAS", "BANCO_HORAS", "LICENCA_PREMIO", "GOZOS_LICENCA_PREMIO", "HISTORICO_ATS", "AFASTAMENTOS", "CONSIGNACOES", "FICHA_REGISTRO", "ATOS", "PLANOS", "INFORME_RENDIMENTOS"] as const;
 export const personalReportQuerySchema = z.object({ kind: z.enum(personalReportKinds), from: z.iso.date(), until: z.iso.date(), contractId: z.string().min(1).optional(), totalsPolicyId: z.string().optional(), format: z.enum(["PDF", "CSV", "XLSX"]).default("PDF") }).strict().refine(value => value.until >= value.from, "Período fora de ordem.").refine(value => !value.contractId || !["PONTO", "AFASTAMENTOS", "ATOS", "PLANOS"].includes(value.kind), "Este relatório usa o cadastro pessoal, sem filtro por contrato.");
@@ -30,6 +31,7 @@ export async function buildOwnPersonalReport(context: AppContext, raw: unknown):
   if (input.kind === "INFORME_RENDIMENTOS") {
     const year = Number(input.from.slice(0, 4));
     if (input.contractId || input.from !== `${year}-01-01` || input.until !== `${year}-12-31`) throw new Error("Selecione todos os vínculos e o ano-calendário completo, de 01/01 a 31/12.");
+    if (!await portalDataAccessAllowed(executor, employeeId, year)) throw new AccessError("Dados bloqueados pelo RH para o ano e lotação.", 403);
     const ids = await ownReleasedStatementIds(executor, employeeId);
     const annual = await buildPocAnnualIncomeReport(executor, year, inArray(hrPayrollStatements.id, ids), employeeId);
     return annualIncomeCertificate(annual);

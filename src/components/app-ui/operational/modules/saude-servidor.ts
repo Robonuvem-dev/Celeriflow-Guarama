@@ -41,6 +41,8 @@ export const operationalModules: OperationalModuleConfig[] = [
     key: "portal-servidor", moduleTitle: "Portal do Servidor", moduleCaption: "Autosserviço funcional", moduleIcon: "badgeCheck", navigation: portalServidorNavigation,
     routes: [
       { pathname: "/portal-servidor/aniversariantes", title: "Aniversariantes" },
+      { pathname: "/portal-servidor/atendimento", title: "Locais de atendimento" },
+      { pathname: "/portal-servidor/biblioteca", title: "Documentos, normas e manuais" },
       { pathname: "/portal-servidor/banco-horas", title: "Meu banco de horas" },
       { pathname: "/portal-servidor/beneficios", title: "Meus benefícios" },
       { pathname: "/portal-servidor/capacitacao", title: "Minha capacitação" },
