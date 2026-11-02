@@ -1,5 +1,13 @@
 # Checkpoint — Campo Florido
 
+## Sprint 03 — vínculos documentais, 02/11/2026
+
+Incremento 02 sobre 36c35b81998daced82600e6076a47077f7d80b36, somente em feat/cf10-cf30-cf33-mateus. Original/anexos ligados a versões jurídicas e GED existentes, com versão exata/hash, autorização conjunta, auditoria atômica, replay/concorrência e download pelo serviço GED existente. Tabela e paginação operacionais na rota /cadastros/textos-juridicos/documentos; nenhuma cópia de arquivo ou outro upload.
+
+Código concluído de 33.2/33.12/33.14; não homologado. Nova migração 20261102150000_cf33_legal_documents somente aplicada/revertida na fixture. Recurso responde 503 antes da aplicação; nenhum banco real acessado. Exclusividade legada do documento original preservada, sem inferir versão de documentos antigos. Formatos ampliados da main ainda não conciliados: 33.4/33.11 e demais lacunas continuam pendentes. Detalhes/limites em SPRINT-03.md.
+
+34 testes aprovados, tipos pertinentes/fixtures e ESLint; verify-files FILES_INTACT_BASELINE_AUTHORIZED, strictAdoption BLOCKED histórico, databaseAuthority NOT_CHECKED. Build integral segue pendente pelo bloqueio Windows/Turbopack, sem nova execução integral aprovada. 33.6/Eduardo e main intactos. Sem PR final, merge ou deploy manual. Próximo: completar S03 com formatos/cadastro e avançar S04; CF30 ainda não concluído.
+
 ## Sprint 03 — fundação jurídica, 02/11/2026
 
 Incremento sobre 5d2375c6f3821ce988c05bc472d171a0fe6ba8b6 somente na branch feat/cf10-cf30-cf33-mateus. Main consultada em b8e27b920a2ffaf347c34c006d5e6cd75b1c79e9: GED evoluiu; não importar a main inteira nem duplicar seus serviços/schema. Portal 33.6 conserva o mesmo blob protegido em ambas as referências.

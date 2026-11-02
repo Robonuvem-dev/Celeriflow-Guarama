@@ -62,6 +62,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { pathname: "/cadastros/centros-custo", title: "Centros de Custo" },
       { pathname: "/cadastros/localidades", title: "Localidades" },
       { pathname: "/cadastros/textos-juridicos", title: "Textos Jurídicos" },
+      { pathname: "/cadastros/textos-juridicos/documentos", title: "Documentos do Texto Jurídico" },
       { pathname: "/cadastros/bancos-agencias", title: "Bancos e Agências" },
       { pathname: "/cadastros/tributos", title: "Tributos" },
       { pathname: "/cadastros/moedas", title: "Moedas" },

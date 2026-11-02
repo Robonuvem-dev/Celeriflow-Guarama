@@ -62,13 +62,13 @@ Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correçã
 - [x] Proteger edição jurídica concorrente, rejeitar versão antiga, preservar status e testar rollback sem novo schema.
 - [x] Condicionar botões jurídicos às permissões existentes e testar envio da versão/rascunho após conflito.
 
-- [ ] 33.2: integrar conteúdo em banco e/ou arquivos externos ao cadastro jurídico existente.
+- [x] 33.2: integrar conteúdo em banco e/ou arquivos externos ao cadastro jurídico existente; vínculo e download de versão GED fixada (SPRINT-03, incremento 02). Sem homologação.
 - [ ] 33.4: permitir originais de figuras/mapas/planilhas vinculados à norma, sem conversão obrigatória.
 - [ ] 33.8: validar registro integral de todos os tipos de legislação municipal no cadastro/versionamento existente.
 - [ ] 33.9: validar esferas estadual/federal sem alterar a consulta municipal do Eduardo.
 - [ ] 33.11: preservar Word/LibreOffice originais; distinguir formatos aceitos no upload genérico dos aceitos no GED gerenciado.
-- [ ] 33.12: vincular anexos digitalizados/processos aos registros jurídicos com download autorizado.
-- [ ] 33.14: testar autorização server-side, versões concorrentes, auditoria e UI por operação.
+- [x] 33.12: vincular anexos digitalizados/processos à versão jurídica com download autorizado, sem cópia de arquivos. Migração só na fixture; homologação pendente.
+- [x] 33.14: autorização jurídica+GED server-side, versões concorrentes, auditoria atômica e UI por operação testadas. Sem homologação autenticada.
 - [ ] 33.15: identificar aplicativo/base de origem com o usuário; sem fonte, manter dependência externa. Preparar importação validada/idempotente sem redigitação.
 - [ ] Testar upload/download, arquivo inválido, integridade do original, acesso cruzado, concorrência e rollback.
 

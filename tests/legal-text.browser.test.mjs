@@ -31,7 +31,7 @@ before(async () => {
 });
 after(async () => { await browser?.close(); server?.closeAllConnections(); if (server) await new Promise(resolve => server.close(resolve)); });
 async function open(query = "", mobile = false) {
-  const page = await browser.newPage({ viewport: mobile ? { width: 390, height: 844 } : { width: 1366, height: 768 } });
+  const page = await browser.newPage({ viewport: mobile ? { width: 390, height: 844 } : { width: 1366, height: 768 }, ...(mobile ? { isMobile: true, hasTouch: true, userAgent: "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/145.0.0.0 Mobile Safari/537.36" } : {}) });
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(`${origin}/cadastros/textos-juridicos?${query}`); await page.locator("[data-operational-table]").waitFor();
   return page;

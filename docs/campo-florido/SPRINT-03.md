@@ -1,5 +1,46 @@
 # Sprint 03 — CF33, cadastro e documentos
 
+## Incremento 02 — documentos vinculados, 02/11/2026
+
+Base `36c35b81998daced82600e6076a47077f7d80b36`, somente na branch de Mateus. O estado abaixo atualiza o incremento 01 histórico. Código dos itens 33.2, 33.12 e 33.14 concluído; não homologado. Demais itens permanecem parciais/pendentes conforme seus requisitos específicos.
+
+### Entrega e reuso
+
+- Rota `/cadastros/textos-juridicos/documentos`, acessível pela ação Documentos na tabela jurídica existente. Uma tabela operacional por visão: vínculos e seleção no GED, com paginação de 20 registros, pesquisa de conteúdo pelo serviço GED e consulta por número de versão jurídica. Mantém tabela, botões, detalhes e paginação compartilhados. Importação dos arquivos continua no fluxo existente `/assinatura-digital/importacoes`; não foi criado outro upload.
+- Original e anexos ligam uma LegalTextVersion existente a uma DocumentVersion existente. Não copia arquivos, cria outro documento ou reconverte originais. Conteúdo textual permanece no cadastro/banco e arquivos permanecem no armazenamento gerenciado pelo GED (33.2). Anexos digitalizados podem ser associados à versão da norma, inclusive peças/processos externos já importados no GED (33.12).
+- Nova tabela de relação `LegalTextDocument` guarda versão jurídica, versão GED, finalidade, nome original, autor e data. É vínculo específico entre duas versões; não substitui GedIntegrationLink da main, que contém documentId/module/sourceId e não fixa a versão GED. Usa os catálogos e controles GED existentes, sem importar a main inteira ou recriar os 27 cadastros GED.
+- Para o original, conserva também LegalTextVersion.documentId. A exclusividade legada de documentId foi preservada: o mesmo documento não pode ser original de duas versões jurídicas. Uma revisão GED desse documento pode ser vinculada como anexo sem duplicar o arquivo. Caso haja original legado sem versão exata registrada, a tela informa essa pendência; não escolhe automaticamente uma versão histórica nem altera dados legados.
+- Vínculos são permanentes na versão jurídica: atualização/remoção são bloqueadas por trigger; correções exigem nova versão jurídica. O botão explicita original/anexo e a tela informa a permanência. Uma edição futura no GED não muda o hash/versão do vínculo.
+- API exige CADASTROS para consulta e CADASTROS:update para vínculo, além de getGedContext(read) e requireManagedDocument/gedEntryScope para acesso ao documento. Não amplia privilégios GED, não permite arquivos reservados ou versões não finais, rejeita origem externa no POST, versão jurídica antiga e versão GED divergente. Auditoria ocorre na mesma transação do vínculo. Replays não duplicam vínculo/auditoria.
+- Download exige novamente acesso jurídico e ao objeto GED e encaminha a versão fixada para o endpoint de download existente, que verifica bytes/hash e audita o download. Nenhuma URL de storage é exposta pela listagem nova. Listagem filtra escopo antes da contagem/paginação. Respostas privadas/no-store.
+
+### Migração e limites
+
+`db/migrations/20261102150000_cf33_legal_documents/migration.sql`: apenas nova tabela de relação, índices e proteção de imutabilidade. FKs para LegalTextVersion, DocumentVersion e Usuario; sem backfill, exclusão de dados, alteração de migração histórica ou mudança nas tabelas GED. Aplicação e rollback de DDL exercitados apenas na fixture isolada. Sem migração aplicada em banco real. Antes da aplicação, o recurso responde 503 e informa indisponibilidade; as consultas jurídicas legadas não passam a depender da nova tabela.
+
+`verify-files`: FILES_INTACT_BASELINE_AUTHORIZED. strictAdoption permanece BLOCKED pelas diferenças históricas preexistentes; databaseAuthority NOT_CHECKED. Esse resultado não aprova aplicação de migração nem comprova estado do banco real. Antes do PR final, reconciliar a migração CF10 renomeada na main, sem duplicá-la.
+
+O GED desta branch continua aceitando o subconjunto original de formatos. Word antigo/LibreOffice/Excel ampliados na main ainda precisam da conciliação dos serviços correspondentes: não declarar 33.4/33.11 concluídos por este vínculo. A busca nesta tela é a busca de conteúdo GED existente, não a consulta jurídica completa de 33.1/33.3/33.5. Importação automática 33.15 continua sem origem informada.
+
+### Evidências deste incremento
+
+34 testes aprovados, sem skipped:
+
+- 8 de vínculos reais em Drizzle/PostgreSQL isolado: aplicação/rollback da migração, guarda 503, original e anexos, replay, concorrência, paginação 20/2, isolamento, hash/versão fixados, reserva/conflito, auditoria atômica, imutabilidade SQL e exclusividade legada do original.
+- 7 de regressão da persistência jurídica e 2 de armazenamento/OCR GED com bytes reais/servidor de fixture.
+- 5 de fronteira HTTP (autorização jurídica+GED, origem, validação, conflitos, download da versão fixada e cache) e 4 de regressão da action. Identidade e IO simulados nos testes de fronteira, não sessão autenticada real.
+- 4 de navegador dos vínculos e 4 de regressão do cadastro jurídico: componentes/CSS reais, 13px/24px, 20/1 registros, payload/versões, erro, acesso de consulta, versão histórica sem escrita, defaults de outros catálogos e celular Android simulado em 390×844. Fonte fallback sans-serif. Ajustado o contêiner de download para preservar altura de linha; fixture móvel usa identificação móvel além da largura da janela.
+- ESLint e git diff --check aprovados; tipos das fontes/imports nas partições 3/7/10/13/16 e fixtures aprovados. O plano atual tem 17 partições/3.675 fontes/1.019 validações; somente as partições pertinentes foram verificadas, não novo build integral. Tentativas paralelas excederam memória do executor; verificações finais executadas sequencialmente, sem contar falhas/interrupções como PASS.
+
+```sh
+node --conditions=react-server --import tsx --test --test-concurrency=1 tests/legal-documents.test.ts tests/legal-text-persistence.test.ts tests/ged-storage.test.ts
+node --test tests/legal-documents-route.test.mjs tests/legal-text-actions.test.mjs
+node --test --test-concurrency=1 tests/legal-documents.browser.test.mjs tests/legal-text.browser.test.mjs
+node scripts/database-migrate.mjs verify-files
+```
+
+Build integral atual continua pendente pelo bloqueio Windows/Turbopack conhecido; não foi executado integralmente de novo nem aprovado neste incremento. Publicação somente de desenvolvimento na branch autorizada, sem PR final, merge, deploy manual ou nova homologação. Próximo: conciliar formatos/serviços GED da main para 33.4/33.11 e completar a experiência de cadastro 33.8/33.9; depois buscas/relações/impressão/comentários da Sprint 04. 33.6/Eduardo preservado.
+
 ## Incremento 01 — 02/11/2026
 
 Branch exclusiva `feat/cf10-cf30-cf33-mateus`, base `5d2375c6f3821ce988c05bc472d171a0fe6ba8b6`. Sprint em desenvolvimento; nenhum requisito CF33 novo é declarado concluído ou homologado neste incremento.
