@@ -1,0 +1,1561 @@
+{
+  "checkedAt": "2026-11-02T15:12:21.193Z",
+  "mode": "READ_ONLY_DATABASE_AND_BLOB_LIST",
+  "units": "bytes; MB = 1,000,000 bytes",
+  "packageId": "RH_PORTAL_2026_V1",
+  "database": {
+    "capacity": {
+      "databaseBytes": 170516480,
+      "readOnly": "on"
+    },
+    "employees": {
+      "total": 198,
+      "active": 198
+    },
+    "publicRelationsBytes": 135651328,
+    "tables": [
+      {
+        "table": "HrPayrollStatement",
+        "heapBytes": 139264,
+        "tableIncludingToastBytes": 4644864,
+        "indexBytes": 253952,
+        "totalBytes": 4898816,
+        "count": 594,
+        "rowRepresentationBytes": 2898504,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "AttendanceRecord",
+        "heapBytes": 2695168,
+        "tableIncludingToastBytes": 2736128,
+        "indexBytes": 1466368,
+        "totalBytes": 4202496,
+        "count": 12474,
+        "rowRepresentationBytes": 2594592,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrIntegrationEvent",
+        "heapBytes": 1318912,
+        "tableIncludingToastBytes": 1351680,
+        "indexBytes": 147456,
+        "totalBytes": 1499136,
+        "count": 682,
+        "rowRepresentationBytes": 1175752,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrReferenceRecord",
+        "heapBytes": 524288,
+        "tableIncludingToastBytes": 557056,
+        "indexBytes": 335872,
+        "totalBytes": 892928,
+        "count": 954,
+        "rowRepresentationBytes": 507768,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrEmploymentRevision",
+        "heapBytes": 679936,
+        "tableIncludingToastBytes": 712704,
+        "indexBytes": 147456,
+        "totalBytes": 860160,
+        "count": 396,
+        "rowRepresentationBytes": 594664,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPayrollItemOrigin",
+        "heapBytes": 524288,
+        "tableIncludingToastBytes": 565248,
+        "indexBytes": 278528,
+        "totalBytes": 843776,
+        "count": 1302,
+        "rowRepresentationBytes": 504432,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrMovement",
+        "heapBytes": 294912,
+        "tableIncludingToastBytes": 327680,
+        "indexBytes": 196608,
+        "totalBytes": 524288,
+        "count": 654,
+        "rowRepresentationBytes": 278784,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "PayrollItem",
+        "heapBytes": 335872,
+        "tableIncludingToastBytes": 376832,
+        "indexBytes": 98304,
+        "totalBytes": 475136,
+        "count": 1482,
+        "rowRepresentationBytes": 317310,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrEmploymentContract",
+        "heapBytes": 253952,
+        "tableIncludingToastBytes": 294912,
+        "indexBytes": 106496,
+        "totalBytes": 401408,
+        "count": 198,
+        "rowRepresentationBytes": 212512,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPortalRequest",
+        "heapBytes": 139264,
+        "tableIncludingToastBytes": 172032,
+        "indexBytes": 114688,
+        "totalBytes": 286720,
+        "count": 216,
+        "rowRepresentationBytes": 99888,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPayrollRun",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 155648,
+        "indexBytes": 49152,
+        "totalBytes": 204800,
+        "count": 3,
+        "rowRepresentationBytes": 48768,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "Employee",
+        "heapBytes": 81920,
+        "tableIncludingToastBytes": 114688,
+        "indexBytes": 81920,
+        "totalBytes": 196608,
+        "count": 198,
+        "rowRepresentationBytes": 65064,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPayrollRule",
+        "heapBytes": 24576,
+        "tableIncludingToastBytes": 57344,
+        "indexBytes": 49152,
+        "totalBytes": 106496,
+        "count": 22,
+        "rowRepresentationBytes": 20576,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrEmploymentRegime",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 81920,
+        "totalBytes": 98304,
+        "count": 3,
+        "rowRepresentationBytes": 1288,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "Role",
+        "heapBytes": 16384,
+        "tableIncludingToastBytes": 57344,
+        "indexBytes": 16384,
+        "totalBytes": 73728,
+        "count": 42,
+        "rowRepresentationBytes": 4725,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPayrollRuleSet",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 49152,
+        "totalBytes": 65536,
+        "count": 1,
+        "rowRepresentationBytes": 456,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrSocialSecurityScheme",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 49152,
+        "totalBytes": 65536,
+        "count": 1,
+        "rowRepresentationBytes": 432,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPayrollRubricIncidence",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 49152,
+        "totalBytes": 65536,
+        "count": 20,
+        "rowRepresentationBytes": 2077,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPayrollRubric",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 49152,
+        "totalBytes": 65536,
+        "count": 16,
+        "rowRepresentationBytes": 6432,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstExposureGroup",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 49152,
+        "totalBytes": 65536,
+        "count": 3,
+        "rowRepresentationBytes": 816,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrSocialSecurityBand",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 49152,
+        "totalBytes": 65536,
+        "count": 4,
+        "rowRepresentationBytes": 493,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrVacationPolicy",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 49152,
+        "totalBytes": 65536,
+        "count": 1,
+        "rowRepresentationBytes": 464,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstEquipmentDeliveryItem",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 40960,
+        "totalBytes": 49152,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstLeavePayrollOrigin",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 40960,
+        "totalBytes": 49152,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrRoleLegalHistory",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 40960,
+        "totalBytes": 49152,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrCalculationPolicy",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 32768,
+        "totalBytes": 49152,
+        "count": 1,
+        "rowRepresentationBytes": 368,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstMedicalCertificate",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 40960,
+        "totalBytes": 49152,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCertificateReason",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 32768,
+        "totalBytes": 49152,
+        "count": 3,
+        "rowRepresentationBytes": 608,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "PayrollEvent",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 32768,
+        "totalBytes": 49152,
+        "count": 19,
+        "rowRepresentationBytes": 2453,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrRecruitmentApplication",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 40960,
+        "totalBytes": 49152,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrEmployeeFunctionalPeriod",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPayrollConfigurationChange",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstClinicalRecord",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstBenefitEntry",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEsocialEvent",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstQuestionnaireVersion",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEsocialEvidence",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrConsignmentInstallment",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstVaccination",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEquipment",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrConsignmentAgreement",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrConsignmentEntry",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstAso",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 32768,
+        "totalBytes": 40960,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstProfessionalRole",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEquipmentDelivery",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEquipmentEvent",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCat",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCatEvidence",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstRestriction",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrRightEntry",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstPreventionRecord",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstElectionCandidate",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstHealthPlan",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstBenefitBeneficiary",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEsocialConfiguration",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstFoundationalRevocation",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstReasonRegimePolicy",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstAsoCorrection",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstAsoDocument",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstBenefitPayrollOrigin",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCatLayoutVersion",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstBenefitCancellation",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstRestrictionEmailOutbox",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrPortalServiceConfiguration",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "HrPortalRequestBinding",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstCertificateDocument",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstAppointment",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstPlannedShift",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "Payroll",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 16384,
+        "totalBytes": 32768,
+        "count": 4,
+        "rowRepresentationBytes": 425,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstOccupationalProgram",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "Vacation",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 16384,
+        "totalBytes": 32768,
+        "count": 34,
+        "rowRepresentationBytes": 5296,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "Dependent",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 16384,
+        "totalBytes": 32768,
+        "count": 8,
+        "rowRepresentationBytes": 1696,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "PersonnelAct",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 16384,
+        "indexBytes": 16384,
+        "totalBytes": 32768,
+        "count": 18,
+        "rowRepresentationBytes": 3312,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstAnamnesis",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 24576,
+        "totalBytes": 32768,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstAccessGrant",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstMedicalBoard",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstMedicalBoardMember",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstMedicalAssessment",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstScheduleAvailability",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstScheduleBlock",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstProgramExposureGroup",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstOccupationalExam",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstDisciplineGrant",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEquipmentRequirement",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCatLedger",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstRoleAttribute",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstRestrictionFollowup",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstPreventionRevision",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstElectionBallot",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEsocialAttempt",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstServiceOrder",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstClosureEmission",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrBudgetUnitEntityMapping",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstTechnicalResponsibility",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCertificateDecisionRevision",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCertificateLeaveConfirmation",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstAsoFlowSource",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstBenefitPayrollScope",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstBenefitPayrollMapping",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstLeavePayrollRuleVersion",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrEmployeeDocument",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 16384,
+        "totalBytes": 24576,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstLeavePayrollScopeEvidence",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstCatLayoutMedical",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "HrVacationConcessionSource",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "SstCertificateFunctionalSource",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstAsoFlowSettings",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstElectionTurnout",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstElectionElector",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "SstEquipmentPolicy",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "SST_ADJACENT"
+      },
+      {
+        "table": "BenefitConfig",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "PayrollBenefit",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      },
+      {
+        "table": "Leave",
+        "heapBytes": 0,
+        "tableIncludingToastBytes": 8192,
+        "indexBytes": 8192,
+        "totalBytes": 16384,
+        "count": 0,
+        "rowRepresentationBytes": 0,
+        "scope": "RH_CORE"
+      }
+    ],
+    "cohorts": [
+      {
+        "table": "AttendanceRecord",
+        "period": "2026-10",
+        "count": 4158,
+        "rowRepresentationBytes": 864864,
+        "estimatedPhysicalBytes": 1400832
+      },
+      {
+        "table": "AttendanceRecord",
+        "period": "2026-08",
+        "count": 4158,
+        "rowRepresentationBytes": 864864,
+        "estimatedPhysicalBytes": 1400832
+      },
+      {
+        "table": "AttendanceRecord",
+        "period": "2026-09",
+        "count": 4158,
+        "rowRepresentationBytes": 864864,
+        "estimatedPhysicalBytes": 1400832
+      },
+      {
+        "table": "Payroll",
+        "period": "08/2026",
+        "count": 1,
+        "rowRepresentationBytes": 102,
+        "estimatedPhysicalBytes": 7864.32
+      },
+      {
+        "table": "Payroll",
+        "period": "09/2026",
+        "count": 1,
+        "rowRepresentationBytes": 102,
+        "estimatedPhysicalBytes": 7864.32
+      },
+      {
+        "table": "Payroll",
+        "period": "10/2026",
+        "count": 1,
+        "rowRepresentationBytes": 102,
+        "estimatedPhysicalBytes": 7864.32
+      },
+      {
+        "table": "HrPayrollRun",
+        "period": "08/2026",
+        "count": 1,
+        "rowRepresentationBytes": 16256,
+        "estimatedPhysicalBytes": 68266.66666666667
+      },
+      {
+        "table": "HrPayrollRun",
+        "period": "09/2026",
+        "count": 1,
+        "rowRepresentationBytes": 16256,
+        "estimatedPhysicalBytes": 68266.66666666667
+      },
+      {
+        "table": "HrPayrollRun",
+        "period": "10/2026",
+        "count": 1,
+        "rowRepresentationBytes": 16256,
+        "estimatedPhysicalBytes": 68266.66666666667
+      },
+      {
+        "table": "HrPayrollStatement",
+        "period": "08/2026",
+        "count": 198,
+        "rowRepresentationBytes": 964632,
+        "estimatedPhysicalBytes": 1630342.6442440653
+      },
+      {
+        "table": "HrPayrollStatement",
+        "period": "09/2026",
+        "count": 198,
+        "rowRepresentationBytes": 967456,
+        "estimatedPhysicalBytes": 1635115.539635619
+      },
+      {
+        "table": "HrPayrollStatement",
+        "period": "10/2026",
+        "count": 198,
+        "rowRepresentationBytes": 966416,
+        "estimatedPhysicalBytes": 1633357.8161203158
+      },
+      {
+        "table": "PayrollItem",
+        "period": "08/2026",
+        "count": 434,
+        "rowRepresentationBytes": 89138,
+        "estimatedPhysicalBytes": 133474.11921464815
+      },
+      {
+        "table": "PayrollItem",
+        "period": "09/2026",
+        "count": 434,
+        "rowRepresentationBytes": 89138,
+        "estimatedPhysicalBytes": 133474.11921464815
+      },
+      {
+        "table": "PayrollItem",
+        "period": "10/2026",
+        "count": 434,
+        "rowRepresentationBytes": 89138,
+        "estimatedPhysicalBytes": 133474.11921464815
+      },
+      {
+        "table": "HrPayrollItemOrigin",
+        "period": "08/2026",
+        "count": 434,
+        "rowRepresentationBytes": 168144,
+        "estimatedPhysicalBytes": 281258.6666666667
+      },
+      {
+        "table": "HrPayrollItemOrigin",
+        "period": "09/2026",
+        "count": 434,
+        "rowRepresentationBytes": 168144,
+        "estimatedPhysicalBytes": 281258.6666666667
+      },
+      {
+        "table": "HrPayrollItemOrigin",
+        "period": "10/2026",
+        "count": 434,
+        "rowRepresentationBytes": 168144,
+        "estimatedPhysicalBytes": 281258.6666666667
+      }
+    ],
+    "snapshots": [
+      {
+        "competence": "08/2026",
+        "count": 198,
+        "storedSnapshotBytes": 934304,
+        "snapshotJsonTextBytes": 2342644
+      },
+      {
+        "competence": "09/2026",
+        "count": 198,
+        "storedSnapshotBytes": 937166,
+        "snapshotJsonTextBytes": 2342985
+      },
+      {
+        "competence": "10/2026",
+        "count": 198,
+        "storedSnapshotBytes": 936148,
+        "snapshotJsonTextBytes": 2342985
+      }
+    ],
+    "integration": [
+      {
+        "eventType": "ATS_APURADO",
+        "count": 594,
+        "rowRepresentationBytes": 1069200
+      },
+      {
+        "eventType": "DEMONSTRATIVOS_LIBERADOS",
+        "count": 3,
+        "rowRepresentationBytes": 1128
+      },
+      {
+        "eventType": "FOLHA_FECHADA",
+        "count": 3,
+        "rowRepresentationBytes": 1272
+      },
+      {
+        "eventType": "HORAS_EXTRAS_CALCULADAS",
+        "count": 60,
+        "rowRepresentationBytes": 79728
+      },
+      {
+        "eventType": "PARAMETROS_POC_INSTALADOS",
+        "count": 1,
+        "rowRepresentationBytes": 616
+      },
+      {
+        "eventType": "REMUNERACAO",
+        "count": 3,
+        "rowRepresentationBytes": 1152
+      }
+    ],
+    "portalArtifacts": [
+      {
+        "eventType": "CERTIFICADO_CURSO_EMITIDO",
+        "status": "PROCESSADO",
+        "count": 18,
+        "rowRepresentationBytes": 22656
+      },
+      {
+        "eventType": "DEMONSTRATIVOS_LIBERADOS",
+        "status": "AGUARDANDO_CONFIGURACAO",
+        "count": 3,
+        "rowRepresentationBytes": 1128
+      }
+    ],
+    "receiptPdf": {
+      "samples": 18,
+      "minBytes": 5328,
+      "meanBytes": 5345.388888888889,
+      "maxBytes": 5366,
+      "sumBytes": 96217
+    },
+    "monthlyAttendancePdf": {
+      "samples": 18,
+      "minBytes": 4659,
+      "meanBytes": 4690.611111111111,
+      "maxBytes": 4725,
+      "sumBytes": 84431
+    },
+    "reportSamples": [
+      {
+        "kind": "FOLHA",
+        "competence": "10/2026",
+        "rows": 198,
+        "bytes": {
+          "CSV": 34199,
+          "PDF": 26515,
+          "XLSX": 18660
+        }
+      },
+      {
+        "kind": "CADASTRO_GERAL",
+        "referenceDate": "2026-11-02",
+        "rows": 198,
+        "bytes": {
+          "CSV": 56828,
+          "PDF": 37992,
+          "XLSX": 23287
+        }
+      },
+      {
+        "kind": "CARTAO_PONTO_132",
+        "from": "2026-10-01",
+        "until": "2026-10-31",
+        "rows": 198,
+        "bytes": {
+          "CSV": 25214,
+          "PDF": 47328,
+          "XLSX": 14193
+        }
+      },
+      {
+        "kind": "HISTORICO_FUNCIONAL",
+        "referenceDate": "2026-11-02",
+        "rows": 1062,
+        "bytes": {
+          "CSV": 312864,
+          "PDF": 193604,
+          "XLSX": 65641
+        }
+      }
+    ],
+    "topPublicRelations": [
+      {
+        "table": "SanMeterReading",
+        "heapBytes": 13246464,
+        "tableIncludingToastBytes": 13287424,
+        "indexBytes": 18112512,
+        "totalBytes": 31399936
+      },
+      {
+        "table": "SanInvoice",
+        "heapBytes": 9740288,
+        "tableIncludingToastBytes": 9781248,
+        "indexBytes": 16220160,
+        "totalBytes": 26001408
+      },
+      {
+        "table": "SanConsumerUnit",
+        "heapBytes": 4612096,
+        "tableIncludingToastBytes": 4653056,
+        "indexBytes": 5136384,
+        "totalBytes": 9789440
+      },
+      {
+        "table": "SanWaterMeter",
+        "heapBytes": 2760704,
+        "tableIncludingToastBytes": 2801664,
+        "indexBytes": 2940928,
+        "totalBytes": 5742592
+      },
+      {
+        "table": "HrPayrollStatement",
+        "heapBytes": 139264,
+        "tableIncludingToastBytes": 4644864,
+        "indexBytes": 253952,
+        "totalBytes": 4898816
+      },
+      {
+        "table": "AttendanceRecord",
+        "heapBytes": 2695168,
+        "tableIncludingToastBytes": 2736128,
+        "indexBytes": 1466368,
+        "totalBytes": 4202496
+      },
+      {
+        "table": "HrIntegrationEvent",
+        "heapBytes": 1318912,
+        "tableIncludingToastBytes": 1351680,
+        "indexBytes": 147456,
+        "totalBytes": 1499136
+      },
+      {
+        "table": "AuditEvent",
+        "heapBytes": 376832,
+        "tableIncludingToastBytes": 417792,
+        "indexBytes": 770048,
+        "totalBytes": 1187840
+      },
+      {
+        "table": "Institution",
+        "heapBytes": 8192,
+        "tableIncludingToastBytes": 1032192,
+        "indexBytes": 16384,
+        "totalBytes": 1048576
+      },
+      {
+        "table": "HrReferenceRecord",
+        "heapBytes": 524288,
+        "tableIncludingToastBytes": 557056,
+        "indexBytes": 335872,
+        "totalBytes": 892928
+      },
+      {
+        "table": "HrEmploymentRevision",
+        "heapBytes": 679936,
+        "tableIncludingToastBytes": 712704,
+        "indexBytes": 147456,
+        "totalBytes": 860160
+      },
+      {
+        "table": "HrPayrollItemOrigin",
+        "heapBytes": 524288,
+        "tableIncludingToastBytes": 565248,
+        "indexBytes": 278528,
+        "totalBytes": 843776
+      }
+    ]
+  },
+  "blob": {
+    "storeCount": 78,
+    "storeBytes": 323801,
+    "instanceCount": 35,
+    "instanceBytes": 212582,
+    "listCalls": 1,
+    "groups": {
+      "ROOT": {
+        "count": 3,
+        "bytes": 25578
+      },
+      "ged-derived": {
+        "count": 1,
+        "bytes": 26594
+      },
+      "ged": {
+        "count": 27,
+        "bytes": 156832
+      },
+      "processos": {
+        "count": 4,
+        "bytes": 3578
+      }
+    },
+    "rhAndIntegrationReferencedCount": 0,
+    "rhAndIntegrationReferencedBytes": 0,
+    "referenceScope": "All integration fileUrl values plus personnel acts and documents linked to employee persons; not a complete RH attachment inventory"
+  },
+  "projectionModel": {
+    "coreBytes": 16703488,
+    "recurringThreeBytes": 12567654.484434221,
+    "fixedBytes": 4135833.515565779,
+    "assumptions": [
+      "198 employees, one monthly payroll, 21 attendance days per month",
+      "Existing configuration and registrations counted once",
+      "All current movements and historical package integration events amortized over three months",
+      "Planning adds 50% of incremental database growth plus 2000 bytes per cached receipt event; reserve is an assumption, not measured receipt-event cost",
+      "No additional payroll types, mass scanned attachments, official postings or activity-dependent audit growth modeled"
+    ],
+    "projections": [
+      {
+        "months": 3,
+        "statements": 594,
+        "attendanceRowsAt21DaysPerMonth": 12474,
+        "rhCoreBytes": 16703488.000000002,
+        "incrementalDatabaseBytes": 0,
+        "entireDatabaseBytes": 170516480,
+        "receiptBlobBytesAt100PercentAccess": 3175161,
+        "attendanceBlobBytesOnlyIfExplicitlyArchived": 2786223,
+        "receiptEventDatabaseReserveBytesAt100PercentAccess": 1188000,
+        "entireDatabasePlanningBytes": 171704480
+      },
+      {
+        "months": 12,
+        "statements": 2376,
+        "attendanceRowsAt21DaysPerMonth": 49896,
+        "rhCoreBytes": 54406451.45330267,
+        "incrementalDatabaseBytes": 37702963.45330267,
+        "entireDatabaseBytes": 208219443.45330268,
+        "receiptBlobBytesAt100PercentAccess": 12700644,
+        "attendanceBlobBytesOnlyIfExplicitlyArchived": 11144892,
+        "receiptEventDatabaseReserveBytesAt100PercentAccess": 4752000,
+        "entireDatabasePlanningBytes": 231822925.179954
+      },
+      {
+        "months": 24,
+        "statements": 4752,
+        "attendanceRowsAt21DaysPerMonth": 99792,
+        "rhCoreBytes": 104677069.39103957,
+        "incrementalDatabaseBytes": 87973581.39103955,
+        "entireDatabaseBytes": 258490061.39103955,
+        "receiptBlobBytesAt100PercentAccess": 25401288,
+        "attendanceBlobBytesOnlyIfExplicitlyArchived": 22289784,
+        "receiptEventDatabaseReserveBytesAt100PercentAccess": 9504000,
+        "entireDatabasePlanningBytes": 311980852.0865593
+      }
+    ]
+  },
+  "limitations": [
+    "pg_database_size is current database size, not account/project billing, WAL, history or other branches",
+    "Physical cohort attribution is estimated proportionally to pg_column_size; only whole-table physical sizes are exact",
+    "PDF sample is deterministic and stratified by stored snapshot size (18); no artifact uploaded",
+    "Blob list is the store accessible by the configured token; no account billing/operations history available",
+    "SST is shown separately and canonical Person/Document shared tables are not wholly attributed to RH"
+  ]
+}

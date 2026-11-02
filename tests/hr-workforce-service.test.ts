@@ -57,7 +57,8 @@ import { inspectPositionPlan } from "../src/lib/rh/position-plan";
 import { registerFunctionalOccurrence, cancelFunctionalOccurrence, assertPersonnelActNotIntegrated } from "../src/lib/rh/functional-occurrences";
 import { installDocumentaryPocParameters, prepareDocumentaryPocDataset } from "../src/lib/rh/poc-bootstrap";
 import { requestTravelAllowance, decideTravelAllowance, accountForTravelAllowance, buildTravelAllowanceDocument } from "../src/lib/rh/travel-allowance";
-import { registerPocPayment } from "../src/lib/rh/poc-payment";
+import { buildPocAnnualIncomeReport, registerPocPayment } from "../src/lib/rh/poc-payment";
+import { calculateIncomeHistory2025 } from "../src/lib/rh/income-history";
 import { configurePayrollPensions } from "../src/lib/rh/pension-configuration";
 import { applyPocEmploymentLifecycle } from "../src/lib/rh/employment-lifecycle";
 
@@ -457,6 +458,12 @@ test("PostgreSQL RH: simulação isolada, revisão, replay, movimentos, fechamen
     const canceledInstallment = await cancelConsignmentInstallment(db, "actor", cancellation);
     assert.equal(canceledInstallment.amount.toFixed(2), "-100.00");
     assert.equal((await cancelConsignmentInstallment(db, "another-actor", cancellation)).id, canceledInstallment.id);
+    const installmentsReport = await buildHrReport(executor, { kind: "VERBAS_FIXAS_VARIAVEIS", format: "CSV", q: "", employeeId: "employee", from: "2027-03-01", until: "2027-04-30", referenceDate: "2027-05-01" });
+    const kindColumn = installmentsReport.headers.indexOf("Tipo de registro");
+    const installmentRows = installmentsReport.rows.filter(row => row[kindColumn] === "PARCELA_CONSIGNADA");
+    assert.equal(installmentRows.length, 2, "as duas parcelas devem aparecer sem duplicar o movimento lançado");
+    assert.ok(installmentRows.some(row => row.at(-1) === "CANCELADA" && new Decimal(row.at(-2)!).eq(0)));
+    assert.ok(installmentRows.some(row => row.at(-1) === "LANÇADA — não comprova pagamento" && new Decimal(row.at(-2)!).eq(100)));
     const aprilPayroll = await required(executor.insert(payrolls).values({ competence: "04/2027", type: "Mensal", status: "Aberta" }).returning());
     await assert.rejects(postConsignmentInstallment(db, "actor", { installmentId: aprilInstallment.id, payrollId: aprilPayroll.id }), /cancelada/);
     const marchRun = await calculatePayrollRun(db, "actor", marchInput);
@@ -687,7 +694,9 @@ test("PostgreSQL RH: simulação isolada, revisão, replay, movimentos, fechamen
     const customReport = await buildHrReport(executor, { kind: "CONTRATOS", format: "CSV", q: "CUSTOM-", customCode: "CLASSE", customValue: "B", customType: "TEXTO" });
     assert.equal(customReport.rows.length, 1);
     assert.equal(customReport.rows[0][0], "CUSTOM-1");
-    assert.match(customReport.rows[0].at(-1)!, /"CLASSE":"B"/);
+    const customFieldsColumn = customReport.headers.indexOf("Campos configuráveis (JSON)");
+    assert.ok(customFieldsColumn >= 0, "a exportação deve preservar os campos configuráveis junto dos novos dados de jornada");
+    assert.match(customReport.rows[0][customFieldsColumn], /"CLASSE":"B"/);
     assert.equal((await buildHrReport(executor, { kind: "CONTRATOS", format: "CSV", q: "CUSTOM-", customCode: "CLASSE", customValue: "A", customType: "TEXTO" })).rows.length, 0, "filtro usa valores atuais; histórico permanece na revisão");
     await executor.update(hrPayrollRules).set({ value: { ...changedCustomPolicy, fields: [customPolicy.fields[0]] } }).where(eq(hrPayrollRules.id, "custom-rule"));
     await assert.rejects(saveEmploymentContract(db, "actor", { ...input, id: customContract.id, registration: "CUSTOM-1", version: latestCustom.version, effectiveFrom: "2026-04-01", details: latestCustom.details }), /Campo histórico retirado/);
@@ -734,6 +743,11 @@ test("PostgreSQL RH: simulação isolada, revisão, replay, movimentos, fechamen
     await assert.rejects(registerFunctionalOccurrence(db, "actor", { ...occurrenceInput, sourceKey: "occurrence-clinical" }), /origem clínica protegida/);
     const occurrenceCancel = await cancelFunctionalOccurrence(db, "actor", { occurrenceId: occurrence.id, reason: "Cancelamento sintético fundamentado" });
     assert.equal((await cancelFunctionalOccurrence(db, "another-actor", { occurrenceId: occurrence.id, reason: "Cancelamento sintético fundamentado" })).id, occurrenceCancel.id);
+    const occurrencesReport = await buildHrReport(executor, { kind: "OCORRENCIAS_FUNCIONAIS", format: "CSV", q: "", employeeId: "employee", from: "2026-01-01", until: "2027-12-31" });
+    const occurrenceRow = occurrencesReport.rows.find(row => row[occurrencesReport.headers.indexOf("Registro de origem")] === occurrence.id);
+    assert.ok(occurrenceRow, "a emissão deve conservar a origem da ocorrência cancelada");
+    assert.match(occurrenceRow[occurrencesReport.headers.indexOf("Situação")], /CANCELADO/);
+    assert.equal(occurrenceRow[occurrencesReport.headers.indexOf("Motivo do cancelamento")], "Cancelamento sintético fundamentado");
     await assert.rejects(cancelFunctionalOccurrence(db, "actor", { occurrenceId: occurrence.id, reason: "Outro fundamento" }), /outro fundamento/);
     await assert.rejects(cancelFunctionalOccurrence(db, "actor", { occurrenceId: occurrenceCancel.id, reason: "Cancelamento de cancelamento" }), /original/);
     assert.equal((await required(executor.select().from(hrIntegrationEvents).where(eq(hrIntegrationEvents.id, occurrence.id)))).eventType, "OCORRENCIA_FUNCIONAL_REGISTRADA", "cancelamento mantém a ocorrência original");
@@ -852,6 +866,28 @@ test("PostgreSQL RH: simulação isolada, revisão, replay, movimentos, fechamen
     assert.equal(annualPoc.rows.length, 3);
     assert.equal((await buildHrReport(executor, { kind: "INFORME_ANUAL_POC", format: "CSV", q: "", year: 2025 })).rows.length, 0);
     assert.equal((await buildHrReport(executor, { kind: "INFORME_ANUAL_POC", format: "CSV", q: "", year: 2026 }, eq(payrolls.id, "inaccessible-payroll"))).rows.length, 0);
+    // Imported opening balances supplement December only, and inherit the
+    // December holder/payroll authorization rather than trusting payload IDs.
+    await executor.insert(payrolls).values({ id: "annual-december-2025", competence: "12/2025", type: "Mensal" });
+    const december = await calculatePayrollRun(db, "actor", { payrollId: "annual-december-2025", requestKey: "annual-december-2025", contractIds: poc.contractIds, mode: "OFICIAL", scope: "DEMONSTRACAO" });
+    await closePayrollRun(db, "actor", december.id);
+    await registerPocPayment(db, "actor", { runId: december.id, paymentDate: "2025-12-30", reference: "annual-december-2025" });
+    const holderStatement = december.statements.find(row => row.contractId === poc.contractIds[0])!;
+    const holderSnapshot = holderStatement.snapshot as { contract: { employeeId: string; employee: { person: { id: string; cpf: string; fullName: string } } }; bases: { IRRF: string } };
+    const person = holderSnapshot.contract.employee.person, holderId = holderSnapshot.contract.employeeId;
+    const openingPayload = { version: 1, packageId: "annual-history", year: 2025, anchorRunId: december.id, employeeId: holderId, contractId: poc.contractIds[0], personId: person.id, cpf: person.cpf, name: person.fullName, estimated: true, actualBankSettlement: false, months: calculateIncomeHistory2025("4400.00") };
+    await executor.insert(hrIntegrationEvents).values({ id: "annual-opening", sourceKey: "annual-opening", domain: "POC_FINANCEIRO", environment: "DEMONSTRACAO", eventType: "RENDIMENTOS_HISTORICOS_IMPORTADOS", payload: openingPayload, payloadHash: "opening" });
+    const holderAnnual = await buildPocAnnualIncomeReport(executor, 2025, undefined, holderId);
+    assert.equal(holderAnnual.rows.length, 1);
+    assert.equal(holderAnnual.rows[0][1], person.cpf);
+    assert.equal(holderAnnual.rows[0][3], new Decimal("4400").mul(11).add(holderSnapshot.bases.IRRF).toFixed(2));
+    assert.equal(holderAnnual.rows[0][16], "12");
+    assert.equal((await buildPocAnnualIncomeReport(executor, 2025, undefined, "unrelated-holder")).rows.length, 0);
+    assert.equal((await buildPocAnnualIncomeReport(executor, 2025, eq(payrolls.id, "inaccessible-payroll"), holderId)).rows.length, 0);
+    await executor.insert(hrIntegrationEvents).values({ id: "annual-opening-duplicate", sourceKey: "annual-opening-duplicate", domain: "POC_FINANCEIRO", environment: "DEMONSTRACAO", eventType: "RENDIMENTOS_HISTORICOS_IMPORTADOS", payload: openingPayload, payloadHash: "duplicate" });
+    await assert.rejects(buildPocAnnualIncomeReport(executor, 2025, undefined, holderId), /Competência repetida/);
+    await executor.update(hrIntegrationEvents).set({ status: "REVOGADO" }).where(eq(hrIntegrationEvents.id, "annual-opening-duplicate"));
+    assert.equal((await buildPocAnnualIncomeReport(executor, 2025, undefined, holderId)).rows[0][16], "12");
     await assert.rejects(calculatePayrollRun(db, "actor", { payrollId: poc.payrollIds[1], requestKey: "special-production", mode: "OFICIAL", scope: "PRODUCAO", contractIds: poc.contractIds, specialParameters: { reason: "Teste de isolamento da POC" } }), /fechada|DEMONSTRACAO/);
     const travelRule = await required(executor.select().from(hrPayrollRules).where(and(eq(hrPayrollRules.ruleSetId, poc.ruleSetId), eq(hrPayrollRules.code, "DIARIAS_POC"))));
     const travelInput = { requestKey: "travel-poc-test", contractId: poc.contractIds[0], ruleId: travelRule.id, destination: "Cascavel", destinationType: "INTERIOR", departureAt: "2026-10-20T07:00:00-03:00", returnAt: "2026-10-20T18:00:00-03:00", distanceKm: "100", overnight: "NAO", exchangeRate: "1", purpose: "Capacitação fictícia demonstrativa", vehiclePlate: "POC-0001" };

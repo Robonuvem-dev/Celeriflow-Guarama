@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import type { JsonValue } from "@/db/json";
 import { portalRows } from "@/db/repositories/portal-servidor/records";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ const labels: Record<(typeof personalReportKinds)[number], string> = {
   LICENCA_PREMIO: "Licença-prêmio", AFASTAMENTOS: "Afastamentos e faltas", CONSIGNACOES: "Consignações",
   FICHA_REGISTRO: "Ficha de registro funcional", ATOS: "Atos legais", PLANOS: "Despesas dos planos de saúde",
   GOZOS_LICENCA_PREMIO: "Gozos de licença-prêmio vinculados ao RH", HISTORICO_ATS: "Histórico do adicional por tempo de serviço",
+  INFORME_RENDIMENTOS: "Comprovante de rendimentos anual",
 };
 
 export default async function PersonalReportsPage() {
@@ -33,10 +35,10 @@ export default async function PersonalReportsPage() {
       <label className="flex flex-col gap-1 text-xs sm:col-span-2">Relatório<select name="kind" required className={control}>{personalReportKinds.map(kind => <option key={kind} value={kind}>{labels[kind]}</option>)}</select></label>
       <label className="flex flex-col gap-1 text-xs">Início<input name="from" type="date" required defaultValue={`${today.slice(0, 4)}-01-01`} className={control} /></label>
       <label className="flex flex-col gap-1 text-xs">Fim<input name="until" type="date" required defaultValue={today} className={control} /></label>
-      <label className="flex flex-col gap-1 text-xs">Contrato<select name="contractId" className={control}><option value="">Todos os meus vínculos / cadastro pessoal</option>{contracts.map(contract => <option key={contract.id} value={contract.id}>{contract.registration} · {contract.status}</option>)}</select></label>
+      <label className="flex flex-col gap-1 text-xs">Contrato<select name="contractId" className={control}><option value="">Todos os meus vínculos / cadastro pessoal</option>{contracts.map(contract => <option key={contract.id} value={contract.id}>{personnelDisplayText(contract.registration)} · {contract.status}</option>)}</select></label>
       <label className="flex flex-col gap-1 text-xs">Formato<select name="format" className={control}><option value="PDF">PDF</option><option value="CSV">CSV</option><option value="XLSX">Excel</option></select></label>
-      <label className="flex flex-col gap-1 text-xs sm:col-span-2">Totalizadores de ponto configurados pelo RH<select name="totalsPolicyId" className={control}><option value="">Totalizadores padrão do espelho</option>{totalizers.map(policy => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label>
-      <p className="text-xs text-slate-600 sm:col-span-2">Ponto, afastamentos, atos e planos de saúde usam o cadastro pessoal: selecione todos os vínculos. A ficha de registro apresenta o cadastro atual e as revisões até o fim do período. Os relatórios financeiros incluem apenas demonstrativos liberados para consulta.</p>
+      <label className="flex flex-col gap-1 text-xs sm:col-span-2">Totalizadores de ponto configurados pelo RH<select name="totalsPolicyId" className={control}><option value="">Totalizadores padrão do espelho</option>{totalizers.map(policy => <option key={policy.id} value={policy.id}>{personnelDisplayText(policy.name)}</option>)}</select></label>
+      <p className="text-xs text-slate-600 sm:col-span-2">Para o comprovante de rendimentos, informe de 01/01 a 31/12 do ano desejado e todos os vínculos. Ponto, afastamentos, atos e planos de saúde usam o cadastro pessoal. A ficha de registro apresenta o cadastro atual e as revisões até o fim do período.</p>
       <button className="h-9 rounded bg-emerald-800 px-4 text-sm font-semibold text-white sm:col-span-2">Emitir relatório integral</button>
     </form>
   </div>;

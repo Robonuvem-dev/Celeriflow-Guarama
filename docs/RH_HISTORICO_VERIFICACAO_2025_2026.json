@@ -1,0 +1,266 @@
+{
+  "checkedAt": "2026-11-02T16:30:39.641Z",
+  "result": "PASS",
+  "validationLayer": "READ_ONLY_DATABASE_AND_SERVICES_PDF_TEXT_NOT_AUTHENTICATED_BROWSER",
+  "packageId": "RH_HISTORICO_2025_2026_V1",
+  "employees": 198,
+  "statements": 3414,
+  "runs": [
+    {
+      "id": "cmvzfghgu02abkghypwvxbbhq",
+      "competence": "12/2025",
+      "type": "13º",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "294244.74"
+    },
+    {
+      "id": "cmvzfcro501tokghy5iy0crsf",
+      "competence": "12/2025",
+      "type": "1ª parcela 13º",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "427343.22"
+    },
+    {
+      "id": "cmvzfllhj03qakghynmkyv7qn",
+      "competence": "12/2025",
+      "type": "Férias",
+      "statements": 18,
+      "released": 18,
+      "holders": 18,
+      "balanced": true,
+      "net": "102134.52"
+    },
+    {
+      "id": "cmvzf74nx00rdkghy0nkfxjr0",
+      "competence": "12/2025",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "643143.66"
+    },
+    {
+      "id": "cmvzfnh5t03vbkghycl1o0trc",
+      "competence": "01/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "660916.26"
+    },
+    {
+      "id": "cmvzfrwze04nxkghyldjw1249",
+      "competence": "02/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "660916.26"
+    },
+    {
+      "id": "cmvzfwe1105gjkghyuh8806w4",
+      "competence": "03/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "660916.26"
+    },
+    {
+      "id": "cmvzg0ym20695kghyd73t2i16",
+      "competence": "04/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "660916.26"
+    },
+    {
+      "id": "cmvzg5igg071rkghy8y6qa7yo",
+      "competence": "05/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "660916.26"
+    },
+    {
+      "id": "cmvzg9tes07udkghyz23t95d5",
+      "competence": "06/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "660916.26"
+    },
+    {
+      "id": "cmvzge2pv08mzkghy1rbyoj3f",
+      "competence": "07/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "660916.26"
+    },
+    {
+      "id": "cmvzak67b002b8emo33srr4sp",
+      "competence": "08/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "662334.71"
+    },
+    {
+      "id": "cmvzbmfyd009jg0hyuxvb17eh",
+      "competence": "09/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "662334.71"
+    },
+    {
+      "id": "cmvzbxfoz01fdg0hyevha6vmh",
+      "competence": "10/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "662334.71"
+    },
+    {
+      "id": "cmvzgraqp0b03kghyvexx18u2",
+      "competence": "11/2026",
+      "type": "1ª parcela 13º",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "448709.85"
+    },
+    {
+      "id": "cmvzgihig09flkghyn8z8y2yn",
+      "competence": "11/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "768701.41"
+    },
+    {
+      "id": "cmvzgv6350bgpkghy1r4nm4pf",
+      "competence": "12/2026",
+      "type": "13º",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "304857.73"
+    },
+    {
+      "id": "cmvzh56mq00dja4hyiuspz2pl",
+      "competence": "12/2026",
+      "type": "Férias",
+      "statements": 30,
+      "released": 30,
+      "holders": 30,
+      "balanced": true,
+      "net": "185865.66"
+    },
+    {
+      "id": "cmvzgn5oq0aa9kghyuqg5898u",
+      "competence": "12/2026",
+      "type": "Mensal",
+      "statements": 198,
+      "released": 198,
+      "holders": 198,
+      "balanced": true,
+      "net": "625314.78"
+    }
+  ],
+  "reconciliation": {
+    "invalid": 0
+  },
+  "attendance": {
+    "count": 51720,
+    "future": 7626,
+    "invalidFuture": 0,
+    "months": 13
+  },
+  "vacationReconciliation": {
+    "contracts": 18,
+    "invalid": 0
+  },
+  "thirteenth": {
+    "statements": 396,
+    "invalid": 0
+  },
+  "annual2025": {
+    "holders": 198,
+    "months": 12,
+    "totals": {
+      "Rendimentos tributáveis BRL": "10288750.80",
+      "13º bruto BRL": "854685.46",
+      "Previdência total BRL": "991138.91",
+      "IRRF total BRL": "758381.97",
+      "Líquido BRL": "9393915.38"
+    }
+  },
+  "pdfSamples": [
+    {
+      "type": "13º",
+      "bytes": 4261,
+      "pages": 2
+    },
+    {
+      "type": "1ª parcela 13º",
+      "bytes": 3018,
+      "pages": 1
+    },
+    {
+      "type": "Férias",
+      "bytes": 5245,
+      "pages": 2
+    },
+    {
+      "type": "Mensal",
+      "bytes": 4779,
+      "pages": 2
+    },
+    {
+      "type": "Comprovante anual 2025",
+      "bytes": 2072,
+      "pages": 1
+    }
+  ],
+  "original": {
+    "count": 594,
+    "fingerprint": "3d7da83e347a9af7801089cfb17fc48a"
+  },
+  "storage": {
+    "databaseBytes": "210788352",
+    "personnelBytes": "56705024",
+    "size": "201 MB"
+  },
+  "realPayments": false,
+  "uploads": 0
+}

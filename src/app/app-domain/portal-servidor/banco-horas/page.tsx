@@ -26,7 +26,7 @@ export default async function MyTimeBank({ searchParams }: { searchParams: Promi
   ]);
   const sum = { _sum: { quantity: totals.sum === null ? null : new Decimal(totals.sum) } }, credits = { _sum: { quantity: totals.credits === null ? null : new Decimal(totals.credits) } }, debits = { _sum: { quantity: totals.debits === null ? null : new Decimal(totals.debits) } };
   const toolbar = <OperationalFilters label="Filtros e saldo">
-    <form className="flex gap-2 text-xs"><input name="contractId" placeholder="ID contrato (opcional)" defaultValue={params.contractId} className="h-8 rounded border px-2" /><select name="scope" defaultValue={scope} className="rounded border px-2"><option>PRODUCAO</option><option>HOMOLOGACAO</option><option>DEMONSTRACAO</option></select><button className="rounded border px-3">Filtrar vínculo</button></form>
+    <form className="flex gap-2 text-xs"><input name="contractId" placeholder="ID contrato (opcional)" defaultValue={params.contractId} className="h-8 rounded border px-2" /><select name="scope" defaultValue={scope} className="rounded border px-2"><option value="PRODUCAO">Produção</option><option value="HOMOLOGACAO">Homologação</option><option value="DEMONSTRACAO">Municipal</option></select><button className="rounded border px-3">Filtrar vínculo</button></form>
     <p className="rounded border bg-white p-3 text-sm">{scope} · {total} entradas · créditos {credits._sum.quantity?.toString() || "0"}h · débitos {debits._sum.quantity?.abs().toString() || "0"}h · saldo {sum._sum.quantity?.toString() || "0"}h</p>
     <p className="text-xs">Saldo reconhecido não implica conversão em pagamento. Entradas legadas sem escopo exigem conciliação pelo RH e não são presumidas como produção.</p>
   </OperationalFilters>;

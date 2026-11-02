@@ -13,6 +13,7 @@ import { rhColumn } from "../_components/operational-columns";
 import operationalStyles from "@/components/app-ui/operational/operational.module.css";
 import { OperationForm, type OperationField } from "./OperationForm";
 import { contractCustomFieldsPolicySchema, contractCustomFieldsPolicyHash, type ContractCustomFieldValues } from "@/lib/rh/contract-custom-fields";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export const dynamic = "force-dynamic";
 type Params = Record<string, string | string[] | undefined>;
@@ -29,7 +30,7 @@ function workforceTableRows({ contracts, movements, rights, runs, events }: Work
     ...rights.map(row => ({ id: row.id, label: row.kind, values: { registration: row.contract.registration, kind: row.kind, quantity: row.quantity.toString(), amount: money(row.amount), id: row.id, source: row.sourceKey } })),
     ...runs.map(row => ({ id: row.id, label: row.payroll.competence, values: { competence: row.payroll.competence, mode: row.mode, net: money(row.net), status: row.status }, links: [{ href: `/rh/operacoes/calculos/${row.id}`, label: "Conferir memória e demonstrativos" }] })),
     ...events.map(row => ({ id: row.id, label: row.eventType, values: { domain: row.domain, type: row.eventType, status: row.status, environment: row.environment, source: row.sourceKey, hash: row.payloadHash } })),
-  ];
+  ].map(row => ({ ...row, label: personnelDisplayText(row.label), values: Object.fromEntries(Object.entries(row.values).map(([key, value]) => [key, personnelDisplayText(String(value ?? ""))])) }));
 }
 
 export default async function WorkforcePage({ searchParams }: { searchParams: Promise<Params> }) {
@@ -95,7 +96,7 @@ export default async function WorkforcePage({ searchParams }: { searchParams: Pr
     {tab === "direitos" && <OperationForm command="licenca-adquirir" title="Apurar aquisitivos de licença-prêmio" fields={[field("contractId", "Contrato"), field("ruleId", "Regra JSON LICENCA_PREMIO"), field("through", "Apurar até", "", "date")]} />}
     {tab === "direitos" && <OperationForm command="licenca-reservar" title="Reservar gozo ou pecúnia de licença-prêmio" fields={[field("contractId", "Contrato"), field("ruleId", "Regra JSON LICENCA_PREMIO"), field("sourceKey", "Chave estável", randomUUID()), field("periodStart", "Início aquisitivo", "", "date"), field("periodEnd", "Fim aquisitivo", "", "date"), field("start", "Início do gozo / referência pecúnia", "", "date"), field("days", "Dias", "15", "number"), field("kind", "GOZO ou PECUNIA", "GOZO"), field("reason", "Ato / fundamento", "", "textarea")]} />}
     {tab === "direitos" && <OperationForm command="licenca-cancelar" title="Cancelar reserva futura de licença-prêmio" fields={[field("entryId", "ID da reserva"), field("reason", "Ato / fundamento", "", "textarea")]} />}
-    {tab === "direitos" && <OperationForm command="averbar-tempo" title="Averbar tempo anterior para ATS" fields={[field("contractId", "Contrato"), field("sourceKey", "Chave estável", randomUUID()), field("start", "Início anterior", "", "date"), field("end", "Fim anterior", "", "date"), field("recognizedDays", "Dias reconhecidos", "30", "number"), field("scope", "Escopo", "DEMONSTRACAO"), field("reason", "Ato / fundamento", "", "textarea")]} />}
+    {tab === "direitos" && <OperationForm command="averbar-tempo" title="Averbar tempo anterior para ATS" fields={[field("contractId", "Contrato"), field("sourceKey", "Chave estável", randomUUID()), field("start", "Início anterior", "", "date"), field("end", "Fim anterior", "", "date"), field("recognizedDays", "Dias reconhecidos", "30", "number"), { ...field("scope", "Escopo", "DEMONSTRACAO"), options: [{ value: "DEMONSTRACAO", label: "Municipal" }, { value: "PRODUCAO", label: "Produção" }, { value: "HOMOLOGACAO", label: "Homologação" }] }, field("reason", "Ato / fundamento", "", "textarea")]} />}
     {tab === "direitos" && <OperationForm command="apurar-ats" title="Apurar ATS por tempo e salário temporal" fields={[field("contractId", "Contrato"), field("payrollId", "Folha mensal aberta"), field("ruleId", "Regra JSON ATS")]} />}
     {tab === "direitos" && <OperationForm command="estornar-averbacao" title="Estornar averbação de tempo anterior" fields={[field("entryId", "ID da averbação original"), field("reason", "Ato / fundamento", "", "textarea")]} />}
     {tab === "direitos" && <OperationForm command="estornar-ats" title="Estorno compensatório de ATS" fields={[field("originalSourceKey", "Origem ATS:contrato:competência"), field("reason", "Ato / fundamento", "", "textarea")]} />}

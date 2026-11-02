@@ -1,0 +1,66 @@
+{
+  "packageId": "RH_CENARIOS_AJUSTES_2026_V1",
+  "recordedAt": "2026-11-02T14:40:31.506Z",
+  "scope": "DEMONSTRACAO",
+  "employees": 198,
+  "counts": [
+    {
+      "kind": "CONTA_CONVENIO",
+      "records": 202
+    },
+    {
+      "kind": "CONVENIO_BANCARIO",
+      "records": 2
+    },
+    {
+      "kind": "DEMANDA_PESSOAL",
+      "records": 42
+    },
+    {
+      "kind": "FERIADO",
+      "records": 4
+    },
+    {
+      "kind": "GRADUACAO_CURSO",
+      "records": 3
+    },
+    {
+      "kind": "GRADUACAO_SERVIDOR",
+      "records": 18
+    },
+    {
+      "kind": "INDICE_FINANCEIRO",
+      "records": 3
+    },
+    {
+      "kind": "MOTIVO_DESLIGAMENTO",
+      "records": 3
+    },
+    {
+      "kind": "PENSAO_VITALICIA",
+      "records": 1
+    },
+    {
+      "kind": "RATEIO_FOLHA",
+      "records": 396
+    },
+    {
+      "kind": "TEMPO_CONTRIBUICAO",
+      "records": 6
+    },
+    {
+      "kind": "VT_ITINERARIO",
+      "records": 8
+    },
+    {
+      "kind": "VT_MOVIMENTO",
+      "records": 72
+    }
+  ],
+  "certificates": 18,
+  "realPayments": false,
+  "createsUsers": false,
+  "bankTransmission": false,
+  "validationLayer": "population-business-services-not-browser-or-homologation",
+  "note": "DEMONSTRAÇÃO — dado fictício autorizado; não representa documento, pagamento ou direito oficial."
+}

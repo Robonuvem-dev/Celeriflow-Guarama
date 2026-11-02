@@ -1,9 +1,7 @@
 import { and, asc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
 import type { DatabaseExecutor } from "@/db/transaction";
-import { hrReferenceRecords } from "@/db/schema/personnel-reference-records";
-import { budgetAppropriations } from "@/db/schema/finance-budget";
-import { employees, roles, departments } from "@/db/schema/administration";
+import { employees, roles } from "@/db/schema/administration";
 import { hrEmploymentRegimes } from "@/db/schema/personnel-configuration";
 import { hrEmploymentContracts, hrEmploymentRevisions, hrPayrollRuns, hrPayrollStatements, hrRightEntries, payrolls } from "@/db/schema/personnel-workforce";
 import ExcelJS from "exceljs";
@@ -14,16 +12,30 @@ import { payrollPeriod } from "./calculation-engine";
 import { buildPocAnnualIncomeReport } from "./poc-payment";
 import { allocateProratedStatementLocations } from "./prorated-statement-locations";
 import { consignmentMarginSchema } from "./consignment-margin";
+import { buildOperationalHrReport, operationalReportKinds } from "./operational-reports";
+import type { PersonnelReport } from "./operational-reports";
+import { matrix132Lines, renderSpecialPersonnelPdf } from "./special-report-layouts";
+import { buildPersonnelRecordsReport } from "./personnel-record-reports";
+import { personnelReportPresentation, PERSONNEL_ISSUER } from "./personnel-presentation";
+import { annualIncomeCertificate } from "./income-certificate";
 
 export const hrReportInputSchema = z.object({
-  kind: z.enum(["CONTRATOS", "FOLHA", "DIREITOS", "RESUMO_CONTABIL", "PREVIDENCIA", "IRRF", "PENSOES", "REMESSA_SALARIAL_POC", "INFORME_ANUAL_POC", "CONTRATOS_MULTIPLOS", "SERVIDORES_ATIVOS", "QUANTIDADE_SERVIDORES", "CADASTRO_GERAL", "CADASTRO_LOTACAO", "CADASTRO_LOCAL", "MARGEM_CONSIGNAVEL", "CADASTRO_DOTACAO"]), format: z.enum(["CSV", "XLSX", "PDF"]),
+  kind: z.enum(["CONTRATOS", "FOLHA", "DIREITOS", "RESUMO_CONTABIL", "PREVIDENCIA", "IRRF", "PENSOES", "REMESSA_SALARIAL_POC", "INFORME_ANUAL_POC", "CONTRATOS_MULTIPLOS", "SERVIDORES_ATIVOS", "QUANTIDADE_SERVIDORES", "CADASTRO_GERAL", "CADASTRO_LOTACAO", "CADASTRO_LOCAL", "MARGEM_CONSIGNAVEL", "CADASTRO_DOTACAO", ...operationalReportKinds]), format: z.enum(["CSV", "XLSX", "PDF", "TXT"]),
   q: z.string().max(200).default(""), competence: z.string().regex(/^(0[1-9]|1[0-2])\/\d{4}$/).optional(),
   referenceDate: z.iso.date().optional(),
   payrollId: z.string().min(1).optional(),
   year: z.coerce.number().int().min(1900).max(2200).optional(),
+  from: z.iso.date().optional(), until: z.iso.date().optional(),
+  employeeId: z.string().min(1).optional(), departmentId: z.string().min(1).optional(),
+  month: z.coerce.number().int().min(1).max(12).optional(),
+  totalizers: z.string().max(100).optional(),
+  labelColumns: z.coerce.number().int().min(1).max(3).optional(),
+  labelHeight: z.coerce.number().int().min(70).max(300).optional(),
+  labelMargin: z.coerce.number().int().min(10).max(50).optional(),
+  labelFields: z.string().max(150).optional(),
   customCode: z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/).optional(), customValue: z.string().max(4000).optional(), customType: z.enum(["TEXTO", "BOOLEANO"]).optional(),
 });
-type Report = { title: string; headers: string[]; rows: string[][] };
+type Report = PersonnelReport;
 const payrollSnapshot = z.object({
   contract: z.object({ registration: z.string(), costCenterId: z.string().nullable(), workLocation: z.string(), employee: z.object({ name: z.string() }) }),
   regime: z.object({ code: z.string(), socialSecurityScheme: z.object({ code: z.string(), name: z.string(), regime: z.string() }).nullable() }),
@@ -37,23 +49,13 @@ async function historicalReportContracts(db: DatabaseExecutor, where: SQL | unde
   return selected.map(row => ({ ...row.contract, employee: row.employee, revisions: revisions.filter(revision => revision.contractId === row.contract.id) }));
 }
 
-export async function buildHrReport(db: DatabaseExecutor, input: z.infer<typeof hrReportInputSchema>, payrollScope?: SQL): Promise<Report> {
-  if (input.kind === "CADASTRO_DOTACAO") {
-    if (input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("Relatório de dotação usa o cadastro atual; remova filtros de folha/vigência.");
-    const rows = await db.select({employee:employees.name,cpf:employees.cpf,registration:employees.registration,appropriation:budgetAppropriations.code}).from(employees).leftJoin(hrReferenceRecords,and(eq(hrReferenceRecords.kind,"LOTACAO_ORCAMENTARIA"),sql`${hrReferenceRecords.details}->>'employeeId' = ${employees.id}`)).leftJoin(budgetAppropriations,sql`${budgetAppropriations.id} = ${hrReferenceRecords.details}->>'appropriationId'`).where(input.q ? or(sql`strpos(lower(${employees.name}),lower(${input.q})) > 0`, sql`strpos(lower(coalesce(${budgetAppropriations.code},'')),lower(${input.q})) > 0`) : undefined).orderBy(asc(budgetAppropriations.code),asc(employees.name));
-    return {title:"Cadastro pessoal por dotação orçamentária — vínculos explicitamente cadastrados",headers:["Dotação","Servidor","CPF","Matrícula"],rows:rows.map(r=>[r.appropriation || "Sem dotação vinculada",r.employee,r.cpf || "",r.registration || ""])};
-  }
-  if (["CADASTRO_GERAL", "CADASTRO_LOTACAO", "CADASTRO_LOCAL"].includes(input.kind)) {
-    if (input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("Relatório cadastral atual não aceita filtros de folha ou vigência.");
-    const rows = await db.select({ id: employees.id, name: employees.name, cpf: employees.cpf, registration: employees.registration, email: employees.email, phone: employees.phone, active: employees.isActive, department: departments.name, role: roles.name, workLocation: hrEmploymentContracts.workLocation }).from(employees).leftJoin(departments, eq(departments.id, employees.departmentId)).leftJoin(roles, eq(roles.id, employees.roleId)).leftJoin(hrEmploymentContracts, and(eq(hrEmploymentContracts.employeeId, employees.id), eq(hrEmploymentContracts.status, "ATIVO"))).where(input.q ? or(sql`strpos(lower(${employees.name}),lower(${input.q})) > 0`, sql`strpos(coalesce(${employees.cpf},''),${input.q}) > 0`) : undefined).orderBy(asc(employees.name), asc(hrEmploymentContracts.workLocation));
-    const general = input.kind === "CADASTRO_GERAL";
-    const unique = new Map<string, typeof rows[number]>();
-    for (const row of rows) unique.set(general ? row.id : `${row.id}:${row.department || ""}:${row.workLocation || ""}`, row);
-    return { title: input.kind === "CADASTRO_LOTACAO" ? "Cadastro pessoal por lotação atual" : input.kind === "CADASTRO_LOCAL" ? "Cadastro pessoal por local de trabalho atual" : "Cadastro pessoal geral", headers: ["Nome", "CPF", "Matrícula", "Cargo", "Lotação", "Local de trabalho", "Email", "Telefone", "Situação"], rows: [...unique.values()].map(r => [r.name, r.cpf || "", r.registration || "", r.role || "Não informado", r.department || "Não informada", r.workLocation || "Não informado", r.email || "", r.phone || "", r.active ? "Ativo" : "Inativo"]) };
-  }
+export async function buildHrReport(db: DatabaseExecutor, input: z.infer<typeof hrReportInputSchema>, payrollScope?: SQL, budgetUnitIds?: readonly string[]): Promise<Report> {
+  if ((operationalReportKinds as readonly string[]).includes(input.kind)) return buildOperationalHrReport(db, input, payrollScope, budgetUnitIds);
+  if (input.kind.startsWith("CADASTRO_")) return buildPersonnelRecordsReport(db, input, payrollScope);
   if (input.kind === "INFORME_ANUAL_POC") {
-    if (input.q || input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("Informe anual POC usa ano de pagamento e acesso orçamentário; remova os demais filtros.");
-    return buildPocAnnualIncomeReport(db, input.year ?? new Date().getUTCFullYear(), payrollScope);
+    if (input.q || input.competence || input.payrollId || input.customCode || input.referenceDate) throw new Error("O comprovante anual usa ano de pagamento e acesso orçamentário; remova os demais filtros.");
+    const annual = await buildPocAnnualIncomeReport(db, input.year ?? new Date().getUTCFullYear(), payrollScope, input.employeeId);
+    return input.employeeId ? annualIncomeCertificate(annual) : annual;
   }
   let contractWhere = input.q ? or(sql`strpos(lower(${hrEmploymentContracts.registration}),lower(${input.q})) > 0`, sql`strpos(lower(${employees.name}),lower(${input.q})) > 0`) : undefined;
   if (input.customCode) {
@@ -64,7 +66,14 @@ export async function buildHrReport(db: DatabaseExecutor, input: z.infer<typeof 
   if (input.kind === "CONTRATOS") {
     const selected = await db.select({ contract: hrEmploymentContracts, employee: { name: employees.name } }).from(hrEmploymentContracts).innerJoin(employees, eq(employees.id, hrEmploymentContracts.employeeId)).where(contractWhere).orderBy(asc(hrEmploymentContracts.registration), asc(hrEmploymentContracts.id));
     const rows = selected.map(row => ({ ...row.contract, employee: row.employee }));
-    return { title: "Contratos funcionais — última revisão cadastrada", headers: ["Matrícula", "Servidor", "Admissão", "Término", "Local", "Jornada", "Salário BRL", "Situação", "Versão", "Campos configuráveis (JSON)"], rows: rows.map(row => [row.registration, row.employee.name, row.admittedAt.toISOString().slice(0, 10), row.endsAt?.toISOString().slice(0, 10) || "", row.workLocation, String(row.monthlyHours), row.salary.toFixed(2), row.status, String(row.version), JSON.stringify((row.details as { customFields?: unknown })?.customFields || {})]) };
+    return {
+      title: "Contratos funcionais — última revisão cadastrada",
+      headers: ["Matrícula", "Servidor", "Admissão", "Término", "Local", "Divisor mensal (horas)", "Salário-base BRL", "Situação", "Versão", "Campos configuráveis (JSON)", "Jornada semanal estimada (horas)", "Origem salarial", "Vigência da estimativa"],
+      rows: rows.map(row => {
+        const details = row.details as { customFields?: unknown; weeklyHours?: number; salarySource?: string; salaryEstimate?: { effectiveFrom?: string } };
+        return [row.registration, row.employee.name, row.admittedAt.toISOString().slice(0, 10), row.endsAt?.toISOString().slice(0, 10) || "", row.workLocation, String(row.monthlyHours), row.salary.toFixed(2), row.status, String(row.version), JSON.stringify(details?.customFields || {}), details?.weeklyHours === undefined ? "Não informada" : String(details.weeklyHours), details?.salarySource ?? "Cadastro contratual", details?.salaryEstimate?.effectiveFrom ?? ""];
+      }),
+    };
   }
   if (input.kind === "CONTRATOS_MULTIPLOS") {
     const reference = input.competence ? payrollPeriod(input.competence).start : new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
@@ -191,7 +200,13 @@ export async function buildHrReport(db: DatabaseExecutor, input: z.infer<typeof 
   return { title: "Saldos de direitos e provisões por escopo", headers: ["Matrícula", "Servidor", "Direito", "Escopo", "Início", "Fim", "Saldo quantidade", "Saldo BRL"], rows: [...totals.values()].map(row => [row.registration, row.name, row.kind, row.scope, row.start, row.end, row.quantity.toString(), row.amount.toFixed(2)]) };
 }
 
-export async function renderHrReport(report: Report, format: "CSV" | "XLSX" | "PDF") {
+export async function renderHrReport(report: Report, format: "CSV" | "XLSX" | "PDF" | "TXT") {
+  report = personnelReportPresentation(report);
+  if (format === "TXT") {
+    if (report.print?.kind !== "matrix132") throw new Error("TXT é exclusivo do cartão de ponto de 132 colunas.");
+    return { bytes: Buffer.from(matrix132Lines(report).join("\r\n") + "\r\n", "ascii"), contentType: "text/plain; charset=us-ascii", extension: "txt" };
+  }
+  if (format === "PDF" && report.print) return { bytes: await renderSpecialPersonnelPdf(report), contentType: "application/pdf", extension: "pdf" };
   if (format === "CSV") {
     const quote = (value: string) => {
       const safe = /^[=+@]/.test(value) || /^-\D/.test(value) ? `'${value}` : value;
@@ -206,10 +221,45 @@ export async function renderHrReport(report: Report, format: "CSV" | "XLSX" | "P
     sheet.columns.forEach(column => { column.width = 24; });
     return { bytes: Buffer.from(await workbook.xlsx.writeBuffer()), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: "xlsx" };
   }
-  const pdf = new PDFDocument({ size: "A4", margin: 35, bufferPages: true }); const chunks: Buffer[] = [];
+  const attendanceMirror = report.title.startsWith("Espelho de ponto pessoal");
+  const pdf = new PDFDocument({ size: "A4", layout: attendanceMirror ? "landscape" : "portrait", margin: 35, bufferPages: true }); const chunks: Buffer[] = [];
   const result = new Promise<Buffer>((resolve, reject) => { pdf.on("data", chunk => chunks.push(Buffer.from(chunk))); pdf.on("end", () => resolve(Buffer.concat(chunks))); pdf.on("error", reject); });
+  if (!attendanceMirror) pdf.on("pageAdded", () => {
+    pdf.font("Helvetica-Bold").fontSize(10).text(report.title, 35, 35, { width: pdf.page.width - 70 });
+    pdf.font("Helvetica").fontSize(9).text("Continuação — relatório integral dos critérios selecionados").moveDown();
+  });
+  pdf.fontSize(11).text(PERSONNEL_ISSUER); pdf.moveDown(0.4);
   pdf.fontSize(14).text(report.title); pdf.fontSize(9).text(`${report.rows.length} registros · relatório integral do filtro`); pdf.moveDown();
-  for (const [index, row] of report.rows.entries()) {
+  if (attendanceMirror) {
+    const available = pdf.page.width - 70;
+    const proportions = [0.09, 0.07, 0.07, 0.13, 0.08, 0.09, 0.18, 0.19];
+    const widths = proportions.map(value => available * value);
+    const drawRow = (row: string[], bold: boolean) => {
+      pdf.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(8);
+      const height = Math.max(22, ...row.map((value, index) => pdf.heightOfString(value, { width: widths[index] - 8 }) + 10));
+      if (pdf.y + height > pdf.page.height - 60) {
+        pdf.addPage();
+        pdf.fontSize(10).text(report.title, 35, 35, { width: available }); pdf.moveDown();
+        if (!bold) drawRow(report.headers, true);
+      }
+      const y = pdf.y;
+      if (height > pdf.page.height - 150) {
+        // Preserve exceptionally long source values with flowing text instead of clipping a cell.
+        pdf.text(row.map((value, index) => `${report.headers[index]}: ${value}`).join(" · "), 35, y, { width: available });
+        return;
+      }
+      if (bold) pdf.save().rect(35, y, available, height).fill("#e8edf2").restore();
+      let x = 35;
+      row.forEach((value, index) => { pdf.text(value, x + 4, y + 4, { width: widths[index] - 8 }); x += widths[index]; });
+      pdf.moveTo(35, y + height).lineTo(35 + available, y + height).strokeColor("#d5dce3").stroke();
+      pdf.x = 35; pdf.y = y + height + 2;
+    };
+    drawRow(report.headers, true);
+    for (const row of report.rows) drawRow(row, row[0].startsWith("TOTAL"));
+    pdf.font("Helvetica").fontSize(9).moveDown().text("Conferência do servidor: ____________________    Chefia: ____________________", { width: available });
+    pdf.text("Assinaturas para conferência; a emissão não representa assinatura digital ou homologação do ponto.", { width: available });
+  }
+  for (const [index, row] of (attendanceMirror ? [] : report.rows).entries()) {
     pdf.fontSize(9).text(`${index + 1}. ${row.map((value, col) => `${report.headers[col]}: ${value}`).join(" · ")}`);
     pdf.moveDown(0.5);
   }

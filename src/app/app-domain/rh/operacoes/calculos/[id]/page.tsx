@@ -8,10 +8,11 @@ import { OperationForm } from "../../OperationForm";
 import { assertPayrollBudgetScope } from "@/lib/rh/payroll-access";
 import { db } from "@/db/client";
 import { readPersonnelPayrollRun, readRunStatementsPage } from "@/db/repositories/personnel-pages/workforce";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export const dynamic = "force-dynamic";
 function statementRows(statements: Awaited<ReturnType<typeof readRunStatementsPage>>["statements"]) {
-  return statements.map(statement => ({ id: statement.id, label: statement.contract.employee.name, values: { employee: statement.contract.employee.name, registration: statement.contract.registration, net: `R$ ${statement.net.toFixed(2)}` }, links: [{ href: `/rh/operacoes/demonstrativos/${statement.id}`, label: "Conferência detalhada" }] }));
+  return statements.map(statement => ({ id: statement.id, label: statement.contract.employee.name, values: { employee: statement.contract.employee.name, registration: personnelDisplayText(statement.contract.registration), net: `R$ ${statement.net.toFixed(2)}` }, links: [{ href: `/rh/operacoes/demonstrativos/${statement.id}`, label: "Conferência detalhada" }] }));
 }
 export default async function PayrollRunPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
   const context = await getTenantContextForModule("RH");
@@ -32,7 +33,7 @@ export default async function PayrollRunPage({ params, searchParams }: { params:
   }
   const hidden = { name: "runId", label: "Cálculo", value: id, type: "hidden" };
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-    <ErpPageTitle title={`Cálculo ${run.payroll.competence}`} description={`${run.mode} · ${run.scope} · ${run.status}`} action={<Link href="/rh/operacoes?tab=calculos">Voltar</Link>} />
+    <ErpPageTitle title={`Cálculo ${run.payroll.competence}`} description={`${personnelDisplayText(run.mode)} · ${personnelDisplayText(run.scope)} · ${run.status}`} action={<Link href="/rh/operacoes?tab=calculos">Voltar</Link>} />
     <p className="rounded border bg-white p-3 text-sm">Bruto R$ {run.gross.toFixed(2)} · descontos R$ {run.deductions.toFixed(2)} · líquido R$ {run.net.toFixed(2)} · patronal R$ {run.employer.toFixed(2)}</p>
     {run.mode === "OFICIAL" && run.status === "CALCULADA" && <OperationForm command="fechar" title="Conferir e fechar cálculo oficial" fields={[hidden]} />}
     {run.status === "CALCULADA" && <OperationForm command="cancelar" title="Cancelar cálculo preservando histórico" fields={[hidden, { name: "reason", label: "Motivo", required: true }]} />}

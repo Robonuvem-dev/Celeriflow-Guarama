@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-11-02T14:48:05.773Z",
+  "result": "PASS",
+  "validationLayer": "database-and-service-not-browser",
+  "employees": 198,
+  "population": [
+    {
+      "competence": "08/2026",
+      "statements": 198,
+      "released": 198,
+      "employees": 198,
+      "balanced": true
+    },
+    {
+      "competence": "09/2026",
+      "statements": 198,
+      "released": 198,
+      "employees": 198,
+      "balanced": true
+    },
+    {
+      "competence": "10/2026",
+      "statements": 198,
+      "released": 198,
+      "employees": 198,
+      "balanced": true
+    }
+  ],
+  "reconciliation": {
+    "invalid": 0
+  },
+  "checks": [
+    "mesmos servidores em três competências",
+    "bruto menos descontos igual líquido",
+    "totais do cálculo/demonstrativos/projeção conciliados",
+    "publicação reconhecida pelo serviço do Portal",
+    "contracheque real em PDF",
+    "acesso cruzado negado",
+    "espelho pessoal integral em PDF com origem sintética explícita"
+  ],
+  "realPayments": false
+}

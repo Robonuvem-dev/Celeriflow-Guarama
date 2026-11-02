@@ -7,6 +7,7 @@ import { OperationalListFrame } from "@/components/app-ui/operational/Operationa
 import { OperationalPagination, OperationalTable } from "@/components/app-ui/operational/OperationalTable";
 import type { OperationalColumn } from "@/lib/operational-tables";
 import { usePanelPage, type PanelPage, type PanelReply, type PanelRow } from "./usePanelPage";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export function RhRemoteTablePanel({ title, triggerLabel, description, columns, initial, loadPageAction, preferenceId, toolbar, emptyMessage }: {
   title: string; triggerLabel?: string; description?: string; columns: OperationalColumn[];
@@ -17,7 +18,7 @@ export function RhRemoteTablePanel({ title, triggerLabel, description, columns, 
   return <OperationalTablePanel title={title} triggerLabel={triggerLabel} description={description}>
     <OperationalListFrame label={title} toolbar={toolbar} pagination={<OperationalPagination page={data.page} total={data.total} pending={pending} onPageChange={page => void changePage(page)} />}>
       <OperationalTable columns={columns} preferenceId={preferenceId} caption={title} emptyMessage={emptyMessage} state={error ? "error" : "ready"} errorMessage={error} onRetry={retry}
-        rows={data.rows.map(row => ({ ...row, actions: row.links?.map(link => <Link key={`${link.href}:${link.label}`} href={link.href} className="mr-2">{link.label}</Link>) }))} />
+        rows={data.rows.map(row => ({ ...row, label: personnelDisplayText(row.label), values: Object.fromEntries(Object.entries(row.values).map(([key, value]) => [key, personnelDisplayText(value)])), actions: row.links?.map(link => <Link key={`${link.href}:${link.label}`} href={link.href} className="mr-2">{personnelDisplayText(link.label)}</Link>) }))} />
     </OperationalListFrame>
   </OperationalTablePanel>;
 }
