@@ -1,5 +1,15 @@
 # Checkpoint — Campo Florido
 
+## Classificação de implementação e validação — 02/11/2026
+
+Orientação expressa do usuário: marcar como Implementado o requisito cujo código foi concluído; reservar Validado para a homologação posterior. Os checkboxes de atendimento continuam desmarcados até o aceite. Build e homologação pendentes devem permanecer nas observações, sem serem confundidos com ausência de implementação.
+
+CF10 10.4–10.11: oito requisitos com código implementado na branch, com evidências nos incrementos c189c720, 13269cb e 5bbf06b. Os cinco requisitos da Sprint 02 (10.1–10.3, 10.12–10.13) ainda não foram implementados por este trabalho. CF10 como módulo continua Em desenvolvimento; não há conclusão dos três módulos nem nova homologação.
+
+Para 10.4, o cadastro de usuários já existe em src/app/app-domain/configuracoes/usuarios/components/UsuariosClient.tsx e actions.ts (upsertUsuario), com persistência/auditoria Drizzle em src/db/repositories/platform/system-administration.ts (saveManagedUser), provisionamento Firebase e perfis existentes. Esse serviço é reutilizado, sem criar usuários reais nesta tarefa. As ações ambientais verificam as permissões da mesma base de identidade.
+
+Estorno não foi implementado: foi identificado como melhoria adicional para correções por movimento compensatório, preservando o histórico imutável, e reservado para incremento próprio. Não é uma exigência expressa dos itens 10.4–10.11 consultados na checklist oficial. É pendência de código adicional, separada de homologação; não está pronto e não deve ser apresentado como mera validação pendente. O histórico não deve ser apagado/editado para corrigir movimentos.
+
 ## Catálogos padronizados — 02/11/2026
 
 Continuidade no checkout antigo, expressamente autorizada pelo usuário após a tentativa de usar a pasta do GitHub Desktop. Base local/remota conferida: 13269cb96594c455ab3e9b593827c6d9d7fb5236, exclusivamente em feat/cf10-cf30-cf33-mateus. O incremento anterior de estoque/histórico está publicado nesse commit; o pacote ZIP anterior não deve ser reaplicado.

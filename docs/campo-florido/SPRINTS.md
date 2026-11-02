@@ -4,6 +4,8 @@ Branch exclusiva: `feat/cf10-cf30-cf33-mateus`. Responsável: Mateus, colaborado
 
 Este plano registra entregas incrementais; nenhuma sprint está homologada apenas por haver código ou teste unitário. Fonte e matriz: [Sprint 00](SPRINT-00.md). Estado executado: [Checkpoint](CHECKPOINT.md).
 
+Classificação definida pelo usuário em 02/11: Implementado = código concluído; Validado = homologação posterior. CF10 10.4–10.11 têm implementação concluída, com build integral/aceite ainda pendentes. As pendências de validação não impedem avançar nas implementações seguintes. Estorno é melhoria adicional ainda sem implementação, separada dos oito requisitos e da homologação.
+
 ## Sprint 00 — auditoria e reaproveitamento
 
 - [x] Confirmar branch/base, ler AGENTS.md e preservar 33.6 de Eduardo.
@@ -32,8 +34,12 @@ Este plano registra entregas incrementais; nenhuma sprint está homologada apena
 - [x] Preparar publicação do incremento visual de 02/11 somente na branch de Mateus, com autorização expressa após informar o bloqueio de build (CHECKPOINT.md).
 - [ ] Aprovar npm run build do incremento visual: testes/tipos passaram, mas a compilação Turbopack local está bloqueada por acesso negado ao criar junction interno. A autorização de publicação não encerra esta pendência.
 - [x] Concluir regressão/build do incremento de movimentos e registrar evidências em SPRINT-01.md/CHECKPOINT.md.
-- [ ] Homologar o fluxo com sessão autenticada e migração aplicada somente ao banco isolado de homologação; avaliar estorno vinculado antes do uso definitivo.
+- [ ] Homologar o fluxo com sessão autenticada e migração aplicada somente ao banco isolado de homologação, na etapa final de validação.
 - [x] Build completo e regressão do incremento de catálogos 185fdd7 aprovados e publicados somente na branch autorizada.
+
+### Melhoria adicional — correção de movimentos
+
+- [ ] Avaliar e implementar estorno vinculado por movimento compensatório, com autorização, concorrência e auditoria, antes de oferecer correção de lançamentos. Não consta expressamente nos itens 10.4–10.11; é pendência adicional de código, não homologação e não funcionalidade já implementada.
 
 ## Sprint 02 — CF10 relatórios e gráficos
 
