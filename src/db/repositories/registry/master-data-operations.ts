@@ -124,18 +124,23 @@ export async function saveHealthCbo(db: DatabaseExecutor, id: string | null, inp
 export async function saveLegalReportSigner(db: DatabaseExecutor, id: string | null, input: LegalReportSignerInput): Promise<string> {
   return id ? requireId(await db.update(legalReportSigners).set(input).where(eq(legalReportSigners.id, id)).returning({ id: legalReportSigners.id })) : requireId(await db.insert(legalReportSigners).values(input).returning({ id: legalReportSigners.id }));
 }
-export async function saveLegalText(tx: DatabaseTransaction, id: string | null, input: LegalTextInput, content: string): Promise<string> {
+export async function saveLegalText(tx: DatabaseTransaction, id: string | null, input: LegalTextInput, content: string, expectedVersion?: number): Promise<string> {
   if (!id) {
     const targetId = requireId(await tx.insert(legalTexts).values(input).returning({ id: legalTexts.id }));
     await tx.insert(legalTextVersions).values({ legalTextId: targetId, versionNumber: 1, content, summary: input.summary, publicationDate: input.publicationDate, effectiveFrom: input.effectiveFrom, effectiveUntil: input.effectiveUntil });
     return targetId;
   }
-  const [current] = await tx.select({ id: legalTexts.id }).from(legalTexts).where(eq(legalTexts.id, id)).limit(1);
+  // Lock the parent before allocating the next version, including metadata-only edits.
+  const [current] = await tx.select().from(legalTexts).where(eq(legalTexts.id, id)).limit(1).for("update");
   if (!current) throw new MasterDataValidationError("Texto jurídico não encontrado.");
   const [latest] = await tx.select().from(legalTextVersions).where(eq(legalTextVersions.legalTextId, id)).orderBy(desc(legalTextVersions.versionNumber)).limit(1);
+  if (expectedVersion !== undefined && (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0 || expectedVersion !== (latest?.versionNumber ?? 0))) {
+    throw new MasterDataValidationError("Este texto foi alterado por outra pessoa. Atualize a lista e reabra a edição para conferir a versão atual.");
+  }
   await tx.update(legalTexts).set(input).where(eq(legalTexts.id, id));
-  const changed = !latest || latest.content !== content || latest.summary !== input.summary || latest.publicationDate?.getTime() !== input.publicationDate?.getTime() || latest.effectiveFrom?.getTime() !== input.effectiveFrom?.getTime() || latest.effectiveUntil?.getTime() !== input.effectiveUntil?.getTime();
-  if (changed) await tx.insert(legalTextVersions).values({ legalTextId: id, versionNumber: (latest?.versionNumber || 0) + 1, content, summary: input.summary, publicationDate: input.publicationDate, effectiveFrom: input.effectiveFrom, effectiveUntil: input.effectiveUntil });
+  const metadataChanged = current.type !== input.type || current.number !== input.number || current.governmentLevel !== input.governmentLevel || current.issuingBody !== input.issuingBody || current.governmentEntityId !== input.governmentEntityId;
+  const changed = metadataChanged || !latest || latest.content !== content || latest.summary !== input.summary || latest.publicationDate?.getTime() !== input.publicationDate?.getTime() || latest.effectiveFrom?.getTime() !== input.effectiveFrom?.getTime() || latest.effectiveUntil?.getTime() !== input.effectiveUntil?.getTime();
+  if (changed) await tx.insert(legalTextVersions).values({ legalTextId: id, versionNumber: (latest?.versionNumber || 0) + 1, content, summary: input.summary, publicationDate: input.publicationDate, effectiveFrom: input.effectiveFrom, effectiveUntil: input.effectiveUntil, status: current.status });
   return id;
 }
 

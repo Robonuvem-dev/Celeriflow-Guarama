@@ -12,7 +12,7 @@ import styles from "@/components/app-ui/operational/operational.module.css";
 import { mutateMasterDataRecord, setMasterDataRecordActive } from "./master-data-actions";
 import type { MasterDataCatalog, MasterDataColumn, MasterDataField, MasterDataRow, MasterDataValue } from "./master-data-types";
 
-type Props = { catalog: MasterDataCatalog; pathname: string; rows: MasterDataRow[]; columns: MasterDataColumn[]; fields: MasterDataField[]; page: number; total: number; query: string; extraQuery?: Record<string, string>; statusMutable?: boolean; tabs?: { value: string; label: string }[] };
+type Props = { catalog: MasterDataCatalog; pathname: string; rows: MasterDataRow[]; columns: MasterDataColumn[]; fields: MasterDataField[]; page: number; total: number; query: string; extraQuery?: Record<string, string>; statusMutable?: boolean; canCreate?: boolean; canUpdate?: boolean; tabs?: { value: string; label: string }[] };
 function display(value: MasterDataValue | undefined) {
   if (Array.isArray(value)) return value.join(", ") || "—";
   if (typeof value === "boolean") return value ? "Sim" : "Não";
@@ -28,7 +28,7 @@ const widths: Record<string, [number, number]> = {
   description: [280, 110], signer: [220, 105], signingRole: [210, 160], reportTypes: [230, 100], number: [100, 75], summary: [300, 90], issuingBody: [200, 70], version: [90, 70],
 };
 
-export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fields, page, total, query, extraQuery, statusMutable = true, tabs }: Props) {
+export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fields, page, total, query, extraQuery, statusMutable = true, canCreate = true, canUpdate = true, tabs }: Props) {
   const router = useRouter();
   const { device } = useOperationalWorkspace();
   const editTrigger = useRef<HTMLElement | null>(null);
@@ -50,6 +50,7 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
   function close() { if (!pending) { setOpen(false); setEditing(null); setError(""); } }
   function submit() {
     if (pending) return;
+    if (editing ? !canUpdate : !canCreate) return;
     const missing = fields.findIndex(field => {
       const value = draft[field.name];
       return field.required && (!value || (Array.isArray(value) && !value.length));
@@ -59,6 +60,7 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
       const value = draft[field.name];
       return [field.name, typeof value === "string" ? value.trim() : value];
     }));
+    if (catalog === "legalTexts" && editing) values.expectedVersion = editing.values.version ?? "0";
     startTransition(async () => {
       try {
         const result = await mutateMasterDataRecord(catalog, editing?.id || null, values);
@@ -75,13 +77,13 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
   }
 
   return <>
-    <OperationalListFrame actions={<button type="button" aria-label="Adicionar registro" onClick={event => begin(null, event.currentTarget)} className={styles.newButton}><Plus /><span className={styles.newLabel}>Adicionar</span></button>}
+    <OperationalListFrame actions={canCreate && <button type="button" aria-label="Adicionar registro" onClick={event => begin(null, event.currentTarget)} className={styles.newButton}><Plus /><span className={styles.newLabel}>Adicionar</span></button>}
       toolbar={<><form action={pathname} className={styles.searchForm}>{Object.entries(extraQuery || {}).filter(([key]) => key !== "tab" || !tabs).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
         {tabs && <select name="tab" aria-label="Tipo de catálogo" defaultValue={extraQuery?.tab} className={styles.filterButton}>{tabs.map(tab => <option key={tab.value} value={tab.value}>{tab.label}</option>)}</select>}
         <input name="q" type="search" defaultValue={query} placeholder="Buscar registros" aria-label="Buscar registros" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form>{error && !open && <span role="alert" className="text-[13px] text-red-700">{error}</span>}</>}
       pagination={<OperationalLinkPagination page={page} total={total} pathname={pathname} values={{ q: query, ...extraQuery }} />}>
       <OperationalTable preferenceId={`cadastros-catalogo-${catalog}`} caption={`Catálogo ${catalog}`} emptyMessage="Nenhum registro encontrado." columns={tableColumns}
-        rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}><button type="button" disabled={pending} aria-label="Editar registro" onClick={event => begin(row, event.currentTarget)} className={styles.iconButton}><Pencil /></button>{statusMutable && <button type="button" aria-label={row.active ? "Inativar registro" : "Reativar registro"} onClick={() => toggle(row)} disabled={pending} className={styles.iconButton}><RefreshCw /></button>}</div> }))} />
+        rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: canUpdate ? <div className={styles.rowActions}><button type="button" disabled={pending} aria-label="Editar registro" onClick={event => begin(row, event.currentTarget)} className={styles.iconButton}><Pencil /></button>{statusMutable && <button type="button" aria-label={row.active ? "Inativar registro" : "Reativar registro"} onClick={() => toggle(row)} disabled={pending} className={styles.iconButton}><RefreshCw /></button>}</div> : undefined }))} />
     </OperationalListFrame>
     <Dialog open={open} onOpenChange={next => { if (!next) close(); }}><DialogContent className={styles.dialog} data-device={device} showCloseButton={false} finalFocus={() => editTrigger.current?.isConnected ? editTrigger.current : true}>
       <DialogHeader><DialogTitle>{editing ? "Editar registro" : "Novo registro"}</DialogTitle><DialogDescription>Campos {block + 1} de {blocks}. As seleções são preservadas entre as etapas.</DialogDescription></DialogHeader>

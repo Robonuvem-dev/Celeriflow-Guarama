@@ -1,5 +1,13 @@
 # Checkpoint — Campo Florido
 
+## Sprint 03 — fundação jurídica, 02/11/2026
+
+Incremento sobre 5d2375c6f3821ce988c05bc472d171a0fe6ba8b6 somente na branch feat/cf10-cf30-cf33-mateus. Main consultada em b8e27b920a2ffaf347c34c006d5e6cd75b1c79e9: GED evoluiu; não importar a main inteira nem duplicar seus serviços/schema. Portal 33.6 conserva o mesmo blob protegido em ambas as referências.
+
+Cadastro jurídico existente reforçado: lock antes de alocar versão, token da versão aberta na edição, erro de conflito sem sobrescrita, metadados também invalidam edição antiga e nova versão conserva status inativo. Botões legais condicionados a create/update; contratos de action e defaults dos demais catálogos preservados. Sem migração, novas tabelas ou dados reais. 17 testes aprovados, ESLint, tipos das partições 2/10 e fixtures; build integral segue pendente pelo bloqueio Windows/Turbopack conhecido. Não executado novamente integralmente neste incremento.
+
+Sprint 03 em desenvolvimento, nenhum novo requisito CF33 declarado concluído por esta entrega parcial. Próximo: conciliar dependências GED necessárias e vincular originais/anexos às normas com autorização conjunta; depois Sprint 04. Detalhes/reuso/limites em [SPRINT-03.md](SPRINT-03.md). CF10 mantém 13/13 com código implementado, sem homologação; CF30 não concluído. Sem PR final, merge ou deploy manual.
+
 ## Sprint 02 — incremento de relatórios, 02/11/2026
 
 Estado atual substitui as referências históricas abaixo a Sprint 02 não iniciada: código de 10.1–10.3/10.12–10.13 concluído sobre a base ab5e8641cd845da1a10747610b9d8508432552e5, somente em feat/cf10-cf30-cf33-mateus. Relatórios de estoque geral/por depósito, vendas por tipo e série mensal, filtros e exportação completa implementados com Drizzle, ledger e componentes existentes. Sem schema/migração novos. Detalhes, limites e comandos em [SPRINT-02.md](SPRINT-02.md).

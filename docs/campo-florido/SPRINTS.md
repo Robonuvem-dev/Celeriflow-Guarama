@@ -56,6 +56,12 @@ Implementação/evidências: [SPRINT-02.md](SPRINT-02.md). Código concluído; h
 
 ## Sprint 03 — CF33 normas e documentos
 
+Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correção da persistência existente, sem encerrar os requisitos abaixo.
+
+- [x] Reauditar cadastro/versões e evoluções GED da main antes de ampliar o módulo, preservando 33.6.
+- [x] Proteger edição jurídica concorrente, rejeitar versão antiga, preservar status e testar rollback sem novo schema.
+- [x] Condicionar botões jurídicos às permissões existentes e testar envio da versão/rascunho após conflito.
+
 - [ ] 33.2: integrar conteúdo em banco e/ou arquivos externos ao cadastro jurídico existente.
 - [ ] 33.4: permitir originais de figuras/mapas/planilhas vinculados à norma, sem conversão obrigatória.
 - [ ] 33.8: validar registro integral de todos os tipos de legislação municipal no cadastro/versionamento existente.

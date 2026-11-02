@@ -224,7 +224,9 @@ export async function mutateMasterDataRecord(catalog: MasterDataCatalog, id: str
         if (governmentEntityId) await assertActiveReference(await master.findActiveReference(tx, "entity", governmentEntityId), "Entidade");
         const content = text(values, "content", true);
         const data = { type: text(values, "type", true), number: text(values, "number", true), summary: text(values, "summary", true), governmentLevel: text(values, "governmentLevel", true), issuingBody: text(values, "issuingBody", true), publicationDate: dateOrNull(values, "publicationDate"), effectiveFrom, effectiveUntil, governmentEntityId };
-        targetId = await master.saveLegalText(tx, id, data, content);
+        const version = text(values, "expectedVersion");
+        if (id && (!/^\d+$/.test(version) || !Number.isSafeInteger(Number(version)))) throw new MasterDataValidationError("Atualize a lista e reabra o texto antes de editar.");
+        targetId = await master.saveLegalText(tx, id, data, content, id ? Number(version) : undefined);
         targetType = "LEGAL_TEXT";
       }
       await audit(tx, context.user.id, targetType, targetId);

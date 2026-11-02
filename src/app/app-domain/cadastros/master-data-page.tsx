@@ -1,7 +1,7 @@
 import { Database } from "lucide-react";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
-import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { MasterDataCatalogClient } from "./MasterDataCatalogClient";
 import type { MasterDataCatalog, MasterDataColumn, MasterDataField } from "./master-data-types";
 import { db } from "@/db/client";
@@ -79,5 +79,6 @@ export async function renderMasterDataPage(input: {
     fields = [{ name: "type", label: "Tipo", required: true }, { name: "number", label: "Número", required: true }, { name: "summary", label: "Ementa", type: "textarea", required: true }, { name: "governmentLevel", label: "Esfera", required: true }, { name: "issuingBody", label: "Órgão emissor", required: true }, { name: "governmentEntityId", label: "Entidade", type: "select", options: options.entities }, { name: "publicationDate", label: "Publicação", type: "date" }, { name: "effectiveFrom", label: "Início da vigência", type: "date" }, { name: "effectiveUntil", label: "Fim da vigência", type: "date" }, { name: "content", label: "Conteúdo consolidado", type: "textarea", required: true }];
   }
 
-  return <PageFrame className="flex h-full min-h-0 flex-col"><PageHeader title={input.title} icon={<Database className="size-4 text-emerald-700" />} /><MasterDataCatalogClient key={catalog} catalog={catalog} pathname={input.pathname} rows={rows} columns={columns} fields={fields} page={page} total={total} query={query} tabs={input.tabs} extraQuery={activeTab ? { tab: activeTab } : undefined} /></PageFrame>;
+  const legalPermissions = catalog === "legalTexts" ? { canCreate: canPerformModuleOperation(context.user, "CADASTROS", "create"), canUpdate: canPerformModuleOperation(context.user, "CADASTROS", "update") } : {};
+  return <PageFrame className="flex h-full min-h-0 flex-col"><PageHeader title={input.title} icon={<Database className="size-4 text-emerald-700" />} /><MasterDataCatalogClient key={catalog} catalog={catalog} pathname={input.pathname} rows={rows} columns={columns} fields={fields} page={page} total={total} query={query} tabs={input.tabs} extraQuery={activeTab ? { tab: activeTab } : undefined} {...legalPermissions} /></PageFrame>;
 }
