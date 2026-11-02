@@ -41,15 +41,17 @@ Classificação definida pelo usuário em 02/11: Implementado = código concluí
 
 - [ ] Avaliar e implementar estorno vinculado por movimento compensatório, com autorização, concorrência e auditoria, antes de oferecer correção de lançamentos. Não consta expressamente nos itens 10.4–10.11; é pendência adicional de código, não homologação e não funcionalidade já implementada.
 
-## Sprint 02 — CF10 relatórios e gráficos
+## Sprint 02 - CF10 relatórios e gráficos
 
-- [ ] 10.1: estoque geral por tipo/datas/depósito, ordenado por código ou descrição.
-- [ ] 10.2: vendas por classe/tipo/material/datas/depósito; gráficos reconciliados com movimentos.
-- [ ] 10.3: histórico mensal de vendas por depósito e intervalo.
-- [ ] 10.12: relatório analítico geral com todos os filtros e ordenações.
-- [ ] 10.13: relatório analítico por depósito com todos os filtros e ordenações.
-- [ ] Reusar componentes de relatório, tabela e gráfico após implementar as agregações ambientais.
-- [ ] Testar filtros combinados, ordenação, limites de período, depósitos vazios, meses sem venda e totais.
+Implementação/evidências: [SPRINT-02.md](SPRINT-02.md). Código concluído; homologação e build integral atual pendentes.
+
+- [x] 10.1: estoque geral por tipo/datas/depósito, ordenado por código ou descrição.
+- [x] 10.2: vendas por classe/tipo/material/datas/depósito; gráficos reconciliados com movimentos.
+- [x] 10.3: histórico mensal de vendas por depósito e intervalo.
+- [x] 10.12: relatório analítico geral com todos os filtros e ordenações.
+- [x] 10.13: relatório analítico por depósito com todos os filtros e ordenações.
+- [x] Reusar renderizadores, tabela, filtros, diálogos e tokens operacionais; gráfico ambiental sem nova biblioteca.
+- [x] Testar filtros combinados, ordenação, limites de período, depósitos vazios, meses sem venda e totais.
 - [ ] Executar roteiro funcional dos 13 itens, guardar evidências e atualizar status somente com prova.
 
 ## Sprint 03 — CF33 normas e documentos

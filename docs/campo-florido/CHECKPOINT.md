@@ -1,5 +1,13 @@
 # Checkpoint — Campo Florido
 
+## Sprint 02 — incremento de relatórios, 02/11/2026
+
+Estado atual substitui as referências históricas abaixo a Sprint 02 não iniciada: código de 10.1–10.3/10.12–10.13 concluído sobre a base ab5e8641cd845da1a10747610b9d8508432552e5, somente em feat/cf10-cf30-cf33-mateus. Relatórios de estoque geral/por depósito, vendas por tipo e série mensal, filtros e exportação completa implementados com Drizzle, ledger e componentes existentes. Sem schema/migração novos. Detalhes, limites e comandos em [SPRINT-02.md](SPRINT-02.md).
+
+CF10 passa a 13/13 requisitos com implementação de código concluída, sem equivaler a 13/13 homologados. Quarenta testes aprovados (8 relatórios, 5 HTTP, 4 browser e 23 regressão); tipos das fontes/imports nas partições 2/11/13/16 e fixtures aprovados, ESLint/diff conferidos. Banco apenas de fixture; nenhuma alteração em dados reais, main, cemitério, CF30, CF33 ou 33.6/Eduardo.
+
+Build integral atual continua pendente pelo bloqueio Windows/Turbopack histórico; não foi executado novamente integralmente neste incremento e não está aprovado. Mantida a autorização já concedida pelo usuário para publicar desenvolvimento somente na sua branch com essa ressalva; sem PR final, merge ou deploy manual. CF33/CF30 ainda não concluídos. Próxima implementação: reauditar/reusar evoluções GED para as lacunas CF33 das Sprints 03/04. Estorno continua adicional e sem código; não é contabilizado como requisito expresso CF10.
+
 ## Classificação de implementação e validação — 02/11/2026
 
 Orientação expressa do usuário: marcar como Implementado o requisito cujo código foi concluído; reservar Validado para a homologação posterior. Os checkboxes de atendimento continuam desmarcados até o aceite. Build e homologação pendentes devem permanecer nas observações, sem serem confundidos com ausência de implementação.
