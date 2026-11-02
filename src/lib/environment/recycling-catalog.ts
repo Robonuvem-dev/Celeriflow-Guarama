@@ -16,6 +16,7 @@ export const recyclingEntrySchema = z.object({
   active: z.boolean(),
 });
 export type RecyclingEntry = z.infer<typeof recyclingEntrySchema>;
+export type RecyclingCatalogSaveResult = { success: true } | { error: string };
 export function recyclingEntryKey(entry: Pick<RecyclingEntry, "kind" | "code">) {
   return `RECYCLING_CATALOG:${entry.kind}:${entry.code.toLocaleUpperCase("pt-BR")}`;
 }

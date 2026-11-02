@@ -6,7 +6,7 @@ import { withDatabaseTransaction } from "@/db/transaction";
 import { findOperationalInstance } from "@/db/repositories/platform/instance-configuration";
 import { saveRecyclingCatalogEntry } from "@/db/repositories/environment/recycling-catalog";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import { recyclingEntrySchema } from "@/lib/environment/recycling-catalog";
+import { recyclingEntrySchema, type RecyclingCatalogSaveResult } from "@/lib/environment/recycling-catalog";
 
 export async function saveRecyclingEntry(form: FormData): Promise<void> {
   const mode = form.get("mode") === "update" ? "update" : "create";
@@ -21,4 +21,14 @@ export async function saveRecyclingEntry(form: FormData): Promise<void> {
     entry,
   }));
   revalidatePath("/meio-ambiente/residuos/cadastros");
+}
+
+// Adapter for the awaited client form; the existing Promise<void> action is preserved.
+export async function saveRecyclingEntryForClient(form: FormData): Promise<RecyclingCatalogSaveResult> {
+  try {
+    await saveRecyclingEntry(form);
+    return { success: true };
+  } catch {
+    return { error: "Não foi possível salvar o cadastro. Confira os dados, se o código já existe e suas permissões antes de tentar novamente." };
+  }
 }

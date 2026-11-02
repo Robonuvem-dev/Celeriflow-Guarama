@@ -51,6 +51,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { pathname: "/meio-ambiente/licenciamento", title: "Licenciamento Ambiental", excludeQuery: { view: ["motor"] } },
       { pathname: "/meio-ambiente/residuos", title: "Controle de Resíduos" },
       { pathname: "/meio-ambiente/residuos/estoque", title: "Estoque de Recicláveis" },
+      { pathname: "/meio-ambiente/residuos/cadastros", title: "Cadastros de Reciclagem" },
       { pathname: "/meio-ambiente/solicitacoes", title: "Solicitações e Podas" },
     ],
   },

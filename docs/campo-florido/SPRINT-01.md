@@ -76,7 +76,17 @@ Base: c189c720db9d64c5fbd89d4e24e6c67e48ff5820. Execução local expressamente a
 node --test tests/recycling-stock.browser.test.mjs
 ```
 
-O catálogo legado ainda requer a mesma revisão visual; esse ajuste não conclui a Sprint 01, não implementa estorno e não inicia a Sprint 02.
+Naquele incremento, o catálogo legado ainda requeria revisão visual. A implementação seguinte está descrita abaixo; não conclui a Sprint 01, não implementa estorno e não inicia a Sprint 02.
+
+### Incremento seguinte — catálogos no padrão operacional
+
+Base 13269cb, checkout antigo local autorizado pelo usuário. As listas dos cinco catálogos passam a usar tabela/paginação/filtros compartilhados, mantendo o armazenamento anterior e os IDs/chaves. Inclusão e edição ficam em Dialog/OperationalPagedContent com rascunho preservado. A rota recebe o workspace ambiental. Nenhum CSS global ou módulo alheio foi alterado.
+
+Busca e situação filtram antes da paginação de 20 itens. Código, nome, descrição completa, endereço e situação permanecem acessíveis. A action original Promise<void> continua disponível; o novo adapter client devolve erro seguro, delegando as mesmas verificações e persistência à action existente. Regras de create/update seguem no servidor e na UI.
+
+Validação: 10 testes reais de persistência/perfis, 13 de contratos/seleção/rota/renderização e 4 browser aprovados; zero skipped. Browser verifica os cinco catálogos, 20/1, 13px/24px, filtros, texto longo integral, consulta/criação/edição, inatividade, rascunho após erro/fechamento e celular. Autenticação/gravação do browser são simuladas; autorização da action tem teste de fronteira com identidade/IO substituídos e a persistência é testada em banco isolado separado.
+
+ESLint e diff --check aprovados. Partições de tipos 11, 13 e 16 (fontes alteradas/imports) e tipos das fixtures aprovados. Não houve novo build completo: o bloqueio Turbopack/Windows permanece registrado no checkpoint. Publicação de desenvolvimento na branch autorizada não equivale a build aprovado, migração aplicada ou homologação dos requisitos.
 
 Roteiro de verificação funcional: [ROTEIRO_POC_CF10.md](ROTEIRO_POC_CF10.md). É preparação de evidências, sem aprovação de requisitos.
 

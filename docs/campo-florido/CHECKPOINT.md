@@ -1,5 +1,32 @@
 # Checkpoint — Campo Florido
 
+## Catálogos padronizados — 02/11/2026
+
+Continuidade no checkout antigo, expressamente autorizada pelo usuário após a tentativa de usar a pasta do GitHub Desktop. Base local/remota conferida: 13269cb96594c455ab3e9b593827c6d9d7fb5236, exclusivamente em feat/cf10-cf30-cf33-mateus. O incremento anterior de estoque/histórico está publicado nesse commit; o pacote ZIP anterior não deve ser reaplicado.
+
+- Reaproveitados os cinco catálogos e a persistência Drizzle existentes. Nenhuma tabela de banco, migração, chave, lock, regra de duplicidade ou auditoria foi alterada.
+- Cadastros usam OperationalListFrame, OperationalTable, OperationalLinkPagination, filtros e diálogos compartilhados. A rota foi registrada no workspace ambiental. Busca por código/nome/descrição/endereço e situação antecede a paginação de 20 registros; catálogo e filtros permanecem na URL.
+- Formulários preservam código imutável na edição, descrição integral, endereço, situação e rascunho após erro/fechamento. Inclusão bem-sucedida limpa o formulário; edição conserva os valores. Os campos de endereço legados também são preservados quando não são editáveis naquele tipo de catálogo.
+- saveRecyclingEntry conserva Promise<void>, autenticação/autorização antes da escrita, validação e transação/auditoria existentes. O novo adapter saveRecyclingEntryForClient retorna sucesso/erro ao formulário client, sem expor mensagens internas do banco. Não concede operações adicionais.
+- Validação nova: 10 testes reais de catálogo/persistência/perfis; 13 de seleção/rota/contratos/renderização (incluem 4 cenários existentes de estoque); 4 browser com componentes/CSS reais. Todos passaram, sem skipped. O teste de contrato de action substitui identidade/IO por sentinelas; não é sessão autenticada. A persistência real é verificada separadamente na fixture isolada Neon/Drizzle/PGlite.
+- ESLint e git diff --check aprovados. Tipos: partições 11, 13 e 16 aprovadas pelo runner existente, cobrindo todas as fontes alteradas e seus imports; também aprovado tsc específico das fixtures TS/TSX. O plano contém 16 partições (inclui artefatos de tipos deixados pelo diagnóstico Webpack); somente as três citadas foram executadas neste incremento. Não contar isso como novo build integral nem como aprovação das 16 partições.
+- Browser: cinco catálogos em 1366×768 com 13px/24px e 20/1 registros; texto longo recuperado integralmente pelo diálogo; filtros/resultado vazio; consulta/criação/edição; erro preservando rascunho e inatividade; formulário móvel em 390×844. Identidade e gravação são simuladas na fixture. O token de fonte usa fallback sans-serif; sem homologação autenticada da aplicação real.
+
+Build integral continua pendente pelo bloqueio Windows descrito abaixo; não houve nova execução completa neste incremento nem alteração de compilador/configuração/permissões para contorná-lo. A continuidade/publicação de desenvolvimento segue a orientação do usuário de trabalhar no checkout antigo e enviar somente para a sua branch, com essa limitação informada. Nenhum resultado pendente é marcado como aprovado; sem PR de conclusão, merge ou deploy manual. Catálogo visual passa a implementado/testado; Sprint 01 segue parcial por homologação/estorno, Sprint 02 ainda não iniciada.
+
+Comandos de validação deste incremento:
+
+```sh
+node --conditions=react-server --import tsx --test --test-concurrency=1 tests/recycling-catalog-persistence.test.ts tests/recycling-catalog.test.ts tests/user-additional-profiles.test.ts
+node --import tsx --test tests/recycling-catalog-view.test.ts tests/recycling-catalog-actions.test.mjs tests/recycling-stock-ui.test.tsx
+node --test tests/recycling-catalog.browser.test.mjs
+node scripts/typecheck-build.mjs --partition 11
+node scripts/typecheck-build.mjs --partition 13
+node scripts/typecheck-build.mjs --partition 16
+```
+
+O banco dos testes é isolado, com DATABASE_URL sentinela. A comparação remota e a atualização condicionada da referência devem preceder qualquer publicação; não sobrescrever commits concorrentes. Próximo: avaliar estorno vinculado/autorizações integradas e iniciar somente as lacunas confirmadas da Sprint 02. Antes do PR final, conciliar a migração CF10 renomeada e as evoluções GED já presentes na main, sem duplicação.
+
 ## Retomada — 02/11/2026
 
 O usuário autorizou execução local nesta conversa. Checkout novo exclusivamente da branch feat/cf10-cf30-cf33-mateus, base remota c189c720db9d64c5fbd89d4e24e6c67e48ff5820. Nenhum ZIP antigo foi recuperado. O registro em nuvem abaixo descreve a etapa anterior, não o executor desta retomada.
