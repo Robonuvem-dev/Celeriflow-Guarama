@@ -69,6 +69,16 @@ Aplicar e verificar o schema GED antes de ativar o consumo. Habilitar processame
 
 A matriz dos 52 requisitos só deve receber atendimento comprovado depois de evidência observada.
 
+### Publicação e atualização do runtime — 02/11/2026
+
+- O commit `16c5d6e` foi publicado pelo GitHub com a identidade `Robonuvem-dev`. O deployment `dpl_A8Pzr3evESBge4rZ7qvpTdTctnL7` terminou como `Ready` em Production, associado a `guarama.celeriflow.com.br`.
+- O plano somente leitura passou com 189 recibos reconhecidos e nenhuma migração pendente; a migração `20261102130000_ged_poc_internal` já está registrada no banco.
+- O snapshot foi atualizado a partir das fontes de `16c5d6e`: `snap_YNJGkpEXQw6n4dNnLnX6r331tyeV`. As 18 verificações reais passaram novamente com `networkPolicy=deny-all`; os resultados atuais estão em `GED_VERCEL_RUNTIME_RESULTADO.json`.
+- Um item real da fila foi executado nesse snapshot com acesso a banco/Blob: `processed=1`, `failed=0`, saída de processo zero. Essa verificação cobre o bootstrap e um processamento integrado, sem comprovar concorrência, todos os formatos da fila ou retentativas.
+- Os 16 testes locais de gestão, armazenamento, assinatura central e serviço documental passaram.
+- O build local completo em modo preview passou, incluindo as 16 partições de typecheck e a compilação Next.js. A checagem HTTP em produção confirmou `/` com 200, acervo com redirecionamento para login e worker sem credencial com 401. A validação visual autenticada permanece pendente.
+- `GED_SANDBOX_SNAPSHOT_ID` foi atualizado em Production para o novo snapshot depois da criação do deployment acima; exige uma publicação posterior para entrar no ambiente das Functions.
+
 Na fase 11, verificar: criação/restauração do snapshot; autenticação OIDC e cron; tarefa sem rede; conversão por formato; referências PDF/A pass/fail; OCR por página/zona; semântica portuguesa incluindo o fim de textos longos; fila manual/automática; encerramento e custo das VMs; concorrência, falhas e retentativas; isolamento por usuário/setor/grupo; regressão, build e deploy.
 
 E-mail segue pendente para o final. FTP/WebDAV e conclusão LDAP/AD estão fora do escopo. As adequações visuais inventariadas no documento de revisão continuam pendentes e não são homologadas por esta mudança de infraestrutura.
