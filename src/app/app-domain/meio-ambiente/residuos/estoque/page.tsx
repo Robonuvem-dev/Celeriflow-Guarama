@@ -21,7 +21,7 @@ export default async function RecyclingStockPage({ searchParams }: { searchParam
   const data = await loadRecyclingStockPage(database, instance.id, { stock: text("estoquePagina"), history: text("historicoPagina") });
   const entries = parseRecyclingEntries(instance.parametros.filter(parameter => parameter.chave.startsWith("RECYCLING_CATALOG:")).map(parameter => parameter.valor));
   const byKey = new Map(entries.map(entry => [recyclingEntryKey(entry), entry]));
-  return <StockView entries={entries} stockPage={data.stockPage} historyPage={data.historyPage} stockTotal={data.stockTotal} historyTotal={data.historyTotal} pageSize={data.pageSize}
+  return <StockView entries={entries} stockPage={data.stockPage} historyPage={data.historyPage} stockTotal={data.stockTotal} historyTotal={data.historyTotal} pageSize={data.pageSize} view={text("visao") === "historico" ? "history" : "stock"}
     canRecord={canPerformModuleOperation(context.user, "MEIO_AMBIENTE", "create")} today={recyclingToday()} entryRequestKey={randomUUID()} recordAction={recordRecyclingMovementAction}
     positions={data.stocks.map(stock => {
       const material = byKey.get(stock.materialKey), depot = byKey.get(stock.depotKey), unit = byKey.get(stock.unitKey), type = byKey.get(stock.typeKey);

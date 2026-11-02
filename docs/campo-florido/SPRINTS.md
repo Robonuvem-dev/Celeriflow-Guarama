@@ -27,6 +27,10 @@ Este plano registra entregas incrementais; nenhuma sprint está homologada apena
 - [x] Implementar saída para centro/destinação, quantidade, valor financeiro, saldo atualizado e histórico desde coleta (10.11).
 - [x] Validar idempotência, estoque insuficiente, concorrência, isolamento, histórico imutável e rollback dos movimentos em banco isolado.
 - [x] Testar renderização de consulta/operação, destinos ativos, saída sem saldo e escape de texto.
+- [x] Reusar tabela/paginação/diálogos operacionais na tela de estoque e histórico; registrar a rota no shell ambiental e testar navegador desktop/celular com fixture isolada.
+- [ ] Aplicar o mesmo padrão visual ao catálogo legado, preservando os cinco cadastros e o contrato Promise<void>.
+- [x] Preparar publicação do incremento visual de 02/11 somente na branch de Mateus, com autorização expressa após informar o bloqueio de build (CHECKPOINT.md).
+- [ ] Aprovar npm run build do incremento visual: testes/tipos passaram, mas a compilação Turbopack local está bloqueada por acesso negado ao criar junction interno. A autorização de publicação não encerra esta pendência.
 - [x] Concluir regressão/build do incremento de movimentos e registrar evidências em SPRINT-01.md/CHECKPOINT.md.
 - [ ] Homologar o fluxo com sessão autenticada e migração aplicada somente ao banco isolado de homologação; avaliar estorno vinculado antes do uso definitivo.
 - [x] Build completo e regressão do incremento de catálogos 185fdd7 aprovados e publicados somente na branch autorizada.
@@ -95,4 +99,5 @@ Este plano registra entregas incrementais; nenhuma sprint está homologada apena
 - [ ] Registrar evidência funcional por item e commit: CF10 13/13, CF30 14/14 e CF33 15/15.
 - [ ] Ensaiar POC e conferir dependências externas sem marcar pendências como atendidas.
 - [ ] Preparar PR para revisão somente depois dos testes/build exigidos; sem merge ou deploy de produção.
+- [ ] Conciliar o avanço remoto identificado em 02/11 (main 6495d9a6), incluindo renomeação da migração CF10 para 20261102120000 e novas capacidades GED, sem duplicar tabelas ou sobrescrever trabalho.
 - [ ] Atualizar planilha por células verificadas, preservando estrutura, fórmulas, responsáveis e 33.6.

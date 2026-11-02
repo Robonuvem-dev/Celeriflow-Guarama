@@ -60,6 +60,24 @@ node --import tsx --test tests/recycling-stock-ui.test.tsx
 
 ## Próximos passos
 
+### Incremento de interface — 02/11/2026
+
+Base: c189c720db9d64c5fbd89d4e24e6c67e48ff5820. Execução local expressamente autorizada pelo usuário nesta conversa.
+
+- Estoque e histórico passam a usar OperationalListFrame, OperationalTable e OperationalLinkPagination existentes. Uma visão por vez ocupa a área útil da tabela; a URL mantém a visão e as páginas independentes de saldos/histórico.
+- A rota de estoque foi registrada no manifesto operacional saneamento-ambiente.ts e no menu ambiental. A correspondência exata de Controle de Resíduos evita dois itens ativos na mesma subpágina; saneamento e demais módulos não foram alterados.
+- Entradas, saídas e detalhes usam Dialog e OperationalPagedContent existentes, incluindo leitura paginada no desktop e rolagem em dispositivos móveis. Sem alteração do CSS compartilhado.
+- Os formulários preservam rascunho e chave de requisição ao fechar/reabrir ou receber erro; sucesso limpa o rascunho e gera nova chave. A action continua aguardada com retorno estruturado; autorização e persistência Drizzle não foram alteradas.
+- Registros somente para consulta continuam sem ações de movimentação; posição sem saldo não oferece saída. Quantidades/receitas continuam strings decimais exatas, sem Number na apresentação.
+- A fixture browser usa componentes/CSS reais e dados sintéticos, com navegação e gravação simuladas. Não é sessão autenticada, homologação funcional do sistema completo ou prova de aplicação de migração.
+- Validação desta etapa: 23/23 testes de catálogos, estoque e perfis; 4/4 de rota/renderização; 4/4 no navegador headless com CSS real, desktop e celular; ESLint aprovado. npm run build passou coverage, verify-files, typegen e as 15 partições de tipos, mas falhou na compilação Turbopack porque o Windows negou o junction interno de firebase-admin (os error 5). Após ser informado desse bloqueio, o usuário autorizou publicar somente na sua branch; ver CHECKPOINT.md. Publicação não equivale a build aprovado ou homologação. Os builds aprovados anteriormente não validam esta revisão.
+
+```sh
+node --test tests/recycling-stock.browser.test.mjs
+```
+
+O catálogo legado ainda requer a mesma revisão visual; esse ajuste não conclui a Sprint 01, não implementa estorno e não inicia a Sprint 02.
+
 Roteiro de verificação funcional: [ROTEIRO_POC_CF10.md](ROTEIRO_POC_CF10.md). É preparação de evidências, sem aprovação de requisitos.
 
 1. Concluir regressão/build e publicar apenas na branch de Mateus.

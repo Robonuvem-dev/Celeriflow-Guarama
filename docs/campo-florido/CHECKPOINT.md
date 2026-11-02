@@ -1,5 +1,33 @@
 # Checkpoint — Campo Florido
 
+## Retomada — 02/11/2026
+
+O usuário autorizou execução local nesta conversa. Checkout novo exclusivamente da branch feat/cf10-cf30-cf33-mateus, base remota c189c720db9d64c5fbd89d4e24e6c67e48ff5820. Nenhum ZIP antigo foi recuperado. O registro em nuvem abaixo descreve a etapa anterior, não o executor desta retomada.
+
+Incremento atual: reutilização dos componentes operacionais existentes na tela de estoque/histórico CF10 e nos diálogos de movimentação, respeitando a orientação de manter o estilo da base. Backend, schema, migrações e contratos das actions preservados. Detalhes em SPRINT-01.md.
+
+Validação atual: npm ci concluído (1005 pacotes); 23/23 testes de persistência/estoque/perfis, 4/4 de rota/renderização e 4/4 no navegador headless aprovados. Os cenários browser verificam geometria padrão 13px/24px, paginação 20/1, troca de visão, consulta, destino ativo, precisão, erro/rascunho/idempotência, detalhes seguros e celular. A fixture usa o fallback sans-serif do token de fonte, não carrega o Inter via Next. A rota também foi registrada no manifesto operacional para receber o workspace ambiental real. Testes usam somente fixture isolada e DATABASE_URL sentinela; nenhum banco real, main, cemitério ou código de terceiros alterado. Catálogo visual, estorno e homologação autenticada continuam pendentes na Sprint 01; Sprint 02 não iniciada.
+
+### Bloqueio do build local — publicação na branch autorizada com ressalva
+
+ESLint dos arquivos alterados e git diff --check aprovados. npm run build: coverage aprovado, verify-files FILES_INTACT_BASELINE_AUTHORIZED, typegen aprovado e as 15 partições completas de tipos aprovadas (3.469 fontes, 1.015 validações de rotas, 1.258 s). A compilação final Turbopack falhou com exit 1 porque o executor Windows negou a criação do junction .next/node_modules/firebase-admin-a14c8a5423a75469 para node_modules/firebase-admin (os error 5, acesso negado). Não houve erro TypeScript nessa execução. Nenhuma permissão do computador foi modificada.
+
+O comando obrigatório npm run build não foi aprovado nesta retomada. A publicação foi inicialmente suspensa pela regra de AGENTS.md. Depois de informado expressamente sobre a falha de permissão e a ausência de commit/push, o usuário instruiu “sobe para a minha branch”. Essa autorização específica permite publicar este incremento em desenvolvimento exclusivamente em feat/cf10-cf30-cf33-mateus, com o build pendente registrado; não altera AGENTS.md, não aprova o build e não autoriza merge ou deploy em produção. Os resultados de build aprovados de 01/11 abaixo pertencem aos incrementos anteriores e não validam estas novas edições. Uma compilação Webpack foi tentada apenas como diagnóstico, após os tipos completos já aprovados, e interrompida sem resultado final; não altera scripts/configuração, não conta como aprovação e não substitui o comando obrigatório. Nenhum teste do build foi desabilitado na configuração do projeto.
+
+Entrega autorizada: publicar os 11 arquivos deste incremento pelo conector GitHub na conta Robonuvem-dev, com pai c189c720 e atualização da referência condicionada ao HEAD esperado, sem force. Conferir presença do commit remoto e igualdade da árvore local antes de considerar publicado. Sem PR de conclusão, merge ou deploy manual. A aprovação integral de build e a homologação continuam pendentes.
+
+Histórico da recuperação: antes dessa autorização foi criado cf10-ui-checkpoint-20261102.zip em outputs/cf10-validation com changes.patch (inclui arquivos novos), manifest.json (base/branch/hashes SHA-256), CHECKPOINT.md e logs de compilação. Seus 11 arquivos tiveram zero divergências e o patch foi conferido contra a base em índice isolado. Esse pacote retrata o checkpoint anterior à publicação e não deve ser reaplicado sobre a branch sem comparação.
+
+### Avanço remoto identificado nesta retomada
+
+Main foi consultada somente para leitura no commit 6495d9a6a01482bd4b67b0565e094f7da3e6c9cd. O documento remoto docs/INTEGRACAO_DEPLOYS_2026-11-02.md registra integração dos incrementos 185fdd74/c189c720 por outro trabalho e renomeação da migração ambiental de 20261101120000 para 20261102120000, com SQL preservado. As telas StockView/MovementForm nessa main ainda têm os mesmos blobs da nossa base. Não foi realizada integração de main nesta branch, migração, merge ou deploy por esta retomada. Não extrapolar o documento de integração para afirmar que o banco/produção atual foi homologado aqui.
+
+Antes do PR da Sprint 07, conciliar a nova base remota, especialmente o nome da migração, referências de schema/teste/docs e as evoluções de GED reutilizáveis em CF33. Não adicionar uma segunda migração criando as mesmas tabelas, sobrescrever alterações de terceiros nem usar testes desta branch como validação da main atual.
+
+Reuso adicional confirmado por inspeção da main 6495d9a6: src/lib/documents/ged-policy.ts (blob ace7fa72e1326cb33f641788668476a20004bc0a) amplia a lista de formatos GED para Word, ODT/ODF, planilhas, apresentações, HTML e imagens adicionais. A restrição de formatos descrita na auditoria original corresponde à base d507684f; não deve motivar nova implementação de suporte antes de reconciliar esta evolução. Aceitação na política não comprova extração/visualização de cada formato nem vínculo às normas. docs/GED_REVISAO_PADRAO_MODULOS.md também inventaria novas estruturas de comentários, metadados, ACL e integrações; revisar seus serviços, contratos e migração como dependências estritas de CF33/CF30 quando essas sprints começarem.
+
+---
+
 Data: 01/11/2026. Repositório exclusivo: Robonuvem-dev/Celeriflow-Guarama.
 Branch exclusiva: `feat/cf10-cf30-cf33-mateus`.
 Base deste incremento: `185fdd7409f56746af10b401f096e91f51acac67`.

@@ -34,7 +34,9 @@ export const operationalModules: OperationalModuleConfig[] = [
       ] },
       { title: "Gestão Ambiental", items: [
         { title: "Áreas Verdes", href: "/meio-ambiente/areas-verdes", icon: "sprout" },
-        { title: "Controle de Resíduos", href: "/meio-ambiente/residuos", icon: "trash2" },
+        { title: "Controle de Resíduos", href: "/meio-ambiente/residuos", icon: "trash2", exact: true },
+        { title: "Estoque de Recicláveis", href: "/meio-ambiente/residuos/estoque", icon: "package" },
+        { title: "Cadastros de Reciclagem", href: "/meio-ambiente/residuos/cadastros", icon: "folderOpen" },
         { title: "Educação Ambiental", href: "/meio-ambiente/educacao", icon: "graduationCap" },
         { title: "Documentos Oficiais", href: "/meio-ambiente/documentos", icon: "folderOpen" },
       ] },
@@ -48,6 +50,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { pathname: "/meio-ambiente/fiscalizacao", title: "Fiscalização e Vistorias" },
       { pathname: "/meio-ambiente/licenciamento", title: "Licenciamento Ambiental", excludeQuery: { view: ["motor"] } },
       { pathname: "/meio-ambiente/residuos", title: "Controle de Resíduos" },
+      { pathname: "/meio-ambiente/residuos/estoque", title: "Estoque de Recicláveis" },
       { pathname: "/meio-ambiente/solicitacoes", title: "Solicitações e Podas" },
     ],
   },
