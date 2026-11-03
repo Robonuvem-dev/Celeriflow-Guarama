@@ -9,7 +9,7 @@ const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs
 
 export default async function PortalOuvidoriaPage() {
   const access = await getPatientPortalAccess();
-  if (access.status !== "AVAILABLE") redirect("/app-domain/login");
+  if (access.status !== "AVAILABLE") redirect("/login");
   const items = await portalManifestations(access.context, access.patient.personId);
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">

@@ -12,7 +12,7 @@ const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs
 
 export default async function PortalDadosPage() {
   const access = await getPatientPortalAccess();
-  if (access.status !== "AVAILABLE") redirect("/app-domain/login");
+  if (access.status !== "AVAILABLE") redirect("/login");
   const [person] = await (access.context.database ?? db).select({ fullName: people.fullName, cpf: people.cpf, phonePrimary: people.phonePrimary, phoneSecondary: people.phoneSecondary, whatsapp: people.whatsapp, email: people.email }).from(people).where(eq(people.id, access.patient.personId));
   return (
     <PageFrame className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col gap-2 overflow-hidden px-1 py-1 md:px-2">
@@ -20,7 +20,7 @@ export default async function PortalDadosPage() {
       <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto md:grid-cols-2">
         <div className="h-fit rounded border bg-white p-3 text-xs"><h2 className="font-bold uppercase text-slate-500">Identificação</h2><p className="mt-1"><strong>{person?.fullName}</strong></p><p className="text-slate-500">CPF {person?.cpf || "-"}</p><p className="mt-2 text-slate-500">Alterações de identidade e documentos clínicos devem ser solicitadas na unidade de saúde.</p></div>
         <form action={updateContactAction} className="grid h-fit gap-1 rounded border bg-white p-3 text-xs"><h2 className="font-bold uppercase text-slate-500">Contatos (editável)</h2><input name="phonePrimary" defaultValue={person?.phonePrimary || ""} placeholder="Telefone principal" className={field} /><input name="phoneSecondary" defaultValue={person?.phoneSecondary || ""} placeholder="Telefone secundário" className={field} /><input name="whatsapp" defaultValue={person?.whatsapp || ""} placeholder="WhatsApp" className={field} /><input name="email" defaultValue={person?.email || ""} placeholder="E-mail" className={field} /><button className="h-8 rounded bg-emerald-700 px-2 font-semibold text-white">Salvar contatos</button></form>
-        <div className="h-fit rounded border bg-white p-3 text-xs md:col-span-2"><Link href="/app-domain/login" className="text-sky-700 underline">Recuperar acesso / trocar conta</Link></div>
+        <div className="h-fit rounded border bg-white p-3 text-xs md:col-span-2"><Link href="/login" className="text-sky-700 underline">Recuperar acesso / trocar conta</Link></div>
       </div>
     </PageFrame>
   );

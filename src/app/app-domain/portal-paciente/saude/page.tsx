@@ -12,7 +12,7 @@ const box = "rounded border bg-white p-2";
 
 export default async function PortalSaudePage() {
   const access = await getPatientPortalAccess();
-  if (access.status !== "AVAILABLE") redirect("/app-domain/login");
+  if (access.status !== "AVAILABLE") redirect("/login");
   const ownContext = { ...access.context, user: { ...access.context.user, hasHealthAccessScope: false } };
   const [vaccinationCard, reports, dispensations, refreg, documents, campaigns] = await Promise.all([
     getVaccinationCard(ownContext, access.patient.id),

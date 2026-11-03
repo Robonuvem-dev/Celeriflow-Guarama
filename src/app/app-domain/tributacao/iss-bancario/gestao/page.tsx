@@ -4,7 +4,7 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { desifAdministrativeStatuses, readDesifManagement, type DesifReportFilter } from "@/lib/tributacao/desif-requirements";
 import PrintReport from "../../relatorios-cadastrais/PrintReport";
 export const dynamic = "force-dynamic";
-const field = "rounded border p-2";
+const field = "mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-[#0e4c7e] focus:outline-none focus:ring-1 focus:ring-[#0e4c7e]";
 export default async function DesifManagementPage({ searchParams }: { searchParams: Promise<DesifReportFilter> }) {
   const context = await getTenantContextForModule("TRIBUTACAO");
   const filter = await searchParams;

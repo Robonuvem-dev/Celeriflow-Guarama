@@ -128,17 +128,17 @@ export default async function RHDashboard() {
                   <div className="text-xs text-muted-foreground">Afastamentos legais</div>
                 </div>
               </Link>
-              <Link href="/rh/cargos" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
+              <Link href="/administracao/cargos" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <Briefcase className="mr-3 size-5 text-indigo-500" />
                 <div>
                   <div className="font-semibold">Cargos e Salários</div>
                   <div className="text-xs text-muted-foreground">Estrutura organizacional</div>
                 </div>
               </Link>
-              <Link href="/rh/treinamentos" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
+              <Link href="/rh/atividades-funcionais" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <GraduationCap className="mr-3 size-5 text-slate-500" />
                 <div>
-                  <div className="font-semibold">Treinamentos</div>
+                  <div className="font-semibold">Treinamentos e Atividades</div>
                   <div className="text-xs text-muted-foreground">Capacitação contínua</div>
                 </div>
               </Link>

@@ -2,7 +2,7 @@
 import {useState,useTransition} from "react";
 import {taxReferenceCatalogs,taxReferenceExtraFields,searchTaxReferences,renderReferenceConclusion,type TaxReferenceKind,type TaxReferenceRow} from "@/lib/tributacao/reference-catalog";
 import {saveTaxReferenceAction} from "./actions";
-const input="block w-full rounded border p-2";
+const input="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-[#0e4c7e] focus:outline-none focus:ring-1 focus:ring-[#0e4c7e]";
 export default function TaxReferenceClient({rows,units,taxpayers,users,initialKind="atividade"}:{users:{id:string;label:string}[];taxpayers:{id:string;label:string}[];initialKind?:TaxReferenceKind;rows:TaxReferenceRow[];units:{id:string;entityId:string;label:string}[]}){
  const [kind,setKind]=useState<TaxReferenceKind>(initialKind),[q,setQ]=useState(""),[id,setId]=useState(""),[notice,setNotice]=useState(""),[pending,start]=useTransition();
  const [filters,setFilters]=useState<Record<string,string>>({});

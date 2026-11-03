@@ -184,3 +184,19 @@
 :global(.dark) .dialog .menuList a:hover, :global(.dark) .dialog .menuList a[aria-current="page"] { background: #0c4a6e; color: #e0f2fe; }
 :global(.dark) .dialog .menuGroup { color: #94a3b8; }
 :global(.dark) .dialog .dialogButton:not(.primaryButton), :global(.dark) .dialog .filterFields select { border-color: #475569; background: #0f172a; color: #e2e8f0; }
+
+/* Padronizacao com o Portal */
+.primaryButton {
+  background-color: #0e4c7e !important;
+  border-color: #0e4c7e !important;
+}
+.primaryButton:hover {
+  background-color: #0a3a5f !important;
+  border-color: #0a3a5f !important;
+}
+.newButton {
+  background-color: #0e4c7e !important;
+}
+.newButton:hover {
+  background-color: #0a3a5f !important;
+}

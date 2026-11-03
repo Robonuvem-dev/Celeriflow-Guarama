@@ -11,7 +11,7 @@ const field = "h-8 min-w-0 rounded border border-slate-200 bg-white px-2 text-xs
 
 export default async function PortalAgendaPage() {
   const access = await getPatientPortalAccess();
-  if (access.status !== "AVAILABLE") redirect("/app-domain/login");
+  if (access.status !== "AVAILABLE") redirect("/login");
   const [appointments, units, schedules] = await Promise.all([
     portalAppointments(access.context, access.patient.id),
     readPortalUnits(access.context.database ?? db),
