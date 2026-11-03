@@ -6,6 +6,7 @@ import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
 import { withDatabaseTransaction } from "../src/db/transaction";
 import { saveLegalText, setMasterDataActive } from "../src/db/repositories/registry/master-data-operations";
 import { loadMasterDataPage } from "../src/db/repositories/registry/master-data-queries";
+import { listLegalTextRelations, registerLegalTextRelation } from "../src/db/repositories/registry/legal-text-relations";
 import { legalTexts, legalTextVersions } from "../src/db/schema/master-data";
 import { insertAuditEvent } from "../src/db/repositories/platform/audit";
 import type { LegalTextInput } from "../src/lib/contracts/master-data";
@@ -16,7 +17,7 @@ before(async () => {
   fixture = await createLocalDrizzleDatabase();
   const migration = await readFile("prisma/migrations-ibema/20261010130000_add_master_data_foundation/migration.sql", "utf8");
   // Use the existing table definitions, not a new schema or a production database.
-  for (const name of ["LegalText", "LegalTextVersion"]) {
+  for (const name of ["LegalText", "LegalTextVersion", "LegalTextRelation"]) {
     const start = migration.indexOf(`CREATE TABLE "${name}" (`);
     assert(start >= 0);
     await fixture.database.exec(migration.slice(start, migration.indexOf(";", start) + 1));
@@ -25,6 +26,7 @@ before(async () => {
     CREATE UNIQUE INDEX ON "LegalText" (type,number,"governmentLevel","issuingBody");
     CREATE UNIQUE INDEX ON "LegalTextVersion" ("legalTextId","versionNumber");
     CREATE UNIQUE INDEX ON "LegalTextVersion" ("documentId");
+    CREATE UNIQUE INDEX ON "LegalTextRelation" ("sourceLegalTextId","targetLegalTextId","relationType");
     ALTER TABLE "LegalTextVersion" ADD FOREIGN KEY ("legalTextId") REFERENCES "LegalText"(id);
     CREATE TABLE "Usuario" (id text PRIMARY KEY); INSERT INTO "Usuario" VALUES ('actor');
     CREATE TABLE "GovernmentEntity" (id text PRIMARY KEY, name text NOT NULL, status text NOT NULL);
@@ -51,6 +53,9 @@ test("33.5: critérios combinados filtram o total e buscam somente a versão atu
   const result = await loadMasterDataPage(db, "legalTexts", "proteção monitoramento", 1, filters);
   assert.equal(result.total, 1);
   assert.deepEqual(result.rows.map(row => row.id), [id]);
+  const ignoring = await loadMasterDataPage(db, "legalTexts", "monitoramento arquivamento", 1, { ...filters, ignorar: "ARQUIVAMENTO, de" });
+  assert.equal(ignoring.total, 1);
+  assert.deepEqual(ignoring.rows.map(row => row.id), [id]);
   for (const [query, overrides] of [["arquivamento", {}], ["monitoramento", { situacao: "INATIVO" }], ["monitoramento", { publicacao: "2026-01-02" }], ["%", {}]] as const) {
     const empty = await loadMasterDataPage(db, "legalTexts", query, 1, { ...filters, ...overrides });
     assert.equal(empty.total, 0);
@@ -118,4 +123,23 @@ test("versão inválida, norma inexistente e duplicidade falham sem gravações 
   for (const token of [-1, 0, 2, 1.5, Number.NaN]) await assert.rejects(save(id, data, "Inválido", token), /outra pessoa/);
   await assert.rejects(save("inexistente", data, "Inválido", 1), /não encontrado/);
   await assert.rejects(save(null, data, "Duplicado")); assert.equal((await versions(id)).length, 1);
+});
+
+test("33.1: lista o ato relacionado nos dois sentidos", async () => {
+  const source = await save(null, input(), "Texto de origem");
+  const target = await save(null, input(), "Texto de destino");
+  const unrelated = await save(null, input(), "Texto independente");
+  const db = fixture.connection.db;
+  const relationInput = { sourceLegalTextId: source, targetLegalTextId: target, relationType: "ALTERA" };
+  assert.ok(await registerLegalTextRelation(db, relationInput));
+  assert.equal(await registerLegalTextRelation(db, relationInput), null);
+  await assert.rejects(registerLegalTextRelation(db, { ...relationInput, targetLegalTextId: source }), /dois atos/);
+  for (const [id, direction, relatedId] of [[source, "outgoing", target], [target, "incoming", source]] as const) {
+    const [relation, ...others] = await listLegalTextRelations(db, id);
+    assert.deepEqual(others, []);
+    assert.equal(relation.direction, direction);
+    assert.equal(relation.relatedText.id, relatedId);
+    assert.equal(relation.relationType, "ALTERA");
+  }
+  assert.deepEqual(await listLegalTextRelations(db, unrelated), []);
 });

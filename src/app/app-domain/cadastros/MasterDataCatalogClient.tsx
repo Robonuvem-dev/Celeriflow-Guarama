@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Pencil, Plus, RefreshCw, Paperclip, Printer } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Paperclip, Printer, Link2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { OperationalFilters, OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
@@ -11,7 +11,7 @@ import { useOperationalWorkspace } from "@/components/app-ui/operational/Operati
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { registryColumns } from "./operational-registry";
 import styles from "@/components/app-ui/operational/operational.module.css";
-import { mutateMasterDataRecord, setMasterDataRecordActive } from "./master-data-actions";
+import { createLegalTextRelation, mutateMasterDataRecord, setMasterDataRecordActive } from "./master-data-actions";
 import type { MasterDataCatalog, MasterDataColumn, MasterDataField, MasterDataRow, MasterDataValue } from "./master-data-types";
 
 type Props = { catalog: MasterDataCatalog; pathname: string; rows: MasterDataRow[]; columns: MasterDataColumn[]; fields: MasterDataField[]; page: number; total: number; query: string; extraQuery?: Record<string, string>; statusMutable?: boolean; canCreate?: boolean; canUpdate?: boolean; tabs?: { value: string; label: string }[] };
@@ -34,6 +34,8 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
   const router = useRouter();
   const { device } = useOperationalWorkspace();
   const editTrigger = useRef<HTMLElement | null>(null);
+  const [relationSource, setRelationSource] = useState<string | null>(null);
+  const [relationError, setRelationError] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MasterDataRow | null>(null);
   const [draft, setDraft] = useState<Record<string, MasterDataValue>>({});
@@ -102,11 +104,39 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
       pagination={<OperationalLinkPagination page={page} total={total} pathname={pathname} values={{ q: query, ...extraQuery }} />}>
       <OperationalTable preferenceId={`cadastros-catalogo-${catalog}`} caption={`Catálogo ${catalog}`} emptyMessage="Nenhum registro encontrado." columns={tableColumns}
         rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>
-          {catalog === "legalTexts" && <><Link className={styles.iconButton} aria-label="Documentos do texto jurídico" href={`/cadastros/textos-juridicos/documentos?${new URLSearchParams({ legalTextId: row.id })}`}><Paperclip /></Link>
+          {catalog === "legalTexts" && <>{canUpdate && <button type="button" className={styles.iconButton} aria-label="Vincular ato" onClick={() => { setRelationError(""); setRelationSource(row.id); }}><Link2 /></button>}<Link className={styles.iconButton} aria-label="Documentos do texto jurídico" href={`/cadastros/textos-juridicos/documentos?${new URLSearchParams({ legalTextId: row.id })}`}><Paperclip /></Link>
+            {Number(row.values.version) > 0 && <a className={styles.iconButton} target="_blank" rel="noopener noreferrer" href={`/api/cadastros/textos-juridicos/imprimir?${new URLSearchParams({ legalTextId: row.id, modo: "consulta" })}`}>Consultar ato</a>}
             {Number(row.values.version) > 0 && <a className={styles.iconButton} aria-label="Imprimir texto jurídico" target="_blank" rel="noopener noreferrer" href={`/api/cadastros/textos-juridicos/imprimir?${new URLSearchParams({ legalTextId: row.id, version: String(row.values.version) })}`}><Printer /></a>}</>}
           {canUpdate && <><button type="button" disabled={pending} aria-label="Editar registro" onClick={event => begin(row, event.currentTarget)} className={styles.iconButton}><Pencil /></button>{statusMutable && <button type="button" aria-label={row.active ? "Inativar registro" : "Reativar registro"} onClick={() => toggle(row)} disabled={pending} className={styles.iconButton}><RefreshCw /></button>}</>}
         </div> }))} />
     </OperationalListFrame>
+    <Dialog open={relationSource !== null} onOpenChange={next => { if (!next && !pending) setRelationSource(null); }}>
+      <DialogContent className={styles.dialog} data-device={device}>
+        <DialogHeader><DialogTitle>Vincular ato</DialogTitle><DialogDescription>Registre a relação do ato selecionado com outro ato cadastrado.</DialogDescription></DialogHeader>
+        <form onSubmit={event => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          startTransition(async () => {
+            const result = await createLegalTextRelation(data);
+            if (result.error) setRelationError(result.error);
+            else { setRelationSource(null); router.refresh(); }
+          });
+        }}>
+          <input type="hidden" name="source" value={relationSource ?? ""} />
+          <div className={styles.filterFields}>
+            <label>Número do ato relacionado<input className={styles.searchInput} name="target" required maxLength={100} /></label>
+            <label>Tipo do ato<input className={styles.searchInput} name="targetType" maxLength={120} /></label>
+            <label>Esfera do ato<select name="targetLevel"><option value="">Todas</option><option value="MUNICIPAL">Municipal</option><option value="ESTADUAL">Estadual</option><option value="FEDERAL">Federal</option></select></label>
+            <label>Órgão do ato<input className={styles.searchInput} name="targetBody" maxLength={200} /></label>
+            <label>Tipo de vínculo<select name="type"><option value="REFERENCIA">Referência</option><option value="REGULAMENTA">Regulamenta</option><option value="ALTERA">Altera</option><option value="REVOGA">Revoga</option></select></label>
+            <label>Data de efeito<input className={styles.searchInput} type="date" name="date" /></label>
+            <label>Notas<textarea name="notes" maxLength={2000} /></label>
+          </div>
+          {relationError && <p role="alert">{relationError}</p>}
+          <button className={styles.filterButton} type="submit" disabled={pending}>Salvar vínculo</button>
+        </form>
+      </DialogContent>
+    </Dialog>
     <Dialog open={open} onOpenChange={next => { if (!next) close(); }}><DialogContent className={styles.dialog} data-device={device} showCloseButton={false} finalFocus={() => editTrigger.current?.isConnected ? editTrigger.current : true}>
       <DialogHeader><DialogTitle>{editing ? "Editar registro" : "Novo registro"}</DialogTitle><DialogDescription>Campos {block + 1} de {blocks}. As seleções são preservadas entre as etapas.</DialogDescription></DialogHeader>
       <form onSubmit={event => { event.preventDefault(); submit(); }}>

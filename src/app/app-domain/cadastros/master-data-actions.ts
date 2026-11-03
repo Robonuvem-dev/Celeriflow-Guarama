@@ -1,10 +1,13 @@
 "use server";
+import { and, eq } from "drizzle-orm";
+import { legalTexts } from "@/db/schema/master-data";
 import { revalidatePath } from "next/cache";
 import { auditEventTypes } from "@/lib/contracts/audit";
 import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import { databaseConnection } from "@/db/client";
 import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
 import { getPostgresError, PersistenceError } from "@/db/errors";
+import { registerLegalTextRelation } from "@/db/repositories/registry/legal-text-relations";
 import * as master from "@/db/repositories/registry/master-data-operations";
 import { assertCanInactivate } from "@/db/repositories/registry/master-data-guards";
 import { runMasterDataConsistency } from "@/db/repositories/registry/consistency";
@@ -269,5 +272,41 @@ export async function runMasterDataConsistencyCheck(): Promise<MasterDataActionR
     return {};
   } catch (error) {
     return resultError(error);
+  }
+}
+
+export async function createLegalTextRelation(form: FormData): Promise<MasterDataActionResult> {
+  try {
+    const context = await getTenantContextForModuleOperation("CADASTROS", "update");
+    const values = { source: form.get("source"), target: form.get("target"), targetType: form.get("targetType"), targetLevel: form.get("targetLevel"), targetBody: form.get("targetBody"), type: form.get("type"), date: form.get("date"), notes: form.get("notes") } as Record<string, MasterDataValue>;
+    const sourceLegalTextId = text(values, "source", true);
+    const targetNumber = text(values, "target", true);
+    const targetType = optional(values, "targetType");
+    const targetLevel = optional(values, "targetLevel");
+    const targetBody = optional(values, "targetBody");
+    const relationType = allowed(values, "type", ["REFERENCIA", "REGULAMENTA", "ALTERA", "REVOGA"] as const)!;
+    const effectiveFrom = dateOrNull(values, "date");
+    const notes = optional(values, "notes");
+    if (sourceLegalTextId.length > 100 || targetNumber.length > 100 || (notes?.length ?? 0) > 2000) {
+      throw new MasterDataValidationError("Confira os atos selecionados e as notas.");
+    }
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const matches = await tx.select({ id: legalTexts.id }).from(legalTexts).where(and(
+        eq(legalTexts.number, targetNumber),
+        targetType ? eq(legalTexts.type, targetType) : undefined,
+        targetLevel ? eq(legalTexts.governmentLevel, targetLevel) : undefined,
+        targetBody ? eq(legalTexts.issuingBody, targetBody) : undefined,
+      )).limit(2);
+      if (matches.length !== 1 || matches[0].id === sourceLegalTextId) throw new MasterDataValidationError("Confira o número do outro ato. Se houver mais de um resultado, informe tipo, esfera e órgão.");
+      const targetLegalTextId = matches[0].id;
+      const relation = await registerLegalTextRelation(tx, { sourceLegalTextId, targetLegalTextId, relationType, effectiveFrom, notes });
+      if (!relation) throw new MasterDataValidationError("Este vínculo já está registrado.");
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "LEGAL_TEXT_RELATION", targetId: relation.id });
+    });
+    revalidatePath(paths.legalTexts);
+    return {};
+  } catch (error) {
+    if (error instanceof AccessError || error instanceof MasterDataValidationError) return { error: error.message };
+    return { error: "Não foi possível registrar o vínculo. Confira se os dois atos existem." };
   }
 }

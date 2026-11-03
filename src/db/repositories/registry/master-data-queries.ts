@@ -140,7 +140,9 @@ export async function loadMasterDataPage(db: DatabaseExecutor, catalog: MasterDa
     }
     case "legalTexts": {
       const literal = (value: string) => value.replace(/[\\%_]/g, "\\$&");
-      const keywords = query.trim().slice(0, 240).split(/\s+/).filter(Boolean);
+      const normalizeKeyword = (word: string) => word.normalize("NFC").toLocaleLowerCase("pt-BR");
+      const ignored = new Set((legalFilters.ignorar ?? "").slice(0, 120).split(/[\s,;]+/).map(normalizeKeyword));
+      const keywords = query.trim().slice(0, 240).split(/\s+/).filter(word => word && !ignored.has(normalizeKeyword(word)));
       const latestContent = sql`(SELECT v.content FROM "LegalTextVersion" v WHERE v."legalTextId" = ${legalTexts.id} ORDER BY v."versionNumber" DESC LIMIT 1)`;
       const where = and(
         legalFilters.tipo ? ilike(legalTexts.type, `%${literal(legalFilters.tipo)}%`) : undefined,

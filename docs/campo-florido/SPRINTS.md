@@ -74,11 +74,11 @@ Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correçã
 
 ## Sprint 04 — CF33 consultas e histórico
 
-- [ ] 33.1: consulta única de texto/ementa e relações nos dois sentidos.
-- [ ] 33.3: lista de palavras ignoradas configurável pelo usuário, aplicada ao corpo do texto.
-- [ ] 33.5: filtros combinados por tipo/assunto/número/publicação/situação/palavras simples e combinadas.
+- [ ] 33.1: consulta única de texto/ementa e relações nos dois sentidos. Implementação local com testes internos; publicação e homologação pendentes. [Evidências](SPRINT-04.md)
+- [ ] 33.3: lista de palavras ignoradas configurável pelo usuário, aplicada ao corpo do texto. Implementação local com testes internos; publicação e homologação pendentes. [Evidências](SPRINT-04.md)
+- [ ] 33.5: filtros combinados por tipo/assunto/número/publicação/situação/palavras simples e combinadas. Código publicado em e6eaf31 e persistência testada; build integral e homologação pendentes.
 - [x] 33.7: impressão integral da versão selecionada com ementa, data e texto completo. Teste interno; sem homologação. [SPRINT-04.md](SPRINT-04.md)
-- [ ] 33.10: reutilizar LegalTextRelation do SQL histórico após conferir catálogo instalado; manter referências, regulamentações, alterações e revogações.
+- [ ] 33.10: reutilizar LegalTextRelation do SQL histórico após conferir catálogo instalado; manter referências, regulamentações, alterações e revogações. Implementação local com testes internos; publicação e homologação pendentes. [Evidências](SPRINT-04.md)
 - [ ] 33.13: comentários vinculados ao texto/versão com autor, data e controle de acesso; comentários GED não equivalem automaticamente a isso.
 - [ ] 33.6: somente verificar a consulta existente e conservar blob d6634ce21f0f387811f313f8476beb79f0369946, responsável Eduardo e evidência já atribuída.
 - [ ] Executar roteiro dos 15 itens sem sobrescrever o portal existente.

@@ -1,4 +1,4 @@
-import { boolean, doublePrecision, integer, pgTable, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, pgTable, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createId } from "../ids";
 import { people } from "./people";
 import { companies, documents } from "./registry";
@@ -63,6 +63,19 @@ export const legalTexts = pgTable("LegalText", {
 export const legalTextVersions = pgTable("LegalTextVersion", {
   ...timestamps(), legalTextId: text("legalTextId").notNull().references(() => legalTexts.id, { onDelete: "cascade", onUpdate: "cascade" }), versionNumber: integer("versionNumber").notNull(), content: text("content").notNull(), summary: text("summary"), publicationDate: timestamp("publicationDate", { precision: 3 }), effectiveFrom: timestamp("effectiveFrom", { precision: 3 }), effectiveUntil: timestamp("effectiveUntil", { precision: 3 }), status: text("status").notNull().default("VIGENTE"), documentId: text("documentId").references(() => documents.id, { onDelete: "restrict", onUpdate: "cascade" }),
 }, table => [uniqueIndex("LegalTextVersion_legalTextId_versionNumber_key").on(table.legalTextId, table.versionNumber), uniqueIndex("LegalTextVersion_documentId_key").on(table.documentId)]);
+
+export const legalTextRelations = pgTable("LegalTextRelation", {
+  id: text("id").primaryKey().$defaultFn(createId),
+  sourceLegalTextId: text("sourceLegalTextId").notNull().references(() => legalTexts.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  targetLegalTextId: text("targetLegalTextId").notNull().references(() => legalTexts.id, { onDelete: "restrict", onUpdate: "cascade" }),
+  relationType: text("relationType").notNull(),
+  effectiveFrom: timestamp("effectiveFrom", { precision: 3 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, table => [
+  uniqueIndex("LegalTextRelation_sourceLegalTextId_targetLegalTextId_relationType_key").on(table.sourceLegalTextId, table.targetLegalTextId, table.relationType),
+  index("LegalTextRelation_targetLegalTextId_relationType_idx").on(table.targetLegalTextId, table.relationType),
+]);
 
 export const legalReportSigners = pgTable("LegalReportSigner", {
   ...timestamps(), personId: text("personId").references(() => people.id, { onDelete: "restrict", onUpdate: "cascade" }), employeeId: text("employeeId").references(() => employees.id, { onDelete: "restrict", onUpdate: "cascade" }), governmentEntityId: text("governmentEntityId").references(() => governmentEntities.id, { onDelete: "restrict", onUpdate: "cascade" }), signingRole: text("signingRole").notNull(), reportTypes: text("reportTypes").array().notNull().default([]), signatureOrder: integer("signatureOrder").notNull().default(1), effectiveFrom: timestamp("effectiveFrom", { precision: 3 }).notNull(), effectiveUntil: timestamp("effectiveUntil", { precision: 3 }), status: text("status").notNull().default("ATIVO"),
