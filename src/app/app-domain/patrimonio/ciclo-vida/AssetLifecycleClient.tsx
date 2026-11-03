@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ReferencePicker } from "@/app/app-domain/frotas/ReferencePicker";
-import { registerAssetDisposal, registerAssetValueAdjustment, runMonthlyDepreciation, reverseAssetValuationAction } from "./actions";
+import { registerAssetDisposal, registerAssetValueAdjustment, runMonthlyDepreciation, reverseAssetValuationAction, reverseAssetWriteOffAction, assetRoutineAction } from "./actions";
 
 type ClassificationOption = { id: string; code: string; name: string };
 export function AssetLifecycleClient({ initialCompetence, budgetUnits, bankAccounts, revenueNatures, resourceSources, valuationRecords }: {
@@ -35,6 +35,14 @@ export function AssetLifecycleClient({ initialCompetence, budgetUnits, bankAccou
   const [adjustmentValue, setAdjustmentValue] = useState("");
   const [adjustmentJustification, setAdjustmentJustification] = useState("");
   const [adjustmentEvidence, setAdjustmentEvidence] = useState("");
+  const [usefulLifeMonths, setUsefulLifeMonths] = useState("");
+  const [manualDepreciation, setManualDepreciation] = useState("");
+  const [writeOffId, setWriteOffId] = useState("");
+  const [routine, setRoutine] = useState<"loan" | "return" | "exclude" | "requestWriteOff">("loan");
+  const [plate, setPlate] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [expectedReturn, setExpectedReturn] = useState("");
+  const [routineReason, setRoutineReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +70,9 @@ export function AssetLifecycleClient({ initialCompetence, budgetUnits, bankAccou
            <button type="button" className="h-9 rounded-md bg-amber-600 px-4 text-sm font-medium text-white disabled:opacity-50" disabled={isPending || !competence || !valuationUnitId} onClick={() => startTransition(async () => showResult(await runMonthlyDepreciation(competence, valuationUnitId)))}>
             Processar competência
           </button>
+          <ReferencePicker endpoint="/api/patrimonio/referencias" kind="assets" label="Bem por placa para depreciação manual" value={assetId} selectedLabel={assetLabel} onChange={selectAsset} />
+          <label className="grid gap-1 text-sm">Depreciação manual (R$)<input inputMode="decimal" className="h-9 rounded-md border px-3" value={manualDepreciation} onChange={e => setManualDepreciation(e.target.value)} /></label>
+          <button type="button" className="h-9 rounded border px-3" disabled={isPending || !assetId || !manualDepreciation || !valuationUnitId} onClick={() => startTransition(async () => showResult(await runMonthlyDepreciation(competence, valuationUnitId, { assetId, amount: Number(manualDepreciation.replace(",", ".")) })))}>Lançar depreciação manual</button>
         </div>
       </section>
 
@@ -115,19 +126,20 @@ export function AssetLifecycleClient({ initialCompetence, budgetUnits, bankAccou
 
       <section className="rounded-lg border bg-white p-4">
         <h3 className="font-semibold">Reavaliação e custos posteriores</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Informe o novo valor contábil em reavaliação ou impairment; em custo subsequente informe o valor a capitalizar.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Informe o valor de mercado e o laudo no teste de recuperabilidade. Se o valor for mantido, o teste fica registrado sem partida contábil. Em custo subsequente informe o valor a capitalizar.</p>
         <form className="mt-4 grid gap-2" onSubmit={(event) => {
           event.preventDefault();
           startTransition(async () => {
             const key = adjustmentKey || crypto.randomUUID();
             setAdjustmentKey(key);
-            const result = await registerAssetValueAdjustment({ assetId, date: adjustmentDate, type: adjustmentType, value: adjustmentValue, justification: adjustmentJustification, evidence: adjustmentEvidence, budgetUnitId: valuationUnitId, idempotencyKey: key });
+            const result = await registerAssetValueAdjustment({ assetId, date: adjustmentDate, type: adjustmentType, value: adjustmentValue, justification: adjustmentJustification, evidence: adjustmentEvidence, budgetUnitId: valuationUnitId, idempotencyKey: key, ...(usefulLifeMonths ? { usefulLifeMonths: Number(usefulLifeMonths) } : {}) });
             showResult(result);
             if (!result.error) {
               setAdjustmentValue("");
               setAdjustmentJustification("");
               setAdjustmentEvidence("");
               setAdjustmentKey("");
+              setUsefulLifeMonths("");
             }
           });
         }}>
@@ -136,15 +148,36 @@ export function AssetLifecycleClient({ initialCompetence, budgetUnits, bankAccou
           <div className="grid grid-cols-2 gap-2">
             <select className="h-9 rounded-md border px-3 text-sm" value={adjustmentType} onChange={(event) => setAdjustmentType(event.target.value as typeof adjustmentType)}>
               <option value="REVALUATION">Reavaliação</option>
-              <option value="IMPAIRMENT">Impairment</option>
+              <option value="IMPAIRMENT">Redução / teste de recuperabilidade</option>
               <option value="SUBSEQUENT_COST">Custo subsequente</option>
             </select>
             <input className="h-9 rounded-md border px-3 text-sm" type="date" required value={adjustmentDate} onChange={(event) => setAdjustmentDate(event.target.value)} />
           </div>
           <input className="h-9 rounded-md border px-3 text-sm" placeholder={adjustmentType === "SUBSEQUENT_COST" ? "Valor a capitalizar (R$)" : "Novo valor contábil (R$)"} inputMode="decimal" required value={adjustmentValue} onChange={(event) => setAdjustmentValue(event.target.value)} />
+          <label className="grid gap-1 text-sm">Vida útil total revisada em meses (opcional)<input type="number" min={1} max={12000} className="h-9 rounded-md border px-3" value={usefulLifeMonths} onChange={e => setUsefulLifeMonths(e.target.value)} /></label>
           <input className="h-9 rounded-md border px-3 text-sm" placeholder="Justificativa" required value={adjustmentJustification} onChange={(event) => setAdjustmentJustification(event.target.value)} />
           <textarea className="min-h-20 rounded-md border px-3 py-2 text-sm" placeholder="Laudo, processo ou outra evidência" required value={adjustmentEvidence} onChange={(event) => setAdjustmentEvidence(event.target.value)} />
           <button className="h-9 rounded-md border border-amber-600 px-4 text-sm font-medium text-amber-700 disabled:opacity-50" disabled={isPending || !assetId}>Registrar ajuste</button>
+        </form>
+      </section>
+      <section className="rounded-lg border bg-white p-4 lg:col-span-3">
+        <h3 className="font-semibold">Empréstimos, devoluções e exclusão</h3>
+        <form className="mt-3 grid gap-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); startTransition(async () => showResult(await assetRoutineAction({ operation: routine, patrimonyNumber: plate, recipient, expectedReturn, reason: routineReason }))); }}>
+          <select aria-label="Operação do bem" className="h-9 rounded border px-3" value={routine} onChange={e => setRoutine(e.target.value as typeof routine)}><option value="loan">Empréstimo</option><option value="return">Devolução</option><option value="requestWriteOff">Solicitar baixa</option><option value="exclude">Exclusão lógica (preserva histórico)</option></select>
+          <input aria-label="Placa do bem" required placeholder="Placa do bem" className="h-9 rounded border px-3" value={plate} onChange={e => setPlate(e.target.value)} />
+          {routine === "loan" && <><input aria-label="Destinatário do empréstimo" required placeholder="Destinatário" className="h-9 rounded border px-3" value={recipient} onChange={e => setRecipient(e.target.value)} /><input aria-label="Previsão de devolução" type="date" required className="h-9 rounded border px-3" value={expectedReturn} onChange={e => setExpectedReturn(e.target.value)} /></>}
+          <input aria-label="Justificativa da operação" required minLength={5} placeholder="Justificativa / evidência" className="h-9 rounded border px-3" value={routineReason} onChange={e => setRoutineReason(e.target.value)} />
+          <button className="h-9 rounded border px-3" disabled={isPending}>Registrar operação</button>
+        </form>
+      </section>
+      <section className="rounded-lg border bg-white p-4 lg:col-span-3">
+        <h3 className="font-semibold">Estorno de baixa</h3>
+        <form className="mt-3 grid gap-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); startTransition(async () => showResult(await reverseAssetWriteOffAction({ recordId: writeOffId, date: reversalDate, reason: reversalReason, budgetUnitId: valuationUnitId }))); }}>
+          <input aria-label="Placa ou identificador da baixa a estornar" required placeholder="Placa ou identificador da baixa" className="h-9 rounded border px-3" value={writeOffId} onChange={e => setWriteOffId(e.target.value)} />
+          <select aria-label="Unidade gestora do estorno da baixa" required className="h-9 rounded border px-3" value={valuationUnitId} onChange={e => setValuationUnitId(e.target.value)}><option value="">Unidade gestora</option>{budgetUnits.map(unit => <option key={unit.id} value={unit.id}>{unit.code} — {unit.name}</option>)}</select>
+          <input aria-label="Data do estorno da baixa" required type="date" className="h-9 rounded border px-3" value={reversalDate} onChange={e => setReversalDate(e.target.value)} />
+          <input aria-label="Fundamento do estorno da baixa" required minLength={10} placeholder="Fundamento do estorno" className="h-9 rounded border px-3" value={reversalReason} onChange={e => setReversalReason(e.target.value)} />
+          <button className="h-9 rounded border px-3" disabled={isPending}>Estornar baixa</button>
         </form>
       </section>
       <section className="rounded-lg border bg-white p-4 lg:col-span-3">

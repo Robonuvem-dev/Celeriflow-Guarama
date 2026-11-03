@@ -39,6 +39,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       ] },
       { title: "Patrimônio", items: [
         { title: "Bens patrimoniais", href: "/patrimonio/bens", icon: "archive" },
+        { title: "Inventário patrimonial", href: "/patrimonio/inventario-bens", icon: "clipboardList" },
         { title: "Cadastros auxiliares", href: "/patrimonio/cadastros", icon: "archive" },
         { title: "Relatórios", href: "/patrimonio/relatorios", icon: "clipboardList" },
         { title: "Ciclo de vida", href: "/patrimonio/ciclo-vida", icon: "chartNoAxesCombined" },
@@ -50,6 +51,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { pathname: "/patrimonio/bens", title: "Bens patrimoniais e equipamentos" },
       { pathname: "/patrimonio/ciclo-vida", title: "Ciclo de vida patrimonial", excludeQuery: { view: ["operacoes"] } },
       { pathname: "/patrimonio/inventarios", title: "Inventários de estoque" },
+      { pathname: "/patrimonio/inventario-bens", title: "Inventário patrimonial", excludeQuery: { view: ["operacoes"] } },
       { pathname: "/patrimonio/requisicoes", title: "Requisições internas" },
       // Technical sample owned by the principal; both URLs consume MaterialStockList.
       { pathname: "/patrimonio/materiais", title: "Estoque de materiais", excludeQuery: { view: ["movimentar"] } },

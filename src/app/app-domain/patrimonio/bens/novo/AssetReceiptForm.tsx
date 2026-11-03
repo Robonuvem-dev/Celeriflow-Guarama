@@ -24,10 +24,10 @@ type ReceiptItem = {
 };
 type Option = { id: string; name: string };
 
-export function AssetReceiptForm({ categories, departments }: { categories: Option[]; departments: Option[] }) {
+export function AssetReceiptForm({ categories, departments, initial }: { categories: Option[]; departments: Option[]; initial?: { name: string; categoryId: string; departmentId: string } }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initial?.name || "");
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<ReceiptItem | null>(null);
   const [suggestedPatrimonyNumber, setSuggestedPatrimonyNumber] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export function AssetReceiptForm({ categories, departments }: { categories: Opti
   const [searchError, setSearchError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [responsibleLabel, setResponsibleLabel] = useState("");
-  const [data, setData] = useState({ purchaseReceiptItemId: "", categoryId: "", departmentId: "", responsibleId: "" });
+  const [data, setData] = useState({ purchaseReceiptItemId: "", categoryId: initial?.categoryId || "", departmentId: initial?.departmentId || "", responsibleId: "" });
 
   useEffect(() => {
     const query = search.trim();
