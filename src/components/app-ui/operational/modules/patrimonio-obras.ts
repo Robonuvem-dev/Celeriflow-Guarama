@@ -48,6 +48,7 @@ export const operationalModules: OperationalModuleConfig[] = [
     routes: [
       { pathname: "/patrimonio/almoxarifados", title: "Almoxarifados" },
       { pathname: "/patrimonio/centros-custo", title: "Centros de custo" },
+      { pathname: "/patrimonio/cadastros", title: "Cadastros auxiliares patrimoniais" },
       { pathname: "/patrimonio/bens", title: "Bens patrimoniais e equipamentos" },
       { pathname: "/patrimonio/ciclo-vida", title: "Ciclo de vida patrimonial", excludeQuery: { view: ["operacoes"] } },
       { pathname: "/patrimonio/inventarios", title: "Inventários de estoque" },
@@ -105,7 +106,17 @@ export const operationalModules: OperationalModuleConfig[] = [
   },
   {
     key: "frotas", moduleTitle: "Frotas", moduleCaption: "Gestão operacional", moduleIcon: "truck",
-    navigation: fleetNavigationGroups.map(group => ({ title: group.title, items: group.items.map(item => ({ title: item.title, href: `/frotas?area=${item.area}`, icon: fleetIcons[item.area], query: { key: "area", values: item.area === "frota" ? ["", "frota"] : [item.area] } })) })),
-    routes: [{ pathname: "/frotas", title: "Frotas — gestão operacional" }],
+    navigation: [...fleetNavigationGroups.map(group => ({ title: group.title, items: group.items.map(item => ({ title: item.title, href: `/frotas?area=${item.area}`, icon: fleetIcons[item.area], query: { key: "area", values: item.area === "frota" ? ["", "frota"] : [item.area] } })) })),
+      { title: "Controle e cadastros", items: [
+        { title: "Gestão da frota", href: "/frotas/gestao", icon: "truck" },
+        { title: "Importações e correções", href: "/frotas/movimentos", icon: "clipboardList" },
+        { title: "Cadastros auxiliares", href: "/frotas/cadastros", icon: "clipboardList" },
+      ] },
+    ],
+    routes: [
+      { pathname: "/frotas", title: "Frotas — gestão operacional" },
+      { pathname: "/frotas/cadastros", title: "Cadastros auxiliares da frota" },
+      { pathname: "/frotas/movimentos", title: "Movimentos e importações da frota" },
+    ],
   },
 ];

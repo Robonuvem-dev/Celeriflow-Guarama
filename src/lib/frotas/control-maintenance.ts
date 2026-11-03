@@ -74,7 +74,7 @@ export async function executeFleetService(tx: FleetControlTx, scope: FleetScope,
 }
 export async function saveFleetComponent(tx: FleetControlTx, scope: FleetScope, raw: unknown) {
   const input = controlSchemas.component.parse(raw);
-  const result = requiredFleetRecord(await tx.insert(f.fleetComponents).values({ ...input, expectedLife: input.expectedLife ? new Decimal(input.expectedLife) : null, createdById: scope.actorId }).returning());
+  const result = requiredFleetRecord(await tx.insert(f.fleetComponents).values({ kind: input.kind, identifier: input.identifier, brand: input.brand, specification: input.specification, expectedLife: input.expectedLife ? new Decimal(input.expectedLife) : null, unitCost: input.unitCost ? new Decimal(input.unitCost) : null, createdById: scope.actorId }).returning());
   return { id: result.id, type: "COMPONENT" };
 }
 export async function installFleetComponent(tx: FleetControlTx, scope: FleetScope, raw: unknown) {
@@ -87,7 +87,7 @@ export async function installFleetComponent(tx: FleetControlTx, scope: FleetScop
   const reading = input.reading ? new Decimal(input.reading) : null;
   if (unit.control?.meterType === "SEM_MARCADOR" && reading) throw new FleetControlError("Unidade sem marcador não recebe leitura.");
   if (input.workOrderId && !(await tx.select({ id: f.fleetWorkOrders.id }).from(f.fleetWorkOrders).where(and(eq(f.fleetWorkOrders.id, input.workOrderId), eq(f.fleetWorkOrders.unitId, unit.id))).limit(1)).length) throw new FleetControlError("OS deve pertencer à unidade da instalação.");
-  let cost = input.cost ? new Decimal(input.cost) : null;
+  let cost = input.cost ? new Decimal(input.cost) : input.stockMovementId ? null : component.unitCost;
   if (input.stockMovementId) {
     if (!scope.canReadAssets) throw new FleetControlError("Origem de material exige consulta de Patrimônio/Estoque.");
     const movement = await readFleetStockMovement(tx, input.stockMovementId, unit.departmentId, true);
@@ -114,6 +114,6 @@ export async function removeFleetComponent(tx: FleetControlTx, scope: FleetScope
   const removedAt = new Date(input.removedAt), reading = input.reading ? new Decimal(input.reading) : null;
   if (record.removedAt || removedAt < record.installedAt || removedAt > new Date() || reading && record.installReading && reading.lt(record.installReading)) throw new FleetControlError("Retirada já registrada ou data/leitura incoerente.");
   await tx.update(f.fleetComponentInstallations).set({ removedAt, removeReading: reading }).where(eq(f.fleetComponentInstallations.id, record.id));
-  await tx.update(f.fleetComponents).set({ status: "RETIRADO" }).where(eq(f.fleetComponents.id, record.componentId));
+  await tx.update(f.fleetComponents).set({ status: input.scrap ? "BAIXADO" : "RETIRADO" }).where(eq(f.fleetComponents.id, record.componentId));
   return { id: record.id, type: "INSTALLATION", unitId: record.unitId };
 }

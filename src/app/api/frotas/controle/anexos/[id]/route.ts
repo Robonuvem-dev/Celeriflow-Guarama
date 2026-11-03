@@ -3,8 +3,8 @@ import { downloadFleetAttachment, withdrawFleetAttachment } from "@/lib/frotas/c
 import { isSameOriginRequest } from "@/lib/transparencia/request-origin";
 
 export const runtime = "nodejs";
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try { const { id } = await params, data = await downloadFleetAttachment(await getTenantContextForModule("FROTAS"), id); const name = data.item.filename.normalize("NFKD").replace(/[^a-zA-Z0-9._-]/g, "-"); return new Response(data.bytes, { headers: { "Content-Type": data.item.mimeType, "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } }); } catch (error) { return Response.json({ error: error instanceof AccessError ? error.message : "Anexo indisponível ou fora do setor." }, { status: error instanceof AccessError ? error.status : 404 }); }
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try { const { id } = await params, data = await downloadFleetAttachment(await getTenantContextForModule("FROTAS"), id); const name = data.item.filename.normalize("NFKD").replace(/[^a-zA-Z0-9._-]/g, "-"); const disposition = new URL(request.url).searchParams.get("inline") === "1" && ["image/png", "image/jpeg", "image/gif", "image/bmp"].includes(data.item.mimeType) ? "inline" : "attachment"; return new Response(data.bytes, { headers: { "Content-Type": data.item.mimeType, "Content-Disposition": `${disposition}; filename="${name}"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } }); } catch (error) { return Response.json({ error: error instanceof AccessError ? error.message : "Anexo indisponível ou fora do setor." }, { status: error instanceof AccessError ? error.status : 404 }); }
 }
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isSameOriginRequest(request)) return Response.json({ error: "Origem inválida." }, { status: 403 });

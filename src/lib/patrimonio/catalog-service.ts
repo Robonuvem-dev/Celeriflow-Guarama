@@ -4,12 +4,15 @@ import { withDatabaseTransaction } from "@/db/transaction";
 import { assetCatalogRecords } from "@/db/schema/assets-catalogs";
 import { departments, employees } from "@/db/schema/administration";
 import { assets, assetCategories } from "@/db/schema/assets";
+import { fleetUnits } from "@/db/schema/fleet";
 import { materials } from "@/db/schema/assets-stock";
 import { costCenters } from "@/db/schema/master-data";
 import type { PermissionUser } from "@/lib/contracts/identity";
 import { canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import { catalogDefinition, catalogRecordInput, validateCatalogDetails } from "./catalog-definitions";
+import { fleetScope } from "@/lib/frotas/service";
+import { cancelFleetBooking, createFleetBooking } from "@/lib/frotas/control-motion";
 
 export function authorizeAssetCatalog(user: PermissionUser, kind: string, departmentId: string, operation: "create" | "update") {
   const definition = catalogDefinition(kind);
@@ -44,6 +47,37 @@ export async function saveAssetCatalog(connection: DatabaseConnection, user: Per
       // The operational stock screens use these same thresholds.
       if (!isSystemAdministrator(user)) throw new Error("Níveis do catálogo compartilhado exigem administrador.");
       await tx.update(materials).set({ minStock: Number(details.minimum), maxStock: Number(details.maximum) }).where(eq(materials.id, details.materialId));
+    }
+    if (input.kind === "empenhosCombustivel") {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${JSON.stringify(["FLEET_FUEL_COMMITMENT", input.year, details.unitId, details.reference])}))`);
+      const [unit] = await tx.select({ id: fleetUnits.id }).from(fleetUnits).where(and(eq(fleetUnits.id, details.unitId), eq(fleetUnits.departmentId, input.departmentId))).limit(1);
+      if (!unit) throw new Error("Veículo inexistente ou fora do setor informado.");
+      const [duplicate] = await tx.select({ id: assetCatalogRecords.id }).from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, input.kind), eq(assetCatalogRecords.year, input.year), sql`${assetCatalogRecords.details}->>'unitId' = ${details.unitId}`, sql`${assetCatalogRecords.details}->>'reference' = ${details.reference}`, input.id ? sql`${assetCatalogRecords.id} <> ${input.id}` : undefined)).limit(1);
+      if (duplicate) throw new Error("Já existe este empenho para o veículo no exercício informado.");
+    }
+    if (input.kind === "solicitacoes") {
+      delete details.bookingId;
+      const status = details.status.toUpperCase();
+      if (!["PENDENTE", "AGENDADA", "INDEFERIDA"].includes(status)) throw new Error("Situação: informe PENDENTE, AGENDADA ou INDEFERIDA.");
+      details.status = status;
+      const [previous] = input.id ? await tx.select().from(assetCatalogRecords).where(and(eq(assetCatalogRecords.id, input.id), eq(assetCatalogRecords.kind, input.kind), eq(assetCatalogRecords.departmentId, input.departmentId), eq(assetCatalogRecords.year, input.year))).for("update") : [];
+      if (input.id && (!previous || previous.updatedAt.toISOString() !== input.version)) throw new Error("Solicitação alterada por outra sessão; recarregue antes de editar.");
+      const scope = fleetScope({ user });
+      if (status === "INDEFERIDA" && (details.reason || "").length < 5) throw new Error("Informe o motivo do indeferimento com pelo menos cinco caracteres.");
+      if (previous?.details.bookingId) {
+        if (status === "PENDENTE") throw new Error("Solicitação agendada não pode voltar a pendente; use a agenda para reprogramar.");
+        if (status === "INDEFERIDA" && previous.details.status === "AGENDADA") await cancelFleetBooking(tx, scope, { bookingId: previous.details.bookingId, reason: details.reason });
+        if (status === "AGENDADA" && previous.details.status !== "AGENDADA") throw new Error("Solicitação já encerrada; cadastre uma nova solicitação.");
+        if (status === "AGENDADA" && ["unitId", "driverId", "startsAt", "endsAt"].some(key => details[key] !== previous.details[key])) throw new Error("Altere veículo, motorista ou horário pela agenda vinculada.");
+        details.bookingId = previous.details.bookingId;
+      } else if (status === "AGENDADA") {
+        if (!canPerformModuleOperation(user, "FROTAS", "create")) throw new Error("Agendamento exige permissão de cadastro em Frotas.");
+        const timestamp = (value: string) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value || "") ? `${value}:00-03:00` : value;
+        const booking = await createFleetBooking(tx, scope, { unitId: details.unitId, driverId: details.driverId || "", routeId: "", destinationId: "", kind: "SERVICO", purpose: `Comunidade ${input.code}: ${details.requester} — ${details.description}`, startsAt: timestamp(details.startsAt), endsAt: timestamp(details.endsAt), previousId: "" });
+        const [unit] = await tx.select({ departmentId: fleetUnits.departmentId }).from(fleetUnits).where(eq(fleetUnits.id, details.unitId)).limit(1);
+        if (unit?.departmentId !== input.departmentId) throw new Error("Veículo deve pertencer ao setor da solicitação.");
+        details.bookingId = booking.id;
+      }
     }
     const values = { code: input.code, name: input.name, details, updatedAt: new Date() };
     let id: string;
