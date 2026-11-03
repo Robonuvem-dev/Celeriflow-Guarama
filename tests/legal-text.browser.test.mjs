@@ -41,6 +41,8 @@ test("consulta, criação e edição exibem somente as ações permitidas", asyn
     const page = await open(`role=${role}`);
     try {
       assert.equal(await page.getByRole("button", { name: "Adicionar registro", exact: true }).count(), role === "create" ? 1 : 0);
+      const print = await page.getByRole("link", { name: "Imprimir texto jurídico", exact: true }).getAttribute("href");
+      assert.equal(new URL(print, origin).searchParams.get("version"), "7");
       assert.equal(await page.getByRole("button", { name: "Editar registro", exact: true }).count(), role === "edit" ? 1 : 0);
       assert.equal(await page.getByRole("button", { name: "Inativar registro", exact: true }).count(), role === "edit" ? 1 : 0);
     } finally { await page.close(); }

@@ -77,7 +77,7 @@ Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correçã
 - [ ] 33.1: consulta única de texto/ementa e relações nos dois sentidos.
 - [ ] 33.3: lista de palavras ignoradas configurável pelo usuário, aplicada ao corpo do texto.
 - [ ] 33.5: filtros combinados por tipo/assunto/número/publicação/situação/palavras simples e combinadas.
-- [ ] 33.7: impressão integral com identificação de versão e conteúdo correto.
+- [x] 33.7: impressão integral da versão selecionada com ementa, data e texto completo. Teste interno; sem homologação. [SPRINT-04.md](SPRINT-04.md)
 - [ ] 33.10: reutilizar LegalTextRelation do SQL histórico após conferir catálogo instalado; manter referências, regulamentações, alterações e revogações.
 - [ ] 33.13: comentários vinculados ao texto/versão com autor, data e controle de acesso; comentários GED não equivalem automaticamente a isso.
 - [ ] 33.6: somente verificar a consulta existente e conservar blob d6634ce21f0f387811f313f8476beb79f0369946, responsável Eduardo e evidência já atribuída.

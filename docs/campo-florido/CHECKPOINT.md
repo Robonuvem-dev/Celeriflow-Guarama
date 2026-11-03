@@ -1,5 +1,9 @@
 # Checkpoint — Campo Florido
 
+## Sprint 04 — impressão jurídica
+
+Incremento sobre `70715b65033b462a8a1f9d4866c3031f6db47b1e`. 33.7 implementado na tabela de cadastro e na rota de impressão privada, fixando a versão exibida. 9 testes aprovados e tipos pertinentes conferidos; sem migração nova ou homologação. [SPRINT-04.md](SPRINT-04.md) registra o próximo trabalho de consulta, filtros, relações e comentários. Build integral permanece pendente. Somente a branch de Mateus foi alterada.
+
 ## Incremento 03 — formatos originais e esferas jurídicas
 
 Base `0018bfb8b8bdecebd720eed60c30a93015f67659`. 33.4/33.8/33.9 implementados com 42 testes internos aprovados e tipos verificados. Originais preservados pelo GED e cadastro integral nas três esferas, sem alterar portal 33.6. Detalhes em [SPRINT-03.md](SPRINT-03.md).

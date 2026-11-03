@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Pencil, Plus, RefreshCw, Paperclip } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Paperclip, Printer } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
@@ -40,7 +40,7 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const blocks = Math.max(1, Math.ceil(fields.length / 3));
-  const tableColumns = useMemo(() => registryColumns([...columns.map(column => [column.key, column.label, ...(widths[column.key] || [200, 100])] as [string, string, number, number]), ["_status", "Status", 85, 65, "status"], ["_actions", "Ações", catalog === "legalTexts" ? 96 : 64, catalog === "legalTexts" ? 96 : 64, "actions"]]), [columns, catalog]);
+  const tableColumns = useMemo(() => registryColumns([...columns.map(column => [column.key, column.label, ...(widths[column.key] || [200, 100])] as [string, string, number, number]), ["_status", "Status", 85, 65, "status"], ["_actions", "Ações", catalog === "legalTexts" ? 120 : 64, catalog === "legalTexts" ? 120 : 64, "actions"]]), [columns, catalog]);
 
   function begin(row: MasterDataRow | null, trigger: HTMLElement) {
     editTrigger.current = trigger;
@@ -84,7 +84,11 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
         <input name="q" type="search" defaultValue={query} placeholder="Buscar registros" aria-label="Buscar registros" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form>{error && !open && <span role="alert" className="text-[13px] text-red-700">{error}</span>}</>}
       pagination={<OperationalLinkPagination page={page} total={total} pathname={pathname} values={{ q: query, ...extraQuery }} />}>
       <OperationalTable preferenceId={`cadastros-catalogo-${catalog}`} caption={`Catálogo ${catalog}`} emptyMessage="Nenhum registro encontrado." columns={tableColumns}
-        rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>{catalog === "legalTexts" && <Link className={styles.iconButton} aria-label="Documentos do texto jurídico" href={`/cadastros/textos-juridicos/documentos?${new URLSearchParams({ legalTextId: row.id })}`}><Paperclip /></Link>}{canUpdate && <><button type="button" disabled={pending} aria-label="Editar registro" onClick={event => begin(row, event.currentTarget)} className={styles.iconButton}><Pencil /></button>{statusMutable && <button type="button" aria-label={row.active ? "Inativar registro" : "Reativar registro"} onClick={() => toggle(row)} disabled={pending} className={styles.iconButton}><RefreshCw /></button>}</>}</div> }))} />
+        rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>
+          {catalog === "legalTexts" && <><Link className={styles.iconButton} aria-label="Documentos do texto jurídico" href={`/cadastros/textos-juridicos/documentos?${new URLSearchParams({ legalTextId: row.id })}`}><Paperclip /></Link>
+            {Number(row.values.version) > 0 && <a className={styles.iconButton} aria-label="Imprimir texto jurídico" target="_blank" rel="noopener noreferrer" href={`/api/cadastros/textos-juridicos/imprimir?${new URLSearchParams({ legalTextId: row.id, version: String(row.values.version) })}`}><Printer /></a>}</>}
+          {canUpdate && <><button type="button" disabled={pending} aria-label="Editar registro" onClick={event => begin(row, event.currentTarget)} className={styles.iconButton}><Pencil /></button>{statusMutable && <button type="button" aria-label={row.active ? "Inativar registro" : "Reativar registro"} onClick={() => toggle(row)} disabled={pending} className={styles.iconButton}><RefreshCw /></button>}</>}
+        </div> }))} />
     </OperationalListFrame>
     <Dialog open={open} onOpenChange={next => { if (!next) close(); }}><DialogContent className={styles.dialog} data-device={device} showCloseButton={false} finalFocus={() => editTrigger.current?.isConnected ? editTrigger.current : true}>
       <DialogHeader><DialogTitle>{editing ? "Editar registro" : "Novo registro"}</DialogTitle><DialogDescription>Campos {block + 1} de {blocks}. As seleções são preservadas entre as etapas.</DialogDescription></DialogHeader>
