@@ -19,6 +19,8 @@ export async function assertPersonnelActNotIntegrated(tx: DatabaseTransaction, a
   if (linked) throw new Error("Ato com ocorrência funcional integrada exige correção compensatória; preserve o registro original.");
   const [lifecycle] = await tx.select({ id: hrIntegrationEvents.id }).from(hrIntegrationEvents).where(and(eq(hrIntegrationEvents.eventType, "EFEITO_FUNCIONAL_RESCISAO"), sql`${hrIntegrationEvents.payload}->'results' @> ${JSON.stringify([{ actId }])}::jsonb`)).limit(1);
   if (lifecycle) throw new Error("Ato com desligamento/reintegração integrada exige correção compensatória; preserve o registro original.");
+  const [concession] = await tx.select({ id: hrIntegrationEvents.id }).from(hrIntegrationEvents).where(sql`${hrIntegrationEvents.eventType} IN ('APOSENTADORIA_CONCEDIDA','READMISSAO_REGISTRADA') AND ${hrIntegrationEvents.payload}->>'actId'=${actId}`).limit(1);
+  if (concession) throw new Error("Ato de concessão ou readmissão integrado exige correção compensatória; preserve o registro original.");
 }
 
 export async function registerFunctionalOccurrence(db: DatabaseConnection, actorId: string, raw: unknown) {

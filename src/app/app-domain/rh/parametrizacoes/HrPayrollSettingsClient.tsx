@@ -1936,6 +1936,7 @@ const incidentTypes = [
   "RPPS",
   "IRRF",
   "FGTS",
+  "PIS_PASEP",
   "FERIAS",
   "DECIMO_TERCEIRO",
   "TETO_REMUNERATORIO",

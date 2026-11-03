@@ -2,6 +2,9 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DatabaseExecutor } from "@/db/transaction";
 import type { OperationalReportInput, PersonnelReport } from "./operational-reports";
+import { reportCompleteHistoryPredicate, reportContractPredicate } from "./report-filters";
+import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
+import { assessRetirementTime } from "./retirement-time";
 
 export const retirementProjectionPolicySchema = z.object({
   origin: z.literal("PROJECAO_APOSENTADORIA"), isDemo: z.literal(true),
@@ -32,7 +35,7 @@ function birthdayAtAge(birth: string, years: number) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export async function buildRetirementHrReport(db: DatabaseExecutor, input: OperationalReportInput): Promise<PersonnelReport> {
+export async function buildRetirementHrReport(db: DatabaseExecutor, input: OperationalReportInput, budgetUnitIds?: readonly string[]): Promise<PersonnelReport> {
   const reference = input.referenceDate ?? new Date().toISOString().slice(0, 10);
   const result = await db.execute<{ id: string; name: string; registration: string | null; birth: string | null; gender: string | null; contractId: string; state: unknown }>(sql`
     SELECT e.id,e.name,e.registration,to_char(p."birthDate",'YYYY-MM-DD') birth,p.gender,c.id "contractId",v.snapshot state FROM "Employee" e
@@ -40,8 +43,9 @@ export async function buildRetirementHrReport(db: DatabaseExecutor, input: Opera
     JOIN LATERAL (SELECT snapshot FROM "HrEmploymentRevision" WHERE "contractId"=c.id AND "effectiveFrom"<=${reference}::date ORDER BY "effectiveFrom" DESC,version DESC LIMIT 1) v ON true
     WHERE (${input.q}='' OR strpos(lower(e.name),lower(${input.q}))>0 OR strpos(coalesce(e.registration,''),${input.q})>0)
     ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``} ${input.departmentId ? sql`AND v.snapshot->>'departmentId'=${input.departmentId}` : sql``}
+    AND ${reportContractPredicate(input, sql`v.snapshot`, sql`${reference}`)} AND ${personnelBudgetEmployeeWhere(sql`e.id`, budgetUnitIds)}
+    AND ${reportCompleteHistoryPredicate(input, sql`e.id`, sql`${reference}`)}
     ORDER BY e.name,c.id`);
-  const prior = await db.execute<{ employeeId: string; details: Record<string, string> }>(sql`SELECT details->>'employeeId' "employeeId",details FROM "HrReferenceRecord" WHERE kind='TEMPO_CONTRIBUICAO' AND details->>'status'='Reconhecido' AND details->>'until'<=${reference}`);
   const policies = input.kind === "EXPECTATIVA_APOSENTADORIA" ? await db.execute<{ id: string; name: string; value: unknown }>(sql`SELECT r.id,r.name,r.value FROM "HrPayrollRule" r JOIN "HrPayrollRuleSet" s ON s.id=r."ruleSetId" WHERE r."isActive" AND s.status='ATIVA' AND s."isDemo" AND r.value->>'origin'='PROJECAO_APOSENTADORIA' ORDER BY r.id`) : { rows: [] };
   const revisionRows = await db.execute<{ contractId: string; date: string; snapshot: unknown }>(sql`SELECT "contractId",to_char("effectiveFrom",'YYYY-MM-DD') date,snapshot FROM "HrEmploymentRevision" WHERE "effectiveFrom"<=${reference}::date ORDER BY "contractId","effectiveFrom",version`);
   const grouped = new Map<string, typeof result.rows>();
@@ -58,15 +62,10 @@ export async function buildRetirementHrReport(db: DatabaseExecutor, input: Opera
         return state.status === "ATIVO" && start <= end ? [{ start, end, roleId: state.roleId, contractId: row.contractId }] : [];
       });
     });
-    const municipal = segments.map(({ start, end }) => ({ start, end }));
-    const publicDays = unionCivilDays(municipal);
-    const external = prior.rows.filter(row => row.employeeId === holder.id);
-    if (external.some((entry, index) => external.slice(index + 1).some(other => entry.details.from <= other.details.until && entry.details.until >= other.details.from))) throw new Error(`Certidões de ${holder.registration ?? holder.id} têm períodos sobrepostos; concilie antes de contar.`);
-    if (external.some(entry => municipal.some(interval => entry.details.from <= interval.end && entry.details.until >= interval.start))) throw new Error(`Tempo anterior de ${holder.registration ?? holder.id} sobrepõe vínculo municipal; concilie antes de projetar.`);
-    const recognized = external.reduce((total, entry) => total + Number(entry.details.recognizedDays), 0);
-    const contributionDays = publicDays + recognized;
+    const counted = await assessRetirementTime(db, holder.id, new Date(`${reference}T00:00:00Z`));
+    const publicDays = counted.publicDays, recognized = counted.priorDays, contributionDays = counted.contributionDays;
     if (input.kind === "CONTAGEM_TEMPO_RH") {
-      rows.push([holder.name, holder.registration ?? "", reference, String(publicDays), String(recognized), String(contributionDays), "Tempo estimado por contratos e certidões reconhecidas; não substitui apuração previdenciária ou ATS", external.map(entry => entry.details.source).join("; ")]);
+      rows.push([holder.name, holder.registration ?? "", reference, String(counted.municipalDays), String(recognized), String(contributionDays), "União diária dos vínculos e certidões; exclusões por finalidade previdenciária; sem duplicação de dias concorrentes", counted.certificates.map(entry => `${entry.id}: ${entry.source}; ${entry.serviceNature}; ${entry.recognizedPeriods}`).join("; ")]);
       continue;
     }
     const applicable = policies.rows.flatMap(rule => {
@@ -80,7 +79,8 @@ export async function buildRetirementHrReport(db: DatabaseExecutor, input: Opera
         let through = reference, days = 0;
         for (const segment of consecutive) {
           if (segment.end !== through) break;
-          days += unionCivilDays([segment]); through = addDays(segment.start, -1);
+          const exclusions = counted.contracts.find(entry => entry.contractId === row.contractId)?.excluded ?? [];
+          days += unionCivilDays([segment]) - exclusions.filter(date => date >= segment.start && date <= segment.end).length; through = addDays(segment.start, -1);
         }
         return days;
       }));

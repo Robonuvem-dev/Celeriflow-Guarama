@@ -16,7 +16,7 @@ export default async function PortalManagement({ searchParams }: { searchParams:
   const rules = await readPortalRules(context.database ?? db, "management");
   const policies = rules.flatMap(rule => { const value = rule.value as { origin?: keyof typeof managedPortalPolicySchemas; budgetUnitId?: string }; const schema = value.origin && managedPortalPolicySchemas[value.origin]; const unitId = value.budgetUnitId || rule.unit; return schema && schema.safeParse(value).success && unitId && units.some(unit => unit.id === unitId) ? [{ rule, kind: value.origin!, unitId }] : []; });
   const selected = policies.find(policy => policy.rule.id === params.edit);
-  const emissions = await readGeneratedFunctionalDocuments(context.database ?? db);
+  const emissions = await readGeneratedFunctionalDocuments(context.database ?? db, context.user);
   const visible = emissions.flatMap(event => { const artifact = generatedArtifactSchema.parse(event.payload); return units.some(unit => unit.id === artifact.policy.budgetUnitId) ? [{ event, artifact }] : []; });
   const filtered = visible.filter(row => !params.kind || row.artifact.input.kind === params.kind);
   const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(filtered.length / 20)));

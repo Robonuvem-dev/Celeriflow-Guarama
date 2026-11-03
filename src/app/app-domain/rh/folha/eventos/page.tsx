@@ -13,7 +13,7 @@ const columns = [rhColumn("code", "Código", 100, 80, "identifier"), rhColumn("n
 export default async function EventosPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { q = "", page } = await searchParams;
-  const { total, pagination, events } = await readPayrollEventsPage(context.database ?? db, { q, page });
+  const { total, pagination, events } = await readPayrollEventsPage(context.database ?? db, { q, page, user: context.user });
   return <OperationalListFrame label="Eventos da folha" actions={<><Link href="/rh/folha" className={styles.filterButton}>Voltar para folha</Link><RhNewLink href="/rh/folha/eventos/novo">Novo evento</RhNewLink></>}
     toolbar={<form action="/rh/folha/eventos" method="GET" className={styles.searchForm}><input name="q" aria-label="Buscar por código, descrição ou tipo" defaultValue={q} placeholder="Código, descrição ou tipo" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button><Link href="/rh/folha/eventos" className={styles.filterButton}>Limpar</Link></form>}
     pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/folha/eventos" values={{ q }} />}>

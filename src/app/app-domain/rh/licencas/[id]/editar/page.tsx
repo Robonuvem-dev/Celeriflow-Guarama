@@ -7,13 +7,13 @@ import { readLeave, readEmployeeOptions } from "@/db/repositories/personnel-page
 export default async function EditarLicencaPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  const leave = await readLeave(database, id);
+  const leave = await readLeave(database, id, context.user);
 
   if (!leave) {
     notFound();
   }
 
-  const employees = await readEmployeeOptions(database);
+  const employees = await readEmployeeOptions(database, context.user);
 
   return (
     <LicencaForm data={leave} employees={employees} />

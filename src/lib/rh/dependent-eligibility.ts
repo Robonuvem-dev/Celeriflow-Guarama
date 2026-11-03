@@ -1,4 +1,5 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { hrFunctionalRecords } from "@/db/schema/personnel-functional-management";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { dependents } from "@/db/schema/personnel-records";
 import { people } from "@/db/schema/people";
@@ -19,12 +20,13 @@ export const familyWagePolicySchema = z.object({
   origin: z.literal("SALARIO_FAMILIA"), rubricCode: z.string().min(1),
   incomeLimit: z.string().regex(/^\d{1,15}(?:\.\d{1,2})?$/), quota: z.string().regex(/^\d{1,15}(?:\.\d{1,2})?$/),
   proration: z.enum(["INTEGRAL", "POR_DIAS"]), allocationBasis: z.enum(["DIAS", "REMUNERACAO"]),
+  categories: z.array(z.enum(["ATIVO", "APOSENTADO", "PENSIONISTA"])).min(1).default(["ATIVO"]),
   eligibility: dependentEligibilityPolicySchema,
 }).strict();
 
 const eligibilityMemorySchema = z.array(z.object({ dependentId: z.string(), personId: z.string().nullable(), relationship: z.string(), birthDate: z.string().nullable(), age: z.number().nullable(), eligible: z.boolean(), reasons: z.array(z.string()), documentIds: z.array(z.string()) }));
-export const dependentAssessmentSchema = z.object({ policy: dependentEligibilityPolicySchema, memory: eligibilityMemorySchema, eligibleCount: z.number().int().nonnegative() });
-export const familyWageSnapshotSchema = z.object({ policy: familyWagePolicySchema, memory: eligibilityMemorySchema, eligibleCount: z.number().int().nonnegative(), income: z.string(), incomeEligible: z.boolean(), factor: z.string(), amount: z.string(), allocations: z.array(z.object({ contractId: z.string(), value: z.string() })) });
+export const dependentAssessmentSchema = z.object({ policy: dependentEligibilityPolicySchema, memory: eligibilityMemorySchema, eligibleCount: z.number().int().nonnegative(), employeeIds: z.array(z.string()).optional() });
+export const familyWageSnapshotSchema = z.object({ policy: familyWagePolicySchema, memory: eligibilityMemorySchema, eligibleCount: z.number().int().nonnegative(), employeeIds: z.array(z.string()).optional(), income: z.string(), incomeEligible: z.boolean(), factor: z.string(), amount: z.string(), allocations: z.array(z.object({ contractId: z.string(), value: z.string() })) });
 
 type Candidate = { id: string; personId: string | null; relationship: string; person: { id: string; birthDate: Date | null; status: string } | null };
 type Evidence = { id: string; personId: string | null; documentType: string; status: string; validUntil: Date | null };
@@ -49,19 +51,35 @@ export function evaluateDependentEligibility(candidate: Candidate, documents: Ev
     if (relationship?.maxAgeYears !== null && relationship?.maxAgeYears !== undefined && age > relationship.maxAgeYears) reasons.push("Idade acima do limite do parentesco na competência.");
   }
   for (const type of policy.requiredDocumentTypes) {
-    const valid = documents.filter(document => document.personId === candidate.personId && document.documentType === type && policy.acceptedDocumentStatuses.includes(document.status) && (document.validUntil ? document.validUntil >= period.end : policy.allowDocumentsWithoutExpiry)).sort((a, b) => a.id.localeCompare(b.id))[0];
+    const valid = documents.filter(document => document.personId === candidate.personId && document.documentType === type && policy.acceptedDocumentStatuses.includes(document.status) && (document.validUntil ? document.validUntil.toISOString().slice(0, 10) >= date.toISOString().slice(0, 10) : policy.allowDocumentsWithoutExpiry)).sort((a, b) => a.id.localeCompare(b.id))[0];
     if (!valid) reasons.push(`Documento ${type} ausente, não aprovado ou vencido na competência.`);
     else documentIds.push(valid.id);
   }
   return { dependentId: candidate.id, personId: candidate.personId, relationship: candidate.relationship, birthDate: person?.birthDate?.toISOString() || null, age, eligible: reasons.length === 0, reasons, documentIds };
 }
 
-export async function assessPayrollDependents(tx: DatabaseExecutor, employeeIds: string[], flag: "familyWage" | "irrfDependent", rawPolicy: unknown, period: { start: Date; end: Date }) {
+export async function assessPayrollDependents(tx: DatabaseExecutor, employeeIds: string[], flag: "familyWage" | "irrfDependent" | "familyAllowance", rawPolicy: unknown, period: { start: Date; end: Date }) {
   const policy = dependentEligibilityPolicySchema.parse(rawPolicy);
-  const candidates = await tx.select({ id: dependents.id, personId: dependents.personId, relationship: dependents.relationship, person: { id: people.id, birthDate: people.birthDate, status: people.status } }).from(dependents).leftJoin(people, eq(people.id, dependents.personId)).where(and(inArray(dependents.employeeId, employeeIds), eq(dependents[flag], true))).orderBy(asc(dependents.id));
+  const benefit = flag === "familyAllowance" ? "ABONO_FAMILIA" : flag === "familyWage" ? "SALARIO_FAMILIA" : "IRRF";
+  const legacyFlag = flag === "familyAllowance" ? "familyWage" : flag;
+  const temporal = await tx.select().from(hrFunctionalRecords).where(and(eq(hrFunctionalRecords.kind, "DEPENDENTE_VIGENCIA"), inArray(hrFunctionalRecords.employeeId, employeeIds), sql`${hrFunctionalRecords.data}->>'benefit'=${benefit}`, sql`${hrFunctionalRecords.status}<>'CANCELADO'`));
+  const temporalIds = temporal.map(row => row.data.dependentId);
+  const candidates = await tx.select({ id: dependents.id, personId: dependents.personId, relationship: dependents.relationship, legacyEligible: dependents[legacyFlag], person: { id: people.id, birthDate: people.birthDate, status: people.status } }).from(dependents).leftJoin(people, eq(people.id, dependents.personId)).where(and(inArray(dependents.employeeId, employeeIds), flag === "familyAllowance" ? inArray(dependents.id, temporalIds) : or(eq(dependents[legacyFlag], true), inArray(dependents.id, temporalIds)))).orderBy(asc(dependents.id));
   const linked = candidates.map(candidate => candidate.personId).filter((id): id is string => Boolean(id));
   if (new Set(linked).size !== linked.length) throw new Error("Dependente repetido no Cadastro Único; saneie a duplicidade antes de calcular.");
   const documents = await tx.select({ id: documentTable.id, personId: documentTable.personId, documentType: documentTable.documentType, status: documentTable.status, validUntil: documentTable.validUntil }).from(documentTable).where(and(inArray(documentTable.personId, linked), inArray(documentTable.documentType, policy.requiredDocumentTypes)));
-  const memory = candidates.map(candidate => evaluateDependentEligibility(candidate, documents, policy, period));
-  return { policy, memory, eligibleCount: memory.filter(item => item.eligible).length };
+  const memory = candidates.map(candidate => {
+    const history = temporal.filter(row => row.data.dependentId === candidate.id);
+    if (!history.length) return evaluateDependentEligibility(candidate, documents, policy, period);
+    const reference = new Date(Date.UTC(period.end.getUTCFullYear(), period.end.getUTCMonth(), period.end.getUTCDate()));
+    if (flag !== "familyAllowance" && candidate.legacyEligible && history.every(row => row.startsAt > reference)) return evaluateDependentEligibility(candidate, documents, policy, period);
+    const selected = history.filter(row => row.startsAt <= reference && (!row.endsAt || row.endsAt >= reference)).sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())[0];
+    const individual = selected ? { ...policy, relationships: policy.relationships.map(row => row.relationship === candidate.relationship ? { ...row, maxAgeYears: selected.data.exception === "SIM" ? null : Number(selected.data.maximumAge) } : row) } : policy;
+    const assessment = evaluateDependentEligibility(candidate, documents, individual, period);
+    if (!selected) assessment.reasons.push("Elegibilidade individual fora da vigência na referência.");
+    if (selected?.data.documentUntil && selected.data.documentUntil < reference.toISOString().slice(0, 10)) assessment.reasons.push("Comprovação individual vencida na referência.");
+    assessment.eligible = assessment.reasons.length === 0;
+    return assessment;
+  });
+  return { policy, memory, eligibleCount: memory.filter(item => item.eligible).length, employeeIds: [...new Set(employeeIds)].sort() };
 }

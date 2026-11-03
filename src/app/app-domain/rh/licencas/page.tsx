@@ -15,7 +15,7 @@ const columns = [rhColumn("employee", "Servidor", 260, 150), rhColumn("type", "T
 export default async function LicencasPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { q, status, page } = await searchParams;
-  const { total, pagination, leaves } = await readLeavesPage(context.database ?? db, { q, status, page });
+  const { total, pagination, leaves } = await readLeavesPage(context.database ?? db, { q, status, page, user: context.user });
   return <OperationalListFrame label="Licenças e afastamentos" actions={<RhNewLink href="/rh/licencas/novo">Registrar licença</RhNewLink>}
     toolbar={<><form action="/rh/licencas" method="GET" className={styles.searchForm}><input type="hidden" name="status" value={status || ""} /><input name="q" aria-label="Buscar servidor" defaultValue={q} placeholder="Servidor" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form><OperationalFilters activeCount={Number(!!status)}><form action="/rh/licencas" method="GET" className={styles.filterFields}><input type="hidden" name="q" value={q || ""} /><label>Status<select name="status" defaultValue={status}><option value="">Todos</option>{["Ativa", "Encerrada", "Cancelada"].map(value => <option key={value}>{value}</option>)}</select></label><button className={styles.primaryButton}>Aplicar</button><Link href="/rh/licencas">Limpar</Link></form></OperationalFilters></>}
     pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/licencas" values={{ q, status }} />}>

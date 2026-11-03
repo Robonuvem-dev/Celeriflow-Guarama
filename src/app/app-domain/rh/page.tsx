@@ -17,7 +17,7 @@ import { readPersonnelDashboard } from "@/db/repositories/personnel-pages/record
 
 export default async function RHDashboard() {
   const context = await getTenantContextForModule("RH");
-  const { totalEmployees, activeEmployees, totalRoles, activeRoles, activePayrolls, vacationRequests, totalAttendances } = await readPersonnelDashboard(context.database ?? db);
+  const { totalEmployees, activeEmployees, totalRoles, activeRoles, activePayrolls, vacationRequests, totalAttendances } = await readPersonnelDashboard(context.database ?? db, context.user);
 
   return (
     <PageFrame className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">

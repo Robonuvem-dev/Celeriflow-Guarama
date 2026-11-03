@@ -7,6 +7,7 @@ import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
 import { CourseEnrollmentButton } from "./CourseEnrollmentButton";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export default async function MyTraining({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
@@ -23,6 +24,6 @@ export default async function MyTraining({ searchParams }: { searchParams: Promi
     })}
     {!result.courses.length && <p className="rounded border bg-white p-4 text-sm">Nenhum curso publicado para seu público.</p>}
     </OperationalFilters></OperationalHeaderActions>
-    <PortalOperationalList id="capacitacao" label="Histórico de participações" page={page} total={result.enrollments.length} columns={[portalColumn("course", "Curso", 360, 140), portalColumn("date", "Inscrição", 140, 100), portalColumn("status", "Situação", 150, 100, "status"), portalColumn("actions", "Documentos", 240, 220, "actions", "right", 260)]} rows={result.enrollments.slice((page - 1) * OPERATIONAL_PAGE_SIZE, page * OPERATIONAL_PAGE_SIZE).map(request => ({ id: request.id, label: (request.payload as { courseName: string }).courseName, values: { course: (request.payload as { courseName: string }).courseName, date: request.createdAt.toLocaleDateString("pt-BR"), status: request.status }, actions: <div className="flex gap-2"><a href={`/api/portal-servidor/capacitacao/${request.id}/comprovante`}>Comprovante</a>{request.status === "CONCLUIDA" && <a href={`/api/portal-servidor/capacitacao/${request.id}/certificado`}>Certificado</a>}</div> }))} />
+    <PortalOperationalList id="capacitacao" label="Histórico de participações" page={page} total={result.enrollments.length} columns={[portalColumn("course", "Curso", 360, 140), portalColumn("date", "Inscrição", 140, 100), portalColumn("status", "Situação", 150, 100, "status"), portalColumn("actions", "Documentos", 240, 220, "actions", "right", 260)]} rows={result.enrollments.slice((page - 1) * OPERATIONAL_PAGE_SIZE, page * OPERATIONAL_PAGE_SIZE).map(request => ({ id: request.id, label: (request.payload as { courseName: string }).courseName, values: { course: (request.payload as { courseName: string }).courseName, date: request.createdAt.toLocaleDateString("pt-BR"), status: request.status }, actions: <div className="flex gap-2"><a href={`/api/portal-servidor/capacitacao/${request.id}/comprovante`}>Comprovante</a>{request.status === "CONCLUIDA" && <><a href={`/api/portal-servidor/capacitacao/${request.id}/certificado`}>Certificado</a><Link href={`/portal-servidor/capacitacao/${request.id}/avaliacao`}>Avaliar programa</Link></>}</div> }))} />
   </div>;
 }

@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { DatabaseConnection } from "@/db/connection";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { people as personTable } from "@/db/schema/people";
@@ -13,6 +13,8 @@ export async function configurePayrollPensions(db: DatabaseConnection, actorId: 
   const input = z.object({ ruleSetId: z.string().min(1), requestKey: z.string().min(1).max(120), policy: payrollPensionPolicySchema }).strict().parse(raw);
   if (input.policy.entries.some(entry => !/^[A-Z0-9_]{1,40}$/.test(entry.id))) throw new Error("Use identificadores estáveis de pensão com letras maiúsculas, números e sublinhado (até 40 caracteres).");
   return withDatabaseTransaction(db, async tx => {
+    await lockPersonnel(tx, "functional-configuration");
+    await tx.execute(sql`SELECT set_config('celeriflow.actor_id',${actorId},true)`);
     await lockPersonnel(tx, `PENSOES:${input.ruleSetId}`);
     const sourceKey = `PENSOES:CONFIGURACAO:${input.requestKey}`;
     const fingerprint = JSON.stringify(input);
@@ -34,13 +36,13 @@ export async function configurePayrollPensions(db: DatabaseConnection, actorId: 
     const mapping = z.record(z.string(), z.string()).parse(mappingRule.value);
     for (const entry of input.policy.entries) {
       const code = `PENSAO_${entry.id}`;
-      await tx.insert(payrollEvents).values({ code: `POC_${set.id}_${code}`, name: `Pensão alimentícia POC · ${entry.id}`, type: "Desconto", isActive: true }).onConflictDoNothing({ target: payrollEvents.code });
+      await tx.insert(payrollEvents).values({ code: `POC_${set.id}_${code}`, name: `Pensão alimentícia · ${entry.id}`, type: "Desconto", isActive: true }).onConflictDoNothing({ target: payrollEvents.code });
       const [event] = await tx.select().from(payrollEvents).where(eq(payrollEvents.code, `POC_${set.id}_${code}`)).limit(1);
       mapping[code] = event.id;
     }
     await tx.update(hrPayrollRules).set({ value: mapping }).where(eq(hrPayrollRules.id, mappingRule.id));
     const value = personnelJson(input.policy);
-    const [rule] = await tx.insert(hrPayrollRules).values({ ruleSetId: set.id, code: "PENSOES_FOLHA", name: "Pensões alimentícias — parâmetros POC", category: "CALCULO", valueType: "JSON", value, legalReference: input.policy.legalReference }).onConflictDoUpdate({ target: [hrPayrollRules.ruleSetId, hrPayrollRules.code], set: { value, legalReference: input.policy.legalReference, isActive: true } }).returning();
+    const [rule] = await tx.insert(hrPayrollRules).values({ ruleSetId: set.id, code: "PENSOES_FOLHA", name: "Pensões alimentícias — parâmetros judiciais", category: "CALCULO", valueType: "JSON", value, legalReference: input.policy.legalReference }).onConflictDoUpdate({ target: [hrPayrollRules.ruleSetId, hrPayrollRules.code], set: { value, legalReference: input.policy.legalReference, isActive: true } }).returning();
     await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: "DEMONSTRACAO", eventType: "PENSOES_CONFIGURADAS", payload: { fingerprint, ruleId: rule.id, actorId, policy: input.policy } });
     return rule;
   }, { timeoutMs: 60000 });

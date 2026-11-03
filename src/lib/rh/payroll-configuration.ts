@@ -22,7 +22,7 @@ export const HR_SOCIAL_SECURITY_METHODS = ["PROGRESSIVA", "LINEAR"] as const;
 export const HR_EMPLOYMENT_NATURES = ["ESTATUTARIO", "CLT", "COMISSIONADO", "TEMPORARIO", "ESTAGIARIO"] as const;
 export const HR_NEGATIVE_NET_PAY_POLICIES = ["BLOQUEAR", "PERMITIR", "GERAR_SALDO"] as const;
 export const HR_ROUNDING_MODES = ["HALF_UP", "HALF_EVEN", "DOWN", "UP"] as const;
-export const HR_INCIDENT_TYPES = ["RGPS", "RPPS", "IRRF", "FGTS", "FERIAS", "DECIMO_TERCEIRO", "TETO_REMUNERATORIO"] as const;
+export const HR_INCIDENT_TYPES = ["RGPS", "RPPS", "IRRF", "FGTS", "PIS_PASEP", "FERIAS", "DECIMO_TERCEIRO", "TETO_REMUNERATORIO"] as const;
 
 const stableCodeSchema = z.string().trim().toUpperCase().min(1).max(64).regex(/^[A-Z0-9_.-]+$/, "Use letras, números, ponto, hífen ou sublinhado no código.");
 const labelSchema = z.string().trim().min(2).max(160);

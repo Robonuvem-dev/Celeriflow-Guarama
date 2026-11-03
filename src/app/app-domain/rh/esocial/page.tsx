@@ -16,7 +16,7 @@ export default async function RhEsocialPage({ searchParams }: { searchParams: Pr
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const readiness = await readPersonnelExternalReadiness(database);
   const params = await searchParams;
-  const { total, page, events } = await readEsocialEventsPage(database, params.page);
+  const { total, page, events } = await readEsocialEventsPage(database, context.user, params.page);
   if (params.view !== "manage") {
     const columns = [rhColumn("type", "Evento", 230, 140), rhColumn("source", "Origem", 260, 150, "identifier"), rhColumn("environment", "Ambiente", 160, 110), rhColumn("status", "Estado", 150, 100, "status"), rhColumn("actions", "Conferência", 230, 210, "actions")];
     return <OperationalListFrame label="eSocial · preparação de RH/Folha" actions={<><Link href="/rh/operacoes" className={styles.filterButton}>Operações</Link><RhNewLink href="?view=manage">Configuração e exportações</RhNewLink></>}

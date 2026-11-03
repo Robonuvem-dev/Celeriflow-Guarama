@@ -10,7 +10,7 @@ import { OperationForm } from "../operacoes/OperationForm";
 export const dynamic = "force-dynamic";
 export default async function FunctionalOccurrencesPage({ searchParams }: { searchParams: Promise<{ page?: string; contractId?: string; type?: string }> }) {
   const context = await getTenantContextForModule("RH"); const params = await searchParams;
-  const { total, page, rows, cancellations } = await readOccurrencesPage(context.database ?? db, params);
+  const { total, page, rows, cancellations } = await readOccurrencesPage(context.database ?? db, context.user, params);
   const canceled = new Map(cancellations.map(row => [row.sourceKey, row.payload as { reason: string }]));
   const href = (value: number) => `?${new URLSearchParams({ page: String(value), contractId: params.contractId || "", type: params.type || "" })}`;
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-3"><ErpPageTitle title="Ocorrências funcionais" description="Advertências, elogios, multas e outras ocorrências, com ato e referências GED preservados." action={<Link href="/rh/atos">Atos de pessoal</Link>} />

@@ -18,6 +18,7 @@ import { accountingPlans, accountingTransactions } from "../src/db/schema/financ
 import { municipalCostSources, municipalCostMovements } from "../src/db/schema/finance-costs";
 import { settlements } from "../src/db/schema/finance-settlements";
 import { requiredPersonnelRow, personnelPayrollCostSources } from "./helpers/personnel-financial-regression-queries";
+import { preparePersonnelFinanceIdentity } from "./helpers/personnel-finance-identity";
 
 const date = new Date("2026-09-01T12:00:00Z");
 const snapshot = (id: string, rows: Array<{ code: string; value: string }>) => ({ contract: { id, employeeId: "servidora-ana", registration: id, workLocation: "LOCAL_FECHADO", costCenterId: "centro-folha" }, items: rows.map(row => ({ ...row, type: "PROVENTO" })) });
@@ -28,6 +29,7 @@ async function setup() {
   const restoreMode = () => { if (previousMode === undefined) delete process.env.CELERIFLOW_ACCOUNTING_MODE; else process.env.CELERIFLOW_ACCOUNTING_MODE = previousMode; };
   const f = await createPlanningExecutionFixture(2026, 2, "EXECUTIVE", { expenseLineAmount: "300.00" }).catch(error => { restoreMode(); throw error; });
   try {
+    await preparePersonnelFinanceIdentity(f.db);
     const financeTransport = { connection: f.connection };
     const db = financeTransport.connection.db;
     await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));

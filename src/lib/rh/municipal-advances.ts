@@ -18,11 +18,22 @@ import { postAccountingEventInTransaction, postAccountingTransactionInTransactio
 import { assertTravelAllowanceAccess, assertTravelReportOperationDate } from "./travel-allowance";
 import { resolveContractRevision } from "./contract-timeline";
 import { enqueueHrIntegration } from "./workforce-service";
+import { assertFinancialPersonnelOriginAccess } from "./financial-origin-access";
 
 const money = z.string().regex(/^\d{1,12}(?:\.\d{1,2})?$/);
 const inputSchema = z.object({ requestKey: z.string().trim().min(1).max(120), contractId: z.string().min(1), budgetUnitId: z.string().min(1), amount: money, date: z.iso.date(), reportDueDate: z.iso.date(), purpose: z.string().trim().min(10).max(3000) }).strict();
 const memorySchema = z.object({ scope: z.literal("PRODUCAO"), input: inputSchema, assessment: z.object({ amountBRL: money }), contract: z.object({ employee: z.object({ personId: z.string() }) }) });
 const actorFor = (context: AppContext) => ({ usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds });
+
+/** Native Finance entry points also resolve the actor's RH scope from the persisted identity. */
+async function assertFinancialRequestHolderAccess(tx: DatabaseExecutor, actor: FinanceActor, request: HrPortalRequest) {
+  const origin = z.object({ input: z.object({ contractId: z.string().optional() }).passthrough() }).passthrough().parse(request.payload);
+  if (origin.input.contractId) {
+    const contract = await requireEmploymentHolderHistory(tx, origin.input.contractId);
+    if (contract.employeeId !== request.employeeId) throw new Error("Solicitação financeira diverge do titular do contrato de origem.");
+  }
+  await assertFinancialPersonnelOriginAccess(tx, actor, { requestId: request.id, employeeId: request.employeeId, input: origin.input });
+}
 
 const cycleSchema = z.object({ cycle: z.number().int().nonnegative(), reopenedDate: z.iso.date().optional() });
 async function advanceCycle(tx: DatabaseExecutor, requestId: string): Promise<z.infer<typeof cycleSchema>> {
@@ -163,6 +174,7 @@ export async function assertAdvanceRefundReversalAllowed(tx: DatabaseTransaction
   if (!revenue.sourceId) throw new Error("Restituição do adiantamento sem solicitação original conciliada.");
   await tx.execute(sql`SELECT id FROM "HrPortalRequest" WHERE id=${revenue.sourceId} FOR UPDATE`);
   const request = await requireHrPortalRequest(tx, revenue.sourceId);
+  await assertFinancialRequestHolderAccess(tx, actor, request);
   if (revenue.sourceType === "TRAVEL_ALLOWANCE_REFUND") {
     const unit = z.object({ input: z.object({ budgetUnitId: z.string() }) }).parse(request.payload).input.budgetUnitId;
     if (request.kind !== "DIARIA" || unit !== revenue.budgetUnitId || actor.allowedBudgetUnitIds && !actor.allowedBudgetUnitIds.includes(unit)) throw new Error("Estorno da restituição fora da origem/UG da diária.");
@@ -333,9 +345,16 @@ export async function reviewAdvanceReport(connection: DatabaseConnection, contex
 export async function reverseAdvancePaymentControl(tx: DatabaseTransaction, actor: FinanceActor, paymentId: string, reason: string) {
   const payment = await requirePersonnelPayment(tx, paymentId);
   const expense = payment.commitment.reservation?.expense;
-  if (expense?.sourceModule !== "RH" || expense.sourceType !== "ADVANCE_ALLOWANCE" || !expense.sourceId) return;
+  if (expense?.sourceModule === "RH" && expense.sourceType === "PAYROLL_RUN") {
+    if (!expense.sourceId) throw new Error("Pagamento de folha sem execução de origem verificável.");
+    await assertFinancialPersonnelOriginAccess(tx, actor, { runId: expense.sourceId });
+    return;
+  }
+  if (expense?.sourceModule !== "RH" || !["ADVANCE_ALLOWANCE", "TRAVEL_ALLOWANCE"].includes(expense.sourceType ?? "") || !expense.sourceId) return;
   await tx.execute(sql`SELECT id FROM "HrPortalRequest" WHERE id=${expense.sourceId} FOR UPDATE`);
   const request = await requireHrPortalRequest(tx, expense.sourceId);
+  await assertFinancialRequestHolderAccess(tx, actor, request);
+  if (expense.sourceType === "TRAVEL_ALLOWANCE") return;
   const memory = memorySchema.parse(request.payload);
   if (actor.allowedBudgetUnitIds && !actor.allowedBudgetUnitIds.includes(memory.input.budgetUnitId)) throw new Error("Estorno do adiantamento exige UG autorizada.");
   const date = new Date();
@@ -358,10 +377,16 @@ export async function reverseAdvancePaymentControl(tx: DatabaseTransaction, acto
 export async function reverseAdvanceCommitmentControl(tx: DatabaseTransaction, actor: FinanceActor, commitmentId: string, date: Date, reason: string) {
   const commitment = await requirePersonnelCommitment(tx, commitmentId);
   const expense = commitment.reservation?.expense;
+  if (expense?.sourceModule === "RH" && expense.sourceType === "PAYROLL_RUN") {
+    if (!expense.sourceId) throw new Error("Empenho de folha sem execução de origem verificável.");
+    await assertFinancialPersonnelOriginAccess(tx, actor, { runId: expense.sourceId });
+    return;
+  }
   if (expense?.sourceModule === "RH" && expense.sourceType === "TRAVEL_ALLOWANCE" && expense.sourceId) {
     if (commitment.status !== "Anulado") throw new Error("Cancelamento da diária exige empenho anulado.");
     await tx.execute(sql`SELECT id FROM "HrPortalRequest" WHERE id=${expense.sourceId} FOR UPDATE`);
     const request = await requireHrPortalRequest(tx, expense.sourceId);
+    await assertFinancialRequestHolderAccess(tx, actor, request);
     const unit = z.object({ scope: z.literal("PRODUCAO"), input: z.object({ budgetUnitId: z.string() }) }).parse(request.payload).input.budgetUnitId;
     if (request.kind !== "DIARIA" || actor.allowedBudgetUnitIds && !actor.allowedBudgetUnitIds.includes(unit)) throw new Error("Cancelamento fora da origem/UG da diária.");
     const report = await findActiveTravelAllowanceReport(tx, request.id);
@@ -376,6 +401,7 @@ export async function reverseAdvanceCommitmentControl(tx: DatabaseTransaction, a
   await tx.execute(sql`SELECT id FROM "HrPortalRequest" WHERE id=${expense.sourceId} FOR UPDATE`);
   const request = await requireHrPortalRequest(tx, expense.sourceId);
   const memory = memorySchema.parse(request.payload);
+  await assertFinancialRequestHolderAccess(tx, actor, request);
   const event = await requireHrIntegrationEvent(tx, `ADIANTAMENTO:CONCESSAO:${request.id}`);
   if (event.status === "ESTORNADA") return;
   const currentCycle = await advanceCycle(tx, request.id);

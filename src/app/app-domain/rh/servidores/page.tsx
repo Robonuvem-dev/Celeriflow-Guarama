@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { ServidorRowActions } from "./ServidorRowActions";
 import { db } from "@/db/client";
 import { readEmployeesPage } from "@/db/repositories/personnel-pages/records";
@@ -15,7 +15,7 @@ export default async function ServidoresPage(props: { searchParams?: Promise<{ q
   const context = await getTenantContextForModule("RH");
   const searchParams = await props.searchParams;
   const q = searchParams?.q || "", status = searchParams?.status || "", departmentId = searchParams?.departmentId || "";
-  const { total, pagination, employees, departments } = await readEmployeesPage(context.database ?? db, { q, status, departmentId, page: searchParams?.page });
+  const { total, pagination, employees, departments } = await readEmployeesPage(context.database ?? db, { q, status, departmentId, page: searchParams?.page, user: context.user });
   return <OperationalListFrame label="Servidores"
     actions={<RhNewLink href="/rh/servidores/novo">Novo servidor</RhNewLink>}
     toolbar={<>
@@ -33,6 +33,6 @@ export default async function ServidoresPage(props: { searchParams?: Promise<{ q
       </OperationalFilters>
     </>}
     pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/servidores" values={{ q, status, departmentId }} />}>
-    <OperationalTable preferenceId="rh-servidores" columns={columns} caption="Servidores" emptyMessage="Nenhum servidor encontrado." rows={employees.map(emp => ({ id: emp.id, label: emp.name, values: { name: emp.name, cpf: emp.cpf || "Sem CPF", registration: emp.registration || "Sem Matrícula", role: emp.role?.name || "—", department: emp.department?.name || "—", status: emp.isActive ? "Ativo" : "Inativo" }, actions: <ServidorRowActions employee={emp} /> }))} />
+    <OperationalTable preferenceId="rh-servidores" columns={columns} caption="Servidores" emptyMessage="Nenhum servidor encontrado." rows={employees.map(emp => ({ id: emp.id, label: emp.name, values: { name: emp.name, cpf: emp.cpf || "Sem CPF", registration: emp.registration || "Sem Matrícula", role: emp.role?.name || "—", department: emp.department?.name || "—", status: emp.isActive ? "Ativo" : "Inativo" }, actions: <ServidorRowActions employee={emp} canDelete={canPerformModuleOperation(context.user, "RH", "delete")} /> }))} />
   </OperationalListFrame>;
 }

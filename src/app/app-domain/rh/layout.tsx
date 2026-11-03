@@ -24,6 +24,8 @@ import {
 const sidebarNavItems = [
   { title: "Painel RH", href: "/rh", icon: LayoutDashboard },
   { title: "Servidores", href: "/rh/servidores", icon: Users },
+  { title: "Registros funcionais", href: "/rh/registros-funcionais", icon: FileSignature },
+  { title: "Processamentos funcionais", href: "/rh/processamentos-funcionais", icon: SlidersHorizontal },
   { title: "Dependentes", href: "/rh/dependentes", icon: UserPlus },
   { title: "Folha de Pagamento", href: "/rh/folha", icon: Wallet },
   { title: "Parametrizações", href: "/rh/parametrizacoes", icon: SlidersHorizontal },

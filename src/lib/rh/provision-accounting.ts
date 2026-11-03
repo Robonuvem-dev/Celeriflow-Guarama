@@ -14,6 +14,7 @@ import { assertBudgetUnitAccess, canPerformModuleOperation, isSystemAdministrato
 import { payrollPeriod } from "./calculation-engine";
 import { enqueueHrIntegration } from "./workforce-service";
 import { assertPayrollBudgetScope } from "./payroll-access";
+import { assertFinancialPersonnelOriginAccess } from "./financial-origin-access";
 
 const optionalAccount = z.preprocess((value) => value === "" ? undefined : value, z.string().min(1).optional());
 const inputSchema = z.object({ entryId: z.string().min(1), budgetUnitId: z.string().min(1), expenseAccountId: z.string().min(1), liabilityAccountId: z.string().min(1), employerExpenseAccountId: optionalAccount, employerLiabilityAccountId: optionalAccount, date: z.iso.date(), reason: z.string().trim().min(10).max(2000) }).strict();
@@ -93,8 +94,14 @@ const releaseRowsSchema = z.array(z.object({ consumptionEntryId: z.string(), pro
 export async function releasePayrollProvisionsAtSettlement(tx: DatabaseTransaction, actor: FinanceActor, settlementId: string) {
   const settlement = await requirePersonnelSettlement(tx, settlementId);
   if (settlement.commitment.reservation?.expense?.sourceModule !== "RH") return;
+  const expense = settlement.commitment.reservation.expense;
+  if (expense.sourceType === "PAYROLL_RUN") {
+    if (!expense.sourceId) throw new Error("Liquidação de folha sem execução de origem verificável.");
+    await assertFinancialPersonnelOriginAccess(tx, actor, { runId: expense.sourceId });
+  }
   const reservations = await tx.select().from(hrRightEntries).where(and(like(hrRightEntries.kind, "PROVISAO\\_%"), sql`${hrRightEntries.details}->>'commitmentId' = ${settlement.commitmentId}`, sql`${hrRightEntries.details}->>'operation' = 'BAIXA_EMPENHO'`)).orderBy(asc(hrRightEntries.contractId), asc(hrRightEntries.id));
   if (!reservations.length) return;
+  await assertFinancialPersonnelOriginAccess(tx, actor, { entryIds: reservations.map(entry => entry.id) });
   const sourceKey = `CONTABIL:PROVISAO:BAIXA:${settlement.id}`;
   const previous = await findHrIntegrationEvent(tx, sourceKey);
   if (previous) return;
@@ -161,8 +168,14 @@ export async function releasePayrollProvisionsAtSettlement(tx: DatabaseTransacti
 export async function reversePayrollProvisionSettlement(tx: DatabaseTransaction, actor: FinanceActor, settlementId: string, date: Date) {
   const settlement = await requirePersonnelSettlement(tx, settlementId);
   if (settlement.commitment.reservation?.expense?.sourceModule !== "RH") return;
+  const expense = settlement.commitment.reservation.expense;
+  if (expense.sourceType === "PAYROLL_RUN") {
+    if (!expense.sourceId) throw new Error("Liquidação de folha sem execução de origem verificável.");
+    await assertFinancialPersonnelOriginAccess(tx, actor, { runId: expense.sourceId });
+  }
   const event = await findHrIntegrationEvent(tx, `CONTABIL:PROVISAO:BAIXA:${settlementId}`);
   if (!event || event.status === "ESTORNADA") return;
+  await assertFinancialPersonnelOriginAccess(tx, actor, object(event.payload));
   for (const row of releaseRowsSchema.parse(object(event.payload).rows)) {
     const original = await requirePersonnelAccountingTransaction(tx, { id: row.transactionId });
     await postAccountingTransactionInTransaction(tx, actor, { financialYearId: original.financialYearId, governmentEntityId: original.governmentEntityId ?? undefined, budgetUnitId: original.budgetUnitId ?? undefined, date, history: `Estorno de baixa de provisão da liquidação ${settlementId}`, lines: original.entries.map((entry) => ({ originalEntryId: entry.id, accountId: entry.accountId, type: entry.type === "Débito" ? "Crédito" : "Débito", value: entry.valueDecimal ?? entry.value })), sourceModule: "RH", sourceType: "HR_PROVISION_SETTLEMENT_REVERSAL", sourceId: row.consumptionEntryId, eventType: "PROVISAO_BAIXA_LIQUIDACAO_ESTORNADA", idempotencyKey: `RH:PROVISION:SETTLEMENT:${settlementId}:REVERSE:${row.transactionId}`, reversalOfId: original.id });
@@ -178,6 +191,7 @@ export async function recordPayrollProvisionPayment(tx: DatabaseTransaction, act
   if (!payment.settlementId || payment.commitment.reservation?.expense?.sourceModule !== "RH") return;
   const release = await findHrIntegrationEvent(tx, `CONTABIL:PROVISAO:BAIXA:${payment.settlementId}`);
   if (!release) return;
+  await assertFinancialPersonnelOriginAccess(tx, actor, object(release.payload));
   if (release.status !== "CONCLUIDA" || payment.status !== "Paga" || !payment.valueDecimal) throw new Error("Pagamento de provisão exige liquidação conciliada e pagamento efetivado.");
   const sourceKey = `CONTABIL:PROVISAO:PAGAMENTO:${payment.id}`;
   if (await findHrIntegrationEvent(tx, sourceKey)) return;
@@ -209,6 +223,7 @@ export async function reversePayrollProvisionPayment(tx: DatabaseTransaction, ac
   if (payment.commitment.reservation?.expense?.sourceModule !== "RH") return;
   const original = await findHrIntegrationEvent(tx, `CONTABIL:PROVISAO:PAGAMENTO:${paymentId}`);
   if (!original || original.status === "ESTORNADA") return;
+  await assertFinancialPersonnelOriginAccess(tx, actor, object(original.payload));
   const movement = await requirePersonnelTreasuryMovement(tx, { idempotencyKey: `FINANCEIRO:PAYMENT:${paymentId}:REVERSAL` });
   const posting = await requirePersonnelAccountingTransaction(tx, { idempotencyKey: `FINANCEIRO:PAYMENT:${paymentId}:PAGAMENTO_ESTORNADO` });
   const event = await enqueueHrIntegration(tx, { sourceKey: `ESTORNO:${original.sourceKey}`, domain: "FINANCEIRO", environment: "PRODUCAO", eventType: "PROVISOES_PAGAMENTO_ESTORNADO", payload: { originalEventId: original.id, paymentId, reason, actorId: actor.usuarioId, rows: releaseRowsSchema.parse(object(original.payload).rows), accountingTransactionId: posting.id, treasuryMovementId: movement.id } });

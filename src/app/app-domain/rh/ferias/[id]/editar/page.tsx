@@ -7,13 +7,13 @@ import { readVacation, readEmployeeOptions } from "@/db/repositories/personnel-p
 export default async function EditarFeriasPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  const vacation = await readVacation(database, id);
+  const vacation = await readVacation(database, id, context.user);
 
   if (!vacation) {
     notFound();
   }
 
-  const employees = await readEmployeeOptions(database);
+  const employees = await readEmployeeOptions(database, context.user);
 
   return (
     <FeriasForm data={vacation} employees={employees} />

@@ -3,6 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import { enrollOwnCourse, submitOwnFunctionalEvaluation, submitCommissionEvaluation } from "@/lib/portal-servidor/career-service";
+import { submitOwnTrainingEvaluation } from "@/lib/portal-servidor/training-evaluation";
+
+export async function submitMyTrainingEvaluation(raw: unknown) {
+  try {
+    const access = await getEmployeePortalAccess();
+    if (access.status !== "AVAILABLE") return { error: "Acesso funcional indisponível." };
+    await submitOwnTrainingEvaluation(access.context, raw);
+    revalidatePath("/portal-servidor/capacitacao");
+    return { error: "" };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível registrar a avaliação do programa." }; }
+}
 
 export async function enrollMyCourse(raw: unknown) {
   try { const access = await getEmployeePortalAccess(); if (access.status !== "AVAILABLE") return { error: "Acesso funcional indisponível." }; const id = await enrollOwnCourse(access.context, raw); revalidatePath("/portal-servidor/capacitacao"); revalidatePath("/rh/capacitacao"); return { id, error: "" }; }

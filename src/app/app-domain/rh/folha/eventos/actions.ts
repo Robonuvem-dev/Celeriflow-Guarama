@@ -5,14 +5,12 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { payrollEvents } from "@/db/schema/personnel-workforce";
-
-async function getTenantDatabase(operation: "create" | "update") {
-  return (await getTenantContextForModuleOperation("RH", operation)).database ?? db;
-}
+import { assertPersonnelRubrics } from "@/lib/rh/personnel-scope";
 
 export async function saveEvent(formData: FormData) {
   const id = formData.get("id") as string;
-  const database = await getTenantDatabase(id ? "update" : "create");
+  const context = await getTenantContextForModuleOperation("RH", id ? "update" : "create");
+  const database = context.database ?? db;
   try {
     const code = formData.get("code") as string;
     const name = formData.get("name") as string;
@@ -22,6 +20,12 @@ export async function saveEvent(formData: FormData) {
 
     if (!code || !name || !type) {
       return { success: false, error: "Código, Nome e Tipo são obrigatórios." };
+    }
+    assertPersonnelRubrics(context.user, [code]);
+    if (id) {
+      const [previous] = await database.select().from(payrollEvents).where(eq(payrollEvents.id, id)).limit(1);
+      if (!previous) throw new Error("Evento não encontrado.");
+      assertPersonnelRubrics(context.user, [previous.code]);
     }
 
     // Verificar se código já existe (se for novo ou se mudou de código)

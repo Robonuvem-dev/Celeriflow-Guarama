@@ -8,12 +8,17 @@ import { dependentAssessmentSchema, familyWageSnapshotSchema } from "./dependent
 import { receiptMessagesSnapshotSchema } from "./receipt-messages";
 import { personalStatementPublicationAllowed } from "@/lib/portal-servidor/payroll-publication";
 import { personnelDisplayJson, personnelDisplayText, PERSONNEL_ISSUER } from "./personnel-presentation";
+import { consignmentStatementSchema } from "./consignment-statement";
 
 const snapshotSchema = z.object({
   contract: z.object({ registration: z.string(), workLocation: z.string(), salary: z.string(), employee: z.object({ name: z.string(), registration: z.string().nullable().optional() }) }),
   days: z.number(),
   items: z.array(z.object({ code: z.string(), name: z.string(), type: z.string(), value: z.string(), method: z.string(), formula: z.string().nullable(), base: z.string().nullable(), rate: z.string().nullable(), movement: z.string() })),
   bases: z.record(z.string(), z.string()),
+  consignments: consignmentStatementSchema.optional().default([]),
+  optionalPension: z.record(z.string(), z.unknown()).optional(),
+  remunerationLimits: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  automaticServiceAllowances: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   consignmentMargin: consignmentMarginSchema.nullable().optional().default(null),
   familyWage: familyWageSnapshotSchema.nullable().optional().default(null),
   irrfDependents: dependentAssessmentSchema.nullable().optional().default(null),
@@ -84,6 +89,10 @@ export async function renderPayrollStatementPdf(statement: Awaited<ReturnType<ty
   pdf.text(`Versão do demonstrativo: ${statement.id}`);
   if (validationCode) pdf.text(`Autenticidade: /validar-recibo/${validationCode}`);
   pdf.text("O demonstrativo não comprova quitação bancária.");
+  for (const installment of statement.consignments) pdf.moveDown().text(`Consignação ${installment.number} · rubrica ${installment.rubricCode} · parcela ${installment.sequence}/${installment.total} · R$ ${installment.amount}`);
+  if (statement.optionalPension) pdf.moveDown().text(`Opção previdenciária: ${personnelDisplayJson(statement.optionalPension)}`);
+  if (statement.remunerationLimits.length) pdf.moveDown().text(`Limites remuneratórios: ${personnelDisplayJson(statement.remunerationLimits)}`);
+  if (statement.automaticServiceAllowances.length) pdf.moveDown().text(`Adicionais por tempo de serviço: ${personnelDisplayJson(statement.automaticServiceAllowances)}`);
   for (const message of statement.messages) pdf.moveDown().fontSize(9).text(message.text);
   if (statement.familyWage) {
     const family = statement.familyWage;

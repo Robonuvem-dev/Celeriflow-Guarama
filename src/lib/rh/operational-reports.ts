@@ -10,6 +10,21 @@ import { buildRetirementHrReport } from "./retirement-reports";
 import { buildFunctionalHistoryReport } from "./functional-history-report";
 import { bankPreparationReportKinds, buildBankPreparationReport } from "./bank-preparation-report";
 import { buildPersonnelRecordsReport } from "./personnel-record-reports";
+import { buildExtendedHrReport, extendedReportKinds } from "./extended-reports";
+import { buildPersonalHistoryReport, personalHistoryReportKinds } from "./personal-history-reports";
+import { buildEvaluationHistoryReport } from "./evaluation-history-report";
+import { buildRetirementAssessmentReport } from "./retirement-assessment";
+import { buildAttendanceCalendarReport } from "./attendance-calendar-report";
+import { buildManagementReport, managementReportKinds } from "./management-reports";
+import { buildIssuedTimeCertificates } from "./time-certificates";
+import { buildActuarialDataset } from "./actuarial-report";
+import { reportContractPredicate, reportEmployeePredicate, reportPayrollAllocationSource, reportPayrollPredicate, reportRubricPredicate, type AdvancedHrReportFilters } from "./report-filters";
+import { buildRightsPlanningReport } from "./rights-planning-report";
+import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
+import { buildIssuedRetirementAssessments } from "./retirement-assessment-issuance";
+import { payrollConfigurationObservedAt } from "./configuration-timeline-query";
+import { referenceRecordsObservedAt } from "./reference-timeline-query";
+import { buildAbsenceDaysReport } from "./absence-days-report";
 
 export const operationalReportKinds = [
   "RETORNO_FERIAS", "FIM_COMISSAO", "FIM_CONTRATOS", "ANIVERSARIANTES_RH", "DIAS_AFASTADOS", "CAUSAS_AFASTAMENTO",
@@ -23,32 +38,55 @@ export const operationalReportKinds = [
   "EXPECTATIVA_APOSENTADORIA", "CONTAGEM_TEMPO_RH",
   ...bankPreparationReportKinds,
   "EVENTOS_VARIAVEIS_PLANILHA",
+  ...extendedReportKinds,
+  ...personalHistoryReportKinds,
+  "HISTORICO_AVALIACOES_FUNCIONAIS",
+  "MEMORIA_TEMPO_PREVIDENCIARIO", "APURACAO_APOSENTADORIA",
+  "MEMORIAS_CONCESSAO_EMITIDAS",
+  "CALENDARIO_PONTO_PERSONALIZADO",
+  ...managementReportKinds,
+  "CERTIDOES_TEMPO_EMITIDAS",
+  "BASE_ATUARIAL_COLUNAR",
+  "PLANEJAMENTO_FERIAS_LICENCAS",
 ] as const;
 export type OperationalReportKind = typeof operationalReportKinds[number];
-export type OperationalReportInput = {
+export type OperationalReportInput = AdvancedHrReportFilters & {
   kind: string; q: string; competence?: string; payrollId?: string; referenceDate?: string;
   from?: string; until?: string; employeeId?: string; departmentId?: string; year?: number; month?: number;
-  totalizers?: string;
+  totalizers?: string; compareDate?: string; rubricCodes?: string;
+  auditActor?: string; auditAction?: string; auditEntity?: string; auditTarget?: string;
+  clinicalAuthorized?: boolean;
   labelColumns?: number; labelHeight?: number; labelMargin?: number; labelFields?: string;
 };
-export type PersonnelReport = { title: string; headers: string[]; rows: string[][]; print?: { kind: "labels" | "matrix132"; columns?: number; height?: number; margin?: number } };
+export type PersonnelReport = { title: string; headers: string[]; rows: string[][]; print?: { kind: "labels" | "matrix132" | "personnel-card" | "pension-receipt"; columns?: number; height?: number; margin?: number } };
 const value = (entry: unknown): string => entry === null || entry === undefined ? "" : entry instanceof Date ? entry.toISOString() : typeof entry === "object" ? JSON.stringify(entry) : String(entry);
 const snapshotSchema = z.object({ contract: z.object({ employeeId: z.string(), registration: z.string(), departmentId: z.string().nullable(), workLocation: z.string(), employee: z.object({ name: z.string(), unitId: z.string().nullable().optional() }) }), items: z.array(z.object({ code: z.string(), name: z.string(), type: z.string(), value: z.string() })) });
 
 export async function buildOperationalHrReport(db: DatabaseExecutor, input: OperationalReportInput, payrollScope?: SQL, budgetUnitIds?: readonly string[]): Promise<PersonnelReport> {
+  if (["DIAS_AFASTADOS", "CAUSAS_AFASTAMENTO"].includes(input.kind)) return buildAbsenceDaysReport(db, input, budgetUnitIds);
+  if (input.kind === "MEMORIAS_CONCESSAO_EMITIDAS") return buildIssuedRetirementAssessments(db, input, budgetUnitIds);
+  if (input.kind === "PLANEJAMENTO_FERIAS_LICENCAS") return buildRightsPlanningReport(db, input, budgetUnitIds);
+  if (input.kind === "BASE_ATUARIAL_COLUNAR") return buildActuarialDataset(db, input, budgetUnitIds, payrollScope);
+  if (input.kind === "CERTIDOES_TEMPO_EMITIDAS") return buildIssuedTimeCertificates(db, input, budgetUnitIds);
+  if ((managementReportKinds as readonly string[]).includes(input.kind)) return buildManagementReport(db, input, payrollScope, budgetUnitIds);
+  if (input.kind === "CALENDARIO_PONTO_PERSONALIZADO") return buildAttendanceCalendarReport(db, input, budgetUnitIds);
+  if (["MEMORIA_TEMPO_PREVIDENCIARIO", "APURACAO_APOSENTADORIA"].includes(input.kind)) return buildRetirementAssessmentReport(db, input, budgetUnitIds, payrollScope);
+  if (input.kind === "HISTORICO_AVALIACOES_FUNCIONAIS") return buildEvaluationHistoryReport(db, input, budgetUnitIds);
+  if ((personalHistoryReportKinds as readonly string[]).includes(input.kind)) return buildPersonalHistoryReport(db, input, budgetUnitIds, payrollScope);
+  if ((extendedReportKinds as readonly string[]).includes(input.kind)) return buildExtendedHrReport(db, input, payrollScope, budgetUnitIds);
   if ((supplementaryReportKinds as readonly string[]).includes(input.kind)) return buildSupplementaryHrReport(db, input, budgetUnitIds);
   if ((accountingReportKinds as readonly string[]).includes(input.kind)) return buildAccountingHrReport(db, input, payrollScope, budgetUnitIds);
-  if ((specialReportKinds as readonly string[]).includes(input.kind)) return buildSpecialHrReport(db, input);
-  if (["EXPECTATIVA_APOSENTADORIA", "CONTAGEM_TEMPO_RH"].includes(input.kind)) return buildRetirementHrReport(db, input);
+  if ((specialReportKinds as readonly string[]).includes(input.kind)) return buildSpecialHrReport(db, input, budgetUnitIds);
+  if (["EXPECTATIVA_APOSENTADORIA", "CONTAGEM_TEMPO_RH"].includes(input.kind)) return buildRetirementHrReport(db, input, budgetUnitIds);
   if (input.kind === "HISTORICO_FUNCIONAL") return buildFunctionalHistoryReport(db, input, payrollScope, budgetUnitIds);
   if ((bankPreparationReportKinds as readonly string[]).includes(input.kind)) return buildBankPreparationReport(db, input, payrollScope);
-  if (["OCORRENCIAS_FUNCIONAIS", "VERBAS_FIXAS_VARIAVEIS", "EVENTOS_VARIAVEIS_PLANILHA"].includes(input.kind)) return buildPersonnelRecordsReport(db, input, payrollScope);
+  if (["OCORRENCIAS_FUNCIONAIS", "VERBAS_FIXAS_VARIAVEIS", "EVENTOS_VARIAVEIS_PLANILHA"].includes(input.kind)) return buildPersonnelRecordsReport(db, input, payrollScope, budgetUnitIds);
   const reference = input.referenceDate ?? new Date().toISOString().slice(0, 10);
   const from = input.from ?? (input.competence ? `${input.competence.slice(3)}-${input.competence.slice(0, 2)}-01` : `${input.year ?? reference.slice(0, 4)}-01-01`);
   const until = input.until ?? (input.competence ? new Date(Date.UTC(Number(input.competence.slice(3)), Number(input.competence.slice(0, 2)), 0)).toISOString().slice(0, 10) : `${input.year ?? reference.slice(0, 4)}-12-31`);
   if (from > until) throw new Error("Fim do período anterior ao início.");
-  const personFilter = sql`(${input.q}='' OR strpos(lower(e.name),lower(${input.q}))>0 OR strpos(coalesce(e.registration,''),${input.q})>0) ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``}`;
-  const currentFilter = sql`${personFilter} ${input.departmentId ? sql`AND e."departmentId"=${input.departmentId}` : sql``}`;
+  const personFilter = sql`(${input.q}='' OR strpos(lower(e.name),lower(${input.q}))>0 OR strpos(coalesce(e.registration,''),${input.q})>0) AND ${reportEmployeePredicate(input, sql`e.id`, sql`${reference}`)} AND ${personnelBudgetEmployeeWhere(sql`e.id`, budgetUnitIds)} ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``}`;
+  const currentFilter = personFilter;
   // Resolve the canonical revision at a civil date; never substitute today's salary for history.
   const historical = sql`WITH historical AS (
     SELECT c.id,c."employeeId",r.snapshot AS state FROM "HrEmploymentContract" c
@@ -59,7 +97,7 @@ export async function buildOperationalHrReport(db: DatabaseExecutor, input: Oper
     JOIN "Employee" e ON e.id=h."employeeId" LEFT JOIN "Person" p ON p.id=e."personId"
     LEFT JOIN "Role" ro ON ro.id=h.state->>'roleId' LEFT JOIN "Department" d ON d.id=h.state->>'departmentId'
     JOIN "HrEmploymentRegime" g ON g.id=h.state->>'regimeId'
-    WHERE ${personFilter} ${input.departmentId ? sql`AND h.state->>'departmentId'=${input.departmentId}` : sql``}
+    WHERE ${personFilter} AND ${reportContractPredicate(input, sql`h.state`, sql`${reference}`)} ${input.departmentId ? sql`AND h.state->>'departmentId'=${input.departmentId}` : sql``}
   )`;
   async function query(title: string, columns: Array<[string, string]>, statement: SQL): Promise<PersonnelReport> {
     const result = await db.execute<Record<string, unknown>>(statement);
@@ -71,8 +109,6 @@ export async function buildOperationalHrReport(db: DatabaseExecutor, input: Oper
     SELECT e.name,e.registration,d.name department,to_char(v."enjoymentStart",'YYYY-MM-DD') start,to_char(v."enjoymentEnd",'YYYY-MM-DD') "end",to_char(v."enjoymentEnd"+interval '1 day','YYYY-MM-DD') return,v.days,v.status FROM "Vacation" v JOIN "Employee" e ON e.id=v."employeeId" LEFT JOIN "Department" d ON d.id=e."departmentId" WHERE ${currentFilter} AND v."enjoymentEnd"+interval '1 day'>=${from}::date AND v."enjoymentEnd"+interval '1 day'<${until}::date+interval '1 day' AND v.status NOT IN ('Cancelada','Cancelado') ORDER BY v."enjoymentEnd",e.name,v.id`);
   if (input.kind === "FIM_CONTRATOS" || input.kind === "FIM_COMISSAO") return query(input.kind === "FIM_COMISSAO" ? "Previsão de término de vínculos comissionados" : "Previsão de término dos contratos", [...identity, ["role", "Cargo"], ["regime", "Regime"], ["end", "Término"], ["remaining", "Dias desde a referência"], ["status", "Situação"], ["version", "Versão"]], sql`${historical} SELECT name,state->>'registration' registration,department,role,regime,to_char((state->>'endsAt')::timestamp,'YYYY-MM-DD') "end",((state->>'endsAt')::timestamp::date-${reference}::date) remaining,state->>'status' status,state->>'version' version FROM holders WHERE (state->>'endsAt')::timestamp::date BETWEEN ${from}::date AND ${until}::date ${input.kind === "FIM_COMISSAO" ? sql`AND nature='COMISSIONADO'` : sql``} ORDER BY (state->>'endsAt')::timestamp,name,id`);
   if (input.kind === "ANIVERSARIANTES_RH") return query("Aniversariantes — consulta interna de RH", [...identity, ["birthday", "Dia/mês"]], sql`SELECT e.name,e.registration,d.name department,to_char(p."birthDate",'DD/MM') birthday FROM "Employee" e JOIN "Person" p ON p.id=e."personId" LEFT JOIN "Department" d ON d.id=e."departmentId" WHERE ${currentFilter} AND e."isActive" AND extract(month FROM p."birthDate")=${input.month ?? Number(reference.slice(5, 7))} ORDER BY extract(day FROM p."birthDate"),e.name,e.id`);
-  if (input.kind === "DIAS_AFASTADOS") return query("Dias de afastamento no período — união de datas por causa, sem duplicação", [...identity, ["cause", "Causa"], ["days", "Dias civis afastados"]], sql`SELECT e.name,e.registration,d.name department,l.type cause,count(DISTINCT day::date)::int days FROM "Leave" l JOIN "Employee" e ON e.id=l."employeeId" LEFT JOIN "Department" d ON d.id=e."departmentId" CROSS JOIN LATERAL generate_series(greatest(l."startDate"::date,${from}::date),least(l."endDate"::date,${until}::date),interval '1 day') day WHERE ${currentFilter} AND l.status NOT IN ('Cancelada','Cancelado','Indeferida') GROUP BY e.id,e.name,e.registration,d.name,l.type ORDER BY e.name,l.type`);
-  if (input.kind === "CAUSAS_AFASTAMENTO") return query("Causas de afastamento — catálogo utilizado", [["cause", "Causa"], ["records", "Registros"], ["employees", "Servidores distintos"]], sql`SELECT l.type cause,count(*)::int records,count(DISTINCT e.id)::int employees FROM "Leave" l JOIN "Employee" e ON e.id=l."employeeId" WHERE ${currentFilter} AND l."startDate"::date<=${until}::date AND l."endDate"::date>=${from}::date AND l.status NOT IN ('Cancelada','Cancelado','Indeferida') GROUP BY l.type ORDER BY l.type`);
   if (input.kind === "CLASSIFICACOES_FUNCIONAIS" || input.kind === "CARGOS_SALARIOS" || input.kind === "ASSINATURA_ATIVOS") {
     const columns = [...identity, ["role", "Cargo"], ["regime", "Regime"], ["nature", "Natureza"], ["salary", "Salário-base BRL"], ["weekly", "Jornada semanal estimada"], ["monthly", "Divisor mensal"], ["estimate", "Origem da remuneração"], ...(input.kind === "ASSINATURA_ATIVOS" ? [["signature", "Assinatura"]] : [])] as Array<[string, string]>;
     return query(input.kind === "ASSINATURA_ATIVOS" ? "Folha de assinatura do pessoal ativo" : input.kind === "CARGOS_SALARIOS" ? "Cargos e salários na referência" : "Classificações funcionais na referência", columns, sql`${historical} SELECT name,state->>'registration' registration,department,role,regime,nature,state->>'salary' salary,state->'details'->>'weeklyHours' weekly,state->>'monthlyHours' monthly,CASE WHEN state->'details'->>'salaryEstimated'='true' THEN 'DEMONSTRAÇÃO — estimado' ELSE coalesce(state->'details'->>'salarySource','Cadastro contratual') END estimate,'________________________________' signature FROM holders WHERE ${active} ORDER BY department,role,name,id`);
@@ -81,7 +117,7 @@ export async function buildOperationalHrReport(db: DatabaseExecutor, input: Oper
   if (input.kind === "AGENCIAS_RH") return query("Agências bancárias — cadastro compartilhado", [["bank", "Banco"], ["code", "Agência"], ["name", "Nome"], ["cnpj", "CNPJ"], ["status", "Situação"]], sql`SELECT b.name bank,a.code,a.name,a.cnpj,a.status FROM "BankBranch" a JOIN "Bank" b ON b.id=a."bankId" WHERE ${input.q}='' OR strpos(lower(a.name||' '||b.name||' '||a.code),lower(${input.q}))>0 ORDER BY b.compe,a.code,a.id`);
   if (input.kind === "CBO_RH") return query("Cargos e CBO — quadro vigente e catálogo compartilhado", [["role", "Cargo"], ["package", "Pacote"], ["scope", "Escopo"], ["code", "CBO"], ["description", "Descrição central"], ["classification", "Classificação"], ["from", "Início da vigência"], ["until", "Fim da vigência"], ["status", "Situação do mapeamento"]], sql`
     WITH mappings AS (SELECT p.code package,p.scope,period->>'startsAt' "from",period->>'endsAt' until,item
-      FROM "HrPayrollRule" r JOIN "HrPayrollRuleSet" p ON p.id=r."ruleSetId"
+      FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RULE", sql`${reference}`)} r JOIN ${payrollConfigurationObservedAt("HR_PAYROLL_RULE_SET", sql`${reference}`)} p ON p.id=r."ruleSetId"
       CROSS JOIN LATERAL jsonb_array_elements(r.value->'periods') period CROSS JOIN LATERAL jsonb_array_elements(period->'roles') item
       WHERE r."isActive" AND p.status='ATIVA' AND r.value->>'origin'='QUADRO_CARGOS' AND period->>'startsAt'<=${reference} AND (period->>'endsAt' IS NULL OR period->>'endsAt'>=${reference}))
     SELECT r.name role,m.package,m.scope,m.item->>'cbo' code,c.description,m.item->>'classification' classification,m."from",m.until,
@@ -90,25 +126,26 @@ export async function buildOperationalHrReport(db: DatabaseExecutor, input: Oper
     WHERE ${input.q}='' OR strpos(lower(r.name||' '||coalesce(c.description,'')||' '||coalesce(m.item->>'cbo','')),lower(${input.q}))>0 ORDER BY r.name,m.package,r.id`);
   if (input.kind === "VERBAS_INCIDENCIAS") return query("Verbas e incidências por pacote e vigência", [["package", "Pacote"], ["scope", "Escopo"], ["code", "Verba"], ["name", "Descrição"], ["type", "Tipo"], ["method", "Método"], ["formula", "Fórmula"], ["incidences", "Incidências"], ["from", "Vigência inicial"], ["until", "Vigência final"], ["legal", "Fundamento"]], sql`
     SELECT p.code package,p.scope,r.code,r.name,r.type,r."calculationMethod" method,r."formulaExpression" formula,
-      string_agg(CASE WHEN i."isIncluded" THEN i."incidenceType" ELSE 'EXCLUÍDA: '||i."incidenceType" END,', ' ORDER BY i."incidenceType") incidences,
+      string_agg(CASE WHEN (i->>'isIncluded')::boolean THEN i->>'incidenceType' ELSE 'EXCLUÍDA: '||(i->>'incidenceType') END,', ' ORDER BY i->>'incidenceType') incidences,
       to_char(p."effectiveFrom",'YYYY-MM-DD') "from",to_char(p."effectiveUntil",'YYYY-MM-DD') until,r."legalReference" legal
-    FROM "HrPayrollRubric" r JOIN "HrPayrollRuleSet" p ON p.id=r."ruleSetId" LEFT JOIN "HrPayrollRubricIncidence" i ON i."rubricId"=r.id
+    FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RUBRIC", sql`${reference}`)} r JOIN ${payrollConfigurationObservedAt("HR_PAYROLL_RULE_SET", sql`${reference}`)} p ON p.id=r."ruleSetId" LEFT JOIN LATERAL jsonb_array_elements(r.state->'incidences') i ON true
     WHERE (${input.q}='' OR strpos(lower(r.code||' '||r.name),lower(${input.q}))>0)
+      AND ${reportRubricPredicate(input, sql`r.code`)} AND p."effectiveFrom"::date<=${reference}::date AND (p."effectiveUntil" IS NULL OR p."effectiveUntil"::date>=${reference}::date)
     GROUP BY p.id,p.code,p.scope,p."effectiveFrom",p."effectiveUntil",r.id,r.code,r.name,r.type,r."calculationMethod",r."formulaExpression",r."legalReference" ORDER BY p.code,r.code`);
-  if (input.kind === "MENSAGENS_FOLHA") return query("Mensagens dos recibos — vigência e destinatários configurados", [["package", "Pacote"], ["scope", "Escopo"], ["id", "Código"], ["text", "Mensagem"], ["start", "Início"], ["end", "Fim"], ["contracts", "Contratos"], ["regimes", "Regimes"], ["types", "Tipos de folha"]], sql`SELECT p.code package,p.scope,m->>'id' id,m->>'text' text,m->>'startsAt' start,m->>'endsAt' "end",m->>'contractIds' contracts,m->>'regimeIds' regimes,m->>'payrollTypes' types FROM "HrPayrollRule" r JOIN "HrPayrollRuleSet" p ON p.id=r."ruleSetId" CROSS JOIN LATERAL jsonb_array_elements(r.value->'messages') m WHERE r.code='MENSAGENS_RECIBO' AND (${input.q}='' OR strpos(lower(m->>'text'),lower(${input.q}))>0) ORDER BY p.code,m->>'startsAt',m->>'id'`);
+  if (input.kind === "MENSAGENS_FOLHA") return query("Mensagens dos recibos — configuração observada na referência", [["package", "Pacote"], ["scope", "Escopo"], ["id", "Código"], ["text", "Mensagem"], ["start", "Início"], ["end", "Fim"], ["contracts", "Contratos"], ["regimes", "Regimes"], ["types", "Tipos de folha"]], sql`SELECT p.code package,p.scope,m->>'id' id,m->>'text' text,m->>'startsAt' start,m->>'endsAt' "end",m->>'contractIds' contracts,m->>'regimeIds' regimes,m->>'payrollTypes' types FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RULE", sql`${reference}`)} r JOIN ${payrollConfigurationObservedAt("HR_PAYROLL_RULE_SET", sql`${reference}`)} p ON p.id=r."ruleSetId" CROSS JOIN LATERAL jsonb_array_elements(r.value->'messages') m WHERE r."isActive" AND r.code='MENSAGENS_RECIBO' AND p."effectiveFrom"::date<=${reference}::date AND (p."effectiveUntil" IS NULL OR p."effectiveUntil"::date>=${reference}::date) AND (${input.q}='' OR strpos(lower(m->>'text'),lower(${input.q}))>0) ORDER BY p.code,m->>'startsAt',m->>'id'`);
   if (input.kind === "PARAMETROS_PREVIDENCIA") return query("Parâmetros previdenciários — configuração, não recolhimento", [["package", "Pacote"], ["scope", "Escopo"], ["name", "Regime"], ["method", "Método"], ["ceiling", "Teto BRL"], ["employer", "Patronal %"], ["sequence", "Faixa"], ["lower", "De BRL"], ["upper", "Até BRL"], ["rate", "Segurado %"], ["from", "Vigência"], ["legal", "Fundamento"]], sql`
-    SELECT p.code package,p.scope,s.name,s."employeeCalculationMethod" method,s."ceilingValue" ceiling,s."employerContributionRate" employer,
-      b.sequence,b."lowerLimit" lower,b."upperLimit" upper,b."employeeRate" rate,to_char(p."effectiveFrom",'YYYY-MM-DD') "from",s."legalReference" legal
-    FROM "HrSocialSecurityScheme" s JOIN "HrPayrollRuleSet" p ON p.id=s."ruleSetId" LEFT JOIN "HrSocialSecurityBand" b ON b."socialSecuritySchemeId"=s.id
-    WHERE ${input.q}='' OR strpos(lower(s.name||' '||p.code),lower(${input.q}))>0 ORDER BY p.code,s.code,b.sequence`);
+    SELECT p.code package,p.scope,s.name,s.state->>'employeeCalculationMethod' method,s.state->>'ceilingValue' ceiling,s.state->>'employerContributionRate' employer,
+      b.state->>'sequence' sequence,b.state->>'lowerLimit' lower,b.state->>'upperLimit' upper,b.state->>'employeeRate' rate,to_char(p."effectiveFrom",'YYYY-MM-DD') "from",s."legalReference" legal
+    FROM ${payrollConfigurationObservedAt("HR_SOCIAL_SECURITY_SCHEME", sql`${reference}`)} s JOIN ${payrollConfigurationObservedAt("HR_PAYROLL_RULE_SET", sql`${reference}`)} p ON p.id=s."ruleSetId" LEFT JOIN ${payrollConfigurationObservedAt("HR_SOCIAL_SECURITY_BAND", sql`${reference}`)} b ON b.state->>'socialSecuritySchemeId'=s.id
+    WHERE p."effectiveFrom"::date<=${reference}::date AND (p."effectiveUntil" IS NULL OR p."effectiveUntil"::date>=${reference}::date) AND (${input.q}='' OR strpos(lower(s.name||' '||p.code),lower(${input.q}))>0) ORDER BY p.code,s.code,(b.state->>'sequence')::integer`);
   if (input.kind === "HORARIOS_TRABALHO") return query("Horários e jornadas contratuais — escalas explicitamente configuradas", [...identity, ["weekly", "Jornada semanal estimada"], ["monthly", "Divisor mensal"], ["scale", "Escala"], ["weekdays", "Dias da semana"], ["entry", "Entrada"], ["exit", "Saída"], ["break", "Intervalo não remunerado (min)"], ["daily", "Horas líquidas da faixa"], ["from", "Início escala"], ["until", "Fim escala"]], sql`${historical}
     SELECT h.name,h.state->>'registration' registration,h.department,h.state->'details'->>'weeklyHours' weekly,h.state->>'monthlyHours' monthly,s.name scale,s.details->>'weekdays' weekdays,
       f.details->>'start' entry,f.details->>'end' exit,f.details->>'breakMinutes' break,
       CASE WHEN f.details->>'breakMinutes' IS NOT NULL THEN round((extract(epoch FROM ((f.details->>'end')::time-(f.details->>'start')::time
         +CASE WHEN f.details->>'end'<f.details->>'start' THEN interval '1 day' ELSE interval '0 day' END))/3600-(f.details->>'breakMinutes')::numeric/60)::numeric,4) END daily,
       s.details->>'from' "from",s.details->>'until' until
-    FROM holders h LEFT JOIN "HrReferenceRecord" s ON s.kind='ESCALA' AND s.details->>'employeeId'=h."employeeId" AND s.details->>'from'<=${reference} AND s.details->>'until'>=${reference}
-    LEFT JOIN "HrReferenceRecord" f ON f.id=s.details->>'rangeId' AND f.kind='FAIXA' WHERE ${active} ORDER BY h.name,h.id,s.id`);
+    FROM holders h LEFT JOIN ${referenceRecordsObservedAt(sql`${reference}`)} s ON s.kind='ESCALA' AND s.details->>'employeeId'=h."employeeId" AND s.details->>'from'<=${reference} AND s.details->>'until'>=${reference}
+    LEFT JOIN ${referenceRecordsObservedAt(sql`${reference}`)} f ON f.id=s.details->>'rangeId' AND f.kind='FAIXA' WHERE ${active} ORDER BY h.name,h.id,s.id`);
   if (input.kind === "DEPENDENTES_RH") return query("Dependentes — relação interna com elegibilidade cadastral", [...identity, ["dependent", "Dependente"], ["relationship", "Parentesco"], ["birth", "Nascimento"], ["irrf", "IRRF cadastral"], ["family", "Salário-família cadastral"]], sql`SELECT e.name,e.registration,d.name department,p.name dependent,p.relationship,to_char(p."birthDate",'YYYY-MM-DD') birth,p."irrfDependent" irrf,p."familyWage" family FROM "Dependent" p JOIN "Employee" e ON e.id=p."employeeId" LEFT JOIN "Department" d ON d.id=e."departmentId" WHERE ${currentFilter} ORDER BY e.name,p.name,p.id`);
   if (input.kind === "PONTO_COLETIVO" || input.kind === "FREQUENCIA_COLETIVA") {
     const detailed = input.kind === "PONTO_COLETIVO";
@@ -124,10 +161,11 @@ export async function buildOperationalHrReport(db: DatabaseExecutor, input: Oper
     JOIN "Employee" e ON e.id=c."employeeId" LEFT JOIN "Department" d ON d.id=c."departmentId"
     JOIN "Payroll" ON "Payroll".id=a.payload->'input'->>'payrollId'
     WHERE a."eventType"='ATS_APURADO' AND ${currentFilter} AND ${payrollScope ?? sql`true`}
+      AND ${reportPayrollPredicate(input, sql`"Payroll".competence`, sql`"Payroll".type`)}
       AND to_date("Payroll".competence,'MM/YYYY') BETWEEN date_trunc('month',${from}::date) AND ${until}::date
       ${input.payrollId ? sql`AND "Payroll".id=${input.payrollId}` : sql``} ORDER BY to_date("Payroll".competence,'MM/YYYY'),e.name,a.id`);
   if (["EVOLUCAO_GLOBAL", "EVOLUCAO_SERVIDOR", "EVOLUCAO_UNIDADE", "FICHA_RESUMIDA_VERBA"].includes(input.kind)) {
-    const selected = await db.select({ id: sql<string>`s.id`, snapshot: sql<unknown>`s.snapshot`, competence: payrolls.competence, type: payrolls.type, scope: sql<string>`r.scope`, gross: sql<string>`s.gross::text`, deductions: sql<string>`s.deductions::text`, net: sql<string>`s.net::text`, employer: sql<string>`s.employer::text` }).from(payrolls).innerJoin(sql`"HrPayrollRun" r`, sql`r."payrollId"=${payrolls.id}`).innerJoin(sql`"HrPayrollStatement" s`, sql`s."runId"=r.id`).innerJoin(sql`"HrEmploymentContract" c`, sql`c.id=s."contractId"`).innerJoin(sql`"Employee" e`, sql`e.id=c."employeeId"`).where(sql`r.status='FECHADA' AND r.mode='OFICIAL' AND ${payrollScope ?? sql`true`} AND ${personFilter} AND to_date(${payrolls.competence},'MM/YYYY') BETWEEN date_trunc('month',${from}::date) AND ${until}::date ${input.payrollId ? sql`AND ${payrolls.id}=${input.payrollId}` : sql``}`).orderBy(sql`to_date(${payrolls.competence},'MM/YYYY')`, payrolls.type, sql`s.id`);
+    const selected = await db.select({ id: sql<string>`s.id`, snapshot: sql<unknown>`s.snapshot`, competence: payrolls.competence, type: payrolls.type, scope: sql<string>`r.scope`, gross: sql<string>`s.gross::text`, deductions: sql<string>`s.deductions::text`, net: sql<string>`s.net::text`, employer: sql<string>`s.employer::text` }).from(payrolls).innerJoin(sql`"HrPayrollRun" r`, sql`r."payrollId"=${payrolls.id}`).innerJoin(sql`"HrPayrollStatement" s`, sql`s."runId"=r.id`).innerJoin(sql`"HrEmploymentContract" c`, sql`c.id=s."contractId"`).innerJoin(sql`"Employee" e`, sql`e.id=c."employeeId"`).where(sql`r.status='FECHADA' AND r.mode='OFICIAL' AND ${payrollScope ?? sql`true`} AND ${personFilter} AND ${reportContractPredicate(input, sql`s.snapshot->'contract'`, sql`to_date(${payrolls.competence},'MM/YYYY')`, reportPayrollAllocationSource(sql`r.id`, sql`r.snapshot`))} AND ${reportPayrollPredicate(input, payrolls.competence, payrolls.type)} AND to_date(${payrolls.competence},'MM/YYYY') BETWEEN date_trunc('month',${from}::date) AND ${until}::date ${input.payrollId ? sql`AND ${payrolls.id}=${input.payrollId}` : sql``}`).orderBy(sql`to_date(${payrolls.competence},'MM/YYYY')`, payrolls.type, sql`s.id`);
     const grouped = new Map<string, { labels: string[]; totals: Decimal[]; series: string; date: string }>();
     for (const row of selected) {
       const snapshot = snapshotSchema.parse(row.snapshot), c = snapshot.contract;

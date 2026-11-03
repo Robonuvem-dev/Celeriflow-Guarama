@@ -16,7 +16,7 @@ const columns = [rhColumn("date", "Data", 115, 100), rhColumn("employee", "Servi
 export default async function PontoPage({ searchParams }: { searchParams: Promise<{ q?: string; month?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { q, month, page } = await searchParams;
-  const { total, pagination, records } = await readAttendancePage(context.database ?? db, { q, month, page });
+  const { total, pagination, records } = await readAttendancePage(context.database ?? db, { q, month, page, user: context.user });
   return <OperationalListFrame label="Registro de ponto" actions={<><UploadCSVButton /><RhNewLink href="/rh/ponto/novo">Apontamento manual</RhNewLink></>}
     toolbar={<><form action="/rh/ponto" method="GET" className={styles.searchForm}><input type="hidden" name="month" value={month || ""} /><input name="q" aria-label="Buscar servidor" defaultValue={q} placeholder="Servidor" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form><OperationalFilters activeCount={Number(!!month)}><form action="/rh/ponto" method="GET" className={styles.filterFields}><input type="hidden" name="q" value={q || ""} /><label>Mês<input type="month" name="month" defaultValue={month} /></label><button className={styles.primaryButton}>Aplicar</button><Link href="/rh/ponto">Limpar</Link></form></OperationalFilters></>}
     pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/ponto" values={{ q, month }} />}>

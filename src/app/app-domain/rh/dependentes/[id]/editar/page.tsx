@@ -7,13 +7,13 @@ import { readDependent, readEmployeeOptions } from "@/db/repositories/personnel-
 export default async function EditarDependentePage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  const dependent = await readDependent(database, id);
+  const dependent = await readDependent(database, id, context.user);
 
   if (!dependent) {
     notFound();
   }
 
-  const employees = await readEmployeeOptions(database);
+  const employees = await readEmployeeOptions(database, context.user);
 
   return (
     <DependenteForm data={dependent} employees={employees} />

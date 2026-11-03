@@ -8,6 +8,7 @@ export const consignmentPolicySchema = z.object({
   compulsoryDeductionRubricCodes: z.array(z.string().min(1)),
   consignmentRubricCodes: z.array(z.string().min(1)).min(1),
   legalReference: z.string().trim().min(3),
+  taxRefundTreatment: z.enum(["EXCLUIR", "DEDUZIR_DA_RETENCAO"]).optional(),
 }).strict().superRefine((value, context) => {
   const codes = [...value.remunerationRubricCodes, ...value.compulsoryDeductionRubricCodes, ...value.consignmentRubricCodes];
   if (new Set(codes).size !== codes.length) context.addIssue({ code: "custom", message: "Rubricas de margem devem ser únicas e ter uma única finalidade." });
@@ -17,7 +18,7 @@ export const consignmentMarginSchema = z.object({
   policy: consignmentPolicySchema, rate: z.string(), remuneration: z.string(), compulsoryDeductions: z.string(),
   base: z.string(), limit: z.string(), used: z.string(), available: z.string(), excess: z.string(),
   contractIds: z.array(z.string()),
-  memory: z.array(z.object({ contractId: z.string(), rubricCode: z.string(), purpose: z.enum(["REMUNERACAO", "OBRIGATORIO", "CONSIGNACAO"]), value: z.string() })),
+  memory: z.array(z.object({ contractId: z.string(), rubricCode: z.string(), purpose: z.enum(["REMUNERACAO", "OBRIGATORIO", "CONSIGNACAO"]), value: z.string(), originValue: z.string().optional(), refundTreatment: z.string().optional() })),
 });
 
 type MarginRow = { contractId: string; items: { code: string; type: string; value: string }[] };
@@ -40,9 +41,11 @@ export function calculateConsignmentMargin(rows: MarginRow[], rawPolicy: unknown
       for (const code of codes) {
         const item = row.items.find(item => item.code === code);
         if (!item) throw new Error(`Rubrica ${code} não encontrada na memória para margem consignável.`);
-        const value = new Decimal(item.value);
-        if (item.type !== type || !value.isFinite() || value.lt(0)) throw new Error(`Rubrica ${code} incompatível com sua finalidade na margem consignável.`);
-        memory.push({ contractId: row.contractId, rubricCode: code, purpose, value: value.toFixed(2) });
+        const origin = new Decimal(item.value);
+        const taxRefund = origin.isNegative() && purpose === "OBRIGATORIO" && (code === "IRRF" || code.startsWith("PREVIDENCIA_"));
+        if (item.type !== type || !origin.isFinite() || origin.lt(0) && !taxRefund) throw new Error(`Rubrica ${code} incompatível com sua finalidade na margem consignável.`);
+        const value = taxRefund && policy.taxRefundTreatment !== "DEDUZIR_DA_RETENCAO" ? new Decimal(0) : origin;
+        memory.push({ contractId: row.contractId, rubricCode: code, purpose, value: value.toFixed(2), ...(taxRefund ? { originValue: origin.toFixed(2), refundTreatment: policy.taxRefundTreatment ?? "EXCLUIR" } : {}) });
         if (purpose === "REMUNERACAO") remuneration = remuneration.add(value);
         else if (purpose === "OBRIGATORIO") compulsory = compulsory.add(value);
         else used = used.add(value);

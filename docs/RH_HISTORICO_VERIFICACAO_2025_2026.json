@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-02T16:30:39.641Z",
+  "checkedAt": "2026-11-03T12:18:43.271Z",
   "result": "PASS",
   "validationLayer": "READ_ONLY_DATABASE_AND_SERVICES_PDF_TEXT_NOT_AUTHENTICATED_BROWSER",
   "packageId": "RH_HISTORICO_2025_2026_V1",
@@ -257,9 +257,9 @@
     "fingerprint": "3d7da83e347a9af7801089cfb17fc48a"
   },
   "storage": {
-    "databaseBytes": "210788352",
-    "personnelBytes": "56705024",
-    "size": "201 MB"
+    "databaseBytes": "213327872",
+    "personnelBytes": "58908672",
+    "size": "203 MB"
   },
   "realPayments": false,
   "uploads": 0

@@ -24,13 +24,17 @@ test("agrupamento transfere todos os consumidores físicos e preserva origem aud
     await assert.rejects(mergeTaxRegistries(fixture.connection, { ...user, profileCode: "USER" }, { ...base, kind: "cidade", source: "city-source", target: "city-target" }), /administrador/);
     await assert.rejects(mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cidade", source: "city-source", target: "city-other" }), /diferentes/);
     const city = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cidade", source: "city-source", target: "city-target" });
+    assert.ok("ScalarLocation" in city.moved && "Neighborhood" in city.moved);
     assert.equal(city.moved.ScalarLocation, 1); assert.equal(city.moved.Neighborhood, 1);
     const neighborhood = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "bairro", source: "hood-source", target: "hood-target" });
+    assert.ok("Address" in neighborhood.moved);
     assert.equal(neighborhood.moved.Address, 1);
     const accountant = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "contador", source: "accountant-source", target: "accountant-target" });
+    assert.ok("VafCompany" in accountant.moved);
     assert.equal(accountant.moved.VafCompany, 1);
     await assert.rejects(mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cep", source: "12345-678", target: "87654321" }), /mesmo CEP/);
     const cep = await mergeTaxRegistries(fixture.connection, user, { ...base, kind: "cep", source: "12345-678", target: "12345678" });
+    assert.ok("Address" in cep.moved);
     assert.equal(cep.moved.Address, 1);
     const state = await fixture.database.query<{ status: string }>('SELECT status FROM "City" WHERE id=\'city-source\''); assert.equal(state.rows[0].status, "Agrupado");
     const archived = await fixture.database.query<{ active: boolean }>('SELECT active FROM "VafAccountant" WHERE id=\'accountant-source\''); assert.equal(archived.rows[0].active, false);

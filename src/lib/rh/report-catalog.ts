@@ -1,4 +1,6 @@
 // The original POC identifiers remain stable, including the separate ATS items 6/50.
+import { extendedReportCatalog } from "./extended-reports";
+import { managementReportCatalog } from "./management-reports";
 export type HrReportCatalogItem = { id: number; name: string; phase: number; kind?: string; limitation?: string };
 export const hrReportCatalog: HrReportCatalogItem[] = [
   { id: 1, name: "Previsão de retorno de férias", phase: 3, kind: "RETORNO_FERIAS", limitation: "Retorno civil; ajuste à escala/feriado ainda pendente." },
@@ -75,4 +77,29 @@ export const hrReportCatalog: HrReportCatalogItem[] = [
   { id: 72, name: "Contábil por lotação / dotação", phase: 5, kind: "CONTABIL_LOTACAO_DOTACAO", limitation: "Apropriação demonstrativa, sem lançamento contábil." },
   { id: 73, name: "Contagem de tempo", phase: 4, kind: "CONTAGEM_TEMPO_RH", limitation: "União de vínculos e certidões reconhecidas; apuração oficial e efeitos de afastamentos ainda pendentes." },
   { id: 74, name: "Dimensionamento de pessoal", phase: 3, kind: "DIMENSIONAMENTO", limitation: "Compara ocupação e demanda cadastrada; os cenários de demanda são fictícios e têm premissa explícita." },
+  ...extendedReportCatalog.map(([id, name, kind]) => ({ id, name, kind, phase: 4 })),
+  { id: 97, name: "Contábil sintético por dotação", kind: "CONTABIL_DOTACAO_SINTETICO", phase: 5 },
+  { id: 98, name: "Contábil por lotação e fonte", kind: "CONTABIL_LOTACAO_FONTE", phase: 5 },
+  { id: 99, name: "FGTS por dotação", kind: "FGTS_DOTACAO", phase: 5 },
+  { id: 100, name: "FGTS por lotação", kind: "FGTS_LOTACAO", phase: 5 },
+  { id: 101, name: "Ficha cadastral completa", kind: "FICHA_CADASTRAL_COMPLETA", phase: 4 },
+  { id: 102, name: "Ficha cadastral para conferência", kind: "FICHA_CADASTRAL_VALIDACAO", phase: 4 },
+  { id: 103, name: "Alterações cadastrais por campo", kind: "ALTERACOES_CADASTRAIS", phase: 4 },
+  { id: 104, name: "Comparação cadastral entre referências", kind: "COMPARACAO_CADASTRAL", phase: 4 },
+  { id: 105, name: "Histórico salarial", kind: "HISTORICO_SALARIAL_COMPLETO", phase: 4 },
+  { id: 106, name: "Histórico de cargos e funções", kind: "HISTORICO_CARGOS_COMPLETO", phase: 4 },
+  { id: 107, name: "Histórico dos locais de trabalho", kind: "HISTORICO_LOCAIS_COMPLETO", phase: 4 },
+  { id: 108, name: "Histórico dos rateios por vigência", kind: "HISTORICO_RATEIOS_COMPLETO", phase: 4 },
+  { id: 109, name: "Histórico das avaliações funcionais", kind: "HISTORICO_AVALIACOES_FUNCIONAIS", phase: 4 },
+  { id: 110, name: "Memória de tempo previdenciário", kind: "MEMORIA_TEMPO_PREVIDENCIARIO", phase: 4 },
+  { id: 111, name: "Apuração de aposentadoria", kind: "APURACAO_APOSENTADORIA", phase: 4 },
+  { id: 112, name: "Cartão de ponto com calendário personalizado", kind: "CALENDARIO_PONTO_PERSONALIZADO", phase: 4 },
+  ...managementReportCatalog.map(([id, name, kind]) => ({ id, name, kind, phase: 4 })),
+  { id: 124, name: "Certidões de tempo emitidas", kind: "CERTIDOES_TEMPO_EMITIDAS", phase: 4 },
+  { id: 125, name: "Base atuarial colunar", kind: "BASE_ATUARIAL_COLUNAR", phase: 4 },
+  { id: 126, name: "Etiqueta contratual para CTPS", kind: "ETIQUETA_CONTRATUAL_CTPS", phase: 4 },
+  { id: 127, name: "Comparação cadastral e financeira mensal", kind: "COMPARACAO_CADASTRAL_FINANCEIRA", phase: 4 },
+  { id: 128, name: "Resumo por classificação funcional orçamentária", kind: "CONTABIL_CLASSIFICACAO_FUNCIONAL", phase: 5 },
+  { id: 129, name: "Planejamento de férias e licença-prêmio", kind: "PLANEJAMENTO_FERIAS_LICENCAS", phase: 4 },
+  { id: 130, name: "Memórias de concessão de aposentadoria emitidas", kind: "MEMORIAS_CONCESSAO_EMITIDAS", phase: 4 },
 ];

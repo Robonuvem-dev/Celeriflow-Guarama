@@ -12,6 +12,7 @@ import { OperationalFilters, OperationalLinkPagination, OperationalListFrame } f
 import styles from "@/components/app-ui/operational/operational.module.css";
 import { rhColumn } from "../_components/operational-columns";
 import { ReferenceLookup } from "../operacoes/ReferenceLookup";
+import { canAccessPersonnelClinicalData } from "@/lib/rh/clinical-access";
 
 export const dynamic = "force-dynamic";
 type Params = Record<string, string | undefined>;
@@ -31,7 +32,7 @@ export default async function PersonnelReportsPage({ searchParams }: { searchPar
     const parsed = hrReportInputSchema.safeParse({ ...Object.fromEntries(Object.entries(values).filter(([, entry]) => entry)), kind: params.kind, format: "PDF" });
     if (!parsed.success) error = "Confira a modalidade e os filtros informados.";
     else {
-      try { report = personnelReportPresentation(await buildHrReport(context.database ?? db, parsed.data, accessiblePayrollWhere(context.user), isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds)); }
+      try { report = personnelReportPresentation(await buildHrReport(context.database ?? db, parsed.data, accessiblePayrollWhere(context.user), isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds, { clinicalRead: canAccessPersonnelClinicalData(context.user), user: context.user })); }
       catch (cause) { error = cause instanceof Error ? cause.message : "Não foi possível preparar o relatório."; }
     }
   }
@@ -51,10 +52,10 @@ export default async function PersonnelReportsPage({ searchParams }: { searchPar
     actions: item.kind ? <Link href={`/rh/relatorios?report=${item.id}`}>Consultar</Link> : <span>Pendente</span>,
   }));
   return <OperationalListFrame label={report?.title ?? "Relatórios de RH"}
-    actions={<><Link href="/rh/relatorios">Catálogo dos 74 itens</Link>{report && ["PDF", "XLSX", "CSV", ...(report.print?.kind === "matrix132" ? ["TXT"] : [])].map(format => <a key={format} href={`/api/rh/relatorios?${new URLSearchParams({ ...values, format })}`}>{format} integral</a>)}</>}
+    actions={<><Link href="/rh/relatorios">Catálogo de {hrReportCatalog.length} relatórios</Link>{report && ["PDF", "XLSX", "CSV", "TXT"].map(format => <a key={format} href={`/api/rh/relatorios?${new URLSearchParams({ ...values, format })}`}>{format} integral</a>)}</>}
     toolbar={<>
       <form className={styles.searchForm} action="/rh/relatorios">
-        <select name="report" aria-label="Modalidade de relatório" defaultValue={params.report ?? ""} className={styles.searchInput}><option value="">Catálogo dos 74 itens</option>{hrReportCatalog.filter(item => item.kind).map(item => <option key={item.id} value={item.id}>{item.id}. {item.name}</option>)}</select>
+        <select name="report" aria-label="Modalidade de relatório" defaultValue={params.report ?? ""} className={styles.searchInput}><option value="">Catálogo de relatórios</option>{hrReportCatalog.filter(item => item.kind).map(item => <option key={item.id} value={item.id}>{item.id}. {item.name}</option>)}</select>
         <button className={styles.filterButton}>Abrir</button>
       </form>
       {params.kind !== "INFORME_ANUAL_POC" && <form className={styles.searchForm} action="/rh/relatorios">
@@ -65,8 +66,26 @@ export default async function PersonnelReportsPage({ searchParams }: { searchPar
         {params.report ? <input type="hidden" name="report" value={params.report} /> : <input type="hidden" name="kind" value={params.kind} />}<input type="hidden" name="q" value={params.q ?? ""} />
         {extended ? <><label>De <input type="date" name="from" defaultValue={params.from} /></label><label>Até <input type="date" name="until" defaultValue={params.until} /></label><label>Referência cadastral <input type="date" name="referenceDate" defaultValue={params.referenceDate} /></label><label>Mês de aniversário <input type="number" min="1" max="12" name="month" defaultValue={params.month} /></label></> : params.kind === "INFORME_ANUAL_POC" ? <label>Ano de pagamento <input name="year" type="number" min="1900" max="2200" defaultValue={params.year ?? "2026"} /></label> : params.kind.startsWith("CADASTRO_") ? <label>Referência cadastral <input type="date" name="referenceDate" defaultValue={params.referenceDate} /></label> : params.kind !== "CONTRATOS" ? <label>Competência <input name="competence" placeholder="MM/AAAA" defaultValue={params.competence} /></label> : <p>Esta modalidade utiliza a última revisão contratual cadastrada.</p>}
         {extended && <><label>Competência (opcional) <input name="competence" placeholder="MM/AAAA" defaultValue={params.competence} /></label><label>Totalizadores contábeis <input name="totalizers" placeholder="BRUTO,DESCONTOS,LIQUIDO,ENCARGOS" defaultValue={params.totalizers} /></label></>}
-        {params.kind === "INFORME_ANUAL_POC" && <label>Servidor (opcional)<ReferenceLookup kind="employee" name="employeeId" initialValue={params.employeeId} /></label>}
-        {Object.entries(values).filter(([key]) => ["employeeId", "departmentId", "payrollId", "labelColumns", "labelHeight", "labelMargin", "labelFields"].includes(key) && !(params.kind === "INFORME_ANUAL_POC" && key === "employeeId")).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
+        {["COMPARACAO_CADASTRAL", "COMPARACAO_CADASTRAL_FINANCEIRA", "EVOLUCAO_REFERENCIAS"].includes(params.kind) && <label>Segunda referência<input type="date" name="compareDate" defaultValue={params.compareDate} required /></label>}
+        {params.kind === "AUDITORIA_RH" && <>{[["auditActor", "Usuário (nome ou identificação)"], ["auditAction", "Ação"], ["auditEntity", "Entidade"], ["auditTarget", "Objeto"]].map(([name, label]) => <label key={name}>{label}<input name={name} defaultValue={params[name]} /></label>)}</>}
+        <label>Servidor (opcional)<ReferenceLookup kind="employee" name="employeeId" initialValue={params.employeeId} /></label>
+        {params.kind !== "INFORME_ANUAL_POC" && <><label>Lotação (opcional)<ReferenceLookup kind="department" name="departmentId" initialValue={params.departmentId} /></label><label>Folha (opcional)<ReferenceLookup kind="payroll" name="payrollId" initialValue={params.payrollId} /></label></>}
+        {params.kind !== "INFORME_ANUAL_POC" && <>
+          <label>Ordenação<select name="order" defaultValue={params.order ?? ""}><option value="">Ordem da modalidade</option><option value="NOME">Alfabética por servidor</option><option value="MATRICULA">Numérica por matrícula</option></select></label>
+          <label>Matrícula inicial<input name="registrationFrom" defaultValue={params.registrationFrom} /></label><label>Matrícula final<input name="registrationUntil" defaultValue={params.registrationUntil} /></label>
+          <label>Regimes<ReferenceLookup kind="regime" name="regimeIds" multiple initialValue={params.regimeIds} /></label>
+          <label>Cargos / funções<ReferenceLookup kind="role" name="roleIds" multiple initialValue={params.roleIds} /></label>
+          <label>Lotações<ReferenceLookup kind="department" name="departmentIds" multiple initialValue={params.departmentIds} /></label>
+          <label>Local inicial<input name="locationFrom" defaultValue={params.locationFrom} /></label><label>Local final<input name="locationUntil" defaultValue={params.locationUntil} /></label>
+          <label>Dotação inicial<input name="appropriationFrom" defaultValue={params.appropriationFrom} /></label><label>Dotação final<input name="appropriationUntil" defaultValue={params.appropriationUntil} /></label>
+          <label>Classificações do plano (separadas por vírgula)<input name="classifications" defaultValue={params.classifications} /></label>
+          <label>Classificações funcionais orçamentárias (separadas por vírgula)<input name="functionalClassifications" defaultValue={params.functionalClassifications} placeholder="Função / subfunção conforme rateio" /></label>
+          <label>Rubricas / componentes (separados por vírgula)<input name="rubricCodes" defaultValue={params.rubricCodes} placeholder="VENCIMENTO,FGTS,PREVIDENCIA_PATRONAL" /></label>
+          <label>Competência inicial<input name="competenceFrom" placeholder="MM/AAAA" defaultValue={params.competenceFrom} /></label><label>Competência final<input name="competenceUntil" placeholder="MM/AAAA" defaultValue={params.competenceUntil} /></label>
+          <label>Exercício inicial<input name="yearFrom" type="number" min="1900" max="2200" defaultValue={params.yearFrom} /></label><label>Exercício final<input name="yearUntil" type="number" min="1900" max="2200" defaultValue={params.yearUntil} /></label>
+          <label>Tipos de folha (separados por vírgula)<input name="payrollTypes" defaultValue={params.payrollTypes} placeholder="Mensal,Complementar" /></label>
+        </>}
+        {Object.entries(values).filter(([key]) => ["labelColumns", "labelHeight", "labelMargin", "labelFields"].includes(key)).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
         <button className={styles.primaryButton}>Aplicar critérios</button><Link href={`/rh/relatorios?report=${params.report}`}>Limpar critérios</Link>
       </form></OperationalFilters>}
       {report?.print?.kind === "labels" && <OperationalFilters label="Modelo de etiquetas"><form action="/rh/relatorios" className={styles.filterFields}>

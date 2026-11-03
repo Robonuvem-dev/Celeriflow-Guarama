@@ -12,6 +12,9 @@ export const pocSpecialParametersSchema = z.object({
   rraAmount: money.default("18000.00"), reason: z.string().trim().min(10).max(2000),
   sourceRunId: z.string().min(1).optional(),
   vacationEntryIds: z.record(z.string(), z.array(z.string().min(1)).min(1)).optional(),
+  terminationDate: z.iso.date().optional(),
+  terminationReason: z.enum(["TERMINO_CONTRATO", "EXONERACAO", "DEMISSAO", "APOSENTADORIA", "FALECIMENTO"]).optional(),
+  averageRuleId: z.string().min(1).optional(), averageFrom: z.string().regex(/^(0[1-9]|1[0-2])\/\d{4}$/).optional(), averageUntil: z.string().regex(/^(0[1-9]|1[0-2])\/\d{4}$/).optional(),
 }).strict();
 export const pocSpecialPolicySchema = z.object({ origin: z.literal("FOLHAS_ESPECIAIS_POC"), legalReference: z.string().min(3), estimated: z.literal(true), version: z.literal(1) }).strict();
 

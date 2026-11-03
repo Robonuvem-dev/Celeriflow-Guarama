@@ -43,7 +43,7 @@ test("contracheque separa proventos/descontos e mantém memória, totais e emite
     competence: "10/2026", payrollType: "Mensal", scope: "DEMONSTRACAO", mode: "OFICIAL", createdAt: new Date("2026-10-31"), days: 30,
     gross: "5000.00", deductions: "500.00", net: "4500.00", employer: "1000.00", bases: { RGPS: "5000.00" },
     items: [{ code: "VENCIMENTO", name: "Vencimento básico", type: "PROVENTO", value: "5000.00", method: "FORMULA_CONTROLADA", formula: "SALARIO_BASE * DIAS / 30", base: null, rate: null, movement: "0" }, { code: "PREVIDENCIA", name: "Previdência", type: "DESCONTO", value: "500.00", method: "PROGRESSIVA", formula: null, base: "5000.00", rate: null, movement: "0" }],
-    consignmentMargin: null, familyWage: null, irrfDependents: null, messages: [], incomeTax: null, specialPayroll: null, proration: null, pensions: [],
+    consignmentMargin: null, familyWage: null, irrfDependents: null, messages: [], incomeTax: null, specialPayroll: null, proration: null, pensions: [], consignments: [], remunerationLimits: [], automaticServiceAllowances: [],
   });
   const text = (await readPages(bytes)).map(page => page.text).join(" ");
   for (const value of ["Proventos R$", "Descontos R$", "5000.00", "4500.00", "Memória de cálculo", "SALARIO_BASE * DIAS / 30", "Vereda das Auroras"]) assert.ok(text.includes(value), value);

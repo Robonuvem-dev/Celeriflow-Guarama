@@ -7,7 +7,7 @@ import { readPayroll } from "@/db/repositories/personnel-pages/records";
 export default async function EditarFolhaPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { id } = await params;
-  const folha = await readPayroll(context.database ?? db, id);
+  const folha = await readPayroll(context.database ?? db, id, context.user);
 
   if (!folha) {
     notFound();

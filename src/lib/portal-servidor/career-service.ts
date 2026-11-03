@@ -13,6 +13,7 @@ import { AccessError, assertBudgetUnitAccess, canPerformModuleOperation, type Ap
 import { enqueueHrIntegration } from "@/lib/rh/workforce-service";
 import { auditEventTypes } from "@/lib/platform/audit-evidence";
 import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { assertFunctionalHolderAccess } from "@/lib/rh/functional-record-service";
 
 export const coursePolicySchema = z.object({
   origin: z.literal("CAPACITACAO_FUNCIONAL"), budgetUnitId: z.string().min(1), employeeIds: z.array(z.string().min(1)),
@@ -76,6 +77,7 @@ export async function completeFunctionalCourse(context: AppContext, raw: unknown
     if (request.kind !== "CAPACITACAO_INSCRICAO") throw new Error("Inscrição incompatível.");
     const payload = z.object({ courseId: z.string(), courseName: z.string(), employeeName: z.string(), policy: coursePolicySchema }).parse(request.payload);
     assertBudgetUnitAccess(context.user, payload.policy.budgetUnitId);
+    await assertFunctionalHolderAccess(tx, context, request.employeeId);
     const sourceKey = `PORTAL:CERTIFICADO:${request.id}`;
     const previous = await portalEvent(tx, sql`"sourceKey"=${sourceKey}`);
     if (previous) {
@@ -158,6 +160,8 @@ export async function saveCareerPolicy(context: AppContext, raw: unknown, connec
   assertBudgetUnitAccess(context.user, policy.budgetUnitId);
   return withDatabaseTransaction(connection, async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`PORTAL:ATIVIDADE:${input.ruleSetId}:${input.code}`}))`);
+    if (!policy.employeeIds.length) await assertFunctionalHolderAccess(tx, context, null);
+    for (const employeeId of [...new Set(policy.employeeIds)]) await assertFunctionalHolderAccess(tx, context, employeeId);
     const ruleSet = await portalRequired<{ status: string }>(tx, sql`SELECT status FROM "HrPayrollRuleSet" WHERE id=${input.ruleSetId}`);
     if (ruleSet.status !== "ATIVA") throw new Error("Configuração RH ativa obrigatória.");
     if (policy.employeeIds.length && await portalCount(tx, sql`SELECT count(*) FROM "Employee" WHERE id=ANY(${sql.param(policy.employeeIds)}::text[]) AND "isActive"`) !== new Set(policy.employeeIds).size) throw new Error("Público contém cadastros funcionais indisponíveis.");
@@ -166,6 +170,8 @@ export async function saveCareerPolicy(context: AppContext, raw: unknown, connec
     if (previous) {
       const prior = input.code.startsWith("PORTAL_CURSO_") ? coursePolicySchema.parse(previous.value) : evaluationPolicySchema.parse(previous.value);
       assertBudgetUnitAccess(context.user, prior.budgetUnitId);
+      if (!prior.employeeIds.length) await assertFunctionalHolderAccess(tx, context, null);
+      for (const employeeId of [...new Set(prior.employeeIds)]) await assertFunctionalHolderAccess(tx, context, employeeId);
       if (previous.category !== "PORTAL" || previous.ruleSetId !== input.ruleSetId || previous.code !== input.code) throw new Error("Preserve a origem e o código da atividade.");
     }
     const data = { name: input.name, category: "PORTAL", valueType: "JSON", value: policy, isActive: input.isActive };

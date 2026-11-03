@@ -98,6 +98,8 @@ export async function reserveVacationRightInTransaction(tx: DatabaseTransaction,
     if (!policy?.isActive || !regime.isActive || applicable.status !== "ATIVO" || regime.ruleSet.status !== "ATIVA") throw new Error("Contrato e política ativos obrigatórios.");
     if (regime.ruleSet.effectiveFrom > start || (regime.ruleSet.effectiveUntil && regime.ruleSet.effectiveUntil < end)) throw new Error("Política deve cobrir toda a reserva.");
      const entries = await tx.select().from(hrRightEntries).where(and(eq(hrRightEntries.contractId, contract.id), eq(hrRightEntries.kind, "FERIAS"), eq(hrRightEntries.periodStart, periodStart), eq(hrRightEntries.periodEnd, periodEnd)));
+     const acquisitionScopes = new Set(entries.filter(entry => entry.quantity.gt(0)).map(entry => (entry.details as { scope?: string }).scope).filter(Boolean));
+     if (acquisitionScopes.size !== 1 || !acquisitionScopes.has(regime.ruleSet.scope)) throw new Error("Aquisitivo sem escopo único compatível com a reserva; concilie o ledger.");
      const balance = entries.reduce((sum, entry) => sum.add(entry.quantity), new Decimal(0));
     if (balance.lt(input.days)) throw new Error("Dias solicitados excedem saldo do aquisitivo.");
     const canceled = new Set(entries.map(entry => (entry.details as { cancelsId?: string }).cancelsId).filter(Boolean));
@@ -114,7 +116,7 @@ export async function reserveVacationRightInTransaction(tx: DatabaseTransaction,
       if (vacation || leave) throw new Error("Período conflita com férias ou afastamento vigente.");
     }
      const [vacation] = input.kind === "GOZO" ? await tx.insert(vacations).values({ employeeId: contract.employeeId, acquisitionStart: periodStart, acquisitionEnd: periodEnd, enjoymentStart: start, enjoymentEnd: end, days: input.days, status: "Programada" }).returning() : [];
-     const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey: input.sourceKey, kind: "FERIAS", periodStart, periodEnd, quantity: new Decimal(-input.days), amount: new Decimal(0), actorId, details: personnelJson({ kind: input.kind, start: input.start, end, reason: input.reason, vacationId: vacation?.id ?? null, policy }) }).returning();
+     const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey: input.sourceKey, kind: "FERIAS", periodStart, periodEnd, quantity: new Decimal(-input.days), amount: new Decimal(0), actorId, details: personnelJson({ kind: input.kind, start: input.start, end, reason: input.reason, vacationId: vacation?.id ?? null, policy, scope: regime.ruleSet.scope }) }).returning();
      return entry;
 }
 

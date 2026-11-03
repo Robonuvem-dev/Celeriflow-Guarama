@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "src/generated/**",
+    // Raw database introspection artifacts are generated, not application sources.
+    ".agent/drizzle/introspection/**",
   ]),
   {
     files: ["**/*.{js,cjs}"],

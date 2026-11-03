@@ -13,7 +13,7 @@ export function ReferenceLookup({ kind, name, initialValue = "", required, multi
   const [selectedLabel, setSelectedLabel] = useState(initialValue);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
-  const [selection, setSelection] = useState<{ id: string; label: string }[]>([]);
+  const [selection, setSelection] = useState<{ id: string; label: string }[]>(() => multiple ? [...new Set(initialValue.split(",").map(value => value.trim()).filter(Boolean))].map(id => ({ id, label: id })) : []);
   useEffect(() => {
     const abort = new AbortController();
     const timer = setTimeout(async () => {

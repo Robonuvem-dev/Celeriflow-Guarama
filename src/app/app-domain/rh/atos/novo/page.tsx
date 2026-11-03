@@ -5,7 +5,7 @@ import { readEmployeeOptions } from "@/db/repositories/personnel-pages/records";
 
 export default async function NovoAtoPage() {
   const context = await getTenantContextForModule("RH");
-  const employees = await readEmployeeOptions(context.database ?? db);
+  const employees = await readEmployeeOptions(context.database ?? db, context.user);
   
   return (
     <AtoForm employees={employees} />

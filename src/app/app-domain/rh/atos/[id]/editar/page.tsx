@@ -7,13 +7,13 @@ import { readPersonnelAct, readEmployeeOptions } from "@/db/repositories/personn
 export default async function EditarAtoPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  const act = await readPersonnelAct(database, id);
+  const act = await readPersonnelAct(database, id, context.user);
 
   if (!act) {
     notFound();
   }
 
-  const employees = await readEmployeeOptions(database);
+  const employees = await readEmployeeOptions(database, context.user);
 
   return (
     <AtoForm data={act} employees={employees} />

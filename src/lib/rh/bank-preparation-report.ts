@@ -2,6 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { Decimal } from "@/db/decimal";
 import type { OperationalReportInput, PersonnelReport } from "./operational-reports";
+import { reportContractPredicate, reportPayrollAllocationSource, reportPayrollPredicate } from "./report-filters";
 
 export const bankPreparationReportKinds = ["BANCARIO_ORDEM_DEMO", "BANCARIO_CREDITO_DEMO"] as const;
 export async function buildBankPreparationReport(db: DatabaseExecutor, input: OperationalReportInput, payrollScope?: SQL): Promise<PersonnelReport> {
@@ -22,6 +23,7 @@ export async function buildBankPreparationReport(db: DatabaseExecutor, input: Op
         AND (v.details->>'from')::date<=to_date("Payroll".competence,'MM/YYYY') AND (v.details->>'until')::date>= (to_date("Payroll".competence,'MM/YYYY')+interval '1 month - 1 day')::date
     ) a ON true
     WHERE r.status='FECHADA' AND r.mode='OFICIAL' AND r.scope='DEMONSTRACAO' AND ${payrollScope ?? sql`true`}
+      AND ${reportContractPredicate(input, sql`s.snapshot->'contract'`, sql`to_date("Payroll".competence,'MM/YYYY')`, reportPayrollAllocationSource(sql`r.id`, sql`r.snapshot`))} AND ${reportPayrollPredicate(input, sql`"Payroll".competence`, sql`"Payroll".type`)}
       AND to_date("Payroll".competence,'MM/YYYY') BETWEEN date_trunc('month',${from}::date) AND ${until}::date
       ${input.competence ? sql`AND "Payroll".competence=${input.competence}` : sql``} ${input.payrollId ? sql`AND "Payroll".id=${input.payrollId}` : sql``}
       ${input.employeeId ? sql`AND c."employeeId"=${input.employeeId}` : sql``} ${input.departmentId ? sql`AND s.snapshot#>>'{contract,departmentId}'=${input.departmentId}` : sql``}

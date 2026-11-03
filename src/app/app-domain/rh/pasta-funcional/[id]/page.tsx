@@ -12,10 +12,12 @@ import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { rhColumn } from "../../_components/operational-columns";
 import styles from "@/components/app-ui/operational/operational.module.css";
 import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
+import { assertFunctionalHolderAccess } from "@/lib/rh/functional-record-service";
 
 export const dynamic = "force-dynamic";
 export default async function FunctionalFolderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; q?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH"), user = context.user, database = context.database ?? db; const { id } = await params; const filters = await searchParams;
+  await assertFunctionalHolderAccess(database, context, id);
   const employee = await readFolderEmployee(database, id);
   const tabs = ["contratos", "atos", "documentos", "ocorrencias", "direitos", "ponto", "folha"];
   const tab = tabs.includes(filters.tab || "") ? filters.tab! : "contratos";

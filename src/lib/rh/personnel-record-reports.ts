@@ -1,13 +1,17 @@
 import { sql, type SQL } from "drizzle-orm";
 import type { DatabaseExecutor } from "@/db/transaction";
 import type { OperationalReportInput, PersonnelReport } from "./operational-reports";
+import { reportAppropriationPredicate, reportContractPredicate, reportEmployeePredicate, reportRubricPredicate } from "./report-filters";
+import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
+import { referenceRecordsObservedAt } from "./reference-timeline-query";
 
-export async function buildPersonnelRecordsReport(db: DatabaseExecutor, input: OperationalReportInput, payrollScope?: SQL): Promise<PersonnelReport> {
+export async function buildPersonnelRecordsReport(db: DatabaseExecutor, input: OperationalReportInput, payrollScope?: SQL, budgetUnitIds?: readonly string[]): Promise<PersonnelReport> {
   const reference = input.referenceDate ?? new Date().toISOString().slice(0, 10);
   const from = input.from ?? (input.competence ? `${input.competence.slice(3)}-${input.competence.slice(0, 2)}-01` : `${input.year ?? reference.slice(0, 4)}-01-01`);
   const until = input.until ?? (input.competence ? new Date(Date.UTC(Number(input.competence.slice(3)), Number(input.competence.slice(0, 2)), 0)).toISOString().slice(0, 10) : `${input.year ?? reference.slice(0, 4)}-12-31`);
   if (from > until) throw new Error("Fim anterior ao início.");
-  const holder = sql`(${input.q}='' OR strpos(lower(e.name),lower(${input.q}))>0 OR strpos(coalesce(e.registration,''),${input.q})>0) ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``}`;
+  const employeeScope = personnelBudgetEmployeeWhere(sql`e.id`, budgetUnitIds);
+  const holder = sql`(${input.q}='' OR strpos(lower(e.name),lower(${input.q}))>0 OR strpos(coalesce(e.registration,''),${input.q})>0) AND ${employeeScope} AND ${reportEmployeePredicate(input, sql`e.id`, sql`${reference}`)} ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``}`;
   async function query(title: string, columns: Array<[string, string]>, statement: SQL): Promise<PersonnelReport> {
     const result = await db.execute<Record<string, unknown>>(statement);
     return { title, headers: columns.map(([, label]) => label), rows: result.rows.map(row => columns.map(([key]) => row[key] == null ? "" : String(row[key]))) };
@@ -15,24 +19,24 @@ export async function buildPersonnelRecordsReport(db: DatabaseExecutor, input: O
   if (input.kind.startsWith("CADASTRO_")) {
     if (input.payrollId || input.competence) throw new Error("Use a data de referência para o cadastro histórico, sem filtro de folha.");
     const appropriation = input.kind === "CADASTRO_DOTACAO";
-    const report = await query("Cadastro pessoal na referência — lotação/local do vínculo; contatos e nomes dos catálogos atuais", [["employeeId", "Servidor ID"], ["reference", "Referência"], ["employee", "Servidor"], ["cpf", "CPF"], ["registration", "Matrícula contratual"], ["role", "Cargo"], ["department", "Lotação histórica"], ["location", "Local histórico"], ["status", "Situação contratual"], ["salary", "Salário-base BRL"], ["monthly", "Divisor mensal"], ["weekly", "Jornada semanal informada"], ["email", "Email cadastral"], ["phone", "Telefone cadastral"], ...(appropriation ? [["appropriation", "Dotação explicitamente vinculada"], ["percentage", "Percentual de remuneração"], ["source", "Origem / vigência do vínculo"]] as Array<[string, string]> : [])], sql`
-      SELECT e.id "employeeId",${reference} reference,e.name employee,e.cpf,coalesce(v.snapshot->>'registration',e.registration) registration,r.name role,d.name department,
-        v.snapshot->>'workLocation' location,coalesce(v.snapshot->>'status',CASE WHEN e."isActive" THEN 'ATIVO_SEM_CONTRATO_NA_REFERENCIA' ELSE 'INATIVO_SEM_CONTRATO_NA_REFERENCIA' END) status,v.snapshot->>'salary' salary,
-        v.snapshot->>'monthlyHours' monthly,v.snapshot->'details'->>'weeklyHours' weekly,e.email,e.phone,
+    const report = await query("Cadastro pessoal observado na referência — denominações dos catálogos de cargos/lotações atuais", [["employeeId", "Servidor ID"], ["reference", "Referência"], ["employee", "Servidor"], ["cpf", "CPF"], ["registration", "Matrícula contratual"], ["role", "Cargo (denominação atual)"], ["department", "Lotação histórica (denominação atual)"], ["location", "Local histórico"], ["status", "Situação contratual"], ["salary", "Salário-base BRL"], ["monthly", "Divisor mensal"], ["weekly", "Jornada semanal informada"], ["email", "Email observado"], ["phone", "Telefone observado"], ["observation", "Fonte cadastral"], ...(appropriation ? [["appropriation", "Dotação explicitamente vinculada"], ["percentage", "Percentual de remuneração"], ["source", "Origem / vigência do vínculo"]] as Array<[string, string]> : [])], sql`
+      SELECT e.id "employeeId",${reference} reference,coalesce(personal.snapshot->'employee'->>'name','Titular '||e.id) employee,personal.snapshot->'employee'->>'cpf' cpf,coalesce(v.snapshot->>'registration',personal.snapshot->'employee'->>'registration') registration,r.name role,d.name department,
+        v.snapshot->>'workLocation' location,coalesce(v.snapshot->>'status','SEM_REVISAO_CONTRATUAL_NA_REFERENCIA') status,v.snapshot->>'salary' salary,
+        v.snapshot->>'monthlyHours' monthly,v.snapshot->'details'->>'weeklyHours' weekly,personal.snapshot->'employee'->>'email' email,personal.snapshot->'employee'->>'phone' phone,
+        CASE WHEN personal.id IS NULL THEN 'Sem fotografia cadastral na referência; registrar abertura documental' ELSE personal.id||' / '||personal."effectiveFrom"::text END observation,
         a.appropriation,a.percentage,coalesce(a.source,'PENDENTE — sem vínculo orçamentário explícito na referência') source
       FROM "Employee" e LEFT JOIN "HrEmploymentContract" c ON c."employeeId"=e.id
+      LEFT JOIN LATERAL (SELECT id,snapshot,"effectiveFrom" FROM "HrPersonalRevision" WHERE "employeeId"=e.id AND "effectiveFrom"<${reference}::date+interval '1 day' ORDER BY "effectiveFrom" DESC,id DESC LIMIT 1) personal ON true
       LEFT JOIN LATERAL (SELECT snapshot FROM "HrEmploymentRevision" WHERE "contractId"=c.id AND "effectiveFrom"::date<=${reference}::date ORDER BY "effectiveFrom" DESC,version DESC LIMIT 1) v ON true
       LEFT JOIN "Role" r ON r.id=v.snapshot->>'roleId' LEFT JOIN "Department" d ON d.id=v.snapshot->>'departmentId'
       LEFT JOIN LATERAL (
         SELECT b.code appropriation,x.details->>'percentage' percentage,x.code||' / '||(x.details->>'from')||' a '||(x.details->>'until') source
-        FROM "HrReferenceRecord" x JOIN "BudgetAppropriation" b ON b.id=x.details->>'appropriationId'
+        FROM ${referenceRecordsObservedAt(sql`${reference}`)} x JOIN "BudgetAppropriation" b ON b.id=x.details->>'appropriationId'
         WHERE ${appropriation} AND x.kind='RATEIO_FOLHA' AND x.details->>'component'='REMUNERACAO' AND x.details->>'contractId'=c.id AND x.details->>'from'<=${reference} AND x.details->>'until'>=${reference}
-        UNION ALL SELECT b.code,NULL,x.code||' / cadastro legado sem vigência; não usado para referência histórica'
-        FROM "HrReferenceRecord" x JOIN "BudgetAppropriation" b ON b.id=x.details->>'appropriationId'
-        WHERE ${appropriation} AND ${!input.referenceDate} AND x.kind='LOTACAO_ORCAMENTARIA' AND x.details->>'employeeId'=e.id
-          AND NOT EXISTS(SELECT 1 FROM "HrReferenceRecord" a WHERE a.kind='RATEIO_FOLHA' AND a.details->>'component'='REMUNERACAO' AND a.details->>'contractId'=c.id AND a.details->>'from'<=${reference} AND a.details->>'until'>=${reference})
       ) a ON true
-      WHERE (${holder} OR (${!input.employeeId && !input.departmentId && !!input.q} AND strpos(coalesce(e.cpf,''),${input.q})>0)) ${input.departmentId ? sql`AND v.snapshot->>'departmentId'=${input.departmentId}` : sql``}
+      WHERE ${employeeScope} ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``}
+        AND (${input.q}='' OR strpos(lower(concat_ws(' ',personal.snapshot->'employee'->>'name',personal.snapshot->'employee'->>'cpf',v.snapshot->>'registration',e.id)),lower(${input.q}))>0)
+        AND ${reportContractPredicate(input, sql`v.snapshot`, sql`${reference}`)} AND ${reportAppropriationPredicate(input, sql`a.appropriation`)} ${input.departmentId ? sql`AND v.snapshot->>'departmentId'=${input.departmentId}` : sql``}
       ORDER BY ${input.kind === "CADASTRO_LOTACAO" ? sql`d.name,` : input.kind === "CADASTRO_LOCAL" ? sql`v.snapshot->>'workLocation',` : appropriation ? sql`a.appropriation,` : sql``} e.name,e.id,c.id,a.appropriation`);
     if (input.kind === "CADASTRO_GERAL") {
       const people = new Map<string, string[][]>();
@@ -56,6 +60,7 @@ export async function buildPersonnelRecordsReport(db: DatabaseExecutor, input: O
       CASE WHEN m."endsAt" IS NULL THEN 'ABERTO_RECORRENTE' WHEN date_trunc('month',m."startsAt")=date_trunc('month',m."endsAt") THEN 'COMPETENCIA_UNICA' ELSE 'PERIODO_DEFINIDO' END classification
     FROM "HrMovement" m JOIN "HrEmploymentContract" c ON c.id=m."contractId" JOIN "Employee" e ON e.id=c."employeeId"
     WHERE ${holder} AND m."startsAt"::date<=${until}::date AND (m."endsAt" IS NULL OR m."endsAt"::date>=${from}::date)
+       AND ${reportRubricPredicate(input, sql`m."rubricCode"`)}
       ${input.departmentId ? sql`AND c."departmentId"=${input.departmentId}` : sql``} ORDER BY c.registration,m."startsAt",m.id`);
   if (input.kind === "VERBAS_FIXAS_VARIAVEIS") return query("Verbas e consignações — movimentos e cronograma; lançamento não comprova pagamento", [["employee", "Servidor"], ["registration", "Matrícula"], ["kind", "Tipo de registro"], ["rubric", "Verba"], ["amount", "Valor do movimento / parcela BRL"], ["from", "Início / competência"], ["until", "Fim"], ["source", "Origem"], ["agreement", "Contrato consignado"], ["creditor", "Credor cadastral"], ["sequence", "Parcela"], ["reserved", "Saldo reservado na data de referência BRL (não dívida quitada)"], ["status", "Situação na referência"]], sql`
     WITH schedules AS (
@@ -79,6 +84,6 @@ export async function buildPersonnelRecordsReport(db: DatabaseExecutor, input: O
       LEFT JOIN "Person" p ON p.id=creditor."personId" LEFT JOIN "Company" co ON co.id=creditor."companyId"
       WHERE s."competenceAt" BETWEEN date_trunc('month',${from}::date) AND ${until}::date
     ) SELECT e.name employee,c.registration,r.* FROM records r JOIN "Employee" e ON e.id=r."employeeId" JOIN "HrEmploymentContract" c ON c.id=r.contract_id
-      WHERE ${holder} ${input.departmentId ? sql`AND c."departmentId"=${input.departmentId}` : sql``} ORDER BY e.name,r."from",r.kind,r.id`);
+      WHERE ${holder} AND ${reportRubricPredicate(input, sql`r.rubric`)} ${input.departmentId ? sql`AND c."departmentId"=${input.departmentId}` : sql``} ORDER BY e.name,r."from",r.kind,r.id`);
   throw new Error("Relatório de registros não implementado.");
 }

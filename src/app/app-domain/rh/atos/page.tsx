@@ -15,7 +15,7 @@ const columns = [rhColumn("date", "Data", 120, 100), rhColumn("employee", "Servi
 export default async function AtosPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; page?: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { q, type, page } = await searchParams;
-  const { total, pagination, acts } = await readActsPage(context.database ?? db, { q, type, page });
+  const { total, pagination, acts } = await readActsPage(context.database ?? db, { q, type, page, user: context.user });
   return <OperationalListFrame label="Atos de pessoal" actions={<RhNewLink href="/rh/atos/novo">Registrar ato</RhNewLink>}
     toolbar={<><form action="/rh/atos" method="GET" className={styles.searchForm}><input type="hidden" name="type" value={type || ""} /><input name="q" aria-label="Buscar servidor" defaultValue={q} placeholder="Servidor" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form><OperationalFilters activeCount={Number(!!type)}><form action="/rh/atos" method="GET" className={styles.filterFields}><input type="hidden" name="q" value={q || ""} /><label>Tipo<select name="type" defaultValue={type}><option value="">Todos</option>{["Admissão", "Demissão", "Promoção", "Transferência", "Advertência"].map(value => <option key={value}>{value}</option>)}</select></label><button className={styles.primaryButton}>Aplicar</button><Link href="/rh/atos">Limpar</Link></form></OperationalFilters></>}
     pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/atos" values={{ q, type }} />}>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { budgetAppropriations } from "@/db/schema/finance-budget";
 import { employees } from "@/db/schema/administration";
@@ -7,7 +7,10 @@ import { departments, roles } from "@/db/schema/administration";
 import { people } from "@/db/schema/people";
 import { banks, currencies } from "@/db/schema/master-data";
 import { hrEmploymentContracts } from "@/db/schema/personnel-workforce";
-import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { hrReferenceRecords } from "@/db/schema/personnel-reference-records";
+import { personnelReferenceWhere } from "@/lib/rh/reference-access";
+import { personnelDepartmentWhere, personnelEmployeeWhere } from "@/lib/rh/personnel-scope";
 import { referenceDefinitions, referenceKindSchema, listReferenceRecords } from "@/lib/rh/reference-records";
 import { deletePersonnelReference } from "./actions";
 import { ReferenceEditor } from "./ReferenceEditor";
@@ -27,16 +30,17 @@ export default async function PersonnelReferencePage({ searchParams }: { searchP
   const requestedKind = referenceKindSchema.catch("FERIADO").parse(params.kind);
   const kind = requestedKind === "LICENCA_EDUCACAO" ? "FERIADO" : requestedKind;
   const definition = referenceDefinitions[kind];
+  const scopedReferences = (referenceKind: typeof kind) => database.select().from(hrReferenceRecords).where(and(eq(hrReferenceRecords.kind, referenceKind), personnelReferenceWhere(context.user, hrReferenceRecords.details))).orderBy(asc(hrReferenceRecords.name));
   const [records, teams, ranges, workers, appropriations, courses, conventions, persons, bankOptions, currencyOptions, contractOptions, roleOptions, departmentOptions] = await Promise.all([
-    listReferenceRecords(database, kind), listReferenceRecords(database, "EQUIPE"), listReferenceRecords(database, "FAIXA"),
-    database.select({ id: employees.id, name: employees.name }).from(employees).orderBy(asc(employees.name)), database.select({id:budgetAppropriations.id,name:budgetAppropriations.code}).from(budgetAppropriations).orderBy(asc(budgetAppropriations.code)),
-    listReferenceRecords(database, "GRADUACAO_CURSO"), listReferenceRecords(database, "CONVENIO_BANCARIO"),
-    database.select({ id: people.id, name: people.fullName }).from(people).where(sql`EXISTS (SELECT 1 FROM "HrReferenceRecord" r WHERE r.kind='PENSAO_VITALICIA' AND r.details->>'beneficiaryPersonId'=${people.id})`).orderBy(asc(people.fullName)),
+    scopedReferences(kind), scopedReferences("EQUIPE"), scopedReferences("FAIXA"),
+    database.select({ id: employees.id, name: employees.name }).from(employees).where(personnelEmployeeWhere(context.user, employees.departmentId, employees.id)).orderBy(asc(employees.name)), database.select({id:budgetAppropriations.id,name:budgetAppropriations.code}).from(budgetAppropriations).where(isSystemAdministrator(context.user) ? undefined : sql`${budgetAppropriations.budgetUnitId}=ANY(${sql.param(context.user.allowedBudgetUnitIds)}::text[])`).orderBy(asc(budgetAppropriations.code)),
+    scopedReferences("GRADUACAO_CURSO"), scopedReferences("CONVENIO_BANCARIO"),
+    database.select({ id: people.id, name: people.fullName }).from(people).where(sql`EXISTS (SELECT 1 FROM "HrReferenceRecord" r WHERE r.kind='PENSAO_VITALICIA' AND r.details->>'beneficiaryPersonId'=${people.id} AND ${personnelReferenceWhere(context.user, sql`r.details`)})`).orderBy(asc(people.fullName)),
     database.select({ id: banks.id, name: banks.name }).from(banks).orderBy(asc(banks.name)),
     database.select({ id: currencies.id, name: currencies.name }).from(currencies).orderBy(asc(currencies.name)),
-    database.select({ id: hrEmploymentContracts.id, name: hrEmploymentContracts.registration }).from(hrEmploymentContracts).orderBy(asc(hrEmploymentContracts.registration)),
+    database.select({ id: hrEmploymentContracts.id, name: hrEmploymentContracts.registration }).from(hrEmploymentContracts).innerJoin(employees, eq(employees.id, hrEmploymentContracts.employeeId)).where(and(personnelEmployeeWhere(context.user, employees.departmentId, employees.id), personnelDepartmentWhere(context.user, hrEmploymentContracts.departmentId))).orderBy(asc(hrEmploymentContracts.registration)),
     database.select({ id: roles.id, name: roles.name }).from(roles).orderBy(asc(roles.name)),
-    database.select({ id: departments.id, name: departments.name }).from(departments).orderBy(asc(departments.name)),
+    database.select({ id: departments.id, name: departments.name }).from(departments).where(personnelDepartmentWhere(context.user, departments.id)).orderBy(asc(departments.name)),
   ]);
   const selected = records.find(r => r.id === params.id);
   const q = (params.q || "").trim().toLocaleLowerCase("pt-BR");
@@ -45,7 +49,7 @@ export default async function PersonnelReferencePage({ searchParams }: { searchP
   async function loadPageAction(requestedPage: number) {
     "use server";
     const current = await getTenantContextForModule("RH");
-    const source = await listReferenceRecords(current.database ?? db, kind);
+    const source = await (current.database ?? db).select().from(hrReferenceRecords).where(and(eq(hrReferenceRecords.kind, kind), personnelReferenceWhere(current.user, hrReferenceRecords.details))).orderBy(asc(hrReferenceRecords.name));
     const prepared = referenceTableRows(source, definition, choices, kind, q);
     const page = Math.min(Math.max(1, Number.isSafeInteger(requestedPage) ? requestedPage : 1), Math.max(1, Math.ceil(prepared.length / OPERATIONAL_PAGE_SIZE)));
     return { rows: prepared.slice((page - 1) * OPERATIONAL_PAGE_SIZE, page * OPERATIONAL_PAGE_SIZE), page, total: prepared.length };

@@ -66,6 +66,8 @@ const MODULES_LIST = [
 ];
 
 type ModulePermission = {
+  personnelScope?: { departments: "TODOS" | string[]; rubricCodes: "TODOS" | string[] };
+  clinicalAccess?: boolean;
   ged?: Partial<Record<GedCapability, boolean>>;
   showDashboardCard: boolean;
   blocked: boolean;
@@ -75,7 +77,7 @@ type ModulePermission = {
   issueReports: boolean;
 };
 
-type PermissionKey = keyof Omit<ModulePermission, "blocked" | "showDashboardCard" | "ged">;
+type PermissionKey = keyof Omit<ModulePermission, "blocked" | "showDashboardCard" | "ged" | "clinicalAccess" | "personnelScope">;
 const ACTIONS_LABELS: { key: PermissionKey; label: string }[] = [
   { key: "create", label: "Criar" },
   { key: "update", label: "Editar" },
@@ -155,6 +157,8 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
             update: !blocked && permission.update === true,
             delete: !blocked && permission.delete === true,
             issueReports: !blocked && permission.issueReports === true,
+            ...(moduleItem.code === "RH" ? { clinicalAccess: !blocked && permission.clinicalAccess === true } : {}),
+            ...(moduleItem.code === "RH" && permission.personnelScope ? { personnelScope: permission.personnelScope } : {}),
             ...(moduleItem.code === "ASSINATURA_DIGITAL" && permission.ged && typeof permission.ged === "object" ? { ged: Object.fromEntries(gedCapabilities.map(key => [key, !blocked && permission.ged?.[key] === true])) } : {}),
           };
         }
@@ -243,7 +247,7 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
         : { showDashboardCard: true, blocked: false, create: true, update: true, delete: true, issueReports: true };
       return {
         ...prev,
-        permissionsMap: { ...prev.permissionsMap, [moduleCode]: updated },
+        permissionsMap: { ...prev.permissionsMap, [moduleCode]: { ...updated, ...(current.personnelScope ? { personnelScope: current.personnelScope } : {}) } },
       };
     });
   };
@@ -259,7 +263,7 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
         newMap[m.code] = emptyPermission();
       }
     });
-    setFormData((prev) => ({ ...prev, permissionsMap: newMap }));
+    setFormData((prev) => ({ ...prev, permissionsMap: Object.fromEntries(Object.entries(newMap).map(([code, permission]) => [code, { ...permission, ...(prev.permissionsMap[code]?.personnelScope ? { personnelScope: prev.permissionsMap[code].personnelScope } : {}) }])) }));
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -537,6 +541,13 @@ export default function PerfisClient({ perfis, capabilities }: { perfis: Perfil[
                               <p className="text-xs text-rose-700 dark:text-rose-300">Módulo bloqueado: as permissões operacionais ficam indisponíveis até o desbloqueio.</p>
                             )}
                             {moduleItem.code === "ASSINATURA_DIGITAL" && !permission.blocked && <fieldset className="grid grid-cols-2 gap-2 border-t pt-2 md:grid-cols-3"><legend className="text-xs font-semibold">Capacidades do acervo GED</legend>{gedCapabilities.map(key => <label key={key} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={permission.ged?.[key] === true} onChange={event => { const checked = event.target.checked; setFormData(previous => ({ ...previous, permissionsMap: { ...previous.permissionsMap, ASSINATURA_DIGITAL: { ...permission, ged: { ...permission.ged, [key]: checked } } } })); }} />{gedCapabilityLabels[key]}</label>)}</fieldset>}
+                            {moduleItem.code === "RH" && !permission.blocked && <label className="flex items-center gap-2 border-t pt-2 text-xs"><input type="checkbox" checked={permission.clinicalAccess === true} onChange={event => { const clinicalAccess = event.target.checked; setFormData(previous => ({ ...previous, permissionsMap: { ...previous.permissionsMap, RH: { ...permission, clinicalAccess } } })); }} />Consultar informações clínicas de readaptação e reabilitação</label>}
+                            {moduleItem.code === "RH" && !permission.blocked && <fieldset className="space-y-2 border-t pt-2 text-xs"><legend>Escopo de pessoal e eventos</legend>{([ ["departments", "Identificadores de lotações"], ["rubricCodes", "Códigos de verbas"] ] as const).map(([key, label]) => {
+                              const scope = permission.personnelScope ?? { departments: "TODOS" as const, rubricCodes: "TODOS" as const };
+                              const selected = scope[key];
+                              const update = (value: "TODOS" | string[]) => setFormData(previous => ({ ...previous, permissionsMap: { ...previous.permissionsMap, RH: { ...permission, personnelScope: { ...scope, [key]: value } } } }));
+                              return <div key={key}><label className="flex items-center gap-2"><input type="checkbox" checked={selected === "TODOS"} onChange={event => update(event.target.checked ? "TODOS" : [])} />Todas: {label.toLowerCase()}</label>{selected !== "TODOS" && <label>{label} (separados por vírgula)<input className="block w-full rounded border p-1" defaultValue={selected.join(",")} onBlur={event => update(event.target.value.split(",").map(value => value.trim()).filter(Boolean))} /></label>}</div>;
+                            })}<p>Seleção vazia não concede acesso. As unidades gestoras do usuário continuam obrigatórias; perfis adicionais somam os seus escopos.</p></fieldset>}
                         </div>
                       );
                     })}

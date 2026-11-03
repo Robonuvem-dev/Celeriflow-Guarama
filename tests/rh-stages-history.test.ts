@@ -1,0 +1,126 @@
+import assert from "node:assert/strict";
+import { readFile, readdir } from "node:fs/promises";
+import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+import { sql, type SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { payrollConfigurationObservedAt } from "../src/lib/rh/configuration-timeline-query";
+import { functionalRecordsObservedAt } from "../src/lib/rh/functional-timeline-query";
+import { referenceRecordsObservedAt } from "../src/lib/rh/reference-timeline-query";
+import { buildAbsenceDaysReport } from "../src/lib/rh/absence-days-report";
+import type { DatabaseExecutor } from "../src/db/transaction";
+import { drizzle } from "drizzle-orm/pglite";
+import { Decimal } from "../src/db/decimal";
+import { employees } from "../src/db/schema/administration";
+import { payrolls, hrEmploymentContracts, hrPayrollRuns, hrPayrollStatements } from "../src/db/schema/personnel-workforce";
+import { accountingReportKinds, buildAccountingHrReport } from "../src/lib/rh/accounting-reports";
+import { buildAccountingEvolutionReport } from "../src/lib/rh/accounting-evolution-report";
+import { buildSpecialHrReport } from "../src/lib/rh/special-report-layouts";
+
+test("migração RH: compatibilidade física com o histórico SQL integral do projeto", async () => {
+  const pg = await PGlite.create();
+  try {
+    const directory = new URL("../prisma/migrations-ibema/", import.meta.url);
+    const migrations = (await readdir(directory, { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+    for (const migration of migrations) await pg.exec(await readFile(new URL(`${migration}/migration.sql`, directory), "utf8"));
+    const future = new URL("../db/migrations/", import.meta.url);
+    const additions = (await readdir(future, { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+    for (const migration of additions) await pg.exec(await readFile(new URL(`${migration}/migration.sql`, future), "utf8"));
+    const tables = await pg.query<{ name: string }>(`SELECT tablename name FROM pg_tables WHERE schemaname='public' AND tablename IN ('HrFunctionalRecord','HrRetirementAssessment','HrPayrollAccountingEvidence','HrPersonalRevision','HrReferenceRevision','HrTimeCertificate')`);
+    assert.equal(tables.rows.length, 6);
+    const db = drizzle(pg) as unknown as DatabaseExecutor;
+    await db.insert(employees).values({ id: "holder", name: "Servidor municipal" });
+    await db.insert(hrEmploymentContracts).values({ id: "contract", employeeId: "holder", registration: "001", regimeId: "regime", roleId: "cargo", workLocation: "Sede", admittedAt: new Date("2020-01-01"), salary: new Decimal(100), details: {} });
+    await db.insert(payrolls).values({ id: "payroll", competence: "10/2026", type: "Mensal" });
+    const allocations = ["REMUNERACAO", "ENCARGO"].flatMap(component => ["33.33", "66.67"].map((percentage, index) => ({ id: `${component}-${index}`, appropriation: `01.0${index}`, budgetUnitId: `unit-${index}`, source: "000", nature: "3.1.90.11", details: { contractId: "contract", component, percentage, from: "2026-10-01", until: "2026-10-31", functionalClassification: "04.122" } })));
+    await db.insert(hrPayrollRuns).values({ id: "run", payrollId: "payroll", requestKey: "run", ruleSetId: "rules", mode: "OFICIAL", scope: "DEMONSTRACAO", status: "FECHADA", actorId: "rh", snapshot: { accountingAllocations: allocations }, gross: new Decimal(100), deductions: new Decimal(10), net: new Decimal(90), employer: new Decimal(20) });
+    await db.insert(hrPayrollStatements).values({ id: "statement", runId: "run", contractId: "contract", gross: new Decimal(100), deductions: new Decimal(10), net: new Decimal(90), employer: new Decimal(20), snapshot: { contract: { id: "contract", employeeId: "holder", registration: "001", departmentId: "department", workLocation: "Sede", employee: { name: "Servidor municipal" } }, items: [{ code: "BASE", name: "Vencimento", type: "PROVENTO", value: "100.00" }, { code: "IRRF", name: "Retenção", type: "DESCONTO", value: "10.00" }, { code: "FGTS", name: "FGTS", type: "INFORMATIVA", value: "5.00" }], employerComponents: { FGTS: "5.00", RPPS: "15.00" } } });
+    for (const kind of accountingReportKinds) {
+      const report = await buildAccountingHrReport(db, { kind, q: "", competence: "10/2026" });
+      assert.ok(report.rows.length, kind);
+      const line = report.headers.indexOf("Tipo da linha"), code = report.headers.indexOf("Rubrica / totalizador");
+      const total = report.rows.filter(row => row[line] === "TOTAL_NAO_ADITIVO" && row[code] === "ENCARGOS").reduce((sum, row) => sum.add(row.at(-1)!), new Decimal(0));
+      assert.equal(total.toFixed(2), kind.startsWith("FGTS_") ? "5.00" : "20.00", kind);
+      const denied = await buildAccountingHrReport(db, { kind, q: "", competence: "10/2026" }, sql`false`);
+      assert.equal(denied.rows.length, 0, kind);
+    }
+    const evolution = await buildAccountingEvolutionReport(db, { kind: "EVOLUCAO_REFERENCIAS", q: "", compareDate: "2026-09-30", referenceDate: "2026-10-31" });
+    const globalGross = evolution.rows.find(row => row[0] === "GLOBAL" && row[5] === "BRUTO");
+    assert.ok(globalGross); assert.deepEqual(globalGross.slice(8, 12), ["0.00", "100.00", "100.00", ""]);
+    await pg.exec(`INSERT INTO "HrEmploymentRevision" (id,"contractId",version,"effectiveFrom",snapshot,"actorId",reason) VALUES ('revision','contract',1,'2020-01-01','{"id":"contract","employeeId":"holder","registration":"001","roleId":"cargo","admittedAt":"2020-01-01","salary":"100.00","monthlyHours":100}','rh','Admissão');
+      INSERT INTO "HrPersonalRevision" (id,"employeeId","effectiveFrom",snapshot,"actorId",reason) VALUES ('personal','holder','2026-10-01','{"person":{"fullName":"Servidor municipal","cpf":"12345678901"},"functionalIdentification":[{"id":"work-id","status":"ATIVO","startsAt":"2020-01-01","data":{"pisPasep":"12345678901","ctps":"1234567","ctpsSeries":"001","ctpsState":"PR"}}]}','rh','Fonte documental da fixture isolada');`);
+    const label = await buildSpecialHrReport(db, { kind: "ETIQUETA_CONTRATUAL_CTPS", q: "", employeeId: "holder", referenceDate: "2026-10-31" });
+    assert.equal(label.rows.length, 1); assert.equal(label.rows[0].length, label.headers.length);
+    assert.equal(label.rows[0][9], "12345678901"); assert.equal(label.rows[0][10], "1234567");
+  } finally { await pg.close(); }
+});
+
+test("migração RH: abertura observada, histórico central, ordenação de incidências, exclusão e imutabilidade", async () => {
+  const pg = await PGlite.create();
+  const dialect = new PgDialect();
+  const query = (statement: SQL) => { const compiled = dialect.sqlToQuery(statement); return pg.query<Record<string, unknown>>(compiled.sql, compiled.params); };
+  try {
+    await pg.exec(`
+      CREATE TABLE "Person" (id text primary key,"fullName" text);
+      CREATE TABLE "Employee" (id text primary key,"personId" text,name text);
+      CREATE TABLE "HrEmploymentContract" (id text primary key);
+      CREATE TABLE "Address" (id text primary key,"personId" text);
+      CREATE TABLE "Document" (id text primary key,"personId" text);
+      CREATE TABLE "Dependent" (id text primary key,"personId" text,"employeeId" text);
+      CREATE TABLE "HrReferenceRecord" (id text primary key,kind text,code text,name text,details jsonb);
+      CREATE TABLE "HrPayrollRuleSet" (id text primary key,code text,"effectiveFrom" timestamp);
+      CREATE TABLE "HrPayrollRule" (id text primary key,"ruleSetId" text,code text,value jsonb,"isActive" boolean);
+      CREATE TABLE "HrVacationPolicy" (id text primary key);
+      CREATE TABLE "HrPayrollRubric" (id text primary key,code text);
+      CREATE TABLE "HrPayrollRubricIncidence" (id text primary key,"rubricId" text,"incidenceType" text,"isIncluded" boolean);
+      CREATE TABLE "HrSocialSecurityScheme" (id text primary key);
+      CREATE TABLE "HrSocialSecurityBand" (id text primary key);
+      CREATE TABLE "HrPayrollConfigurationChange" (id text,"entityId" text,"entityType" text,"afterValue" jsonb,"createdAt" timestamp);
+      CREATE TABLE "HrPayrollRun" (id text primary key,snapshot jsonb,"createdAt" timestamp);
+      CREATE TABLE "HrPayrollStatement" (id text primary key,"runId" text,snapshot jsonb);
+      CREATE TABLE "HrIntegrationEvent" (id text,"eventType" text,payload jsonb,"createdAt" timestamp);
+      INSERT INTO "Person" VALUES ('p','Nome preservado');
+      INSERT INTO "Employee" VALUES ('e','p','Nome preservado');
+      INSERT INTO "HrPayrollRuleSet" VALUES ('pacote','MUNICIPAL','2020-01-01');
+      INSERT INTO "HrPayrollRule" VALUES ('regra','pacote','FGTS_ALIQUOTA','{"rate":"8"}',true);
+    `);
+    await pg.exec(await readFile(new URL("../db/migrations/20261103180000_hr_functional_management/migration.sql", import.meta.url), "utf8"));
+    assert.equal((await query(sql`SELECT * FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RULE", sql`'2000-01-01'`)} observed`)).rows.length, 0);
+    assert.equal((await query(sql`SELECT * FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RULE", sql`'2099-01-01'`)} observed`)).rows.length, 1);
+    await pg.exec(`BEGIN; SELECT set_config('celeriflow.actor_id','responsavel-rh',true);
+      UPDATE "Person" SET "fullName"='Nome atualizado' WHERE id='p';
+      INSERT INTO "HrPayrollRubric" VALUES ('rubrica','SALARIO');
+      INSERT INTO "HrPayrollRubricIncidence" VALUES ('irrf','rubrica','IRRF',true);
+      INSERT INTO "HrPayrollRubricIncidence" VALUES ('rpps','rubrica','RPPS',true);
+      DELETE FROM "HrPayrollRubricIncidence" WHERE id='irrf';
+      INSERT INTO "HrFunctionalRecord" (id,kind,"employeeId",key,name,"startsAt",data,"actorId") VALUES ('f','REGRA_ATS','e','ats','ATS','2026-01-01','{"rate":"5"}','responsavel-rh');
+      UPDATE "HrFunctionalRecord" SET data='{"rate":"10"}',version=2 WHERE id='f';
+      DELETE FROM "HrPayrollRule" WHERE id='regra'; COMMIT;`);
+    const personal = await pg.query<{ snapshot: { person: { fullName: string } }; actorId: string }>(`SELECT snapshot,"actorId" FROM "HrPersonalRevision" ORDER BY "effectiveFrom"`);
+    assert.equal(personal.rows[0].snapshot.person.fullName, "Nome preservado");
+    assert.equal(personal.rows.at(-1)!.snapshot.person.fullName, "Nome atualizado");
+    assert.equal(personal.rows.at(-1)!.actorId, "responsavel-rh");
+    const rubric = (await query(sql`SELECT state->'incidences' incidences FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RUBRIC", sql`'2099-01-01'`)} observed`)).rows[0];
+    assert.deepEqual((rubric.incidences as Array<{ incidenceType: string }>).map(row => row.incidenceType), ["RPPS"]);
+    assert.equal((await query(sql`SELECT * FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RULE", sql`'2099-01-01'`)} observed`)).rows.length, 0);
+    assert.deepEqual((await query(sql`SELECT data FROM ${functionalRecordsObservedAt(sql`'2099-01-01'`)} observed`)).rows[0].data, { rate: "10" });
+    assert.equal((await query(sql`SELECT * FROM ${referenceRecordsObservedAt(sql`'2099-01-01'`)} observed`)).rows.length, 0);
+    await assert.rejects(pg.exec(`UPDATE "HrReferenceRevision" SET operation='ALTERADA'`), /imutáveis/);
+    await assert.rejects(pg.exec(`DELETE FROM "HrPersonalRevision"`), /imutáveis/);
+    await pg.exec(`ALTER TABLE "HrEmploymentContract" ADD COLUMN "employeeId" text;
+      CREATE TABLE "HrEmploymentRevision" ("contractId" text,snapshot jsonb,"effectiveFrom" timestamp,version int);
+      CREATE TABLE "Leave" (id text,"employeeId" text,type text,"startDate" timestamp,"endDate" timestamp,status text);
+      INSERT INTO "HrEmploymentContract" VALUES ('c','e');
+      INSERT INTO "HrEmploymentRevision" VALUES ('c','{"id":"c","employeeId":"e","registration":"001","admittedAt":"2020-01-01","departmentId":"d"}','2020-01-01',1);
+      INSERT INTO "Leave" VALUES ('l','e','Licença','2026-09-01','2026-09-10','Deferida');
+      INSERT INTO "HrFunctionalRecord" (id,kind,"employeeId","contractId",key,name,"startsAt","endsAt",data,"actorId") VALUES ('a','AFASTAMENTO','e','c','absence','Licença','2026-09-05','2026-09-15','{}','rh');`);
+    const executor = { execute: query } as unknown as DatabaseExecutor;
+    const absenceInput = { kind: "DIAS_AFASTADOS", q: "", referenceDate: "2099-01-01", from: "2026-09-01", until: "2026-09-30" };
+    const days = await buildAbsenceDaysReport(executor, absenceInput);
+    assert.equal(days.rows.length, 1); assert.equal(days.rows[0][4], "15");
+    const causes = await buildAbsenceDaysReport(executor, { ...absenceInput, kind: "CAUSAS_AFASTAMENTO" });
+    assert.deepEqual(causes.rows[0], ["Licença", "2", "1", "15"]);
+    assert.equal((await buildAbsenceDaysReport(executor, { ...absenceInput, departmentIds: "outra" })).rows.length, 0);
+    assert.equal((await buildAbsenceDaysReport(executor, { kind: "DIAS_AFASTADOS", q: "", referenceDate: "2099-01-01", competence: "10/2026" })).rows.length, 0);
+  } finally { await pg.close(); }
+});

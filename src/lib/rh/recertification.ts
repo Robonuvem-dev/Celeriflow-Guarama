@@ -120,6 +120,7 @@ export async function submitRecertificationProposal(db: DatabaseConnection, acto
 export async function decideRecertificationProposal(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ requestId: z.string().min(1), status: z.enum(["DEFERIDA", "INDEFERIDA"]), decision: z.string().trim().min(10).max(4000) }).strict().parse(raw);
   return withDatabaseTransaction(db, async tx => {
+    await tx.execute(sql`SELECT set_config('celeriflow.actor_id',${actorId},true)`);
     await tx.execute(sql`SELECT id FROM "HrPortalRequest" WHERE id=${input.requestId} FOR UPDATE`);
     const request = await requireHrPortalRequest(tx, input.requestId);
     if (request.kind !== "RECADASTRAMENTO") throw new Error("Solicitação não é de recadastramento.");
