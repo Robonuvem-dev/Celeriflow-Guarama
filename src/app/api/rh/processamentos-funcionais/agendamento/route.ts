@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { databaseConnection } from "@/db/client";
 import { runAutomaticRightsSchedule } from "@/lib/rh/automatic-rights-scheduler";
+import { drainAutomaticRightsBatches } from "@/lib/rh/automatic-rights-daily";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,8 +14,14 @@ export async function GET(request: Request) {
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return Response.json({ error: "Não autorizado." }, { status: 401 });
   if (!process.env.RH_RIGHTS_ACTOR_USER_ID) return Response.json({ status: "NOT_CONFIGURED" }, { headers: { "Cache-Control": "no-store" } });
   try {
-    const result = await runAutomaticRightsSchedule(databaseConnection, process.env.RH_RIGHTS_ACTOR_USER_ID);
+    const actorId = process.env.RH_RIGHTS_ACTOR_USER_ID;
+    const now = new Date();
+    // Stop starting contracts at 150s, leaving 120s for the last transaction and
+    // 30s for queries/audit/response inside the function's 300s duration.
+    const deadline = Date.now() + 150_000;
+    const result = await drainAutomaticRightsBatches((excluded, through) => runAutomaticRightsSchedule(databaseConnection, actorId, now, { deadline: through, excludeContractIds: excluded }), deadline);
     const failed = result.results.some(row => !row.processed);
-    return Response.json({ status: failed ? "ATTENTION" : "PROCESSED", ...result }, { status: failed ? 503 : 200, headers: { "Cache-Control": "no-store" } });
+    const status = failed ? "ATTENTION" : result.completed ? "PROCESSED" : "PARTIAL";
+    return Response.json({ status, actorId, referenceDate: now.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }), ...result }, { status: failed || !result.completed ? 503 : 200, headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ error: "Verifique o ator, as permissões e as unidades do agendamento funcional." }, { status: 503 }); }
 }
