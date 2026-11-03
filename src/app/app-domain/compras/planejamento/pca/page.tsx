@@ -3,26 +3,28 @@ import { eq } from "drizzle-orm";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { db } from "@/db/client";
-import { listPlanningOriginBudget, listPurchasePlannings } from "@/db/repositories/procurement/purchase-planning";
+import { listPcaObjectives, listPlanningOriginBudget, listPurchasePlannings } from "@/db/repositories/procurement/purchase-planning";
 import { departments } from "@/db/schema/administration";
 import { purchaseRequests } from "@/db/schema/procurement-requests";
 import { consolidatePca, summarizePcaBudget } from "@/lib/compras/pca-consolidation";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 
 export default async function PcaPage({ searchParams }: {
-  searchParams: Promise<{ exercicio?: string; unidade?: string }>;
+  searchParams: Promise<{ exercicio?: string; unidade?: string; objetivo?: string }>;
 }) {
   const context = await getTenantContextForModule("COMPRAS");
   const database = context.database ?? db;
-  const { exercicio, unidade } = await searchParams;
+  const { exercicio, unidade, objetivo } = await searchParams;
   const currentYear = Number(new Intl.DateTimeFormat("pt-BR", { year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date()));
   const year = typeof exercicio === "string" && /^\d{4}$/.test(exercicio) ? Number(exercicio) : currentYear;
-  const [plannings, origins] = await Promise.all([
+  const [plannings, objectives, origins] = await Promise.all([
     listPurchasePlannings(database),
+    listPcaObjectives(database),
     database.select({ id: purchaseRequests.id, unitId: departments.id, unitName: departments.name })
       .from(purchaseRequests).leftJoin(departments, eq(departments.id, purchaseRequests.departmentId)),
   ]);
   const byRequest = new Map(origins.map(origin => [origin.id, origin]));
+  const objectiveById = new Map(objectives.map(objective => [objective.id, objective]));
   const demands = plannings.map(planning => {
     const origin = planning.originPurchaseRequestId ? byRequest.get(planning.originPurchaseRequestId) : undefined;
     return {
@@ -30,12 +32,13 @@ export default async function PcaPage({ searchParams }: {
       year: planning.expectedPeriodStart.getUTCFullYear(),
       unitId: origin?.unitId ?? null,
       unitName: origin?.unitName ?? null,
+      objectiveId: planning.objectiveId,
       description: planning.catalogItem?.name ?? planning.description ?? "Item sem especificação",
       estimatedValue: String(planning.estimatedValueDecimal),
     };
   });
   const units = consolidatePca(demands, year);
-  const groups = consolidatePca(demands, year, unidade === "sem-unidade" ? "" : unidade || undefined);
+  const groups = consolidatePca(demands, year, unidade === "sem-unidade" ? "" : unidade || undefined, objetivo || undefined);
   const requestByPlanning = new Map(plannings.map(planning => [planning.id, planning.originPurchaseRequestId]));
   const requestIds = [...new Set(groups.flatMap(group => group.demands.flatMap(demand => {
     const requestId = requestByPlanning.get(demand.id);
@@ -60,6 +63,10 @@ export default async function PcaPage({ searchParams }: {
           <option value="">Todas</option>
           {units.map(group => <option key={group.id} value={group.id || "sem-unidade"}>{group.name}</option>)}
         </select></label>
+        <label>Objetivo do PPA <select name="objetivo" defaultValue={objetivo ?? ""} className="border">
+          <option value="">Todos</option>
+          {objectives.map(objective => <option key={objective.id} value={objective.id}>{objective.code} · {objective.description}</option>)}
+        </select></label>
         <button type="submit" className="rounded border px-3 py-1">Filtrar</button>
       </form>
       {groups.length === 0 && <p>Nenhuma demanda para os filtros informados.</p>}
@@ -70,8 +77,10 @@ export default async function PcaPage({ searchParams }: {
           {group.demands.map(demand => {
             const requestId = requestByPlanning.get(demand.id);
             const budget = requestId ? budgetByRequest.get(requestId) : undefined;
+            const objective = demand.objectiveId ? objectiveById.get(demand.objectiveId) : undefined;
             return <li key={demand.id}>
             <Link className="underline" href={`/compras/planejamento/${demand.id}`}>{demand.description}</Link> · {money.format(Number(demand.estimatedValue))}
+            <p className="text-sm">Objetivo do PPA: {objective ? `${objective.code} · ${objective.description}` : "Sem objetivo vinculado"}</p>
             <p className="text-sm">Alocação na solicitação de origem: {budget?.status ?? "Ausente — sem solicitação vinculada"}</p>
             {budget && budget.appropriations.length > 0 && <ul className="list-disc pl-5 text-sm">
               {budget.appropriations.map((allocation, index) => <li key={index}>

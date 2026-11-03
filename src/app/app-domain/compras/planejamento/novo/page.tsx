@@ -5,7 +5,7 @@ import { PlanningForm } from "../PlanningForm";
 
 export default async function NovoPlanejamentoComprasPage() {
   const context = await getTenantContextForModuleOperation("COMPRAS", "create");
-  const { catalogItems, purchaseRequests } = await loadPurchasePlanningOptions(context.database ?? db);
+  const { catalogItems, purchaseRequests, objectives } = await loadPurchasePlanningOptions(context.database ?? db);
 
-  return <PlanningForm catalogItems={catalogItems} purchaseRequests={purchaseRequests} />;
+  return <PlanningForm catalogItems={catalogItems} purchaseRequests={purchaseRequests} objectives={objectives} />;
 }

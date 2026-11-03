@@ -7,7 +7,7 @@ import { PlanningForm } from "../../PlanningForm";
 export default async function EditarPlanejamentoComprasPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   const { id } = await params;
-  const [[planning], { catalogItems, purchaseRequests }] = await Promise.all([
+  const [[planning], { catalogItems, purchaseRequests, objectives }] = await Promise.all([
     listPurchasePlannings(context.database ?? db, id),
     loadPurchasePlanningOptions(context.database ?? db),
   ]);
@@ -17,11 +17,13 @@ export default async function EditarPlanejamentoComprasPage({ params }: { params
   return <PlanningForm
     catalogItems={catalogItems}
     purchaseRequests={purchaseRequests}
+    objectives={objectives}
     data={{
       id: planning.id,
       description: planning.description,
       catalogItemId: planning.catalogItemId,
       originPurchaseRequestId: planning.originPurchaseRequestId,
+      objectiveId: planning.objectiveId,
       unit: planning.unit,
       quantity: planning.quantity,
       expectedPeriodStart: planning.expectedPeriodStart.toISOString().slice(0, 10),

@@ -33,6 +33,7 @@ export type PurchasePlanningFormData = {
   description: string | null;
   catalogItemId: string | null;
   originPurchaseRequestId: string | null;
+  objectiveId: string | null;
   unit: string;
   quantity: number;
   expectedPeriodStart: string;
@@ -45,9 +46,10 @@ type PlanningFormProps = {
   data?: PurchasePlanningFormData;
   catalogItems: CatalogItemOption[];
   purchaseRequests: PurchaseRequestOption[];
+  objectives: { id: string; code: string; description: string }[];
 };
 
-export function PlanningForm({ data, catalogItems, purchaseRequests }: PlanningFormProps) {
+export function PlanningForm({ data, catalogItems, purchaseRequests, objectives }: PlanningFormProps) {
   const router = useRouter();
   const [unit, setUnit] = useState(data?.unit ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -117,6 +119,13 @@ export function PlanningForm({ data, catalogItems, purchaseRequests }: PlanningF
             </div>
             <div className="grid gap-3 md:grid-cols-4">
               <div className="space-y-2"><Label htmlFor="quantity">Quantidade</Label><Input id="quantity" name="quantity" required type="number" min="0.001" step="0.001" defaultValue={data?.quantity ?? ""} /></div>
+              <div className="space-y-2">
+                <Label htmlFor="objectiveId">Objetivo institucional do PPA</Label>
+                <select id="objectiveId" name="objectiveId" defaultValue={data?.objectiveId ?? ""} className="block w-full rounded-md border bg-background p-2 text-sm">
+                  <option value="">Sem objetivo vinculado</option>
+                  {objectives.map(objective => <option key={objective.id} value={objective.id}>{objective.code} · {objective.description}</option>)}
+                </select>
+              </div>
               <div className="space-y-2"><Label htmlFor="unit">Unidade de medida</Label><Input id="unit" name="unit" required value={unit} onChange={(event) => setUnit(event.target.value)} placeholder="Ex.: resma, hora" /></div>
               <div className="space-y-2"><Label htmlFor="expectedPeriodStart">Início esperado</Label><Input id="expectedPeriodStart" name="expectedPeriodStart" required type="date" defaultValue={data?.expectedPeriodStart ?? ""} /></div>
               <div className="space-y-2"><Label htmlFor="expectedPeriodEnd">Fim esperado</Label><Input id="expectedPeriodEnd" name="expectedPeriodEnd" required type="date" defaultValue={data?.expectedPeriodEnd ?? ""} /></div>

@@ -1,6 +1,7 @@
 import { date, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { exactNumeric } from "../decimal";
 import { createId } from "../ids";
+import { planningObjectives } from "./planning-legal";
 
 function timestamps() {
   return {
@@ -54,10 +55,10 @@ export const purchaseReceiptItems = pgTable("PurchaseReceiptItem", {
 }, table => [uniqueIndex("PurchaseReceiptItem_stockMovementId_key").on(table.stockMovementId), index("PurchaseReceiptItem_purchaseProcessItemId_idx").on(table.purchaseProcessItemId), index("PurchaseReceiptItem_materialId_warehouseId_idx").on(table.materialId, table.warehouseId)]);
 
 export const purchasePlannings = pgTable("PurchasePlanning", {
-  ...timestamps(), description: text("description"), catalogItemId: text("catalogItemId"), originPurchaseRequestId: text("originPurchaseRequestId"), unit: text("unit").notNull(), quantity: doublePrecision("quantity").notNull(),
+  ...timestamps(), description: text("description"), catalogItemId: text("catalogItemId"), originPurchaseRequestId: text("originPurchaseRequestId"), objectiveId: text("objectiveId").references(() => planningObjectives.id, { onDelete: "set null" }), unit: text("unit").notNull(), quantity: doublePrecision("quantity").notNull(),
   expectedPeriodStart: date("expectedPeriodStart", { mode: "date" }).notNull(), expectedPeriodEnd: date("expectedPeriodEnd", { mode: "date" }).notNull(),
   estimatedValueDecimal: exactNumeric("estimatedValueDecimal", { precision: 18, scale: 2 }).notNull(), status: text("status").notNull().default("Rascunho"),
-}, table => [index("PurchasePlanning_status_expectedPeriodStart_idx").on(table.status, table.expectedPeriodStart), index("PurchasePlanning_catalogItemId_idx").on(table.catalogItemId), index("PurchasePlanning_originPurchaseRequestId_idx").on(table.originPurchaseRequestId)]);
+}, table => [index("PurchasePlanning_status_expectedPeriodStart_idx").on(table.status, table.expectedPeriodStart), index("PurchasePlanning_catalogItemId_idx").on(table.catalogItemId), index("PurchasePlanning_originPurchaseRequestId_idx").on(table.originPurchaseRequestId), index("PurchasePlanning_objectiveId_idx").on(table.objectiveId)]);
 
 export const purchaseDemandVersions = pgTable("PurchaseDemandVersion", {
   id: text("id").primaryKey().$defaultFn(createId),
