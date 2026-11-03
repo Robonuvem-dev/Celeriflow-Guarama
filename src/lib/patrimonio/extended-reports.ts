@@ -1,12 +1,12 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import type { DatabaseConnection } from "@/db/connection";
+import type { DatabaseExecutor } from "@/db/transaction";
 import { assets, assetCategories, assetTransfers, assetValueAdjustments, assetValueHistories, assetWriteOffs } from "@/db/schema/assets";
 import { departments, employees, secretariats } from "@/db/schema/administration";
 import { assetCatalogRecords } from "@/db/schema/assets-catalogs";
 
 type Query = { report: string; q: string; status: string; category: string; from: string; to: string; department: string; responsible: string; unit: string; account: string; session: string; period: string; year: number };
 const day = (value: Date | null) => value?.toISOString().slice(0, 10) || "";
-export async function extendedAssetReport(database: DatabaseConnection, scope: { departmentId?: string }, query: Query) {
+export async function extendedAssetReport(database: DatabaseExecutor, scope: { departmentId?: string }, query: Query) {
   const records = await database.select({ asset: assets, category: assetCategories.name, department: departments.name, responsible: employees.name, unit: secretariats.name, unitId: secretariats.id }).from(assets).leftJoin(assetCategories, eq(assetCategories.id, assets.categoryId)).leftJoin(departments, eq(departments.id, assets.departmentId)).leftJoin(employees, eq(employees.id, assets.responsibleId)).leftJoin(secretariats, eq(secretariats.id, departments.secretariatId)).where(and(scope.departmentId ? eq(assets.departmentId, scope.departmentId) : undefined, query.department ? eq(assets.departmentId, query.department) : undefined, query.responsible ? eq(assets.responsibleId, query.responsible) : undefined, query.category ? eq(assets.categoryId, query.category) : undefined, query.unit ? eq(secretariats.id, query.unit) : undefined, query.status && !["baixas", "transferencias", "ajustes", "movimentacao"].includes(query.report) ? eq(assets.status, query.status) : undefined)).orderBy(asc(assets.patrimonyNumber));
   const selected = records.filter(r => !query.q || `${r.asset.name} ${r.asset.patrimonyNumber}`.toLocaleLowerCase().includes(query.q.toLocaleLowerCase()));
   const ids = selected.map(r => r.asset.id), byId = new Map(selected.map(r => [r.asset.id, r]));

@@ -838,7 +838,7 @@ Evidências dos cadastros: `src/lib/patrimonio/catalog-definitions.ts`, `catalog
 
 Evidências dos relatórios: `src/app/api/patrimonio/relatorios/route.ts`, `src/app/app-domain/patrimonio/relatorios/page.tsx`, `src/lib/patrimonio/extended-reports.ts` e `report-options.ts`. Emissão HTML e CSV com filtros; PDF via impressão do navegador. QRCode acrescenta `qrcode` e `@types/qrcode`, com lockfile atualizado; dependências não foram usadas para executar validações.
 
-Banco de dados: migração `db/migrations/20261103100000_cf13_asset_inventory/migration.sql` acrescenta proteção das movimentações durante inventário patrimonial; **não aplicada nesta tarefa**. Cadastros e sessões reutilizam a estrutura existente de `AssetCatalogRecord`. Alteração de banco e mudanças nas tabelas visuais são entregas distintas; comportamento dependente do trigger requer aplicação da migração.
+Banco de dados: migração `db/migrations/20261103210000_cf13_asset_inventory/migration.sql` acrescenta proteção das movimentações durante inventário patrimonial; **não aplicada nesta tarefa**. Reposicionada após o histórico instalado de RH para preservar a ordem dos recibos SQL. Cadastros e sessões reutilizam a estrutura existente de `AssetCatalogRecord`. Alteração de banco e mudanças nas tabelas visuais são entregas distintas; comportamento dependente do trigger requer aplicação da migração.
 
 Evidências de ciclo de vida e inventário: `src/lib/patrimonio/asset-inventory.ts`, `asset-routines.ts`, `write-off-reversal.ts`, `asset-lifecycle.ts`, `src/app/app-domain/patrimonio/ciclo-vida/` e `src/app/app-domain/patrimonio/inventario-bens/`. Navegação integrada ao layout, painel e manifesto operacional de Patrimônio.
 
