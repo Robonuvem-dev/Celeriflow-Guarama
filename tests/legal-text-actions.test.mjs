@@ -8,6 +8,7 @@ let actions;
 before(async () => {
   const stubs = {
     "next/cache": 'export function revalidatePath(path){fixture.events.push(["revalidate",path]);}',
+    "@/db/repositories/registry/legal-text-comments": 'export async function insertLegalTextComment(tx,...args){fixture.events.push(["comment",...args]);return "comment-id";}',
     "@/db/client": 'export const db={};export const databaseConnection={};',
     "@/db/transaction": 'export async function withDatabaseTransaction(connection,work){fixture.events.push(["transaction"]);return work({});}',
     "@/db/repositories/registry/master-data-operations": 'import {MasterDataValidationError} from "@/lib/cadastros/master-data-service";export async function saveLegalText(...args){fixture.events.push(["save"]);fixture.saved=args;if(fixture.conflict)throw new MasterDataValidationError("Este texto foi alterado por outra pessoa.");return "legal-id";}',
@@ -57,4 +58,18 @@ test("esferas digitadas são normalizadas sem modificar tipo nem conteúdo integ
     reset(); assert.deepEqual(await actions.mutateMasterDataRecord("legalTexts", null, { ...values, governmentLevel }), {});
     assert.equal(fixture.saved[2].governmentLevel, canonical); assert.equal(fixture.saved[2].type, values.type); assert.equal(fixture.saved[3], values.content);
   }
+});
+
+test("33.13: grava comentário com autoria da sessão e exige permissão de edição", async () => {
+  const form = new FormData();
+  form.set("legalTextId", "legal-id");
+  form.set("body", "  Observação interna  ");
+  form.set("authorId", "outro-usuario");
+  reset({ denied: true });
+  assert.ok((await actions.createLegalTextComment(form)).error);
+  assert.deepEqual(fixture.events, [["auth", "CADASTROS", "update"]]);
+  reset();
+  assert.deepEqual(await actions.createLegalTextComment(form), {});
+  assert.deepEqual(fixture.events.slice(0, 3), [["auth", "CADASTROS", "update"], ["transaction"], ["comment", "legal-id", "actor", "Observação interna"]]);
+  assert.equal(fixture.events[3][1].targetId, "comment-id");
 });

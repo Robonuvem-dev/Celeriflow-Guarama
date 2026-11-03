@@ -7,6 +7,7 @@ import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import { databaseConnection } from "@/db/client";
 import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
 import { getPostgresError, PersistenceError } from "@/db/errors";
+import { insertLegalTextComment } from "@/db/repositories/registry/legal-text-comments";
 import { registerLegalTextRelation } from "@/db/repositories/registry/legal-text-relations";
 import * as master from "@/db/repositories/registry/master-data-operations";
 import { assertCanInactivate } from "@/db/repositories/registry/master-data-guards";
@@ -308,5 +309,25 @@ export async function createLegalTextRelation(form: FormData): Promise<MasterDat
   } catch (error) {
     if (error instanceof AccessError || error instanceof MasterDataValidationError) return { error: error.message };
     return { error: "Não foi possível registrar o vínculo. Confira se os dois atos existem." };
+  }
+}
+
+export async function createLegalTextComment(form: FormData): Promise<MasterDataActionResult> {
+  try {
+    const context = await getTenantContextForModuleOperation("CADASTROS", "update");
+    const id = form.get("legalTextId");
+    const value = form.get("body");
+    const body = typeof value === "string" ? value.trim() : "";
+    if (typeof id !== "string" || !id || id.length > 100 || !body || body.length > 2000) {
+      return { error: "Informe um comentário de até 2.000 caracteres." };
+    }
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const commentId = await insertLegalTextComment(tx, id, context.user.id, body);
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "LEGAL_TEXT_COMMENT", targetId: commentId });
+    });
+    return {};
+  } catch (error) {
+    if (error instanceof AccessError) return { error: "Você não tem permissão para adicionar comentários." };
+    return { error: "Não foi possível salvar o comentário." };
   }
 }

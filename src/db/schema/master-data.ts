@@ -1,5 +1,6 @@
 import { boolean, doublePrecision, index, integer, pgTable, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createId } from "../ids";
+import { users } from "./identity";
 import { people } from "./people";
 import { companies, documents } from "./registry";
 import { administrativeUnits, departments, employees, secretariats } from "./administration";
@@ -76,6 +77,14 @@ export const legalTextRelations = pgTable("LegalTextRelation", {
   uniqueIndex("LegalTextRelation_sourceLegalTextId_targetLegalTextId_relationType_key").on(table.sourceLegalTextId, table.targetLegalTextId, table.relationType),
   index("LegalTextRelation_targetLegalTextId_relationType_idx").on(table.targetLegalTextId, table.relationType),
 ]);
+
+export const legalTextComments = pgTable("LegalTextComment", {
+  id: text("id").primaryKey().$defaultFn(createId),
+  legalTextId: text("legalTextId").notNull().references(() => legalTexts.id, { onDelete: "restrict", onUpdate: "cascade" }),
+  authorId: text("authorId").notNull().references(() => users.id, { onDelete: "restrict", onUpdate: "cascade" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, table => [index("LegalTextComment_legalTextId_createdAt_id_idx").on(table.legalTextId, table.createdAt, table.id)]);
 
 export const legalReportSigners = pgTable("LegalReportSigner", {
   ...timestamps(), personId: text("personId").references(() => people.id, { onDelete: "restrict", onUpdate: "cascade" }), employeeId: text("employeeId").references(() => employees.id, { onDelete: "restrict", onUpdate: "cascade" }), governmentEntityId: text("governmentEntityId").references(() => governmentEntities.id, { onDelete: "restrict", onUpdate: "cascade" }), signingRole: text("signingRole").notNull(), reportTypes: text("reportTypes").array().notNull().default([]), signatureOrder: integer("signatureOrder").notNull().default(1), effectiveFrom: timestamp("effectiveFrom", { precision: 3 }).notNull(), effectiveUntil: timestamp("effectiveUntil", { precision: 3 }), status: text("status").notNull().default("ATIVO"),

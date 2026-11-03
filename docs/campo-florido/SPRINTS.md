@@ -94,6 +94,10 @@ Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correçã
 - [ ] 30.12: reutilizar informações e verificar consistência entre DFD/PCA/ETP/TR e respectivas versões.
 - [ ] Testar origem, autorização por UG/ente, aprovação, revisão, vínculo de versões e rollback; não contar cards ETP/TR como fluxo implementado.
 
+Avanço local em 30.7/30.12: a solicitação exibe os planejamentos vinculados pela origem já existente em PurchasePlanning. Três testes direcionados passaram, incluindo isolamento entre solicitações em PGlite. Formalização do DFD, consolidação do PCA e versionamento do ciclo seguem abertos.
+
+O detalhe da solicitação também abre uma prévia protegida do DFD, com unidade requisitante, objeto, justificativa, itens, estimativa, situação e planejamentos vinculados. A prévia reflete o registro atual. A formalização local exige aprovação da solicitação, permissão de atualização em Compras e acesso à unidade de origem. A versão preserva os dados apresentados, os vínculos ao planejamento, a autoria e a data. O teste isolado do DFD cobre histórico, repetição, conflito e isolamento por solicitação. Tramitação específica do DFD, integração GED, homologação autenticada e publicação seguem pendentes.
+
 ## Sprint 06 — CF30 apoio, segurança e operação
 
 - [ ] 30.1: perfis, autenticação, TLS no ambiente, logs, rastreabilidade e integridade da fase interna.

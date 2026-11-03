@@ -6,6 +6,7 @@ import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
 import { withDatabaseTransaction } from "../src/db/transaction";
 import { saveLegalText, setMasterDataActive } from "../src/db/repositories/registry/master-data-operations";
 import { loadMasterDataPage } from "../src/db/repositories/registry/master-data-queries";
+import { insertLegalTextComment, listLegalTextComments } from "../src/db/repositories/registry/legal-text-comments";
 import { listLegalTextRelations, registerLegalTextRelation } from "../src/db/repositories/registry/legal-text-relations";
 import { legalTexts, legalTextVersions } from "../src/db/schema/master-data";
 import { insertAuditEvent } from "../src/db/repositories/platform/audit";
@@ -28,10 +29,11 @@ before(async () => {
     CREATE UNIQUE INDEX ON "LegalTextVersion" ("documentId");
     CREATE UNIQUE INDEX ON "LegalTextRelation" ("sourceLegalTextId","targetLegalTextId","relationType");
     ALTER TABLE "LegalTextVersion" ADD FOREIGN KEY ("legalTextId") REFERENCES "LegalText"(id);
-    CREATE TABLE "Usuario" (id text PRIMARY KEY); INSERT INTO "Usuario" VALUES ('actor');
+    CREATE TABLE "Usuario" (id text PRIMARY KEY, nome text NOT NULL); INSERT INTO "Usuario" VALUES ('actor', 'Autor teste');
     CREATE TABLE "GovernmentEntity" (id text PRIMARY KEY, name text NOT NULL, status text NOT NULL);
     CREATE TABLE "AuditEvent" (id text PRIMARY KEY,"eventType" text NOT NULL,"targetType" text NOT NULL,"targetId" text NOT NULL,"actorUsuarioId" text NOT NULL REFERENCES "Usuario"(id),"createdAt" timestamp DEFAULT now());
   `);
+  await fixture.database.exec(await readFile("db/migrations/20261103120000_cf33_legal_text_comments/migration.sql", "utf8"));
 });
 after(async () => { await fixture?.close(); });
 function input(overrides: Partial<LegalTextInput> = {}): LegalTextInput { return { type: "Lei", number: String(++sequence), summary: "Ementa fixture", governmentLevel: "MUNICIPAL", issuingBody: "Prefeitura fixture", governmentEntityId: null, publicationDate: new Date("2026-01-01T12:00:00Z"), effectiveFrom: null, effectiveUntil: null, ...overrides }; }
@@ -142,4 +144,18 @@ test("33.1: lista o ato relacionado nos dois sentidos", async () => {
     assert.equal(relation.relationType, "ALTERA");
   }
   assert.deepEqual(await listLegalTextRelations(db, unrelated), []);
+});
+
+test("33.13: comentários preservam autoria e ficam restritos ao ato", async () => {
+  const act = await save(null, input(), "Texto original");
+  const other = await save(null, input(), "Outro ato");
+  const db = fixture.connection.db;
+  assert.ok(await insertLegalTextComment(db, act, "actor", "Observação interna"));
+  const [comment] = await listLegalTextComments(db, act);
+  assert.equal(comment.body, "Observação interna");
+  assert.equal(comment.author, "Autor teste");
+  assert.ok(comment.createdAt instanceof Date);
+  assert.deepEqual(await listLegalTextComments(db, other), []);
+  await assert.rejects(insertLegalTextComment(db, "missing", "actor", "Inválido"));
+  await assert.rejects(insertLegalTextComment(db, act, "missing", "Inválido"));
 });

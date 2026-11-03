@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Pencil, Plus, RefreshCw, Paperclip, Printer, Link2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Paperclip, Printer, Link2, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { OperationalFilters, OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
@@ -11,7 +11,7 @@ import { useOperationalWorkspace } from "@/components/app-ui/operational/Operati
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { registryColumns } from "./operational-registry";
 import styles from "@/components/app-ui/operational/operational.module.css";
-import { createLegalTextRelation, mutateMasterDataRecord, setMasterDataRecordActive } from "./master-data-actions";
+import { createLegalTextComment, createLegalTextRelation, mutateMasterDataRecord, setMasterDataRecordActive } from "./master-data-actions";
 import type { MasterDataCatalog, MasterDataColumn, MasterDataField, MasterDataRow, MasterDataValue } from "./master-data-types";
 
 type Props = { catalog: MasterDataCatalog; pathname: string; rows: MasterDataRow[]; columns: MasterDataColumn[]; fields: MasterDataField[]; page: number; total: number; query: string; extraQuery?: Record<string, string>; statusMutable?: boolean; canCreate?: boolean; canUpdate?: boolean; tabs?: { value: string; label: string }[] };
@@ -34,6 +34,8 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
   const router = useRouter();
   const { device } = useOperationalWorkspace();
   const editTrigger = useRef<HTMLElement | null>(null);
+  const [commentSource, setCommentSource] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState("");
   const [relationSource, setRelationSource] = useState<string | null>(null);
   const [relationError, setRelationError] = useState("");
   const [open, setOpen] = useState(false);
@@ -104,12 +106,31 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
       pagination={<OperationalLinkPagination page={page} total={total} pathname={pathname} values={{ q: query, ...extraQuery }} />}>
       <OperationalTable preferenceId={`cadastros-catalogo-${catalog}`} caption={`Catálogo ${catalog}`} emptyMessage="Nenhum registro encontrado." columns={tableColumns}
         rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>
-          {catalog === "legalTexts" && <>{canUpdate && <button type="button" className={styles.iconButton} aria-label="Vincular ato" onClick={() => { setRelationError(""); setRelationSource(row.id); }}><Link2 /></button>}<Link className={styles.iconButton} aria-label="Documentos do texto jurídico" href={`/cadastros/textos-juridicos/documentos?${new URLSearchParams({ legalTextId: row.id })}`}><Paperclip /></Link>
+          {catalog === "legalTexts" && <>{canUpdate && <button type="button" className={styles.iconButton} aria-label="Adicionar comentário" onClick={() => { setCommentError(""); setCommentSource(row.id); }}><MessageSquare /></button>}{canUpdate && <button type="button" className={styles.iconButton} aria-label="Vincular ato" onClick={() => { setRelationError(""); setRelationSource(row.id); }}><Link2 /></button>}<Link className={styles.iconButton} aria-label="Documentos do texto jurídico" href={`/cadastros/textos-juridicos/documentos?${new URLSearchParams({ legalTextId: row.id })}`}><Paperclip /></Link>
             {Number(row.values.version) > 0 && <a className={styles.iconButton} target="_blank" rel="noopener noreferrer" href={`/api/cadastros/textos-juridicos/imprimir?${new URLSearchParams({ legalTextId: row.id, modo: "consulta" })}`}>Consultar ato</a>}
             {Number(row.values.version) > 0 && <a className={styles.iconButton} aria-label="Imprimir texto jurídico" target="_blank" rel="noopener noreferrer" href={`/api/cadastros/textos-juridicos/imprimir?${new URLSearchParams({ legalTextId: row.id, version: String(row.values.version) })}`}><Printer /></a>}</>}
           {canUpdate && <><button type="button" disabled={pending} aria-label="Editar registro" onClick={event => begin(row, event.currentTarget)} className={styles.iconButton}><Pencil /></button>{statusMutable && <button type="button" aria-label={row.active ? "Inativar registro" : "Reativar registro"} onClick={() => toggle(row)} disabled={pending} className={styles.iconButton}><RefreshCw /></button>}</>}
         </div> }))} />
     </OperationalListFrame>
+    <Dialog open={commentSource !== null} onOpenChange={next => { if (!next && !pending) setCommentSource(null); }}>
+      <DialogContent className={styles.dialog} data-device={device}>
+        <DialogHeader><DialogTitle>Adicionar comentário</DialogTitle><DialogDescription>O comentário será exibido na consulta interna do ato.</DialogDescription></DialogHeader>
+        <form onSubmit={event => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          startTransition(async () => {
+            const result = await createLegalTextComment(data);
+            if (result.error) setCommentError(result.error);
+            else setCommentSource(null);
+          });
+        }}>
+          <input type="hidden" name="legalTextId" value={commentSource ?? ""} />
+          <div className={styles.filterFields}><label>Comentário<textarea name="body" required maxLength={2000} rows={4} /></label></div>
+          {commentError && <p role="alert">{commentError}</p>}
+          <button className={styles.filterButton} type="submit" disabled={pending}>Salvar comentário</button>
+        </form>
+      </DialogContent>
+    </Dialog>
     <Dialog open={relationSource !== null} onOpenChange={next => { if (!next && !pending) setRelationSource(null); }}>
       <DialogContent className={styles.dialog} data-device={device}>
         <DialogHeader><DialogTitle>Vincular ato</DialogTitle><DialogDescription>Registre a relação do ato selecionado com outro ato cadastrado.</DialogDescription></DialogHeader>

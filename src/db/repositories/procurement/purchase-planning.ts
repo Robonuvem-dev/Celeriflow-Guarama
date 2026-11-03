@@ -23,3 +23,15 @@ export async function loadPurchasePlanningOptions(db: DatabaseExecutor): Promise
   ]);
   return { catalogItems: catalog, purchaseRequests: requests };
 }
+
+export function listPlanningForPurchaseRequest(db: DatabaseExecutor, requestId: string) {
+  return db.select({
+    id: purchasePlannings.id,
+    description: purchasePlannings.description,
+    catalogName: catalogItems.name,
+    status: purchasePlannings.status,
+  }).from(purchasePlannings)
+    .leftJoin(catalogItems, eq(catalogItems.id, purchasePlannings.catalogItemId))
+    .where(eq(purchasePlannings.originPurchaseRequestId, requestId))
+    .orderBy(asc(purchasePlannings.expectedPeriodStart), asc(purchasePlannings.id));
+}

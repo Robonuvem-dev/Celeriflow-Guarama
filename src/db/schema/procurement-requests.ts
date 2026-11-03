@@ -1,4 +1,4 @@
-import { date, doublePrecision, index, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { date, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { exactNumeric } from "../decimal";
 import { createId } from "../ids";
 
@@ -58,3 +58,26 @@ export const purchasePlannings = pgTable("PurchasePlanning", {
   expectedPeriodStart: date("expectedPeriodStart", { mode: "date" }).notNull(), expectedPeriodEnd: date("expectedPeriodEnd", { mode: "date" }).notNull(),
   estimatedValueDecimal: exactNumeric("estimatedValueDecimal", { precision: 18, scale: 2 }).notNull(), status: text("status").notNull().default("Rascunho"),
 }, table => [index("PurchasePlanning_status_expectedPeriodStart_idx").on(table.status, table.expectedPeriodStart), index("PurchasePlanning_catalogItemId_idx").on(table.catalogItemId), index("PurchasePlanning_originPurchaseRequestId_idx").on(table.originPurchaseRequestId)]);
+
+export const purchaseDemandVersions = pgTable("PurchaseDemandVersion", {
+  id: text("id").primaryKey().$defaultFn(createId),
+  purchaseRequestId: text("purchaseRequestId").notNull().references(() => purchaseRequests.id),
+  version: integer("version").notNull(),
+  actorId: text("actorId").notNull(),
+  snapshot: jsonb("snapshot").$type<{
+    number: string;
+    object: string;
+    justification: string;
+    secretariat: string | null;
+    department: string | null;
+    requester: string | null;
+    priority: string;
+    status: string;
+    createdAt: string;
+    approvedAt: string | null;
+    estimatedValue: number | null;
+    items: { id: string; name: string; quantity: number; estimatedUnitValue: number | null }[];
+    planning: { id: string; name: string; status: string }[];
+  }>().notNull(),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, table => [uniqueIndex("PurchaseDemandVersion_request_version_key").on(table.purchaseRequestId, table.version)]);

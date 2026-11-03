@@ -10,6 +10,7 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { canManagePurchaseRequest } from "@/lib/compras/purchase-request-policy";
 import { db } from "@/db/client";
+import { listPlanningForPurchaseRequest } from "@/db/repositories/procurement/purchase-planning";
 import { loadPurchaseRequestDetail } from "@/db/repositories/procurement/purchase-requests";
 import { ComprasPanelTable } from "../../_components/ComprasPanelTable";
 import { comprasColumn as column } from "../../_components/columns";
@@ -24,15 +25,33 @@ export default async function SolicitacaoDetalhesPage({ params }: { params: Prom
   if (!solicitacao) {
     notFound();
   }
-  const adhesion = await loadExternalAdhesion(context.database ?? db, solicitacao.id);
+  const database = context.database ?? db;
+  const [adhesion, planning] = await Promise.all([
+    loadExternalAdhesion(database, solicitacao.id),
+    listPlanningForPurchaseRequest(database, solicitacao.id),
+  ]);
 
   return (
     <PageFrame className="space-y-2">
       <PageHeader
         title="Detalhes da Solicitação"
         icon={<ShoppingCart className="size-4 shrink-0 text-emerald-600" />}
-        action={<><Link href="/compras/solicitacoes" aria-label="Voltar"><Button variant="outline" size="icon"><ArrowLeft className="size-4" /></Button></Link>{canManagePurchaseRequest(user, solicitacao) ? <Link href={`/compras/solicitacoes/${solicitacao.id}/editar`}><Button variant="outline" size="sm"><Edit className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button></Link> : null}{solicitacao.status === "Rascunho" && <ApprovePurchaseRequestButton id={solicitacao.id} />}</>}
+        action={<><Link className="text-sm underline" href={`/compras/solicitacoes/${solicitacao.id}/dfd`}>Prévia do DFD</Link><Link href="/compras/solicitacoes" aria-label="Voltar"><Button variant="outline" size="icon"><ArrowLeft className="size-4" /></Button></Link>{canManagePurchaseRequest(user, solicitacao) ? <Link href={`/compras/solicitacoes/${solicitacao.id}/editar`}><Button variant="outline" size="sm"><Edit className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button></Link> : null}{solicitacao.status === "Rascunho" && <ApprovePurchaseRequestButton id={solicitacao.id} />}</>}
       />
+
+      <Card className="rounded-md">
+        <CardHeader className="border-b p-3"><CardTitle className="text-sm">Planejamentos vinculados</CardTitle></CardHeader>
+        <CardContent className="p-3 text-sm">
+          {planning.length === 0 ? <p className="text-muted-foreground">Nenhum planejamento vinculado a esta solicitação.</p> : (
+            <ul className="space-y-2">
+              {planning.map(entry => <li key={entry.id} className="flex flex-wrap items-center gap-2">
+                <Link href={`/compras/planejamento/${entry.id}`} className="font-medium text-emerald-700 hover:underline">{entry.catalogName || entry.description || "Item sem especificação"}</Link>
+                <Badge variant="secondary">{entry.status}</Badge>
+              </li>)}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="rounded-md">
         {adhesion && <section className="space-y-1 border-b p-3"><h2 className="font-semibold">Origem: adesão externa</h2><p>Órgão gerenciador: {adhesion.organization}</p><p>Processo: {adhesion.processNumber} · Ata: {adhesion.minutesNumber}</p></section>}

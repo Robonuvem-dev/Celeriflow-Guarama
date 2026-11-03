@@ -39,3 +39,9 @@ O painel de filtros aceita uma lista por consulta, separada por espacos, virgula
 Dez testes de persistencia passaram, incluindo o caso em que uma palavra ignorada deixaria a consulta sem resultados. Teste de navegador, build completo e homologacao pendentes.
 
 O 33.13 continua aberto. A revisao nao encontrou uma entidade de comentarios de textos legais no schema atual. A implementacao precisa de armazenamento proprio com autoria e acesso, sem usar notas de relacionamento ou comentarios de revisao do GED para outra finalidade.
+
+## Incremento 06 - comentarios internos (33.13)
+
+O cadastro juridico permite adicionar comentarios ao ato com permissao de edicao. A autoria vem da sessao e a gravacao da auditoria ocorre na mesma transacao. A consulta protegida exibe ate os 100 comentarios mais recentes com autor e data. A impressao e o portal publico ficam fora do fluxo.
+
+A migracao aditiva cria LegalTextComment e foi exercitada apenas em PGlite. Testes direcionados de persistencia, rota, renderizacao e acoes passaram (23 casos). Publicacao, build completo, teste de navegador e homologacao pendentes.

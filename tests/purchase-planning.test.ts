@@ -77,3 +77,29 @@ test("CLC-024 permits a free service description but rejects invalid future plan
     PurchasePlanningError,
   );
 });
+
+test("planejamentos vinculados retornam somente os itens da solicitacao consultada", async () => {
+  const { createLocalDrizzleDatabase } = await import("./helpers/local-drizzle-database");
+  const { listPlanningForPurchaseRequest } = await import("../src/db/repositories/procurement/purchase-planning");
+  const fixture = await createLocalDrizzleDatabase();
+  try {
+    await fixture.database.exec(`
+      CREATE TABLE "CatalogItem" (id text PRIMARY KEY, name text NOT NULL);
+      CREATE TABLE "PurchasePlanning" (
+        id text PRIMARY KEY, description text, status text,
+        "catalogItemId" text, "originPurchaseRequestId" text, "expectedPeriodStart" timestamp
+      );
+      INSERT INTO "CatalogItem" VALUES ('paper', 'Papel');
+      INSERT INTO "PurchasePlanning" VALUES
+        ('linked', NULL, 'Rascunho', 'paper', 'request-1', '2026-11-01'),
+        ('other', 'Outro item', 'Rascunho', NULL, 'request-2', '2026-11-01'),
+        ('direct', 'Sem origem', 'Rascunho', NULL, NULL, '2026-11-01');
+    `);
+    assert.deepEqual(await listPlanningForPurchaseRequest(fixture.connection.db, "request-1"), [
+      { id: "linked", description: null, catalogName: "Papel", status: "Rascunho" },
+    ]);
+    assert.deepEqual(await listPlanningForPurchaseRequest(fixture.connection.db, "missing"), []);
+  } finally {
+    await fixture.close();
+  }
+});

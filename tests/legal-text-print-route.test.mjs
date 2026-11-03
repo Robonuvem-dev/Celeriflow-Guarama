@@ -9,6 +9,7 @@ let GET;
 before(async () => {
   const stubs = {
     "@/db/repositories/registry/legal-text-relations": 'export async function listLegalTextRelations(){return [{direction:"incoming",relationType:"ALTERA",relatedText:{id:"related",type:"Lei",number:"12",summary:"<script>unsafe</script>"}}]}',
+    "@/db/repositories/registry/legal-text-comments": 'export async function listLegalTextComments(){return [{body:"<script>comentario</script>",author:"Autor teste",createdAt:new Date(0)}]}',
     "@/db/client": 'export const db={select(){fixture.reads++;const q={from(){return q},innerJoin(){return q},where(condition){fixture.condition=condition;return q},orderBy(){return q},async limit(){return fixture.record?[fixture.record]:[]}};return q}};',
     "@/lib/platform/tenant-context": 'export class AccessError extends Error {status=403;}export async function getTenantContextForModule(module){if(module!=="CADASTROS"||fixture.deny)throw new AccessError("Acesso negado.");return {user:{id:"actor"}};}',
   };
@@ -45,5 +46,7 @@ test("consulta integra o texto integral e os atos relacionados", async () => {
   assert.match(content, /Texto integral/);
   assert.match(content, /legalTextId=related&amp;modo=consulta/);
   assert.match(content, /&lt;script&gt;unsafe/);
-  assert.doesNotMatch(await (await GET(req("legalTextId=law-1"))).text(), /Atos relacionados/);
+  assert.match(content, /Autor teste/);
+  assert.match(content, /&lt;script&gt;comentario/);
+  assert.doesNotMatch(await (await GET(req("legalTextId=law-1"))).text(), /Atos relacionados|Autor teste/);
 });
