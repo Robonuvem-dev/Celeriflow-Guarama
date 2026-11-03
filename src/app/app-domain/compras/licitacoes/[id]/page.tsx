@@ -53,7 +53,6 @@ export default async function LicitacaoDetalhesPage({ params }: { params: Promis
         action={(
           <>
             <Link href="/compras/licitacoes" aria-label="Voltar"><Button variant="outline" size="icon"><ArrowLeft className="size-4" /></Button></Link>
-            <Link href={`/compras/licitacoes/${licitacao.id}/relatorio`}><Button variant="outline" size="sm">Relatórios</Button></Link>
             {canEditDetails ? <Link href={`/compras/licitacoes/${licitacao.id}/editar`}><Button variant="outline" size="sm"><Edit className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button></Link> : null}
           </>
         )}

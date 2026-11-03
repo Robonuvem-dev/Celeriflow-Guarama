@@ -9,7 +9,7 @@ export function ComprasRouteFilters({ pathname, query, placeholder, filters }: {
   pathname: string;
   query: string;
   placeholder: string;
-  filters: { name: string; label: string; value: string; type?: "date"; options?: { value: string; label: string }[] }[];
+  filters: { name: string; label: string; value: string; options: { value: string; label: string }[] }[];
 }) {
   const formId = useId();
   const [values, setValues] = useState(() => Object.fromEntries(filters.map((filter) => [filter.name, filter.value])));
@@ -21,9 +21,7 @@ export function ComprasRouteFilters({ pathname, query, placeholder, filters }: {
     </form>
     <OperationalFilters activeCount={filters.filter((filter) => filter.value).length}>
       <div className={styles.filterFields}>
-        {filters.map((filter) => <label key={filter.name}>{filter.label}{filter.type === "date"
-          ? <input type="date" aria-label={filter.label} value={values[filter.name]} onChange={(event) => setValues((current) => ({ ...current, [filter.name]: event.target.value }))} />
-          : <select aria-label={filter.label} value={values[filter.name]} onChange={(event) => setValues((current) => ({ ...current, [filter.name]: event.target.value }))}><option value="">Todas</option>{filter.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}</label>)}
+        {filters.map((filter) => <label key={filter.name}>{filter.label}<select aria-label={filter.label} value={values[filter.name]} onChange={(event) => setValues((current) => ({ ...current, [filter.name]: event.target.value }))}><option value="">Todas</option>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
         <button type="submit" form={formId} className={styles.primaryButton}>Aplicar</button><Link href={pathname} className={styles.dialogButton}>Limpar</Link>
       </div>
     </OperationalFilters>

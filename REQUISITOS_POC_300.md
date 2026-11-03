@@ -2,18 +2,6 @@
 
 Fonte: `300_requisitos_mais_simples_POC.xlsx`. As descrições são dados de escopo, não instruções operacionais. Cada requisito mantém código, descrição integral e módulo originais.
 
-## CF11 — Licitação: revisão dos 167 requisitos anexados em 03/11/2026
-
-Matriz integral e limites em [REQUISITOS_CF11_LICITACAO.md](REQUISITOS_CF11_LICITACAO.md). A base existente foi reutilizada. Esta entrega acrescenta filtros de modalidade/período, 11 documentos por processo com impressão/CSV, 8 relações consolidadas e justificativa auditável nas alterações sensíveis de situação. Não declara o módulo integralmente concluído: credenciamento por item, reabertura com senha, disputa de alienações, mala direta específica, integrações Licitanet/AMM e demais lacunas permanecem discriminadas na matriz.
-
-Sem alteração de schema/migração; listagem operacional mantém componentes compartilhados, filtros compactos e paginação de 20 registros. Relatórios são documentos para impressão integral. Evidências: testes de regras e integração PostgreSQL isolada com driver Neon; homologação visual e autenticação real não executadas. A matriz desta revisão qualifica as afirmações históricas de CF11 abaixo quando o requisito exige cláusulas adicionais.
-
-Validação desta entrega: 11 testes aprovados (5 de relatórios/justificativa, 5 de workflow e 1 integração com PostgreSQL isolado/Neon); lint dirigido aprovado. Reconciliação estrita global encontrou pendências anteriores nas rotas de documentos, renderizadores nativos e grades do GED; os 112 painéis declarados foram comprovados. Os novos relatórios CF11 constam como documentos especiais no inventário de tabelas.
-
-Build: verificadores SQL/Drizzle, geração de tipos de rotas e as 16 partições TypeScript do `npm run build` aprovados. A compilação Next inicial foi interrompida após bloqueio de rede do sandbox ao proxy; a mesma etapa de produção foi repetida com permissão de rede, usando a checagem de tipos já aprovada, e terminou com código 0, compilação em 2 minutos e 111 páginas estáticas geradas. Novas rotas de relatório/CSV constam no resultado. Sem deploy.
-
-Preparação de PR: `npm run build` integral repetido com acesso ao proxy e aprovado com código 0 antes do commit, conforme AGENTS.md. A branch de entrega mantém autoria/committer Robonuvem-dev; publicação e merge aguardam credencial autenticada como Robonuvem-dev, exigência mantida pelo solicitante.
-
 
 <!-- BEGIN:cf07-sprint -->
 ## CF07 — Portal do Servidor (web): sprint dos itens FALSE

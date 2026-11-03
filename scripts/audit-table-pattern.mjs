@@ -264,9 +264,6 @@ const specialFormats = new Set([
   "src/app/app-domain/cemiterios/taxas/guias/[id]/page.tsx",
   "src/app/app-domain/cemiterios/relatorio/page.tsx",
   "src/app/app-domain/compras/contratos/InstrumentLifecycleReport.tsx",
-  // Dedicated printable documents; operational consultation remains paginated.
-  "src/app/app-domain/compras/licitacoes/[id]/relatorio/page.tsx",
-  "src/app/app-domain/compras/licitacoes/relatorios/page.tsx",
   "src/app/app-domain/rh/operacoes/demonstrativos/[id]/page.tsx",
 ]);
 for (const record of records) if (record.scope === "operational" && specialFormats.has(record.file)) record.scope = "special-format";
