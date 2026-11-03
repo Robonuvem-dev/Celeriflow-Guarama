@@ -26,11 +26,16 @@ export type GedZone = z.infer<typeof gedZoneSchema>;
 export const gedMimeTypes = {
   pdf: "application/pdf", txt: "text/plain", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+  odf: "application/vnd.oasis.opendocument.formula", odt: "application/vnd.oasis.opendocument.text",
+  ods: "application/vnd.oasis.opendocument.spreadsheet",
+  doc: "application/msword", rtf: "application/rtf", xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 } as const;
+export const gedAcceptedExtensions = Object.keys(gedMimeTypes).map(extension => `.${extension}`).join(",");
 export function gedFileType(filename: string) {
   const extension = filename.split(".").pop()?.toLowerCase();
-  const mime = gedMimeTypes[extension as keyof typeof gedMimeTypes];
-  if (!mime) throw new Error("Envie PDF, TXT, DOCX, PNG ou JPEG.");
+  const mime = extension && Object.hasOwn(gedMimeTypes, extension) ? gedMimeTypes[extension as keyof typeof gedMimeTypes] : undefined;
+  if (!mime) throw new Error("Formato documental não suportado.");
   return mime;
 }
 export function normalizeGedText(value: string) {

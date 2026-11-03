@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { OperationalColumn } from "@/lib/operational-tables";
 import type { GedBootstrap, GedDocumentItem, GedListResponse, GedSection } from "@/lib/contracts/ged";
-import { gedFileType, parseGedManifest, type GedManifestItem, type GedQuery } from "@/lib/documents/ged-policy";
+import { gedAcceptedExtensions, gedFileType, parseGedManifest, type GedManifestItem, type GedQuery } from "@/lib/documents/ged-policy";
 import styles from "@/components/app-ui/operational/operational.module.css";
 import workspaceStyles from "./GedWorkspace.module.css";
 import { gedCommand } from "./ged-client";
@@ -93,7 +93,7 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
       } catch (error) { failures++; update({ status: "FAILED", error: error instanceof Error ? error.message : "Falha no envio." }); }
     }
     setBusy(false); await load(result.page);
-    setMessage(failures ? `${failures} arquivo(s) com falha. Repita para reenviar somente os pendentes.` : "Lote importado. Execute a indexação em OCR e indexação.");
+    setMessage(failures ? `${failures} arquivo(s) com falha. Repita para reenviar somente os pendentes.` : "Lote importado. Os originais estão disponíveis no acervo; a pesquisa no conteúdo depende da indexação disponível para cada formato.");
   }
   async function openTemplate(id: string, generate: boolean) {
     try { const response = await fetch(`/api/assinatura-digital/ged?templateId=${encodeURIComponent(id)}`); const data = await response.json(); if (!response.ok) throw new Error(data.error); setTemplate(data); setName(data.name); setContent(data.content); setMarkerValues({}); setPanel(generate ? "generate" : "template"); }
@@ -159,7 +159,8 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
         <label>Classe documental<select disabled={busy || items.some(item => item.status !== "PENDING")} className="block w-full rounded border p-2" value={classCode} onChange={event => setClassCode(event.target.value)}>{bootstrap.classes.map(item => <option key={item.code} value={item.code}>{item.label}</option>)}</select></label>
         <label>Referência do legado / origem<input disabled={busy || items.some(item => item.status !== "PENDING")} maxLength={300} className="block w-full rounded border p-2" value={legacyReference} onChange={event => setLegacyReference(event.target.value)} /></label>
         <label className="text-sm">Manifesto CSV opcional (filename, title, folderPath, classCode, legacyReference)<input type="file" accept=".csv" disabled={busy || items.some(item => item.status !== "PENDING")} onChange={async event => { const file = event.target.files?.[0]; if (!file) return; try { const rows = parseGedManifest(await file.text()); setManifest(Object.fromEntries(rows.map(row => [row.filename, row]))); setMessage(`${rows.length} metadados carregados. Pastas do manifesto serão criadas na importação.`); } catch (error) { setMessage(error instanceof Error ? error.message : "Manifesto inválido."); } }} /></label>
-        <label>Arquivos PDF, imagens, TXT ou DOCX<input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.txt,.docx" disabled={busy} onChange={event => { setBatchId(crypto.randomUUID()); setItems(Array.from(event.target.files || []).map(file => ({ id: crypto.randomUUID(), file, title: file.name.replace(/\.[^.]+$/, ""), status: "PENDING" }))); }} /></label>
+        <label>Arquivos PDF, imagens, texto, Word, LibreOffice ou Excel<input type="file" multiple accept={gedAcceptedExtensions} disabled={busy} onChange={event => { setBatchId(crypto.randomUUID()); setItems(Array.from(event.target.files || []).map(file => ({ id: crypto.randomUUID(), file, title: file.name.replace(/\.[^.]+$/, ""), status: "PENDING" }))); }} /></label>
+        <p className="text-sm">Os originais são preservados sem conversão. A pesquisa no conteúdo de DOC, RTF, ODT, ODF, ODS, XLS e XLSX ainda não está disponível nesta versão.</p>
         <textarea readOnly aria-label="Resultado individual do lote" rows={5} className="w-full rounded border p-2 text-xs" value={uploadStatus.join("\n")} />
         <button className={styles.primaryButton} disabled={busy || !items.length || !classCode} onClick={() => void importFiles()}>{busy ? "Enviando…" : "Importar / repetir pendentes"}</button></div>}
       {panel === "template" && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); void perform("save-template", "", { name, content, templateKey: template?.templateKey || "" }); }}>

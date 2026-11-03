@@ -1,5 +1,11 @@
 # Checkpoint — Campo Florido
 
+## Incremento 03 — formatos originais e esferas jurídicas
+
+Base `0018bfb8b8bdecebd720eed60c30a93015f67659`. 33.4/33.8/33.9 implementados com 42 testes internos aprovados e tipos verificados. Originais preservados pelo GED e cadastro integral nas três esferas, sem alterar portal 33.6. Detalhes em [SPRINT-03.md](SPRINT-03.md).
+
+Regressão aprovada após desativar telemetria do Next e do cliente Application Insights da sessão PowerShell. A revisão automática ainda rejeitou o acompanhamento do comando combinado que incluía lint; lint final e build integral continuam pendentes. 33.11 permanece Em dev pela opção de armazenamento binário direto no banco e desempenho; 33.15 depende de identificar a origem. Nenhum banco real, main, portal 33.6 ou deploy manual alterado.
+
 ## Sprint 03 — vínculos documentais, 02/11/2026
 
 Incremento 02 sobre 36c35b81998daced82600e6076a47077f7d80b36, somente em feat/cf10-cf30-cf33-mateus. Original/anexos ligados a versões jurídicas e GED existentes, com versão exata/hash, autorização conjunta, auditoria atômica, replay/concorrência e download pelo serviço GED existente. Tabela e paginação operacionais na rota /cadastros/textos-juridicos/documentos; nenhuma cópia de arquivo ou outro upload.

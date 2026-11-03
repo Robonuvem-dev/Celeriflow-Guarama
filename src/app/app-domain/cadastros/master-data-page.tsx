@@ -7,6 +7,7 @@ import type { MasterDataCatalog, MasterDataColumn, MasterDataField } from "./mas
 import { db } from "@/db/client";
 import { loadMasterDataPage } from "@/db/repositories/registry/master-data-queries";
 import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { legalGovernmentLevels } from "@/lib/cadastros/legal-text-policy";
 export type MasterDataSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function firstParam(value: string | string[] | undefined) {
@@ -76,7 +77,8 @@ export async function renderMasterDataPage(input: {
     ];
   } else if (catalog === "legalTexts") {
     columns = [{ key: "type", label: "Tipo" }, { key: "number", label: "Número" }, { key: "summary", label: "Ementa" }, { key: "issuingBody", label: "Órgão" }, { key: "version", label: "Versão" }];
-    fields = [{ name: "type", label: "Tipo", required: true }, { name: "number", label: "Número", required: true }, { name: "summary", label: "Ementa", type: "textarea", required: true }, { name: "governmentLevel", label: "Esfera", required: true }, { name: "issuingBody", label: "Órgão emissor", required: true }, { name: "governmentEntityId", label: "Entidade", type: "select", options: options.entities }, { name: "publicationDate", label: "Publicação", type: "date" }, { name: "effectiveFrom", label: "Início da vigência", type: "date" }, { name: "effectiveUntil", label: "Fim da vigência", type: "date" }, { name: "content", label: "Conteúdo consolidado", type: "textarea", required: true }];
+    const legacyLevels = [...new Set(rows.map(row => row.values.governmentLevel).filter((value): value is string => typeof value === "string" && !!value))].filter(value => !legalGovernmentLevels.some(level => level.value === value));
+    fields = [{ name: "type", label: "Tipo", required: true }, { name: "number", label: "Número", required: true }, { name: "summary", label: "Ementa", type: "textarea", required: true }, { name: "governmentLevel", label: "Esfera", type: "select", required: true, options: [...legalGovernmentLevels, ...legacyLevels.map(value => ({ value, label: `${value} (existente)` }))] }, { name: "issuingBody", label: "Órgão emissor", required: true }, { name: "governmentEntityId", label: "Entidade", type: "select", options: options.entities }, { name: "publicationDate", label: "Publicação", type: "date" }, { name: "effectiveFrom", label: "Início da vigência", type: "date" }, { name: "effectiveUntil", label: "Fim da vigência", type: "date" }, { name: "content", label: "Conteúdo consolidado", type: "textarea", required: true }];
   }
 
   const legalPermissions = catalog === "legalTexts" ? { canCreate: canPerformModuleOperation(context.user, "CADASTROS", "create"), canUpdate: canPerformModuleOperation(context.user, "CADASTROS", "update") } : {};

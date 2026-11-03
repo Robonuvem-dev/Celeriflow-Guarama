@@ -37,11 +37,14 @@ export async function inspectGedBytes(filename: string, bytes: Buffer) {
   if (mimeType === "image/png") valid = bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   if (mimeType === "image/jpeg") valid = bytes.subarray(0, 3).equals(Buffer.from([255, 216, 255]));
   if (mimeType === "text/plain") { new TextDecoder("utf-8", { fatal: true }).decode(bytes); valid = !bytes.includes(0); }
-  if (mimeType.includes("wordprocessingml")) {
+  if (["application/msword", "application/vnd.ms-excel"].includes(mimeType)) valid = bytes.subarray(0, 8).toString("hex") === "d0cf11e0a1b11ae1";
+  if (mimeType === "application/rtf") valid = bytes.subarray(0, 5).toString() === "{\\rtf";
+  if (mimeType.includes("openxmlformats") || mimeType.includes("oasis.opendocument")) {
     const zip = await JSZip.loadAsync(bytes);
     const entries = Object.values(zip.files) as Array<JSZip.JSZipObject & { _data?: { uncompressedSize?: number } }>;
-    if (entries.length > 2000 || entries.reduce((n, e) => n + (e.dir ? 0 : e._data?.uncompressedSize ?? GED_MAX_BYTES * 2), 0) > 30 * 1024 * 1024) throw new Error("DOCX excede o limite de descompressão.");
-    valid = Boolean(zip.file("[Content_Types].xml") && zip.file("word/document.xml"));
+    if (entries.length > 2000 || entries.reduce((n, e) => n + (e.dir ? 0 : e._data?.uncompressedSize ?? GED_MAX_BYTES * 2), 0) > 30 * 1024 * 1024) throw new Error("Documento excede o limite de descompressão.");
+    if (mimeType.includes("oasis.opendocument")) valid = Boolean(zip.file("content.xml")) && (await zip.file("mimetype")?.async("string")) === mimeType;
+    else valid = Boolean(zip.file("[Content_Types].xml") && zip.file(mimeType.includes("wordprocessingml") ? "word/document.xml" : "xl/workbook.xml"));
   }
   if (!valid) throw new Error("O conteúdo não corresponde ao formato informado.");
   return { mimeType, hashSha256: gedHash(bytes), byteLength: bytes.length };
@@ -53,7 +56,8 @@ export async function extractGedText(filename: string, bytes: Buffer): Promise<A
     const result = await mammoth.extractRawText({ buffer: bytes });
     return [{ page: 1, text: result.value, method: "DOCX" }];
   }
-  if (mimeType !== "application/pdf") return requestGedOcr(bytes, mimeType, []);
+  if (mimeType.startsWith("image/")) return requestGedOcr(bytes, mimeType, []);
+  if (mimeType !== "application/pdf") throw new Error("Original preservado. A indexação automática deste formato ainda não está disponível nesta versão; o arquivo continua disponível para vínculo e download sem conversão.");
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const task = getDocument({ data: new Uint8Array(bytes), useSystemFonts: true, stopAtErrors: true });
   try {

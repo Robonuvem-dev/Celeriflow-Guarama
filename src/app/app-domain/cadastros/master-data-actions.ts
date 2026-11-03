@@ -17,6 +17,7 @@ import {
   normalizeMasterDataCode,
 } from "@/lib/cadastros/master-data-service";
 import type { MasterDataActionResult, MasterDataCatalog, MasterDataValue } from "./master-data-types";
+import { normalizeLegalGovernmentLevel } from "@/lib/cadastros/legal-text-policy";
 
 const paths: Record<MasterDataCatalog, string> = {
   families: "/app-domain/cadastros/familias",
@@ -223,7 +224,7 @@ export async function mutateMasterDataRecord(catalog: MasterDataCatalog, id: str
         const governmentEntityId = optional(values, "governmentEntityId");
         if (governmentEntityId) await assertActiveReference(await master.findActiveReference(tx, "entity", governmentEntityId), "Entidade");
         const content = text(values, "content", true);
-        const data = { type: text(values, "type", true), number: text(values, "number", true), summary: text(values, "summary", true), governmentLevel: text(values, "governmentLevel", true), issuingBody: text(values, "issuingBody", true), publicationDate: dateOrNull(values, "publicationDate"), effectiveFrom, effectiveUntil, governmentEntityId };
+        const data = { type: text(values, "type", true), number: text(values, "number", true), summary: text(values, "summary", true), governmentLevel: normalizeLegalGovernmentLevel(text(values, "governmentLevel", true)), issuingBody: text(values, "issuingBody", true), publicationDate: dateOrNull(values, "publicationDate"), effectiveFrom, effectiveUntil, governmentEntityId };
         const version = text(values, "expectedVersion");
         if (id && (!/^\d+$/.test(version) || !Number.isSafeInteger(Number(version)))) throw new MasterDataValidationError("Atualize a lista e reabra o texto antes de editar.");
         targetId = await master.saveLegalText(tx, id, data, content, id ? Number(version) : undefined);

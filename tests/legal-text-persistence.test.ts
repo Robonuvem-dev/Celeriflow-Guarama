@@ -59,6 +59,15 @@ test("edições simultâneas da mesma versão têm um vencedor e preservam a ver
   const audits = await fixture.database.query<{ count: number }>('SELECT count(*)::int AS count FROM "AuditEvent" WHERE "targetId"=$1', [id]);
   assert.equal(audits.rows[0].count, 2);
 });
+test("33.8: os oito tipos municipais preservam o texto integral e a ementa sem limitação por categoria", async () => {
+  const content = "Conteúdo integral com acentos, artigos e disposições transitórias.\n".repeat(1000);
+  for (const type of ["Lei Orgânica", "Plano Plurianual", "LDO", "Lei", "Decreto", "Portaria", "Resolução", "Ato Normativo"]) {
+    const data = input({ type }); const id = await save(null, data, content);
+    const rows = await versions(id); assert.equal(rows[0].content, content); assert.equal(rows[0].summary, data.summary);
+    const stored = await withDatabaseTransaction(fixture.connection, tx => tx.select().from(legalTexts).where(eq(legalTexts.id, id)));
+    assert.equal(stored[0].type, type); assert.equal(stored[0].governmentLevel, "MUNICIPAL");
+  }
+});
 test("consumidores legados sem token mantêm contrato e sequenciam versões sem conflito", async () => {
   const data = input(); const id = await save(null, data, "Original");
   const ids = await Promise.all([save(id, data, "A"), save(id, data, "B")]);

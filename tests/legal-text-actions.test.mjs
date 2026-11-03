@@ -52,3 +52,9 @@ test("conflito conserva contrato client e impede auditoria/revalidação de fals
   assert.match(result.error, /outra pessoa/);
   assert.equal(fixture.events.some(event => ["audit", "revalidate"].includes(event[0])), false);
 });
+test("esferas digitadas são normalizadas sem modificar tipo nem conteúdo integral", async () => {
+  for (const [governmentLevel, canonical] of [[" Municipal ", "MUNICIPAL"], ["estadual", "ESTADUAL"], ["Federal", "FEDERAL"], ["Consórcio", "Consórcio"]]) {
+    reset(); assert.deepEqual(await actions.mutateMasterDataRecord("legalTexts", null, { ...values, governmentLevel }), {});
+    assert.equal(fixture.saved[2].governmentLevel, canonical); assert.equal(fixture.saved[2].type, values.type); assert.equal(fixture.saved[3], values.content);
+  }
+});

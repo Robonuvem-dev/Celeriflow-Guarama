@@ -50,9 +50,12 @@ test("conflito transmite a versão vista e conserva conteúdo digitado no diálo
   const page = await open("role=edit");
   try {
     await page.getByRole("button", { name: "Editar registro", exact: true }).click(); const dialog = page.getByRole("dialog");
+    assert.equal(await dialog.getByLabel(/Esfera/).inputValue(), "Consórcio regional");
+    await dialog.getByLabel(/Esfera/).selectOption("FEDERAL");
     await dialog.getByLabel(/Conteúdo consolidado/).fill("Minha revisão preservada");
     await dialog.getByRole("button", { name: "Salvar", exact: true }).click(); await dialog.getByRole("alert").waitFor();
     assert.equal(requests.at(-1).values.expectedVersion, "7"); assert.equal(requests.at(-1).values.content, "Minha revisão preservada");
+    assert.equal(requests.at(-1).values.governmentLevel, "FEDERAL");
     assert.equal(await dialog.getByLabel(/Conteúdo consolidado/).inputValue(), "Minha revisão preservada");
     assert.match(await dialog.getByRole("alert").textContent(), /outra pessoa/);
   } finally { await page.close(); }

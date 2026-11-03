@@ -1,5 +1,16 @@
 # Sprint 03 — CF33, cadastro e documentos
 
+## Incremento 03 — formatos originais e esferas jurídicas
+
+Base `0018bfb8b8bdecebd720eed60c30a93015f67659`. Os itens 33.4, 33.8 e 33.9 têm implementação e testes internos; homologação permanece pendente.
+
+- GED mantém figuras e mapas em PDF/PNG/JPEG e aceita também XLS/XLSX, DOC/RTF e ODT/ODF/ODS nos fluxos existentes de importação e check-in. Preserva bytes e hash dos originais, sem conversão no envio. Os vínculos jurídicos do incremento anterior não precisam de outro upload.
+- MIME do seletor e do token de upload vêm da mesma política. Validação confere estrutura OpenXML/OpenDocument, assinatura OLE dos binários legados e limites de tamanho/descompressão. Não equivale a interpretar integralmente DOC/XLS.
+- Cadastro normaliza MUNICIPAL/ESTADUAL/FEDERAL sem alterar registros existentes, preserva opções legadas em edição e mantém o portal 33.6 intacto. Os oito tipos municipais foram gravados integralmente em fixture Drizzle, com ementa e versão preservadas.
+- 33.11 permanece Em dev: os originais Word/LibreOffice ficam no storage GED; falta a opção de guardar os bytes diretamente no banco e verificar desempenho. A indexação de formatos novos não está integrada; interface informa essa limitação. 33.15 continua dependente da identificação da origem.
+
+42 testes aprovados: 28 de regressão, 10 de formatos/contratos e 4 de navegador. Partições de tipos 10 e 16 e tipos das fixtures aprovados. Sem migração nova ou uso de banco real. As execuções aprovadas usaram opt-out do Next e a configuração DisableTelemetry do cliente Application Insights da sessão PowerShell. A revisão automática ainda rejeitou o acompanhamento da execução combinada que incluía ESLint; o resultado final do lint não foi confirmado e não conta como aprovado. Build integral segue pendente pelo bloqueio Windows/Turbopack já documentado. Publicação somente de desenvolvimento na branch autorizada, sem homologação, merge ou deploy manual.
+
 ## Incremento 02 — documentos vinculados, 02/11/2026
 
 Base `36c35b81998daced82600e6076a47077f7d80b36`, somente na branch de Mateus. O estado abaixo atualiza o incremento 01 histórico. Código dos itens 33.2, 33.12 e 33.14 concluído; não homologado. Demais itens permanecem parciais/pendentes conforme seus requisitos específicos.
