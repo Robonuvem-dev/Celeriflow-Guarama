@@ -1,7 +1,6 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { validateBiddingStatusReason } from "@/lib/compras/bidding-status-reason";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
 import { db, databaseConnection } from "@/db/client";
@@ -248,10 +247,9 @@ async function assertTransitionRequirements(
   }
 }
 
-async function changeBiddingStatus(id: string, requestedStatus: string, reason?: string): Promise<BiddingActionResult> {
+async function changeBiddingStatus(id: string, requestedStatus: string): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const observation = validateBiddingStatusReason(requestedStatus, reason);
     const status = await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [bidding] = await tx.select({ id: biddings.id, status: biddings.status, sessionDate: biddings.sessionDate }).from(biddings).where(eq(biddings.id, id)).limit(1);
       if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
@@ -272,7 +270,7 @@ async function changeBiddingStatus(id: string, requestedStatus: string, reason?:
         biddingId: bidding.id,
         actorUsuarioId: context.user.id,
         type: "STATUS_TRANSITION",
-        description: `${current} para ${next}${observation ? `\nObservação: ${observation}` : ""}`,
+        description: `${current} para ${next}`,
         phaseId,
         idempotencyKey: `BIDDING:${bidding.id}:STATUS:${idempotencyKey}`,
       });
@@ -295,12 +293,12 @@ async function changeBiddingStatus(id: string, requestedStatus: string, reason?:
   }
 }
 
-export async function transitionBiddingStatus(id: string, nextStatus: string, reason?: string) {
-  return changeBiddingStatus(id, nextStatus, reason);
+export async function transitionBiddingStatus(id: string, nextStatus: string) {
+  return changeBiddingStatus(id, nextStatus);
 }
 
-export async function inactivateBidding(id: string, reason?: string) {
-  return changeBiddingStatus(id, BIDDING_STATUS.INACTIVE, reason);
+export async function inactivateBidding(id: string) {
+  return changeBiddingStatus(id, BIDDING_STATUS.INACTIVE);
 }
 
 export async function saveBidding(formData: FormData): Promise<BiddingActionResult> {
