@@ -4,7 +4,7 @@ import { buildAccountingEvolutionReport } from "./accounting-evolution-report";
 import type { DatabaseExecutor } from "@/db/transaction";
 import type { OperationalReportInput, PersonnelReport } from "./operational-reports";
 import { positionPlanSchema } from "./position-plan";
-import { reportContractPredicate, reportPayrollAllocationSource, reportPayrollPredicate, reportEmployeePredicate, reportRubricPredicate } from "./report-filters";
+import { reportContractPredicate, reportPayrollAllocationSource, reportPayrollPredicate, reportEmployeePredicate, reportRubricPredicate, reportFunctionalRulePredicate } from "./report-filters";
 import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
 import { referenceRecordsObservedAt } from "./reference-timeline-query";
 import { buildConsignmentEntityReport } from "./consignment-entity-report";
@@ -76,6 +76,7 @@ export async function buildManagementReport(db: DatabaseExecutor, input: Operati
       ${budgetUnitIds === undefined ? sql`` : sql`AND a."budgetUnitId"=ANY(${sql.param(budgetUnitIds)}::text[])`} ORDER BY a.code,r.id`);
   if (input.kind === "PARAMETROS_CONTAGEM") return query([["name", "Regra / ocorrência"], ["kind", "Modalidade"], ["startsAt", "Início"], ["endsAt", "Fim"], ["data", "Finalidades, efeitos e fundamento"], ["version", "Versão"]], sql`SELECT f.name,f.kind,f."startsAt"::date,f."endsAt"::date,f.data,f.version FROM ${functionalRecordsObservedAt(sql`${reference}`)} f LEFT JOIN "Employee" e ON e.id=f."employeeId" WHERE f.kind IN ('CESSAO','AFASTAMENTO','REGRA_ATS','REGRA_PROGRESSAO','FERIAS_ESPECIAIS','REGRA_APOSENTADORIA') AND f.status<>'CANCELADO' AND f."startsAt"::date<=${reference}::date AND (f."endsAt" IS NULL OR f."endsAt"::date>=${reference}::date) AND (f."employeeId" IS NULL OR (${personnelBudgetEmployeeWhere(sql`e.id`, budgetUnitIds)} AND ${reportEmployeePredicate(input, sql`e.id`, sql`${reference}`)}))
     ${input.employeeId ? sql`AND (f."employeeId"=${input.employeeId} OR f."employeeId" IS NULL)` : sql``}
+    AND (f."employeeId" IS NOT NULL OR ${reportFunctionalRulePredicate(input, sql`f.data`, sql`${reference}`, budgetUnitIds)})
     AND (coalesce(f.data->>'rubricCode','')='' OR (${reportRubricPredicate(input, sql`f.data->>'rubricCode'`)}))
     AND (${input.q}='' OR strpos(lower(concat_ws(' ',f.name,f.kind,e.name)),lower(${input.q}))>0)
     UNION ALL SELECT rule.name,'POLITICA_'||rule.code,package."effectiveFrom"::date,package."effectiveUntil"::date,rule.value,1

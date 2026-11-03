@@ -18,3 +18,14 @@ export function vacationDaysForAbsences(rawPolicy: unknown, count: number) {
   if (!Number.isInteger(count) || count < 0) throw new Error("Quantidade de faltas inválida.");
   return policy.bands.find(band => count >= band.minimumAbsences && (band.maximumAbsences === null || count <= band.maximumAbsences))!.days;
 }
+
+/** Municipal special entitlements keep their extra days; absence bands subtract
+ * the same number of days as in the ordinary scale. A zero band loses the right. */
+export function vacationDaysForConfiguredEntitlement(rawPolicy: unknown, count: number, entitlement: number) {
+  const policy = vacationEntitlementPolicySchema.parse(rawPolicy);
+  if (!Number.isInteger(entitlement) || entitlement < 0 || entitlement > 90) throw new Error("Direito nominal de férias inválido.");
+  const bandDays = vacationDaysForAbsences(policy, count);
+  const ordinary = policy.bands[0].days;
+  if (!bandDays) return 0;
+  return Math.max(0, Math.min(entitlement, entitlement - Math.max(0, ordinary - bandDays)));
+}

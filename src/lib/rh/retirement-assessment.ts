@@ -14,6 +14,7 @@ import { retirementContributionHistory } from "./contribution-history";
 import { matchesReportContract, reportCompleteHistoryPredicate, reportEmployeePredicate } from "./report-filters";
 import { retirementAgeForPoints, retirementAgeReached, retirementTransitionThresholds } from "./retirement-rule-extensions";
 import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
+import { personalRevisionAt } from "./personal-timeline";
 
 const day = 86400000;
 const date = (value: Date) => value.toISOString().slice(0, 10);
@@ -25,7 +26,6 @@ export async function buildRetirementAssessmentReport(db: DatabaseExecutor, inpu
     input.employeeId ? eq(employees.id, input.employeeId) : undefined,
     reportEmployeePredicate(input, employees.id, sql`${reference}`),
     reportCompleteHistoryPredicate(input, employees.id, sql`${reference}`),
-    input.q ? sql`strpos(lower(${employees.name}),lower(${input.q}))>0` : undefined,
     personnelBudgetEmployeeWhere(employees.id, budgetUnitIds),
   )).orderBy(employees.name, hrEmploymentContracts.id);
   const output: string[][] = [];
@@ -33,11 +33,17 @@ export async function buildRetirementAssessmentReport(db: DatabaseExecutor, inpu
     const revisions = await db.select().from(hrEmploymentRevisions).where(eq(hrEmploymentRevisions.contractId, row.contract.id));
     if (!revisions.some(revision => revision.effectiveFrom <= at)) continue;
     const contract = resolveContractRevision(row.contract, revisions, { start: at, end: at }).contract;
+    const personal = await personalRevisionAt(db, row.employee.id, reference);
+    const identitySnapshot = z.object({ person: z.object({ fullName: z.string().nullish(), birthDate: z.string().nullish(), gender: z.string().nullish() }).nullish() }).parse(personal?.snapshot ?? {});
+    const name = identitySnapshot.person?.fullName ?? "Identidade sem fonte documental na referência";
+    const birthDate = identitySnapshot.person?.birthDate ? new Date(identitySnapshot.person.birthDate) : null;
+    const gender = identitySnapshot.person?.gender;
+    if (input.q && !`${name} ${contract.registration}`.toLocaleLowerCase("pt-BR").includes(input.q.toLocaleLowerCase("pt-BR"))) continue;
     if (!matchesReportContract(input, contract, reference)) continue;
     if (input.departmentId && input.departmentId !== contract.departmentId) continue;
     const records = await functionalRecordsAt(db, { employeeId: row.employee.id, contractId: contract.id, from: at, until: at });
     if (input.kind !== "MEMORIA_TEMPO_PREVIDENCIARIO" && records.some(record => record.kind === "CATEGORIA_FOLHA" && record.data.category !== "ATIVO")) continue;
-    const policies = records.filter(rule => rule.kind === "REGRA_APOSENTADORIA" && (!rule.data.regimeId || rule.data.regimeId === contract.regimeId) && (!rule.data.roleId || rule.data.roleId === contract.roleId) && (rule.data.gender === "Todos" || rule.data.gender === row.person.gender));
+    const policies = records.filter(rule => rule.kind === "REGRA_APOSENTADORIA" && (!rule.data.regimeId || rule.data.regimeId === contract.regimeId) && (!rule.data.roleId || rule.data.roleId === contract.roleId) && (rule.data.gender === "Todos" || rule.data.gender === gender));
     const counted = await serviceTimeAssessment(db, contract, at, "retirement");
     const integrated = await assessRetirementTime(db, row.employee.id, at);
     const publicDays = integrated.publicDays, contributionDays = integrated.contributionDays;
@@ -51,7 +57,7 @@ export async function buildRetirementAssessmentReport(db: DatabaseExecutor, inpu
     }
     const roleStartDate = roleStart ? date(roleStart) : null;
     const roleDays = roleStart && roleStartDate ? Math.max(0, Math.floor((at.getTime() - roleStart.getTime()) / day) + 1 - counted.exclusions.filter(value => value >= roleStartDate).length) : 0;
-    const identity = [row.employee.name, contract.registration, reference];
+    const identity = [name, contract.registration, reference];
     if (input.kind === "MEMORIA_TEMPO_PREVIDENCIARIO") {
       output.push([...identity, date(contract.admittedAt), reference, String(counted.calendarDays), String(counted.exclusions.length), String(integrated.municipalDays), String(integrated.priorDays), String(contributionDays), String(roleDays), integrated.certificates.map(entry => `${entry.id}: ${entry.employer}, ${entry.from} a ${entry.until}, ${entry.recognizedDays} dias; natureza ${entry.serviceNature}; intervalos ${entry.recognizedPeriods}; ${entry.source}`).join("; "), integrated.contracts.map(entry => `${entry.contractId} / regime ${entry.regimeId}: ${entry.days} dias; exclusões ${entry.excluded.join(", ")}`).join("; ")]);
       continue;
@@ -59,8 +65,8 @@ export async function buildRetirementAssessmentReport(db: DatabaseExecutor, inpu
     if (!policies.length) { output.push([...identity, "Sem regra previdenciária aplicável", ...Array(14).fill("")]); continue; }
     for (const policy of policies) {
       const thresholds = retirementTransitionThresholds(policy.data, reference);
-      const age = row.person.birthDate ? ageAt(row.person.birthDate, at) : null;
-      const points = (row.person.birthDate ? retirementAgeForPoints(row.person.birthDate, at) : new Decimal(0)).add(new Decimal(contributionDays).div("365.25"));
+      const age = birthDate ? ageAt(birthDate, at) : null;
+      const points = (birthDate ? retirementAgeForPoints(birthDate, at) : new Decimal(0)).add(new Decimal(contributionDays).div("365.25"));
       let toll = 0;
       if (policy.data.transitionDate) {
         const cutoff = new Date(`${policy.data.transitionDate}T00:00:00Z`);
@@ -70,7 +76,7 @@ export async function buildRetirementAssessmentReport(db: DatabaseExecutor, inpu
       }
       const neededContribution = Number(policy.data.contributionDays) + toll;
       const publicEntry = integrated.publicAdmissionUnresolved ? null : integrated.firstPublicService;
-      const missing = [!row.person.birthDate ? "Nascimento não informado" : !retirementAgeReached(row.person.birthDate, at, thresholds.age) ? `Idade mínima (${thresholds.age.toString()})` : "", contributionDays < neededContribution ? "Tempo contributivo / pedágio" : "", publicDays < Number(policy.data.publicDays) ? "Serviço público" : "", roleDays < Number(policy.data.roleDays) ? "Tempo no cargo" : "", new Decimal(points).lt(thresholds.points) ? `Pontuação (${thresholds.points.toString()})` : "", policy.data.publicAdmissionUntil && (!publicEntry || publicEntry > policy.data.publicAdmissionUntil) ? "Ingresso no serviço público após o corte da regra" : ""].filter(Boolean);
+      const missing = [!birthDate ? "Nascimento sem fonte documental na referência" : !retirementAgeReached(birthDate, at, thresholds.age) ? `Idade mínima (${thresholds.age.toString()})` : "", contributionDays < neededContribution ? "Tempo contributivo / pedágio" : "", publicDays < Number(policy.data.publicDays) ? "Serviço público" : "", roleDays < Number(policy.data.roleDays) ? "Tempo no cargo" : "", new Decimal(points).lt(thresholds.points) ? `Pontuação (${thresholds.points.toString()})` : "", policy.data.publicAdmissionUntil && (!publicEntry || publicEntry > policy.data.publicAdmissionUntil) ? "Ingresso no serviço público após o corte da regra" : ""].filter(Boolean);
       if (contract.status !== "ATIVO" || contract.endsAt && contract.endsAt < at) missing.push("Vínculo de serviço inativo na referência");
       const bases = { rows: (await retirementContributionHistory(db, row.employee.id, at, payrollScope)).slice(0, Number(policy.data.averageMonths)) };
       const indices = policy.data.indexSeries ? records.filter(record => record.kind === "INDICE_PREVIDENCIARIO" && record.data.series === policy.data.indexSeries) : [];

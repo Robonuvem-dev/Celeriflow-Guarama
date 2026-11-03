@@ -6,7 +6,7 @@ import { canPerformModuleOperation, canViewModule, type AppContext } from "@/lib
 import { processAutomaticRights } from "./automatic-rights-processing";
 import { personnelDepartmentWhere, personnelEmployeeWhere } from "./personnel-scope";
 
-export async function runAutomaticRightsSchedule(connection: DatabaseConnection, actorId: string | undefined, now = new Date()) {
+export async function runAutomaticRightsSchedule(connection: DatabaseConnection, actorId: string | undefined, now = new Date(), options: { deadline?: number; excludeContractIds?: readonly string[] } = {}) {
   if (!actorId) throw new Error("Configure RH_RIGHTS_ACTOR_USER_ID para o agendamento funcional.");
   const [actor] = (await connection.db.execute<{ firebaseUid: string | null }>(sql`SELECT "firebaseUid" FROM "Usuario" WHERE id=${actorId}`)).rows;
   const identity = actor?.firebaseUid ? await findIdentityByFirebaseUid(connection.db, actor.firebaseUid) : null;
@@ -23,9 +23,13 @@ export async function runAutomaticRightsSchedule(connection: DatabaseConnection,
       AND ${personnelEmployeeWhere(user, sql`e."departmentId"`, sql`e.id`)}
       AND ${personnelDepartmentWhere(user, sql`c."departmentId"`)} AND ${personnelDepartmentWhere(user, sql`e."departmentId"`)}
       AND NOT EXISTS(SELECT 1 FROM "HrIntegrationEvent" a WHERE a."sourceKey"='DIREITOS:AGENDA:'||${referenceDate}||':'||c.id)
-    ORDER BY EXISTS(SELECT 1 FROM "HrIntegrationEvent" a WHERE a."sourceKey"='DIREITOS:AGENDA_FALHA:'||${referenceDate}||':'||c.id),c.id LIMIT 20`);
+      ${options.excludeContractIds?.length ? sql`AND NOT (c.id=ANY(${sql.param(options.excludeContractIds)}::text[]))` : sql``}
+    ORDER BY EXISTS(SELECT 1 FROM "HrIntegrationEvent" a WHERE a."sourceKey"='DIREITOS:AGENDA_FALHA:'||${referenceDate}||':'||c.id),
+      (SELECT max(a."createdAt") FROM "HrIntegrationEvent" a WHERE a."eventType"='DIREITOS_PROCESSADOS_AGENDAMENTO' AND a.payload->>'contractId'=c.id) ASC NULLS FIRST,c.id LIMIT 20`);
   const results: Array<{ contractId: string; processed: boolean; error?: string }> = [];
   for (const contract of selected.rows) {
+    // Each contract transaction can take up to 120s; the daily caller reserves that margin.
+    if (options.deadline !== undefined && Date.now() >= options.deadline) break;
     try {
       const result = await processAutomaticRights(connection, { user, database: connection.db }, { contractIds: [contract.id], referenceDate, mode: "APLICAR" });
       await enqueueHrIntegration(connection.db, { sourceKey: `DIREITOS:AGENDA:${referenceDate}:${contract.id}`, domain: "AUDITORIA", environment: "INTERNO", eventType: "DIREITOS_PROCESSADOS_AGENDAMENTO", payload: { contractId: contract.id, referenceDate, actorId: user.id, rows: result.rows } });

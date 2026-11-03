@@ -59,6 +59,13 @@ const shortcutItems = [
     icon: ChartNoAxesCombined,
     accent: "slate",
   },
+  {
+    href: "/patrimonio/inventario-bens",
+    title: "Inventário patrimonial",
+    description: "Abertura, conferência e fechamento dos bens.",
+    icon: ClipboardList,
+    accent: "amber",
+  },
 ];
 
 export default async function PatrimonioDashboard() {

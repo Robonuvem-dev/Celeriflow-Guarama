@@ -8,7 +8,7 @@ import { hrVacationPolicies } from "@/db/schema/personnel-configuration";
 import { enqueueHrIntegration, lockPersonnel, personnelJson } from "@/db/repositories/personnel/integration";
 import { findActivePayrollRule, requireEmploymentHolderHistory, requireEmploymentRegime } from "@/db/repositories/personnel/workforce";
 import { attendanceRecords } from "@/db/schema/personnel-records";
-import { vacationDaysForAbsences, vacationEntitlementPolicySchema } from "./vacation-entitlement";
+import { vacationDaysForConfiguredEntitlement, vacationEntitlementPolicySchema } from "./vacation-entitlement";
 import { assertFunctionalHolderAccess, functionalRecordsAt } from "./functional-record-service";
 import { matchingFunctionalRules } from "./functional-payroll";
 import { serviceTimeAssessment } from "./automatic-service-rights";
@@ -126,7 +126,7 @@ export async function processAutomaticRightsInTransaction(tx: DatabaseTransactio
           const sourceKey = `FERIAS:AQUISICAO:${id}:${iso(start)}`;
           const faults = absencePolicy ? await tx.select({ date: attendanceRecords.date }).from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, contract.employeeId), sql`${attendanceRecords.date} BETWEEN ${start} AND ${end}`, sql`${attendanceRecords.status}=ANY(${sql.param(absencePolicy.attendanceStatuses)}::text[])`)) : [];
           const absenceCount = new Set(faults.map(row => iso(row.date))).size;
-          const entitledDays = absencePolicy ? Math.min(entitlement, vacationDaysForAbsences(absencePolicy, absenceCount)) : entitlement;
+          const entitledDays = absencePolicy ? vacationDaysForConfiguredEntitlement(absencePolicy, absenceCount, entitlement) : entitlement;
           const [existing] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey));
           if (existing && (existing.periodEnd.getTime() !== end.getTime() || !existing.quantity.eq(entitledDays))) throw new Error("A política ou frequência alterou uma aquisição registrada. Concilie o ledger antes de reapurar.");
           rows.push({ contractId: id, registration: contract.registration, kind: "FERIAS", start: iso(start), acquiredAt: iso(end), deadline: iso(deadline), quantity: String(entitledDays), ruleId: vacation?.id ?? regular.id, status: existing ? "Registrada" : end > through ? "Prevista" : "Devida", evidence: vacation?.data.legalReference ?? regular.legalReference ?? "Política de férias" });

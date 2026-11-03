@@ -68,19 +68,25 @@ export async function buildFunctionalHistoryReport(db: DatabaseExecutor, input: 
         FROM "HrPayrollStatement" s JOIN "HrPayrollRun" r ON r.id=s."runId" JOIN "Payroll" ON "Payroll".id=r."payrollId" JOIN "HrEmploymentContract" c ON c.id=s."contractId"
         WHERE r.status='FECHADA' AND r.mode='OFICIAL' AND ${payrollScope ?? sql`true`}
     )
-    SELECT e.name,e.registration,to_char(a.date,'YYYY-MM-DD') date,a.origin,a.type,a.description,a.status,a.document,a.scope,a.id,
+    SELECT identity.name,coalesce(historical.snapshot->>'registration',personal.snapshot->'employee'->>'registration','') registration,
+      identity.source identity_source,to_char(a.date,'YYYY-MM-DD') date,a.origin,a.type,a.description,a.status,a.document,a.scope,a.id,
       coalesce(d.name,'Sem lotação histórica identificada') department
     FROM events a JOIN "Employee" e ON e.id=a."employeeId"
     LEFT JOIN LATERAL (SELECT v.snapshot FROM "HrEmploymentContract" c JOIN "HrEmploymentRevision" v ON v."contractId"=c.id
       WHERE c."employeeId"=e.id AND (a.contract_id IS NULL OR c.id=a.contract_id) AND v."effectiveFrom"::date<=a.date
       ORDER BY v."effectiveFrom" DESC,v.version DESC,c.id LIMIT 1) historical ON true
     LEFT JOIN "Department" d ON d.id=historical.snapshot->>'departmentId'
+    LEFT JOIN LATERAL (SELECT p.snapshot FROM "HrPersonalRevision" p WHERE p."employeeId"=e.id AND p."effectiveFrom"<a.date+interval '1 day' ORDER BY p."effectiveFrom" DESC,p.id DESC LIMIT 1) personal ON true
+    LEFT JOIN LATERAL (SELECT s.snapshot->'contract'->'employee'->>'name' name FROM "HrPayrollStatement" s WHERE a.origin='DEMONSTRATIVO' AND s.id=a.id) statement_identity ON true
+    CROSS JOIN LATERAL (SELECT coalesce(statement_identity.name,personal.snapshot->'person'->>'fullName',historical.snapshot->'employee'->>'name','') name,
+      CASE WHEN statement_identity.name IS NOT NULL THEN 'Fotografia da folha' WHEN personal.snapshot->'person'->>'fullName' IS NOT NULL THEN 'Fotografia cadastral da referência' WHEN historical.snapshot->'employee'->>'name' IS NOT NULL THEN 'Revisão contratual' ELSE 'Sem fonte documental de identidade na data' END source) identity
     WHERE a.date BETWEEN ${from}::date AND ${until}::date
       AND ${reportContractPredicate(input, sql`historical.snapshot`, sql`a.date`)}
-      AND (${input.q}='' OR strpos(lower(e.name),lower(${input.q}))>0 OR strpos(coalesce(e.registration,''),${input.q})>0)
+      AND (${input.q}='' OR strpos(lower(identity.name),lower(${input.q}))>0 OR strpos(coalesce(historical.snapshot->>'registration',personal.snapshot->'employee'->>'registration',''),${input.q})>0)
       ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``} ${input.departmentId ? sql`AND historical.snapshot->>'departmentId'=${input.departmentId}` : sql``}
       AND ${personnelBudgetEmployeeWhere(sql`e.id`, budgetUnitIds)}
-    ORDER BY e.name,e.id,a.date,a.origin,a.id`);
-  const columns = [["name", "Servidor"], ["registration", "Matrícula"], ["date", "Data de vigência / registro"], ["origin", "Origem"], ["type", "Evento"], ["department", "Lotação de referência na data"], ["description", "Descrição / memória"], ["status", "Situação"], ["document", "Referência documental"], ["scope", "Escopo / pacote"], ["id", "Identificador de origem"]];
+      ${input.authorizedRubricCodes === undefined ? sql`` : sql`AND (a.origin<>'DIREITO' OR EXISTS (SELECT 1 FROM "HrRightEntry" permitted_right WHERE permitted_right.id=a.id AND coalesce(nullif(permitted_right.details->>'rubricCode',''),permitted_right.details->'rule'->'data'->>'rubricCode',permitted_right.kind)=ANY(${sql.param(input.authorizedRubricCodes)}::text[])))`}
+    ORDER BY identity.name,e.id,a.date,a.origin,a.id`);
+  const columns = [["name", "Servidor"], ["registration", "Matrícula"], ["identity_source", "Fonte da identidade"], ["date", "Data de vigência / registro"], ["origin", "Origem"], ["type", "Evento"], ["department", "Lotação de referência na data"], ["description", "Descrição / memória"], ["status", "Situação"], ["document", "Referência documental"], ["scope", "Escopo / pacote"], ["id", "Identificador de origem"]];
   return { title: "Histórico funcional integrado — contratos, atos, afastamentos, direitos, formação e demonstrativos", headers: columns.map(([, label]) => label), rows: result.rows.map(row => columns.map(([key]) => row[key] == null ? "" : String(row[key]))) };
 }

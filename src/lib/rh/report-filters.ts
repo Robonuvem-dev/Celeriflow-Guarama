@@ -1,6 +1,7 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { z } from "zod";
 import { referenceRecordsObservedAt } from "./reference-timeline-query";
+import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
 
 const text = z.string().trim().max(200).optional();
 const list = z.string().max(20000).optional();
@@ -57,6 +58,21 @@ export function reportEmployeePredicate(input: AdvancedHrReportFilters & { depar
   return sql`EXISTS (SELECT 1 FROM "HrEmploymentContract" filtered_contract
     JOIN LATERAL (SELECT snapshot FROM "HrEmploymentRevision" WHERE "contractId"=filtered_contract.id AND "effectiveFrom"::date<=${reference}::date ORDER BY "effectiveFrom" DESC,version DESC LIMIT 1) filtered_revision ON true
     WHERE filtered_contract."employeeId"=${employeeId} AND ${reportContractPredicate(input, sql`filtered_revision.snapshot`, reference)} ${input.departmentId ? sql`AND filtered_revision.snapshot->>'departmentId'=${input.departmentId}` : sql``})`;
+}
+
+/** General rules remain visible for the selected holders only when their targets
+ * intersect an authorized contract at the reference; blank targets apply broadly. */
+export function reportFunctionalRulePredicate(input: AdvancedHrReportFilters & { employeeId?: string; departmentId?: string }, data: SQLWrapper, reference: SQLWrapper, budgetUnitIds?: readonly string[]): SQL {
+  if (budgetUnitIds === undefined && input.authorizedDepartmentIds === undefined && ![input.employeeId, input.departmentId, input.registrationFrom, input.registrationUntil, input.regimeIds, input.roleIds, input.departmentIds, input.locationFrom, input.locationUntil, input.classifications, input.functionalClassifications, input.appropriationFrom, input.appropriationUntil].some(Boolean)) return sql`true`;
+  return sql`EXISTS (SELECT 1 FROM "HrEmploymentContract" rule_contract
+    JOIN LATERAL (SELECT snapshot FROM "HrEmploymentRevision" WHERE "contractId"=rule_contract.id AND "effectiveFrom"::date<=${reference}::date ORDER BY "effectiveFrom" DESC,version DESC LIMIT 1) rule_revision ON true
+    WHERE ${reportContractPredicate(input, sql`rule_revision.snapshot`, reference)}
+      AND ${personnelBudgetEmployeeWhere(sql`rule_contract."employeeId"`, budgetUnitIds)}
+      AND (coalesce(${data}->>'regimeId','')='' OR ${data}->>'regimeId'=rule_revision.snapshot->>'regimeId')
+      AND (coalesce(${data}->>'roleId','')='' OR ${data}->>'roleId'=rule_revision.snapshot->>'roleId')
+      AND (coalesce(${data}->>'departmentId','')='' OR ${data}->>'departmentId'=rule_revision.snapshot->>'departmentId')
+      ${input.employeeId ? sql`AND rule_contract."employeeId"=${input.employeeId}` : sql``}
+      ${input.departmentId ? sql`AND rule_revision.snapshot->>'departmentId'=${input.departmentId}` : sql``})`;
 }
 
 export function reportPayrollAllocationSource(runId: SQLWrapper, snapshot: SQLWrapper): SQL {

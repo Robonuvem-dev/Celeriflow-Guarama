@@ -8,6 +8,7 @@ import { financialAuditLogs } from "@/db/schema/finance-identity";
 import { FinanceError, postAccountingEventInTransaction, recordConfirmedRevenue, type FinanceActor } from "@/lib/financeiro";
 import { resolveAssetValuationScope, assertAssetValuationOrigin, postAssetValuation, type AssetValuationContext } from "./valuation-accounting";
 import { recordMunicipalCostSource } from "@/lib/financeiro/cost-ledger";
+import { assetCatalogRecords } from "@/db/schema/assets-catalogs";
 
 export class AssetLifecycleError extends Error {}
 
@@ -42,6 +43,7 @@ export type AssetValueAdjustmentInput = {
   justification: string;
   evidence: string;
   idempotencyKey?: string;
+  usefulLifeMonths?: number;
 };
 
 function roundCurrency(value: number) {
@@ -95,8 +97,8 @@ export function calculateAssetValueAdjustment(bookValue: number, type: AssetValu
     return { openingValue, adjustmentValue: normalizedValue, closingValue: roundCurrency(openingValue + normalizedValue) };
   }
   if (normalizedValue < 0) throw new AssetLifecycleError("O valor contábil ajustado deve ser maior ou igual a zero.");
-  if (type === "IMPAIRMENT" && normalizedValue >= openingValue) {
-    throw new AssetLifecycleError("A perda por impairment deve reduzir o valor contábil do bem.");
+  if (type === "IMPAIRMENT" && normalizedValue > openingValue) {
+    throw new AssetLifecycleError("O teste de recuperabilidade deve manter ou reduzir o valor contábil do bem.");
   }
   if (type === "REVALUATION" && normalizedValue === openingValue) {
     throw new AssetLifecycleError("A reavaliação deve alterar o valor contábil do bem.");
@@ -117,8 +119,9 @@ function depreciationPostingDate(referenceMonth: Date) {
   return new Date(Date.UTC(referenceMonth.getUTCFullYear(), referenceMonth.getUTCMonth() + 1, 0, 12));
 }
 
-export async function depreciateAssetsForMonth(db: DatabaseConnection, referenceDate: Date, accounting?: AssetValuationContext) {
+export async function depreciateAssetsForMonth(db: DatabaseConnection, referenceDate: Date, accounting?: AssetValuationContext, manual?: { assetId: string; amount: number }) {
   if (!accounting) throw new AssetLifecycleError("Selecione a UG e o responsável pela depreciação.");
+  if (manual && (!manual.assetId.trim() || !Number.isFinite(manual.amount) || manual.amount <= 0)) throw new AssetLifecycleError("Informe bem e valor positivo para a depreciação manual.");
   const referenceMonth = normalizeReferenceMonth(referenceDate);
   const postingDate = depreciationPostingDate(referenceMonth);
   return withDatabaseTransaction(db, async tx => {
@@ -126,8 +129,10 @@ export async function depreciateAssetsForMonth(db: DatabaseConnection, reference
    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`ASSET_DEPRECIATION:${accounting.budgetUnitId}`}, 0))::text`);
    const assets = await tx.select({ id: assetTable.id }).from(assetTable).innerJoin(departments, eq(departments.id, assetTable.departmentId)).where(and(
      notInArray(assetTable.status, ["Baixado", "Inativo"]), eq(departments.secretariatId, scope.unit.secretariatId),
+     manual ? eq(assetTable.id, manual.assetId) : undefined,
       sql`(${assetTable.budgetUnitId}=${accounting.budgetUnitId} OR (${assetTable.budgetUnitId} IS NULL AND (${assetTable.purchaseReceiptItemId} IS NULL OR EXISTS (SELECT 1 FROM "PurchaseReceiptItem" i JOIN "PurchaseReceipt" r ON r.id=i."purchaseReceiptId" JOIN "Commitment" c ON c."purchaseReceiptId"=r.id JOIN "BudgetAppropriation" b ON b.id=c."appropriationId" WHERE i.id=${assetTable.purchaseReceiptItemId} AND b."budgetUnitId"=${accounting.budgetUnitId}))))`,
    )).orderBy(asc(assetTable.id));
+  if (manual && !assets.length) throw new AssetLifecycleError("Bem não encontrado na unidade gestora selecionada.");
   let processed = 0;
   let skipped = 0;
   for (const asset of assets) {
@@ -144,7 +149,7 @@ export async function depreciateAssetsForMonth(db: DatabaseConnection, reference
         if (previousHistory && depreciationPeriod(previousHistory.referenceMonth, referenceMonth) !== 2) throw new AssetLifecycleError("Processe as competências patrimoniais intermediárias antes deste mês.");
          if ((await tx.select({ id: assetValueAdjustments.id }).from(assetValueAdjustments).where(and(eq(assetValueAdjustments.assetId, asset.id), gt(assetValueAdjustments.date, postingDate), activeAdjustment)).limit(1)).length) throw new AssetLifecycleError("A competência antecede ajuste patrimonial já registrado; concilie a sequência antes da depreciação.");
 
-         const [currentAsset] = await tx.select({ currentValue: assetTable.currentValue, currentValueDecimal: assetTable.currentValueDecimal, status: assetTable.status, acquisitionDate: assetTable.acquisitionDate, categoryId: assetTable.categoryId, category: { lifeSpan: assetCategories.lifeSpan, isActive: assetCategories.isActive } }).from(assetTable).innerJoin(assetCategories, eq(assetCategories.id, assetTable.categoryId)).where(eq(assetTable.id, asset.id)).limit(1);
+         const [currentAsset] = await tx.select({ currentValue: assetTable.currentValue, currentValueDecimal: assetTable.currentValueDecimal, acquisitionValue: assetTable.acquisitionValue, status: assetTable.status, acquisitionDate: assetTable.acquisitionDate, categoryId: assetTable.categoryId, category: { lifeSpan: sql<number>`coalesce((SELECT (r.details->>'lifeSpanMonths')::integer FROM "AssetCatalogRecord" r JOIN "AssetValueAdjustment" a ON a.id=r.details->>'adjustmentId' WHERE r.kind='vidaUtilBem' AND r.details->>'assetId'=${assetTable.id} AND a.date<=${postingDate} AND NOT EXISTS (SELECT 1 FROM "AccountingTransaction" t WHERE t."reversalOfId"=a."accountingTransactionId") ORDER BY a.date DESC,r."createdAt" DESC LIMIT 1),${assetCategories.lifeSpan})`, isActive: assetCategories.isActive, residualPercent: sql<string | null>`(SELECT r.details->>'residualPercent' FROM "AssetCatalogRecord" r WHERE r.kind='depreciacao' AND r.code=${assetCategories.code} AND r."departmentId"=${assetTable.departmentId} AND r.active ORDER BY r."updatedAt" DESC LIMIT 1)` } }).from(assetTable).innerJoin(assetCategories, eq(assetCategories.id, assetTable.categoryId)).where(eq(assetTable.id, asset.id)).limit(1);
          if (!currentAsset) throw new AssetLifecycleError("Bem patrimonial não encontrado.");
         if (currentAsset.status === "Baixado" || currentAsset.status === "Inativo") return false;
         if (currentAsset.acquisitionDate > postingDate) return false;
@@ -155,8 +160,12 @@ export async function depreciateAssetsForMonth(db: DatabaseConnection, reference
         if (!currentAsset.category.isActive || currentAsset.category.lifeSpan <= 0 || !Number.isFinite(currentAsset.currentValue) || currentAsset.currentValue < 0) throw new AssetLifecycleError("Categoria, vida útil ou valor patrimonial inválidos.");
         const remainingPeriods = currentAsset.category.lifeSpan - currentPeriod + 1;
          const opening = currentAsset.currentValueDecimal ?? new Decimal(String(currentAsset.currentValue)).toDecimalPlaces(2);
-        const depreciation = remainingPeriods > 0 && currentPeriod > 0
-           ? opening.div(remainingPeriods).toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+        const residual = new Decimal(String(currentAsset.acquisitionValue)).mul(currentAsset.category.residualPercent || "0").div(100).toDecimalPlaces(2);
+        const depreciable = Decimal.max(0, opening.minus(residual));
+        if (manual && new Decimal(String(manual.amount)).greaterThan(depreciable)) throw new AssetLifecycleError("Depreciação manual excede o valor depreciável, preservado o residual.");
+        const depreciation = manual ? new Decimal(String(manual.amount)).toDecimalPlaces(2)
+          : remainingPeriods > 0 && currentPeriod > 0
+           ? depreciable.div(remainingPeriods).toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
            : new Decimal(0);
         if (depreciation.isZero()) return false;
         const actualDepreciation = Number(depreciation);
@@ -197,6 +206,7 @@ export async function recordAssetValueAdjustment(db: DatabaseConnection, input: 
     throw new AssetLifecycleError("Tipo de ajuste patrimonial inválido.");
   }
   if (Number.isNaN(input.date.valueOf())) throw new AssetLifecycleError("Data do ajuste inválida.");
+  if (input.usefulLifeMonths !== undefined && (!Number.isInteger(input.usefulLifeMonths) || input.usefulLifeMonths < 1 || input.usefulLifeMonths > 12000)) throw new AssetLifecycleError("Vida útil revisada deve ser inteira entre 1 e 12000 meses.");
 
   return withDatabaseTransaction(db, async (tx) => {
     const scope = await resolveAssetValuationScope(tx, accounting, input.date);
@@ -205,8 +215,17 @@ export async function recordAssetValueAdjustment(db: DatabaseConnection, input: 
     const adjustmentId = `PATRIMONIO:ADJUSTMENT:${input.idempotencyKey!.trim()}`;
     const [prior] = await tx.select().from(assetValueAdjustments).where(eq(assetValueAdjustments.id, adjustmentId)).limit(1);
     if (prior) {
+      if (input.usefulLifeMonths !== undefined) {
+        const [life] = await tx.select({ details: assetCatalogRecords.details }).from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, "vidaUtilBem"), eq(assetCatalogRecords.code, adjustmentId))).limit(1);
+        if (life?.details.lifeSpanMonths !== String(input.usefulLifeMonths)) throw new AssetLifecycleError("Ajuste já registrado com outra vida útil.");
+      }
       const requested = input.type === "SUBSEQUENT_COST" ? prior.adjustmentValueDecimal ?? prior.adjustmentValue : prior.closingValueDecimal ?? prior.closingValue;
       if (prior.assetId !== input.assetId || prior.type !== input.type || prior.date.getTime() !== input.date.getTime() || !new Decimal(String(requested)).eq(String(roundCurrency(input.value))) || prior.justification !== input.justification.trim() || prior.evidence !== input.evidence.trim()) throw new AssetLifecycleError("Ajuste já registrado com outros dados.");
+      if (prior.type === "IMPAIRMENT" && new Decimal(String(prior.adjustmentValueDecimal ?? prior.adjustmentValue)).isZero()) {
+        const [test] = await tx.select({ details: assetCatalogRecords.details }).from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, "recuperabilidade"), eq(assetCatalogRecords.code, adjustmentId))).limit(1);
+        if (test?.details.budgetUnitId !== accounting.budgetUnitId) throw new AssetLifecycleError("Teste anterior diverge da unidade gestora.");
+        return prior;
+      }
       const posting = (await tx.execute<{ sourceId: string | null; budgetUnitId: string | null }>(sql`SELECT "sourceId", "budgetUnitId" FROM "AccountingTransaction" WHERE "idempotencyKey"=${`${adjustmentId}:ACCOUNTING`}`)).rows[0];
       if (!posting || posting.sourceId !== input.assetId || posting.budgetUnitId !== accounting.budgetUnitId) throw new AssetLifecycleError("Ajuste anterior sem partida conciliada à origem e UG; regularize antes da repetição.");
       return prior;
@@ -249,9 +268,11 @@ export async function recordAssetValueAdjustment(db: DatabaseConnection, input: 
         evidence: input.evidence.trim(),
     }).returning();
     const eventCode = input.type === "REVALUATION" ? calculation.adjustmentValue > 0 ? "ASSET_REVALUATION_GAIN" : "ASSET_REVALUATION_LOSS" : input.type === "IMPAIRMENT" ? "ASSET_IMPAIRMENT" : "ASSET_SUBSEQUENT_COST";
-    const transaction = await postAssetValuation(tx, accounting, { assetId: asset.id, date: input.date, eventCode: `${eventCode}:${asset.categoryId}`, value: delta.abs(), key: `${adjustmentId}:ACCOUNTING`, history: input.justification.trim() });
-    const [recorded] = await tx.update(assetValueAdjustments).set({ accountingTransactionId: transaction.id }).where(eq(assetValueAdjustments.id, adjustment.id)).returning();
-    await tx.insert(financialAuditLogs).values({ action: "ASSET_VALUE_ADJUSTMENT", entityType: "AssetValueAdjustment", entityId: adjustment.id, authorUsuarioId: accounting.actor.usuarioId, authorEmployeeId: accounting.actor.employeeId, financialYearId: scope.financialYearId, payload: { assetId: asset.id, budgetUnitId: accounting.budgetUnitId, accountingTransactionId: transaction.id, ...calculation } });
+    const transaction = delta.isZero() ? null : await postAssetValuation(tx, accounting, { assetId: asset.id, date: input.date, eventCode: `${eventCode}:${asset.categoryId}`, value: delta.abs(), key: `${adjustmentId}:ACCOUNTING`, history: input.justification.trim() });
+    const [recorded] = await tx.update(assetValueAdjustments).set({ accountingTransactionId: transaction?.id ?? null }).where(eq(assetValueAdjustments.id, adjustment.id)).returning();
+    if (input.type === "IMPAIRMENT") await tx.insert(assetCatalogRecords).values({ kind: "recuperabilidade", code: adjustment.id, name: asset.name, year: input.date.getUTCFullYear(), departmentId: asset.departmentId || "", createdBy: accounting.actor.usuarioId!, details: { assetId: asset.id, adjustmentId: adjustment.id, budgetUnitId: accounting.budgetUnitId, marketValue: closing.toFixed(2), lifeSpanMonths: input.usefulLifeMonths === undefined ? "" : String(input.usefulLifeMonths), evidence: input.evidence.trim(), justification: input.justification.trim(), result: delta.isZero() ? "Sem perda" : "Perda reconhecida", date: input.date.toISOString() } });
+    if (input.usefulLifeMonths !== undefined) await tx.insert(assetCatalogRecords).values({ kind: "vidaUtilBem", code: adjustment.id, name: asset.name, year: input.date.getUTCFullYear(), departmentId: asset.departmentId || "", createdBy: accounting.actor.usuarioId!, details: { assetId: asset.id, adjustmentId: adjustment.id, lifeSpanMonths: String(input.usefulLifeMonths), marketValue: closing.toFixed(2), evidence: input.evidence.trim() } });
+    await tx.insert(financialAuditLogs).values({ action: "ASSET_VALUE_ADJUSTMENT", entityType: "AssetValueAdjustment", entityId: adjustment.id, authorUsuarioId: accounting.actor.usuarioId, authorEmployeeId: accounting.actor.employeeId, financialYearId: scope.financialYearId, payload: { assetId: asset.id, budgetUnitId: accounting.budgetUnitId, accountingTransactionId: transaction?.id ?? null, ...calculation } });
     return recorded;
   });
 }
@@ -326,6 +347,7 @@ export async function recordAssetDisposal(db: DatabaseConnection, input: AssetDi
     if (!asset) throw new AssetLifecycleError("Bem patrimonial não encontrado.");
     if (input.date < asset.acquisitionDate) throw new AssetLifecycleError("A baixa não pode anteceder a aquisição do bem.");
     if (asset.status === "Baixado" || asset.status === "Inativo") throw new AssetLifecycleError("Este bem está baixado ou inativo.");
+    if (asset.status === "Emprestado") throw new AssetLifecycleError("Registre a devolução do bem antes da baixa.");
     if ((await tx.select({ id: assetMaintenances.id }).from(assetMaintenances).where(and(eq(assetMaintenances.assetId, asset.id), sql`${assetMaintenances.status} IN ('Solicitada','Em manutenção')`)).limit(1)).length) throw new AssetLifecycleError("Conclua as manutenções abertas antes da baixa patrimonial.");
     if (input.actor) {
       const unitId = input.financial?.budgetUnitId;
@@ -342,18 +364,22 @@ export async function recordAssetDisposal(db: DatabaseConnection, input: AssetDi
     const [latestDepreciation] = await tx.select({ referenceMonth: assetValueHistories.referenceMonth }).from(assetValueHistories).where(and(eq(assetValueHistories.assetId, asset.id), activeDepreciation)).orderBy(desc(assetValueHistories.referenceMonth)).limit(1);
     if (latestDepreciation && input.date < depreciationPostingDate(latestDepreciation.referenceMonth)) throw new AssetLifecycleError("A baixa não pode anteceder a última depreciação processada.");
 
-    const [existing] = await tx.select({ id: assetWriteOffs.id }).from(assetWriteOffs).where(eq(assetWriteOffs.assetId, asset.id)).limit(1);
-    if (existing) throw new AssetLifecycleError("Este bem já possui uma baixa registrada.");
+    const [existing] = await tx.select().from(assetWriteOffs).where(and(eq(assetWriteOffs.assetId, asset.id), sql`${assetWriteOffs.status}<>'Estornada'`)).limit(1);
+    if (existing && existing.status !== "Solicitada") throw new AssetLifecycleError("Este bem já possui uma baixa registrada.");
 
     const calculation = calculateAssetDisposal(Number(asset.currentValueDecimal ?? asset.currentValue), disposalValue);
-    const [writeOff] = await tx.insert(assetWriteOffs).values({
+    const writeOffValues = {
         assetId: asset.id,
         date: input.date,
         type: input.type,
         reason: input.reason.trim(),
         justification: input.justification.trim(),
         ...calculation,
-    }).returning();
+        status: "Aprovada",
+    };
+    const [writeOff] = existing
+      ? await tx.update(assetWriteOffs).set(writeOffValues).where(eq(assetWriteOffs.id, existing.id)).returning()
+      : await tx.insert(assetWriteOffs).values(writeOffValues).returning();
 
     // Se for Alienação com valor recebido > 0, gera receita, tesouraria e contabilização automática
     let alienationRevenueId: string | null = null;

@@ -6,6 +6,7 @@ import { departments, employees } from "@/db/schema/administration";
 import { assets, assetCategories } from "@/db/schema/assets";
 import { fleetUnits } from "@/db/schema/fleet";
 import { materials } from "@/db/schema/assets-stock";
+import { costCenters } from "@/db/schema/master-data";
 import type { PermissionUser } from "@/lib/contracts/identity";
 import { canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { insertAuditEvent } from "@/db/repositories/platform/audit";
@@ -26,6 +27,17 @@ export async function saveAssetCatalog(connection: DatabaseConnection, user: Per
     if (!department) throw new Error("Setor inexistente ou inativo.");
     if (details.employeeId && !(await tx.select({ id: employees.id }).from(employees).where(and(eq(employees.id, details.employeeId), eq(employees.departmentId, input.departmentId), eq(employees.isActive, true))).limit(1)).length) throw new Error("Servidor inexistente, inativo ou de outro setor.");
     if (details.assetId && !(await tx.select({ id: assets.id }).from(assets).where(and(eq(assets.id, details.assetId), eq(assets.departmentId, input.departmentId))).limit(1)).length) throw new Error("Bem fora do setor informado.");
+    if (input.kind === "placas" && (!isSystemAdministrator(user) || input.code !== "PADRAO")) throw new Error("A numeração compartilhada exige administrador e código PADRAO.");
+    if (input.kind === "organograma" && details.parentId) {
+      const [parent] = await tx.select().from(assetCatalogRecords).where(and(eq(assetCatalogRecords.id, details.parentId), eq(assetCatalogRecords.kind, "organograma"), eq(assetCatalogRecords.departmentId, input.departmentId), eq(assetCatalogRecords.year, input.year))).limit(1);
+      if (!parent || parent.id === input.id || parent.details.level !== (details.level === "Seção" ? "Divisão" : "Secretaria")) throw new Error("Nível superior incompatível com o organograma do setor e exercício.");
+    }
+    if (input.kind === "organograma" && !(await tx.select({ id: costCenters.id }).from(costCenters).where(and(eq(costCenters.code, details.costCenter), eq(costCenters.isActive, true))).limit(1)).length) throw new Error("Centro de custo inexistente ou inativo.");
+    if (input.kind === "situacaoBens") {
+      const [situation] = await tx.select({ id: assetCatalogRecords.id }).from(assetCatalogRecords).where(and(eq(assetCatalogRecords.id, details.situationId), eq(assetCatalogRecords.kind, "situacoes"), eq(assetCatalogRecords.departmentId, input.departmentId), eq(assetCatalogRecords.year, input.year), eq(assetCatalogRecords.active, true))).limit(1);
+      if (!situation) throw new Error("Situação parametrizada inexistente ou fora do setor e exercício.");
+    }
+    if (input.kind === "arrendamentos" && !(await tx.select({ id: assetCatalogRecords.id }).from(assetCatalogRecords).where(and(eq(assetCatalogRecords.id, details.propertyId), eq(assetCatalogRecords.kind, "imoveis"), eq(assetCatalogRecords.departmentId, input.departmentId))).limit(1)).length) throw new Error("Imóvel fora do setor informado.");
     if (input.kind === "depreciacao") {
       if (!isSystemAdministrator(user)) throw new Error("Categorias de depreciação compartilhadas exigem administrador.");
       await tx.insert(assetCategories).values({ code: input.code, name: input.name, lifeSpan: Number(details.months), isActive: true }).onConflictDoUpdate({ target: assetCategories.code, set: { name: input.name, lifeSpan: Number(details.months) } });
