@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { db } from "@/db/client";
 import { listPurchasePlannings } from "@/db/repositories/procurement/purchase-planning";
@@ -8,7 +9,7 @@ export default async function PlanejamentoComprasPage() {
   const { user } = context;
   const plannings = await listPurchasePlannings(context.database ?? db);
 
-  return <PlanningListClient
+  return <><Link className="inline-block px-3 py-2 underline" href="/compras/planejamento/pca">Consolidação do PCA</Link><PlanningListClient
     canCreate={canPerformModuleOperation(user, "COMPRAS", "create")}
     canUpdate={canPerformModuleOperation(user, "COMPRAS", "update")}
     plannings={plannings.map((planning) => ({
@@ -25,5 +26,5 @@ export default async function PlanejamentoComprasPage() {
       originNumber: planning.originPurchaseRequest?.number ?? null,
       originObject: planning.originPurchaseRequest?.object ?? null,
     }))}
-  />;
+  /></>;
 }
