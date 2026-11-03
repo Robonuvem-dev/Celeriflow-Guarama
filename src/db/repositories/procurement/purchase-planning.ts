@@ -1,7 +1,8 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { procurementAppropriations } from "@/db/schema/procurement-budget";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { DatabaseExecutor } from "@/db/transaction";
 import { catalogItems } from "@/db/schema/master-data";
-import { purchasePlannings, purchaseRequests } from "@/db/schema/procurement-requests";
+import { purchasePlannings, purchaseRequests, purchaseRequestItems, purchaseRequestBudgetAllocations } from "@/db/schema/procurement-requests";
 
 type Row<T extends { $inferSelect: unknown }> = T["$inferSelect"];
 type PlanningCatalogItem = Pick<Row<typeof catalogItems>, "code" | "name" | "unit">;
@@ -34,4 +35,22 @@ export function listPlanningForPurchaseRequest(db: DatabaseExecutor, requestId: 
     .leftJoin(catalogItems, eq(catalogItems.id, purchasePlannings.catalogItemId))
     .where(eq(purchasePlannings.originPurchaseRequestId, requestId))
     .orderBy(asc(purchasePlannings.expectedPeriodStart), asc(purchasePlannings.id));
+}
+
+export function listPlanningOriginBudget(db: DatabaseExecutor, requestIds: string[]) {
+  if (requestIds.length === 0) return Promise.resolve([]);
+  return db.select({
+    requestId: purchaseRequestItems.purchaseRequestId,
+    itemId: purchaseRequestItems.id,
+    quantity: purchaseRequestItems.quantity,
+    estimatedUnitValue: purchaseRequestItems.estimatedUnitValue,
+    allocationId: purchaseRequestBudgetAllocations.id,
+    appropriationId: purchaseRequestBudgetAllocations.budgetAppropriationId,
+    code: procurementAppropriations.code,
+    allocatedQuantity: purchaseRequestBudgetAllocations.quantity,
+    allocatedValue: purchaseRequestBudgetAllocations.valueDecimal,
+  }).from(purchaseRequestItems)
+    .leftJoin(purchaseRequestBudgetAllocations, eq(purchaseRequestBudgetAllocations.purchaseRequestItemId, purchaseRequestItems.id))
+    .leftJoin(procurementAppropriations, eq(procurementAppropriations.id, purchaseRequestBudgetAllocations.budgetAppropriationId))
+    .where(inArray(purchaseRequestItems.purchaseRequestId, requestIds));
 }
