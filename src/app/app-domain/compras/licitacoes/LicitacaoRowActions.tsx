@@ -11,11 +11,9 @@ export function LicitacaoRowActions({ id }: { id: string }) {
 
   async function handleInactivate() {
     if (confirm("Tem certeza que deseja inativar esta licitação?")) {
-      const reason = prompt("Informe a justificativa para inativar a licitação:");
-      if (!reason?.trim()) return;
       setIsInactivating(true);
       try {
-        const result = await inactivateBidding(id, reason);
+        const result = await inactivateBidding(id);
         if (!result.success) alert(result.error);
       } finally {
         setIsInactivating(false);
