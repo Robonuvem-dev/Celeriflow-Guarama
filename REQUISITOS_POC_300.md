@@ -840,6 +840,12 @@ Evidências dos relatórios: `src/app/api/patrimonio/relatorios/route.ts`, `src/
 
 Banco de dados: migração `db/migrations/20261103210000_cf13_asset_inventory/migration.sql` acrescenta proteção das movimentações durante inventário patrimonial; **não aplicada nesta tarefa**. Reposicionada após o histórico instalado de RH para preservar a ordem dos recibos SQL. Cadastros e sessões reutilizam a estrutura existente de `AssetCatalogRecord`. Alteração de banco e mudanças nas tabelas visuais são entregas distintas; comportamento dependente do trigger requer aplicação da migração.
 
+### Correção da sequência de migrações no deploy — 03/11/2026
+
+O deploy Vercel do commit `bf518eef` foi bloqueado em `migration deploy`: `Unknown, reordered or changed SQL receipt/source`, migração `20261103180000_hr_functional_management`, posição 192. A integração de CF13 acrescentou uma migração com prefixo `20261103100000`, anterior à migração RH já registrada no banco. A ordenação por nome deslocou RH no conjunto local, contrariando a sequência dos recibos instalados.
+
+A migração pendente de CF13 foi renomeada para `20261103210000_cf13_asset_inventory`, após RH e a migração de pneus de CF14. O SQL foi preservado integralmente; recibos, checksums e mecanismos de proteção não foram alterados. Nenhuma migração, build, teste ou validação foi executada nesta correção, conforme orientação do usuário. A aplicação e o resultado do próximo deploy dependem da integração desta correção à `main`.
+
 Evidências de ciclo de vida e inventário: `src/lib/patrimonio/asset-inventory.ts`, `asset-routines.ts`, `write-off-reversal.ts`, `asset-lifecycle.ts`, `src/app/app-domain/patrimonio/ciclo-vida/` e `src/app/app-domain/patrimonio/inventario-bens/`. Navegação integrada ao layout, painel e manifesto operacional de Patrimônio.
 
 <!-- END:cf13-20261103 -->
