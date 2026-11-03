@@ -59,11 +59,25 @@ export async function nextEquipmentCode(db: Database) {
 }
 
 export async function nextAssetPatrimonyNumber(db: Database) {
+  const settings = (await db.execute<{ details: { prefix?: string; digits?: string } }>(sql`SELECT details FROM "AssetCatalogRecord" WHERE kind='placas' AND code='PADRAO' AND active=true ORDER BY year DESC, "updatedAt" DESC LIMIT 1`)).rows[0]?.details;
+  if (settings) {
+    const prefix = settings.prefix || "", digits = Number(settings.digits);
+    if (!/^[A-Za-z0-9]*$/.test(prefix) || !Number.isInteger(digits) || digits < 1 || digits > 12) throw new Error("Formatação de placa inválida.");
+    const existing = (await db.execute<{ patrimonyNumber: string }>(sql`SELECT "patrimonyNumber" FROM "Asset"`)).rows;
+    const maximum = maximumCode(existing.map(asset => asset.patrimonyNumber), prefix);
+    const key = `patrimonio-placas-${prefix}-${digits}`;
+    await db.execute(sql`UPDATE "SequenceCounter" SET value=${maximum}, "updatedAt"=clock_timestamp() WHERE key=${key} AND value<${maximum}`);
+    const counter = (await db.execute<{ value: number }>(sql`INSERT INTO "SequenceCounter" (id,key,value,"createdAt","updatedAt") VALUES (${createId()},${key},${maximum + 1},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value="SequenceCounter".value+1 RETURNING value`)).rows[0];
+    if (String(counter.value).length > digits) throw new Error("Sequência excede os dígitos configurados para a placa.");
+    return `${prefix}${String(counter.value).padStart(digits, "0")}`;
+  }
   const assets = (await db.execute<{ patrimonyNumber: string }>(sql`SELECT "patrimonyNumber" FROM "Asset"`)).rows;
   return nextSequentialCode(db, "patrimonio-asset", "PAT", assets.map((asset) => asset.patrimonyNumber));
 }
 
 export async function previewNextAssetPatrimonyNumber(db: Database) {
+  const settings = (await db.execute<{ details: { prefix?: string; digits?: string } }>(sql`SELECT details FROM "AssetCatalogRecord" WHERE kind='placas' AND code='PADRAO' AND active=true ORDER BY year DESC, "updatedAt" DESC LIMIT 1`)).rows[0]?.details;
   const assets = (await db.execute<{ patrimonyNumber: string }>(sql`SELECT "patrimonyNumber" FROM "Asset"`)).rows;
+  if (settings) return `${settings.prefix || ""}${String(maximumCode(assets.map(asset => asset.patrimonyNumber), settings.prefix || "") + 1).padStart(Number(settings.digits), "0")}`;
   return formatCode("PAT", maximumCode(assets.map((asset) => asset.patrimonyNumber), "PAT") + 1);
 }

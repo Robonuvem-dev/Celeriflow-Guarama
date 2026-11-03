@@ -13,6 +13,7 @@ import { updateAssetAction } from "../../actions";
 type Option = { id: string; name: string };
 
 type AssetFormData = {
+  patrimonyNumber: string;
   name: string;
   description: string;
   brand: string;
@@ -50,7 +51,7 @@ export function AssetEditForm({ asset, categories }: {
       <PageHeader title={`Editar bem · ${asset.patrimonyNumber}`} action={<Link href={`/patrimonio/bens/${encodeURIComponent(asset.id)}`}><Button size="sm" variant="outline">Cancelar</Button></Link>} />
       <form onSubmit={save} className="grid gap-3 rounded-md border bg-white p-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2"><Label>Código do equipamento</Label><Input value={asset.code || "Não identificado"} readOnly /></div>
-        <div className="space-y-2"><Label>Número de tombamento</Label><Input value={asset.patrimonyNumber} readOnly /></div>
+        <div className="space-y-2"><Label htmlFor="asset-plate">Número de tombamento / placa</Label><Input id="asset-plate" required pattern="[A-Za-z0-9]{1,80}" maxLength={80} value={values.patrimonyNumber} onChange={(event) => setValues((current) => ({ ...current, patrimonyNumber: event.target.value }))} /></div>
         <div className="space-y-2"><Label htmlFor="asset-name">Nome do bem</Label><Input id="asset-name" required value={values.name} onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))} /></div>
         <div className="space-y-2"><Label htmlFor="asset-brand">Marca</Label><Input id="asset-brand" value={values.brand} onChange={(event) => setValues((current) => ({ ...current, brand: event.target.value }))} /></div>
         <div className="space-y-2"><Label htmlFor="asset-model">Modelo</Label><Input id="asset-model" value={values.model} onChange={(event) => setValues((current) => ({ ...current, model: event.target.value }))} /></div>

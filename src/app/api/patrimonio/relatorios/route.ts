@@ -6,10 +6,13 @@ import { purchaseProcesses, purchaseProcessItems } from "@/db/schema/procurement
 import { materials, materialStocks, warehouses } from "@/db/schema/assets-stock";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { assetOperationWhere } from "@/lib/patrimonio/asset-operations";
-import { renderAssetReport } from "@/lib/patrimonio/catalog-report";
+import { htmlCell, renderAssetReport } from "@/lib/patrimonio/catalog-report";
+import QRCode from "qrcode";
 import { z } from "zod";
+import { assetReportTitles } from "@/lib/patrimonio/report-options";
+import { extendedAssetReport } from "@/lib/patrimonio/extended-reports";
 
-const querySchema = z.object({ report: z.enum(["bens", "manutencoes", "estoque", "aquisicao"]).default("bens"), format: z.enum(["csv", "html"]).default("html"), q: z.string().max(200).default(""), status: z.string().max(80).default(""), category: z.string().max(100).default(""), from: z.union([z.iso.date(), z.literal("")]).default(""), to: z.union([z.iso.date(), z.literal("")]).default("") });
+const querySchema = z.object({ report: z.enum(Object.keys(assetReportTitles) as [keyof typeof assetReportTitles, ...Array<keyof typeof assetReportTitles>]).default("bens"), format: z.enum(["csv", "html"]).default("html"), q: z.string().max(200).default(""), status: z.string().max(80).default(""), category: z.string().max(100).default(""), from: z.union([z.iso.date(), z.literal("")]).default(""), to: z.union([z.iso.date(), z.literal("")]).default(""), department: z.string().max(100).default(""), responsible: z.string().max(100).default(""), unit: z.string().max(100).default(""), account: z.string().max(100).default(""), session: z.string().max(100).default(""), period: z.enum(["monthly", "annual"]).default("monthly"), year: z.coerce.number().int().min(1900).max(2200).default(new Date().getUTCFullYear()) });
 export async function GET(request: Request) {
   const parsed = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!parsed.success) return Response.json({ error: "Filtros inválidos." }, { status: 400 });
@@ -30,12 +33,22 @@ export async function GET(request: Request) {
   } else if (query.report === "manutencoes") {
     const records = await database.select({ code: assets.patrimonyNumber, name: assets.name, description: assetMaintenances.description, start: assetMaintenances.startDate, end: assetMaintenances.endDate, cost: assetMaintenances.cost, status: assetMaintenances.status }).from(assetMaintenances).innerJoin(assets, eq(assets.id, assetMaintenances.assetId)).where(and(scope.departmentId ? eq(assets.departmentId, scope.departmentId) : undefined, query.q ? or(ilike(assets.name, `%${query.q}%`), ilike(assetMaintenances.description, `%${query.q}%`)) : undefined, from ? gte(assetMaintenances.startDate, from) : undefined, to ? lte(assetMaintenances.startDate, to) : undefined, query.status ? eq(assetMaintenances.status, query.status) : undefined)).orderBy(asc(assetMaintenances.startDate));
     columns = ["Tombamento", "Bem", "Manutenção", "Início", "Fim", "Custo", "Situação"]; rows = records.map(r => [r.code, r.name, r.description, r.start.toISOString().slice(0, 10), r.end?.toISOString().slice(0, 10), r.cost, r.status]);
-  } else {
+  } else if (query.report === "bens" && !query.department && !query.responsible && !query.unit) {
     const records = await database.select({ code: assets.patrimonyNumber, name: assets.name, category: assetCategories.name, status: assets.status, date: assets.acquisitionDate, value: assets.currentValue }).from(assets).innerJoin(assetCategories, eq(assetCategories.id, assets.categoryId)).where(and(scope.departmentId ? eq(assets.departmentId, scope.departmentId) : undefined, query.q ? or(ilike(assets.name, `%${query.q}%`), ilike(assets.patrimonyNumber, `%${query.q}%`)) : undefined, query.category ? eq(assets.categoryId, query.category) : undefined, query.status ? eq(assets.status, query.status) : undefined, from ? gte(assets.acquisitionDate, from) : undefined, to ? lte(assets.acquisitionDate, to) : undefined)).orderBy(asc(assets.patrimonyNumber));
     columns = ["Tombamento", "Bem", "Categoria", "Situação", "Aquisição", "Valor atual"]; rows = records.map(r => [r.code, r.name, r.category, r.status, r.date.toISOString().slice(0, 10), r.value]);
+  } else {
+    const report = await extendedAssetReport(database, scope, query);
+    columns = report.columns; rows = report.rows;
+    if (query.report === "etiquetas" && query.format === "html") {
+      const labels = await Promise.all(report.labels.map(async asset => `<section>${await QRCode.toString(new URL(`/patrimonio/bens/${encodeURIComponent(asset.id)}`, request.url).toString(), { type: "svg", margin: 1 })}<strong>${htmlCell(asset.code)}</strong><div>${htmlCell(asset.name)}</div></section>`));
+      return new Response(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Etiquetas patrimoniais</title><style>body{font:12px Arial;display:flex;flex-wrap:wrap;gap:5mm}section{width:60mm;min-height:35mm;border:1px solid #aaa;padding:2mm;break-inside:avoid;overflow-wrap:anywhere}svg{width:25mm;height:25mm;float:left;margin-right:2mm}@media print{p{display:none}}</style><p>Use Imprimir para emitir as etiquetas ou salvar em PDF.</p>${labels.join("")}</html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+    }
   }
   const settings = await database.select().from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, "assinaturas"), eq(assetCatalogRecords.active, true), eq(assetCatalogRecords.year, new Date().getUTCFullYear()), scope.departmentId ? eq(assetCatalogRecords.departmentId, scope.departmentId) : undefined));
   const signatures = settings.filter(r => r.details.report === query.report).sort((a,b) => Number(a.details.position) - Number(b.details.position)).map(r => ({ name: r.details.signer, role: r.details.role }));
-  const title = { bens: "Relação de bens patrimoniais", manutencoes: "Manutenções preventivas e corretivas", estoque: "Materiais em estoque", aquisicao: "Materiais em aquisição" }[query.report];
+  if (query.report === "termo" && !signatures.length) {
+    for (const name of new Set(rows.map(row => String(row[5] || "Responsável a identificar")))) signatures.push({ name, role: "Responsável pelos bens relacionados" });
+  }
+  const title = assetReportTitles[query.report];
   return new Response(renderAssetReport(title, columns, rows, signatures, query.format), { headers: { "Content-Type": query.format === "csv" ? "text/csv; charset=utf-8" : "text/html; charset=utf-8", "Content-Disposition": `${query.format === "csv" ? "attachment" : "inline"}; filename="patrimonio-${query.report}.${query.format}"`, "Cache-Control": "no-store" } });
 }

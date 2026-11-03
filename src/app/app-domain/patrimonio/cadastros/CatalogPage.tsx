@@ -6,8 +6,12 @@ import { departments } from "@/db/schema/administration";
 import { getTenantContextForModule, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { assetCatalogs, catalogDefinition } from "@/lib/patrimonio/catalog-definitions";
 import { copyRequestersAction, saveCatalogAction } from "./actions";
+import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { operationalColumns } from "../_components/operational-columns";
 
-export type CatalogSearch = Promise<{ kind?: string; year?: string; edit?: string }>;
+export type CatalogSearch = Promise<{ kind?: string; year?: string; edit?: string; page?: string }>;
 export async function CatalogPage({ searchParams, module }: { searchParams: CatalogSearch; module: "PATRIMONIO" | "FROTAS" }) {
   const context = await getTenantContextForModule(module);
   const query = await searchParams;
@@ -23,6 +27,7 @@ export async function CatalogPage({ searchParams, module }: { searchParams: Cata
   const edit = records.find(record => record.id === query.edit);
   const base = module === "FROTAS" ? "/frotas/cadastros" : "/patrimonio/cadastros";
   const inputClass = "rounded border p-2 text-sm w-full";
+  const page = Math.min(Math.max(1, Math.ceil(records.length / OPERATIONAL_PAGE_SIZE)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
   return <main className="space-y-5 p-6">
     <h1 className="text-2xl font-semibold">Cadastros auxiliares — {module === "FROTAS" ? "Frotas" : "Patrimônio e Almoxarifado"}</h1>
     <nav className="flex flex-wrap gap-3" aria-label="Cadastros">{options.map(([key, item]) => <Link className="underline" aria-current={kind === key ? "page" : undefined} key={key} href={`${base}?kind=${key}&year=${year}`}>{item.title}</Link>)}</nav>
@@ -37,6 +42,8 @@ export async function CatalogPage({ searchParams, module }: { searchParams: Cata
       <button className="rounded bg-blue-700 p-2 text-white">{edit ? "Salvar alterações" : "Cadastrar"}</button>{edit && <Link href={`${base}?kind=${kind}&year=${year}`}>Cancelar edição</Link>}
     </form>
     {kind === "requisitantes" && <form action={copyRequestersAction} className="flex gap-3"><input type="hidden" name="year" value={year} /><label>Setor<select name="departmentId" required>{departmentRows.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label><button className="rounded border p-2">Copiar requisitantes para {year + 1}</button></form>}
-    <div className="overflow-x-auto"><table className="w-full text-sm"><caption className="text-left">{records.length} registros no exercício {year}</caption><thead><tr><th>Código</th><th>Nome</th><th>Setor</th>{definition.fields.map(field => <th key={field.key}>{field.label}</th>)}<th>Ações</th></tr></thead><tbody>{records.map(record => <tr key={record.id} className="border-t"><td>{record.code}</td><td>{record.name}</td><td>{departmentRows.find(row => row.id === record.departmentId)?.name || record.departmentId}</td>{definition.fields.map(field => <td key={field.key}>{record.details[field.key]}</td>)}<td><Link className="underline" href={`${base}?kind=${kind}&year=${year}&edit=${record.id}`}>Editar</Link></td></tr>)}</tbody></table></div>
+    <OperationalListFrame pagination={<OperationalLinkPagination page={page} total={records.length} pathname={base} values={{ kind, year: String(year) }} />}>
+      <OperationalTable preferenceId={`${module.toLowerCase()}-cadastros-${kind}`} caption={`${definition.title} — ${year}`} columns={operationalColumns([["code", "Código", 110, 80], ["name", "Nome", 220, 100], ["department", "Setor", 200, 100], ["details", "Informações", 380, 150], ["actions", "Ações", 90, 70, "actions"]])} rows={records.slice((page - 1) * OPERATIONAL_PAGE_SIZE, page * OPERATIONAL_PAGE_SIZE).map(record => ({ id: record.id, label: record.name, values: { code: record.code, name: record.name, department: departmentRows.find(row => row.id === record.departmentId)?.name || record.departmentId, details: definition.fields.map(field => `${field.label}: ${record.details[field.key] || "—"}`).join(" · "), actions: "Editar" }, actions: <Link className="underline" href={`${base}?kind=${kind}&year=${year}&edit=${record.id}`}>Editar</Link> }))} />
+    </OperationalListFrame>
   </main>;
 }

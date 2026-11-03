@@ -13,6 +13,7 @@ import { equipmentCustodies } from "@/db/schema/assets-stock";
 type ActionResult = { error?: string; assetId?: string };
 
 const assetEditInput = z.object({
+  patrimonyNumber: z.string().trim().regex(/^[A-Za-z0-9]{1,80}$/, "Informe uma placa alfanumérica com até 80 caracteres.").optional(),
   name: z.string().trim().min(1, "Informe o nome do bem.").max(240),
   description: z.string().trim().max(4000).optional(),
   brand: z.string().trim().max(160).optional(),
@@ -55,6 +56,7 @@ export async function updateAssetAction(assetId: string, input: AssetEditInput):
     if (!category) throw new AssetOperationError("Categoria patrimonial não encontrada ou inativa.");
 
     await db.update(assets).set({
+        ...(parsed.patrimonyNumber ? { patrimonyNumber: parsed.patrimonyNumber } : {}),
         name: parsed.name,
         description: parsed.description || null,
         brand: parsed.brand || null,
