@@ -81,3 +81,14 @@ export const purchaseDemandVersions = pgTable("PurchaseDemandVersion", {
   }>().notNull(),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
 }, table => [uniqueIndex("PurchaseDemandVersion_request_version_key").on(table.purchaseRequestId, table.version)]);
+
+export const purchaseDemandEvents = pgTable("PurchaseDemandEvent", {
+  id: text("id").primaryKey().$defaultFn(createId),
+  demandVersionId: text("demandVersionId").notNull().references(() => purchaseDemandVersions.id),
+  step: integer("step").notNull(),
+  status: text("status", { enum: ["EM_ANALISE", "DEVOLVIDO", "APROVADO"] }).notNull(),
+  actorId: text("actorId").notNull(),
+  reason: text("reason").notNull(),
+  documentVersionId: text("documentVersionId"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+});

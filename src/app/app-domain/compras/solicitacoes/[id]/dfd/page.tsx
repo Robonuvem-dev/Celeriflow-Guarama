@@ -5,19 +5,25 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db/client";
 import { listDemandVersions, loadDemandDraft } from "@/db/repositories/procurement/purchase-demand";
-import { formalizeDemand } from "./actions";
+import { formalizeDemand, routeDemand } from "./actions";
+import { demandStatusLabel, listDemandEvents } from "@/db/repositories/procurement/purchase-demand-workflow";
+import { listManagedDocuments } from "@/db/repositories/documents/ged";
+import { canUseGed } from "@/lib/documents/ged-access";
+import { gedQuerySchema } from "@/lib/documents/ged-policy";
+import { documentVersions } from "@/db/schema/document-workflow";
+import { eq } from "drizzle-orm";
 import { canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { canSelectAnyPurchaseRequestOrigin, purchaseRequestOriginScope } from "@/lib/compras/purchase-request-policy";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 
-export default async function DemandDocumentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ versao?: string }> }) {
+export default async function DemandDocumentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ versao?: string; q?: string; pagina?: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
   const { id } = await params;
   const database = context.database ?? db;
   const draft = await loadDemandDraft(database, id);
   if (!draft) notFound();
   const versions = await listDemandVersions(database, id);
-  const { versao } = await searchParams;
+  const { versao, q, pagina } = await searchParams;
   const selected = versions.find(entry => String(entry.version) === versao);
   if (versao && !selected) notFound();
   const request = selected?.snapshot ?? draft.snapshot;
@@ -28,6 +34,20 @@ export default async function DemandDocumentPage({ params, searchParams }: { par
     && (canSelectAnyPurchaseRequestOrigin(context.user)
       || (scope?.secretariatId === draft.request.secretariatId && scope.departmentId === draft.request.departmentId)));
   const submit = formalizeDemand.bind(null, id, versions[0]?.version ?? 0);
+  const events = selected ? await listDemandEvents(database, selected.id) : [];
+  const latest = events[0];
+  const current = selected && selected.id === versions[0]?.id;
+  const canGed = canUseGed(context.user);
+  const page = Number(pagina);
+  const documents = current && canFormalize && canGed && !latest
+    ? await listManagedDocuments(context, gedQuerySchema.parse({ text: typeof q === "string" ? q.slice(0, 100) : "", mode: "fragment" }), Number.isSafeInteger(page) && page > 0 ? page : 1)
+    : null;
+  const eligible = documents?.documents.filter(doc => ["FINAL", "SIGNED"].includes(doc.versionStatus) && !doc.checkoutOwnerId);
+  const route = selected ? routeDemand.bind(null, id, selected.version, latest?.step ?? 0) : null;
+  const [linked] = latest?.documentVersionId && canGed
+    ? await database.select().from(documentVersions).where(eq(documentVersions.id, latest.documentVersionId))
+    : [];
+  const download = linked && encodeURIComponent(JSON.stringify([{ id: linked.documentId, versionId: linked.id }]));
   const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
   const date = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" });
   const fields = [
@@ -62,6 +82,42 @@ export default async function DemandDocumentPage({ params, searchParams }: { par
                 {versions.length ? "Formalizar revisão" : "Formalizar DFD"}
               </button>
             </form>
+          )}
+          {selected && (
+            <section className="space-y-3">
+              <h2 className="font-medium">Tramitação do DFD</h2>
+              <p>{latest ? demandStatusLabel[latest.status] : "Aguardando encaminhamento"}</p>
+              {download && <a className="underline" href={`/api/assinatura-digital/ged/download?items=${download}`}>Baixar versão vinculada do GED</a>}
+              {events.length > 0 && <ol className="list-decimal pl-5">
+                {events.map(event => <li key={event.id}>{date.format(event.createdAt)} · {demandStatusLabel[event.status]} · {event.reason}</li>)}
+              </ol>}
+              {documents && (
+                <form className="flex flex-wrap gap-2">
+                  <input type="hidden" name="versao" value={selected.version} />
+                  <label>Buscar no GED <input name="q" className="border" maxLength={100} defaultValue={q} /></label>
+                  <button type="submit" className="underline">Buscar</button>
+                  {documents.page > 1 && <button name="pagina" value={documents.page - 1}>Anterior</button>}
+                  {documents.documents.length > 0 && <button name="pagina" value={documents.page + 1}>Próxima</button>}
+                </form>
+              )}
+              {current && canFormalize && route && ((!latest && eligible?.length) || (latest?.status === "EM_ANALISE" && latest.actorId !== context.user.id)) ? (
+                <form action={route} className="grid gap-2">
+                  {!latest && <label>Documento final do GED
+                    <select name="document" required defaultValue="" className="block w-full rounded border">
+                      <option value="" disabled>Selecione um documento</option>
+                      {eligible?.map(doc => <option key={doc.id} value={`${doc.id}:${doc.versionId}`}>{doc.title} · versão {doc.versionNumber}</option>)}
+                    </select>
+                  </label>}
+                  <label>Justificativa <textarea name="reason" required maxLength={2000} className="block w-full rounded border" /></label>
+                  <div className="flex flex-wrap gap-3">
+                    {!latest ? <button name="status" value="EM_ANALISE" className="rounded border px-3 py-2">Encaminhar para análise</button> : <>
+                      <button name="status" value="APROVADO" className="rounded border px-3 py-2">Aprovar</button>
+                      <button name="status" value="DEVOLVIDO" className="rounded border px-3 py-2">Devolver para revisão</button>
+                    </>}
+                  </div>
+                </form>
+              ) : null}
+            </section>
           )}
           <dl className="grid gap-3 sm:grid-cols-2">
             {fields.map(([label, value]) => <div key={label}><dt className="font-medium">{label}</dt><dd>{value ?? "Não informado"}</dd></div>)}

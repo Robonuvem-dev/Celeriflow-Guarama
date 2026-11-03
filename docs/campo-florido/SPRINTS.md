@@ -119,3 +119,5 @@ O detalhe da solicitação também abre uma prévia protegida do DFD, com unidad
 - [ ] Preparar PR para revisão somente depois dos testes/build exigidos; sem merge ou deploy de produção.
 - [ ] Conciliar o avanço remoto identificado em 02/11 (main 6495d9a6), incluindo renomeação da migração CF10 para 20261102120000 e novas capacidades GED, sem duplicar tabelas ou sobrescrever trabalho.
 - [ ] Atualizar planilha por células verificadas, preservando estrutura, fórmulas, responsáveis e 33.6.
+
+Sprint 05: tramitação do DFD por versão com encaminhamento, aprovação ou devolução e vínculo à versão final do GED. Cinco testes direcionados aprovados, checagem completa de tipos e compilação Webpack concluídas. Homologação autenticada e GED para os demais documentos da fase interna pendentes.
