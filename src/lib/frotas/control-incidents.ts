@@ -28,7 +28,10 @@ export async function changeFleetFineStatus(tx: FleetControlTx, scope: FleetScop
   const input = controlSchemas.fineStatus.parse(raw), fine = requiredFleetRecord(await tx.select().from(f.fleetFines).where(eq(f.fleetFines.id, input.fineId)).limit(1));
   await lockFleetResources(tx, [`FINE:${fine.id}`, ...(fine.driverId ? [`DRIVER:${fine.driverId}`] : [])]); await scopedFleetUnit(tx, scope, fine.unitId, false);
   if ((await tx.select({ id: f.fleetFinePayments.id }).from(f.fleetFinePayments).where(and(eq(f.fleetFinePayments.fineId, fine.id), isNull(f.fleetFinePayments.reversedAt))).limit(1)).length) throw new FleetControlError("Preserve pagamentos registrados; estorne formalmente antes de cancelar/reabrir.");
-  await tx.update(f.fleetFines).set({ status: input.status, reason: input.reason }).where(eq(f.fleetFines.id, fine.id));
+  const amount = input.amount ? new Decimal(input.amount) : fine.amount;
+  if (amount.lte(0)) throw new FleetControlError("O valor atual da multa deve ser positivo.");
+  const snapshot = fine.ctbSnapshot && typeof fine.ctbSnapshot === "object" && !Array.isArray(fine.ctbSnapshot) ? fine.ctbSnapshot : {};
+  await tx.update(f.fleetFines).set({ status: input.status, reason: input.reason, amount, points: input.points === "" ? fine.points : Number(input.points), ctbSnapshot: fleetJson({ ...snapshot, originalAmount: snapshot.originalAmount ?? fine.amount.toString(), originalPoints: snapshot.originalPoints ?? fine.points }) }).where(eq(f.fleetFines.id, fine.id));
   return { id: fine.id, type: "FINE", unitId: fine.unitId };
 }
 export async function recordFleetFinePayment(tx: FleetControlTx, scope: FleetScope, raw: unknown) {

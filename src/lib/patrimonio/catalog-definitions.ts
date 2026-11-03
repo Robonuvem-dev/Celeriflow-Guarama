@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-type Field = { key: string; label: string; type?: "text" | "number" | "date"; required?: boolean };
+type Field = { key: string; label: string; type?: "text" | "number" | "date"; required?: boolean; readOnly?: boolean };
 type Catalog = { title: string; module: "PATRIMONIO" | "FROTAS"; fields: Field[] };
 const field = (key: string, label: string, type: Field["type"] = "text", required = true): Field => ({ key, label, type, required });
 export const assetCatalogs: Record<string, Catalog> = {
@@ -23,12 +23,14 @@ export const assetCatalogs: Record<string, Catalog> = {
   marcas: { title: "Marcas de veículos", module: "FROTAS", fields: [] },
   roteiros: { title: "Roteiros e distâncias", module: "FROTAS", fields: [field("line", "Descrição da linha"), field("origin", "Origem"), field("destination", "Destino"), field("distanceKm", "Distância da rota (km)", "number")] },
   modelos: { title: "Modelos de veículos", module: "FROTAS", fields: [field("brand", "Marca")] },
+  tiposVeiculo: { title: "Tipos de veículo — banco de imagens", module: "FROTAS", fields: [field("model", "Modelo"), field("vehicleImage", "ID do anexo de imagem do veículo"), field("backgroundImage", "ID do anexo de imagem de fundo"), field("tireImage", "ID do anexo de imagem do pneu")] },
   atividades: { title: "Atividades dos veículos", module: "FROTAS", fields: [field("description", "Descrição da atividade")] },
   tiposOcorrencia: { title: "Tipos de ocorrência de frota", module: "FROTAS", fields: [field("description", "Descrição")] },
   tiposMulta: { title: "Tipos de multa", module: "FROTAS", fields: [field("legalBasis", "Fundamento normativo"), field("points", "Pontuação", "number")] },
   responsaveisFrota: { title: "Responsáveis de frota", module: "FROTAS", fields: [field("employeeId", "Identificador do servidor"), field("role", "Responsabilidade")] },
   instituicoes: { title: "Instituições da frota", module: "FROTAS", fields: [field("document", "Documento da instituição"), field("address", "Endereço")] },
-  solicitacoes: { title: "Solicitações da comunidade", module: "FROTAS", fields: [field("requester", "Solicitante"), field("contact", "Contato"), field("description", "Solicitação"), field("status", "Situação")] },
+  empenhosCombustivel: { title: "Empenhos de combustível", module: "FROTAS", fields: [field("unitId", "ID do veículo"), field("reference", "Referência do empenho usada no gasto"), field("limit", "Valor empenhado (R$)", "number"), field("purpose", "Destinação: GERAL, ESCOLAR ou HOSPITALAR")] },
+  solicitacoes: { title: "Solicitações da comunidade", module: "FROTAS", fields: [field("requester", "Solicitante"), field("contact", "Contato"), field("description", "Solicitação"), field("status", "Situação: PENDENTE, AGENDADA ou INDEFERIDA"), field("unitId", "ID do veículo (para agendar)", "text", false), field("driverId", "ID do motorista (para agendar)", "text", false), field("startsAt", "Início com fuso (ex.: 2026-11-03T08:00:00-03:00)", "text", false), field("endsAt", "Fim com fuso", "text", false), field("reason", "Motivo do agendamento/indeferimento", "text", false), { ...field("bookingId", "Agendamento gerado", "text", false), readOnly: true }] },
 };
 export function catalogDefinition(kind: string) {
   if (!Object.hasOwn(assetCatalogs, kind)) throw new Error("Cadastro desconhecido.");
@@ -51,5 +53,7 @@ export function validateCatalogDetails(kind: string, details: Record<string, str
   if (kind === "depreciacao" && (!Number.isInteger(Number(details.months)) || Number(details.months) < 1 || Number(details.residualPercent) > 100)) throw new Error("Vida útil deve ser inteira positiva; percentual residual entre 0 e 100.");
   if (kind === "embalagens" && (Number(details.conversion) <= 0 || Number(details.minimumIssue) <= 0)) throw new Error("Conversão e saída mínima devem ser positivas.");
   if (kind === "seguros" && details.endsAt < details.startsAt) throw new Error("Vigência final anterior à inicial.");
+  if (kind === "tiposVeiculo" && [details.vehicleImage, details.backgroundImage, details.tireImage].some(value => !/^[a-zA-Z0-9_-]{1,100}$/.test(value))) throw new Error("Informe os IDs dos anexos de imagem cadastrados na Frota.");
+  if (kind === "empenhosCombustivel" && !["GERAL", "ESCOLAR", "HOSPITALAR"].includes(details.purpose)) throw new Error("Destinação deve ser GERAL, ESCOLAR ou HOSPITALAR.");
   return Object.fromEntries(definition.fields.map(f => [f.key, details[f.key] || ""]));
 }
