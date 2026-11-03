@@ -9,3 +9,13 @@ A rota exige acesso ao módulo CADASTROS antes de consultar. A versão pedida é
 **Validação:** 2 testes de renderização, 3 testes da rota com dependências de identidade e banco simuladas e 4 testes de navegador do cadastro com fixture, incluindo o link para a versão exibida e a geometria padrão. Tipos dos arquivos alterados, dependências e teste TypeScript aprovados. Sem homologação autenticada ou build integral; este permanece pendente pelo bloqueio Windows/Turbopack registrado.
 
 Próximos itens: consulta e filtros jurídicos (33.1/33.3/33.5), vínculos entre atos (33.10) e comentários (33.13). 33.6 continua sob responsabilidade do Eduardo. Pendências da Sprint 03: armazenamento binário direto e desempenho (33.11), e origem da integração (33.15).
+
+## Incremento 02 - filtros da consulta (33.5)
+
+A consulta combina tipo, assunto pela ementa, numero, data de publicacao e situacao. A busca livre considera o numero, a ementa e o conteudo da versao mais recente. Os criterios persistem ao paginar e a listagem e a contagem usam a mesma consulta filtrada.
+
+Validacao local: 9 testes de persistencia passaram em banco isolado e a checagem de tipos direcionada passou. Build integral e teste de navegador tiveram a verificacao bloqueada pela revisao automatica por trafego de telemetria. Validacao integral encaminhada para a CI do GitHub via PR em rascunho, com autorizacao de publicacao antecipada na branch de trabalho. Homologacao pendente.
+
+## Auditoria de continuidade - 33.1 e 33.10
+
+O snapshot versionado em tests/fixtures/installed-physical-catalog.json confirma LegalTextRelation com origem, destino, tipo, vigencia e notas. O proximo incremento deve mapear essa estrutura no Drizzle e consultar os vinculos nos dois sentidos, com a identificacao dos atos relacionados. A evidencia vem do snapshot do repositorio. A presenca no banco de homologacao ainda precisa ser confirmada.

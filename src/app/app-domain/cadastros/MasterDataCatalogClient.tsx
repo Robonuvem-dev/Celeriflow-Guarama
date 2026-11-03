@@ -4,7 +4,8 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { Pencil, Plus, RefreshCw, Paperclip, Printer } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalFilters, OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { legalTextFilterFields } from "@/lib/cadastros/legal-text-filters";
 import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
 import { useOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -81,7 +82,23 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
     <OperationalListFrame actions={canCreate && <button type="button" aria-label="Adicionar registro" onClick={event => begin(null, event.currentTarget)} className={styles.newButton}><Plus /><span className={styles.newLabel}>Adicionar</span></button>}
       toolbar={<><form action={pathname} className={styles.searchForm}>{Object.entries(extraQuery || {}).filter(([key]) => key !== "tab" || !tabs).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
         {tabs && <select name="tab" aria-label="Tipo de catálogo" defaultValue={extraQuery?.tab} className={styles.filterButton}>{tabs.map(tab => <option key={tab.value} value={tab.value}>{tab.label}</option>)}</select>}
-        <input name="q" type="search" defaultValue={query} placeholder="Buscar registros" aria-label="Buscar registros" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form>{error && !open && <span role="alert" className="text-[13px] text-red-700">{error}</span>}</>}
+        <input name="q" type="search" defaultValue={query} maxLength={catalog === "legalTexts" ? 240 : undefined} placeholder="Buscar registros" aria-label="Buscar registros" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form>
+        {catalog === "legalTexts" && <OperationalFilters activeCount={legalTextFilterFields.filter(({ name }) => extraQuery?.[name]).length}>
+          <form action={pathname} className="space-y-3">
+            <input type="hidden" name="q" value={query} />
+            <div className={styles.filterFields}>
+              {legalTextFilterFields.map(({ name, label, type }) => <label key={name}>
+                {label}
+                <input name={name} type={type} maxLength={120} defaultValue={extraQuery?.[name]} className={styles.searchInput} />
+              </label>)}
+            </div>
+            <div className="flex gap-2">
+              <button className={styles.filterButton}>Aplicar filtros</button>
+              <Link className={styles.filterButton} href={query ? `${pathname}?${new URLSearchParams({ q: query })}` : pathname}>Limpar filtros</Link>
+            </div>
+          </form>
+        </OperationalFilters>}
+        {error && !open && <span role="alert" className="text-[13px] text-red-700">{error}</span>}</>}
       pagination={<OperationalLinkPagination page={page} total={total} pathname={pathname} values={{ q: query, ...extraQuery }} />}>
       <OperationalTable preferenceId={`cadastros-catalogo-${catalog}`} caption={`Catálogo ${catalog}`} emptyMessage="Nenhum registro encontrado." columns={tableColumns}
         rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>

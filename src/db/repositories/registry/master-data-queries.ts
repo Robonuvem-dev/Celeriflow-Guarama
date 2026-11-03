@@ -2,6 +2,7 @@ import { and, asc, desc, eq, ilike, inArray, isNotNull, like, ne, or, sql, type 
 import { alias, type PgTable } from "drizzle-orm/pg-core";
 import type { MasterDataCatalog } from "@/app/app-domain/cadastros/master-data-types";
 import type { MasterDataPageData } from "@/lib/contracts/master-data";
+import type { LegalTextFilters } from "@/lib/cadastros/legal-text-filters";
 import type { DatabaseExecutor } from "../../transaction";
 import { people } from "../../schema/people";
 import { addresses, companies } from "../../schema/registry";
@@ -30,7 +31,7 @@ async function cityOptions(db: DatabaseExecutor) {
   return options(rows.map(row => ({ id: row.id, label: `${row.name}/${row.uf}` })));
 }
 
-export async function loadMasterDataPage(db: DatabaseExecutor, catalog: MasterDataCatalog, query: string, page: number): Promise<MasterDataPageData> {
+export async function loadMasterDataPage(db: DatabaseExecutor, catalog: MasterDataCatalog, query: string, page: number, legalFilters: LegalTextFilters = {}): Promise<MasterDataPageData> {
   const offset = (page - 1) * PAGE_SIZE;
   const pattern = `%${query}%`;
   switch (catalog) {
@@ -138,7 +139,20 @@ export async function loadMasterDataPage(db: DatabaseExecutor, catalog: MasterDa
       return { total, options: { people: persons, employees: options(employeeRows), entities }, rows: records.map(({ record, person, employee, entity }) => ({ id: record.id, active: record.status === "ATIVO", values: { personId: record.personId || "", employeeId: record.employeeId || "", signer: person || employee || "-", governmentEntityId: record.governmentEntityId || "", entity: entity || "-", signingRole: record.signingRole, reportTypes: record.reportTypes, signatureOrder: String(record.signatureOrder), effectiveFrom: dateValue(record.effectiveFrom), effectiveUntil: dateValue(record.effectiveUntil) } })) };
     }
     case "legalTexts": {
-      const where = query ? or(ilike(legalTexts.number, pattern), ilike(legalTexts.summary, pattern)) : undefined;
+      const literal = (value: string) => value.replace(/[\\%_]/g, "\\$&");
+      const keywords = query.trim().slice(0, 240).split(/\s+/).filter(Boolean);
+      const latestContent = sql`(SELECT v.content FROM "LegalTextVersion" v WHERE v."legalTextId" = ${legalTexts.id} ORDER BY v."versionNumber" DESC LIMIT 1)`;
+      const where = and(
+        legalFilters.tipo ? ilike(legalTexts.type, `%${literal(legalFilters.tipo)}%`) : undefined,
+        legalFilters.assunto ? ilike(legalTexts.summary, `%${literal(legalFilters.assunto)}%`) : undefined,
+        legalFilters.numero ? ilike(legalTexts.number, literal(legalFilters.numero)) : undefined,
+        legalFilters.publicacao ? sql`to_char(${legalTexts.publicationDate}, 'YYYY-MM-DD') = ${legalFilters.publicacao}` : undefined,
+        legalFilters.situacao ? ilike(legalTexts.status, literal(legalFilters.situacao)) : undefined,
+        ...keywords.map(word => {
+          const term = `%${literal(word)}%`;
+          return or(ilike(legalTexts.number, term), ilike(legalTexts.summary, term), ilike(latestContent, term));
+        }),
+      );
       const latest = db.select({ legalTextId: legalTextVersions.legalTextId, content: legalTextVersions.content, versionNumber: legalTextVersions.versionNumber }).from(legalTextVersions).where(sql`${legalTextVersions.versionNumber} = (SELECT max(v."versionNumber") FROM "LegalTextVersion" v WHERE v."legalTextId"=${legalTextVersions.legalTextId})`).as("latestVersion");
       const [records, total, entities] = await Promise.all([
         db.select({ record: legalTexts, entity: governmentEntities.name, content: latest.content, version: latest.versionNumber }).from(legalTexts).leftJoin(governmentEntities, eq(legalTexts.governmentEntityId, governmentEntities.id)).leftJoin(latest, eq(latest.legalTextId, legalTexts.id)).where(where).orderBy(desc(legalTexts.updatedAt)).offset(offset).limit(PAGE_SIZE), countRows(db, legalTexts, where), entityOptions(db),

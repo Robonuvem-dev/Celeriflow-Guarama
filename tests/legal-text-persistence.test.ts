@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
 import { withDatabaseTransaction } from "../src/db/transaction";
 import { saveLegalText, setMasterDataActive } from "../src/db/repositories/registry/master-data-operations";
+import { loadMasterDataPage } from "../src/db/repositories/registry/master-data-queries";
 import { legalTexts, legalTextVersions } from "../src/db/schema/master-data";
 import { insertAuditEvent } from "../src/db/repositories/platform/audit";
 import type { LegalTextInput } from "../src/lib/contracts/master-data";
@@ -26,6 +27,7 @@ before(async () => {
     CREATE UNIQUE INDEX ON "LegalTextVersion" ("documentId");
     ALTER TABLE "LegalTextVersion" ADD FOREIGN KEY ("legalTextId") REFERENCES "LegalText"(id);
     CREATE TABLE "Usuario" (id text PRIMARY KEY); INSERT INTO "Usuario" VALUES ('actor');
+    CREATE TABLE "GovernmentEntity" (id text PRIMARY KEY, name text NOT NULL, status text NOT NULL);
     CREATE TABLE "AuditEvent" (id text PRIMARY KEY,"eventType" text NOT NULL,"targetType" text NOT NULL,"targetId" text NOT NULL,"actorUsuarioId" text NOT NULL REFERENCES "Usuario"(id),"createdAt" timestamp DEFAULT now());
   `);
 });
@@ -39,6 +41,22 @@ function save(id: string | null, data: LegalTextInput, content: string, expected
   });
 }
 async function versions(id: string) { return withDatabaseTransaction(fixture.connection, tx => tx.select().from(legalTextVersions).where(eq(legalTextVersions.legalTextId, id)).orderBy(legalTextVersions.versionNumber)); }
+
+test("33.5: critérios combinados filtram o total e buscam somente a versão atual", async () => {
+  const data = input({ type: "Decreto", summary: "Programa de proteção das nascentes" });
+  const id = await save(null, data, "Disposição antiga sobre arquivamento");
+  await save(id, data, "Monitoramento da água e recuperação das margens", 1);
+  const filters = { tipo: "decreto", assunto: "nascentes", numero: data.number, publicacao: "2026-01-01", situacao: "VIGENTE" };
+  const db = fixture.connection.db;
+  const result = await loadMasterDataPage(db, "legalTexts", "proteção monitoramento", 1, filters);
+  assert.equal(result.total, 1);
+  assert.deepEqual(result.rows.map(row => row.id), [id]);
+  for (const [query, overrides] of [["arquivamento", {}], ["monitoramento", { situacao: "INATIVO" }], ["monitoramento", { publicacao: "2026-01-02" }], ["%", {}]] as const) {
+    const empty = await loadMasterDataPage(db, "legalTexts", query, 1, { ...filters, ...overrides });
+    assert.equal(empty.total, 0);
+    assert.deepEqual(empty.rows, []);
+  }
+});
 
 test("municipal, estadual e federal reutilizam cadastro/versões existentes sem duplicar estrutura", async () => {
   for (const governmentLevel of ["MUNICIPAL", "ESTADUAL", "FEDERAL"]) {

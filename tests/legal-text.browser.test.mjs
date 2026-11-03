@@ -62,6 +62,22 @@ test("conflito transmite a versão vista e conserva conteúdo digitado no diálo
     assert.match(await dialog.getByRole("alert").textContent(), /outra pessoa/);
   } finally { await page.close(); }
 });
+test("filtros jurídicos enviam critérios juntos e reiniciam a página", async () => {
+  const page = await open("role=read&page=3");
+  try {
+    await page.getByRole("button", { name: "Filtros", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Tipo do ato").fill("Decreto");
+    await dialog.getByLabel("Data de publicação").fill("2026-01-01");
+    await Promise.all([
+      page.waitForURL(url => url.searchParams.get("tipo") === "Decreto"),
+      dialog.getByRole("button", { name: "Aplicar filtros" }).click(),
+    ]);
+    const params = new URL(page.url()).searchParams;
+    assert.equal(params.get("publicacao"), "2026-01-01");
+    assert.equal(params.has("page"), false);
+  } finally { await page.close(); }
+});
 test("defaults dos demais catálogos e geometria compartilhada permanecem", async () => {
   const page = await open("legacy=1&role=read");
   try {

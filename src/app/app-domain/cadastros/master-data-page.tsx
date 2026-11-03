@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { loadMasterDataPage } from "@/db/repositories/registry/master-data-queries";
 import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { legalGovernmentLevels } from "@/lib/cadastros/legal-text-policy";
+import { legalTextFilterFields } from "@/lib/cadastros/legal-text-filters";
 export type MasterDataSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function firstParam(value: string | string[] | undefined) {
@@ -22,15 +23,20 @@ export async function renderMasterDataPage(input: {
   tabs?: { value: string; label: string; catalog: MasterDataCatalog }[];
 }) {
   const params = await input.searchParams;
-  const query = firstParam(params.q)?.trim() || "";
+  const rawQuery = firstParam(params.q)?.trim() || "";
   const requestedPage = Math.max(1, Number.parseInt(firstParam(params.page) || "1", 10) || 1);
   const requestedTab = firstParam(params.tab);
   const activeTab = input.tabs?.some(tab => tab.value === requestedTab) ? requestedTab : input.tabs?.[0]?.value;
   const catalog = input.tabs?.find(tab => tab.value === activeTab)?.catalog || input.catalog;
+  const query = catalog === "legalTexts" ? rawQuery.slice(0, 240) : rawQuery;
+  const legalFilters = Object.fromEntries(legalTextFilterFields.flatMap(({ name }) => {
+    const value = catalog === "legalTexts" ? firstParam(params[name])?.trim().slice(0, 120) : undefined;
+    return value ? [[name, value]] : [];
+  }));
   const context = await getTenantContextForModule("CADASTROS");
-  let result = await loadMasterDataPage(context.database ?? db, catalog, query, requestedPage);
+  let result = await loadMasterDataPage(context.database ?? db, catalog, query, requestedPage, legalFilters);
   const page = Math.min(requestedPage, Math.max(1, Math.ceil(result.total / OPERATIONAL_PAGE_SIZE)));
-  if (page !== requestedPage) result = await loadMasterDataPage(context.database ?? db, catalog, query, page);
+  if (page !== requestedPage) result = await loadMasterDataPage(context.database ?? db, catalog, query, page, legalFilters);
   const { rows, total, options } = result;
   let columns: MasterDataColumn[] = [];
   let fields: MasterDataField[] = [];
@@ -82,5 +88,5 @@ export async function renderMasterDataPage(input: {
   }
 
   const legalPermissions = catalog === "legalTexts" ? { canCreate: canPerformModuleOperation(context.user, "CADASTROS", "create"), canUpdate: canPerformModuleOperation(context.user, "CADASTROS", "update") } : {};
-  return <PageFrame className="flex h-full min-h-0 flex-col"><PageHeader title={input.title} icon={<Database className="size-4 text-emerald-700" />} /><MasterDataCatalogClient key={catalog} catalog={catalog} pathname={input.pathname} rows={rows} columns={columns} fields={fields} page={page} total={total} query={query} tabs={input.tabs} extraQuery={activeTab ? { tab: activeTab } : undefined} {...legalPermissions} /></PageFrame>;
+  return <PageFrame className="flex h-full min-h-0 flex-col"><PageHeader title={input.title} icon={<Database className="size-4 text-emerald-700" />} /><MasterDataCatalogClient key={catalog} catalog={catalog} pathname={input.pathname} rows={rows} columns={columns} fields={fields} page={page} total={total} query={query} tabs={input.tabs} extraQuery={{ ...legalFilters, ...(activeTab ? { tab: activeTab } : {}) }} {...legalPermissions} /></PageFrame>;
 }
