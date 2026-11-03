@@ -1,9 +1,9 @@
 {
-  "checkedAt": "2026-11-03T12:21:21.228Z",
+  "checkedAt": "2026-11-03T15:10:42.716Z",
   "layer": "READ_ONLY_REPORT_SERVICES_AND_CSV_NOT_VISUAL_OR_LEGAL_ACCEPTANCE",
   "clinicalRead": "EXPLICIT_SERVICE_CAPABILITY_NOT_AUTHENTICATED_PROFILE_VALIDATION",
-  "passed": 115,
-  "blocked": 15,
+  "passed": 130,
+  "blocked": 0,
   "failed": 0,
   "evidence": [
     {
@@ -115,8 +115,8 @@
       "id": 16,
       "kind": "VERBAS_INCIDENCIAS",
       "result": "PASS",
-      "rows": 16,
-      "bytes": 3106
+      "rows": 19,
+      "bytes": 3931
     },
     {
       "id": 17,
@@ -283,8 +283,8 @@
       "id": 40,
       "kind": "HISTORICO_FUNCIONAL",
       "result": "PASS",
-      "rows": 38,
-      "bytes": 17331
+      "rows": 41,
+      "bytes": 25270
     },
     {
       "id": 41,
@@ -457,50 +457,58 @@
     {
       "id": 65,
       "kind": "CONTABIL_LOTACAO_SINTETICO",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 10536
     },
     {
       "id": 66,
       "kind": "CONTABIL_DOTACAO_ANALITICO",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 11359
     },
     {
       "id": 67,
       "kind": "CONTABIL_DOTACAO_FONTE",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 10359
     },
     {
       "id": 68,
       "kind": "CONTABIL_DOTACAO_FONTE_DESPESA",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 10669
     },
     {
       "id": 69,
       "kind": "CONTABIL_FONTE",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 9990
     },
     {
       "id": 70,
       "kind": "CONTABIL_LOTACAO_ANALITICO",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 11832
     },
     {
       "id": 71,
       "kind": "CONTABIL_DOTACAO_LOCAL",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 12434
     },
     {
       "id": 72,
       "kind": "CONTABIL_LOTACAO_DOTACAO",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 12201
     },
     {
       "id": 73,
@@ -639,8 +647,8 @@
       "id": 92,
       "kind": "PARAMETROS_DEPENDENTES",
       "result": "PASS",
-      "rows": 0,
-      "bytes": 149
+      "rows": 1,
+      "bytes": 606
     },
     {
       "id": 93,
@@ -673,47 +681,51 @@
     {
       "id": 97,
       "kind": "CONTABIL_DOTACAO_SINTETICO",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 10063
     },
     {
       "id": 98,
       "kind": "CONTABIL_LOTACAO_FONTE",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 10832
     },
     {
       "id": 99,
       "kind": "FGTS_DOTACAO",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 2,
+      "bytes": 1020
     },
     {
       "id": 100,
       "kind": "FGTS_LOTACAO",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 2,
+      "bytes": 1060
     },
     {
       "id": 101,
       "kind": "FICHA_CADASTRAL_COMPLETA",
       "result": "PASS",
-      "rows": 148,
-      "bytes": 19549
+      "rows": 166,
+      "bytes": 22239
     },
     {
       "id": 102,
       "kind": "FICHA_CADASTRAL_VALIDACAO",
       "result": "PASS",
-      "rows": 148,
-      "bytes": 19549
+      "rows": 166,
+      "bytes": 22239
     },
     {
       "id": 103,
       "kind": "ALTERACOES_CADASTRAIS",
       "result": "PASS",
-      "rows": 70,
-      "bytes": 13239
+      "rows": 87,
+      "bytes": 16808
     },
     {
       "id": 104,
@@ -782,15 +794,15 @@
       "id": 113,
       "kind": "AUDITORIA_RH",
       "result": "PASS",
-      "rows": 3650,
-      "bytes": 693085
+      "rows": 4616,
+      "bytes": 886022
     },
     {
       "id": 114,
       "kind": "PARAMETROS_FGTS",
       "result": "PASS",
-      "rows": 0,
-      "bytes": 131
+      "rows": 1,
+      "bytes": 9708
     },
     {
       "id": 115,
@@ -810,8 +822,8 @@
       "id": 117,
       "kind": "PARAMETROS_CONTAGEM",
       "result": "PASS",
-      "rows": 4,
-      "bytes": 3514
+      "rows": 8,
+      "bytes": 6818
     },
     {
       "id": 118,
@@ -830,8 +842,9 @@
     {
       "id": 120,
       "kind": "EVOLUCAO_REFERENCIAS",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 8,
+      "bytes": 5166
     },
     {
       "id": 121,
@@ -871,8 +884,9 @@
     {
       "id": 126,
       "kind": "ETIQUETA_CONTRATUAL_CTPS",
-      "result": "BLOCKED_SOURCE",
-      "error": "Preencha a identificação trabalhista e registre a fotografia cadastral antes de emitir a etiqueta CTPS na referência."
+      "result": "PASS",
+      "rows": 2,
+      "bytes": 594
     },
     {
       "id": 127,
@@ -884,8 +898,9 @@
     {
       "id": 128,
       "kind": "CONTABIL_CLASSIFICACAO_FUNCIONAL",
-      "result": "BLOCKED_SOURCE",
-      "error": "A folha 10/2026 não possui fotografia de rateio nem certificação documental. Registre a fonte em Operações → Integrações; o cadastro atual não substitui automaticamente a classificação histórica."
+      "result": "PASS",
+      "rows": 24,
+      "bytes": 10505
     },
     {
       "id": 129,

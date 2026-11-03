@@ -6,7 +6,7 @@ import type { DatabaseExecutor } from "@/db/transaction";
 import { payrolls } from "@/db/schema/personnel-workforce";
 import type { OperationalReportInput, PersonnelReport } from "./operational-reports";
 import { functionalDefinition, type FunctionalKind } from "./functional-records";
-import { reportContractPredicate, reportEmployeePredicate, reportPayrollAllocationSource, reportPayrollPredicate, reportRubricPredicate } from "./report-filters";
+import { reportContractPredicate, reportEmployeePredicate, reportFunctionalRulePredicate, reportPayrollAllocationSource, reportPayrollPredicate, reportRubricPredicate } from "./report-filters";
 import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
 import { functionalRecordsObservedAt } from "./functional-timeline-query";
 import { payrollConfigurationObservedAt } from "./configuration-timeline-query";
@@ -40,12 +40,13 @@ export async function buildExtendedHrReport(db: DatabaseExecutor, input: Operati
   if (from > until) throw new Error("Fim do período anterior ao início.");
   if (input.kind === "PARAMETROS_DEPENDENTES") {
     const selected = await db.execute<{ name: string; employee: string | null; benefit: string; startsAt: string; endsAt: string | null; policy: unknown; version: string }>(sql`
-      SELECT f.name,e.name employee,f.data->>'benefit' benefit,to_char(f."startsAt",'YYYY-MM-DD') "startsAt",to_char(f."endsAt",'YYYY-MM-DD') "endsAt",f.data policy,f.version::text version
-      FROM ${functionalRecordsObservedAt(sql`${reference}`)} f JOIN "Employee" e ON e.id=f."employeeId"
+      SELECT f.name,coalesce(personal.snapshot->'person'->>'fullName','Identidade sem fonte documental na referência') employee,f.data->>'benefit' benefit,to_char(f."startsAt",'YYYY-MM-DD') "startsAt",to_char(f."endsAt",'YYYY-MM-DD') "endsAt",f.data policy,f.version::text version
+       FROM ${functionalRecordsObservedAt(sql`${reference}`)} f JOIN "Employee" e ON e.id=f."employeeId"
+       LEFT JOIN LATERAL (SELECT snapshot FROM "HrPersonalRevision" WHERE "employeeId"=e.id AND "effectiveFrom"<${reference}::date+interval '1 day' ORDER BY "effectiveFrom" DESC,id DESC LIMIT 1) personal ON true
       WHERE f.kind='DEPENDENTE_VIGENCIA' AND f.status<>'CANCELADO' AND f."startsAt"::date<=${reference}::date AND (f."endsAt" IS NULL OR f."endsAt"::date>=${reference}::date)
         AND ${reportEmployeePredicate(input, sql`e.id`, sql`${reference}`)} AND ${personnelBudgetEmployeeWhere(sql`e.id`, budgetUnitIds)}
         ${input.employeeId ? sql`AND e.id=${input.employeeId}` : sql``}
-        AND (${input.q}='' OR strpos(lower(concat_ws(' ',f.name,e.name,f.data->>'benefit')),lower(${input.q}))>0)
+        AND (${input.q}='' OR strpos(lower(concat_ws(' ',f.name,personal.snapshot->'person'->>'fullName',f.data->>'benefit')),lower(${input.q}))>0)
       UNION ALL SELECT r.name,NULL,CASE WHEN r.value->>'origin'='SALARIO_FAMILIA' THEN 'SALARIO_FAMILIA' ELSE 'IRRF' END,to_char(p."effectiveFrom",'YYYY-MM-DD'),to_char(p."effectiveUntil",'YYYY-MM-DD'),r.value,r."updatedAt"
       FROM ${payrollConfigurationObservedAt("HR_PAYROLL_RULE", sql`${reference}`)} r JOIN ${payrollConfigurationObservedAt("HR_PAYROLL_RULE_SET", sql`${reference}`)} p ON p.id=r."ruleSetId"
       WHERE r."isActive" AND (r.code='DEPENDENTES_IRRF' OR r.value->>'origin'='SALARIO_FAMILIA') AND p."effectiveFrom"::date<=${reference}::date AND (p."effectiveUntil" IS NULL OR p."effectiveUntil"::date>=${reference}::date)
@@ -53,6 +54,7 @@ export async function buildExtendedHrReport(db: DatabaseExecutor, input: Operati
         AND (${input.q}='' OR strpos(lower(concat_ws(' ',r.name,r.code,p.name)),lower(${input.q}))>0)
       UNION ALL SELECT f.name,NULL,'ABONO_FAMILIA',to_char(f."startsAt",'YYYY-MM-DD'),to_char(f."endsAt",'YYYY-MM-DD'),f.data,f.version::text
       FROM ${functionalRecordsObservedAt(sql`${reference}`)} f WHERE f.kind='REGRA_ABONO' AND f.status<>'CANCELADO' AND f."startsAt"::date<=${reference}::date AND (f."endsAt" IS NULL OR f."endsAt"::date>=${reference}::date)
+        AND ${reportFunctionalRulePredicate(input, sql`f.data`, sql`${reference}`, budgetUnitIds)}
         AND ${reportRubricPredicate(input, sql`f.data->>'rubricCode'`)} AND (${input.q}='' OR strpos(lower(f.name),lower(${input.q}))>0)
       ORDER BY benefit,name,employee`);
     return { title: `${title} — regras observadas até ${reference}`, headers: ["Regra / enquadramento", "Servidor / alcance", "Benefício", "Início", "Fim", "Limites, exceções, documentos e fundamento", "Versão / atualização"], rows: selected.rows.map(row => [row.name, row.employee ?? "Política geral; aplicar ao enquadramento configurado", row.benefit, row.startsAt, row.endsAt ?? "", JSON.stringify(row.policy), row.version]) };
@@ -62,18 +64,20 @@ export async function buildExtendedHrReport(db: DatabaseExecutor, input: Operati
     if (kind === "READAPTACAO" && !input.clinicalAuthorized) throw new Error("Seu perfil não possui autorização clínica de RH.");
     const definition = functionalDefinition(kind);
     const selected = await db.execute<{ id: string; name: string; employee: string | null; registration: string | null; startsAt: string; endsAt: string | null; status: string; data: Record<string, string>; version: number; actorId: string }>(sql`
-      SELECT f.id,f.name,e.name employee,c.registration,to_char(f."startsAt",'YYYY-MM-DD') "startsAt",to_char(f."endsAt",'YYYY-MM-DD') "endsAt",f.status,f.data,f.version,f."actorId"
+      SELECT f.id,f.name,CASE WHEN f."employeeId" IS NULL THEN NULL ELSE coalesce(personal.snapshot->'person'->>'fullName',v.snapshot->'employee'->>'name','Identidade sem fonte documental na referência') END employee,v.snapshot->>'registration' registration,to_char(f."startsAt",'YYYY-MM-DD') "startsAt",to_char(f."endsAt",'YYYY-MM-DD') "endsAt",f.status,f.data,f.version,f."actorId"
        FROM ${input.kind.startsWith("PARAMETROS_") || ["VALORES_HORA_AULA", "SERVICOS_BANCARIOS_RH"].includes(input.kind) ? functionalRecordsObservedAt(sql`${reference}`) : sql`"HrFunctionalRecord"`} f LEFT JOIN "Employee" e ON e.id=f."employeeId" LEFT JOIN "HrEmploymentContract" c ON c.id=f."contractId"
-      LEFT JOIN LATERAL (SELECT snapshot FROM "HrEmploymentRevision" WHERE "contractId"=c.id AND "effectiveFrom"::date<=least(${until}::date,coalesce(f."endsAt"::date,${until}::date)) ORDER BY "effectiveFrom" DESC,version DESC LIMIT 1) v ON true
+       LEFT JOIN LATERAL (SELECT snapshot FROM "HrEmploymentRevision" WHERE "contractId"=c.id AND "effectiveFrom"::date<=least(${until}::date,coalesce(f."endsAt"::date,${until}::date)) ORDER BY "effectiveFrom" DESC,version DESC LIMIT 1) v ON true
+       LEFT JOIN LATERAL (SELECT snapshot FROM "HrPersonalRevision" WHERE "employeeId"=e.id AND "effectiveFrom"<least(${until}::date,coalesce(f."endsAt"::date,${until}::date))+interval '1 day' ORDER BY "effectiveFrom" DESC,id DESC LIMIT 1) personal ON true
       WHERE f.kind=${kind} AND f."startsAt"::date<=${until}::date AND (f."endsAt" IS NULL OR f."endsAt"::date>=${from}::date)
-        AND (${input.q}='' OR strpos(lower(f.name||' '||coalesce(e.name,'')),lower(${input.q}))>0)
-        ${input.employeeId ? sql`AND f."employeeId"=${input.employeeId}` : sql``}
+        AND (${input.q}='' OR strpos(lower(concat_ws(' ',f.name,personal.snapshot->'person'->>'fullName',v.snapshot->'employee'->>'name',v.snapshot->>'registration')),lower(${input.q}))>0)
+        ${input.employeeId ? sql`AND (f."employeeId"=${input.employeeId} OR f."employeeId" IS NULL)` : sql``}
+        AND (f."employeeId" IS NOT NULL OR ${reportFunctionalRulePredicate(input, sql`f.data`, sql`${reference}`, budgetUnitIds)})
         AND (f."contractId" IS NULL OR ${reportContractPredicate(input, sql`v.snapshot`, sql`${reference}`)})
         AND (f."employeeId" IS NULL OR ${reportEmployeePredicate(input, sql`e.id`, sql`${reference}`)})
         AND (coalesce(f.data->>'rubricCode','')='' OR ${reportRubricPredicate(input, sql`f.data->>'rubricCode'`)})
         ${input.departmentId ? sql`AND (v.snapshot->>'departmentId'=${input.departmentId} OR f."employeeId" IS NULL AND coalesce(f.data->>'departmentId','') IN ('',${input.departmentId}))` : sql``}
         AND (f."employeeId" IS NULL OR ${personnelBudgetEmployeeWhere(sql`e.id`, budgetUnitIds)})
-      ORDER BY e.name,f."startsAt",f.id`);
+       ORDER BY employee,f."startsAt",f.id`);
     return { title, headers: ["Registro", "Servidor", "Matrícula", "Início", "Fim", "Situação", ...definition.fields.map(field => field.label), "Versão", "Autor"], rows: selected.rows.map(row => [row.name, row.employee ?? "Regra geral", row.registration ?? "", row.startsAt, row.endsAt ?? "", row.status, ...definition.fields.map(field => row.data[field.name] ?? ""), String(row.version), row.actorId]) };
   }
   if (input.kind === "RETORNO_AFASTAMENTOS") return buildAbsenceReturnReport(db, input, budgetUnitIds);

@@ -9,7 +9,7 @@ import { countThirteenthAvos, pocSpecialParametersSchema, preparePocSpecialRubri
 import { calculateTravelAllowance } from "../src/lib/rh/travel-allowance";
 import { calculateServiceAcquisitions } from "../src/lib/rh/service-rights";
 import { calculateServiceTimeAllowance } from "../src/lib/rh/service-time-allowance";
-import { vacationDaysForAbsences } from "../src/lib/rh/vacation-entitlement";
+import { vacationDaysForAbsences, vacationDaysForConfiguredEntitlement } from "../src/lib/rh/vacation-entitlement";
 import { calculatePayrollPensions, payrollPensionPolicySchema } from "../src/lib/rh/payroll-pensions";
 import { resolveMonthlyContractSegments, calculateProratedMonthlyRubrics } from "../src/lib/rh/monthly-proration";
 type EmploymentContract = typeof hrEmploymentContracts.$inferSelect;
@@ -83,6 +83,10 @@ test("diárias da cartilha: limites 8/12/24h, distância e truncamento explicita
 test("mescla de férias resolve fronteiras 6/15/24/33 em política demonstrativa explícita", () => {
   const policy = { origin: "FALTAS_FERIAS_POC", estimated: true, legalReference: "Ibema histórico + Campina art. 109; >=33 estimado", attendanceStatuses: ["Falta"], bands: [{ minimumAbsences: 0, maximumAbsences: 5, days: 30 }, { minimumAbsences: 6, maximumAbsences: 14, days: 24 }, { minimumAbsences: 15, maximumAbsences: 23, days: 18 }, { minimumAbsences: 24, maximumAbsences: 32, days: 12 }, { minimumAbsences: 33, maximumAbsences: null, days: 0 }] };
   assert.deepEqual([0, 5, 6, 14, 15, 23, 24, 32, 33, 99].map(count => vacationDaysForAbsences(policy, count)), [30, 30, 24, 24, 18, 18, 12, 12, 0, 0]);
+  assert.deepEqual([0, 5, 6, 14, 15, 23, 24, 32, 33, 99].map(count => vacationDaysForConfiguredEntitlement(policy, count, 30)), [30, 30, 24, 24, 18, 18, 12, 12, 0, 0]);
+  assert.deepEqual([0, 6, 15, 24, 33].map(count => vacationDaysForConfiguredEntitlement(policy, count, 45)), [45, 39, 33, 27, 0]);
+  assert.throws(() => vacationDaysForConfiguredEntitlement(policy, -1, 45), /faltas inválida/);
+  assert.throws(() => vacationDaysForConfiguredEntitlement(policy, 0, 91), /nominal de férias inválido/);
 });
 
 test("pensão seleciona base, tipo de folha, vigência e dedução fiscal sem circularidade", () => {

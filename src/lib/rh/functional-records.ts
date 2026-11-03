@@ -70,7 +70,7 @@ export function parseFunctionalData(kind: FunctionalKind, raw: unknown): Record<
   for (const field of functionalDefinition(kind).fields) {
     let validator: z.ZodType<string> = z.string().trim().max(field.type === "textarea" ? 10000 : 1000);
     if (field.type === "date") validator = z.iso.date();
-    else if (field.type === "number") validator = z.string().regex(/^\d{1,15}(?:\.\d{1,4})?$/).refine(value => new Decimal(value).gte(field.min ?? 0) && (field.max === undefined || new Decimal(value).lte(field.max)), `Valor inválido: ${field.label}.`);
+    else if (field.type === "number") validator = z.string().refine(value => /^\d{1,15}(?:\.\d{1,4})?$/.test(value) && new Decimal(value).gte(field.min ?? 0) && (field.max === undefined || new Decimal(value).lte(field.max)), `Valor inválido: ${field.label}.`);
     else if (field.options) validator = z.string().refine(value => field.options!.includes(value), `Opção inválida: ${field.label}.`);
     else validator = z.string().trim().min(1).max(field.type === "textarea" ? 10000 : 1000);
     shape[field.name] = field.optional ? z.union([validator, z.literal("")]).default("") : validator;

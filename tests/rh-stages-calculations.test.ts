@@ -9,11 +9,20 @@ import { resolvePayrollCategory } from "../src/lib/rh/functional-payroll";
 import { resolveCategoryIncidences } from "../src/lib/rh/category-incidences";
 import { HR_PAYROLL_TYPES } from "../src/lib/rh/calculation-engine";
 import type { FunctionalRecord } from "../src/lib/rh/functional-record-service";
+import { parseFunctionalData } from "../src/lib/rh/functional-records";
 
 const period = { start: new Date("2026-09-01T00:00:00Z"), end: new Date("2026-09-30T23:59:59.999Z") };
 const recordDefaults = { version: 1, name: "Regra municipal", status: "ATIVO", createdAt: period.start, updatedAt: period.start, employeeId: null, contractId: null, key: "regra", actorId: "rh" };
 const pension = { id: "judicial", contractId: "vinculo", beneficiaryPersonId: "beneficiaria", courtReference: "Processo municipal 123", startsAt: "2026-01-01", endsAt: null, payrollTypes: ["Mensal"], method: "PERCENTUAL", value: "20.00", basis: "APOS_IRRF", deductFromIncomeTax: false };
 const pensionInput = { ...period, contractId: "vinculo", payrollType: "Mensal", gross: "1000.00", socialContribution: "-40.00", incomeTax: "-60.00", phase: "APOS_IRRF" as const };
+
+test("regra funcional: campo numérico opcional vazio permite salvar e reabrir sem exceção Decimal", () => {
+  const data = { regimeId: "", roleId: "", category: "APOSENTADO", payrollTypes: "Mensal;13º", personalMode: "EXCEDENTE", exemptAmount: "8157.41", ceilingMode: "SEM_TETO", employer: "NAO", legalReference: "Estatuto municipal" };
+  const parsed = parseFunctionalData("REGRA_PREVIDENCIA_BENEFICIO", data);
+  assert.equal(parsed.ceiling, "");
+  assert.deepEqual(parseFunctionalData("REGRA_PREVIDENCIA_BENEFICIO", parsed), parsed);
+  for (const ceiling of ["inválido", "-1", "Infinity", "1e100", "1.12345"]) assert.throws(() => parseFunctionalData("REGRA_PREVIDENCIA_BENEFICIO", { ...data, ceiling }), error => error instanceof Error && error.name === "ZodError");
+});
 
 test("pensão: restituição fiscal só aumenta a base mediante previsão expressa do título", () => {
   const policy = { origin: "PENSOES_FOLHA", legalReference: "Título judicial vigente", entries: [pension] };

@@ -12,10 +12,15 @@ import type { DatabaseExecutor } from "../src/db/transaction";
 import { drizzle } from "drizzle-orm/pglite";
 import { Decimal } from "../src/db/decimal";
 import { employees } from "../src/db/schema/administration";
-import { payrolls, hrEmploymentContracts, hrPayrollRuns, hrPayrollStatements } from "../src/db/schema/personnel-workforce";
+import { payrolls, hrEmploymentContracts, hrPayrollRuns, hrPayrollStatements, hrRightEntries } from "../src/db/schema/personnel-workforce";
 import { accountingReportKinds, buildAccountingHrReport } from "../src/lib/rh/accounting-reports";
 import { buildAccountingEvolutionReport } from "../src/lib/rh/accounting-evolution-report";
 import { buildSpecialHrReport } from "../src/lib/rh/special-report-layouts";
+import { buildOperationalHrReport } from "../src/lib/rh/operational-reports";
+import { buildFunctionalHistoryReport } from "../src/lib/rh/functional-history-report";
+import { reportFunctionalRulePredicate } from "../src/lib/rh/report-filters";
+import { buildExtendedHrReport } from "../src/lib/rh/extended-reports";
+import { buildRetirementAssessmentReport } from "../src/lib/rh/retirement-assessment";
 
 test("migração RH: compatibilidade física com o histórico SQL integral do projeto", async () => {
   const pg = await PGlite.create();
@@ -45,13 +50,47 @@ test("migração RH: compatibilidade física com o histórico SQL integral do pr
       assert.equal(denied.rows.length, 0, kind);
     }
     const evolution = await buildAccountingEvolutionReport(db, { kind: "EVOLUCAO_REFERENCIAS", q: "", compareDate: "2026-09-30", referenceDate: "2026-10-31" });
+    await pg.exec(`UPDATE "Employee" SET name='Nome atual',registration='999' WHERE id='holder'`);
+    for (const kind of ["EVOLUCAO_GLOBAL", "EVOLUCAO_SERVIDOR", "EVOLUCAO_UNIDADE", "FICHA_RESUMIDA_VERBA"]) {
+      const historical = await buildOperationalHrReport(db, { kind, q: "Servidor municipal", competence: "10/2026", referenceDate: "2026-11-03", registrationFrom: "001", registrationUntil: "001" });
+      assert.ok(historical.rows.length, `${kind}: pesquisa usa identidade e matrícula da folha, não as atuais`);
+      const currentName = await buildOperationalHrReport(db, { kind, q: "Nome atual", competence: "10/2026" });
+      assert.equal(currentName.rows.length, 0, `${kind}: identidade atual não altera filtro histórico`);
+    }
+    const selectedRubric = await buildOperationalHrReport(db, { kind: "FICHA_RESUMIDA_VERBA", q: "", competence: "10/2026", rubricCodes: "IRRF" });
+    assert.ok(selectedRubric.rows.length);
+    assert.ok(selectedRubric.rows.every(row => row.includes("IRRF") && !row.includes("BASE")));
     const globalGross = evolution.rows.find(row => row[0] === "GLOBAL" && row[5] === "BRUTO");
     assert.ok(globalGross); assert.deepEqual(globalGross.slice(8, 12), ["0.00", "100.00", "100.00", ""]);
-    await pg.exec(`INSERT INTO "HrEmploymentRevision" (id,"contractId",version,"effectiveFrom",snapshot,"actorId",reason) VALUES ('revision','contract',1,'2020-01-01','{"id":"contract","employeeId":"holder","registration":"001","roleId":"cargo","admittedAt":"2020-01-01","salary":"100.00","monthlyHours":100}','rh','Admissão');
-      INSERT INTO "HrPersonalRevision" (id,"employeeId","effectiveFrom",snapshot,"actorId",reason) VALUES ('personal','holder','2026-10-01','{"person":{"fullName":"Servidor municipal","cpf":"12345678901"},"functionalIdentification":[{"id":"work-id","status":"ATIVO","startsAt":"2020-01-01","data":{"pisPasep":"12345678901","ctps":"1234567","ctpsSeries":"001","ctpsState":"PR"}}]}','rh','Fonte documental da fixture isolada');`);
+    await pg.exec(`INSERT INTO "HrEmploymentRevision" (id,"contractId",version,"effectiveFrom",snapshot,"actorId",reason) VALUES ('revision','contract',1,'2020-01-01','{"id":"contract","employeeId":"holder","registration":"001","regimeId":"regime","roleId":"cargo","departmentId":null,"costCenterId":null,"workLocation":"Sede","salaryLevel":null,"admittedAt":"2020-01-01T00:00:00.000Z","appointedAt":null,"swornAt":null,"endsAt":null,"salary":"100.00","monthlyHours":100,"status":"ATIVO","version":1,"details":{}}','rh','Admissão');
+      INSERT INTO "HrPersonalRevision" (id,"employeeId","effectiveFrom",snapshot,"actorId",reason) VALUES ('personal','holder','2026-10-01','{"person":{"fullName":"Servidor municipal","cpf":"12345678901","birthDate":"1960-01-01T00:00:00.000Z","gender":"Feminino"},"functionalIdentification":[{"id":"work-id","status":"ATIVO","startsAt":"2020-01-01","data":{"pisPasep":"12345678901","ctps":"1234567","ctpsSeries":"001","ctpsState":"PR"}}]}','rh','Fonte documental da fixture isolada');`);
     const label = await buildSpecialHrReport(db, { kind: "ETIQUETA_CONTRATUAL_CTPS", q: "", employeeId: "holder", referenceDate: "2026-10-31" });
     assert.equal(label.rows.length, 1); assert.equal(label.rows[0].length, label.headers.length);
     assert.equal(label.rows[0][9], "12345678901"); assert.equal(label.rows[0][10], "1234567");
+    const functionalHistory = await buildFunctionalHistoryReport(db, { kind: "HISTORICO_FUNCIONAL", q: "Servidor municipal", from: "2026-10-01", until: "2026-10-31" });
+    assert.ok(functionalHistory.rows.length);
+    assert.ok(functionalHistory.rows.every(row => row[0] === "Servidor municipal" && row[1] === "001"));
+    assert.equal((await buildFunctionalHistoryReport(db, { kind: "HISTORICO_FUNCIONAL", q: "Nome atual", from: "2026-10-01", until: "2026-10-31" })).rows.length, 0);
+    await db.insert(hrRightEntries).values({ id: "ats-right", contractId: "contract", sourceKey: "ats-right", kind: "ATS", periodStart: new Date("2026-10-01"), periodEnd: new Date("2026-10-31"), quantity: new Decimal(5), amount: new Decimal(10), actorId: "rh", details: { rubricCode: "ATS", effectiveAt: "2026-10-01", scope: "DEMONSTRACAO" } });
+    const rightHistory = (authorizedRubricCodes: string[]) => buildFunctionalHistoryReport(db, { kind: "HISTORICO_FUNCIONAL", q: "", from: "2026-10-01", until: "2026-10-31", authorizedRubricCodes }, sql`false`);
+    assert.ok((await rightHistory(["ATS"])).rows.some(row => row.includes("ats-right")));
+    assert.ok((await rightHistory(["BASE"])).rows.every(row => !row.includes("ats-right")));
+    const ruleTarget = sql`${JSON.stringify({ roleId: "cargo" })}::jsonb`;
+    assert.equal((await db.execute(sql`SELECT 1 WHERE ${reportFunctionalRulePredicate({ employeeId: "holder", roleIds: "cargo" }, ruleTarget, sql`'2026-10-31'`)} `)).rows.length, 1);
+    assert.equal((await db.execute(sql`SELECT 1 WHERE ${reportFunctionalRulePredicate({ employeeId: "holder", roleIds: "outro-cargo" }, ruleTarget, sql`'2026-10-31'`)} `)).rows.length, 0);
+    await pg.exec(`INSERT INTO "HrFunctionalRecord" (id,kind,key,name,"employeeId","contractId","startsAt",data,"actorId") VALUES ('internship','ESTAGIO','internship','Estágio municipal','holder','contract','2026-10-01','{}','rh')`);
+    const internship = await buildExtendedHrReport(db, { kind: "ESTAGIOS_COMPLETOS", q: "Servidor municipal", from: "2026-10-01", until: "2026-10-31", referenceDate: "2026-10-31" });
+    assert.equal(internship.rows.length, 1);
+    assert.deepEqual(internship.rows[0].slice(1, 3), ["Servidor municipal", "001"]);
+    assert.equal((await buildExtendedHrReport(db, { kind: "ESTAGIOS_COMPLETOS", q: "Nome atual", from: "2026-10-01", until: "2026-10-31", referenceDate: "2026-10-31" })).rows.length, 0);
+    await pg.exec(`INSERT INTO "Person" (id,"fullName","birthDate",gender,"updatedAt") VALUES ('person','Nome atual','2000-01-01','Masculino',now()); UPDATE "Employee" SET "personId"='person' WHERE id='holder'`);
+    await db.execute(sql`INSERT INTO "HrFunctionalRecord" (id,kind,key,name,"startsAt",data,"actorId") VALUES ('retirement-rule','REGRA_APOSENTADORIA','retirement-rule','Regra municipal feminina','2026-10-01',${JSON.stringify({ gender: "Feminino", minimumAge: "62", contributionDays: "0", publicDays: "0", roleDays: "0", minimumPoints: "0", averageMonths: "1", benefitRate: "100", legalReference: "Estatuto municipal", issuer: "Responsável municipal" })}::jsonb,'rh')`);
+    const retirement = await buildRetirementAssessmentReport(db, { kind: "APURACAO_APOSENTADORIA", q: "Servidor municipal", referenceDate: "2026-10-31" });
+    assert.ok(retirement.rows.length);
+    assert.equal(retirement.rows[0][0], "Servidor municipal");
+    assert.equal(retirement.rows[0][3], "Regra municipal feminina");
+    assert.equal(retirement.rows[0][4], "66", "idade e regra usam nascimento/sexo observados, não o cadastro atual");
+    assert.equal((await buildRetirementAssessmentReport(db, { kind: "APURACAO_APOSENTADORIA", q: "Nome atual", referenceDate: "2026-10-31" })).rows.length, 0);
   } finally { await pg.close(); }
 });
 
