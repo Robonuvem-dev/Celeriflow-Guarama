@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { consolidatePca, summarizePcaBudget } from "../src/lib/compras/pca-consolidation";
+import {
+  buildPcaManagerialReportCsv,
+  consolidatePca,
+  identifyCollectivePurchaseOpportunities,
+  summarizeInternalPhaseMonitoring,
+  summarizePcaBudget,
+} from "../src/lib/compras/pca-consolidation";
 
 test("PCA filters by year and unit, deduplicates and sums exact amounts", () => {
   const demand = { id: "a", year: 2026, unitId: "u", unitName: "Compras", description: "Papel", estimatedValue: "0.10" };
@@ -64,4 +70,116 @@ test("PCA objective migration preserves legacy records and rejects invalid links
   } finally {
     await pg.close();
   }
+});
+
+test("CF30 30.4 & 30.10 identifies collective purchase opportunities, summarizes deadlines and exports CSV", () => {
+  const demands = [
+    {
+      id: "d1",
+      year: 2026,
+      unitId: "u-adm",
+      unitName: "Secretaria de Administração",
+      catalogItemId: "cat-papel",
+      unit: "resma",
+      quantity: 100,
+      status: "Planejado",
+      description: "Papel A4 Alcalino",
+      estimatedValue: "2500.00",
+    },
+    {
+      id: "d2",
+      year: 2026,
+      unitId: "u-edu",
+      unitName: "Secretaria de Educação",
+      catalogItemId: "cat-papel",
+      unit: "resma",
+      quantity: 300,
+      status: "Planejado",
+      description: "Papel A4 Alcalino",
+      estimatedValue: "7500.00",
+    },
+    {
+      id: "d3",
+      year: 2026,
+      unitId: "u-saude",
+      unitName: "Secretaria de Saúde",
+      catalogItemId: null,
+      unit: "un",
+      quantity: 1,
+      status: "Planejado",
+      description: "Equipamento exclusivo único",
+      estimatedValue: "12000.00",
+    },
+    {
+      id: "d4-canceled",
+      year: 2026,
+      unitId: "u-obras",
+      unitName: "Secretaria de Obras",
+      catalogItemId: "cat-papel",
+      unit: "resma",
+      quantity: 50,
+      status: "Cancelado",
+      description: "Papel A4 Alcalino",
+      estimatedValue: "1250.00",
+    },
+  ];
+
+  const opportunities = identifyCollectivePurchaseOpportunities(demands, 2026);
+  assert.equal(opportunities.length, 1);
+  assert.equal(opportunities[0].unitCount, 2);
+  assert.equal(opportunities[0].totalQuantity.toNumber(), 400);
+  assert.equal(opportunities[0].totalEstimatedValue.toFixed(2), "10000.00");
+  assert.deepEqual(opportunities[0].demandIds, ["d1", "d2"]);
+
+  const groups = consolidatePca(demands, 2026);
+  const csv = buildPcaManagerialReportCsv(2026, groups, opportunities);
+  assert.match(csv, /"Papel A4 Alcalino"/);
+  assert.match(csv, /"SIM"/);
+  assert.match(csv, /"NAO"/);
+
+  const monitoring = summarizeInternalPhaseMonitoring(
+    [
+      {
+        planningId: "d1",
+        description: "Papel A4 Alcalino",
+        unitName: "Administração",
+        status: "Planejado",
+        expectedPeriodStart: "2026-10-01",
+        expectedPeriodEnd: "2026-12-31",
+        estimatedValue: "2500.00",
+        hasDfd: true,
+        dfdApproved: true,
+        pcaStatus: "APROVADO",
+        etpStatus: "EM_ANALISE",
+        trStatus: null,
+        gedLinkedCount: 2,
+        coherent: true,
+      },
+      {
+        planningId: "d2",
+        description: "Serviço de TI",
+        unitName: "Educação",
+        status: "Planejado",
+        expectedPeriodStart: "2026-11-15",
+        expectedPeriodEnd: "2026-12-31",
+        estimatedValue: "7500.00",
+        hasDfd: true,
+        dfdApproved: true,
+        pcaStatus: "APROVADO",
+        etpStatus: "APROVADO",
+        trStatus: "RASCUNHO",
+        gedLinkedCount: 3,
+        coherent: false,
+      },
+    ],
+    new Date("2026-11-01T12:00:00.000Z"),
+  );
+
+  assert.equal(monitoring.totalDemands, 2);
+  assert.equal(monitoring.totalEstimatedValue.toFixed(2), "10000.00");
+  assert.equal(monitoring.documentsProgress.gedLinkedTotal, 5);
+  assert.equal(monitoring.documentsProgress.coherentCount, 1);
+  assert.equal(monitoring.documentsProgress.inconsistentCount, 1);
+  assert.equal(monitoring.deadlines.overdueCount, 1);
+  assert.equal(monitoring.deadlines.dueSoonCount, 1);
 });

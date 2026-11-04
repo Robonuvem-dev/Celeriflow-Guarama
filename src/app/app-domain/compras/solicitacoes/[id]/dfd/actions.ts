@@ -1,16 +1,17 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { getGedContext } from "@/lib/documents/ged-access";
-import { requireManagedDocument } from "@/db/repositories/documents/ged";
-import { advanceDemandWorkflow } from "@/db/repositories/procurement/purchase-demand-workflow";
-import { listDemandVersions } from "@/db/repositories/procurement/purchase-demand";
 import { redirect } from "next/navigation";
 import { databaseConnection } from "@/db/client";
-import { loadDemandDraft, recordDemandVersion } from "@/db/repositories/procurement/purchase-demand";
+import { requireManagedDocument } from "@/db/repositories/documents/ged";
+import { insertAuditEvent } from "@/db/repositories/platform/audit";
+import { listDemandVersions, loadDemandDraft, recordDemandVersion } from "@/db/repositories/procurement/purchase-demand";
+import { advanceDemandWorkflow } from "@/db/repositories/procurement/purchase-demand-workflow";
 import { purchaseRequests } from "@/db/schema/procurement-requests";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { assertPurchaseRequestOrigin } from "@/lib/compras/purchase-request-policy";
+import { auditEventTypes } from "@/lib/contracts/audit";
+import { getGedContext } from "@/lib/documents/ged-access";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 
 export async function formalizeDemand(id: string, expectedVersion: number): Promise<void> {
@@ -23,7 +24,14 @@ export async function formalizeDemand(id: string, expectedVersion: number): Prom
     assertPurchaseRequestOrigin(user, source);
     const draft = await loadDemandDraft(tx, id);
     if (!draft) throw new Error("Solicitação indisponível.");
-    return recordDemandVersion(tx, id, user.id, expectedVersion, draft.snapshot);
+    const recordedVersion = await recordDemandVersion(tx, id, user.id, expectedVersion, draft.snapshot);
+    await insertAuditEvent(tx, {
+      actorUsuarioId: user.id,
+      eventType: auditEventTypes.administrativeMutation,
+      targetType: "PurchaseDemandVersion:DFD",
+      targetId: id,
+    });
+    return recordedVersion;
   });
   redirect(`/compras/solicitacoes/${id}/dfd?versao=${version}`);
 }
@@ -53,6 +61,12 @@ export async function routeDemand(id: string, version: number, expectedStep: num
       documentVersionId = document.versionId;
     }
     await advanceDemandWorkflow(tx, current.id, context.user.id, expectedStep, status, reason, documentVersionId);
+    await insertAuditEvent(tx, {
+      actorUsuarioId: context.user.id,
+      eventType: documentVersionId ? auditEventTypes.processDocumentLinked : auditEventTypes.processUpdated,
+      targetType: "PurchaseDemandWorkflow:DFD",
+      targetId: id,
+    });
   });
   redirect(`/compras/solicitacoes/${id}/dfd?versao=${version}`);
 }

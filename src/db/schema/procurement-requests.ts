@@ -93,3 +93,44 @@ export const purchaseDemandEvents = pgTable("PurchaseDemandEvent", {
   documentVersionId: text("documentVersionId"),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
 });
+
+export const purchasePlanningDocumentVersions = pgTable("PurchasePlanningDocumentVersion", {
+  id: text("id").primaryKey().$defaultFn(createId),
+  purchasePlanningId: text("purchasePlanningId").notNull().references(() => purchasePlannings.id, { onDelete: "cascade" }),
+  documentType: text("documentType", { enum: ["PCA", "ETP", "TR"] }).notNull(),
+  version: integer("version").notNull(),
+  status: text("status", { enum: ["RASCUNHO", "EM_ANALISE", "DEVOLVIDO", "APROVADO"] }).notNull().default("RASCUNHO"),
+  sourceDfdVersionId: text("sourceDfdVersionId").references(() => purchaseDemandVersions.id, { onDelete: "set null" }),
+  sourceEtpVersionId: text("sourceEtpVersionId"),
+  gedDocumentVersionId: text("gedDocumentVersionId"),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  coherenceReport: jsonb("coherenceReport").$type<{
+    coherent: boolean;
+    warnings: string[];
+    checkedAt: string;
+  }>().notNull(),
+  actorId: text("actorId").notNull(),
+  reviewerId: text("reviewerId"),
+  reviewReason: text("reviewReason"),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, table => [
+  uniqueIndex("PurchasePlanningDocumentVersion_planning_type_version_key").on(table.purchasePlanningId, table.documentType, table.version),
+  index("PurchasePlanningDocumentVersion_planning_type_version_idx").on(table.purchasePlanningId, table.documentType, table.version),
+  index("PurchasePlanningDocumentVersion_gedDocumentVersionId_idx").on(table.gedDocumentVersionId),
+]);
+
+export const purchasePlanningAiSuggestionLogs = pgTable("PurchasePlanningAiSuggestionLog", {
+  id: text("id").primaryKey().$defaultFn(createId),
+  purchasePlanningId: text("purchasePlanningId").notNull().references(() => purchasePlannings.id, { onDelete: "cascade" }),
+  documentType: text("documentType", { enum: ["DFD", "PCA", "ETP", "TR"] }).notNull(),
+  fieldKey: text("fieldKey").notNull(),
+  suggestionType: text("suggestionType", { enum: ["REDACAO_PARAMETRIZADA", "REAPROVEITAMENTO_DADOS", "CONSISTENCIA_NORMATIVA"] }).notNull(),
+  suggestedText: text("suggestedText").notNull(),
+  decision: text("decision", { enum: ["ACEITA", "EDITADA", "RECUSADA"] }).notNull(),
+  finalText: text("finalText").notNull(),
+  justification: text("justification"),
+  actorId: text("actorId").notNull(),
+  createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
+}, table => [
+  index("PurchasePlanningAiSuggestionLog_planning_type_createdAt_idx").on(table.purchasePlanningId, table.documentType, table.createdAt),
+]);

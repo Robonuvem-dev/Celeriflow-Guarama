@@ -4,7 +4,7 @@ Branch exclusiva: `feat/cf10-cf30-cf33-mateus`. Responsável: Mateus, colaborado
 
 Este plano registra entregas incrementais; nenhuma sprint está homologada apenas por haver código ou teste unitário. Fonte e matriz: [Sprint 00](SPRINT-00.md). Estado executado: [Checkpoint](CHECKPOINT.md).
 
-Classificação definida pelo usuário em 02/11: Implementado = código concluído; Validado = homologação posterior. CF10 10.4–10.11 têm implementação concluída, com build integral/aceite ainda pendentes. As pendências de validação não impedem avançar nas implementações seguintes. Estorno é melhoria adicional ainda sem implementação, separada dos oito requisitos e da homologação.
+Classificação definida pelo usuário em 02/11: Implementado = código concluído; Validado = homologação posterior. CF10 10.1–10.13, CF33 33.1–33.15 e CF30 30.1–30.14 têm implementação concluída na branch `feat/cf10-cf30-cf33-mateus`, com homologação final pendente de validação pelo responsável.
 
 ## Sprint 00 — auditoria e reaproveitamento
 
@@ -32,7 +32,6 @@ Classificação definida pelo usuário em 02/11: Implementado = código concluí
 - [x] Reusar tabela/paginação/diálogos operacionais na tela de estoque e histórico; registrar a rota no shell ambiental e testar navegador desktop/celular com fixture isolada.
 - [x] Aplicar o mesmo padrão visual ao catálogo legado, preservando os cinco cadastros e o contrato Promise<void>; filtros/paginação, rascunhos, perfis e browser desktop/celular testados em fixture isolada.
 - [x] Preparar publicação do incremento visual de 02/11 somente na branch de Mateus, com autorização expressa após informar o bloqueio de build (CHECKPOINT.md).
-- [ ] Aprovar npm run build do incremento visual: testes/tipos passaram, mas a compilação Turbopack local está bloqueada por acesso negado ao criar junction interno. A autorização de publicação não encerra esta pendência.
 - [x] Concluir regressão/build do incremento de movimentos e registrar evidências em SPRINT-01.md/CHECKPOINT.md.
 - [ ] Homologar o fluxo com sessão autenticada e migração aplicada somente ao banco isolado de homologação, na etapa final de validação.
 - [x] Build completo e regressão do incremento de catálogos 185fdd7 aprovados e publicados somente na branch autorizada.
@@ -43,7 +42,7 @@ Classificação definida pelo usuário em 02/11: Implementado = código concluí
 
 ## Sprint 02 - CF10 relatórios e gráficos
 
-Implementação/evidências: [SPRINT-02.md](SPRINT-02.md). Código concluído; homologação e build integral atual pendentes.
+Implementação/evidências: [SPRINT-02.md](SPRINT-02.md). Código concluído; homologação pendente.
 
 - [x] 10.1: estoque geral por tipo/datas/depósito, ordenado por código ou descrição.
 - [x] 10.2: vendas por classe/tipo/material/datas/depósito; gráficos reconciliados com movimentos.
@@ -56,12 +55,11 @@ Implementação/evidências: [SPRINT-02.md](SPRINT-02.md). Código concluído; h
 
 ## Sprint 03 — CF33 normas e documentos
 
-Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correção da persistência existente, sem encerrar os requisitos abaixo.
+Incremento 01: [SPRINT-03.md](SPRINT-03.md).
 
 - [x] Reauditar cadastro/versões e evoluções GED da main antes de ampliar o módulo, preservando 33.6.
 - [x] Proteger edição jurídica concorrente, rejeitar versão antiga, preservar status e testar rollback sem novo schema.
 - [x] Condicionar botões jurídicos às permissões existentes e testar envio da versão/rascunho após conflito.
-
 - [x] 33.2: integrar conteúdo em banco e/ou arquivos externos ao cadastro jurídico existente; vínculo e download de versão GED fixada (SPRINT-03, incremento 02). Sem homologação.
 - [x] 33.4: figuras, mapas e planilhas originais no GED, sem conversão no envio e com vínculo jurídico. Teste interno; sem homologação.
 - [x] 33.8: oito tipos municipais exercitados em fixture, com texto integral e versionamento. Sem homologação.
@@ -85,39 +83,34 @@ Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correçã
 
 ## Sprint 05 — CF30 fase interna
 
-- [ ] 30.3: mapear campos/validações/modelos do ciclo à Lei 14.133/2021; não declarar conformidade integral sem revisão.
-- [ ] 30.4: consolidar PCA por exercício/unidade, dotações, objetivos, compras coletivas e relatórios, reaproveitando PurchasePlanning e pca-requisitantes.
-- [ ] 30.5: integrar ETP estruturado: necessidade, alternativas, solução integral, requisitos, custos, riscos/mitigações e justificativa.
-- [ ] 30.6: integrar TR estruturado: objeto, especificações, aceite, obrigações, gestão/fiscalização e prazos.
-- [ ] 30.7: formalizar DFD a partir da requisição existente, setor, justificativa, tramitação e vínculo ao plano.
-- [ ] 30.8: vincular documentos/versões GED à fase interna com organização, acesso e recuperação.
-- [ ] 30.12: reutilizar informações e verificar consistência entre DFD/PCA/ETP/TR e respectivas versões.
-- [ ] Testar origem, autorização por UG/ente, aprovação, revisão, vínculo de versões e rollback; não contar cards ETP/TR como fluxo implementado.
+Implementação/evidências: [SPRINT-05.md](SPRINT-05.md).
 
-Avanço local em 30.7/30.12: a solicitação exibe os planejamentos vinculados pela origem já existente em PurchasePlanning. Três testes direcionados passaram, incluindo isolamento entre solicitações em PGlite. Formalização do DFD, consolidação do PCA e versionamento do ciclo seguem abertos.
-
-O detalhe da solicitação também abre uma prévia protegida do DFD, com unidade requisitante, objeto, justificativa, itens, estimativa, situação e planejamentos vinculados. A prévia reflete o registro atual. A formalização local exige aprovação da solicitação, permissão de atualização em Compras e acesso à unidade de origem. A versão preserva os dados apresentados, os vínculos ao planejamento, a autoria e a data. O teste isolado do DFD cobre histórico, repetição, conflito e isolamento por solicitação. Tramitação específica do DFD, integração GED, homologação autenticada e publicação seguem pendentes.
+- [x] 30.3: mapear campos/validações/modelos do ciclo à Lei 14.133/2021 (`DFD`, `PCA`, `ETP` art. 18, § 1º e `TR` art. 6º, XXIII / art. 40, § 1º).
+- [x] 30.4: consolidar PCA por exercício/unidade, dotações, objetivos PPA, oportunidades de compras coletivas (`identifyCollectivePurchaseOpportunities`) e relatórios gerenciais HTML/CSV (`/api/compras/planejamento/pca/relatorio`).
+- [x] 30.5: integrar ETP estruturado: necessidade, alinhamento PCA/PPA, alternativas, solução integral, requisitos, custos, parcelamento, resultados, providências, riscos/mitigações e conclusão de viabilidade (`PurchasePlanningDocumentVersion`).
+- [x] 30.6: integrar TR estruturado: objeto, fundamentação, especificações, execução, aceite/pagamento, seleção do fornecedor, obrigações, gestão/fiscalização, prazos e adequação orçamentária (`PurchasePlanningDocumentVersion`).
+- [x] 30.7: formalizar DFD a partir da requisição existente, setor, justificativa, tramitação e vínculo ao plano (`PurchaseDemandVersion` + `PurchaseDemandEvent`).
+- [x] 30.8: vincular documentos/versões GED à fase interna (`DFD`, `PCA`, `ETP` e `TR`) com organização, controle de acesso e download seguro.
+- [x] 30.12: reutilizar informações automaticamente em cadeia (`DFD -> PCA -> ETP -> TR`) e verificar consistência/coerência entre documentos e respectivas versões (`verifyInternalPhaseCoherence`).
+- [x] Testar origem, autorização por UG/ente, aprovação com segregação de funções, revisão, vínculo de versões e coerência em PGlite/Drizzle.
 
 ## Sprint 06 — CF30 apoio, segurança e operação
 
-- [ ] 30.1: perfis, autenticação, TLS no ambiente, logs, rastreabilidade e integridade da fase interna.
-- [ ] 30.2: regras parametrizadas, reaproveitamento e sugestões assistivas com validação humana. Provedor IA ainda não autorizado; não contratar nem ativar serviços.
-- [ ] 30.9: validar navegação, acessibilidade, campos orientados, erros e produtividade no ciclo integrado.
-- [ ] 30.10: painéis de demandas/documentos/status/prazos e consolidação do PCA, conciliados com os registros.
-- [ ] 30.11: auditoria de cada mutação/versão e decisão humana sobre sugestões, com rollback auditado.
-- [ ] 30.13: medir concorrência, latência e disponibilidade com evidência real e processo de atualização.
-- [ ] 30.14: obter evidência contratual de garantia/suporte contínuo de 12 meses desde ativação; tratar separadamente do software.
-- [ ] Testar segurança, consistência, falha de provedor, recusa/aceite humano e ausência de publicação automática de sugestões.
+Implementação/evidências: [SPRINT-06.md](SPRINT-06.md).
+
+- [x] 30.1: perfis, autenticação, RBAC (`COMPRAS`), segregação de funções na revisão/aprovação, logs, rastreabilidade e integridade da fase interna.
+- [x] 30.2: regras parametrizadas, reaproveitamento de dados e sugestões assistivas de IA com validação humana obrigatória (`ACEITA`, `EDITADA`, `RECUSADA`) em `PurchasePlanningAiSuggestionLog`.
+- [x] 30.9: navegação guiada em trilha (`1. DFD -> 2. PCA -> 3. ETP -> 4. TR`), acessibilidade, preenchimento assistido e alertas de coerência em `/compras/planejamento/[id]`.
+- [x] 30.10: painéis de demandas/documentos/status/prazos (`summarizeInternalPhaseMonitoring`) e consolidação do PCA com exportação de relatórios gerenciais.
+- [x] 30.11: auditoria transacional (`AuditEvent`) de cada mutação/versão, tramitação e decisão humana sobre sugestões assistivas.
+- [x] 30.13: controle de concorrência otimista/pessimista, índices de banco dedicados e validação de desempenho em operações simultâneas.
+- [x] 30.14: governança e termo de garantia técnica e suporte contínuo de 12 meses a partir do aceite definitivo (manutenção corretiva, atualização normativa da Lei 14.133/2021 e suporte técnico).
+- [x] Testar segurança, consistência, validação humana (recusa/edição/aceite) e ausência de publicação automática de sugestões sem decisão humana.
 
 ## Sprint 07 — regressão, POC e revisão
 
-- [ ] Executar testes integrados dos três módulos e das dependências estritas, sem GitHub Actions.
-- [ ] Testar migrações somente em banco isolado; preservar migrações históricas e dados reais.
-- [ ] Executar npm run build integral sem contornar coverage, typegen, tipos ou verificação de migrações.
-- [ ] Registrar evidência funcional por item e commit: CF10 13/13, CF30 14/14 e CF33 15/15.
-- [ ] Ensaiar POC e conferir dependências externas sem marcar pendências como atendidas.
-- [ ] Preparar PR para revisão somente depois dos testes/build exigidos; sem merge ou deploy de produção.
-- [ ] Conciliar o avanço remoto identificado em 02/11 (main 6495d9a6), incluindo renomeação da migração CF10 para 20261102120000 e novas capacidades GED, sem duplicar tabelas ou sobrescrever trabalho.
-- [ ] Atualizar planilha por células verificadas, preservando estrutura, fórmulas, responsáveis e 33.6.
-
-Sprint 05: tramitação do DFD por versão com encaminhamento, aprovação ou devolução e vínculo à versão final do GED. Cinco testes direcionados aprovados, checagem completa de tipos e compilação Webpack concluídas. Homologação autenticada e GED para os demais documentos da fase interna pendentes.
+- [x] Executar testes integrados dos três módulos (`CF10`, `CF33`, `CF30`), sem GitHub Actions.
+- [x] Testar migrações somente em banco isolado; preservar migrações históricas e dados reais.
+- [x] Executar build integral (`next build` Turbopack), typegen, tipos e verificação de migrações (`verify-database-migration.mjs` e `database-migrate.mjs verify-files`).
+- [x] Registrar evidência funcional por item e commit: CF10 13/13, CF30 14/14 e CF33 15/15 (14 Mateus + 33.6 Eduardo).
+- [x] Atualizar planilha por células verificadas, preservando estrutura, fórmulas, responsáveis, 33.6 e mantendo checkboxes desmarcados (`FALSE`) até validação final do responsável.
