@@ -86,14 +86,26 @@ export async function getOmbudsmanOperationalContextForOperation(operation: Modu
   }
 }
 
+class AttendanceRegistrationError extends Error {}
+
+export async function getAttendanceRegistrationIssue(context: AttendanceContext): Promise<string | null> {
+  try {
+    await getOperationalContext(context);
+    return null;
+  } catch (error) {
+    if (!(error instanceof AttendanceRegistrationError)) throw error;
+    return error.message;
+  }
+}
+
 async function getOperationalContext(context: AttendanceContext) {
   if (!context.user.employeeId) {
-    throw new Error("Seu usuario precisa estar vinculado a um servidor para realizar esta operacao.");
+    throw new AttendanceRegistrationError("Seu usuário precisa estar vinculado a um servidor para realizar esta operação.");
   }
   const [row] = await db.select({ employee: employees, department: departments }).from(employees).leftJoin(departments, eq(departments.id, employees.departmentId)).where(eq(employees.id, context.user.employeeId)).limit(1);
   const employee = row ? { ...row.employee, department: row.department } : null;
   if (!employee?.isActive || !employee.departmentId || !employee.department?.isActive) {
-    throw new Error("Seu vinculo operacional nao esta ativo ou nao possui departamento.");
+    throw new AttendanceRegistrationError("Seu vínculo operacional precisa de um servidor ativo lotado em um departamento ativo.");
   }
   return { ...context, employee, departmentId: employee.departmentId };
 }

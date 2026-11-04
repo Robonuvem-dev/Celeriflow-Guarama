@@ -8,11 +8,21 @@ import type {TaxActor} from "./index";
 
 export async function saveTaxReference(connection:DatabaseConnection, actor:TaxActor, raw:unknown, expectedVersion:number, id?:string, remove=false) {
  const data=taxReferenceSchema.parse(raw);
+ for(const date of [data.validFrom,data.validTo])if(date&&(!Number.isFinite(Date.parse(`${date}T12:00:00Z`))||new Date(`${date}T12:00:00Z`).toISOString().slice(0,10)!==date))throw new Error("Vigência inválida.");
+ if(data.validFrom&&data.validTo&&data.validTo<data.validFrom)throw new Error("Vigência final anterior à inicial.");
+ if(data.kind==="tipo-arquivo"&&(!data.periodicity||!data.packageName||!data.processor))throw new Error("Tipo de arquivo exige periodicidade, pacote e identificador do processador.");
  if(!Number.isSafeInteger(expectedVersion)||expectedVersion<0) throw new Error("Versão inválida.");
  if(actor.allowedBudgetUnitIds&&!actor.allowedBudgetUnitIds.includes(data.budgetUnitId))throw new Error("UG fora do acesso autorizado.");
  return withDatabaseTransaction(connection,async tx=>{
   if(!await actionOriginExists(tx,data.governmentEntityId,data.budgetUnitId))throw new Error("UG não pertence ao ente selecionado.");
   if(data.kind==="usuario-municipal"){const user=await tx.execute(sql`SELECT id FROM "Usuario" WHERE id=${data.userId} AND ativo=true LIMIT 1`);if(!user.rows.length)throw new Error("Usuário cadastrado não está ativo.");}
+  if(data.kind==="orgao-municipio"&&data.userId){const user=await tx.execute(sql`SELECT id FROM "Usuario" WHERE id=${data.userId} AND ativo=true LIMIT 1`);if(!user.rows.length)throw new Error("Usuário vinculado não está ativo.");}
+  if(data.kind==="cnae-fiscal"&&data.serviceCodes){
+   const requested=[...new Set(data.serviceCodes.split(",").map(code=>code.trim()).filter(Boolean))];
+   const services=await tx.execute<{code:string}>(sql`SELECT e.data->>'code' AS code FROM "TaxRegistryEntry" e WHERE e."entityType"='TAX_REFERENCE' AND e.category='TAX_REFERENCE' AND e.data->>'kind'='lista-servico' AND e.data->>'budgetUnitId'=${data.budgetUnitId} AND e.status<>'EXCLUIDO' AND NOT EXISTS (SELECT 1 FROM "TaxRegistryEntry" n WHERE n."entityType"=e."entityType" AND n.category=e.category AND n."entityId"=e."entityId" AND n.version>e.version)`);
+   if(requested.some(code=>!services.rows.some(service=>service.code===code)))throw new Error("Vincule somente códigos de serviços cadastrados e ativos nesta UG.");
+   data.serviceCodes=requested.join(", ");
+  }
   if(data.kind==="equipamento-credenciado"){
    const credential=await tx.execute(sql`SELECT id FROM "NfseCredentialRequest" WHERE "taxpayerId"=${data.taxpayerId} AND status='HABILITADO' LIMIT 1`);
    if(!credential.rows.length)throw new Error("Contribuinte não possui credenciamento habilitado.");

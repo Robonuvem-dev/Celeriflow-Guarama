@@ -14,7 +14,7 @@ import { CENTRAL_MAX_BYTES, centralBlobStore, type CentralBlobStore } from "@/li
 import { CentralError } from "@/lib/signatures/central-error";
 import type { CentralSignatureMethod } from "@/lib/contracts/signature-central";
 import type { AppContext } from "@/lib/platform/tenant-context";
-import { canUseGed } from "./ged-access";
+import { canUseGed, requireGedObject } from "./ged-access";
 import { readGedBytes } from "./ged-storage";
 
 export async function signGedVersionInCentral(context: AppContext, input: { documentId: string; versionId: string; requestId: string; signerId: string; documentTypeId: string; method: CentralSignatureMethod; integrationId?: string; password: string }, dependencies: { connection?: DatabaseConnection; storage?: CentralBlobStore; readFile?: typeof readGedBytes } = {}) {
@@ -26,6 +26,7 @@ export async function signGedVersionInCentral(context: AppContext, input: { docu
   const document = await withDatabaseTransaction(connection, async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
     const current = await requireManagedDocument(context, input.documentId, tx);
+    await requireGedObject(context, "document", input.documentId, "edit", tx);
     if (current.versionId !== input.versionId || current.versionStatus !== "FINAL" || current.checkoutOwnerId || !["HOMOLOGADO", "ASSINADO_CENTRAL"].includes(current.editorialStatus)) throw new CentralError("Selecione a versão vigente homologada, sem reserva de edição.");
     const [policy] = await tx.select({ policy: documentClasses.signaturePolicy }).from(documents).innerJoin(documentClasses, eq(documentClasses.id, documents.documentClassId)).where(eq(documents.id, current.id));
     if (!policy || !["INTERNAL_ALLOWED", "ICP_REQUIRED"].includes(policy.policy) || (policy.policy === "ICP_REQUIRED" && input.method === "INTERNAL")) throw new CentralError("O método não atende à política de assinatura da classe documental.");

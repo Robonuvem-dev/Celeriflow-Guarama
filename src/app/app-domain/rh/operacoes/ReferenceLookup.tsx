@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RhTablePanel } from "../_components/RhTablePanel";
 import { rhColumn } from "../_components/operational-columns";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export function ReferenceLookup({ kind, name, initialValue = "", required, multiple = false }: { kind: string; name: string; initialValue?: string; required?: boolean; multiple?: boolean }) {
   const [value, setValue] = useState(initialValue);
@@ -12,7 +13,7 @@ export function ReferenceLookup({ kind, name, initialValue = "", required, multi
   const [selectedLabel, setSelectedLabel] = useState(initialValue);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
-  const [selection, setSelection] = useState<{ id: string; label: string }[]>([]);
+  const [selection, setSelection] = useState<{ id: string; label: string }[]>(() => multiple ? [...new Set(initialValue.split(",").map(value => value.trim()).filter(Boolean))].map(id => ({ id, label: id })) : []);
   useEffect(() => {
     const abort = new AbortController();
     const timer = setTimeout(async () => {
@@ -34,8 +35,8 @@ export function ReferenceLookup({ kind, name, initialValue = "", required, multi
       else { setValue(event.target.value); setSelectedLabel(item?.label || ""); }
     }} className="block h-8 w-full rounded border px-2">
       <option value="">Selecione</option>
-      {value && !items.some(item => item.id === value) && <option value={value}>{selectedLabel}</option>}
-      {items.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+      {value && !items.some(item => item.id === value) && <option value={value}>{personnelDisplayText(selectedLabel)}</option>}
+      {items.map(item => <option key={item.id} value={item.id}>{personnelDisplayText(item.label)}</option>)}
     </select>
     {multiple && <RhTablePanel title="Referências selecionadas" preferenceId={`rh-referencias-selecao-${kind}-${name}`} columns={[rhColumn("id", "ID", 240, 120, "identifier"), rhColumn("label", "Referência", 400, 180), rhColumn("actions", "Ações", 100, 90, "actions")]} rows={selection.map(item => ({ id: item.id, label: item.label, values: { id: item.id, label: item.label }, actions: <button type="button" onClick={() => setSelection(current => current.filter(selected => selected.id !== item.id))} aria-label={`Remover ${item.label}`}>Remover</button> }))} />}
     <div className="flex justify-between text-[10px]"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</button><span>{total} registros · {page}</span><button type="button" disabled={page * 20 >= total} onClick={() => setPage(page + 1)}>Próxima</button></div>

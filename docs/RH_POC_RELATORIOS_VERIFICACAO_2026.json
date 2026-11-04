@@ -1,0 +1,562 @@
+{
+  "recordedAt": "2026-11-02T14:50:52.299Z",
+  "layer": "database-and-service-not-browser",
+  "result": "PASS",
+  "acceptance": "This does not certify POC completeness, PDF/XLSX geometry, external integration or municipal rules.",
+  "checks": [
+    "oito visões contábeis conciliadas ao bruto/descontos/líquido/encargos originais; escopo negado vazio",
+    "filtros cadastrais por titular e salários históricos de outubro distintos de novembro",
+    "PDF e XLSX emitidos para amostras por titular de etiquetas/cartão/ATS/histórico"
+  ],
+  "evidence": [
+    {
+      "id": 1,
+      "kind": "RETORNO_FERIAS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 30,
+      "bytes": 3995,
+      "limitation": "Retorno civil; ajuste à escala/feriado ainda pendente."
+    },
+    {
+      "id": 2,
+      "kind": "FIM_COMISSAO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 116,
+      "limitation": "Vigência contratual; vínculo completo com o ato de nomeação ainda pendente."
+    },
+    {
+      "id": 3,
+      "kind": "FIM_CONTRATOS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 116
+    },
+    {
+      "id": 4,
+      "kind": "TREINAMENTO_CURSO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 18,
+      "bytes": 5195
+    },
+    {
+      "id": 5,
+      "kind": "TREINAMENTO_SERVIDOR",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 18,
+      "bytes": 5195
+    },
+    {
+      "id": 6,
+      "kind": "ATS_COLETIVO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 594,
+      "bytes": 255519,
+      "limitation": "Memória da apuração canônica e estornos; validar a regra municipal na F7."
+    },
+    {
+      "id": 7,
+      "kind": "ANIVERSARIANTES_RH",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 49
+    },
+    {
+      "id": 8,
+      "kind": "DIAS_AFASTADOS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 69
+    },
+    {
+      "id": 9,
+      "kind": "AQUISICAO_VT",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 24,
+      "bytes": 2547
+    },
+    {
+      "id": 10,
+      "kind": "CONFERENCIA_VT",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 24,
+      "bytes": 2547
+    },
+    {
+      "id": 11,
+      "kind": "MAPA_OCUPACAO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 42,
+      "bytes": 4584,
+      "limitation": "Confronta o histórico legal quando cadastrado; ausência de quadro vigente é explicitada."
+    },
+    {
+      "id": 12,
+      "kind": "AGENCIAS_RH",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 48
+    },
+    {
+      "id": 13,
+      "kind": "CAUSAS_AFASTAMENTO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 45
+    },
+    {
+      "id": 14,
+      "kind": "CLASSIFICACOES_FUNCIONAIS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 39279
+    },
+    {
+      "id": 15,
+      "kind": "MENSAGENS_FOLHA",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 1,
+      "bytes": 304
+    },
+    {
+      "id": 16,
+      "kind": "VERBAS_INCIDENCIAS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 16,
+      "bytes": 6206
+    },
+    {
+      "id": 17,
+      "kind": "CARGOS_SALARIOS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 39279,
+      "limitation": "Emissão contratual; integrar a escala completa do quadro legal."
+    },
+    {
+      "id": 18,
+      "kind": "MARGEM_CONSIGNAVEL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 151934
+    },
+    {
+      "id": 19,
+      "kind": "BANCOS_RH",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 2,
+      "bytes": 140
+    },
+    {
+      "id": 20,
+      "kind": "CBO_RH",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 42,
+      "bytes": 4499,
+      "limitation": "Lê mapeamento do quadro de cargos; cargos não parametrizados aparecem como pendência."
+    },
+    {
+      "id": 21,
+      "kind": "CURSOS_GRADUACAO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 3,
+      "bytes": 558
+    },
+    {
+      "id": 22,
+      "kind": "TREINAMENTO_CARGO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 18,
+      "bytes": 5195
+    },
+    {
+      "id": 23,
+      "kind": "HORARIOS_TRABALHO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 44372,
+      "limitation": "Jornada, divisor, faixa e intervalo separados; escalas especiais exigem parametrização própria."
+    },
+    {
+      "id": 24,
+      "kind": "INDICES_FINANCEIROS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 3,
+      "bytes": 781
+    },
+    {
+      "id": 25,
+      "kind": "MOTIVOS_DESLIGAMENTO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 3,
+      "bytes": 764
+    },
+    {
+      "id": 26,
+      "kind": "PARAMETROS_PREVIDENCIA",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 4,
+      "bytes": 1793
+    },
+    {
+      "id": 27,
+      "kind": "ETIQUETAS_ANIVERSARIANTES",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 57
+    },
+    {
+      "id": 28,
+      "kind": "ETIQUETAS_SERVIDORES",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 18826
+    },
+    {
+      "id": 29,
+      "kind": "ETIQUETAS_CARTAO_PONTO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 25214
+    },
+    {
+      "id": 30,
+      "kind": "CARTAO_PONTO_132",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 25214
+    },
+    {
+      "id": 31,
+      "kind": "EVOLUCAO_GLOBAL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 3,
+      "bytes": 430
+    },
+    {
+      "id": 32,
+      "kind": "EVOLUCAO_SERVIDOR",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 594,
+      "bytes": 88339
+    },
+    {
+      "id": 33,
+      "kind": "EVOLUCAO_UNIDADE",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 72,
+      "bytes": 10255
+    },
+    {
+      "id": 34,
+      "kind": "EXPECTATIVA_APOSENTADORIA",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 97547,
+      "limitation": "Projeção demonstrativa por requisitos mínimos configurados; regras/transições oficiais na homologação final."
+    },
+    {
+      "id": 35,
+      "kind": "INFORME_ANUAL_POC",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 177,
+      "limitation": "Informe demonstrativo por ano de pagamento; homologação fiscal na fase final."
+    },
+    {
+      "id": 36,
+      "kind": "FICHA_RESUMIDA_VERBA",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 3564,
+      "bytes": 634754
+    },
+    {
+      "id": 37,
+      "kind": "ASSINATURA_ATIVOS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 46222
+    },
+    {
+      "id": 38,
+      "kind": "FREQUENCIA_COLETIVA",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 29291,
+      "limitation": "Totais dos dias registrados; cobertura de dias sem registro depende da escala."
+    },
+    {
+      "id": 39,
+      "kind": "PONTO_COLETIVO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 12474,
+      "bytes": 2198756,
+      "limitation": "Entrada/saída; quatro marcações ainda dependem de evolução do modelo."
+    },
+    {
+      "id": 40,
+      "kind": "HISTORICO_FUNCIONAL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 1062,
+      "bytes": 312864,
+      "limitation": "Consolida origens RH disponíveis; períodos de cessão estruturados ainda pendentes."
+    },
+    {
+      "id": 41,
+      "kind": "ADMISSOES_CEDENCIAS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 414,
+      "bytes": 122325,
+      "limitation": "Revisões e atos; estruturar origem/destino/ônus da cessão."
+    },
+    {
+      "id": 42,
+      "kind": "CADASTRO_GERAL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 56828
+    },
+    {
+      "id": 43,
+      "kind": "CADASTRO_DOTACAO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 81678
+    },
+    {
+      "id": 44,
+      "kind": "CADASTRO_GERAL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 56828
+    },
+    {
+      "id": 45,
+      "kind": "CADASTRO_LOCAL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 56828
+    },
+    {
+      "id": 46,
+      "kind": "CADASTRO_LOTACAO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 56828
+    },
+    {
+      "id": 47,
+      "kind": "TEMPO_CONTRIBUICAO_RH",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 6,
+      "bytes": 1981
+    },
+    {
+      "id": 48,
+      "kind": "OCORRENCIAS_FUNCIONAIS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 18,
+      "bytes": 4184,
+      "limitation": "Atos e ocorrências integradas, com motivo/data de cancelamento e original preservado."
+    },
+    {
+      "id": 49,
+      "kind": "VERBAS_FIXAS_VARIAVEIS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 654,
+      "bytes": 130850,
+      "limitation": "Movimentos e cronograma do credor, reserva/cancelamento/lançamento; não comprova quitação."
+    },
+    {
+      "id": 50,
+      "kind": "ATS_COLETIVO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 594,
+      "bytes": 255519,
+      "limitation": "Mesmo motor do item 6; aceite separado."
+    },
+    {
+      "id": 51,
+      "kind": "PENSOES",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 204
+    },
+    {
+      "id": 52,
+      "kind": "PENSOES_VITALICIAS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 1,
+      "bytes": 377,
+      "limitation": "Direitos e beneficiários cadastrados; não é comprovação de pagamento."
+    },
+    {
+      "id": 53,
+      "kind": "EFETIVOS_COMISSAO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 0,
+      "bytes": 126
+    },
+    {
+      "id": 54,
+      "kind": "CONTRATOS",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 48480
+    },
+    {
+      "id": 55,
+      "kind": "CONVENIOS_CREDITO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 54712
+    },
+    {
+      "id": 56,
+      "kind": "CONVENIOS_DEBITO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 4,
+      "bytes": 1220
+    },
+    {
+      "id": 57,
+      "kind": "CURSOS_COMPLEMENTARES",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 18,
+      "bytes": 5195
+    },
+    {
+      "id": 58,
+      "kind": "GRADUACAO_SERVIDORES",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 18,
+      "bytes": 5259
+    },
+    {
+      "id": 59,
+      "kind": "DEPENDENTES_RH",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 8,
+      "bytes": 1341
+    },
+    {
+      "id": 60,
+      "kind": "BANCARIO_ORDEM_DEMO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 594,
+      "bytes": 271071,
+      "limitation": "Modelo interno com referência de origem; numeração e envio bancário oficial na F7."
+    },
+    {
+      "id": 61,
+      "kind": "BANCARIO_CREDITO_DEMO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 597,
+      "bytes": 250835,
+      "limitation": "Relação demonstrativa por conta/convênio; leiaute do banco e transmissão/retorno na F7."
+    },
+    {
+      "id": 62,
+      "kind": "MARGEM_CONSIGNAVEL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 151934
+    },
+    {
+      "id": 63,
+      "kind": "MOVIMENTACAO_PESSOAL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 414,
+      "bytes": 122325,
+      "limitation": "Revisões e atos; completar classificação dos movimentos."
+    },
+    {
+      "id": 64,
+      "kind": "EVENTOS_VARIAVEIS_PLANILHA",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 654,
+      "bytes": 273341,
+      "limitation": "Conferência própria por competência; lançamento/importação com prévia e chave idempotente em Operações."
+    },
+    {
+      "id": 65,
+      "kind": "CONTABIL_LOTACAO_SINTETICO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 897,
+      "bytes": 145301,
+      "limitation": "Rateio demonstrativo por configuração e vigência; sem lançamento contábil oficial."
+    },
+    {
+      "id": 66,
+      "kind": "CONTABIL_DOTACAO_ANALITICO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 13662,
+      "bytes": 2911203,
+      "limitation": "Rateio demonstrativo; classificação oficial e congelamento contábil ainda pendentes."
+    },
+    {
+      "id": 67,
+      "kind": "CONTABIL_DOTACAO_FONTE",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 621,
+      "bytes": 96227,
+      "limitation": "Apropriação demonstrativa, sem lançamento contábil."
+    },
+    {
+      "id": 68,
+      "kind": "CONTABIL_DOTACAO_FONTE_DESPESA",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 621,
+      "bytes": 103701,
+      "limitation": "Apropriação demonstrativa, sem lançamento contábil."
+    },
+    {
+      "id": 69,
+      "kind": "CONTABIL_FONTE",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 621,
+      "bytes": 86873,
+      "limitation": "Apropriação demonstrativa, sem lançamento contábil."
+    },
+    {
+      "id": 70,
+      "kind": "CONTABIL_LOTACAO_ANALITICO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 13662,
+      "bytes": 3170408,
+      "limitation": "Apropriação demonstrativa, sem lançamento contábil."
+    },
+    {
+      "id": 71,
+      "kind": "CONTABIL_DOTACAO_LOCAL",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 897,
+      "bytes": 157351,
+      "limitation": "Apropriação demonstrativa, sem lançamento contábil."
+    },
+    {
+      "id": 72,
+      "kind": "CONTABIL_LOTACAO_DOTACAO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 897,
+      "bytes": 158807,
+      "limitation": "Apropriação demonstrativa, sem lançamento contábil."
+    },
+    {
+      "id": 73,
+      "kind": "CONTAGEM_TEMPO_RH",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 198,
+      "bytes": 36871,
+      "limitation": "União de vínculos e certidões reconhecidas; apuração oficial e efeitos de afastamentos ainda pendentes."
+    },
+    {
+      "id": 74,
+      "kind": "DIMENSIONAMENTO",
+      "status": "SERVICE_AND_CSV_PASS",
+      "rows": 42,
+      "bytes": 12682,
+      "limitation": "Compara ocupação e demanda cadastrada; os cenários de demanda são fictícios e têm premissa explícita."
+    }
+  ]
+}

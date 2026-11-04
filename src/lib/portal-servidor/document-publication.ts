@@ -10,6 +10,7 @@ import { enqueueHrIntegration } from "@/lib/rh/workforce-service";
 import { auditEventTypes } from "@/lib/platform/audit-evidence";
 import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
 import { functionalPublicationSchema, publicationPayloadSchema } from "./publication-contract";
+import { portalDataAccessAllowed } from "./data-access-policy";
 export { functionalDocumentKinds, functionalPublicationSchema, publicationPayloadSchema } from "./publication-contract";
 
 export async function publishFunctionalDocument(context: AppContext, raw: unknown, connection: DatabaseConnection = databaseConnection) {
@@ -52,5 +53,10 @@ export async function listOwnPublishedDocuments(context: AppContext) {
   const now = new Date();
   const parsed = events.map(event => ({ id: event.id, payload: publicationPayloadSchema.parse(event.payload) })).filter(event => new Date(event.payload.releaseAt) <= now);
   const versions = await portalRows<{ id: string; hashSha256: string; status: string }>(executor, sql`SELECT v.id,v."hashSha256",v.status FROM "DocumentVersion" v JOIN "Document" d ON d.id=v."documentId" JOIN "Person" p ON p.id=d."personId" JOIN "Employee" e ON e."personId"=p.id WHERE v.id=ANY(${sql.param(parsed.map(event => event.payload.documentVersionId))}::text[]) AND v.status IN ('FINAL','SIGNED') AND d.status IN ('Válido','Assinado') AND e.id=${context.user.employeeId || "__SEM_VINCULO__"} AND e."isActive"`);
-  return parsed.filter(event => versions.some(version => version.id === event.payload.documentVersionId && version.hashSha256 === event.payload.hashSha256 && (event.payload.kind !== "PPP" || version.status === "SIGNED")));
+  const visible: typeof parsed = [];
+  for (const event of parsed) {
+    if (event.payload.year !== null && !await portalDataAccessAllowed(executor, event.payload.employeeId, event.payload.year)) continue;
+    if (versions.some(version => version.id === event.payload.documentVersionId && version.hashSha256 === event.payload.hashSha256 && (event.payload.kind !== "PPP" || version.status === "SIGNED"))) visible.push(event);
+  }
+  return visible;
 }

@@ -4,6 +4,7 @@ import * as f from "@/db/schema/fleet";
 import { departments as departmentTable } from "@/db/schema/administration";
 import { costCenters } from "@/db/schema/master-data";
 import { people } from "@/db/schema/people";
+import { assetCatalogRecords } from "@/db/schema/assets-catalogs";
 import { fleetDatabase, fleetDepartmentFilter, readFleetUnits } from "@/db/repositories/fleet/records";
 import { readFleetSupplier } from "@/db/repositories/fleet/sources";
 import { fleetDates } from "@/db/repositories/fleet/filters";
@@ -11,10 +12,11 @@ import type { FleetContext as AppContext } from "@/lib/contracts/fleet";
 import type { InternalReportDataset } from "@/lib/financeiro/report-delivery";
 import { fleetScope } from "./service";
 import { fleetControlUnitWhere, queryFleetControl } from "./control-queries";
-import { controlQuerySchema } from "./control-policy";
+import { controlQuerySchema, consumptionAverage, type FleetMeter } from "./control-policy";
 import { FleetControlError, scopedFleetUnit } from "./control-access";
 
-export type FleetControlReportInput = { query: unknown; documentType?: "authorization" | "trip" | "blankFuel" | "blankTrip"; documentId?: string; unitIds?: string[] };
+export const fleetControlReports = ["quilometragem", "custoKm", "consumo", "cnh", "pontuacao", "incorporacoes", "pneusBaixados", "combustivel", "escolar", "hospitalar", "requisicoesEncerradas", "comunidade"] as const;
+export type FleetControlReportInput = { query: unknown; documentType?: "authorization" | "trip" | "blankFuel" | "blankTrip" | "fineTerm"; documentId?: string; unitIds?: string[]; report?: typeof fleetControlReports[number] };
 const date = (value: Date | null | undefined) => value?.toISOString() || "Não informado";
 const amount = (value: Decimal | null | undefined, scale = 2) => value === null || value === undefined ? "Não informado" : value.toFixed(scale);
 export async function buildFleetControlReport(context: AppContext, input: FleetControlReportInput): Promise<InternalReportDataset> {
@@ -26,6 +28,15 @@ export async function buildFleetControlReport(context: AppContext, input: FleetC
     const fields = input.documentType === "blankFuel" ? ["Número/ano", "Veículo/placa", "Setor", "Motorista", "Posto/fornecedor", "Combustível", "Litros autorizados", "Leitura", "Data de emissão", "Validade", "Assinatura do responsável", "Confirmação de execução"] : ["Veículo/placa", "Motorista/CNH", "Setor", "Finalidade", "Destino", "Data/hora de saída", "Marcador de saída", "Data/hora de chegada", "Marcador de chegada", "Assinatura/observações"];
     sections = [{ title: "Preenchimento manual", rows: fields.map((field) => ({ Campo: field, Preenchimento: "________________________________________________" })) }];
     warnings.push("Formulário em branco: impressão não cria autorização, consumo, viagem, despesa ou pagamento no banco.");
+  } else if (input.documentType === "fineTerm") {
+    const [fine] = await db.select().from(f.fleetFines).where(eq(f.fleetFines.id, input.documentId || "")).limit(1);
+    if (!fine) throw new FleetControlError("Multa não encontrada.");
+    const unit = await scopedFleetUnit(db, scope, fine.unitId, false);
+    const [driver] = fine.driverId ? await db.select().from(f.fleetDrivers).where(eq(f.fleetDrivers.id, fine.driverId)).limit(1) : [];
+    const [person] = driver ? await db.select().from(people).where(eq(people.id, driver.personId)).limit(1) : [];
+    title = `Termo de autorização de desconto — ${fine.aitNumber}`;
+    sections = [{ title: "Identificação da multa", rows: [{ Motorista: person?.fullName || "________________________________", CNH: driver?.cnhNumber || "________________________________", Veículo: `${unit.code} · ${unit.name}`, Placa: unit.plate || "Não informada", Auto: fine.aitNumber, Data: date(fine.occurredAt), Local: fine.city, Valor: amount(fine.amount), Situação: fine.status }] }, { title: "Autorização do motorista", rows: [{ Declaração: "Autorizo o desconto do valor da multa acima identificada, conforme procedimento administrativo aplicável.", "Local e data": "________________________________", "Assinatura do motorista": "________________________________", "Responsável administrativo": "________________________________" }] }];
+    warnings.push("A emissão ou reemissão deste termo não comprova assinatura, não autoriza automaticamente desconto e não altera a Folha de Pagamento.");
   } else if (input.documentType === "authorization") {
     const [authorization] = await db.select().from(f.fleetAuthorizations).where(eq(f.fleetAuthorizations.id, input.documentId || "")).limit(1);
     if (!authorization) throw new FleetControlError("Autorização não encontrada.");
@@ -41,6 +52,69 @@ export async function buildFleetControlReport(context: AppContext, input: FleetC
     title = `Planilha de deslocamento — ${unit.code}`;
     const gates = await db.select().from(f.fleetGateEvents).where(eq(f.fleetGateEvents.tripId, trip.id)).orderBy(asc(f.fleetGateEvents.occurredAt));
     sections = [{ title: "Saída, acompanhamento e retorno", rows: [{ Unidade: `${unit.code} · ${unit.name}`, Motorista: (trip.driverSnapshot as { name: string }).name, Finalidade: trip.purpose, Destino: trip.destination, Saída: date(trip.departedAt), Retorno: date(trip.returnedAt), Marcador: trip.meterType, Inicial: amount(trip.startReading, 3), Final: amount(trip.endReading, 3), "Percorrido (unidade do marcador)": trip.startReading !== null && trip.endReading !== null ? trip.endReading.sub(trip.startReading).toString() : "Não aplicável/aberto", Rota: trip.routeSnapshot || "Sem rota", Checklist: JSON.stringify(trip.checklist) }] }, { title: "Eventos únicos da guarita", rows: gates.map((gate) => ({ Movimento: gate.kind, Horário: date(gate.occurredAt), Leitura: amount(gate.reading, 3) })) }];
+    sections.push({ title: "Preenchimento pelo motorista durante a viagem", rows: ["Abastecimentos", "Lubrificantes", "Manutenções", "Trocas de pneus"].map(Campo => ({ Campo, "Data / local / quantidade / valor / observações": "________________________________________________" })) });
+  } else if (input.report) {
+    const reportQuery = { ...query, area: "relatorios" as const, unitIds: input.unitIds?.length ? input.unitIds.join(",") : query.unitIds };
+    const units = await readFleetUnits(db, fleetControlUnitWhere(context, reportQuery));
+    const ids = units.map(unit => unit.id), names = new Map(units.map(unit => [unit.id, `${unit.code} · ${unit.plate || unit.name}`]));
+    title = `Frota — ${input.report}`;
+    if (input.report === "comunidade") {
+      const records = await db.select().from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, "solicitacoes"), eq(assetCatalogRecords.active, true), scope.administrator ? undefined : eq(assetCatalogRecords.departmentId, scope.departmentId!), query.departmentId ? eq(assetCatalogRecords.departmentId, query.departmentId) : undefined, fleetDates(assetCatalogRecords.createdAt, query.from, query.to, true))).orderBy(asc(assetCatalogRecords.createdAt), asc(assetCatalogRecords.code));
+      const requestedIds = query.unitId ? [query.unitId] : reportQuery.unitIds ? reportQuery.unitIds.split(",") : [];
+      const selected = records.filter(record => (!requestedIds.length || requestedIds.includes(record.details.unitId)) && (!query.status || record.details.status === query.status) && (!query.q || [record.code, record.name, ...Object.values(record.details)].join(" ").toLocaleLowerCase("pt-BR").includes(query.q.toLocaleLowerCase("pt-BR"))));
+      title = "Solicitações da comunidade — Frota";
+      sections = [{ title: "Solicitações cadastradas no período", rows: selected.map(record => ({ Código: record.code, Nome: record.name, Cadastro: date(record.createdAt), Setor: record.departmentId, Solicitante: record.details.requester, Contato: record.details.contact, Solicitação: record.details.description, Situação: record.details.status, Veículo: names.get(record.details.unitId) || record.details.unitId || "Não vinculado", Agendamento: record.details.bookingId || "Não vinculado", Início: record.details.startsAt || "Não informado", Fim: record.details.endsAt || "Não informado", Motivo: record.details.reason || "Não informado" })) }, { title: "Total do recorte", rows: [{ Solicitações: selected.length }] }];
+    } else if (input.report === "requisicoesEncerradas") {
+      const rows = [];
+      for (const area of ["abastecimento", "autorizacoes"] as const) {
+        const list = await queryFleetControl(context, { ...query, area, status: "", unitIds: reportQuery.unitIds }, true);
+        rows.push(...list.rows.filter(row => ["EXECUTADA", "CANCELADA"].includes(row.status) && (!query.status || row.status === query.status)).map(row => ({ Requisição: row.label, Situação: row.status, ...row.detail })));
+      }
+      sections = [{ title: "Requisições finalizadas e canceladas de abastecimento, manutenção e serviços", rows }];
+    } else if (["combustivel", "escolar", "hospitalar"].includes(input.report)) {
+      const records = await db.select().from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, "empenhosCombustivel"), eq(assetCatalogRecords.active, true), inArray(assetCatalogRecords.departmentId, units.flatMap(unit => unit.departmentId ? [unit.departmentId] : []))));
+      const allocations = records.filter(record => ids.includes(record.details.unitId) && (input.report === "combustivel" || record.details.purpose === input.report!.toUpperCase()) && (!query.from || record.year >= Number(query.from.slice(0, 4))) && (!query.to || record.year <= Number(query.to.slice(0, 4))));
+      const annualExpenses = await db.select().from(f.fleetExpenses).where(and(inArray(f.fleetExpenses.unitId, ids), eq(f.fleetExpenses.nature, "COMBUSTIVEL")));
+      const expenses = annualExpenses.filter(expense => (!query.from || expense.occurredAt.toISOString().slice(0, 10) >= query.from) && (!query.to || expense.occurredAt.toISOString().slice(0, 10) <= query.to));
+      const linked = (expense: typeof expenses[number], allocation: typeof allocations[number]) => expense.unitId === allocation.details.unitId && expense.reference === allocation.details.reference && expense.occurredAt.getUTCFullYear() === allocation.year;
+      const selected = input.report === "combustivel" ? expenses : expenses.filter(expense => allocations.some(allocation => linked(expense, allocation)));
+      sections = [{ title: "Controle de abastecimentos por veículo", rows: selected.map(expense => ({ Veículo: names.get(expense.unitId) || expense.unitId, Data: date(expense.occurredAt), Descrição: expense.description, Empenho: expense.reference || "Sem referência", "Gasto conhecido": amount(expense.amount) })) }, { title: "Gastos e saldo operacional por empenho / veículo", rows: allocations.map(allocation => {
+        const costs = expenses.filter(expense => linked(expense, allocation)), known = costs.reduce((sum, expense) => sum.add(expense.amount || 0), new Decimal(0));
+        const limit = new Decimal(allocation.details.limit), annual = annualExpenses.filter(expense => linked(expense, allocation)), annualKnown = annual.reduce((sum, expense) => sum.add(expense.amount || 0), new Decimal(0));
+        return { Empenho: allocation.details.reference, Exercício: allocation.year, Veículo: names.get(allocation.details.unitId)!, Finalidade: allocation.details.purpose, "Limite cadastrado": limit.toFixed(2), "Gastos conhecidos no período": known.toFixed(2), "Gastos conhecidos no exercício": annualKnown.toFixed(2), "Saldo operacional do exercício": limit.sub(annualKnown).toFixed(2), "Custos desconhecidos no exercício": annual.filter(expense => expense.amount === null).length };
+      }) }, { title: "Total geral do recorte", rows: [{ "Gasto conhecido": selected.reduce((sum, expense) => sum.add(expense.amount || 0), new Decimal(0)).toFixed(2), "Valores desconhecidos": selected.filter(expense => expense.amount === null).length }] }];
+      warnings.push("Saldo operacional calculado pelo limite cadastrado e despesas com a mesma referência de empenho, veículo e exercício; não representa saldo contábil oficial. Classifique finalidade e empenho no cadastro de controles de combustível. Despesas sem vínculo não entram no recorte escolar/hospitalar.");
+    } else if (input.report === "cnh" || input.report === "pontuacao") {
+      const drivers = await queryFleetControl(context, { ...query, area: "motoristas" }, true);
+      const fines = await db.select().from(f.fleetFines).where(inArray(f.fleetFines.unitId, ids));
+      const expiryStart = query.from || new Date().toISOString().slice(0, 10), expiryEnd = query.to || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      sections = [{ title: "Motoristas e habilitações", rows: drivers.rows.filter(row => input.report !== "cnh" || String(row.data.cnhExpiresAt).slice(0, 10) >= expiryStart && String(row.data.cnhExpiresAt).slice(0, 10) <= expiryEnd).map(row => {
+        const end = query.to ? new Date(`${query.to}T23:59:59.999Z`) : new Date(), start = new Date(end);
+        start.setUTCMonth(start.getUTCMonth() - Number(row.data.pointWindowMonths));
+        const selected = fines.filter(fine => fine.driverId === row.id && fine.status !== "CANCELADA" && fine.occurredAt >= start && fine.occurredAt <= end && (!query.from || fine.occurredAt.toISOString().slice(0, 10) >= query.from));
+        return { Motorista: row.label, ...row.detail, "Pontos registrados no recorte": selected.reduce((sum, fine) => sum + fine.points, 0), "Autos considerados": selected.map(fine => fine.aitNumber).join(", ") || "Nenhum" };
+      }) }];
+      warnings.push("Pontuação calculada pelas multas não canceladas registradas na frota autorizada; não substitui consulta ao órgão de trânsito. Use o período para selecionar vencimentos de CNH.");
+    } else if (input.report === "incorporacoes") {
+      const events = await db.select().from(f.fleetAssetEvents).where(and(inArray(f.fleetAssetEvents.unitId, ids), fleetDates(f.fleetAssetEvents.createdAt, query.from, query.to, true))).orderBy(asc(f.fleetAssetEvents.createdAt));
+      sections = [{ title: "Movimentações patrimoniais de veículos", rows: events.map(event => ({ Veículo: names.get(event.unitId) || event.unitId, Patrimônio: event.assetId, Evento: event.type, Data: date(event.createdAt), "Situação anterior": event.fromStatus || "Não informada", "Situação atual": event.toStatus || "Não informada" })) }];
+      warnings.push("Relação interna de eventos patrimoniais para conferência do TCE-MG; não constitui arquivo de prestação de contas homologado.");
+    } else if (input.report === "pneusBaixados") {
+      const items = await db.select({ installation: f.fleetComponentInstallations, component: f.fleetComponents }).from(f.fleetComponentInstallations).innerJoin(f.fleetComponents, eq(f.fleetComponents.id, f.fleetComponentInstallations.componentId)).where(and(inArray(f.fleetComponentInstallations.unitId, ids), eq(f.fleetComponents.kind, "PNEU"), fleetDates(f.fleetComponentInstallations.removedAt, query.from, query.to, true)));
+      sections = [{ title: "Pneus baixados", rows: items.filter(item => item.installation.removedAt && item.component.status === "BAIXADO").map(({ installation, component }) => ({ Veículo: names.get(installation.unitId) || installation.unitId, Pneu: component.identifier, Situação: component.status, Instalação: date(installation.installedAt), Retirada: date(installation.removedAt), Motivo: installation.reason })) }];
+    } else {
+      const usages = await db.select().from(f.fleetUsages).where(and(inArray(f.fleetUsages.unitId, ids), fleetDates(f.fleetUsages.startedAt, query.from, query.to, true), query.driverId ? eq(f.fleetUsages.driverId, query.driverId) : undefined));
+      const expenses = await db.select().from(f.fleetExpenses).where(and(inArray(f.fleetExpenses.unitId, ids), fleetDates(f.fleetExpenses.occurredAt, query.from, query.to, false, true)));
+      const fills = await db.select().from(f.fleetAuthorizations).where(and(inArray(f.fleetAuthorizations.unitId, ids), eq(f.fleetAuthorizations.kind, "ABASTECIMENTO"), eq(f.fleetAuthorizations.status, "EXECUTADA"), fleetDates(f.fleetAuthorizations.executedAt, query.from, query.to, true)));
+      sections = [{ title: "Quilometragem das viagens", rows: usages.map(row => ({ Veículo: names.get(row.unitId) || row.unitId, Saída: date(row.startedAt), Retorno: date(row.endedAt), Marcador: row.meterType, Inicial: amount(row.initialReading, 3), Final: amount(row.finalReading, 3), Percorrido: row.initialReading !== null && row.finalReading !== null ? row.finalReading.sub(row.initialReading).toFixed(3) : "Não informado", Roteiro: row.routeSnapshot || "Sem roteiro" })) }, { title: "Consumo e gastos por veículo", rows: units.map(unit => {
+        const runs = usages.filter(row => row.unitId === unit.id && row.meterType === "HODOMETRO" && row.initialReading !== null && row.finalReading !== null);
+        const km = runs.reduce((sum, row) => sum.add(row.finalReading!.sub(row.initialReading!)), new Decimal(0)), costs = expenses.filter(row => row.unitId === unit.id);
+        const total = costs.reduce((sum, row) => sum.add(row.amount || 0), new Decimal(0)), unknown = costs.filter(row => row.amount === null).length;
+        const consumption = consumptionAverage((unit.control?.meterType || "HODOMETRO") as FleetMeter, fills.filter(row => row.unitId === unit.id && row.executedAt && row.actualQuantity).map(row => ({ reading: row.reading === null ? null : Number(row.reading), quantity: Number(row.actualQuantity), date: row.executedAt! })));
+        return { Veículo: names.get(unit.id)!, "Km registrados": km.toFixed(3), "Gasto conhecido": total.toFixed(2), "Custos desconhecidos": unknown, "Gasto conhecido / km": km.gt(0) ? total.div(km).toFixed(4) : "Sem quilometragem", "Consumo (km/L ou L/h conforme marcador)": consumption === null ? "Dados insuficientes" : consumption.toFixed(3), Qualificação: unknown ? "TOTAL PARCIAL" : "REGISTROS DO FILTRO" };
+      }) }];
+      warnings.push("Quilometragem considera viagens concluídas registradas. Consumo usa abastecimentos autorizados executados com leituras; abastecimentos sem leitura não permitem calcular a média.");
+    }
   } else if (query.area === "relatorios") {
     const requestedIds = input.unitIds?.length ? input.unitIds : query.unitIds ? query.unitIds.split(",") : [];
     if (requestedIds.length && (await db.select({ id: f.fleetUnits.id }).from(f.fleetUnits).where(and(fleetDepartmentFilter(scope), inArray(f.fleetUnits.id, requestedIds)))).length !== new Set(requestedIds).size) throw new FleetControlError("Uma das unidades está fora da repartição autorizada.");

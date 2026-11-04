@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-11-02T14:06:13.007Z",
+  "packageId": "RH_PORTAL_2026_V1",
+  "estimatedSalaries": 0,
+  "estimatedSalariesMeaning": "Cadastros com base não positiva encontrados na retomada; o diagnóstico inicial tinha 18 bases zeradas, e a estimativa posterior abrange os 198 servidores.",
+  "salaryVersion": "Revisão vigente em cada competência histórica; não usa as estimativas de novembro.",
+  "attendanceLimitation": "Divisores mensais da primeira versão foram usados como monthlyHours/25; marcas sintéticas históricas preservadas, sem homologação da jornada.",
+  "employees": 198,
+  "results": [
+    {
+      "competence": "08/2026",
+      "status": "FECHADA",
+      "scope": "DEMONSTRACAO",
+      "statements": 198,
+      "published": 198
+    },
+    {
+      "competence": "09/2026",
+      "status": "FECHADA",
+      "scope": "DEMONSTRACAO",
+      "statements": 198,
+      "published": 198
+    },
+    {
+      "competence": "10/2026",
+      "status": "FECHADA",
+      "scope": "DEMONSTRACAO",
+      "statements": 198,
+      "published": 198
+    }
+  ],
+  "realPayments": false,
+  "createsUsers": false
+}

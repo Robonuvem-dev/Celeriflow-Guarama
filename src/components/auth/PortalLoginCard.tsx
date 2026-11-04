@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithCustomToken,
   signOut,
   type UserCredential,
 } from "firebase/auth";
@@ -59,7 +60,13 @@ export function PortalLoginCard({ audience, destination, initialError = "", sess
     setError("");
 
     try {
-      await createLocalSession(await signInWithEmailAndPassword(auth, email, password));
+      if (isCitizen) await createLocalSession(await signInWithEmailAndPassword(auth, email, password));
+      else {
+        const response = await fetch("/api/auth/portal-servidor/credentials", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operation: "login", identifier: email, password }) });
+        const result = await response.json();
+        if (!response.ok || typeof result.token !== "string") throw new Error(result.error || "Acesso funcional indisponível.");
+        await createLocalSession(await signInWithCustomToken(auth, result.token));
+      }
     } catch (loginError) {
       setError(loginError instanceof Error && !loginError.message.startsWith("Firebase:")
         ? loginError.message
@@ -99,7 +106,7 @@ export function PortalLoginCard({ audience, destination, initialError = "", sess
             {isCitizen ? "Entrar na minha área" : "Portal do Servidor"}
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            {isCitizen ? "Entre com e-mail e senha ou com sua conta Google para solicitar serviços e acompanhar seus processos. Use uma conta autorizada pela administração municipal." : "Use seu e-mail institucional cadastrado e sua senha. O acesso funcional é permitido enquanto seu cadastro estiver ativo."}
+            {isCitizen ? "Entre com e-mail e senha ou com sua conta Google para solicitar serviços e acompanhar seus processos. Use uma conta autorizada pela administração municipal." : "Use seu CPF ou e-mail institucional e senha. Cinco falhas consecutivas bloqueiam novas tentativas por 15 minutos."}
           </p>
         </div>
 
@@ -112,17 +119,17 @@ export function PortalLoginCard({ audience, destination, initialError = "", sess
 
         <form onSubmit={handlePasswordLogin} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor={`${audience}-email`}>{isCitizen ? "E-mail" : "E-mail institucional cadastrado"}</Label>
+            <Label htmlFor={`${audience}-email`}>{isCitizen ? "E-mail" : "CPF ou e-mail institucional cadastrado"}</Label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <Input
                 id={`${audience}-email`}
-                type="email"
-                autoComplete="email"
+                type={isCitizen ? "email" : "text"}
+                autoComplete="username"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="h-11 pl-9"
-                placeholder={isCitizen ? "seuemail@exemplo.com" : "voce@prefeitura.gov.br"}
+                placeholder={isCitizen ? "seuemail@exemplo.com" : "CPF ou e-mail cadastrado"}
                 required
               />
             </div>
@@ -153,11 +160,12 @@ export function PortalLoginCard({ audience, destination, initialError = "", sess
           </div>
 
           <Button type="submit" className="h-11 w-full" disabled={pendingMethod !== null}>
-            {pendingMethod === "password" ? <Loader2 className="size-4 animate-spin" /> : <><span>Entrar com e-mail</span><ArrowRight className="size-4" /></>}
+            {pendingMethod === "password" ? <Loader2 className="size-4 animate-spin" /> : <><span>{isCitizen ? "Entrar com e-mail" : "Entrar"}</span><ArrowRight className="size-4" /></>}
           </Button>
         </form>
 
         {!isCitizen && <Link href="/portal-servidor/recuperar-senha" className="mt-4 inline-flex text-sm font-semibold text-sky-800 hover:underline">Esqueci minha senha</Link>}
+        {!isCitizen && <Link href="/portal-servidor/recuperar-senha?cadastro=1" className="mt-3 block text-sm font-semibold text-sky-800 hover:underline">Solicitar criação de acesso</Link>}
         {isCitizen && <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold"><Link href="/portal/cadastrar" className="text-emerald-800 hover:underline">Solicitar acesso / consultar solicitação</Link><Link href="/portal/recuperar-senha" className="text-emerald-800 hover:underline">Esqueci minha senha</Link></div>}
 
         {isCitizen && (

@@ -82,7 +82,7 @@ async function eventCount(prefix: string) {
 test("migração aditiva é transacional e a funcionalidade fica indisponível até sua aplicação", async () => {
   assert.equal(await hasRecyclingStockSchema(fixture.connection.db), false);
   await assert.rejects(save(input("UNAVAILABLE")), /ainda não está disponível/);
-  const migration = await readFile("db/migrations/20261101120000_cf10_recycling_stock/migration.sql", "utf8");
+  const migration = await readFile("db/migrations/20261102120000_cf10_recycling_stock/migration.sql", "utf8");
   await fixture.database.exec(`BEGIN;\n${migration}\nROLLBACK;`);
   assert.equal(await hasRecyclingStockSchema(fixture.connection.db), false);
   await fixture.database.exec(migration);

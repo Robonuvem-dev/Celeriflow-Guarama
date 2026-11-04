@@ -1,0 +1,100 @@
+{
+  "snapshotId": "snap_YNJGkpEXQw6n4dNnLnX6r331tyeV",
+  "checkedAt": "2026-11-02T12:24:38.013Z",
+  "networkPolicy": "deny-all",
+  "checks": [
+    {
+      "name": "OFFICE_PDF",
+      "filename": "modelo.docx",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "referencia.doc",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "referencia.xls",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "educacao.xlsx",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "referencia.pptx",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "referencia-fapes-prazos-pitch-gov.pps",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "educacao.odt",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "referencia.ods",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "referencia.odp",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "formula.odf",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "educacao.rtf",
+      "result": "PASS"
+    },
+    {
+      "name": "OFFICE_PDF",
+      "filename": "educacao.html",
+      "result": "PASS"
+    },
+    {
+      "name": "PDFA_1B_PASS_REFERENCE",
+      "result": "PASS",
+      "profile": "PDF/A-1B validation profile"
+    },
+    {
+      "name": "PDFA_1B_FAIL_REFERENCE",
+      "result": "PASS",
+      "profile": "PDF/A-1B validation profile"
+    },
+    {
+      "name": "PDFA_2B_PASS_REFERENCE",
+      "result": "PASS",
+      "profile": "PDF/A-2B validation profile"
+    },
+    {
+      "name": "PDFA_2B_FAIL_REFERENCE",
+      "result": "PASS",
+      "profile": "PDF/A-1B validation profile"
+    },
+    {
+      "name": "OCR_PORTUGUESE",
+      "result": "PASS",
+      "characters": 62
+    },
+    {
+      "name": "SEMANTIC_PORTUGUESE",
+      "result": "PASS",
+      "dimensions": 384,
+      "related": 0.833809188543841,
+      "unrelated": -0.0054444736190684025
+    }
+  ],
+  "result": "PASS"
+}

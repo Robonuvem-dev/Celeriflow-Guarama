@@ -13,6 +13,8 @@ import { enqueueHrIntegration } from "./workforce-service";
 export async function saveCanonicalDependent(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ id: z.string().min(1).optional(), employeeId: z.string().min(1), personId: z.string().min(1), relationship: z.string().trim().min(1).max(100), irrfDependent: z.boolean(), familyWage: z.boolean() }).strict().parse(raw);
   return withDatabaseTransaction(db, async tx => {
+    await lockPersonnel(tx, "functional-configuration");
+    await tx.execute(sql`SELECT set_config('celeriflow.actor_id',${actorId},true)`);
     await lockPersonnel(tx, `employee:${input.employeeId}`);
     const employee = await requireEmployeeWithPerson(tx, input.employeeId);
     if (!employee.isActive || !employee.personId) throw new Error("Titular deve estar ativo e vinculado ao Cadastro Único.");

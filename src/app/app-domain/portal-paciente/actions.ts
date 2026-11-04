@@ -8,7 +8,7 @@ const text = (data: FormData, name: string) => String(data.get(name) || "").trim
 
 async function ownPatient() {
   const access = await getPatientPortalAccess();
-  if (access.status !== "AVAILABLE") redirect("/app-domain/login");
+  if (access.status !== "AVAILABLE") redirect("/login");
   return access;
 }
 

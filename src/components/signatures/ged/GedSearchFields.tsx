@@ -1,0 +1,7 @@
+"use client";
+import type { GedBootstrap } from "@/lib/contracts/ged";
+import type { GedQuery } from "@/lib/documents/ged-policy";
+export function GedSearchFields({ bootstrap, query, onChange }: { bootstrap: GedBootstrap; query: GedQuery; onChange: (query: GedQuery) => void }) {
+  const fields = [...new Map(bootstrap.classes.filter(c => !query.classCode || c.code === query.classCode).flatMap(c => c.fields ?? []).map(field => [field.key, field])).values()];
+  return <div className="space-y-2"><label className="block text-sm">Setor<select className="block w-full rounded border p-2" value={query.departmentId} onChange={e => onChange({ ...query, departmentId: e.target.value })}><option value="">Todos os setores autorizados</option>{bootstrap.departments?.map(department => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>{fields.map(field => <label className="block text-sm" key={field.key}>Índice: {field.label}<input className="block w-full rounded border p-2" type={field.type === "date" ? "date" : "text"} placeholder={field.type === "boolean" ? "true ou false" : "Correspondência exata, sem distinção de acentos"} value={query.metadata[field.key] ?? ""} onChange={e => { const metadata = { ...query.metadata }; if (e.target.value) metadata[field.key] = e.target.value; else delete metadata[field.key]; onChange({ ...query, metadata }); }} /></label>)}</div>;
+}

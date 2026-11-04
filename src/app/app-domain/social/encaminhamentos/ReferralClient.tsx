@@ -14,11 +14,11 @@ import { registerSocialReferral, returnSocialReferral, saveSocialNetworkOrganiza
 type Option = { id: string; name: string };
 type Organization = Option & { taxId: string; organizationType: string; address: string; phone: string; email: string; usesCounterReference: boolean; isActive: boolean };
 type Row = { id: string; subject: string; unit: string; destination: string; date: string; status: string; objective: string; observations: string; referenceProfessional: string; counterReferenceAt: string; counterReferenceProfessional: string; counterReferenceDescription: string; canReturn: boolean };
-type Props = { rows: Row[]; organizations: Organization[]; units: Option[]; people: Option[]; families: Option[]; catalogs: (Option & { kind: string })[] };
+type Props = { rows: Row[]; organizations: Organization[]; units: Option[]; people: Option[]; families: Option[]; professionals: Option[]; catalogs: (Option & { kind: string })[] };
 const field = "h-7 w-full min-w-0 rounded border bg-white px-2 text-sm dark:bg-slate-900";
 const organizationDefault = { id: undefined as string | undefined, name: "", taxId: "", organizationType: "", address: "", phone: "", email: "", usesCounterReference: true, isActive: true };
 
-export default function ReferralClient({ rows, organizations, units, people, families, catalogs }: Props) {
+export default function ReferralClient({ rows, organizations, units, people, families, professionals, catalogs }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState("referrals");
   const [search, setSearch] = useState("");
@@ -34,6 +34,9 @@ export default function ReferralClient({ rows, organizations, units, people, fam
   const [priorityId, setPriorityId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [professional, setProfessional] = useState("");
+  const [professionalId, setProfessionalId] = useState("");
+  const [referralType, setReferralType] = useState("Atendimento na rede");
+  const [destinationUnitId, setDestinationUnitId] = useState("");
   const [description, setDescription] = useState("");
   const [observations, setObservations] = useState("");
   const [pending, setPending] = useState(false);
@@ -50,7 +53,7 @@ export default function ReferralClient({ rows, organizations, units, people, fam
     try {
       const result = modal === "organization" ? await saveSocialNetworkOrganization(organization)
         : modal === "return" ? await returnSocialReferral({ id: selected?.id, attendedAt: date, professional, description })
-          : await registerSocialReferral({ unitId, personId: subjectType === "person" ? subjectId : "", familyId: subjectType === "family" ? subjectId : "", destinationOrganizationId: destination, reasonId, priorityTypeId: priorityId, referredAt: date, referenceProfessional: professional, objective: description, observations });
+          : await registerSocialReferral({ unitId, professionalId, referralType, destinationUnitId, personId: subjectType === "person" ? subjectId : "", familyId: subjectType === "family" ? subjectId : "", destinationOrganizationId: destination, reasonId, priorityTypeId: priorityId, referredAt: date, referenceProfessional: professional, objective: description, observations });
       if (result.error) { setError(result.error); return; }
       setModal(null); router.refresh();
     } catch { setError("Falha de comunicação. Tente novamente."); } finally { setPending(false); }
@@ -67,6 +70,7 @@ export default function ReferralClient({ rows, organizations, units, people, fam
           {modal === "referral" && <><label className="text-xs">Equipamento de origem<select required disabled={pending} className={field} value={unitId} onChange={(event) => setUnitId(event.target.value)}><option value="">Selecione</option>{units.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs">Tipo de destinatário<select disabled={pending} className={field} value={subjectType} onChange={(event) => { setSubjectType(event.target.value); setSubjectId(""); }}><option value="person">Pessoa</option><option value="family">Família</option></select></label><label className="text-xs">Pessoa / família<select required disabled={pending} className={field} value={subjectId} onChange={(event) => setSubjectId(event.target.value)}><option value="">Selecione</option>{(subjectType === "person" ? people : families).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs">Destino<select required disabled={pending} className={field} value={destination} onChange={(event) => setDestination(event.target.value)}><option value="">Selecione</option>{organizations.filter((item) => item.isActive).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs">Motivo<select required disabled={pending} className={field} value={reasonId} onChange={(event) => setReasonId(event.target.value)}><option value="">Selecione</option>{catalogs.filter((item) => item.kind === "REFERRAL_REASON").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs">Público prioritário<select disabled={pending} className={field} value={priorityId} onChange={(event) => setPriorityId(event.target.value)}><option value="">Não informado</option>{catalogs.filter((item) => item.kind === "PRIORITY").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></>}
           <label className="text-xs">{modal === "return" ? "Data do atendimento no destino" : "Data do encaminhamento"}<input required disabled={pending} type="date" className={field} value={date} onChange={(event) => setDate(event.target.value)} /></label><label className="text-xs">Profissional {modal === "return" ? "que realizou o atendimento" : "de referência no destino"}<input required={modal === "return"} disabled={pending} className={field} value={professional} onChange={(event) => setProfessional(event.target.value)} /></label><label className="text-xs sm:col-span-2">{modal === "return" ? "Descrição do atendimento" : "Objetivo / dificuldades identificadas"}<textarea required minLength={3} disabled={pending} rows={3} className="w-full rounded border p-2 text-sm" value={description} onChange={(event) => setDescription(event.target.value)} /></label>{modal === "referral" && <label className="text-xs sm:col-span-2">Observações<textarea disabled={pending} rows={2} className="w-full rounded border p-2 text-sm" value={observations} onChange={(event) => setObservations(event.target.value)} /></label>}
         </>}
+        {modal === "referral" && <><label className="text-xs">Profissional de origem<select required className={field} value={professionalId} onChange={e => setProfessionalId(e.target.value)}><option value="">Selecione</option>{professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label className="text-xs">Tipo de encaminhamento<input required className={field} value={referralType} onChange={e => setReferralType(e.target.value)} /></label><label className="text-xs sm:col-span-2">Unidade SUAS de destino (quando interna)<select className={field} value={destinationUnitId} onChange={e => setDestinationUnitId(e.target.value)}><option value="">Órgão externo da rede</option>{units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label></>}
         {error && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{error}</p>}<div className="flex justify-end gap-2 border-t pt-3 sm:col-span-2"><button disabled={pending} type="button" onClick={() => setModal(null)} className="rounded border px-3 py-2 text-xs">Cancelar</button><button disabled={pending} className="rounded bg-blue-600 px-3 py-2 text-xs text-white disabled:opacity-50">{pending ? "Salvando..." : "Salvar"}</button></div>
       </form>}
     </DialogContent></Dialog>

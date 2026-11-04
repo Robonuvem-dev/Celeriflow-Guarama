@@ -8,6 +8,7 @@ import { databaseConnection, db } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { countProfileUsers, deleteAccessProfile, findAccessProfile, findDuplicateProfileName, saveAccessProfile, setAccessProfileStatus } from "@/db/repositories/platform/system-administration";
 import { gedCapabilities } from "@/lib/documents/ged-policy";
+import { personnelScopeSchema } from "@/lib/rh/personnel-scope";
 
 const MODULE_CODES = new Set([
   "ADMINISTRACAO", "CADASTROS", "PROCESSOS", "ATENDIMENTO", "TRANSPARENCIA", "TRIBUTACAO", "FINANCEIRO", "COMPRAS", "RH",
@@ -22,6 +23,11 @@ function normalizePermissions(value: string | undefined) {
     if (!source || typeof source !== "object" || Array.isArray(source)) throw new Error("Capacidades documentais inválidas.");
     if (normalized.modules.ASSINATURA_DIGITAL) normalized.modules.ASSINATURA_DIGITAL.ged = Object.fromEntries(gedCapabilities.map(key => [key, !normalized.modules.ASSINATURA_DIGITAL.blocked && source[key] === true]));
   }
+  const clinicalAccess = value ? JSON.parse(value).modules?.RH?.clinicalAccess : undefined;
+  if (clinicalAccess !== undefined && typeof clinicalAccess !== "boolean") throw new Error("Permissão clínica de RH inválida.");
+  if (normalized.modules.RH) normalized.modules.RH.clinicalAccess = !normalized.modules.RH.blocked && clinicalAccess === true;
+  const scope = value ? JSON.parse(value).modules?.RH?.personnelScope : undefined;
+  if (scope !== undefined && normalized.modules.RH) normalized.modules.RH.personnelScope = personnelScopeSchema.parse(scope);
   return JSON.stringify(normalized);
 }
 

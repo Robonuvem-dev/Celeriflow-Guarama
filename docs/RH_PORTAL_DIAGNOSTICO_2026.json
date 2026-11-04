@@ -1,0 +1,1096 @@
+{
+  "checkedAt": "2026-11-02T12:49:16.245Z",
+  "identity": [
+    {
+      "total": 198,
+      "active": 198,
+      "without_person": 0,
+      "without_role": 0,
+      "without_department": 0,
+      "zero_salary": 18
+    }
+  ],
+  "contracts": [],
+  "coverage": [
+    {
+      "active_without_contract": 198
+    }
+  ],
+  "runs": [
+    {
+      "competence": "10/2026",
+      "mode": null,
+      "scope": null,
+      "status": null,
+      "runs": 0,
+      "statements": 0,
+      "released": 0
+    }
+  ],
+  "attendance": [],
+  "users": [
+    {
+      "total": 1,
+      "linked": 0
+    }
+  ],
+  "relationships": [
+    {
+      "table_name": "AccountingEntry",
+      "column_name": "authorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "AccountingTransaction",
+      "column_name": "authorEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Address",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "AnnualAccountingClose",
+      "column_name": "closedByEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Asset",
+      "column_name": "responsibleId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "AssetTransfer",
+      "column_name": "fromResponsibleId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "AssetTransfer",
+      "column_name": "toResponsibleId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "AttendanceRecord",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "BiddingAppointmentMember",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "CamAdvisor",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "CamAdvisor",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "CamVereador",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "CamVereador",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "CitizenRegistryIdentity",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "ConstructionAnalystReplacement",
+      "column_name": "previousAnalystId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionAnalystReplacement",
+      "column_name": "previousAssignedId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionAnalystReplacement",
+      "column_name": "replacementEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionCase",
+      "column_name": "assignedEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionCase",
+      "column_name": "firstAnalystId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionConsultationResponse",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionDistributionVersion",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionExternalApplication",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "ConstructionMessage",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ConstructionProfessional",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "ConstructionStaffRole",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Contract",
+      "column_name": "inspectorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Contract",
+      "column_name": "managerId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Creditor",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "CulturaAgente",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "CulturaAtividade",
+      "column_name": "instructorEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "CulturaEspaco",
+      "column_name": "responsibleEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "CulturaEvento",
+      "column_name": "responsibleEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "CulturaReserva",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Dependent",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Dependent",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Document",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "DocumentSignature",
+      "column_name": "signerEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "EducationalGuardian",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Employee",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "EquipmentCustody",
+      "column_name": "responsibleId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Family",
+      "column_name": "responsiblePersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "FamilyMember",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "FinancialAuditLog",
+      "column_name": "authorEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "FleetDriver",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "FleetDriver",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthEsusForm",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthFamily",
+      "column_name": "responsiblePersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthFamilyMember",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthHomeVisitParticipant",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthPharmacyKitDelivery",
+      "column_name": "receiverPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthPharmacyLawyer",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthProfessional",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HealthTfdBenefit",
+      "column_name": "receivedByPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthTfdTrip",
+      "column_name": "assistantEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HealthTfdTrip",
+      "column_name": "driverEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HealthTfdTrip",
+      "column_name": "responsibleEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HealthUnit",
+      "column_name": "managerId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HealthVigilanceComplaint",
+      "column_name": "reporterPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HealthVigilanceEstablishment",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "HrConsignmentAgreement",
+      "column_name": "contractId",
+      "target": "HrEmploymentContract"
+    },
+    {
+      "table_name": "HrEmployeeDocument",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HrEmployeeFunctionalPeriod",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HrEmploymentContract",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HrEmploymentRevision",
+      "column_name": "contractId",
+      "target": "HrEmploymentContract"
+    },
+    {
+      "table_name": "HrMovement",
+      "column_name": "contractId",
+      "target": "HrEmploymentContract"
+    },
+    {
+      "table_name": "HrPayrollStatement",
+      "column_name": "contractId",
+      "target": "HrEmploymentContract"
+    },
+    {
+      "table_name": "HrPortalRequestBinding",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "HrRightEntry",
+      "column_name": "contractId",
+      "target": "HrEmploymentContract"
+    },
+    {
+      "table_name": "InstrumentParty",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "InstrumentParty",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "InternalDemand",
+      "column_name": "assigneeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "InternalDemand",
+      "column_name": "creatorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Leave",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "LegalReportSigner",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "LegalReportSigner",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "LegalRepresentative",
+      "column_name": "representativeId",
+      "target": "Person"
+    },
+    {
+      "table_name": "LegalRepresentative",
+      "column_name": "representedPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "MaterialMovement",
+      "column_name": "actorEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "MaterialRequest",
+      "column_name": "approvedByEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "MaterialRequest",
+      "column_name": "issuedByEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "MaterialRequest",
+      "column_name": "requesterId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "MedicineDispensation",
+      "column_name": "receiverPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "MonthlyAccountingClose",
+      "column_name": "closedByEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ObrasEquipeMembro",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ObrasServicoEmployee",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "OfficialDiary",
+      "column_name": "authorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Ombudsman",
+      "column_name": "assigneeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Ombudsman",
+      "column_name": "complaintProfessionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Ombudsman",
+      "column_name": "concludedById",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Ombudsman",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Ombudsman",
+      "column_name": "respondedById",
+      "target": "Employee"
+    },
+    {
+      "table_name": "OmbudsmanAuditLog",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "OmbudsmanDocument",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "OmbudsmanIdentity",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "OmbudsmanInteraction",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "OmbudsmanMovement",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Patient",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "PayrollBenefit",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PayrollItem",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PersonMergeLedger",
+      "column_name": "sourcePersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "PersonMergeLedger",
+      "column_name": "targetPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "PersonMergeRequest",
+      "column_name": "sourcePersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "PersonMergeRequest",
+      "column_name": "targetPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "PersonnelAct",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PharmacyRequestFulfillment",
+      "column_name": "receiverPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "PortalNews",
+      "column_name": "authorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PortalPage",
+      "column_name": "authorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PortalServiceSchedule",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Process",
+      "column_name": "archivedByEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Process",
+      "column_name": "currentResponsibleEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Process",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "ProcessDepartmentMetadata",
+      "column_name": "responsibleEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ProcessDispatch",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ProcessDocument",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ProcessEvent",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ProcessMovement",
+      "column_name": "destinationEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ProcessMovement",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ProcessMovement",
+      "column_name": "receivedByEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "ProcessRegistrationDetail",
+      "column_name": "representativePersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "PurchaseReceipt",
+      "column_name": "attesterId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PurchaseReceipt",
+      "column_name": "receiverId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PurchaseRequest",
+      "column_name": "approvedByEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "PurchaseRequest",
+      "column_name": "requesterId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "School",
+      "column_name": "directorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Secretariat",
+      "column_name": "managerId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SegurancaGuarda",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Settlement",
+      "column_name": "authorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SignatureCentralSigner",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SignatureCentralSigner",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialAttachment",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialAttendance",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialAttendance",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialBeneficiaryRegistration",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialBenefitConcession",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialBenefitConcession",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialCadastreSnapshot",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialCaseFile",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialCaseFile",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialConditionality",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialFamily",
+      "column_name": "representativeId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialFamilyMember",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialFinancialEntry",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialFollowup",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialFollowup",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialImportRow",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialIssuedDocument",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialMessage",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialMonthlyStatement",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialPersonFact",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialPersonProfile",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialProfessionalLink",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialProfessionalRegistration",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialProgramEnrollment",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialQuestionnaireResponse",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialReferral",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialReferralDetails",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialRequestDetails",
+      "column_name": "applicantId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialRequestDetails",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialRequestDetails",
+      "column_name": "recipientId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialScfvEnrollment",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SocialScfvGroup",
+      "column_name": "advisorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialScfvGroup",
+      "column_name": "facilitatorId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialScfvGroup",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialScfvGroup",
+      "column_name": "referenceProfessionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialUnit",
+      "column_name": "managerId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SocialVisit",
+      "column_name": "professionalId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstAppointment",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstAso",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstAso",
+      "column_name": "examinerPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstAso",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstCat",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstCatEvidence",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstCertificateDecisionRevision",
+      "column_name": "examinerPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstClinicalRecord",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstClosureEmission",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstElectionCandidate",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstElectionElector",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstElectionElector",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstEquipmentDeliveryItem",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstEquipmentEvent",
+      "column_name": "responsiblePersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstEsocialEvent",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstLeavePayrollOrigin",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstMedicalAssessment",
+      "column_name": "examinerPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstMedicalBoardMember",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstMedicalCertificate",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstMedicalCertificate",
+      "column_name": "issuerPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstOccupationalExam",
+      "column_name": "professionalPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstOccupationalProgram",
+      "column_name": "responsiblePersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstPlannedShift",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstProfessionalRole",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstRestriction",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstScheduleAvailability",
+      "column_name": "professionalPersonId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstServiceOrder",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "SstTechnicalResponsibility",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "SstVaccination",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Student",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Supplier",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "TaxAuditLog",
+      "column_name": "authorEmployeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Taxpayer",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Teacher",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Ticket",
+      "column_name": "assigneeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Ticket",
+      "column_name": "concludedById",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Ticket",
+      "column_name": "personId",
+      "target": "Person"
+    },
+    {
+      "table_name": "Ticket",
+      "column_name": "resolvedById",
+      "target": "Employee"
+    },
+    {
+      "table_name": "TicketAuditLog",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "TicketDocument",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "TicketInteraction",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "TicketMovement",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Usuario",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Vacation",
+      "column_name": "employeeId",
+      "target": "Employee"
+    },
+    {
+      "table_name": "Warehouse",
+      "column_name": "managerId",
+      "target": "Employee"
+    }
+  ],
+  "references": [],
+  "integration": []
+}

@@ -1,9 +1,17 @@
 import { z } from "zod";
 
-type Field = { key: string; label: string; type?: "text" | "number" | "date"; required?: boolean };
+type Field = { key: string; label: string; type?: "text" | "number" | "date"; required?: boolean; readOnly?: boolean };
 type Catalog = { title: string; module: "PATRIMONIO" | "FROTAS"; fields: Field[] };
 const field = (key: string, label: string, type: Field["type"] = "text", required = true): Field => ({ key, label, type, required });
 export const assetCatalogs: Record<string, Catalog> = {
+  situacoes: { title: "Situações operacionais parametrizáveis", module: "PATRIMONIO", fields: [field("description", "Descrição e critérios da situação")] },
+  situacaoBens: { title: "Situação operacional dos bens", module: "PATRIMONIO", fields: [field("assetId", "Identificador do bem"), field("situationId", "Identificador da situação parametrizada"), field("reason", "Motivo da alteração")] },
+  organograma: { title: "Organograma patrimonial e centros de custo", module: "PATRIMONIO", fields: [field("level", "Nível: Secretaria, Divisão ou Seção"), field("parentId", "Identificador do nível superior", "text", false), field("costCenter", "Código do centro de custo do departamento")] },
+  placas: { title: "Formatação das placas (código PADRAO)", module: "PATRIMONIO", fields: [field("prefix", "Prefixo alfanumérico", "text", false), field("digits", "Quantidade de dígitos sequenciais", "number")] },
+  comodatos: { title: "Bens recebidos ou cedidos em comodato", module: "PATRIMONIO", fields: [field("assetId", "Identificador do bem"), field("direction", "Recebido ou cedido"), field("agency", "Órgão público"), field("startsAt", "Início", "date"), field("endsAt", "Vencimento", "date"), field("returnedAt", "Devolução", "date", false), field("agreement", "Termo de comodato")] },
+  garantias: { title: "Garantias e renovações", module: "PATRIMONIO", fields: [field("assetId", "Identificador do bem"), field("provider", "Fabricante ou mantenedor"), field("startsAt", "Início ou renovação", "date"), field("endsAt", "Vencimento", "date"), field("document", "Documento de garantia")] },
+  arrendamentos: { title: "Arrendamentos de imóveis", module: "PATRIMONIO", fields: [field("propertyId", "Identificador do cadastro de imóvel"), field("party", "Arrendatário / arrendador"), field("startsAt", "Início", "date"), field("endsAt", "Vencimento", "date"), field("amount", "Valor contratado", "number"), field("agreement", "Contrato")] },
+  fotos: { title: "Fotos dos bens", module: "PATRIMONIO", fields: [field("assetId", "Identificador do bem"), field("url", "URL HTTPS da foto")] },
   especies: { title: "Espécies patrimoniais", module: "PATRIMONIO", fields: [field("description", "Descrição", "text", false)] },
   naturezas: { title: "Naturezas de bens", module: "PATRIMONIO", fields: [field("classification", "Classificação patrimonial")] },
   depreciacao: { title: "Categorias de depreciação", module: "PATRIMONIO", fields: [field("months", "Vida útil em meses", "number"), field("residualPercent", "Valor residual (%)", "number"), field("legalBasis", "Fundamento legal", "text")] },
@@ -23,12 +31,14 @@ export const assetCatalogs: Record<string, Catalog> = {
   marcas: { title: "Marcas de veículos", module: "FROTAS", fields: [] },
   roteiros: { title: "Roteiros e distâncias", module: "FROTAS", fields: [field("line", "Descrição da linha"), field("origin", "Origem"), field("destination", "Destino"), field("distanceKm", "Distância da rota (km)", "number")] },
   modelos: { title: "Modelos de veículos", module: "FROTAS", fields: [field("brand", "Marca")] },
+  tiposVeiculo: { title: "Tipos de veículo — banco de imagens", module: "FROTAS", fields: [field("model", "Modelo"), field("vehicleImage", "ID do anexo de imagem do veículo"), field("backgroundImage", "ID do anexo de imagem de fundo"), field("tireImage", "ID do anexo de imagem do pneu")] },
   atividades: { title: "Atividades dos veículos", module: "FROTAS", fields: [field("description", "Descrição da atividade")] },
   tiposOcorrencia: { title: "Tipos de ocorrência de frota", module: "FROTAS", fields: [field("description", "Descrição")] },
   tiposMulta: { title: "Tipos de multa", module: "FROTAS", fields: [field("legalBasis", "Fundamento normativo"), field("points", "Pontuação", "number")] },
   responsaveisFrota: { title: "Responsáveis de frota", module: "FROTAS", fields: [field("employeeId", "Identificador do servidor"), field("role", "Responsabilidade")] },
   instituicoes: { title: "Instituições da frota", module: "FROTAS", fields: [field("document", "Documento da instituição"), field("address", "Endereço")] },
-  solicitacoes: { title: "Solicitações da comunidade", module: "FROTAS", fields: [field("requester", "Solicitante"), field("contact", "Contato"), field("description", "Solicitação"), field("status", "Situação")] },
+  empenhosCombustivel: { title: "Empenhos de combustível", module: "FROTAS", fields: [field("unitId", "ID do veículo"), field("reference", "Referência do empenho usada no gasto"), field("limit", "Valor empenhado (R$)", "number"), field("purpose", "Destinação: GERAL, ESCOLAR ou HOSPITALAR")] },
+  solicitacoes: { title: "Solicitações da comunidade", module: "FROTAS", fields: [field("requester", "Solicitante"), field("contact", "Contato"), field("description", "Solicitação"), field("status", "Situação: PENDENTE, AGENDADA ou INDEFERIDA"), field("unitId", "ID do veículo (para agendar)", "text", false), field("driverId", "ID do motorista (para agendar)", "text", false), field("startsAt", "Início com fuso (ex.: 2026-11-03T08:00:00-03:00)", "text", false), field("endsAt", "Fim com fuso", "text", false), field("reason", "Motivo do agendamento/indeferimento", "text", false), { ...field("bookingId", "Agendamento gerado", "text", false), readOnly: true }] },
 };
 export function catalogDefinition(kind: string) {
   if (!Object.hasOwn(assetCatalogs, kind)) throw new Error("Cadastro desconhecido.");
@@ -51,5 +61,13 @@ export function validateCatalogDetails(kind: string, details: Record<string, str
   if (kind === "depreciacao" && (!Number.isInteger(Number(details.months)) || Number(details.months) < 1 || Number(details.residualPercent) > 100)) throw new Error("Vida útil deve ser inteira positiva; percentual residual entre 0 e 100.");
   if (kind === "embalagens" && (Number(details.conversion) <= 0 || Number(details.minimumIssue) <= 0)) throw new Error("Conversão e saída mínima devem ser positivas.");
   if (kind === "seguros" && details.endsAt < details.startsAt) throw new Error("Vigência final anterior à inicial.");
+  if (kind === "tiposVeiculo" && [details.vehicleImage, details.backgroundImage, details.tireImage].some(value => !/^[a-zA-Z0-9_-]{1,100}$/.test(value))) throw new Error("Informe os IDs dos anexos de imagem cadastrados na Frota.");
+  if (kind === "empenhosCombustivel" && !["GERAL", "ESCOLAR", "HOSPITALAR"].includes(details.purpose)) throw new Error("Destinação deve ser GERAL, ESCOLAR ou HOSPITALAR.");
+  if (["comodatos", "garantias", "arrendamentos"].includes(kind) && details.endsAt < details.startsAt) throw new Error("Vencimento anterior ao início.");
+  if (kind === "comodatos" && !["Recebido", "Cedido"].includes(details.direction)) throw new Error("Direção deve ser Recebido ou Cedido.");
+  if (kind === "placas" && (!Number.isInteger(Number(details.digits)) || Number(details.digits) < 1 || Number(details.digits) > 12 || !/^[A-Za-z0-9]*$/.test(details.prefix || ""))) throw new Error("Use prefixo alfanumérico e entre 1 e 12 dígitos.");
+  if (kind === "fotos" && !/^https:\/\//i.test(details.url)) throw new Error("Informe uma URL HTTPS da foto.");
+  if (kind === "organograma" && !["Secretaria", "Divisão", "Seção"].includes(details.level)) throw new Error("Nível deve ser Secretaria, Divisão ou Seção.");
+  if (kind === "organograma" && details.level !== "Secretaria" && !details.parentId) throw new Error("Informe o nível superior.");
   return Object.fromEntries(definition.fields.map(f => [f.key, details[f.key] || ""]));
 }

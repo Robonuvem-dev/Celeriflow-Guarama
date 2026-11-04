@@ -3,8 +3,10 @@ import { findModuleActivation } from "@/db/repositories/platform/identity";
 import { activePortalEmployee } from "@/db/repositories/portal-servidor/records";
 import { AccessError, canViewModule, isSystemAdministrator, type AppContext } from "@/lib/platform/tenant-context";
 import { isSystemAdministratorEmail } from "@/lib/administration/c3-policy";
+import { assertEmployeePortalNotLocked } from "./credential-guard";
 
 export async function assertEmployeePortalLogin(db: DatabaseExecutor, user: AppContext["user"]) {
+  await assertEmployeePortalNotLocked(db, user.id);
   const moduleConfig = await findModuleActivation(db, "PORTAL_SERVIDOR");
   if (moduleConfig?.ativo === false) throw new AccessError("Portal do Servidor indisponível nesta instância.", 423);
 

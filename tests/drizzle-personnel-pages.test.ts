@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import { eq, sql } from 'drizzle-orm';
 import { createSpecializedDrizzleFixture } from './helpers/specialized-drizzle-fixture';
 import { withDatabaseTransaction, type DatabaseTransaction } from '../src/db/transaction';
@@ -39,6 +40,7 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
   const fixture = await createSpecializedDrizzleFixture();
   const rollback = new Error('personnel pages fixture rollback');
   try {
+    await fixture.database.exec(await readFile('db/migrations/20261030120002_personnel_reference_records/migration.sql', 'utf8'));
     await assert.rejects(withDatabaseTransaction(fixture.connection, async db => {
       await db.insert(accessProfiles).values({ id: 'pages-profile', codigo: 'PAGES_TEST', nome: 'Fixture RH', permissoes: '{}' });
       await db.insert(users).values({ id: 'pages-user', nome: 'Fixture RH', email: 'pages@example.test', perfilId: 'pages-profile' });
@@ -46,6 +48,10 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
       await db.insert(departments).values([{ id: 'd-a', name: 'Departamento A', secretariatId: 's-a' }, { id: 'd-b', name: 'Departamento B', secretariatId: 's-b' }]);
       await db.insert(planningBudgetUnits).values([{ id: 'u-a', code: '01', name: 'UG A', secretariatId: 's-a' }, { id: 'u-b', code: '02', name: 'UG B', secretariatId: 's-b' }]);
       await db.insert(governmentEntities).values([{ id: 'g-a', code: 'GA', name: 'Ente A', type: 'MUNICIPIO' }, { id: 'g-b', code: 'GB', name: 'Ente B', type: 'MUNICIPIO' }]);
+      await db.execute(sql`INSERT INTO "FinancialYear" (id,year,"governmentEntityId","startDate","endDate","updatedAt") VALUES ('scope-year',2098,'g-a','2098-01-01','2098-12-31',CURRENT_TIMESTAMP)`);
+      await db.execute(sql`INSERT INTO "ExpenseNature" (id,code,name,"updatedAt") VALUES ('scope-nature','3.1.90.11','Pessoal',CURRENT_TIMESTAMP)`);
+      await db.execute(sql`INSERT INTO "ResourceSource" (id,code,name,"updatedAt") VALUES ('scope-source','000','Livre',CURRENT_TIMESTAMP)`);
+      await db.execute(sql`INSERT INTO "BudgetAppropriation" (id,code,"financialYearId","budgetUnitId","expenseNatureId","resourceSourceId","updatedAt") VALUES ('scope-a','scope-a','scope-year','u-a','scope-nature','scope-source',CURRENT_TIMESTAMP),('scope-b','scope-b','scope-year','u-b','scope-nature','scope-source',CURRENT_TIMESTAMP)`);
       await db.insert(planningEntityUnits).values([{ budgetUnitId: 'u-a', governmentEntityId: 'g-a' }, { budgetUnitId: 'u-b', governmentEntityId: 'g-b' }]);
       await db.insert(roles).values({ id: 'role', name: 'Analista' });
       await db.insert(people).values({ id: 'person', fullName: 'Nome civil preservado' });
@@ -54,6 +60,7 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
         { id: 'e-b', name: 'Bia', registration: 'B-02', secretariatId: 's-b', isActive: false, createdAt: at },
         { id: 'e-c', name: 'Caio', registration: 'C-03', secretariatId: 's-a', createdAt: at },
       ]);
+      await db.execute(sql`INSERT INTO "HrReferenceRecord" (id,kind,code,name,details,"updatedAt") VALUES ('link-a','LOTACAO_ORCAMENTARIA','link-a','Vínculo orçamentário A','{"employeeId":"e-a","appropriationId":"scope-a"}',CURRENT_TIMESTAMP),('link-b','LOTACAO_ORCAMENTARIA','link-b','Vínculo orçamentário B','{"employeeId":"e-b","appropriationId":"scope-b"}',CURRENT_TIMESTAMP)`);
       await db.insert(systemInstances).values({ id: 'instance', nomePrefeitura: 'Fixture', municipio: 'Fixture', uf: 'PR' });
       await db.insert(hrPayrollRuleSets).values({ id: 'set', configuracaoInstanciaId: 'instance', code: 'TEST', name: 'Conjunto', status: 'ATIVA', effectiveFrom: at, scope: 'PRODUCAO', isDemo: false });
       await db.insert(hrEmploymentRegimes).values({ id: 'regime', ruleSetId: 'set', code: 'EFETIVO', name: 'Efetivo', employmentNature: 'EFETIVO' });
@@ -105,7 +112,7 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
         const last = await readGeneralRequestsPage(db, actor(['u-a']), 'DEFERIDA', '999');
         assert.equal(last.total, 23); assert.equal(last.page, 2);
         assert.deepEqual(last.rows.map(row => row.id), ['queue-20', 'queue-21', 'queue-22']);
-        await db.insert(hrIntegrationEvents).values({ id: 'publication', sourceKey: 'pub', domain: 'PORTAL', environment: 'PRODUCAO', eventType: 'DOCUMENTO_FUNCIONAL_DISPONIBILIZADO', payload: { budgetUnitId: 'u-a' }, payloadHash: 'a'.repeat(64), createdAt: at });
+        await db.insert(hrIntegrationEvents).values({ id: 'publication', sourceKey: 'pub', domain: 'PORTAL', environment: 'PRODUCAO', eventType: 'DOCUMENTO_FUNCIONAL_DISPONIBILIZADO', payload: { budgetUnitId: 'u-a', employeeId: 'e-a' }, payloadHash: 'a'.repeat(64), createdAt: at });
         assert.equal((await readFunctionalPublicationsPage(db, actor(['u-a']))).events[0].createdAt.toISOString(), at.toISOString());
         assert.equal((await readFunctionalPublicationsPage(db, actor([]))).total, 0);
       });
@@ -128,7 +135,8 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
         assert.deepEqual(boolean.contracts.map(row => row.id), ['c-a']);
         assert.equal(boolean.contracts[0].salary.toFixed(2), '90071992547409.93');
         assert.equal(boolean.contracts[0].admittedAt.toISOString(), at.toISOString());
-        assert.deepEqual((await readWorkforceOperations(db, actor(['u-a']), { ...input, customType: 'TEXTO' })).contracts.map(row => row.id), ['c-b']);
+        assert.deepEqual((await readWorkforceOperations(db, actor(['u-a']), { ...input, customType: 'TEXTO' })).contracts.map(row => row.id), []);
+        assert.deepEqual((await readWorkforceOperations(db, actor(['u-b']), { ...input, customType: 'TEXTO' })).contracts.map(row => row.id), ['c-b']);
         assert.equal((await readWorkforceOperations(db, actor(['u-a']), { ...input, customFilterError: 'Inválido' })).total, 0);
         assert.deepEqual((await readWorkforceOperations(db, actor(['u-a']), { ...input, tab: 'calculos' })).runs.map(row => row.id), ['r-a', 'r-legacy']);
         assert.deepEqual((await readWorkforceOperations(db, actor([]), { ...input, tab: 'calculos' })).runs.map(row => row.id), ['r-legacy']);
@@ -141,7 +149,7 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
         assert.equal(run.statements[0].net.toFixed(2), '90071992547409.93');
         assert.equal(run.statements[0].snapshot, null);
         await db.insert(hrEmploymentRevisions).values({ id: 'rev', contractId: 'c-a', version: 1, effectiveFrom: at, snapshot: { salary: '90071992547409.93', date: '2099-10-20' }, actorId: 'pages-user', reason: 'Inicial' });
-        assert.equal((await readContractTimeline(db, 'c-a')).revisions[0].effectiveFrom.toISOString(), at.toISOString());
+        assert.equal((await readContractTimeline(db, 'c-a', actor(['u-a']))).revisions[0].effectiveFrom.toISOString(), at.toISOString());
       });
 
       await scenario('installment/entry joins preserve order, compensatory history, exact values and Date', async db => {
@@ -171,7 +179,7 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
         await db.insert(hrRightEntries).values({ id: 'right', contractId: 'c-a', sourceKey: 'right', kind: 'FERIAS', periodStart: at, periodEnd: at, quantity: new Decimal('-1.1234'), amount: new Decimal('0.01'), details: sql`'null'::jsonb`, actorId: 'pages-user' });
         assert.equal((await readFolderPage(db, { ...filter, tab: 'direitos' })).rights[0].quantity.toFixed(4), '-1.1234');
         await db.insert(hrIntegrationEvents).values([{ id: 'occurrence', sourceKey: 'occurrence', domain: 'RH', environment: 'PRODUCAO', eventType: 'OCORRENCIA_FUNCIONAL_REGISTRADA', payload: { employeeId: 'e-a', input: { contractId: 'c-a', type: 'ELOGIO' } }, payloadHash: 'a'.repeat(64), createdAt: at }, { id: 'cancellation', sourceKey: 'OCORRENCIA:CANCELAMENTO:occurrence', domain: 'RH', environment: 'PRODUCAO', eventType: 'CANCELAMENTO', payload: { reason: 'Fundamentação' }, payloadHash: 'b'.repeat(64), createdAt: at }]);
-        const occurrences = await readOccurrencesPage(db, { contractId: 'c-a', type: 'ELOGIO' });
+        const occurrences = await readOccurrencesPage(db, actor(['u-a']), { contractId: 'c-a', type: 'ELOGIO' });
         assert.equal(occurrences.rows[0].createdAt.toISOString(), at.toISOString());
         assert.equal(occurrences.cancellations[0].sourceKey, 'OCORRENCIA:CANCELAMENTO:occurrence');
         assert.equal((await readFolderPage(db, { ...filter, tab: 'ocorrencias' })).occurrences[0].id, 'occurrence');
@@ -186,7 +194,7 @@ test('RH pages: golden scenarios through real Neon/Drizzle and historical Postgr
         const base = { governmentEntityId: 'g-a', roleId: 'role', state: 'EXISTING', designation: 'Analista', authorizedSeats: 2, legalReference: 'Ato 01', legalTextVersionId: 'legal-text-v1', documentId: 'legal-doc', documentVersionId: 'legal-v1', documentHash: 'a'.repeat(64), documentFileUrl: '/legal', reason: 'Registro inicial', actorUsuarioId: 'pages-user', requestHash: 'c'.repeat(64) };
         await db.insert(hrRoleLegalHistory).values({ ...base, id: 'history-1', effectiveFrom: at, version: 1, idempotencyKey: 'legal-1' });
         await db.insert(hrRoleLegalHistory).values({ ...base, id: 'history-2', effectiveFrom: new Date('2099-10-21T12:34:56.789Z'), version: 2, previousEventId: 'history-1', idempotencyKey: 'legal-2' });
-        assert.deepEqual((await readRoleLegalYears(db, actor(['u-a']))).map(row => row.id), ['year-a']);
+        assert.deepEqual((await readRoleLegalYears(db, actor(['u-a']))).map(row => row.id), ['year-a', 'scope-year']);
         assert.equal((await readRoleLegalYears(db, actor([]))).length, 0);
         const result = await readRoleLegalHistoryPage(db, 'g-a', undefined, 1);
         assert.deepEqual(result.history.map(row => row.id), ['history-2', 'history-1']);

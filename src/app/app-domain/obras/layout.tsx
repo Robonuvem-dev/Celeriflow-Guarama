@@ -12,6 +12,7 @@ const navigation: ModuleNavGroup[] = [{
     { title: "Serviços Urbanos", href: "/obras/servicos-urbanos", icon: "pickaxe" },
     { title: "Máquinas e Equipes", href: "/obras/maquinas-equipes", icon: "tractor" },
     { title: "Documentos", href: "/obras/documentos", icon: "fileText" },
+    { title: "Documentos no GED", href: "/assinatura-digital/origens?module=OBRAS", icon: "fileText" },
     { title: "Relatórios", href: "/obras/relatorios", icon: "barChart3" },
   ],
 }, {

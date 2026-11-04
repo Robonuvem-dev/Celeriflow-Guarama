@@ -13,6 +13,7 @@ import { payrollPeriod } from "@/lib/rh/calculation-engine";
 import { payrollPaymentAllocationSchema } from "@/lib/rh/payroll-payment-allocation";
 import { payrollSnapshotHash, ownReleasedStatementIds } from "./payroll-publication";
 import { getPayrollStatement } from "@/lib/rh/statement-service";
+import { portalDataAccessAllowed } from "./data-access-policy";
 import { consignmentMarginSchema } from "@/lib/rh/consignment-margin";
 import type { FunctionalScope } from "@/lib/sst/functional-policy";
 import type { DocumentLayoutPolicy, FunctionalDocumentInput } from "./document-policy";
@@ -33,6 +34,7 @@ async function annualIncome(context: AppContext, input: FunctionalDocumentInput,
   if (!input.year) throw new Error("Informe o ano de pagamento.");
   const employeeId = context.user.employeeId!;
   const executor = context.database ?? db;
+  if (!await portalDataAccessAllowed(executor, employeeId, input.year)) throw new AccessError("Dados bloqueados pelo RH para o ano e lotação.", 403);
   const statements = await portalStatements(executor, sql`c."employeeId"=${employeeId} AND r.mode='OFICIAL' AND r.status='FECHADA' AND r.scope='PRODUCAO' AND s."revokedAt" IS NULL`);
   const financialOrigins = await portalEvents(executor, sql`"sourceKey"=ANY(${sql.param([...new Set(statements.map(statement => `FINANCEIRO:PAGAMENTOS:${statement.runId}`))])}::text[]) AND status='CONCLUIDA' AND "eventType"='PAGAMENTOS_FOLHA'`);
   const yearRuns = financialOrigins.filter(origin => z.object({ input: z.object({ date: z.string() }) }).parse(origin.payload).input.date.startsWith(`${input.year}-`)).map(origin => origin.sourceKey.slice("FINANCEIRO:PAGAMENTOS:".length));

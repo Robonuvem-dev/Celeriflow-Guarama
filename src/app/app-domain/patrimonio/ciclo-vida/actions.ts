@@ -6,8 +6,31 @@ import { FinanceError } from "@/lib/financeiro";
 import { reverseAssetValuation } from "@/lib/patrimonio/valuation-reversal";
 import { revalidatePath } from "next/cache";
 import { databaseConnection } from "@/db/client";
+import { reverseAssetWriteOff } from "@/lib/patrimonio/write-off-reversal";
+import { operateAssetRoutine } from "@/lib/patrimonio/asset-routines";
 
 type ActionResult = { error?: string; message?: string };
+
+export async function reverseAssetWriteOffAction(input: { recordId: string; date: string; reason: string; budgetUnitId: string }): Promise<ActionResult> {
+  try {
+    const { user } = await getTenantContextForModuleOperation("PATRIMONIO", "update");
+    await getTenantContextForModuleOperation("FINANCEIRO", "update");
+    const date = new Date(`${input.date}T12:00:00.000Z`);
+    if (!Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== input.date) throw new Error("Data inválida.");
+    await reverseAssetWriteOff(databaseConnection, { budgetUnitId: input.budgetUnitId, actor: { usuarioId: user.id, employeeId: user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds } }, { ...input, date });
+    revalidatePath("/patrimonio", "layout");
+    return { message: "Baixa estornada; registro original preservado e bem reativado." };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível estornar a baixa." }; }
+}
+
+export async function assetRoutineAction(input: { operation: "loan" | "return" | "exclude" | "requestWriteOff"; patrimonyNumber: string; recipient: string; expectedReturn: string; reason: string }): Promise<ActionResult> {
+  try {
+    const { user } = await getTenantContextForModuleOperation("PATRIMONIO", input.operation === "exclude" ? "delete" : "update");
+    await operateAssetRoutine(databaseConnection, user, input);
+    revalidatePath("/patrimonio", "layout");
+    return { message: "Operação registrada com histórico preservado." };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível registrar a operação." }; }
+}
 
 function messageFor(error: unknown) {
   return error instanceof AssetLifecycleError || error instanceof FinanceError ? error.message : "Não foi possível concluir a operação patrimonial.";
@@ -22,11 +45,11 @@ function parseCompetence(value: string) {
   return date;
 }
 
-export async function runMonthlyDepreciation(competence: string, budgetUnitId: string): Promise<ActionResult> {
+export async function runMonthlyDepreciation(competence: string, budgetUnitId: string, manual?: { assetId: string; amount: number }): Promise<ActionResult> {
   try {
     const context = await getTenantContextForModuleOperation("PATRIMONIO", "create");
     await getTenantContextForModuleOperation("FINANCEIRO", "create");
-    const result = await depreciateAssetsForMonth(databaseConnection, parseCompetence(competence), { budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } });
+    const result = await depreciateAssetsForMonth(databaseConnection, parseCompetence(competence), { budgetUnitId, actor: { usuarioId: context.user.id, employeeId: context.user.employeeId, allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds } }, manual);
     revalidatePath("/patrimonio/ciclo-vida");
     revalidatePath("/patrimonio/bens");
     revalidatePath("/patrimonio");
@@ -81,6 +104,7 @@ export async function registerAssetValueAdjustment(input: {
   evidence: string;
   budgetUnitId: string;
   idempotencyKey: string;
+  usefulLifeMonths?: number;
 }): Promise<ActionResult> {
   try {
     const date = new Date(`${input.date}T12:00:00.000Z`);

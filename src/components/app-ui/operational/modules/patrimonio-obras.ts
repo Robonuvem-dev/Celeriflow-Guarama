@@ -39,6 +39,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       ] },
       { title: "Patrimônio", items: [
         { title: "Bens patrimoniais", href: "/patrimonio/bens", icon: "archive" },
+        { title: "Inventário patrimonial", href: "/patrimonio/inventario-bens", icon: "clipboardList" },
         { title: "Cadastros auxiliares", href: "/patrimonio/cadastros", icon: "archive" },
         { title: "Relatórios", href: "/patrimonio/relatorios", icon: "clipboardList" },
         { title: "Ciclo de vida", href: "/patrimonio/ciclo-vida", icon: "chartNoAxesCombined" },
@@ -47,9 +48,11 @@ export const operationalModules: OperationalModuleConfig[] = [
     routes: [
       { pathname: "/patrimonio/almoxarifados", title: "Almoxarifados" },
       { pathname: "/patrimonio/centros-custo", title: "Centros de custo" },
+      { pathname: "/patrimonio/cadastros", title: "Cadastros auxiliares patrimoniais" },
       { pathname: "/patrimonio/bens", title: "Bens patrimoniais e equipamentos" },
       { pathname: "/patrimonio/ciclo-vida", title: "Ciclo de vida patrimonial", excludeQuery: { view: ["operacoes"] } },
       { pathname: "/patrimonio/inventarios", title: "Inventários de estoque" },
+      { pathname: "/patrimonio/inventario-bens", title: "Inventário patrimonial", excludeQuery: { view: ["operacoes"] } },
       { pathname: "/patrimonio/requisicoes", title: "Requisições internas" },
       // Technical sample owned by the principal; both URLs consume MaterialStockList.
       { pathname: "/patrimonio/materiais", title: "Estoque de materiais", excludeQuery: { view: ["movimentar"] } },
@@ -66,6 +69,7 @@ export const operationalModules: OperationalModuleConfig[] = [
         { title: "Serviços Urbanos", href: "/obras/servicos-urbanos", icon: "pickaxe" },
         { title: "Máquinas e Equipes", href: "/obras/maquinas-equipes", icon: "tractor" },
         { title: "Documentos", href: "/obras/documentos", icon: "fileText" },
+        { title: "Documentos no GED", href: "/assinatura-digital/origens?module=OBRAS", icon: "fileText" },
         { title: "Relatórios", href: "/obras/relatorios", icon: "barChart3" },
       ] },
       { title: "Construção civil", items: [
@@ -102,7 +106,17 @@ export const operationalModules: OperationalModuleConfig[] = [
   },
   {
     key: "frotas", moduleTitle: "Frotas", moduleCaption: "Gestão operacional", moduleIcon: "truck",
-    navigation: fleetNavigationGroups.map(group => ({ title: group.title, items: group.items.map(item => ({ title: item.title, href: `/frotas?area=${item.area}`, icon: fleetIcons[item.area], query: { key: "area", values: item.area === "frota" ? ["", "frota"] : [item.area] } })) })),
-    routes: [{ pathname: "/frotas", title: "Frotas — gestão operacional" }],
+    navigation: [...fleetNavigationGroups.map(group => ({ title: group.title, items: group.items.map(item => ({ title: item.title, href: `/frotas?area=${item.area}`, icon: fleetIcons[item.area], query: { key: "area", values: item.area === "frota" ? ["", "frota"] : [item.area] } })) })),
+      { title: "Controle e cadastros", items: [
+        { title: "Gestão da frota", href: "/frotas/gestao", icon: "truck" },
+        { title: "Importações e correções", href: "/frotas/movimentos", icon: "clipboardList" },
+        { title: "Cadastros auxiliares", href: "/frotas/cadastros", icon: "clipboardList" },
+      ] },
+    ],
+    routes: [
+      { pathname: "/frotas", title: "Frotas — gestão operacional" },
+      { pathname: "/frotas/cadastros", title: "Cadastros auxiliares da frota" },
+      { pathname: "/frotas/movimentos", title: "Movimentos e importações da frota" },
+    ],
   },
 ];

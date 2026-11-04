@@ -1,6 +1,7 @@
 import { Decimal } from "@/db/decimal";
 import type { JsonValue } from "@/db/json";
-import { sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
+import { hrPayrollStatements } from "@/db/schema/personnel-workforce";
 import { db } from "@/db/client";
 import { activePortalEmployee, activePortalTotalsPolicy, portalEvents, portalFirst, portalRows } from "@/db/repositories/portal-servidor/records";
 import { portalStatements } from "@/db/repositories/portal-servidor/payroll";
@@ -12,8 +13,11 @@ import { z } from "zod";
 import { AccessError, type AppContext } from "@/lib/platform/tenant-context";
 import { ownReleasedStatementIds } from "./payroll-publication";
 import { attendanceTotalsPolicySchema, configuredAttendanceTotals } from "./attendance-totals";
+import { buildPocAnnualIncomeReport } from "@/lib/rh/poc-payment";
+import { annualIncomeCertificate } from "@/lib/rh/income-certificate";
+import { portalDataAccessAllowed } from "./data-access-policy";
 
-export const personalReportKinds = ["FICHA_FINANCEIRA", "CONTRIBUICOES", "SALARIOS_CONTRIBUICAO", "PONTO", "FERIAS", "BANCO_HORAS", "LICENCA_PREMIO", "GOZOS_LICENCA_PREMIO", "HISTORICO_ATS", "AFASTAMENTOS", "CONSIGNACOES", "FICHA_REGISTRO", "ATOS", "PLANOS"] as const;
+export const personalReportKinds = ["FICHA_FINANCEIRA", "CONTRIBUICOES", "SALARIOS_CONTRIBUICAO", "PONTO", "FERIAS", "BANCO_HORAS", "LICENCA_PREMIO", "GOZOS_LICENCA_PREMIO", "HISTORICO_ATS", "AFASTAMENTOS", "CONSIGNACOES", "FICHA_REGISTRO", "ATOS", "PLANOS", "INFORME_RENDIMENTOS"] as const;
 export const personalReportQuerySchema = z.object({ kind: z.enum(personalReportKinds), from: z.iso.date(), until: z.iso.date(), contractId: z.string().min(1).optional(), totalsPolicyId: z.string().optional(), format: z.enum(["PDF", "CSV", "XLSX"]).default("PDF") }).strict().refine(value => value.until >= value.from, "Período fora de ordem.").refine(value => !value.contractId || !["PONTO", "AFASTAMENTOS", "ATOS", "PLANOS"].includes(value.kind), "Este relatório usa o cadastro pessoal, sem filtro por contrato.");
 type PersonalReport = { title: string; headers: string[]; rows: string[][] };
 const civil = (value: Date | null | undefined) => value?.toISOString().slice(0, 10) || "";
@@ -24,6 +28,14 @@ export async function buildOwnPersonalReport(context: AppContext, raw: unknown):
   const executor = context.database ?? db;
   if (!employeeId || !await activePortalEmployee(executor, employeeId)) throw new AccessError("Acesso funcional indisponível.", 403);
   if (input.contractId && !await portalFirst<{ id: string }>(executor, sql`SELECT id FROM "HrEmploymentContract" WHERE id=${input.contractId} AND "employeeId"=${employeeId} LIMIT 1`)) throw new AccessError("Contrato indisponível.", 404);
+  if (input.kind === "INFORME_RENDIMENTOS") {
+    const year = Number(input.from.slice(0, 4));
+    if (input.contractId || input.from !== `${year}-01-01` || input.until !== `${year}-12-31`) throw new Error("Selecione todos os vínculos e o ano-calendário completo, de 01/01 a 31/12.");
+    if (!await portalDataAccessAllowed(executor, employeeId, year)) throw new AccessError("Dados bloqueados pelo RH para o ano e lotação.", 403);
+    const ids = await ownReleasedStatementIds(executor, employeeId);
+    const annual = await buildPocAnnualIncomeReport(executor, year, inArray(hrPayrollStatements.id, ids), employeeId);
+    return annualIncomeCertificate(annual);
+  }
   const from = new Date(`${input.from}T00:00:00Z`), until = new Date(`${input.until}T23:59:59.999Z`);
   const contractWhere = sql`c."employeeId"=${employeeId} ${input.contractId ? sql`AND c.id=${input.contractId}` : sql``}`;
   if (["FICHA_FINANCEIRA", "CONTRIBUICOES", "SALARIOS_CONTRIBUICAO"].includes(input.kind)) {
@@ -63,7 +75,9 @@ export async function buildOwnPersonalReport(context: AppContext, raw: unknown):
       if (!employee?.secretariatId || !await portalFirst<{ id: string }>(executor, sql`SELECT id FROM "BudgetUnit" WHERE id=${policy.budgetUnitId} AND "secretariatId"=${employee.secretariatId} LIMIT 1`)) throw new AccessError("Totalizadores fora da unidade funcional.", 403);
       configured.push(...configuredAttendanceTotals(rows, policy).map(total => ["TOTAL_CONFIGURADO", total.label, "", total.value, "", "", "", total.code]));
     }
-    return { title: "Espelho de ponto pessoal — relatório integral do período", headers: ["Data", "Entrada", "Saída", "Horas trabalhadas / total configurado", "Horas extras", "Banco de horas", "Situação", "Registro"], rows: [...rows.map(row => [civil(row.date), row.entryTime?.toISOString() || "", row.exitTime?.toISOString() || "", String(row.hoursWorked), String(row.extraHours), String(row.bankHours), row.status, row.id]), ["TOTAL", "", "", totals.hours.toFixed(4), totals.extra.toFixed(4), totals.bank.toFixed(4), "", ""], ...configured] };
+    const employee = await activePortalEmployee(executor, employeeId);
+    const time = (value: Date | null) => value ? new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(value) : "";
+    return { title: `Espelho de ponto pessoal — ${employee?.name || "Servidor"} · ${employee?.registration || employeeId} · ${input.from} a ${input.until} · America/Sao_Paulo`, headers: ["Data", "Entrada", "Saída", "Horas trabalhadas / total configurado", "Horas extras", "Banco de horas", "Situação", "Registro"], rows: [...rows.map(row => [civil(row.date), time(row.entryTime), time(row.exitTime), String(row.hoursWorked), String(row.extraHours), String(row.bankHours), row.status, row.id]), ["TOTAL", "", "", totals.hours.toFixed(4), totals.extra.toFixed(4), totals.bank.toFixed(4), "", ""], ...configured] };
   }
   if (input.kind === "HISTORICO_ATS") {
     const movements = await portalMovements(executor, sql`${contractWhere} AND starts_with(e."sourceKey",'ATS:') AND e."startsAt"<=${until} AND (e."endsAt" IS NULL OR e."endsAt">=${from})`);

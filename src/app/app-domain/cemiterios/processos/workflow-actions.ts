@@ -53,7 +53,13 @@ export async function saveWorkflow(form: FormData) {
         doctorName: text(form, "doctorName"), doctorCrm: text(form, "doctorCrm"), scheduledAt: new Date(text(form, "scheduledAt")),
         burialType: text(form, "burialType") as "NORMAL" | "MEMBRO" | "NAO_RECLAMADO" | "NATIMORTO", unidentified: form.get("unidentified") === "on",
         memberOwnerDeceased: form.get("memberOwnerDeceased") === "on", exceptionReason: optional(form, "exceptionReason"), finalizeNow: false, requestKey,
-        groups: Object.fromEntries(["falecido", "nascimento", "documentos", "endereco", "obito", "local", "medico", "causas", "funeraria", "sepultamento", "observacoes"].map(key => [key, { observacao: text(form, `group_${key}`) }])),
+        groups: {
+          ...Object.fromEntries(["falecido", "nascimento", "documentos", "endereco", "obito", "local", "medico", "causas", "funeraria", "sepultamento", "observacoes"].map(key => [key, { observacao: text(form, `group_${key}`) }])),
+          falecido: { observacao: text(form, "group_falecido"), nacionalidade: text(form, "nationality"), racaCor: text(form, "raceColor"), parentescoDeclarante: text(form, "kinship") },
+          endereco: { observacao: text(form, "group_endereco"), tipoLogradouro: text(form, "streetType"), logradouro: text(form, "streetName"), bairro: text(form, "neighborhood"), cidade: text(form, "city") },
+          local: { observacao: text(form, "group_local"), falecimento: text(form, "deathPlace") },
+          sepultamento: { observacao: text(form, "group_sepultamento"), ...(form.get("externalEntry") === "on" ? { natureza: "ENTRADA_EXTERNA", cemiterioOrigem: text(form, "originCemetery"), documentoTranslado: text(form, "transferDocument"), dataTranslado: text(form, "transferDate") } : {}) },
+        },
       });
     } else {
       await createCemeteryProcess(databaseConnection, actor, { processType: processType as "VELORIO" | "CREMACAO", deceasedId: text(form, "deceasedId"), cemeteryId: optional(form, "cemeteryId"), chapelId: optional(form, "chapelId"), funeralHomeId: optional(form, "funeralHomeId"), declarantTaxpayerId, scheduledAt: new Date(text(form, "scheduledAt")), notes: optional(form, "notes"), requestKey, deceasedTaxpayerId: optional(form, "deceasedTaxpayerId"), deathDate: optional(form, "deathDate") ? new Date(text(form, "deathDate")) : undefined, causeId: optional(form, "causeId"), doctorName: optional(form, "doctorName"), doctorCrm: optional(form, "doctorCrm") });

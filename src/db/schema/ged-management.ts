@@ -26,6 +26,7 @@ export const gedUploads = pgTable("GedUpload", {
   classCode: text("classCode").notNull(), folderId: text("folderId"), legacyReference: text("legacyReference").notNull().default(""),
   pathname: text("pathname").notNull().unique(), url: text("url"), documentId: text("documentId").references(() => documents.id),
   checkinDocumentId: text("checkinDocumentId"), status: text("status").notNull().default("PENDING"), error: text("error"),
+  indexValues: jsonb("indexValues").$type<Record<string, string | number | boolean>>().notNull().default({}), definitionId: text("definitionId"),
   createdAt: instant("createdAt").notNull().defaultNow(),
 }, t => [index("GedUpload_batch_idx").on(t.ownerId, t.batchId)]);
 export const gedCheckouts = pgTable("GedCheckout", {

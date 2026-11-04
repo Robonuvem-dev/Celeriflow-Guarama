@@ -30,10 +30,11 @@ export const operationalModules: OperationalModuleConfig[] = [
       { title: "Estrutura", items: structureKinds.filter(kind => !["LOTE", "SEPULTURA"].includes(kind)).map(kind => ({ title: structureConfig[kind].title, href: `/cemiterios/estrutura?tipo=${kind}`, icon: "building2", query: { key: "tipo", values: [kind] } })) },
       { title: "Ocupação", items: ["LOTE", "SEPULTURA"].map(kind => ({ title: kind === "LOTE" ? "Lotes" : "Sepulturas / Lóculos", href: `/cemiterios/ocupacao?tipo=${kind}`, icon: "mapPin", query: { key: "tipo", values: [kind] } })) },
       { title: "Atendimento", items: [{ title: "Processos funerários", href: "/cemiterios/processos", icon: "calendarClock" }, { title: "Transferências", href: "/cemiterios/transferencias", icon: "arrowRightLeft" }] },
-      { title: "Tributário e análises", items: [{ title: "Taxas e guias", href: "/cemiterios/taxas", icon: "receiptText" }, { title: "Consulta unificada", href: "/cemiterios/consulta", icon: "search" }, { title: "Relatório de sepultados", href: "/cemiterios/relatorio", icon: "barChart3" }] },
+      { title: "Tributário e análises", items: [{ title: "Taxas e guias", href: "/cemiterios/taxas", icon: "receiptText" }, { title: "Consulta unificada", href: "/cemiterios/consulta", icon: "search" }, { title: "Relatório de sepultados", href: "/cemiterios/relatorio", icon: "barChart3" }, { title: "Relatórios e mapa", href: "/cemiterios/complementos", icon: "mapPin" }] },
     ],
     routes: [
       { pathname: "/cemiterios/consulta", title: "Consulta unificada de processos funerários" },
+      { pathname: "/cemiterios/complementos", title: "Relatórios e mapa cemiterial" },
       { pathname: "/cemiterios/processos", title: "Processos funerários", excludeQuery: { view: ["novo"] } },
       { pathname: "/cemiterios/taxas", title: "Taxas cemiteriais por evento", excludeQuery: { view: ["nova-regra", "adicional"] } },
     ],
@@ -87,6 +88,7 @@ export const operationalModules: OperationalModuleConfig[] = [
     key: "protocolos", moduleTitle: "Protocolos e Processos", moduleCaption: "Processo digital", moduleIcon: "fileBox",
     navigation: [
       { title: "Visão geral", items: [{ title: "Painel de protocolos", href: "/protocolos", icon: "layoutDashboard", exact: true }] },
+      { title: "Gestão documental", items: [{ title: "Documentos no GED", href: "/assinatura-digital/origens?module=PROCESSOS", icon: "fileText" }] },
       { title: "Operação", items: [{ title: "Caixa do setor", href: "/protocolos/processos", icon: "fileBox" }, { title: "Acompanhamento", href: "/protocolos/acompanhamento", icon: "chartNoAxesCombined" }, { title: "Buscar processo", href: "/protocolos/busca", icon: "fileSearch" }] },
       { title: "Atendimento", items: [{ title: "Ouvidoria", href: "/protocolos/ouvidoria", icon: "messageSquareWarning" }, { title: "Notificações", href: "/protocolos/notificacoes", icon: "bell" }] },
       { title: "Gestão", items: [{ title: "Assinaturas", href: "/protocolos/assinaturas", icon: "fileSignature" }, { title: "Relatórios", href: "/protocolos/relatorios", icon: "barChart3" }, { title: "Arquivados", href: "/protocolos/arquivados", icon: "archive" }] },

@@ -14,12 +14,15 @@ import styles from "@/components/app-ui/operational/operational.module.css";
 import { gedCommand, gedDownloadUrl } from "./ged-client";
 import { GedZoneViewer } from "./GedZoneViewer";
 import { GedFolderPicker } from "./GedFolderPicker";
+import { GedDocumentManagement } from "./GedDocumentManagement";
 
 const versionColumns: OperationalColumn[] = [
   { key: "number", label: "Versão", type: "identifier", initialWidth: 70, minWidth: 60, resizable: true, sortable: false, details: "overflow" },
   { key: "status", label: "Estado", type: "status", initialWidth: 130, minWidth: 90, resizable: true, sortable: false, details: "overflow" },
   { key: "hash", label: "SHA-256", type: "identifier", initialWidth: 420, minWidth: 180, resizable: true, sortable: false, details: "overflow" },
   { key: "date", label: "Criada em", type: "text", initialWidth: 170, minWidth: 110, resizable: true, sortable: false, details: "overflow" },
+  { key: "author", label: "Autor", type: "text", initialWidth: 170, minWidth: 100, resizable: true, sortable: false, details: "overflow" },
+  { key: "comment", label: "Alteração", type: "text", initialWidth: 240, minWidth: 120, resizable: true, sortable: false, details: "overflow" },
   { key: "actions", label: "Original", type: "actions", initialWidth: 120, minWidth: 100, maxWidth: 140, resizable: false, sortable: false, details: "none" },
 ];
 export function GedDocumentDetail({ initial, bootstrap }: { initial: GedDetail; bootstrap: GedBootstrap }) {
@@ -53,7 +56,7 @@ export function GedDocumentDetail({ initial, bootstrap }: { initial: GedDetail; 
     <div className="flex flex-wrap items-center justify-between gap-2"><div><Link href="/assinatura-digital/acervo" className="text-xs underline">Voltar ao acervo</Link><h1 className="text-lg font-semibold">{document.title}</h1><p className="text-sm">Versão {document.versionNumber} · {document.editorialStatus} · {document.status}</p></div>
       <div className="flex flex-wrap gap-2"><a className={styles.dialogButton} href={gedDownloadUrl(document.id)}>Baixar original</a><OperationalTablePanel title="Histórico de versões">
         <OperationalListFrame label="Versões imutáveis" pagination={<OperationalPagination page={detail.versionPage} total={detail.versionTotal} pending={busy} onPageChange={page => { setBusy(true); void refresh(page).catch(error => setMessage(error.message)).finally(() => setBusy(false)); }} />}>
-          <OperationalTable columns={versionColumns} preferenceId="ged-document-versions" rows={detail.versions.map(version => ({ id: version.id, label: `Versão ${version.number}`, values: { number: String(version.number), status: version.status, hash: version.hash, date: new Date(version.createdAt).toLocaleString("pt-BR") }, actions: <div className="flex gap-2"><a href={gedDownloadUrl(document.id, version.id)} className={styles.dialogButton}>Baixar</a>{version.code && <a href={`/validar-documento/${version.code}`} target="_blank" rel="noreferrer" className={styles.dialogButton}>Validar</a>}</div> }))} />
+          <OperationalTable columns={versionColumns} preferenceId="ged-document-versions" rows={detail.versions.map(version => ({ id: version.id, label: `Versão ${version.number}`, values: { number: String(version.number), status: version.status, hash: version.hash, date: new Date(version.createdAt).toLocaleString("pt-BR"), author: version.author ?? "", comment: version.comment ?? "" }, actions: <div className="flex gap-2"><a href={gedDownloadUrl(document.id, version.id)} className={styles.dialogButton}>Baixar</a>{version.code && <a href={`/validar-documento/${version.code}`} target="_blank" rel="noreferrer" className={styles.dialogButton}>Validar</a>}</div> }))} />
         </OperationalListFrame>
       </OperationalTablePanel></div></div>
     {message && <p role="status" className="rounded border p-2 text-sm">{message}</p>}
@@ -61,6 +64,7 @@ export function GedDocumentDetail({ initial, bootstrap }: { initial: GedDetail; 
     {tab === "document" && <section className="grid gap-4 rounded border bg-white p-4">
       <dl className="grid gap-2 text-sm"><div><dt className="font-semibold">Arquivo</dt><dd>{document.filename} · {document.byteLength.toLocaleString("pt-BR")} bytes</dd></div><div><dt className="font-semibold">Pasta / origem</dt><dd>{document.folderName || "Raiz"} · {document.legacyReference || "Ingresso GED"}</dd></div><div><dt className="font-semibold">SHA-256</dt><dd className="break-all font-mono text-xs">{document.hashSha256}</dd></div></dl>
       {document.origin === "CENTRAL" && <a className="text-sm underline" href={`/validar-assinatura/${encodeURIComponent(document.legacyReference)}`} target="_blank" rel="noreferrer">Validar evidência original da Central (versão arquivada)</a>}
+      {(["application/pdf", "image/png", "image/jpeg", "image/gif", "image/bmp"].includes(document.mimeType)) && <GedZoneViewer key={`view:${document.versionId}`} documentId={document.id} versionId={document.versionId} mimeType={document.mimeType} readOnly onRecognized={() => {}} />}
       {bootstrap.capabilities.edit && <div className="flex flex-wrap gap-2"><button disabled={busy || Boolean(document.checkoutOwnerId)} className={styles.dialogButton} onClick={() => void act("checkout")}>Retirar para edição (check-out)</button><button disabled={busy} className={styles.dialogButton} onClick={() => void act("index-document")}>Extrair texto / OCR / indexar</button></div>}
       {document.checkoutOwnerId && <p className="text-sm">{document.checkoutOwnerId === bootstrap.userId ? "Você reservou este documento para edição." : "Documento reservado por outro usuário."}</p>}
       {bootstrap.capabilities.edit && <GedFolderPicker disabled={busy || Boolean(document.checkoutOwnerId)} onSelect={folderId => void act("move-document", document.id, { folderId: folderId || "" })} />}
@@ -77,5 +81,6 @@ export function GedDocumentDetail({ initial, bootstrap }: { initial: GedDetail; 
       {bootstrap.capabilities.edit && <form className="grid max-w-xl gap-2 border-t pt-3" onSubmit={event => { event.preventDefault(); void act("sign-request", document.id, { signerIds: signers }); }}><h2 className="font-semibold">Assinaturas da versão homologada</h2><label>Signatários internos<select multiple required size={3} className="block w-full rounded border p-2" value={signers} onChange={event => setSigners(Array.from(event.target.selectedOptions).map(option => option.value))}>{bootstrap.users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label><button disabled={busy || document.editorialStatus !== "HOMOLOGADO"} className={styles.primaryButton}>Solicitar assinaturas na fila unificada</button><Link href="/assinatura-digital/pendentes" className="text-sm underline">Abrir minhas assinaturas pendentes</Link></form>}
     </section>}
     {tab === "ocr" && bootstrap.capabilities.edit && <GedZoneViewer key={document.versionId} documentId={document.id} versionId={document.versionId} mimeType={document.mimeType} onRecognized={() => void refresh()} />}
+    <GedDocumentManagement document={document} bootstrap={bootstrap} onChanged={() => refresh()} />
   </PageFrame>;
 }

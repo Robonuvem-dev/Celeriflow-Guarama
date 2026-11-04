@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-02T16:29:04.435Z",
+  "result": "PASS",
+  "layer": "READ_ONLY_DATABASE_SERVICES_AND_PDF_TEXT",
+  "year": 2025,
+  "holders": 198,
+  "months": 12,
+  "individualPdf": {
+    "bytes": 2072,
+    "pages": 1
+  },
+  "annualNet": "9393915.38",
+  "checks": [
+    "12 months per holder",
+    "annual net reconciliation",
+    "budget scope denied",
+    "personal ownership",
+    "unlinked user denied",
+    "municipal issuer and presentation"
+  ],
+  "uploads": 0,
+  "realPayments": false
+}

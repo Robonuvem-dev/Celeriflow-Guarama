@@ -171,9 +171,17 @@ export async function returnFiscalDocument(connection: DatabaseConnection, actor
     return createFiscalDocument(tx, actor, { orderId: request.orderId, kind: "DEVOLUCAO", employeeId: order.responsibleEmployeeId, title: `Termo de devolução ${order.orderNumber}`, payload: asJson({ requestId: request.id, description: request.description, documentId: request.receivedDocumentId, returnedTo: input.returnedTo, returnedAt: new Date() }) });
   });
 }
-export async function createFiscalAssessmentMap(connection: DatabaseConnection, actor: Actor, input: { orderId: string; competence: string; obligationType: "PRINCIPAL" | "ACESSORIA"; originalBase: number; assessedBase: number; rate: number; penaltyRate?: number; interestRate?: number; correctionRate?: number; discountRate?: number }) {
+export async function createFiscalAssessmentMap(connection: DatabaseConnection, actor: Actor, input: { orderId: string; competence: string; obligationType: "PRINCIPAL" | "ACESSORIA"; originalBase: number; assessedBase: number; rate: number; penaltyRate?: number; interestRate?: number; correctionRate?: number; discountRate?: number; manualPenalty?: number; manualInterest?: number; manualCorrection?: number }) {
   competenceDate(input.competence);
   const calculation = calculateFiscalAssessment(input);
+  for (const [field, value] of [["penalty", input.manualPenalty], ["interest", input.manualInterest], ["correction", input.manualCorrection]] as const) {
+    if (value === undefined) continue;
+    const amount = new Decimal(String(value));
+    if (!amount.isFinite() || amount.lessThan(0)) throw new TributarioS7Error("Acréscimo manual inválido.");
+    calculation[field] = amount.toDecimalPlaces(2);
+  }
+  calculation.total = calculation.principal.plus(calculation.penalty).plus(calculation.interest).plus(calculation.correction).minus(calculation.discount).toDecimalPlaces(2);
+  if (calculation.total.lessThan(0)) throw new TributarioS7Error("Desconto excede o valor devido.");
   return withDatabaseTransaction(connection, async tx => {
     await lockedOrder(tx, input.orderId);
     const [totals] = await tx.select({ total: count() }).from(fiscalAssessmentMaps).where(and(eq(fiscalAssessmentMaps.orderId, input.orderId), eq(fiscalAssessmentMaps.obligationType, input.obligationType)));
@@ -213,6 +221,8 @@ export async function issueSeizureTerm(connection: DatabaseConnection, actor: Ac
 export async function closeFiscalOrder(connection: DatabaseConnection, actor: Actor, input: { orderId: string; result: string }) {
   return withDatabaseTransaction(connection, async tx => {
     const order = await lockedOrder(tx, input.orderId);
+    if (!actor.employeeId || actor.employeeId !== order.responsibleEmployeeId) throw new TributarioS7Error("Somente o responsável pela fiscalização pode encerrar a ordem.");
+    if (!input.result.trim()) throw new TributarioS7Error("Informe a justificativa do encerramento.");
     const [tiaf] = await tx.select({ id: fiscalDocuments.id }).from(fiscalDocuments).where(and(eq(fiscalDocuments.orderId, order.id), eq(fiscalDocuments.documentKind, "TIAF"))).limit(1);
     const [map] = await tx.select({ id: fiscalAssessmentMaps.id }).from(fiscalAssessmentMaps).where(and(eq(fiscalAssessmentMaps.orderId, order.id), eq(fiscalAssessmentMaps.status, "FINALIZADO"))).limit(1);
     if (!tiaf || !map) throw new TributarioS7Error("Emita o TIAF e finalize ao menos um mapa antes do encerramento.");

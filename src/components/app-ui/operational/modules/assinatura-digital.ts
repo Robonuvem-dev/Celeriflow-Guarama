@@ -6,6 +6,10 @@ export const operationalModules: OperationalModuleConfig[] = [{
   navigation: digitalSignatureNavigation,
   routes: [
     { pathname: "/assinatura-digital/acervo", title: "Documentos e pastas" },
+    { pathname: "/assinatura-digital/origens", title: "Origens documentais internas" },
+    { pathname: "/assinatura-digital/gestao", title: "Administração documental" },
+    { pathname: "/assinatura-digital/calendario", title: "Calendário documental" },
+    { pathname: "/assinatura-digital/meu-painel", title: "Meu painel documental" },
     { pathname: "/assinatura-digital/acervo/integrados", title: "Acervo integrado dos módulos" },
     { pathname: "/assinatura-digital/modelos/anteriores", title: "Cadastros de modelos anteriores" },
     { pathname: "/assinatura-digital/pesquisa", title: "Pesquisa avançada" },

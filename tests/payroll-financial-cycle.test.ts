@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
 import { approveExpenseRequest, createExpenseRequest, createRevenue, getBankAccountBalance } from "../src/lib/financeiro";
 import { commitPayrollExpenseRequests, settlePayrollCommitments, payPayrollSettlements, concludePayrollFinanceCycle, reversePayrollCommitments } from "../src/lib/rh/finance-bridge";
@@ -15,12 +15,19 @@ import { reconciliationTreasuryMovements as treasuryMovements } from "../src/db/
 import { Decimal } from "../src/db/decimal";
 import { requiredPersonnelRow } from "./helpers/personnel-financial-regression-queries";
 import { postgresError } from "./helpers/postgres-assertion";
+import { preparePersonnelFinanceIdentity } from "./helpers/personnel-finance-identity";
+import { assertFinancialPersonnelOriginAccess } from "../src/lib/rh/financial-origin-access";
 
 for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jurisdiction}: folha empenha todo o plano em lote nativo; falha tardia reverte reserva, nota, partida e cota`, async () => {
   const mode = process.env.CELERIFLOW_ACCOUNTING_MODE;
   process.env.CELERIFLOW_ACCOUNTING_MODE = "POC";
   const f = await createPlanningExecutionFixture(2026, 2, jurisdiction);
   try {
+    await preparePersonnelFinanceIdentity(f.db);
+    await f.db.execute(sql`UPDATE "Usuario" SET ativo=false WHERE id='ana'`);
+    await assert.rejects(() => assertFinancialPersonnelOriginAccess(f.db, f.actor, { employeeId: "servidora-ana" }), /identidade ativa/);
+    await f.db.execute(sql`UPDATE "Usuario" SET ativo=true WHERE id='ana'`);
+    await assertFinancialPersonnelOriginAccess(f.db, f.actor, { employeeId: "servidora-ana" });
     const connection = f.connection;
     const db = connection.db;
     await requiredPersonnelRow(db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano")).returning());

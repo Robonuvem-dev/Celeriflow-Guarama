@@ -3,10 +3,13 @@ import type { ModuleNavGroup } from "@/components/app-ui/erp/ModuleShell";
 export const digitalSignatureNavigation: ModuleNavGroup[] = [
   { title: "Acervo e gestão documental", items: [
     { title: "Painel", href: "/assinatura-digital", icon: "layoutDashboard", exact: true },
+    { title: "Meu painel documental", href: "/assinatura-digital/meu-painel", icon: "layoutDashboard" },
+    { title: "Calendário documental", href: "/assinatura-digital/calendario", icon: "clipboardCheck" },
     { title: "Documentos e pastas", href: "/assinatura-digital/acervo", icon: "folder" },
     { title: "Pesquisa avançada", href: "/assinatura-digital/pesquisa", icon: "search" },
     { title: "Pastas inteligentes", href: "/assinatura-digital/pastas-inteligentes", icon: "folderOpen" },
     { title: "Importações e lotes", href: "/assinatura-digital/importacoes", icon: "send" },
+    { title: "Origens internas", href: "/assinatura-digital/origens", icon: "fileText" },
     { title: "OCR e indexação", href: "/assinatura-digital/processamento", icon: "fileText" },
     { title: "Minhas tarefas", href: "/assinatura-digital/tarefas", icon: "clipboardCheck" },
     { title: "Fluxos documentais", href: "/assinatura-digital/fluxos", icon: "workflow" },
@@ -24,6 +27,7 @@ export const digitalSignatureNavigation: ModuleNavGroup[] = [
     { title: "Registros e documentos", href: "/assinatura-digital/registros", icon: "history" },
   ] },
   { title: "Configuração", items: [
+    { title: "Administração GED", href: "/assinatura-digital/gestao", icon: "settings2" },
     { title: "Integrações", href: "/assinatura-digital/integracoes", icon: "settings2" },
   ] },
   { title: "Solicitações dos módulos", items: [

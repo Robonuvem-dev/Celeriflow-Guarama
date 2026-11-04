@@ -29,6 +29,7 @@ const reading = z.string().regex(/^\d{1,10}(\.\d{1,3})?$/, "Leitura inválida.")
 const optionalReading = z.union([z.literal(""), reading]).optional().transform(v => v || null);
 const edit = { id: z.string().optional(), version: z.string().optional() };
 const base = { requestId: z.uuid() };
+const optionalYear = z.string().optional().transform(v => v ? Number(v) : null).refine(v => v === null || Number.isInteger(v) && v >= 1900 && v <= 2100, "Ano inválido.");
 
 export const fleetMutationSchema = z.discriminatedUnion("kind", [
   z.object({ ...base, kind: z.literal("unit"), data: z.object({ ...edit,
@@ -37,6 +38,7 @@ export const fleetMutationSchema = z.discriminatedUnion("kind", [
     renavam: z.string().trim().optional().transform(v => v || null).refine(v => !v || /^\d{9,11}$/.test(v), "RENAVAM deve ter 9 a 11 dígitos."),
     brand: optionalText, model: optionalText, year: z.string().optional().transform(v => v ? Number(v) : null).refine(v => v === null || (Number.isInteger(v) && v >= 1900 && v <= 2100), "Ano inválido."),
     assetId: optionalText, responsibleId: optionalText, parentId: optionalText, notes: optionalNote,
+    rntrc: z.string().trim().max(30).optional().transform(v => v || null), manufactureYear: optionalYear, modelYear: optionalYear,
   }).strict() }).strict(),
   z.object({ ...base, kind: z.literal("route"), data: z.object({ ...edit, code: text, name: text, origin: text, destination: text, itinerary: description, departmentId: text, active: z.enum(["true", "false"]).transform(v => v === "true") }).strict() }).strict(),
   z.object({ ...base, kind: z.literal("usage"), data: z.object({ unitId: text, routeId: optionalText, employeeId: optionalText, driverId: optionalText,

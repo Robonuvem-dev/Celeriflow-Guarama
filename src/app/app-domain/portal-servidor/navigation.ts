@@ -20,6 +20,8 @@ export const portalServidorNavigation: ModuleNavGroup[] = [
   {
     title: "Consultas",
     items: [
+      { title: "Locais de atendimento", href: "/portal-servidor/atendimento", icon: "mapPin" },
+      { title: "Normas e manuais", href: "/portal-servidor/biblioteca", icon: "fileText" },
       { title: "Emissões funcionais", href: "/portal-servidor/emissoes", icon: "fileText" },
       { title: "Documentos e declarações", href: "/portal-servidor/documentos-funcionais", icon: "fileSignature" },
       { title: "Meus relatórios", href: "/portal-servidor/relatorios", icon: "fileText" },

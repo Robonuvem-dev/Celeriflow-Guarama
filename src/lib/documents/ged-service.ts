@@ -15,7 +15,9 @@ import { centralRecords } from "@/db/schema/signature-central";
 import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import { insertInternalNotifications } from "@/db/repositories/platform/notifications";
 import { requireManagedDocument } from "@/db/repositories/documents/ged";
-import { canUseGed } from "./ged-access";
+import { canUseGed, requireGedObject, gedObjectScope, gedEntryScope } from "./ged-access";
+import { gedMetadata, gedTypeDefinitions } from "@/db/schema/ged-poc";
+import { validateIndexValues } from "./ged-admin-policy";
 import { createPublicValidationCode, snapshotRetentionMonths } from "./document-flow-policy";
 import { fillGedTemplate, gedQuerySchema, gedStages, gedStageLabels, gedZoneSchema, normalizeGedText, templateMarkers, type GedCapability } from "./ged-policy";
 import { extractGedText, gedUploadPath, inspectGedBytes, readGedBytes, requestGedOcr } from "./ged-storage";
@@ -43,11 +45,13 @@ async function lockDocument(tx: DatabaseTransaction, id: string) {
 }
 async function audit(tx: DatabaseTransaction, context: AppContext, targetId: string, kind: string) {
   await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: "ADMINISTRATIVE_MUTATION", targetType: `GED_${kind}`, targetId });
+  await tx.execute(sql`INSERT INTO "GedActivity"(id,"documentId","actorId",kind,detail) SELECT ${randomUUID()},e."documentId",${context.user.id},${kind},jsonb_build_object('target',${targetId}::text) FROM "GedEntry" e WHERE e."documentId"=${targetId} OR e."documentId" IN (SELECT "documentId" FROM "DocumentVersion" WHERE id=${targetId}) OR e."documentId" IN (SELECT "documentId" FROM "GedReview" WHERE id=${targetId})`);
+  if (kind === "IMPORT" || kind === "CHECKIN") await tx.execute(sql`INSERT INTO "GedEventQueue"(id,"documentId",event) VALUES(${randomUUID()},${targetId},${kind})`);
+  if (kind === "REVIEW_DECISION") await tx.execute(sql`INSERT INTO "GedEventQueue"(id,"documentId",event) SELECT ${randomUUID()},e."documentId",'HOMOLOGATED' FROM "GedEntry" e JOIN "GedReview" r ON r."documentId"=e."documentId" WHERE r.id=${targetId} AND e."editorialStatus"='HOMOLOGADO'`);
 }
 async function checkFolder(context: AppContext, folderId: string | null, tx = context.database ?? db) {
   if (!folderId) return;
-  const [folder] = await tx.select().from(gedFolderAccess).where(eq(gedFolderAccess.folderId, folderId));
-  if (!folder || (folder.ownerId !== context.user.id && (!folder.departmentId || folder.departmentId !== context.user.departmentId) && context.user.profileCode !== "SYSTEM_ADMINISTRATOR")) throw new Error("Pasta não encontrada ou fora do seu setor.");
+  await requireGedObject(context, "folder", folderId, "import", tx);
 }
 
 export const gedUploadSchema = z.object({
@@ -55,6 +59,7 @@ export const gedUploadSchema = z.object({
   classCode: z.string().min(1).max(100), folderId: z.string().max(100).nullable().default(null),
   folderPath: z.array(z.string().trim().min(1).max(150)).max(20).default([]),
   legacyReference: z.string().max(300).default(""), checkinDocumentId: z.string().max(100).nullable().default(null),
+  indexValues: z.record(z.string(), z.unknown()).default({}),
 });
 export async function prepareGedUpload(context: AppContext, raw: unknown) {
   const input = gedUploadSchema.parse(raw);
@@ -79,13 +84,17 @@ export async function prepareGedUpload(context: AppContext, raw: unknown) {
     });
   }
   if (input.checkinDocumentId) {
+    await requireGedObject(context, "document", input.checkinDocumentId, "edit");
     const document = await requireManagedDocument(context, input.checkinDocumentId);
     if (document.checkoutOwnerId !== context.user.id) throw new Error("Retire o documento para edição antes do check-in.");
   }
   const pathname = gedUploadPath(context.user.id, input.id, input.filename);
-  await (context.database ?? db).insert(gedUploads).values({ id: input.id, batchId: input.batchId, filename: input.filename, title: input.title, classCode: input.classCode, legacyReference: input.legacyReference, checkinDocumentId: input.checkinDocumentId, folderId, ownerId: context.user.id, pathname }).onConflictDoNothing();
+  const definitionRows = input.checkinDocumentId ? { rows: [] } : await (context.database ?? db).execute<{ id: string; fields: Parameters<typeof validateIndexValues>[0] }>(sql`SELECT t.id,t.fields FROM "GedTypeDefinition" t JOIN "DocumentClass" c ON c.id=t."classId" WHERE c.code=${input.classCode} ORDER BY t.version DESC LIMIT 1`);
+  const definition = definitionRows.rows[0]; const indexValues = validateIndexValues(definition?.fields ?? [], input.indexValues);
+  await (context.database ?? db).insert(gedUploads).values({ id: input.id, batchId: input.batchId, filename: input.filename, title: input.title, classCode: input.classCode, legacyReference: input.legacyReference, checkinDocumentId: input.checkinDocumentId, folderId, ownerId: context.user.id, pathname, indexValues, definitionId: definition?.id ?? null }).onConflictDoNothing();
   const [saved] = await (context.database ?? db).select().from(gedUploads).where(eq(gedUploads.id, input.id));
-  if (!saved || saved.ownerId !== context.user.id || saved.pathname !== pathname || saved.title !== input.title || saved.classCode !== input.classCode || saved.folderId !== folderId || saved.checkinDocumentId !== input.checkinDocumentId || saved.batchId !== input.batchId || saved.legacyReference !== input.legacyReference) throw new Error("A chave de upload já pertence a outra operação.");
+  const canonical = (value: Record<string, unknown>) => JSON.stringify(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
+  if (!saved || saved.ownerId !== context.user.id || saved.pathname !== pathname || saved.title !== input.title || saved.classCode !== input.classCode || saved.folderId !== folderId || saved.checkinDocumentId !== input.checkinDocumentId || saved.batchId !== input.batchId || saved.legacyReference !== input.legacyReference || canonical(saved.indexValues) !== canonical(indexValues)) throw new Error("A chave de upload já pertence a outra operação.");
   return saved;
 }
 
@@ -120,20 +129,22 @@ export async function confirmGedUpload(context: AppContext, id: string, url: str
   if (!stored || stored.blob.pathname !== upload.pathname) throw new Error("Arquivo não pertence ao upload registrado.");
   const inspected = await inspectGedBytes(upload.filename, bytes);
   await checkFolder(context, upload.folderId);
-  return transact(context, async tx => {
+  const confirmed = await transact(context, async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`GED_UPLOAD:${id}`}))`);
     const [current] = await tx.select().from(gedUploads).where(eq(gedUploads.id, id)).for("update");
     if (current.documentId) return { documentId: current.documentId };
     let documentId: string;
     let versionId: string;
     if (upload.checkinDocumentId) {
+      await requireGedObject(context, "document", upload.checkinDocumentId, "edit", tx);
       if (comment.trim().length < 3) throw new Error("Informe o comentário do check-in.");
       await lockDocument(tx, upload.checkinDocumentId);
       const document = await requireManagedDocument(context, upload.checkinDocumentId, tx);
       const [checkout] = await tx.select().from(gedCheckouts).where(and(eq(gedCheckouts.documentId, document.id), isNull(gedCheckouts.closedAt))).for("update");
       if (!checkout || checkout.ownerId !== context.user.id || checkout.versionId !== document.versionId) throw new Error("Reserva de edição inválida ou versão alterada.");
       const [review] = await tx.select().from(gedReviews).where(and(eq(gedReviews.documentId, document.id), eq(gedReviews.status, "ACTIVE")));
-      if (review || document.versionStatus === "PENDING_SIGNATURE") throw new Error("Finalize o fluxo/assinaturas pendentes antes de devolver nova versão.");
+      const graphical = await tx.execute(sql`SELECT 1 FROM "GedFlowRun" WHERE "documentId"=${document.id} AND status='ACTIVE'`);
+      if (review || graphical.rows.length || document.versionStatus === "PENDING_SIGNATURE") throw new Error("Finalize o fluxo/assinaturas pendentes antes de devolver nova versão.");
       const [version] = await tx.insert(documentVersions).values({ documentId: document.id, versionNumber: document.versionNumber + 1, fileUrl: url, hashSha256: inspected.hashSha256, publicValidationCode: createPublicValidationCode(), status: "FINAL" }).returning({ id: documentVersions.id });
       await tx.update(documents).set({ fileUrl: url, status: "Válido" }).where(eq(documents.id, document.id));
       await tx.update(gedEntries).set({ filename: upload.filename, mimeType: inspected.mimeType, byteLength: inspected.byteLength, editorialStatus: "RASCUNHO" }).where(eq(gedEntries.documentId, document.id));
@@ -142,10 +153,12 @@ export async function confirmGedUpload(context: AppContext, id: string, url: str
     } else {
       const [documentClass] = await tx.select().from(documentClasses).where(and(eq(documentClasses.code, upload.classCode), eq(documentClasses.isActive, true)));
       if (!documentClass) throw new Error("Selecione uma classe documental ativa.");
-      const retention = await retentionMonths(tx);
+      const [definition] = upload.definitionId ? await tx.select().from(gedTypeDefinitions).where(eq(gedTypeDefinitions.id, upload.definitionId)).limit(1) : [];
+      const retention = definition?.policy.retentionMonths ?? await retentionMonths(tx);
       const [document] = await tx.insert(documents).values({ title: upload.title, documentType: "Arquivo", fileUrl: url, documentClassId: documentClass.id, folderId: upload.folderId, status: "Válido", retentionMonths: retention }).returning({ id: documents.id });
       const [version] = await tx.insert(documentVersions).values({ documentId: document.id, versionNumber: 1, fileUrl: url, hashSha256: inspected.hashSha256, publicValidationCode: createPublicValidationCode(), status: "FINAL" }).returning({ id: documentVersions.id });
       await tx.insert(gedEntries).values({ documentId: document.id, ownerId: context.user.id, departmentId: context.user.departmentId, filename: upload.filename, mimeType: inspected.mimeType, byteLength: inspected.byteLength, legacyReference: upload.legacyReference });
+      await tx.insert(gedMetadata).values({ documentId: document.id, definitionId: definition?.id ?? null, values: upload.indexValues, responsibleId: context.user.id, alertDays: definition?.policy.alertDays ?? 30, validUntil: definition?.policy.validityDays ? new Date(Date.now() + definition.policy.validityDays * 86400000) : null });
       documentId = document.id; versionId = version.id;
     }
     await tx.insert(gedJobs).values({ versionId }).onConflictDoNothing();
@@ -154,14 +167,20 @@ export async function confirmGedUpload(context: AppContext, id: string, url: str
     await audit(tx, context, documentId, upload.checkinDocumentId ? "CHECKIN" : "IMPORT");
     return { documentId };
   });
+  const { scheduleGedVercelQueue } = await import("./ged-vercel-dispatch");
+  scheduleGedVercelQueue();
+  return confirmed;
 }
 
 export async function checkoutGed(context: AppContext, id: string, cancel = false) {
   authorize(context, "edit");
+  await requireGedObject(context, "document", id, "edit");
   return transact(context, async tx => {
     await lockDocument(tx, id);
     const document = await requireManagedDocument(context, id, tx);
     const [current] = await tx.select().from(gedCheckouts).where(and(eq(gedCheckouts.documentId, id), isNull(gedCheckouts.closedAt)));
+    const customFlow = await tx.execute(sql`SELECT 1 FROM "GedFlowRun" WHERE "documentId"=${id} AND status='ACTIVE'`);
+    if (customFlow.rows.length && !cancel) throw new Error("Conclua o fluxo gráfico antes de editar.");
     if (cancel) {
       if (!current || current.ownerId !== context.user.id) throw new Error("Somente o responsável pode cancelar a reserva.");
       await tx.update(gedCheckouts).set({ closedAt: new Date(), comment: "Reserva cancelada" }).where(eq(gedCheckouts.id, current.id));
@@ -189,6 +208,7 @@ export async function createGedFolder(context: AppContext, name: string, parentI
 }
 export async function moveGedFolder(context: AppContext, id: string, parentId: string | null, name: string) {
   authorize(context, "edit");
+  await requireGedObject(context, "folder", id, "edit");
   await checkFolder(context, id); await checkFolder(context, parentId);
   return transact(context, async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('GED_FOLDER_TREE'))`);
@@ -201,15 +221,18 @@ export async function moveGedFolder(context: AppContext, id: string, parentId: s
   });
 }
 export async function listManagedFolders(context: AppContext, parentId: string | null) {
-  const result = await (context.database ?? db).execute<{ id: string; name: string; parentId: string | null; children: number }>(sql`
-    SELECT f.id,f.name,f."parentId",(SELECT count(*)::int FROM "Folder" child JOIN "GedFolderAccess" ca ON ca."folderId"=child.id WHERE child."parentId"=f.id AND (ca."ownerId"=${context.user.id} OR (ca."departmentId" IS NOT NULL AND ca."departmentId"=${context.user.departmentId}) OR ${context.user.profileCode === "SYSTEM_ADMINISTRATOR"})) AS children
+  const result = await (context.database ?? db).execute<{ id: string; name: string; parentId: string | null; children: number; files: number; totalFiles: number }>(sql`
+    SELECT f.id,f.name,f."parentId",(SELECT count(*)::int FROM "Folder" child JOIN "GedFolderAccess" ca ON ca."folderId"=child.id WHERE child."parentId"=f.id AND ${gedObjectScope(context, "folder", sql`child.id`, "read")}) AS children,
+    (SELECT count(*)::int FROM "Document" d JOIN "GedEntry" e ON e."documentId"=d.id WHERE d."folderId"=f.id AND NOT e.archived AND ${gedEntryScope(context)}) AS files,
+    (WITH RECURSIVE branch AS (SELECT f.id UNION ALL SELECT c.id FROM "Folder" c JOIN branch b ON c."parentId"=b.id) SELECT count(*)::int FROM "Document" d JOIN "GedEntry" e ON e."documentId"=d.id WHERE d."folderId" IN (SELECT id FROM branch) AND NOT e.archived AND ${gedEntryScope(context)}) AS "totalFiles"
     FROM "Folder" f JOIN "GedFolderAccess" a ON a."folderId"=f.id WHERE ${parentId ? sql`f."parentId"=${parentId}` : sql`f."parentId" IS NULL`}
-      AND (a."ownerId"=${context.user.id} OR (a."departmentId" IS NOT NULL AND a."departmentId"=${context.user.departmentId}) OR ${context.user.profileCode === "SYSTEM_ADMINISTRATOR"}) ORDER BY f.name,f.id`);
+      AND ${gedObjectScope(context, "folder", sql`f.id`, "read")} ORDER BY f.name,f.id`);
   return result.rows;
 }
 
 export async function deleteManagedFolder(context: AppContext, id: string) {
   authorize(context, "edit");
+  await requireGedObject(context, "folder", id, "delete");
   return transact(context, async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('GED_FOLDER_TREE'))`);
     await checkFolder(context, id, tx);
@@ -224,6 +247,7 @@ export async function deleteManagedFolder(context: AppContext, id: string) {
 
 export async function moveManagedDocument(context: AppContext, id: string, folderId: string | null) {
   authorize(context, "edit");
+  await requireGedObject(context, "document", id, "edit");
   return transact(context, async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('GED_FOLDER_TREE'))`);
     await lockDocument(tx, id);
@@ -241,6 +265,7 @@ async function notifyStage(tx: DatabaseTransaction, context: AppContext, reviewI
 }
 export async function startGedReview(context: AppContext, documentId: string, raw: unknown, dueAt: string) {
   authorize(context, "edit");
+  await requireGedObject(context, "document", documentId, "edit");
   const assignments = z.object({ ELABORACAO: z.array(z.string().min(1)).min(1).max(20), CONSENSO: z.array(z.string().min(1)).min(1).max(20), APROVACAO: z.array(z.string().min(1)).min(1).max(20), HOMOLOGACAO: z.array(z.string().min(1)).min(1).max(20) }).parse(raw);
   const due = z.coerce.date().parse(dueAt);
   if (due.getTime() <= Date.now()) throw new Error("O prazo precisa estar no futuro.");
@@ -250,6 +275,8 @@ export async function startGedReview(context: AppContext, documentId: string, ra
   return transact(context, async tx => {
     await lockDocument(tx, documentId);
     const document = await requireManagedDocument(context, documentId, tx);
+    const flow = await tx.execute(sql`SELECT 1 FROM "GedFlowRun" WHERE "documentId"=${documentId} AND status='ACTIVE'`);
+    if (flow.rows.length) throw new Error("Já existe fluxo gráfico ativo.");
     if (document.checkoutOwnerId || document.versionStatus !== "FINAL") throw new Error("O fluxo exige versão final sem reserva de edição.");
     const [review] = await tx.insert(gedReviews).values({ documentId, versionId: document.versionId, assignments, dueAt: due, createdById: context.user.id }).returning({ id: gedReviews.id });
     await tx.update(gedEntries).set({ editorialStatus: gedStages[0] }).where(eq(gedEntries.documentId, documentId));
@@ -264,6 +291,7 @@ export async function decideGedReview(context: AppContext, reviewId: string, dec
   return transact(context, async tx => {
     const [snapshot] = await tx.select().from(gedReviews).where(eq(gedReviews.id, reviewId));
     if (!snapshot) throw new Error("Fluxo não encontrado.");
+    await requireGedObject(context, "document", snapshot.documentId, "review", tx);
     await lockDocument(tx, snapshot.documentId);
     const [review] = await tx.select().from(gedReviews).where(eq(gedReviews.id, reviewId)).for("update");
     const document = await requireManagedDocument(context, review.documentId, tx);
@@ -292,17 +320,50 @@ export async function decideGedReview(context: AppContext, reviewId: string, dec
 }
 
 export async function processGedVersion(context: AppContext, versionId: string) {
-  authorize(context, "edit");
   const database = context.database ?? db;
   const [version] = await database.select().from(documentVersions).where(eq(documentVersions.id, versionId));
   if (!version) throw new Error("Versão não encontrada.");
   const document = await requireManagedDocument(context, version.documentId);
-  if (version.id !== document.versionId) throw new Error("Reprocesse a versão vigente do documento.");
+  const [versionFile] = await database.select().from(gedVersionFiles).where(eq(gedVersionFiles.versionId, versionId));
+  const filename = versionFile?.filename ?? document.filename;
+  const mimeType = versionFile?.mimeType ?? document.mimeType;
+  if (document.ownerId === context.user.id && canUseGed(context.user, "import")) await requireGedObject(context, "document", document.id, "import");
+  else await requireGedObject(context, "document", document.id, "edit");
   const token = randomUUID();
-  const lease = await database.execute<{ id: string }>(sql`UPDATE "GedProcessingJob" SET status='RUNNING',attempts=attempts+1,"leaseToken"=${token},"leaseUntil"=now()+interval '2 minutes',error=NULL,"updatedAt"=now() WHERE "versionId"=${versionId} AND (status<>'RUNNING' OR "leaseUntil"<now()) RETURNING id`);
+  const lease = await database.execute<{ id: string }>(sql`UPDATE "GedProcessingJob" SET status='RUNNING',attempts=attempts+1,"leaseToken"=${token},"leaseUntil"=now()+interval '10 minutes',error=NULL,"updatedAt"=now() WHERE "versionId"=${versionId} AND (status<>'RUNNING' OR "leaseUntil"<now()) RETURNING id`);
   if (!lease.rows.length) throw new Error("Esta versão já está sendo processada.");
   try {
-    const pages = await extractGedText(document.filename, await readGedBytes(version.fileUrl, version.hashSha256));
+    const operations = await database.execute<{ value: { semantic?: boolean; pdfaValidation?: boolean } }>(sql`SELECT value FROM "GedSetting" WHERE key='operations'`);
+    const step = async (name: string, status: string) => { await database.execute(sql`UPDATE "GedProcessingJob" SET steps=steps||jsonb_build_object(${name}::text,${status}::text),"leaseUntil"=CASE WHEN status='RUNNING' THEN now()+interval '10 minutes' ELSE "leaseUntil" END,"updatedAt"=now() WHERE "versionId"=${versionId} AND "leaseToken"=${token}`); };
+    await step("original", "RUNNING");
+    const bytes = await readGedBytes(version.fileUrl, version.hashSha256);
+    await step("original", "SUCCEEDED");
+    await step("extraction", "RUNNING");
+    const pages = await extractGedText(filename, bytes);
+    await step("extraction", "SUCCEEDED");
+    const { embedGedText, searchableGedPdf, saveGedArtifact, imagesToGedPdf, convertGedOffice } = await import("./ged-processing");
+    await step("derivatives", "RUNNING");
+    if (pages.some(page => page.words?.length)) {
+      const pdfBytes = mimeType === "application/pdf" ? bytes : mimeType.startsWith("image/") ? await imagesToGedPdf([bytes]) : await convertGedOffice(filename, bytes);
+      await saveGedArtifact(context, document.id, versionId, "searchable", await searchableGedPdf(pdfBytes, "application/pdf", pages));
+    } else if (mimeType.startsWith("image/")) {
+      await saveGedArtifact(context, document.id, versionId, "converted", await imagesToGedPdf([bytes]));
+    } else if (!["application/pdf", "text/plain"].includes(mimeType)) {
+      await saveGedArtifact(context, document.id, versionId, "converted", await convertGedOffice(filename, bytes));
+    }
+    await step("derivatives", "SUCCEEDED");
+    if (operations.rows[0]?.value.pdfaValidation && mimeType === "application/pdf") {
+      const { validateGedPdfA } = await import("./ged-processing");
+      await step("pdfa", "RUNNING"); const report = await validateGedPdfA(bytes);
+      await database.execute(sql`INSERT INTO "GedActivity"(id,"documentId","actorId",kind,detail) VALUES(${randomUUID()},${document.id},${context.user.id},'PDFA_VALIDATION',${JSON.stringify(report)}::jsonb)`);
+      await step("pdfa", report.compliant ? "COMPLIANT" : "NONCOMPLIANT");
+    }
+    const embeddings: Array<{ page: number; model: string; vector: number[] }> = [];
+    if (operations.rows[0]?.value.semantic) {
+      for (const page of pages) { if (!page.text.trim()) continue; await step("semantic", "RUNNING"); embeddings.push({ page: page.page, ...await embedGedText(page.text) }); }
+      await step("semantic", "SUCCEEDED");
+    }
+    await step("index", "RUNNING");
     if (pages.reduce((n, p) => n + p.text.length, 0) > 2_000_000) throw new Error("Texto extraído excede o limite.");
     await transact(context, async tx => {
       const [job] = await tx.select().from(gedJobs).where(and(eq(gedJobs.versionId, versionId), eq(gedJobs.leaseToken, token))).for("update");
@@ -311,17 +372,23 @@ export async function processGedVersion(context: AppContext, versionId: string) 
         const [existing] = await tx.select().from(gedPages).where(and(eq(gedPages.versionId, versionId), eq(gedPages.page, page.page)));
         const text = page.text + (existing?.zones.length ? "\n" + existing.zones.map(zone => `${zone.label}: ${zone.text}`).join("\n") : "");
         await tx.insert(gedPages).values({ versionId, page: page.page, text, normalized: normalizeGedText(text), method: page.method }).onConflictDoUpdate({ target: [gedPages.versionId, gedPages.page], set: { text, normalized: normalizeGedText(text), method: page.method } });
+        await tx.execute(sql`UPDATE "GedTextPage" SET words=${JSON.stringify(page.words ?? [])}::jsonb WHERE "versionId"=${versionId} AND page=${page.page}`);
       }
+      if (operations.rows[0]?.value.semantic) await tx.execute(sql`DELETE FROM "GedEmbedding" WHERE "versionId"=${versionId}`);
+      for (const embedding of embeddings) await tx.execute(sql`INSERT INTO "GedEmbedding"("versionId",page,model,vector) VALUES(${versionId},${embedding.page},${embedding.model},${JSON.stringify(embedding.vector)}::jsonb) ON CONFLICT("versionId",page) DO UPDATE SET model=excluded.model,vector=excluded.vector`);
+      await tx.execute(sql`UPDATE "GedProcessingJob" SET steps=steps||'{"index":"SUCCEEDED"}'::jsonb WHERE id=${job.id}`);
       await tx.update(gedJobs).set({ status: "SUCCEEDED", leaseUntil: null, leaseToken: null, updatedAt: new Date() }).where(eq(gedJobs.id, job.id));
       await audit(tx, context, versionId, "INDEX");
     });
   } catch (error) {
     await database.update(gedJobs).set({ status: "FAILED", leaseUntil: null, error: error instanceof Error && !/query|constraint|postgres|password|token/i.test(error.message) ? error.message.slice(0, 300) : "Falha no processamento. Repita a operação.", updatedAt: new Date() }).where(and(eq(gedJobs.versionId, versionId), eq(gedJobs.leaseToken, token)));
+    await database.execute(sql`UPDATE "GedProcessingJob" SET "nextAttemptAt"=now()+least(attempts*attempts*30,3600)*interval '1 second' WHERE "versionId"=${versionId} AND "leaseToken"=${token}`);
     throw error;
   }
 }
 export async function recognizeGedZone(context: AppContext, documentId: string, raw: unknown) {
   authorize(context, "edit");
+  await requireGedObject(context, "document", documentId, "edit");
   const zone = gedZoneSchema.parse(raw);
   const document = await requireManagedDocument(context, documentId);
   const result = await requestGedOcr(await readGedBytes(document.fileUrl, document.hashSha256), document.mimeType, [zone.page], zone);
@@ -354,6 +421,7 @@ export async function saveGedTerm(context: AppContext, term: string, equivalents
 
 export async function requestGedSignatures(context: AppContext, id: string, signerIds: string[]) {
   authorize(context, "edit");
+  await requireGedObject(context, "document", id, "edit");
   return transact(context, async tx => {
     await lockDocument(tx, id);
     const document = await requireManagedDocument(context, id, tx);
@@ -384,7 +452,7 @@ export async function saveGedTemplate(context: AppContext, name: string, content
     return row;
   });
 }
-export async function generateGedTemplate(context: AppContext, templateId: string, values: Record<string, string>, classCode: string) {
+export async function generateGedTemplate(context: AppContext, templateId: string, values: Record<string, string>, classCode: string, indexValues: Record<string, unknown> = {}) {
   authorize(context, "import");
   const [template] = await (context.database ?? db).select().from(gedTemplates).where(eq(gedTemplates.id, templateId));
   if (!template || (template.ownerId !== context.user.id && (!template.departmentId || template.departmentId !== context.user.departmentId))) throw new Error("Modelo fora do seu escopo.");
@@ -393,7 +461,7 @@ export async function generateGedTemplate(context: AppContext, templateId: strin
   const bytes = await Packer.toBuffer(new Document({ sections: [{ children: text.split("\n").map(line => new Paragraph({ children: [new TextRun(line)] })) }] }));
   const id = randomUUID();
   const filename = `${template.name.replace(/[^\p{L}\p{N}._-]/gu, "-")}.docx`;
-  const upload = await prepareGedUpload(context, { id, batchId: randomUUID(), filename, title: template.name, classCode });
+  const upload = await prepareGedUpload(context, { id, batchId: randomUUID(), filename, title: template.name, classCode, indexValues });
   const { put } = await import("@vercel/blob");
   const blob = await put(upload.pathname, bytes, { access: "private", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", addRandomSuffix: false });
   const created = await confirmGedUpload(context, id, blob.url, "");
@@ -407,7 +475,7 @@ export async function readGedDetail(context: AppContext, id: string, requestedVe
   const [{ total }] = await database.select({ total: count() }).from(documentVersions).where(eq(documentVersions.documentId, id));
   const versionPage = Math.max(1, Math.min(requestedVersionPage, Math.max(1, Math.ceil(total / 20))));
   const [versions, pages, reviews] = await Promise.all([
-    database.select().from(documentVersions).where(eq(documentVersions.documentId, id)).orderBy(desc(documentVersions.versionNumber)).limit(20).offset((versionPage - 1) * 20),
+    database.select({ version: documentVersions, author: users.nome, comment: gedVersionFiles.comment }).from(documentVersions).leftJoin(gedVersionFiles, eq(gedVersionFiles.versionId, documentVersions.id)).leftJoin(users, eq(users.id, gedVersionFiles.authorId)).where(eq(documentVersions.documentId, id)).orderBy(desc(documentVersions.versionNumber)).limit(20).offset((versionPage - 1) * 20),
     database.select().from(gedPages).where(eq(gedPages.versionId, document.versionId)).orderBy(gedPages.page).limit(200),
     database.select().from(gedReviews).where(eq(gedReviews.documentId, id)).orderBy(desc(gedReviews.createdAt)).limit(1),
   ]);
@@ -419,7 +487,7 @@ export async function readGedDetail(context: AppContext, id: string, requestedVe
     filename: document.filename, mimeType: document.mimeType, byteLength: document.byteLength, origin: document.origin, legacyReference: document.legacyReference,
     folderId: document.folderId, folderName: document.folderName, versionId: document.versionId, versionNumber: document.versionNumber, hashSha256: document.hashSha256,
     versionStatus: document.versionStatus, checkoutOwnerId: document.checkoutOwnerId, createdAt: document.createdAt, page: document.page, snippet: document.snippet };
-  return { document: dto, versionPage, versionTotal: total, centralSignatures: central.map(s => ({ code: s.code, method: s.method, signedAt: s.signedAt?.toISOString() ?? "" })), versions: versions.map(v => ({ id: v.id, number: v.versionNumber, status: v.status, hash: v.hashSha256, createdAt: v.createdAt.toISOString(), code: v.publicValidationCode })),
+  return { document: dto, versionPage, versionTotal: total, centralSignatures: central.map(s => ({ code: s.code, method: s.method, signedAt: s.signedAt?.toISOString() ?? "" })), versions: versions.map(({ version: v, author, comment }) => ({ id: v.id, number: v.versionNumber, status: v.status, hash: v.hashSha256, createdAt: v.createdAt.toISOString(), code: v.publicValidationCode, author: author ?? "Origem integrada", comment: comment ?? "" })),
     pages: pages.map(p => ({ page: p.page, text: p.text, method: p.method, zones: p.zones })),
     review: review ? { id: review.id, stage: review.stage, status: review.status, dueAt: review.dueAt.toISOString(), assignments: review.assignments } : null,
     decisions: decisions.map(d => ({ stage: d.stage, userId: d.userId, decision: d.decision, comment: d.comment, createdAt: d.createdAt.toISOString() })) };

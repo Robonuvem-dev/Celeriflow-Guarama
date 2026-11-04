@@ -43,7 +43,8 @@ test("the new authority replays all 156 unmodified SQL sources, including four e
     const proved = set.historical.find(migration => migration.historicalProof);
     const provedReceipt = receiptRows.find(receipt => receipt.name === proved.name);
     assert.equal(provedReceipt.historical_provenance.installedChecksum, "5fdfa81973db5e6bab704e102550a52eac2dbd9773151eae576923e509194cbd");
-    assert.notEqual(provedReceipt.checksum, provedReceipt.historical_provenance.installedChecksum, "both local execution bytes and installed mixed-ending bytes are retained separately");
+    assert.equal(provedReceipt.checksum, proved.checksum, "execution checksum matches the actual checkout bytes, which may already match the installed variant");
+    assert.equal(provedReceipt.lf_checksum, provedReceipt.historical_provenance.normalizedSha256, "normalized execution bytes remain bound to the archived historical proof");
     await pg.query("UPDATE public._celeriflow_sql_migrations SET historical_provenance='{}'::jsonb WHERE name=$1", [proved.name]);
     await assert.rejects(runDatabaseMigrations(connection, set, { command: "deploy" }), /historical byte proof changed/);
     await pg.query("UPDATE public._celeriflow_sql_migrations SET historical_provenance=$1::jsonb WHERE name=$2", [JSON.stringify(proved.historicalProof), proved.name]);

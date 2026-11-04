@@ -10,6 +10,7 @@ import { withDatabaseTransaction, type DatabaseExecutor } from "@/db/transaction
 import { payrolls, payrollItems, hrPayrollRuns } from "@/db/schema/personnel-workforce";
 import { externalPayrollScopes } from "@/db/schema/personnel-external-operations";
 import { requirePayroll } from "@/db/repositories/personnel/workforce";
+import { assertPayrollBudgetScope } from "@/lib/rh/payroll-access";
 
 async function payrollHistory(tx: DatabaseExecutor, id: string) {
   const current = await requirePayroll(tx, id);
@@ -26,6 +27,7 @@ export async function saveFolha(formData: FormData) {
     payrollPeriod(competence);
     const type = String(formData.get("type") || "Mensal");
     if (!(HR_PAYROLL_TYPES as readonly string[]).includes(type)) throw new Error("Tipo de folha inválido.");
+    if (id) await assertPayrollBudgetScope(context, id);
     await withDatabaseTransaction(databaseConnection, async tx => {
       if (id) {
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:payroll:${id}`}))`);
@@ -47,6 +49,7 @@ export async function saveFolha(formData: FormData) {
 export async function deleteFolha(id: string) {
   const context = await getTenantContextForModuleOperation("RH", "delete");
   try {
+    await assertPayrollBudgetScope(context, id);
     await withDatabaseTransaction(databaseConnection, async tx => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`RH:payroll:${id}`}))`);
       await tx.select({ id: payrolls.id }).from(payrolls).where(eq(payrolls.id, id)).for("update");
@@ -67,6 +70,7 @@ export async function deleteFolha(id: string) {
 export async function processPayroll(payrollId: string) {
   const context = await getTenantContextForModuleOperation("RH", "update");
   try {
+    await assertPayrollBudgetScope(context, payrollId);
     const result = await postBenefitPayrollBatch(context, payrollId);
     if (result.status === "BLOCKED") return { success: false, error: `Integração bloqueada: ${result.blockers.join(" · ")}` };
     revalidatePath(`/rh/folha/${payrollId}/editar`);

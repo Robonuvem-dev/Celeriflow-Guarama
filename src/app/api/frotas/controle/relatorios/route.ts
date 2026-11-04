@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getTenantContextForModuleOperation, AccessError } from "@/lib/platform/tenant-context";
-import { buildFleetControlReport } from "@/lib/frotas/control-report";
+import { buildFleetControlReport, fleetControlReports } from "@/lib/frotas/control-report";
 import { FleetControlError } from "@/lib/frotas/control-access";
 import { renderFleetPdf } from "@/lib/frotas/report";
 import { createDefaultReportTemplate } from "@/lib/reports/report-template";
@@ -14,9 +14,10 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const context = await getTenantContextForModuleOperation("FROTAS", "issueReports"), query = new URL(request.url).searchParams;
-    const format = z.enum(["pdf", "xlsx", "csv", "txt", "print"]).parse(query.get("format") || "pdf"), documentType = z.enum(["authorization", "trip", "blankFuel", "blankTrip"]).optional().parse(query.get("documentType") || undefined);
+    const format = z.enum(["pdf", "xlsx", "csv", "txt", "print"]).parse(query.get("format") || "pdf"), documentType = z.enum(["authorization", "trip", "blankFuel", "blankTrip", "fineTerm"]).optional().parse(query.get("documentType") || undefined);
+    const report = z.enum(fleetControlReports).optional().parse(query.get("report") || undefined);
     const unitIds = query.get("unitIds")?.split(",").filter(Boolean); if (unitIds && (unitIds.length > 1000 || unitIds.some((id) => !/^[a-zA-Z0-9_-]{1,100}$/.test(id)))) throw new FleetControlError("Selecione até mil unidades válidas.");
-    const dataset = await buildFleetControlReport(context, { query: Object.fromEntries(query), documentType, documentId: query.get("documentId") || undefined, unitIds });
+    const dataset = await buildFleetControlReport(context, { query: Object.fromEntries(query), documentType, documentId: query.get("documentId") || undefined, unitIds, report });
     const institution = await fleetReportInstitution(fleetDatabase(context)), presentation = { institution, template: createDefaultReportTemplate(), emission: { issuedAt: new Date().toISOString(), issuedBy: context.user.name } };
     let body: string | Uint8Array, contentType: string;
     if (format === "pdf") { body = await renderFleetPdf(dataset, presentation); contentType = "application/pdf"; }

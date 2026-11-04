@@ -13,6 +13,7 @@ const navigation: ModuleNavGroup[] = [
       { title: "Caixa do setor", href: "/protocolos/processos", icon: "fileBox" },
       { title: "Acompanhamento", href: "/protocolos/acompanhamento", icon: "chartNoAxesCombined" },
       { title: "Buscar processo", href: "/protocolos/busca", icon: "fileSearch" },
+      { title: "Documentos no GED", href: "/assinatura-digital/origens?module=PROCESSOS", icon: "fileText" },
     ],
   },
   {

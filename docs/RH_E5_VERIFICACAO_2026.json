@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-11-04T00:24:10.141Z",
+  "result": "PASS",
+  "layer": "READ_ONLY_DATABASE_AND_REPORT_EXPORTS_NOT_VISUAL_OR_BANK_HOMOLOGATION",
+  "preserved": {
+    "holders": 198,
+    "runs": 19,
+    "statements": 3414
+  },
+  "original": {
+    "count": 594,
+    "fingerprint": "3d7da83e347a9af7801089cfb17fc48a"
+  },
+  "catalogReports": 131,
+  "unionReportRows": 0,
+  "unionExportsBytes": {
+    "CSV": 225,
+    "PDF": 1470,
+    "XLSX": 6758
+  },
+  "newPayments": 0,
+  "newPortalAccounts": 0,
+  "schemaMigrations": 0
+}

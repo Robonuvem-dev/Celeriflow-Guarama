@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Decimal } from "../src/db/decimal";
 import { createPlanningExecutionFixture } from "./helpers/planning-execution-fixture";
+import { preparePersonnelFinanceIdentity } from "./helpers/personnel-finance-identity";
 import { approveExpenseRequest, createExpenseRequest, createBudgetReservation, createCommitment, createSettlement, cancelSettlement, createRevenue, createPayment, updatePaymentStatus, reversePayment } from "../src/lib/financeiro";
 import { accountPayrollProvision } from "../src/lib/rh/provision-accounting";
 import { reversePayrollProvision } from "../src/lib/rh/payroll-provisions";
@@ -24,6 +25,7 @@ for (const jurisdiction of ["EXECUTIVE", "LEGISLATIVE"] as const) test(`P4 ${jur
   const connection = f.connection;
   const db = connection.db;
   try {
+    await preparePersonnelFinanceIdentity(db);
     await db.update(financialYears).set({ status: "Aberto" }).where(eq(financialYears.id, "ano"));
     await db.insert(payrolls).values({ id: "payroll-provision", competence: "03/2026" });
     await db.insert(hrPayrollRuns).values({ id: "run-provision", payrollId: "payroll-provision", requestKey: "provision-run", mode: "OFICIAL", scope: "PRODUCAO", status: "FECHADA", ruleSetId: "rules", snapshot: {}, gross: new Decimal("10"), deductions: new Decimal("0"), net: new Decimal("10"), employer: new Decimal("0"), actorId: "ana" });

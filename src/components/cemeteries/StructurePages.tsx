@@ -30,7 +30,7 @@ export async function StructureListPage({ search, occupancy = false }: { search:
   const context = new URLSearchParams({ ...values, page: String(filters.page) }).toString();
   return <OperationalListFrame label={config.title}
     actions={canPerformModuleOperation(c.user, "CEMITERIOS", "create") && <Link className={styles.newButton} href={`${path}/novo?${context}`}>Novo</Link>}
-    toolbar={<><form method="get" className={styles.searchForm}>
+    toolbar={<><Link className={styles.dialogButton} href={`/cemiterios/complementos?cemeteryId=${encodeURIComponent(filters.cemeteryId)}`}>Relatórios e mapa</Link><form method="get" className={styles.searchForm}>
       <input type="hidden" name="tipo" value={filters.tipo} /><input type="hidden" name="cemeteryId" value={filters.cemeteryId} /><input type="hidden" name="active" value={filters.active} /><input type="hidden" name="status" value={filters.status} />
       <input aria-label="Buscar estrutura" name="q" defaultValue={filters.q} className={styles.searchInput} /><button className={styles.dialogButton}>Consultar</button>
     </form><OperationalFilters activeCount={[filters.cemeteryId, filters.active, filters.status].filter(Boolean).length}><form method="get" className={styles.filterFields}>

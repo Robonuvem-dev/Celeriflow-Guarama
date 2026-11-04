@@ -15,7 +15,7 @@ export default async function DependentesPage(props: { searchParams?: Promise<{ 
   const context = await getTenantContextForModule("RH");
   const searchParams = await props.searchParams;
   const q = searchParams?.q || "";
-  const { total, pagination, dependents } = await readDependentsPage(context.database ?? db, { q, page: searchParams?.page });
+  const { total, pagination, dependents } = await readDependentsPage(context.database ?? db, { q, page: searchParams?.page, user: context.user });
   return <OperationalListFrame label="Dependentes"
     toolbar={<form action="/rh/dependentes" method="GET" className={styles.searchForm}><input name="q" aria-label="Buscar por dependente ou servidor" defaultValue={q} placeholder="Dependente ou servidor" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button><Link href="/rh/dependentes" className={styles.filterButton}>Limpar</Link></form>}
     pagination={<OperationalLinkPagination page={pagination.page} total={total} pathname="/rh/dependentes" values={{ q }} />}>

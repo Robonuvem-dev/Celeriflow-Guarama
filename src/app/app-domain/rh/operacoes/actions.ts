@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireValidCpf } from "@/lib/identifiers/brazilian-identifiers";
-import { getTenantContextForModuleOperation, canViewModule, canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
+import { getTenantContextForModule, getTenantContextForModuleOperation, canViewModule, canPerformModuleOperation, isSystemAdministrator } from "@/lib/platform/tenant-context";
 import { calculatePayrollRun, cancelPayrollRun, closePayrollRun, publishPayrollStatements, recordHrRightEntry, saveEmploymentContract, savePayrollMovement } from "@/lib/rh/workforce-service";
-import { acquireVacationRights, cancelVacationReservation, reserveVacationRight } from "@/lib/rh/vacation-rights";
+import { cancelVacationReservation, reserveVacationRight } from "@/lib/rh/vacation-rights";
 import { reserveMultipleVacationPeriods, cancelMultipleVacationPeriods } from "@/lib/rh/vacation-multiple-periods";
 import { acquireServiceRights, reserveServiceRight, cancelServiceReservation } from "@/lib/rh/service-rights";
 import { registerServiceTimeCredit, reverseServiceTimeCredit, postServiceTimeAllowance, reverseServiceTimeAllowance } from "@/lib/rh/service-time-allowance";
@@ -32,7 +32,7 @@ import { requestTravelAllowance, decideTravelAllowance, accountForTravelAllowanc
 import { registerPocPayment } from "@/lib/rh/poc-payment";
 import { configurePayrollPensions } from "@/lib/rh/pension-configuration";
 import { accountPayrollProvision } from "@/lib/rh/provision-accounting";
-import { applyPocEmploymentLifecycle } from "@/lib/rh/employment-lifecycle";
+import { applyPocEmploymentLifecycle, readmitEmployee } from "@/lib/rh/employment-lifecycle";
 import { dispatchTravelAllowanceExpense } from "@/lib/rh/travel-finance";
 import { openTravelAllowanceProcess } from "@/lib/rh/travel-process";
 import { requestMunicipalAdvance, submitAdvanceReport, reviewAdvanceReport, reopenAdvanceReport, receivePriorYearAdvanceRefund, receivePriorYearTravelRefund } from "@/lib/rh/municipal-advances";
@@ -47,8 +47,82 @@ import { employees } from "@/db/schema/administration";
 import { people } from "@/db/schema/people";
 import { revenues } from "@/db/schema/finance-revenues";
 import { hrConsignmentAgreements, hrConsignmentInstallments } from "@/db/schema/personnel-consignment";
+import { issueTimeCertificate } from "@/lib/rh/time-certificates";
+import { assertWorkforceInputAccess } from "@/lib/rh/workforce-input-access";
+import { issueRetirementAssessment } from "@/lib/rh/retirement-assessment-issuance";
+import { concedeRetirement } from "@/lib/rh/retirement-concession";
+import { processAutomaticRights } from "@/lib/rh/automatic-rights-processing";
+import { openDocumentedPersonalHistory } from "@/lib/rh/personal-history-opening";
+import { certifyHistoricalPayrollAccounting } from "@/lib/rh/payroll-accounting-evidence";
 
 export async function executeWorkforceOperation(command: string, values: Record<string, string>) {
+  try {
+    const context = await getTenantContextForModule("RH");
+    await assertWorkforceInputAccess(context.database ?? databaseConnection.db, context, command, values);
+    return await executeAuthorizedWorkforceOperation(command, values);
+  } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível autorizar a operação de pessoal." }; }
+}
+
+async function executeAuthorizedWorkforceOperation(command: string, values: Record<string, string>) {
+  if (command === "certificar-rateio-historico") {
+    try {
+      const context = await getTenantContextForModuleOperation("RH", "create");
+      const result = await certifyHistoricalPayrollAccounting(databaseConnection, context, values);
+      revalidatePath("/rh/relatorios"); revalidatePath("/rh/operacoes");
+      return { id: result.id, message: `Fonte documental de rateio certificada e selada. SHA-256: ${result.hash}`, error: "" };
+    } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível certificar o rateio histórico." }; }
+  }
+  if (command === "abrir-historico-cadastral") {
+    try {
+      const context = await getTenantContextForModuleOperation("RH", "create");
+      const result = await openDocumentedPersonalHistory(databaseConnection, context, values);
+      revalidatePath("/rh/relatorios"); revalidatePath("/rh/servidores");
+      return { id: result.id, message: "Abertura histórica documentada registrada, preservando as observações posteriores e as folhas encerradas.", error: "" };
+    } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível abrir o histórico cadastral documentado." }; }
+  }
+  if (command === "aposentadoria-conceder") {
+    try {
+      const context = await getTenantContextForModuleOperation("RH", "update");
+      const result = await concedeRetirement(databaseConnection, context, values);
+      revalidatePath("/rh/operacoes"); revalidatePath("/rh/atos"); revalidatePath("/rh/registros-funcionais");
+      return { id: result.id, message: "Concessão registrada com ato, memória emitida e enquadramento no vínculo próprio de aposentadoria.", error: "" };
+    } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível registrar a concessão de aposentadoria." }; }
+  }
+  if (command === "aposentadoria-emitir-memoria") {
+    try {
+      const context = await getTenantContextForModuleOperation("RH", "issueReports");
+      const result = await issueRetirementAssessment(databaseConnection, context, values);
+      revalidatePath("/rh/relatorios");
+      return { id: result.number, message: `Memória de concessão emitida. Benefício calculado: R$ ${result.amount}. Reprodução em RH → Relatórios.`, error: "" };
+    } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível emitir a memória de concessão." }; }
+  }
+  if (command === "readmitir-servidor") {
+    try {
+      const context = await getTenantContextForModuleOperation("RH", "create");
+      const result = await readmitEmployee(databaseConnection, context, values);
+      revalidatePath("/rh/operacoes"); revalidatePath("/rh/atos"); revalidatePath("/rh/servidores");
+      return { id: result.id, message: "Readmissão registrada com novo contrato e ato de pessoal.", error: "" };
+    } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível registrar a readmissão." }; }
+  }
+  if (command === "calcular-rescisao-direitos") {
+    try {
+      const context = await getTenantContextForModuleOperation("RH", "update");
+      await assertPayrollBudgetScope(context, values.payrollId);
+      const payroll = await requirePayroll(context.database ?? databaseConnection.db, values.payrollId);
+      if (payroll.type !== "Rescisão") throw new Error("Selecione uma folha do tipo Rescisão.");
+      const result = await calculatePayrollRun(databaseConnection, context.user.id, { payrollId: values.payrollId, requestKey: values.requestKey, contractIds: values.contractIds.split(/[\s,;]+/).filter(Boolean), mode: values.mode, scope: "DEMONSTRACAO", specialParameters: { terminationDate: values.terminationDate, terminationReason: values.terminationReason, reason: values.reason, ...(values.averageRuleId ? { averageRuleId: values.averageRuleId, averageFrom: values.averageFrom, averageUntil: values.averageUntil } : {}) } });
+      revalidatePath("/rh/operacoes");
+      return { id: result.id, message: "Rescisão calculada com direitos por motivo, data, frequência e saldos. Abra o cálculo para conferir a memória.", error: "" };
+    } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível calcular a rescisão." }; }
+  }
+  if (command === "certidao-tempo-emitir") {
+    try {
+      const context = await getTenantContextForModuleOperation("RH", "issueReports");
+      const result = await issueTimeCertificate(databaseConnection, context, values);
+      revalidatePath("/rh/relatorios");
+      return { id: result.number, message: "Certidão numerada emitida. Reprodução em RH → Relatórios → Certidões de tempo emitidas.", error: "" };
+    } catch (error) { return { error: error instanceof Error ? error.message : "Não foi possível emitir a certidão." }; }
+  }
   if (command === "diaria-estornar-restituicao-anterior") {
     try {
       const context = await getTenantContextForModuleOperation("RH", "update");
@@ -159,18 +233,18 @@ export async function executeWorkforceOperation(command: string, values: Record<
       const run = await requirePayrollRun(context.database ?? databaseConnection.db, values.runId);
       await assertPayrollBudgetScope(context, run.payrollId);
       id = (await registerPocPayment(databaseConnection, context.user.id, values)).id;
-      message = "Pagamento demonstrativo registrado por data, disponível no informe anual POC.";
+      message = "Registro documental por data preservado para o informe anual; não comprova liquidação bancária.";
     }
     if (command === "diaria-solicitar") id = (await requestTravelAllowance(databaseConnection, context.user.id, values, context)).id;
     if (command === "diaria-decidir") id = (await decideTravelAllowance(databaseConnection, context.user.id, values, context)).id;
     if (command === "diaria-prestar") id = (await accountForTravelAllowance(databaseConnection, context.user.id, values, context)).id;
     if (command === "poc-parametros") {
       const result = await installDocumentaryPocParameters(databaseConnection, context.user.id);
-      id = result.ruleSetId; message = "Parâmetros documentais POC instalados. Valores e origens disponíveis em Parametrizações.";
+      id = result.ruleSetId; message = "Parâmetros documentais instalados. Valores e origens disponíveis em Parametrizações.";
     }
     if (command === "poc-preparar") {
       const result = await prepareDocumentaryPocDataset(databaseConnection, context.user.id, values.competence);
-      id = result.contractIds.join(", "); message = "Base preparada: três titulares fictícios, contratos temporais e nove tipos de folha. Repetição preserva cadastros e cálculos.";
+      id = result.contractIds.join(", "); message = "Conjunto documental preparado com vínculos temporais e modalidades de folha. Repetição preserva cadastros e cálculos.";
     }
     if (command === "calcular-poc") {
       await assertPayrollBudgetScope(context, values.payrollId);
@@ -181,7 +255,7 @@ export async function executeWorkforceOperation(command: string, values: Record<
         await assertPayrollBudgetScope(context, source.payrollId);
       }
       const result = await calculatePayrollRun(databaseConnection, context.user.id, { payrollId: values.payrollId, requestKey: values.requestKey, mode: values.mode, scope: "DEMONSTRACAO", contractIds: values.contractIds.split(/[\s,;]+/).filter(Boolean), ...(specialParameters ? { specialParameters } : { monthlyProration: values.monthlyProration === "SIM" }) });
-      id = result.id; message = "Cálculo POC persistido com memória. Abra o cálculo para conferir, fechar e publicar os demonstrativos.";
+      id = result.id; message = "Cálculo persistido com memória. Abra o cálculo para conferir, fechar e publicar os demonstrativos.";
     }
     if (command === "baixar-provisao-empenho") {
       id = (await consumeProvisionsAtCommitment(databaseConnection, context, { ...values, allocations: JSON.parse(values.allocations || "[]") })).entryIds.join(", ");
@@ -291,7 +365,10 @@ export async function executeWorkforceOperation(command: string, values: Record<
     }
     if (command === "movimento") id = (await savePayrollMovement(databaseConnection, context.user.id, values)).id;
     if (command === "direito") id = (await recordHrRightEntry(databaseConnection, context.user.id, { ...values, details: JSON.parse(values.details || "{}") })).id;
-    if (command === "aquisitivos") id = (await acquireVacationRights(databaseConnection, context.user.id, values.contractId, values.asOf)).join(", ");
+    if (command === "aquisitivos") {
+      const result = await processAutomaticRights(databaseConnection, context, { contractIds: [values.contractId], referenceDate: values.asOf, mode: "APLICAR", kinds: ["FERIAS"] });
+      id = values.contractId; message = `Aquisitivos de férias conciliados pelo processador compartilhado: ${JSON.stringify(result.rows)}`;
+    }
     if (command === "reservar-ferias") id = (await reserveVacationRight(databaseConnection, context.user.id, values)).id;
     if (command === "cancelar-ferias") id = (await cancelVacationReservation(databaseConnection, context.user.id, values)).id;
     if (command === "beneficio") id = (await generateBenefitMovement(databaseConnection, context.user.id, values)).id;

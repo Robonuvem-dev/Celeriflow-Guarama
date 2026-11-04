@@ -5,7 +5,7 @@ Escopo: somente os 13 requisitos de Gestão de Resíduos atribuídos a Mateus. E
 ## Preparação
 
 - Usar banco e instância isolados de homologação, autorizados para teste. Não aplicar a migração nem executar estes registros em produção nesta tarefa.
-- Conferir o commit testado, a branch feat/cf10-cf30-cf33-mateus e a migração 20261101120000_cf10_recycling_stock nesse ambiente.
+- Conferir o commit testado e a migração 20261102120000_cf10_recycling_stock nesse ambiente. O desenvolvimento original está na branch feat/cf10-cf30-cf33-mateus; o nome da migração foi atualizado na integração de 02/11 para ficar após o prefixo social já instalado, sem alterar seu SQL.
 - Antes da migração, /meio-ambiente/residuos/estoque deve informar indisponibilidade sem afetar /meio-ambiente/residuos nem os cadastros. A página não executa DDL automaticamente.
 - Após a migração, usar perfis representativos de consulta e operação, sem expor credenciais em evidências.
 - Selecionar os cadastros autorizados para a demonstração. Não confundir dados sintéticos das fixtures automatizadas com dados reais de uma instância operacional.

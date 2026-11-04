@@ -9,6 +9,12 @@ import { AccessError, canPerformModuleOperation, isSystemAdministrator } from '@
 import type { PermissionUser } from '@/lib/contracts/identity';
 import type { HrPortalRequest, IntegrationEvent, RecruitmentApplication } from '@/lib/contracts/personnel-pages';
 import { readPersonnelBudgetUnits } from './catalog';
+import { personnelEmployeeWhere } from '@/lib/rh/personnel-scope';
+import { integrationEventWhere } from '@/lib/rh/integration-event-scope';
+
+function requestHolderWhere(user: PermissionUser) {
+  return sql`EXISTS (SELECT 1 FROM "Employee" request_holder WHERE request_holder.id=${hrPortalRequests.employeeId} AND ${personnelEmployeeWhere(user, sql`request_holder."departmentId"`, sql`request_holder.id`)})`;
+}
 
 export function personnelPageNumber(raw: string | undefined, total: number, size = 20): number {
   return Math.min(Math.max(1, Number.parseInt(raw || '1') || 1), Math.max(1, Math.ceil(total / size)));
@@ -30,14 +36,14 @@ export function readRequestEmployees(db: DatabaseExecutor, ids: string[]): Promi
 }
 export async function readAdvancesPage(db: DatabaseExecutor, user: PermissionUser, requestedPage?: string) {
   const scope = isSystemAdministrator(user) ? undefined : sql`${hrPortalRequests.payload} #> '{input,budgetUnitId}' = ANY(${sql.param(user.allowedBudgetUnitIds.map(id => JSON.stringify(id)))}::jsonb[])`;
-  const data = await requestPage(db, and(eq(hrPortalRequests.kind, 'ADIANTAMENTO'), scope), requestedPage);
+  const data = await requestPage(db, and(eq(hrPortalRequests.kind, 'ADIANTAMENTO'), scope, requestHolderWhere(user)), requestedPage);
   const units = await readPersonnelBudgetUnits(db, user, 'code');
   const events = await db.select({ sourceKey: hrIntegrationEvents.sourceKey, payload: hrIntegrationEvents.payload }).from(hrIntegrationEvents).where(inArray(hrIntegrationEvents.sourceKey, data.rows.map(row => `DIARIA:PROCESSO:${row.id}`)));
   return { ...data, units, events };
 }
 export async function readTravelAllowancesPage(db: DatabaseExecutor, user: PermissionUser, requestedPage?: string) {
   const scope = isSystemAdministrator(user) ? undefined : sql`${hrPortalRequests.payload} #> '{input,budgetUnitId}' = ANY(${sql.param(user.allowedBudgetUnitIds.map(id => JSON.stringify(id)))}::jsonb[])`;
-  const data = await requestPage(db, and(eq(hrPortalRequests.kind, 'DIARIA'), scope), requestedPage);
+  const data = await requestPage(db, and(eq(hrPortalRequests.kind, 'DIARIA'), scope, requestHolderWhere(user)), requestedPage);
   const employeeRows = await readRequestEmployees(db, [...new Set(data.rows.map(row => row.employeeId))]);
   const rules = await db.select({ id: hrPayrollRules.id, name: hrPayrollRules.name }).from(hrPayrollRules).innerJoin(hrPayrollRuleSets, eq(hrPayrollRuleSets.id, hrPayrollRules.ruleSetId)).where(and(eq(hrPayrollRules.code, 'DIARIAS_MUNICIPAIS'), eq(hrPayrollRules.isActive, true), eq(hrPayrollRuleSets.isDemo, false), eq(hrPayrollRuleSets.scope, 'PRODUCAO'), eq(hrPayrollRuleSets.status, 'ATIVA'))).orderBy(asc(hrPayrollRules.id));
   const units = await readPersonnelBudgetUnits(db, user, 'code');
@@ -51,29 +57,29 @@ export async function readTravelAllowancesPage(db: DatabaseExecutor, user: Permi
   return { ...data, employees: employeeRows, rules, units, expenses, processEvents, processTypes: types.map(type => ({ ...type, subjects: subjects.filter(subject => subject.processTypeId === type.id) })), reports };
 }
 export function readFunctionalPublicationsPage(db: DatabaseExecutor, user: PermissionUser, requestedPage?: string) {
-  return eventPage(db, and(eq(hrIntegrationEvents.domain, 'PORTAL'), eq(hrIntegrationEvents.eventType, 'DOCUMENTO_FUNCIONAL_DISPONIBILIZADO'), isSystemAdministrator(user) ? undefined : sql`${hrIntegrationEvents.payload} #> '{budgetUnitId}' = ANY(${sql.param(user.allowedBudgetUnitIds.map(id => JSON.stringify(id)))}::jsonb[])`), requestedPage);
+  return eventPage(db, and(integrationEventWhere(user, hrIntegrationEvents.payload), eq(hrIntegrationEvents.domain, 'PORTAL'), eq(hrIntegrationEvents.eventType, 'DOCUMENTO_FUNCIONAL_DISPONIBILIZADO'), isSystemAdministrator(user) ? undefined : sql`${hrIntegrationEvents.payload} #> '{budgetUnitId}' = ANY(${sql.param(user.allowedBudgetUnitIds.map(id => JSON.stringify(id)))}::jsonb[])`), requestedPage);
 }
-export function readEsocialEventsPage(db: DatabaseExecutor, requestedPage?: string) {
-  return eventPage(db, or(eq(hrIntegrationEvents.domain, 'ESOCIAL'), and(eq(hrIntegrationEvents.domain, 'AUDITORIA'), eq(hrIntegrationEvents.eventType, 'OBRIGACAO_ARQUIVO_GERADO'))), requestedPage);
+export function readEsocialEventsPage(db: DatabaseExecutor, user: PermissionUser, requestedPage?: string) {
+  return eventPage(db, and(integrationEventWhere(user, hrIntegrationEvents.payload), or(eq(hrIntegrationEvents.domain, 'ESOCIAL'), and(eq(hrIntegrationEvents.domain, 'AUDITORIA'), eq(hrIntegrationEvents.eventType, 'OBRIGACAO_ARQUIVO_GERADO')))), requestedPage);
 }
-export async function readOccurrencesPage(db: DatabaseExecutor, input: { page?: string; contractId?: string; type?: string }) {
-  const data = await eventPage(db, and(eq(hrIntegrationEvents.eventType, 'OCORRENCIA_FUNCIONAL_REGISTRADA'), input.contractId ? sql`${hrIntegrationEvents.payload} #> '{input,contractId}' = ${JSON.stringify(input.contractId)}::jsonb` : undefined, input.type ? sql`${hrIntegrationEvents.payload} #> '{input,type}' = ${JSON.stringify(input.type)}::jsonb` : undefined), input.page);
+export async function readOccurrencesPage(db: DatabaseExecutor, user: PermissionUser, input: { page?: string; contractId?: string; type?: string }) {
+  const data = await eventPage(db, and(integrationEventWhere(user, hrIntegrationEvents.payload), eq(hrIntegrationEvents.eventType, 'OCORRENCIA_FUNCIONAL_REGISTRADA'), input.contractId ? sql`${hrIntegrationEvents.payload} #> '{input,contractId}' = ${JSON.stringify(input.contractId)}::jsonb` : undefined, input.type ? sql`${hrIntegrationEvents.payload} #> '{input,type}' = ${JSON.stringify(input.type)}::jsonb` : undefined), input.page);
   const cancellations = await db.select({ sourceKey: hrIntegrationEvents.sourceKey, payload: hrIntegrationEvents.payload }).from(hrIntegrationEvents).where(inArray(hrIntegrationEvents.sourceKey, data.events.map(row => `OCORRENCIA:CANCELAMENTO:${row.id}`)));
   return { rows: data.events, page: data.page, total: data.total, cancellations };
 }
-export function readGeneratedFunctionalDocuments(db: DatabaseExecutor): Promise<IntegrationEvent[]> {
-  return db.select().from(hrIntegrationEvents).where(eq(hrIntegrationEvents.eventType, 'DOCUMENTO_FUNCIONAL_GERADO')).orderBy(desc(hrIntegrationEvents.createdAt), asc(hrIntegrationEvents.id));
+export function readGeneratedFunctionalDocuments(db: DatabaseExecutor, user: PermissionUser): Promise<IntegrationEvent[]> {
+  return db.select().from(hrIntegrationEvents).where(and(eq(hrIntegrationEvents.eventType, 'DOCUMENTO_FUNCIONAL_GERADO'), integrationEventWhere(user, hrIntegrationEvents.payload))).orderBy(desc(hrIntegrationEvents.createdAt), asc(hrIntegrationEvents.id));
 }
 export async function readGeneralRequestsPage(db: DatabaseExecutor, user: PermissionUser, status: string, requestedPage?: string) {
   const units = isSystemAdministrator(user) ? [] : await readPersonnelBudgetUnits(db, user);
-  const scopedEmployees = isSystemAdministrator(user) ? [] : await db.select({ id: employees.id }).from(employees).where(inArray(employees.secretariatId, units.map(unit => unit.secretariatId)));
+  const scopedEmployees = isSystemAdministrator(user) ? [] : await db.select({ id: employees.id }).from(employees).where(and(inArray(employees.secretariatId, units.map(unit => unit.secretariatId)), personnelEmployeeWhere(user, employees.departmentId, employees.id)));
   const where = and(eq(hrPortalRequests.status, status), notInArray(hrPortalRequests.kind, ['ACESSO_PORTAL', 'FUNCIONAL_SOLICITACAO_RH', 'FUNCIONAL_FERIAS', 'FUNCIONAL_AJUSTE_PONTO', 'AVALIACAO_FUNCIONAL', 'CAPACITACAO_INSCRICAO']), isSystemAdministrator(user) ? undefined : inArray(hrPortalRequests.employeeId, scopedEmployees.map(employee => employee.id)));
   const data = await requestPage(db, where, requestedPage, true);
   const employeeRows = await readRequestEmployees(db, data.rows.map(row => row.employeeId));
   return { ...data, employees: employeeRows };
 }
 export function readFunctionalRequestsPage(db: DatabaseExecutor, user: PermissionUser, status: string, requestedPage?: string) {
-  return requestPage(db, and(eq(hrPortalRequests.status, status), sql`${hrPortalRequests.payload} #> '{origin}' = '"REQUERIMENTO_FUNCIONAL"'::jsonb`, isSystemAdministrator(user) ? undefined : sql`${hrPortalRequests.payload} #> '{configuration,budgetUnitId}' = ANY(${sql.param(user.allowedBudgetUnitIds.map(id => JSON.stringify(id)))}::jsonb[])`), requestedPage, true);
+  return requestPage(db, and(requestHolderWhere(user), eq(hrPortalRequests.status, status), sql`${hrPortalRequests.payload} #> '{origin}' = '"REQUERIMENTO_FUNCIONAL"'::jsonb`, isSystemAdministrator(user) ? undefined : sql`${hrPortalRequests.payload} #> '{configuration,budgetUnitId}' = ANY(${sql.param(user.allowedBudgetUnitIds.map(id => JSON.stringify(id)))}::jsonb[])`), requestedPage, true);
 }
 export function readRequestProcesses(db: DatabaseExecutor, ids: string[]): Promise<Array<{ id: string; protocolNumber: string; currentDepartmentId: string | null; status: string }>> {
   return db.select({ id: processes.id, protocolNumber: processes.protocolNumber, currentDepartmentId: processes.currentDepartmentId, status: processes.status }).from(processes).where(inArray(processes.id, ids));

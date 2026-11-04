@@ -9,7 +9,7 @@ import { findHrIntegrationEvent, lockPersonnel, personnelJson } from "@/db/repos
 import { findActivePayrollRule, listClosedContractCompetences, requireEmploymentContract, requireEmploymentHistory, requireEmploymentRegime, requireRightEntry } from "@/db/repositories/personnel/workforce";
 import { z } from "zod";
 import { resolveContractRevision } from "./contract-timeline";
-import { vacationEntitlementPolicySchema, vacationDaysForAbsences } from "./vacation-entitlement";
+import { vacationEntitlementPolicySchema, vacationDaysForConfiguredEntitlement } from "./vacation-entitlement";
 
 function civilDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("Data deve ser AAAA-MM-DD.");
@@ -56,7 +56,7 @@ export async function acquireVacationRights(db: DatabaseConnection, actorId: str
       const [existing] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
       const attendance = absencePolicy ? await tx.select({ id: attendanceRecords.id, date: attendanceRecords.date }).from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, contract.employeeId), inArray(attendanceRecords.status, absencePolicy.attendanceStatuses), gte(attendanceRecords.date, start), lt(attendanceRecords.date, next))).orderBy(asc(attendanceRecords.id)) : [];
       const absenceCount = new Set(attendance.map(record => record.date.toISOString().slice(0, 10))).size;
-      const entitlement = absencePolicy ? vacationDaysForAbsences(absencePolicy, absenceCount) : policy.entitlementDays;
+      const entitlement = absencePolicy ? vacationDaysForConfiguredEntitlement(absencePolicy, absenceCount, policy.entitlementDays) : policy.entitlementDays;
       if (existing) {
         if (absencePolicy && (!existing.quantity.eq(entitlement) || (existing.details as { absenceCount?: number }).absenceCount !== absenceCount)) throw new Error("Faltas/política mudaram após aquisição de férias. Concilie o ledger antes de apurar novamente.");
         result.push(existing.id); continue;
@@ -98,6 +98,8 @@ export async function reserveVacationRightInTransaction(tx: DatabaseTransaction,
     if (!policy?.isActive || !regime.isActive || applicable.status !== "ATIVO" || regime.ruleSet.status !== "ATIVA") throw new Error("Contrato e política ativos obrigatórios.");
     if (regime.ruleSet.effectiveFrom > start || (regime.ruleSet.effectiveUntil && regime.ruleSet.effectiveUntil < end)) throw new Error("Política deve cobrir toda a reserva.");
      const entries = await tx.select().from(hrRightEntries).where(and(eq(hrRightEntries.contractId, contract.id), eq(hrRightEntries.kind, "FERIAS"), eq(hrRightEntries.periodStart, periodStart), eq(hrRightEntries.periodEnd, periodEnd)));
+     const acquisitionScopes = new Set(entries.filter(entry => entry.quantity.gt(0)).map(entry => (entry.details as { scope?: string }).scope).filter(Boolean));
+     if (acquisitionScopes.size !== 1 || !acquisitionScopes.has(regime.ruleSet.scope)) throw new Error("Aquisitivo sem escopo único compatível com a reserva; concilie o ledger.");
      const balance = entries.reduce((sum, entry) => sum.add(entry.quantity), new Decimal(0));
     if (balance.lt(input.days)) throw new Error("Dias solicitados excedem saldo do aquisitivo.");
     const canceled = new Set(entries.map(entry => (entry.details as { cancelsId?: string }).cancelsId).filter(Boolean));
@@ -114,7 +116,7 @@ export async function reserveVacationRightInTransaction(tx: DatabaseTransaction,
       if (vacation || leave) throw new Error("Período conflita com férias ou afastamento vigente.");
     }
      const [vacation] = input.kind === "GOZO" ? await tx.insert(vacations).values({ employeeId: contract.employeeId, acquisitionStart: periodStart, acquisitionEnd: periodEnd, enjoymentStart: start, enjoymentEnd: end, days: input.days, status: "Programada" }).returning() : [];
-     const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey: input.sourceKey, kind: "FERIAS", periodStart, periodEnd, quantity: new Decimal(-input.days), amount: new Decimal(0), actorId, details: personnelJson({ kind: input.kind, start: input.start, end, reason: input.reason, vacationId: vacation?.id ?? null, policy }) }).returning();
+     const [entry] = await tx.insert(hrRightEntries).values({ contractId: contract.id, sourceKey: input.sourceKey, kind: "FERIAS", periodStart, periodEnd, quantity: new Decimal(-input.days), amount: new Decimal(0), actorId, details: personnelJson({ kind: input.kind, start: input.start, end, reason: input.reason, vacationId: vacation?.id ?? null, policy, scope: regime.ruleSet.scope }) }).returning();
      return entry;
 }
 

@@ -3,6 +3,8 @@ import { db } from "@/db/client";
 import { findModuleActivation } from "@/db/repositories/platform/identity";
 import { AccessError, canPerformModuleOperation, canViewModule, getCurrentTenantContext, getTenantContextForModule, getTenantContextForModuleOperation, isSystemAdministrator, type AppContext } from "@/lib/platform/tenant-context";
 import type { GedCapability } from "./ged-policy";
+import type { ObjectOperation } from "./ged-admin-policy";
+import type { DatabaseExecutor } from "@/db/transaction";
 
 export function canUseGed(user: AppContext["user"], capability: GedCapability = "read"): boolean {
   if (isSystemAdministrator(user)) return true;
@@ -15,7 +17,7 @@ export function canUseGed(user: AppContext["user"], capability: GedCapability = 
   // Central-only access never grants access to the documentary collection.
   if (!canViewModule(user, "DOCUMENTOS")) return false;
   if (capability === "read") return true;
-  if (capability === "configure") return false;
+  if (capability === "configure" || capability === "share" || capability === "delete") return false;
   return canPerformModuleOperation(user, "DOCUMENTOS", capability === "import" || capability === "models" ? "create" : "update");
 }
 export async function getGedContext(capability: GedCapability = "read") {
@@ -28,10 +30,20 @@ export async function getGedContext(capability: GedCapability = "read") {
 }
 export function gedEntryScope(context: AppContext) {
   if (isSystemAdministrator(context.user)) return sql`TRUE`;
-  return sql`(e."ownerId"=${context.user.id} OR (e."departmentId" IS NOT NULL AND e."departmentId"=${context.user.departmentId}) OR EXISTS (
-    SELECT 1 FROM "GedReview" r WHERE r."documentId"=e."documentId" AND r.status='ACTIVE'
-      AND r.assignments::jsonb @> jsonb_build_object((ARRAY['ELABORACAO','CONSENSO','APROVACAO','HOMOLOGACAO'])[r.stage+1], jsonb_build_array(${context.user.id}::text))
-  ))`;
+  return gedObjectScope(context, "document", sql`e."documentId"`, "read");
+}
+
+export function gedObjectScope(context: AppContext, kind: "document" | "folder", id: ReturnType<typeof sql>, operation: ObjectOperation) {
+  if (isSystemAdministrator(context.user)) return sql`TRUE`;
+  const profiles = [context.user.profileCode, ...(context.user.additionalProfiles ?? []).map(p => p.code)];
+  return sql`ged_access(${kind},${id},${context.user.id},${context.user.departmentId},${JSON.stringify(profiles)}::jsonb,${operation})`;
+}
+
+export async function requireGedObject(context: AppContext, kind: "document" | "folder", id: string, operation: ObjectOperation, database: DatabaseExecutor = context.database ?? db) {
+  if (!canUseGed(context.user, operation)) throw new AccessError("Sem capacidade para esta operação documental.", 403);
+  const exists = kind === "document" ? sql`EXISTS(SELECT 1 FROM "GedEntry" WHERE "documentId"=${id})` : sql`EXISTS(SELECT 1 FROM "GedFolderAccess" WHERE "folderId"=${id})`;
+  const result = await database.execute<{ allowed: boolean }>(sql`SELECT (${exists} AND ${gedObjectScope(context, kind, sql`${id}`, operation)}) AS allowed`);
+  if (!result.rows[0]?.allowed) throw new AccessError("Objeto não encontrado ou operação fora do seu acesso.", 403);
 }
 
 export async function getUnifiedSignatureContext(create = false) {

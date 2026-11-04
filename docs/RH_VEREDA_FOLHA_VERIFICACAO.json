@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-11-03T14:07:37.580Z",
+  "result": "PASS",
+  "layer": "CALCULO_CANONICO_EM_TRANSACAO_REVERTIDA_NAO_VALIDACAO_VISUAL",
+  "competence": "12/2026",
+  "mode": "SIMULACAO",
+  "statements": 198,
+  "gross": "766232.72",
+  "deductions": "98793.44",
+  "net": "667439.28",
+  "employer": "168571.16",
+  "persisted": false
+}

@@ -1,0 +1,121 @@
+{
+  "packageId": "RH_HISTORICO_2025_2026_V1",
+  "checkedAt": "2026-11-02T16:30:08.544Z",
+  "scope": "DEMONSTRACAO",
+  "realPayments": false,
+  "createsUsers": false,
+  "preservesClosedHistory": true,
+  "progress": [
+    {
+      "stage": "historical-contracts",
+      "count": 198
+    },
+    {
+      "stage": "vacations-2025",
+      "count": 18
+    },
+    {
+      "stage": "vacations-2026",
+      "count": 30
+    },
+    {
+      "stage": "Mensal",
+      "competence": "12/2025",
+      "statements": 198
+    },
+    {
+      "stage": "1ª parcela 13º",
+      "competence": "12/2025",
+      "statements": 198
+    },
+    {
+      "stage": "13º",
+      "competence": "12/2025",
+      "statements": 198
+    },
+    {
+      "stage": "Férias",
+      "competence": "12/2025",
+      "statements": 18
+    },
+    {
+      "stage": "Mensal",
+      "competence": "01/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "02/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "03/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "04/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "05/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "06/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "07/2026",
+      "statements": 198
+    },
+    {
+      "stage": "original-preserved",
+      "competence": "08/2026",
+      "statements": 198
+    },
+    {
+      "stage": "original-preserved",
+      "competence": "09/2026",
+      "statements": 198
+    },
+    {
+      "stage": "original-preserved",
+      "competence": "10/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "11/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Mensal",
+      "competence": "12/2026",
+      "statements": 198
+    },
+    {
+      "stage": "1ª parcela 13º",
+      "competence": "11/2026",
+      "statements": 198
+    },
+    {
+      "stage": "13º",
+      "competence": "12/2026",
+      "statements": 198
+    },
+    {
+      "stage": "Férias",
+      "competence": "12/2026",
+      "statements": 30
+    },
+    {
+      "stage": "annual-income-2025",
+      "count": 198
+    }
+  ]
+}

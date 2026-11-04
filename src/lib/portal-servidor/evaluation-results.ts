@@ -11,6 +11,7 @@ import { evaluationPolicySchema } from "./career-service";
 import { enqueueHrIntegration } from "@/lib/rh/workforce-service";
 import { auditEventTypes } from "@/lib/platform/audit-evidence";
 import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
+import { assertFunctionalHolderAccess } from "@/lib/rh/functional-record-service";
 
 export const assessmentPayloadSchema = z.object({ cycleId: z.string(), cycleName: z.string(), employeeName: z.string(), policy: evaluationPolicySchema });
 const commissionResultSchema = z.object({ requestId: z.string(), employeeId: z.string(), actorId: z.string(), answers: z.record(z.string(), z.number()), comment: z.string(), score: z.string() });
@@ -30,6 +31,7 @@ export async function publishFunctionalEvaluationResult(context: AppContext, raw
     if (request.kind !== "AVALIACAO_FUNCIONAL") throw new AccessError("Avaliação indisponível.", 404);
     const payload = assessmentPayloadSchema.parse(request.payload);
     assertBudgetUnitAccess(context.user, payload.policy.budgetUnitId);
+    await assertFunctionalHolderAccess(tx, context, request.employeeId);
     if (request.employeeId === context.user.employeeId) throw new AccessError("O titular não pode publicar o próprio resultado.", 403);
     const sourceKey = `PORTAL:RESULTADO_AVALIACAO:${request.id}`;
     const previous = await portalEvent(tx, sql`"sourceKey"=${sourceKey}`);

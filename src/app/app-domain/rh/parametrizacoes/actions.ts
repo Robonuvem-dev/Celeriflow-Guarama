@@ -15,9 +15,12 @@ import { travelAllowancePolicySchema } from "@/lib/rh/travel-allowance";
 import { vacationEntitlementPolicySchema } from "@/lib/rh/vacation-entitlement";
 import { payrollPensionPolicySchema } from "@/lib/rh/payroll-pensions";
 import { monthlyProrationPolicySchema } from "@/lib/rh/monthly-proration";
+import { payrollTaxCompensationPolicySchema } from "@/lib/rh/payroll-tax-compensation";
+import { assertFunctionalHolderAccess } from "@/lib/rh/functional-record-service";
+import { lockPersonnel } from "@/db/repositories/personnel/integration";
 
 import { revalidatePath } from "next/cache";
-import { and, asc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
 import { JsonNull } from "@/db/json";
 import { databaseConnection } from "@/db/client";
@@ -27,7 +30,7 @@ import { documents } from "@/db/schema/registry";
 import { hrEmploymentContracts } from "@/db/schema/personnel-workforce";
 import { hrCalculationPolicies, hrEmploymentRegimes, hrPayrollConfigurationChanges, hrPayrollRubricIncidences, hrPayrollRubrics, hrPayrollRules, hrPayrollRuleSets, hrSocialSecurityBands, hrSocialSecuritySchemes, hrVacationPolicies } from "@/db/schema/personnel-configuration";
 import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/audit";
-import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation, type AppContext } from "@/lib/platform/tenant-context";
 import {
   auditEventTypes,
 } from "@/lib/platform/audit-evidence";
@@ -82,7 +85,11 @@ function inclusiveEndOfUtcDay(value: Date | null | undefined) {
 async function getManagedRuleSet(
   db: HrPayrollConfigurationDb,
   ruleSetId: string,
+  context: AppContext,
 ) {
+  await assertFunctionalHolderAccess(db, context, null);
+  await lockPersonnel(db, "functional-configuration");
+  await db.execute(sql`SELECT set_config('celeriflow.actor_id',${context.user.id},true)`);
   const instance = await getOrCreateHrConfigurationInstance(db);
   const [ruleSet] = await db.select().from(hrPayrollRuleSets).where(and(eq(hrPayrollRuleSets.id, ruleSetId), eq(hrPayrollRuleSets.configuracaoInstanciaId, instance.id))).limit(1);
   if (!ruleSet)
@@ -154,6 +161,9 @@ export async function saveHrPayrollRuleSet(
       input.id ? "update" : "create",
     );
     const saved = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      await assertFunctionalHolderAccess(tx, context, null);
+      await lockPersonnel(tx, "functional-configuration");
+      await tx.execute(sql`SELECT set_config('celeriflow.actor_id',${context.user.id},true)`);
       const instance = await getOrCreateHrConfigurationInstance(tx);
       if (input.status === "ATIVA" && input.scope === "PRODUCAO") {
         const activeEnd =
@@ -249,9 +259,13 @@ export async function saveHrPayrollRule(
       input.id ? "update" : "create",
     );
     await withDatabaseTransaction(databaseConnection, async (tx) => {
-      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
+      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId, context);
       assertRuleSetCanChange(ruleSet);
       const value = parseRuleValue(input.valueType, input.value);
+      if (input.code === "COMPENSACAO_TRIBUTARIA_FOLHA") {
+        if (input.valueType !== "JSON") throw new Error("Compensação tributária exige política JSON.");
+        payrollTaxCompensationPolicySchema.parse(value);
+      }
       if (input.code === "PENSOES_FOLHA") {
         if (input.valueType !== "JSON") throw new Error("Pensões exigem política JSON.");
         payrollPensionPolicySchema.parse(value);
@@ -269,7 +283,7 @@ export async function saveHrPayrollRule(
         incomeTaxReductionSchema.parse(value);
       }
       if (input.code === "FOLHAS_ESPECIAIS_POC") {
-        if (input.valueType !== "JSON") throw new Error("Folhas especiais POC exigem política JSON.");
+        if (input.valueType !== "JSON") throw new Error("Folhas especiais exigem política JSON.");
         pocSpecialPolicySchema.parse(value);
       }
       if (["DIARIAS_POC", "DIARIAS_MUNICIPAIS"].includes(input.code)) {
@@ -389,7 +403,7 @@ export async function saveHrPayrollRubric(
       input.id ? "update" : "create",
     );
     await withDatabaseTransaction(databaseConnection, async (tx) => {
-      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
+      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId, context);
       assertRuleSetCanChange(ruleSet);
       const data = {
         code: input.code,
@@ -470,7 +484,7 @@ export async function saveHrVacationPolicy(
       input.id ? "update" : "create",
     );
     await withDatabaseTransaction(databaseConnection, async (tx) => {
-      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
+      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId, context);
       assertRuleSetCanChange(ruleSet);
       const additionalPayRate = toDecimal(input.additionalPayRate);
       if (!additionalPayRate)
@@ -539,7 +553,7 @@ export async function saveHrSocialSecurityScheme(
       input.id ? "update" : "create",
     );
     await withDatabaseTransaction(databaseConnection, async (tx) => {
-      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
+      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId, context);
       assertRuleSetCanChange(ruleSet);
       const data = {
         code: input.code,
@@ -604,7 +618,7 @@ export async function saveHrSocialSecurityBand(
         throw new Error(
           "O regime previdenciário informado não foi encontrado.",
         );
-      const managedRuleSet = await getManagedRuleSet(tx, scheme.ruleSetId);
+      const managedRuleSet = await getManagedRuleSet(tx, scheme.ruleSetId, context);
       if (managedRuleSet.id !== scheme.ruleSet.id)
         throw new Error(
           "O regime previdenciário não pertence à instância municipal atual.",
@@ -675,7 +689,7 @@ export async function saveHrCalculationPolicy(
     const input = hrCalculationPolicyInputSchema.parse(rawInput);
     const context = await getTenantContextForModuleOperation("RH", "update");
     await withDatabaseTransaction(databaseConnection, async (tx) => {
-      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
+      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId, context);
       assertRuleSetCanChange(ruleSet);
       const data = {
         currency: input.currency,
@@ -731,7 +745,7 @@ export async function saveHrEmploymentRegime(
       input.id ? "update" : "create",
     );
     await withDatabaseTransaction(databaseConnection, async (tx) => {
-      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId);
+      const ruleSet = await getManagedRuleSet(tx, input.ruleSetId, context);
       assertRuleSetCanChange(ruleSet);
 
       if (input.socialSecuritySchemeId) {

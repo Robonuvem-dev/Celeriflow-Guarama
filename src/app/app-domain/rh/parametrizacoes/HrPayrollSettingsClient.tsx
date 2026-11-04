@@ -6,6 +6,7 @@ import { OperationalPagination } from "@/components/app-ui/operational/Operation
 import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { RhTablePanel } from "../_components/RhTablePanel";
 import { rhColumn } from "../_components/operational-columns";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 import {
   CircleAlert,
   FileCog,
@@ -274,7 +275,7 @@ export function HrPayrollSettingsClient({
   const activeLabel = useMemo(
     () =>
       settings?.ruleSet.isDemo
-        ? "Demonstração editável"
+        ? "Municipal"
         : settings?.ruleSet.scope === "PRODUCAO"
           ? "Produção"
           : "Homologação",
@@ -337,10 +338,10 @@ export function HrPayrollSettingsClient({
       <section className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900">
-            {settings.ruleSet.name}
+            {personnelDisplayText(settings.ruleSet.name)}
           </p>
           <p className="text-[11px] text-slate-500">
-            {settings.ruleSet.code} · vigência{" "}
+            {personnelDisplayText(settings.ruleSet.code)} · vigência{" "}
             {prettyDate(settings.ruleSet.effectiveFrom)}
             {settings.ruleSet.effectiveUntil
               ? ` até ${prettyDate(settings.ruleSet.effectiveUntil)}`
@@ -363,7 +364,7 @@ export function HrPayrollSettingsClient({
           >
             {ruleSets.map((ruleSet) => (
               <option key={ruleSet.id} value={ruleSet.id}>
-                {ruleSet.name}
+                {personnelDisplayText(ruleSet.name)}
               </option>
             ))}
           </select>
@@ -530,7 +531,7 @@ function Overview({
           <div>
             <dt className="text-slate-500">Escopo</dt>
             <dd className="mt-0.5 font-semibold text-slate-800">
-              {settings.ruleSet.scope}
+              {personnelDisplayText(settings.ruleSet.scope)}
             </dd>
           </div>
           <div className="sm:col-span-2">
@@ -653,7 +654,7 @@ function RuleSetEditor({
             defaultValue={current?.scope || "HOMOLOGACAO"}
             className={inputClass}
           >
-            <option value="DEMONSTRACAO">Demonstração</option>
+            <option value="DEMONSTRACAO">Municipal</option>
             <option value="HOMOLOGACAO">Homologação</option>
             <option value="PRODUCAO">Produção</option>
           </select>
@@ -701,7 +702,7 @@ function RuleSetEditor({
             name="isDemo"
             defaultChecked={current?.isDemo ?? true}
           />{" "}
-          Configuração demonstrativa
+          Configuração municipal
         </label>
         <div className="flex justify-end">
           <button disabled={pending} className={primaryButtonClass}>
@@ -1935,6 +1936,7 @@ const incidentTypes = [
   "RPPS",
   "IRRF",
   "FGTS",
+  "PIS_PASEP",
   "FERIAS",
   "DECIMO_TERCEIRO",
   "TETO_REMUNERATORIO",

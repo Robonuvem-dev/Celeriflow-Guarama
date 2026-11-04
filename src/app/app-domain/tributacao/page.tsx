@@ -16,8 +16,8 @@ export default async function TributacaoDashboardPage() {
   const stats = [
     { title: "Arrecadação do Mês", value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalArrecadado), icon: BarChart3, href: "/tributacao/guias", color: "text-emerald-600", bg: "bg-emerald-100" },
     { title: "Guias Emitidas", value: guidesCount.toString(), icon: Receipt, href: "/tributacao/guias", color: "text-blue-600", bg: "bg-blue-100" },
-    { title: "Inscrições Econômicas", value: economyCount.toString(), icon: Building2, href: "/tributacao/economico", color: "text-indigo-600", bg: "bg-indigo-100" },
-    { title: "Contribuintes Fiscais", value: taxpayersCount.toString(), icon: Users, href: "/cadastros/contribuintes", color: "text-amber-600", bg: "bg-amber-100" },
+    { title: "Inscrições Econômômicas", value: economyCount.toString(), icon: Building2, href: "/tributacao/economico", color: "text-indigo-600", bg: "bg-indigo-100" },
+    { title: "Contribuintes Fiscais", value: taxpayersCount.toString(), icon: Users, href: "/tributacao/pessoas", color: "text-amber-600", bg: "bg-amber-100" },
   ];
 
   return (

@@ -60,10 +60,17 @@ const nextConfig: NextConfig = {
     "/api/transparencia/exemplos/*/*": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/financeiro/relatorios": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/frotas/relatorios": ["./node_modules/pdfkit/js/data/**/*"],
+    "/api/frotas/controle/relatorios": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/saude/relatorios": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/rh/demonstrativos/*": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/rh/relatorios": ["./node_modules/pdfkit/js/data/**/*"],
     "/api/portal-servidor/demonstrativos/*": ["./node_modules/pdfkit/js/data/**/*"],
+    "/api/tributacao/simples/consulta": ["./node_modules/pdfkit/js/data/**/*"],
+    "/api/tributacao/simples/termos/*": ["./node_modules/pdfkit/js/data/**/*"],
+    "/app-domain/tributacao/iss-bancario/gestao/exportar": ["./node_modules/pdfkit/js/data/**/*"],
+    "/tributacao/iss-bancario/gestao/exportar": ["./node_modules/pdfkit/js/data/**/*"],
+    "/app-domain/tributacao/nfse/*/pdf": ["./node_modules/pdfkit/js/data/**/*"],
+    "/app-domain/tributacao/divida-ativa/cda/*/pdf": ["./node_modules/pdfkit/js/data/**/*"],
   },
   async headers() {
     return [{

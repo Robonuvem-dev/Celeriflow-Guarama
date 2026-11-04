@@ -3,7 +3,7 @@ import { exactNumeric } from "../decimal";
 import { createId } from "../ids";
 import type { RecyclingMovementSnapshot } from "@/lib/environment/recycling-stock";
 
-// Additive physical tables from 20261101120000_cf10_recycling_stock.
+// Additive physical tables from 20261102120000_cf10_recycling_stock.
 // SQL owns composite FKs, kind/arithmetic checks and immutable-history trigger.
 export const recyclingMaterialBindings = pgTable("EnvRecyclingMaterialBinding", {
   instanceId: text("instanceId").notNull(), materialKey: text("materialKey").notNull(),

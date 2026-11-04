@@ -177,6 +177,7 @@ export default function IssBancarioClient({ data }: { data: Data }) {
           ))}
         </select>
       </OperationalHeaderActions>
+      <a className="text-xs font-semibold underline" href="/tributacao/iss-bancario/gestao">Gestão de autos, declarações, relatórios e downloads</a>
       {!listView && navigation}
       {message && !listView && (
         <button

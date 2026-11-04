@@ -34,6 +34,8 @@
 .error { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
 .previewArea { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 .previewArea > button { align-self: start; }
+.previewArea > .actions { flex-shrink: 0; }
+.previewArea > .actions > span { color: #64748b; font-size: 12px; }
 .preview { flex: 1; min-height: 0; overflow: hidden; border-radius: 10px; }
 @media (max-width: 900px) { .header { align-items: start; flex-direction: column; } .indicatorSelector > div { grid-template-columns: 1fr 1fr; } .pageSelector { align-items: stretch; flex-direction: column; } }
 @media (max-width: 600px) { .editor { padding: 8px; } .fields { grid-template-columns: 1fr; } .form { padding: 12px; } .indicatorSelector > div { grid-template-columns: 1fr; } }

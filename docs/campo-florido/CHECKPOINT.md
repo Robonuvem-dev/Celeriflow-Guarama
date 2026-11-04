@@ -138,7 +138,7 @@ Essas alterações foram publicadas em 185fdd7 e permanecem preservadas.
 ## Alterações deste incremento — movimentos e estoque
 
 - Implementação e decisões detalhadas em SPRINT-01.md; catálogos existentes continuam sendo usados por referência, sem duplicação.
-- Migração aditiva 20261101120000_cf10_recycling_stock: associação de material a tipo/unidade, saldo por depósito e movimento ambiental; FKs compostas por instância, checks e histórico protegido contra edição/exclusão.
+- Migração aditiva 20261102120000_cf10_recycling_stock: associação de material a tipo/unidade, saldo por depósito e movimento ambiental; FKs compostas por instância, checks e histórico protegido contra edição/exclusão. Na integração de 02/11, o arquivo ainda não aplicado foi reposicionado após as migrações sociais já registradas, mantendo o SQL original.
 - Entrada com origem da coleta; saída para centro ativo com quantidade, valor obtido e saldo atualizado. Quantidades/valores exatos, idempotência por requisição/autor, concorrência, sequência e auditoria na mesma transação.
 - Página /meio-ambiente/residuos/estoque com saldo por depósito, total do material na instância e histórico paginado. Formulários somente para create; action exige a mesma operação no servidor.
 - Tela sem schema informa indisponibilidade em vez de executar DDL. Migração não foi aplicada em produção nem em instância de usuário.

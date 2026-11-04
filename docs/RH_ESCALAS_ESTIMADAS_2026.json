@@ -1,0 +1,28 @@
+{
+  "packageId": "RH_ESCALAS_ESTIMADAS_2026_V1",
+  "scope": "DEMONSTRACAO",
+  "effectiveFrom": "2026-11-01",
+  "employees": 198,
+  "scheduled": 186,
+  "excludedFromAutomaticClock": 12,
+  "criterion": "Escala fictícia de segunda a sexta, 08h, jornada semanal estimada dividida por cinco dias; intervalo explícito de 60 minutos. Não substitui escala especial ou norma municipal.",
+  "createsAttendance": false,
+  "altersHistoricalPayroll": false,
+  "recordedAt": "2026-11-02T14:31:06.287Z",
+  "ranges": 4,
+  "excludedEmployeeIds": [
+    "aurora-mg-50k-v1:employee:000",
+    "aurora-mg-50k-v1:employee:001",
+    "aurora-mg-50k-v1:employee:002",
+    "aurora-mg-50k-v1:employee:006",
+    "aurora-mg-50k-v1:employee:013",
+    "aurora-mg-50k-v1:employee:018",
+    "aurora-mg-50k-v1:employee:019",
+    "aurora-system-v1:employee:009",
+    "aurora-system-v1:employee:013",
+    "aurora-system-v1:employee:014",
+    "aurora-system-v1:employee:015",
+    "aurora-system-v1:employee:016"
+  ],
+  "layer": "population-not-homologation"
+}

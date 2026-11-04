@@ -5,7 +5,6 @@ import { transparencyPublications } from "@/db/schema/transparency";
 import { getTransparencyCollection, transparencyCatalog } from "./consultation-catalog";
 import { getTransparencySettings, type TransparencySettings } from "./presentation-settings";
 import { filterPublicDataset, type PublicDataset, type TransparencyQuery } from "./query-contract";
-import { exampleTransparencyDataset } from "./example-provider";
 import { loadIbemaTransparencyDataset } from "./ibema-provider";
 import { nativeTransparencyDataset } from "./native-provider";
 import { documentTransparencyDataset } from "./document-provider";
@@ -23,7 +22,7 @@ export async function runTransparencyConsultation(db: DatabaseExecutor, slug: st
    const declarations=configuration.availabilityDeclarations.filter(declaration=>declaration.collectionSlug===slug&&declaration.entity===query.entity&&declaration.year===query.year&&declaration.source===query.source&&(!declaration.filterType||declaration.filterType===query.filters.type));
    if(declarations.length){const declaration=declarations[0],[document]=await db.select({title:transparencyPublications.title,publicKey:transparencyPublications.publicKey,updatedAt:transparencyPublications.updatedAt}).from(transparencyPublications).where(and(eq(transparencyPublications.publicKey,declaration.documentPublicKey),eq(transparencyPublications.status,"PUBLISHED"),eq(transparencyPublications.entity,declaration.entity),eq(transparencyPublications.year,declaration.year))).limit(1);if(!document)throw new Error("Declaração sem documento público disponível.");const dataset:PublicDataset={records:[],source:query.source,status:declaration.status==="NOT_ADOPTED"?"NOT_ADOPTED":"UNAVAILABLE",provenance:"Declaração registrada pela gestão para esta fonte, entidade, exercício e tipo.",updatedAt:document.updatedAt.toISOString(),complete:declaration.status==="NOT_ADOPTED",message:declaration.reason,declarationLinks:[{title:document.title,url:`/api/transparencia/publicacoes/${document.publicKey}`} ]};return{collection,query,...filterPublicDataset(collection,dataset,query)};}
   let dataset: PublicDataset;
-  if (query.source === "EXEMPLO") dataset = exampleTransparencyDataset(collection, query);
+  if (query.source === "EXEMPLO") dataset = {records:[],source:query.source,status:"UNAVAILABLE",provenance:"Fonte não disponível para publicação.",updatedAt:null,complete:false,message:"Selecione os registros municipais ou documentos publicados."};
   else if (query.source === "API_IBEMA") dataset = await loadIbemaTransparencyDataset(collection, query, configuration);
   else if (query.source === "DOCUMENTOS") dataset = await documentTransparencyDataset(db, collection, query);
   else dataset = await nativeTransparencyDataset(db, collection, query, configuration);

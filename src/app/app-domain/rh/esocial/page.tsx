@@ -16,7 +16,7 @@ export default async function RhEsocialPage({ searchParams }: { searchParams: Pr
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const readiness = await readPersonnelExternalReadiness(database);
   const params = await searchParams;
-  const { total, page, events } = await readEsocialEventsPage(database, params.page);
+  const { total, page, events } = await readEsocialEventsPage(database, context.user, params.page);
   if (params.view !== "manage") {
     const columns = [rhColumn("type", "Evento", 230, 140), rhColumn("source", "Origem", 260, 150, "identifier"), rhColumn("environment", "Ambiente", 160, 110), rhColumn("status", "Estado", 150, 100, "status"), rhColumn("actions", "Conferência", 230, 210, "actions")];
     return <OperationalListFrame label="eSocial · preparação de RH/Folha" actions={<><Link href="/rh/operacoes" className={styles.filterButton}>Operações</Link><RhNewLink href="?view=manage">Configuração e exportações</RhNewLink></>}
@@ -30,11 +30,11 @@ export default async function RhEsocialPage({ searchParams }: { searchParams: Pr
     <div className="grid gap-2 sm:grid-cols-2">{readiness.map(row => <section key={row.environment} className="rounded border bg-white p-3 text-xs"><strong>{row.environment}</strong><p>{row.status}</p><p>{row.configured ? "Parâmetros preenchidos; cliente de transmissão pendente." : "Aguardando parâmetros oficiais."}</p></section>)}</div>
     <EsocialConfigurationForm />
     <section className="rounded border bg-white p-3 text-xs">
-      <strong>Arquivos por layout configurável POC</strong>
+      <strong>Arquivos por layout configurável</strong>
       <p>CSV ou largura fixa ASCII, com validação de campos obrigatórios, largura, transformações e preservação dos bytes/hash. Configure uma regra OBRIGACAO_LAYOUT em Parametrizações. A geração interna requer validação do layout específico para homologação da obrigação.</p>
       <form action="/api/rh/obrigacoes/exportar" method="post" className="mt-2 flex flex-wrap items-center gap-2">
         <label>Ano <input name="year" type="number" min="1900" max="9999" defaultValue={new Date().getUTCFullYear()} required className="w-24 rounded border p-1" /></label>
-        <label>Escopo <select name="scope" defaultValue="DEMONSTRACAO" className="rounded border p-1"><option>DEMONSTRACAO</option><option>HOMOLOGACAO</option><option>PRODUCAO</option></select></label>
+        <label>Escopo <select name="scope" defaultValue="PRODUCAO" className="rounded border p-1"><option value="DEMONSTRACAO">Preliminar</option><option value="HOMOLOGACAO">Homologação</option><option value="PRODUCAO">Produção</option></select></label>
         <label>Regra <input name="ruleId" required className="rounded border p-1" /></label>
         <button className="rounded border px-2 py-1">Gerar e baixar arquivo</button>
       </form>
@@ -44,7 +44,7 @@ export default async function RhEsocialPage({ searchParams }: { searchParams: Pr
       <p>Exportação integral de cálculos oficiais fechados no ano/escopo, com identidade histórica, rubricas, bases, totais e hashes SHA-256. Referência pela competência calculada; classificações fiscais e data de pagamento têm apuração própria.</p>
       <form action="/api/rh/obrigacoes/historico" method="get" className="mt-2 flex flex-wrap items-center gap-2">
         <label>Ano <input name="year" type="number" min="1900" max="9999" defaultValue={new Date().getUTCFullYear()} required className="w-24 rounded border p-1" /></label>
-        <label>Escopo <select name="scope" defaultValue="DEMONSTRACAO" className="rounded border p-1"><option value="DEMONSTRACAO">Demonstração POC</option><option value="HOMOLOGACAO">Homologação</option><option value="PRODUCAO">Produção</option></select></label>
+        <label>Escopo <select name="scope" defaultValue="PRODUCAO" className="rounded border p-1"><option value="DEMONSTRACAO">Preliminar</option><option value="HOMOLOGACAO">Homologação</option><option value="PRODUCAO">Produção</option></select></label>
         <button type="submit" className="rounded border px-2 py-1">Baixar histórico JSON</button>
       </form>
     </section>

@@ -178,6 +178,7 @@ export default function ClientLayout({
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-3">
+          <Link href="/configuracoes/conta" className="rounded-md p-2 text-xs text-slate-600 hover:bg-slate-100">Minha conta</Link>
           <Link href="/notificacoes" className="rounded-md p-2 text-slate-500 outline-none hover:bg-slate-100 hover:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600" aria-label="Notificações internas">
             <Bell className="h-5 w-5" />
           </Link>

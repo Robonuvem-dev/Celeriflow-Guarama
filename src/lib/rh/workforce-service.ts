@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, notInArray, or, sql } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
+import { allocateTaxDifference } from "./payroll-tax-compensation";
 import type DecimalJs from "decimal.js";
 import type { JsonValue } from "@/db/json";
 import type { DatabaseConnection } from "@/db/connection";
@@ -17,6 +18,12 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { allocatePayrollAmount, calculateContractRubrics, calculateContribution, payrollPeriod } from "./calculation-engine";
 import { resolveContractRevision } from "./contract-timeline";
+import { readPayrollAccountingAllocations } from "./accounting-reports";
+import { functionalRecordsAt } from "./functional-record-service";
+import { applyRemunerationLimits, assessOptionalPensionBase, matchingFunctionalRules, resolvePayrollCategory } from "./functional-payroll";
+import { automaticServiceAllowances } from "./automatic-service-rights";
+import { consignmentStatementDetails } from "./consignment-statement";
+import { calculateFunctionalMonthlyRubrics } from "./absence-payroll";
 import { calculateConsignmentMargin } from "./consignment-margin";
 import { assertConsignmentSchedulePosted } from "./consignment-service";
 import { assessPayrollDependents, dependentAssessmentSchema, familyWagePolicySchema, familyWageSnapshotSchema } from "./dependent-eligibility";
@@ -26,6 +33,14 @@ import { selectReceiptMessages } from "./receipt-messages";
 import { assertServiceTimeAllowanceCurrent } from "./service-time-allowance";
 import { calculateIncomeTax, incomeTaxBandSchema } from "./income-tax";
 import { pocSpecialParametersSchema, pocSpecialPolicySchema, preparePocSpecialRubrics } from "./poc-special-payroll";
+import { prepareTerminationRubrics, settleTerminationVacation } from "./termination-calculation";
+import { terminationIncidenceBases, terminationTaxGroups } from "./termination-tax";
+import { specialFunctionalBasis } from "./special-functional-basis";
+import { assessThirteenthEntitlement } from "./thirteenth-entitlement";
+import { calculateRemunerationAverage } from "./remuneration-average";
+import { beneficiaryTaxableBase, resolveBeneficiaryContribution } from "./beneficiary-contribution";
+import { calculateBeneficiaryMonthlyRubrics } from "./beneficiary-monthly-payroll";
+import { resolveCategoryIncidences } from "./category-incidences";
 import { loadSpecialPayrollHistory } from "./special-payroll-history";
 import { calculatePayrollPensions, payrollPensionPolicySchema } from "./payroll-pensions";
 import { calculateProratedMonthlyRubrics, resolveMonthlyContractSegments, monthlyProrationPolicySchema } from "./monthly-proration";
@@ -230,9 +245,11 @@ export async function savePayrollMovement(db: DatabaseConnection, actorId: strin
 export async function calculatePayrollRun(db: DatabaseConnection, actorId: string, raw: unknown) {
   const input = z.object({ payrollId: z.string().min(1), requestKey: z.string().min(1).max(160), mode: z.enum(["SIMULACAO", "OFICIAL"]), scope: z.enum(["DEMONSTRACAO", "HOMOLOGACAO", "PRODUCAO"]), contractIds: z.array(z.string().min(1)).min(1), specialParameters: pocSpecialParametersSchema.optional(), monthlyProration: z.boolean().optional() }).strict().parse(raw);
   return withDatabaseTransaction(db, async tx => {
+    await lock(tx, "functional-configuration");
     await lock(tx, `payroll:${input.payrollId}`);
     await tx.execute(sql`SELECT id FROM "Payroll" WHERE id=${input.payrollId} FOR UPDATE`);
     const payroll = await requirePayroll(tx, input.payrollId);
+    if (payroll.type === "Rescisão" && (!input.specialParameters?.terminationDate || !input.specialParameters.terminationReason)) throw new Error("A rescisão exige data e motivo do desligamento para apurar direitos, abatimentos e tributação segregada.");
     const [previousRun] = await tx.select().from(hrPayrollRuns).where(eq(hrPayrollRuns.requestKey, input.requestKey)).limit(1);
     const replay = previousRun ? { ...previousRun, statements: await tx.select().from(hrPayrollStatements).where(eq(hrPayrollStatements.runId, previousRun.id)) } : null;
     if (replay) {
@@ -289,8 +306,46 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
     if (pensionPolicy && beneficiaries.length !== new Set(pensionPolicy.entries.map(entry => entry.beneficiaryPersonId)).size) throw new Error("Beneficiário de pensão não encontrado no cadastro central.");
     if (ruleSet.calculationPolicy.roundingMode !== "HALF_UP" || ruleSet.calculationPolicy.roundingScale !== 2) throw new Error("Este motor requer arredondamento HALF_UP com duas casas; publique política compatível.");
     if (!special) await assertConsignmentSchedulePosted(tx, ids, period.start, input.scope, ruleSet.rules.some(rule => rule.code === "MARGEM_CONSIGNAVEL"));
+    const functionalRecords = new Map<string, Awaited<ReturnType<typeof functionalRecordsAt>>>();
+    for (const contract of contracts) functionalRecords.set(contract.id, await functionalRecordsAt(tx, { employeeId: contract.employeeId, contractId: contract.id, from: period.start, until: period.end }));
+    const payrollCategories = new Map(contracts.map(contract => [contract.id, resolvePayrollCategory(functionalRecords.get(contract.id)!, contract, period)]));
+    const categoryIncidences = new Map(contracts.map(contract => [contract.id, resolveCategoryIncidences(functionalRecords.get(contract.id)!, contract, payrollCategories.get(contract.id)!.category, payroll.type, period, ruleSet.rubrics)]));
+    const automaticAllowances = new Map<string, Awaited<ReturnType<typeof automaticServiceAllowances>>>();
+    if (!special) for (const contract of contracts) if (payrollCategories.get(contract.id)!.category === "ATIVO") automaticAllowances.set(contract.id, await automaticServiceAllowances(tx, contract, matchingFunctionalRules(functionalRecords.get(contract.id)!, "REGRA_ATS", contract, period), period, input.scope));
+    const terminationPreparations = new Map<string, Awaited<ReturnType<typeof prepareTerminationRubrics>>>();
+    const specialBases = new Map<string, Awaited<ReturnType<typeof specialFunctionalBasis>>>();
+    const thirteenthEntitlements = new Map<string, Awaited<ReturnType<typeof assessThirteenthEntitlement>>>();
+    const specialAverages = new Map<string, Awaited<ReturnType<typeof calculateRemunerationAverage>>>();
+    if (special && payroll.type !== "Rescisão") {
+      const parameters = input.specialParameters!;
+      if (!parameters.averageRuleId && !D(parameters.average).isZero()) throw new Error("Média de folha especial exige regra e competências históricas; remova o valor final manual.");
+      if (parameters.averageRuleId) {
+        if (!parameters.averageFrom || !parameters.averageUntil || payrollPeriod(parameters.averageUntil).start > period.start) throw new Error("Informe a janela histórica da média, sem competências posteriores à folha.");
+        for (const contract of contracts) {
+          const assessment = await calculateRemunerationAverage(tx, { contractId: contract.id, ruleId: parameters.averageRuleId, from: parameters.averageFrom, until: parameters.averageUntil });
+          if (assessment.scope !== input.scope) throw new Error("Média e folha devem pertencer ao mesmo escopo.");
+          specialAverages.set(contract.id, assessment);
+        }
+      }
+    }
+    if (["1ª parcela 13º", "13º", "Diferença 13º"].includes(payroll.type)) for (const contract of contracts) {
+      const entitlement = await assessThirteenthEntitlement(tx, contract, period.end);
+      if (input.specialParameters?.avos !== undefined && input.specialParameters.avos !== entitlement.avos) throw new Error("Avos informados divergem da aquisição por vigência e tempo de serviço; utilize a apuração automática.");
+      thirteenthEntitlements.set(contract.id, entitlement);
+    }
+    if (special && payroll.type !== "Rescisão") for (const contract of contracts) specialBases.set(contract.id, await specialFunctionalBasis(tx, contract, functionalRecords.get(contract.id)!, { payrollType: payroll.type, competence: payroll.competence, rubrics: categoryIncidences.get(contract.id)!.rubrics }));
+    for (const [contractId, basis] of specialBases) {
+      if (basis && specialAverages.get(contractId)?.policy.rubricCodes.some(code => basis.memory.codes.includes(code))) throw new Error("A base remuneratória especial e a média histórica não podem incluir a mesma verba duas vezes.");
+    }
+    if (payroll.type === "Rescisão" && input.specialParameters?.terminationDate) for (const contract of contracts) {
+      terminationPreparations.set(contract.id, await prepareTerminationRubrics(tx, { ...contract, salary: payrollCategories.get(contract.id)!.salary }, functionalRecords.get(contract.id)!, { payrollType: payroll.type, competence: payroll.competence, parameters: input.specialParameters, rubrics: categoryIncidences.get(contract.id)!.rubrics }, input.scope));
+    }
     const calculated = contracts.map(contract => {
-      if (!contract.employee.person || !contract.employee.isActive) throw new Error("Vínculo sem pessoa física/servidor ativo.");
+      const calculationRubrics = categoryIncidences.get(contract.id)!.rubrics;
+      const payrollCategory = payrollCategories.get(contract.id)!;
+      const salary = specialBases.get(contract.id)?.remuneration ?? payrollCategory.salary;
+      if (!contract.employee.person || contract.employee.person.status !== "Ativo" || payrollCategory.category === "ATIVO" && !contract.employee.isActive) throw new Error("Vínculo sem pessoa física ativa ou servidor ativo no enquadramento de pessoal.");
+      if (payrollCategory.category !== "ATIVO" && payroll.type === "Férias") throw new Error("Férias de pessoal não se aplicam ao vínculo de benefício previdenciário.");
       const regime = regimes.find(r => r.id === contract.regimeId);
       if (!regime) throw new Error("Regime inativo.");
       const start = new Date(Math.max(period.start.getTime(), contract.admittedAt.getTime()));
@@ -299,6 +354,12 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
       const days = fullMonth ? 30 : Math.min(30, Math.max(0, end.getUTCDate() - start.getUTCDate() + 1));
       const movements: Record<string, Decimal> = {};
       for (const movement of contract.movements) movements[movement.rubricCode] = (movements[movement.rubricCode] ?? D(0)).add(movement.amount);
+      for (const [code, amount] of Object.entries(automaticAllowances.get(contract.id)?.movements ?? {})) {
+        if (movements[code] && !movements[code].isZero()) throw new Error("ATS possui lançamento manual e regra automática na mesma competência; concilie a origem.");
+        const rubric = ruleSet.rubrics.find(row => row.code === code);
+        if (!rubric || rubric.type !== "PROVENTO" || rubric.calculationMethod !== "MANUAL") throw new Error(`ATS automático exige rubrica de provento manual: ${code}.`);
+        movements[code] = amount;
+      }
       for (const item of canonicalItems.filter(i => i.employeeId === contract.employeeId)) {
         const origin = item.sstBenefitOrigin ?? item.sstLeaveOrigin;
         const details = contract.details as Record<string, unknown>;
@@ -311,11 +372,28 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
       const source = history?.get(contract.id) ?? null;
       if (linkedDifference && source?.schemeCode !== regime.socialSecurityScheme?.code) throw new Error("Diferença de 13º com mudança previdenciária exige conciliação específica.");
       const vacation = vacationReservations?.get(contract.id) ?? null;
-      const prepared = special ? preparePocSpecialRubrics({ payrollType: payroll.type, competence: payroll.competence, salary: contract.salary, admittedAt: contract.admittedAt, endsAt: contract.endsAt, parameters: vacation ? { ...input.specialParameters!, vacationDays: vacation.days } : input.specialParameters!, rubrics: ruleSet.rubrics, history: source ?? undefined }) : null;
-      const prorated = contract.monthlySegments ? calculateProratedMonthlyRubrics({ segments: contract.monthlySegments, period, rubrics: ruleSet.rubrics, movements, policy: prorationRule!.value }) : null;
-      const result = prorated?.result ?? calculateContractRubrics({ salary: contract.salary, monthlyHours: contract.monthlyHours, days, movements: prepared?.movements ?? movements, rubrics: prepared?.rubrics ?? ruleSet.rubrics });
+       const parameters = { ...input.specialParameters!, ...(vacation ? { vacationDays: vacation.days } : {}), ...(thirteenthEntitlements.has(contract.id) ? { avos: thirteenthEntitlements.get(contract.id)!.avos } : {}) };
+       if (specialAverages.has(contract.id)) parameters.average = specialAverages.get(contract.id)!.average;
+       const prepared = terminationPreparations.get(contract.id) ?? (special ? preparePocSpecialRubrics({ payrollType: payroll.type, competence: payroll.competence, salary, admittedAt: contract.admittedAt, endsAt: contract.endsAt, parameters, rubrics: calculationRubrics, history: source ?? undefined }) : null);
+      const records = functionalRecords.get(contract.id)!;
+      const allowances = automaticAllowances.get(contract.id)?.memory ?? [];
+      const dailyMovements: Record<string, Record<string, Decimal>> = {};
+      if (allowances.length) for (let at = period.start.getTime(); at <= period.end.getTime(); at += 86400000) {
+        const date = new Date(at).toISOString().slice(0, 10);
+        const amounts: Record<string, Decimal> = {};
+        for (const allowance of allowances) amounts[allowance.rubricCode] = (amounts[allowance.rubricCode] ?? D(0)).add(allowance.dailyRates.find(row => row.date === date)?.monthlyAmount ?? 0);
+        dailyMovements[date] = amounts;
+      }
+       const beneficiary = payrollCategory.category !== "ATIVO";
+       const functionalEffects = records.filter(row => ["COMISSAO", "AFASTAMENTO", "CESSAO", ...(beneficiary ? [] : ["REGRA_LIMITE", "HORA_AULA"])].includes(row.kind));
+      const prorated = special ? null : beneficiary ? calculateBeneficiaryMonthlyRubrics({ contract, revisionId: contract.revisionId, segments: contract.monthlySegments, period, rubrics: calculationRubrics, movements, records }) : functionalEffects.length || allowances.length ? calculateFunctionalMonthlyRubrics({ contract, revisionId: contract.revisionId, segments: contract.monthlySegments, period, rubrics: calculationRubrics, movements, records: functionalEffects, dailyMovements }) : contract.monthlySegments ? calculateProratedMonthlyRubrics({ segments: contract.monthlySegments, period, rubrics: calculationRubrics, movements, policy: prorationRule!.value }) : null;
+       const limits = beneficiary ? [] : matchingFunctionalRules(records, "REGRA_LIMITE", contract, period);
+       const limited = !special && limits.length && !prorated ? applyRemunerationLimits({ salary: contract.salary, monthlyHours: contract.monthlyHours, days, movements, rubrics: calculationRubrics }, limits, period) : null;
+      if (beneficiary && functionalEffects.length) throw new Error("Vínculo previdenciário não pode receber comissões, afastamentos ou limites do vínculo de pessoal; use os parâmetros próprios do benefício.");
+      const result = limited?.result ?? prorated?.result ?? calculateContractRubrics({ salary, monthlyHours: contract.monthlyHours, days, movements: prepared?.movements ?? movements, rubrics: prepared?.rubrics ?? calculationRubrics });
+      const optionalPension = assessOptionalPensionBase(result, calculationRubrics, records.filter(row => row.kind === "PREVIDENCIA_OPCAO"), period, regime.socialSecurityScheme?.regime ?? "");
       if (prepared) for (const item of result.items) item.formula = prepared.memory.formulas[item.code];
-      return { contract, regime, result, days: prorated ? prorated.memory.calendarDays : days, proration: prorated?.memory ?? null, specialMemory: prepared ? { ...prepared.memory, history: source, vacationReservations: vacation, rightsConsumed: Boolean(vacation), rightsConsumptionOrigin: vacation ? "RESERVAS_JA_DEBITADAS_NO_LEDGER" : null } : null, pensions: [] as (ReturnType<typeof calculatePayrollPensions>[number] & { beneficiary: typeof beneficiaries[number] })[] };
+      return { contract, regime, result, calculationRubrics, optionalPension, remunerationLimits: limited?.memory ?? [], functionalRecords: records, days: prorated ? prorated.memory.calendarDays : days, proration: prorated?.memory ?? null, specialMemory: prepared ? { ...prepared.memory, history: source, vacationReservations: vacation, rightsConsumed: Boolean(vacation), rightsConsumptionOrigin: vacation ? "RESERVAS_JA_DEBITADAS_NO_LEDGER" : null } : null, pensions: [] as (ReturnType<typeof calculatePayrollPensions>[number] & { beneficiary: typeof beneficiaries[number] })[] };
     });
     const samePersons = [...new Set(contracts.map(contract => contract.employee.personId).filter((id): id is string => Boolean(id)))];
     const otherEmployeeRows = await tx.select({ id: employees.id }).from(employees).where(inArray(employees.personId, samePersons));
@@ -329,19 +407,23 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
     if (omitted) throw new Error("Inclua os demais contratos da mesma pessoa física para calcular tetos e retenções sem duplicar benefícios fiscais.");
     const familyRule = ruleSet.rules.find(rule => rule.code === "SALARIO_FAMILIA");
     const familyMemory = new Map<string, unknown>();
+    const familyAllowanceMemory = new Map<string, unknown>();
     const irrfDependentMemory = new Map<string, unknown>();
     const incomeTaxMemory = new Map<string, ReturnType<typeof calculateIncomeTax>>();
+    const terminationTaxMemory = new Map<string, Record<string, unknown>>();
     if (familyRule && !special) {
       const policy = familyWagePolicySchema.parse(familyRule.value);
       const rubric = ruleSet.rubrics.find(rubric => rubric.code === policy.rubricCode);
       if (!rubric || rubric.type !== "PROVENTO" || rubric.calculationMethod !== "MANUAL" || rubric.incidences.some(incidence => incidence.isIncluded)) throw new Error("Salário-família exige rubrica MANUAL de provento sem incidências; configure a política explicitamente.");
       for (const personId of samePersons) {
-        const rows = calculated.filter(row => row.contract.employee.personId === personId);
+        const personRows = calculated.filter(row => row.contract.employee.personId === personId);
+        const rows = personRows.filter(row => policy.categories.includes(payrollCategories.get(row.contract.id)!.category as "ATIVO" | "APOSENTADO" | "PENSIONISTA"));
+        if (!rows.length) continue;
         if (rows.some(row => row.contract.movements.some(movement => movement.rubricCode === policy.rubricCode)) || canonicalItems.some(item => rows.some(row => row.contract.employeeId === item.employeeId) && (item.sstBenefitOrigin?.rubricId === rubric.id || item.sstLeaveOrigin?.rubricId === rubric.id))) throw new Error("Salário-família com origem manual exige conciliação; não duplicar com cálculo automático.");
         const assessment = await assessPayrollDependents(tx, [...new Set(rows.map(row => row.contract.employeeId))], "familyWage", policy.eligibility, period);
-        const income = rows.reduce((total, row) => total.add(row.result.gross), D(0));
+        const income = personRows.reduce((total, row) => total.add(row.result.gross), D(0));
         const incomeEligible = income.lte(policy.incomeLimit);
-        const factor = policy.proration === "INTEGRAL" ? D(1) : D(Math.max(...rows.map(row => row.days))).div(30);
+        const factor = policy.proration === "INTEGRAL" ? D(1) : Decimal.min(30, Math.max(...rows.map(row => row.days))).div(30);
         const value = incomeEligible ? D(policy.quota).mul(assessment.eligibleCount).mul(factor).toDecimalPlaces(2, Decimal.ROUND_HALF_UP) : D(0);
         const weights = rows.map(row => policy.allocationBasis === "DIAS" ? D(row.days) : Decimal.max(0, row.result.gross));
         const shares = value.isZero() ? rows.map(() => D(0)) : allocatePayrollAmount(value, weights);
@@ -354,44 +436,106 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
         familyMemory.set(personId, { ...assessment, policy, income: income.toFixed(2), incomeEligible, factor: factor.toString(), amount: value.toFixed(2), allocations: rows.map((row, index) => ({ contractId: row.contract.id, value: shares[index].toFixed(2) })) });
       }
     }
+    if (!special) for (const personId of samePersons) {
+      const rows = calculated.filter(row => row.contract.employee.personId === personId);
+      const policies = rows.flatMap(row => matchingFunctionalRules(row.functionalRecords, "REGRA_ABONO", row.contract, period));
+      const unique = [...new Map(policies.map(rule => [rule.id, rule])).values()];
+      if (unique.length > 1) throw new Error("Mais de uma regra de abono-família para a mesma pessoa. Concilie o enquadramento dos vínculos.");
+      const policy = unique[0];
+      if (!policy) continue;
+      if (policy.startsAt > period.start || policy.endsAt && policy.endsAt < period.end) throw new Error("A regra de abono-família deve cobrir a competência integral.");
+      const holders = rows.filter(row => matchingFunctionalRules(row.functionalRecords, "REGRA_ABONO", row.contract, period).some(rule => rule.id === policy.id));
+      const relationships = await tx.select({ relationship: dependents.relationship }).from(dependents).where(inArray(dependents.employeeId, holders.map(row => row.contract.employeeId)));
+      const eligibility = { relationships: [...new Set(relationships.map(row => row.relationship))].map(relationship => ({ relationship, maxAgeYears: Number(policy.data.maximumAge) })), requiredDocumentTypes: [], acceptedDocumentStatuses: ["Válido"], allowDocumentsWithoutExpiry: true, legalReference: policy.data.legalReference };
+      if (!eligibility.relationships.length) continue;
+      const assessment = await assessPayrollDependents(tx, [...new Set(holders.map(row => row.contract.employeeId))], "familyAllowance", eligibility, period);
+      const income = rows.reduce((sum, row) => sum.add(row.result.gross), D(0));
+      const value = income.lte(policy.data.incomeLimit) ? D(policy.data.quota).mul(assessment.eligibleCount).toDecimalPlaces(2) : D(0);
+      const rubric = ruleSet.rubrics.find(row => row.code === policy.data.rubricCode);
+      if (!rubric || rubric.type !== "PROVENTO" || rubric.calculationMethod !== "MANUAL" || rubric.incidences.some(row => row.isIncluded) || familyRule && familyWagePolicySchema.parse(familyRule.value).rubricCode === rubric.code) throw new Error("Abono-família exige rubrica manual própria, sem incidências e distinta do salário-família.");
+      const shares = value.isZero() ? holders.map(() => D(0)) : allocatePayrollAmount(value, holders.map(row => Decimal.max(0, row.result.gross)));
+      holders.forEach((row, index) => {
+        const item = row.result.items.find(item => item.code === rubric.code);
+        if (!item || !D(item.value).isZero()) throw new Error("Rubrica de abono-família ausente ou com origem já lançada.");
+        item.value = shares[index].toFixed(2); item.method = "ABONO_FAMILIA";
+        row.result.gross = row.result.gross.add(shares[index]);
+      });
+      familyAllowanceMemory.set(personId, { ...assessment, ruleId: policy.id, version: policy.version, income: income.toFixed(2), amount: value.toFixed(2), employeeIds: [...new Set(holders.map(row => row.contract.employeeId))] });
+    }
     // Apply the social security ceiling once per PF and scheme, then reconcile residual cents.
     const groups = new Map<string, typeof calculated>();
+    const employerComponents = new Map<string, Record<string, string>>();
+    const beneficiaryContributionMemory = new Map<string, unknown>();
     for (const row of calculated) {
       const scheme = row.regime.socialSecurityScheme;
       if (!scheme || !scheme.isActive) throw new Error("Regime exige esquema previdenciário ativo.");
-      const key = `${row.contract.employee.personId}:${scheme.id}`;
+      const key = `${row.contract.employee.personId}:${scheme.id}:${payrollCategories.get(row.contract.id)!.category}`;
       groups.set(key, [...(groups.get(key) ?? []), row]);
     }
     for (const group of groups.values()) {
       const scheme = group[0].regime.socialSecurityScheme!;
-      const bases = group.map(row => row.result.bases[scheme.regime] ?? D(0));
+      const category = payrollCategories.get(group[0].contract.id)!.category;
+      const personCategoryGroups = [...groups.values()].filter(other => other[0].contract.employee.personId === group[0].contract.employee.personId && payrollCategories.get(other[0].contract.id)!.category === category);
+      const policies = personCategoryGroups.flat().map(row => resolveBeneficiaryContribution(row.functionalRecords, row.contract, payrollCategories.get(row.contract.id)!.category, payroll.type, period));
+      if (new Set(policies.map(row => row?.id ?? "ATIVO")).size !== 1) throw new Error("Benefícios da mesma pessoa e categoria exigem regra contributiva comum para conciliar a parcela isenta.");
+      const beneficiaryPolicy = policies[0];
+      for (const taxGroup of payroll.type === "Rescisão" ? terminationTaxGroups : ["UNICA"] as const) {
+      const segregated = payroll.type === "Rescisão" ? group.map(row => terminationIncidenceBases(row.result, row.calculationRubrics, scheme.regime, row.optionalPension.memory)) : null;
+      const bases = group.map((row, index) => segregated ? segregated[index].employee[taxGroup as "MENSAL" | "DECIMO_TERCEIRO"] : row.optionalPension.employeeBase);
+      const employerBases = group.map((row, index) => segregated ? segregated[index].employer[taxGroup as "MENSAL" | "DECIMO_TERCEIRO"] : row.optionalPension.employerBase);
       const priorBase = linkedDifference ? group.reduce((total, row) => total.add(history!.get(row.contract.id)!.bases[scheme.regime] ?? 0), D(0)) : D(0);
-      const priorContribution = linkedDifference ? group.reduce((total, row) => total.add(history!.get(row.contract.id)!.socialContribution), D(0)) : D(0);
+      const priorContribution = taxGroup === "DECIMO_TERCEIRO" ? group.reduce((total, row) => total.add(terminationPreparations.get(row.contract.id)?.memory.priorThirteenthTaxes.social ?? 0), D(0)) : linkedDifference ? group.reduce((total, row) => total.add(history!.get(row.contract.id)!.socialContribution), D(0)) : D(0);
       const base = bases.reduce((a, b) => a.add(b), D(0));
-      const contribution = calculateContribution(base.add(priorBase), scheme.bands, scheme.employeeCalculationMethod, scheme.ceilingValue).sub(priorContribution);
-      if (contribution.lt(0)) throw new Error("Diferença previdenciária negativa exige restituição/compensação própria.");
-      const shares = allocatePayrollAmount(contribution, bases);
+      let taxableBase = beneficiaryTaxableBase(base.add(priorBase), beneficiaryPolicy);
+      let previousTaxableBase = beneficiaryTaxableBase(priorBase, beneficiaryPolicy);
+      let personCategoryBase = base.add(priorBase);
+      if (beneficiaryPolicy && personCategoryGroups.length > 1) {
+        const groupedBases = personCategoryGroups.map(other => other.reduce((sum, row) => {
+          const currentBase = payroll.type === "Rescisão" ? terminationIncidenceBases(row.result, row.calculationRubrics, row.regime.socialSecurityScheme!.regime, row.optionalPension.memory).employee[taxGroup as "MENSAL" | "DECIMO_TERCEIRO"] : row.optionalPension.employeeBase;
+          return sum.add(currentBase);
+        }, D(0)));
+        const previousBases = personCategoryGroups.map(other => linkedDifference ? other.reduce((sum, row) => sum.add(history!.get(row.contract.id)!.bases[row.regime.socialSecurityScheme!.regime] ?? 0), D(0)) : D(0));
+        const fullBases = groupedBases.map((value, index) => value.add(previousBases[index]));
+        personCategoryBase = fullBases.reduce((sum, value) => sum.add(value), D(0));
+        const totalPriorBase = previousBases.reduce((sum, value) => sum.add(value), D(0));
+        const position = personCategoryGroups.indexOf(group);
+        taxableBase = allocatePayrollAmount(beneficiaryTaxableBase(personCategoryBase, beneficiaryPolicy).toDecimalPlaces(2), fullBases)[position];
+        previousTaxableBase = allocatePayrollAmount(beneficiaryTaxableBase(totalPriorBase, beneficiaryPolicy).toDecimalPlaces(2), previousBases)[position];
+      }
+      const ceiling = !beneficiaryPolicy || beneficiaryPolicy.data.ceilingMode === "ESQUEMA" ? scheme.ceilingValue : beneficiaryPolicy.data.ceilingMode === "SEM_TETO" ? null : D(beneficiaryPolicy.data.ceiling);
+      const contribution = calculateContribution(taxableBase, scheme.bands, scheme.employeeCalculationMethod, ceiling).sub(priorContribution);
+      const shares = allocateTaxDifference({ amount: contribution, bases, previousBases: group.map(row => taxGroup === "DECIMO_TERCEIRO" ? D(terminationPreparations.get(row.contract.id)?.memory.priorThirteenthTaxes.social ?? 0) : linkedDifference ? D(history!.get(row.contract.id)!.socialContribution) : D(0)), tax: "PREVIDENCIA_PESSOAL", payrollType: payroll.type, reference: period.end.toISOString().slice(0, 10), priorTax: priorContribution, policy: ruleSet.rules.find(rule => rule.code === "COMPENSACAO_TRIBUTARIA_FOLHA")?.value });
+      const currentTaxableBase = Decimal.max(0, Decimal.min(taxableBase, ceiling ?? taxableBase).sub(Decimal.min(previousTaxableBase, ceiling ?? previousTaxableBase)));
+      const taxableShares = beneficiaryPolicy ? allocatePayrollAmount(currentTaxableBase.toDecimalPlaces(2), bases) : null;
       const employerBasisRule = ruleSet.rules.find(rule => rule.code === `PREVIDENCIA_BASE_PATRONAL_${scheme.code}`);
-      const employerRate = (scheme.employerContributionRate ?? D(0)).add(scheme.actuarialContributionRate ?? D(0));
+      const employerRate = beneficiaryPolicy?.data.employer === "NAO" ? D(0) : (scheme.employerContributionRate ?? D(0)).add(scheme.actuarialContributionRate ?? D(0));
       if (employerRate.lt(0) || employerRate.gt(100)) throw new Error("Alíquota patronal inválida.");
       if (employerRate.gt(0) && !employerBasisRule) throw new Error("Configure a base patronal separadamente do teto de contribuição do servidor.");
       const employerBasis = employerBasisRule ? z.enum(["SEM_TETO", "TETO_SERVIDOR"]).parse(employerBasisRule.value) : "SEM_TETO";
-      const employerBase = employerBasis === "TETO_SERVIDOR" && scheme.ceilingValue !== null ? Decimal.min(base.add(priorBase), scheme.ceilingValue) : base.add(priorBase);
-      const priorEmployer = linkedDifference ? group.reduce((total, row) => total.add(history!.get(row.contract.id)!.employer), D(0)) : D(0);
+      const fullEmployerBase = employerBases.reduce((sum, value) => sum.add(value), D(0)).add(priorBase);
+      const employerBase = employerBasis === "TETO_SERVIDOR" && scheme.ceilingValue !== null ? Decimal.min(fullEmployerBase, scheme.ceilingValue) : fullEmployerBase;
+      const priorEmployer = taxGroup === "DECIMO_TERCEIRO" ? group.reduce((total, row) => total.add(terminationPreparations.get(row.contract.id)?.memory.priorThirteenthTaxes.employer ?? 0), D(0)) : linkedDifference ? group.reduce((total, row) => total.add(history!.get(row.contract.id)!.employer), D(0)) : D(0);
       const employerAmount = employerBase.mul(employerRate).div(100).toDecimalPlaces(2).sub(priorEmployer);
-      if (employerAmount.lt(0)) throw new Error("Diferença patronal negativa exige restituição/compensação própria.");
-      const employer = allocatePayrollAmount(employerAmount, bases);
+      const employer = allocateTaxDifference({ amount: employerAmount, bases: employerBases, previousBases: group.map(row => taxGroup === "DECIMO_TERCEIRO" ? D(terminationPreparations.get(row.contract.id)?.memory.priorThirteenthTaxes.employer ?? 0) : linkedDifference ? D(history!.get(row.contract.id)!.employer) : D(0)), tax: "PREVIDENCIA_PATRONAL", payrollType: payroll.type, reference: period.end.toISOString().slice(0, 10), priorTax: priorEmployer, policy: ruleSet.rules.find(rule => rule.code === "COMPENSACAO_TRIBUTARIA_FOLHA")?.value });
       group.forEach((row, index) => {
         row.result.deductions = row.result.deductions.add(shares[index]);
-        row.result.employer = employer[index];
-        row.result.items.push({ code: `PREVIDENCIA_${scheme.code}`, name: scheme.name, type: "DESCONTO", value: shares[index].toFixed(2), method: scheme.employeeCalculationMethod, formula: null, base: scheme.regime, rate: null, fixed: null, movement: "0.00" });
+        row.result.employer = row.result.employer.add(employer[index]);
+        const components = employer[index].isZero() ? [D(0), D(0)] : allocatePayrollAmount(employer[index].abs(), [scheme.employerContributionRate ?? D(0), scheme.actuarialContributionRate ?? D(0)]).map(value => employer[index].isNegative() ? value.neg() : value);
+        const previous = employerComponents.get(row.contract.id);
+        if (beneficiaryPolicy) beneficiaryContributionMemory.set(row.contract.id, { policy: beneficiaryPolicy, grossPersonBase: personCategoryBase.toFixed(2), schemeGrossBase: base.add(priorBase).toFixed(2), taxablePersonBase: beneficiaryTaxableBase(personCategoryBase, beneficiaryPolicy).toFixed(2), schemeTaxableBase: taxableBase.toFixed(2), allocatedTaxableBase: taxableShares![index].toFixed(2), ceiling: ceiling?.toString() ?? null, contribution: shares[index].toFixed(2), employer: employer[index].toFixed(2), allocation: "ISENCAO_UNICA_PESSOA_CATEGORIA_RATEADA_ENTRE_ESQUEMAS_E_VINCULOS", priorContribution: priorContribution.toFixed(2) });
+        employerComponents.set(row.contract.id, { PREVIDENCIA_PATRONAL: D(previous?.PREVIDENCIA_PATRONAL ?? 0).add(components[0]).toFixed(2), CONTRIBUICAO_ATUARIAL: D(previous?.CONTRIBUICAO_ATUARIAL ?? 0).add(components[1]).toFixed(2) });
+        const existingContribution = row.result.items.find(item => item.code === `PREVIDENCIA_${scheme.code}`);
+        if (existingContribution && taxGroup !== "UNICA") existingContribution.value = D(existingContribution.value).add(shares[index]).toFixed(2);
+        else row.result.items.push({ code: `PREVIDENCIA_${scheme.code}`, name: scheme.name, type: "DESCONTO", value: shares[index].toFixed(2), method: scheme.employeeCalculationMethod, formula: null, base: scheme.regime, rate: null, fixed: null, movement: "0.00" });
+        if (taxGroup !== "UNICA") terminationTaxMemory.set(row.contract.id, { ...terminationTaxMemory.get(row.contract.id), [`previdencia_${taxGroup}`]: { employeeBase: bases[index].toFixed(2), employerBase: employerBases[index].toFixed(2), contribution: shares[index].toFixed(2), employer: employer[index].toFixed(2), ceiling: scheme.ceilingValue?.toString() ?? null } });
       });
+      }
     }
     const postPensions = (phase: "ANTES_IRRF" | "APOS_IRRF") => {
       if (!pensionPolicy) return;
       for (const row of calculated) {
         const socialContribution = row.result.items.filter(item => item.code.startsWith("PREVIDENCIA_")).reduce((total, item) => total.add(item.value), D(0));
-        const incomeTax = row.result.items.filter(item => item.code === "IRRF").reduce((total, item) => total.add(item.value), D(0));
+        const incomeTax = row.result.items.filter(item => item.code === "IRRF" || item.code.startsWith("IRRF_RESCISAO_")).reduce((total, item) => total.add(item.value), D(0));
         const assessments = calculatePayrollPensions(pensionPolicy, { contractId: row.contract.id, payrollType: payroll.type, start: period.start, end: period.end, gross: row.result.gross, socialContribution, incomeTax, phase });
         for (const assessment of assessments) {
           const code = `PENSAO_${assessment.id}`;
@@ -406,13 +550,14 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
     // Do not silently omit IRRF. Municipal approval must supply the progressive table.
     const irrfRule = ruleSet.rules.find(r => r.code === "IRRF_FAIXAS");
     const irrfBases = calculated.map(row => row.result.bases.IRRF ?? D(0));
-    if (irrfBases.some(base => base.gt(0))) {
+    if (irrfBases.some(base => base.gt(0)) || linkedDifference && [...history!.values()].some(row => D(row.incomeTax).gt(0)) || [...terminationPreparations.values()].some(row => D(row.memory.priorThirteenthTaxes.incomeTax).gt(0))) {
       if (!irrfRule || !Array.isArray(irrfRule.value)) throw new Error("Configure IRRF_FAIXAS antes de calcular bases sujeitas ao IRRF.");
       const bands = z.array(incomeTaxBandSchema).parse(irrfRule.value);
       const persons = new Set(calculated.map(row => row.contract.employee.personId));
       for (const person of persons) {
         const rows = calculated.filter(row => row.contract.employee.personId === person);
-        const originalBases = rows.map(row => Decimal.max(D(0), row.result.bases.IRRF ?? D(0)));
+        for (const taxGroup of payroll.type === "Rescisão" ? terminationTaxGroups : ["UNICA"] as const) {
+        const originalBases = rows.map(row => payroll.type === "Rescisão" ? terminationIncidenceBases(row.result, row.calculationRubrics, "IRRF").original[taxGroup as "MENSAL" | "DECIMO_TERCEIRO"] : Decimal.max(D(0), row.result.bases.IRRF ?? D(0)));
         const priorIncome = linkedDifference ? rows.reduce((total, row) => total.add(history!.get(row.contract.id)!.bases.IRRF ?? 0), D(0)) : D(0);
         const originalBase = originalBases.reduce((a, b) => a.add(b), D(0)).add(priorIncome);
         const eligibilityRule = ruleSet.rules.find(rule => rule.code === "DEPENDENTES_IRRF");
@@ -423,29 +568,58 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
         const deductionRule = ruleSet.rules.find(rule => rule.code === "IRRF_DEDUCAO_DEPENDENTE");
         if (dependentCount && !deductionRule) throw new Error("Dependentes de IRRF exigem IRRF_DEDUCAO_DEPENDENTE configurada.");
         const dependentDeduction = deductionRule ? D(z.union([z.string(), z.number()]).parse(deductionRule.value)).mul(dependentCount) : D(0);
-        const socialDeduction = rows.reduce((total, row) => total.add(row.result.items.filter(i => i.code.startsWith("PREVIDENCIA_")).reduce((a, b) => a.add(b.value), D(0))).add(linkedDifference ? history!.get(row.contract.id)!.socialContribution : 0), D(0));
-        const pensionDeduction = rows.reduce((total, row) => total.add(row.pensions.filter(pension => pension.deductFromIncomeTax).reduce((sum, pension) => sum.add(pension.amount), D(0))).add(linkedDifference ? history!.get(row.contract.id)!.pensionIncomeTaxDeduction : 0), D(0));
+        const socialDeduction = rows.reduce((total, row) => {
+          const segregated = terminationTaxMemory.get(row.contract.id)?.[`previdencia_${taxGroup}`] as { contribution: string } | undefined;
+          const value = taxGroup === "UNICA" ? row.result.items.filter(i => i.code.startsWith("PREVIDENCIA_")).reduce((a, b) => a.add(b.value), D(0)) : D(segregated?.contribution ?? 0);
+          return total.add(value).add(taxGroup === "DECIMO_TERCEIRO" ? terminationPreparations.get(row.contract.id)?.memory.priorThirteenthTaxes.social ?? 0 : linkedDifference ? history!.get(row.contract.id)!.socialContribution : 0);
+        }, D(0));
+        const pensionDeduction = rows.reduce((total, row) => {
+          const eligible = row.pensions.filter(pension => pension.deductFromIncomeTax);
+          const amount = eligible.reduce((sum, pension) => sum.add(pension.amount), D(0));
+          const weights = taxGroup === "UNICA" ? null : terminationIncidenceBases(row.result, row.calculationRubrics, "IRRF").original;
+          const allocated = weights ? eligible.reduce((sum, pension) => {
+            if (weights.MENSAL.add(weights.DECIMO_TERCEIRO).isZero()) return sum;
+            if (!pension.terminationTaxAllocation && D(pension.amount).gt(0)) throw new Error("Defina na pensão a alocação fiscal rescisória mensal, de 13º ou proporcional, conforme o título judicial.");
+            const share = pension.terminationTaxAllocation === "PROPORCIONAL" ? allocatePayrollAmount(D(pension.amount), terminationTaxGroups.map(group => weights[group]))[taxGroup === "MENSAL" ? 0 : 1] : pension.terminationTaxAllocation === taxGroup ? D(pension.amount) : D(0);
+            return sum.add(share);
+          }, D(0)) : amount;
+          return total.add(allocated).add(linkedDifference ? history!.get(row.contract.id)!.pensionIncomeTaxDeduction : 0);
+        }, D(0));
         const simplifiedRule = ruleSet.rules.find(rule => rule.code === "IRRF_DEDUCAO_SIMPLIFICADA");
         const simplified = simplifiedRule ? D(z.union([z.string(), z.number()]).parse(simplifiedRule.value)) : D(0);
         if (dependentDeduction.lt(0) || simplified.lt(0)) throw new Error("Deduções IRRF negativas na configuração.");
         const reductionRule = ruleSet.rules.find(rule => rule.code === "IRRF_REDUCAO_MENSAL");
         const rra = payroll.type === "RRA" ? input.specialParameters!.rraMonths : undefined;
-        const taxMemory = calculateIncomeTax({ income: originalBase, legalDeductions: dependentDeduction.add(socialDeduction).add(pensionDeduction), simplifiedDeduction: rra ? "0" : simplified, bands, referenceDate: period.end.toISOString().slice(0, 10), reductionPolicy: ["Mensal", "Complementar", "Férias"].includes(payroll.type) ? reductionRule?.value : undefined, rraMonths: rra });
-        if (person) incomeTaxMemory.set(person, taxMemory);
+        const taxMemory = calculateIncomeTax({ income: originalBase, legalDeductions: dependentDeduction.add(socialDeduction).add(pensionDeduction), simplifiedDeduction: rra || taxGroup === "DECIMO_TERCEIRO" ? "0" : simplified, bands, referenceDate: period.end.toISOString().slice(0, 10), reductionPolicy: ["Mensal", "Complementar", "Férias"].includes(payroll.type) || taxGroup === "MENSAL" ? reductionRule?.value : undefined, rraMonths: rra });
+        if (person && taxGroup === "UNICA") incomeTaxMemory.set(person, taxMemory);
         const taxable = D(taxMemory.base);
         const bases = allocatePayrollAmount(taxable, originalBases);
-        const priorTax = linkedDifference ? rows.reduce((total, row) => total.add(history!.get(row.contract.id)!.incomeTax), D(0)) : D(0);
+        const priorTax = taxGroup === "DECIMO_TERCEIRO" ? rows.reduce((total, row) => total.add(terminationPreparations.get(row.contract.id)?.memory.priorThirteenthTaxes.incomeTax ?? 0), D(0)) : linkedDifference ? rows.reduce((total, row) => total.add(history!.get(row.contract.id)!.incomeTax), D(0)) : D(0);
         const tax = D(taxMemory.tax).sub(priorTax);
-        if (tax.lt(0)) throw new Error("Diferença IRRF negativa exige restituição/compensação própria.");
-        const shares = allocatePayrollAmount(tax, bases);
+        const shares = allocateTaxDifference({ amount: tax, bases, previousBases: rows.map(row => taxGroup === "DECIMO_TERCEIRO" ? D(terminationPreparations.get(row.contract.id)?.memory.priorThirteenthTaxes.incomeTax ?? 0) : linkedDifference ? D(history!.get(row.contract.id)!.incomeTax) : D(0)), tax: "IRRF", payrollType: payroll.type, reference: period.end.toISOString().slice(0, 10), priorTax, policy: ruleSet.rules.find(rule => rule.code === "COMPENSACAO_TRIBUTARIA_FOLHA")?.value });
         rows.forEach((row, index) => {
           row.result.deductions = row.result.deductions.add(shares[index]);
-          row.result.items.push({ code: "IRRF", name: "Imposto de Renda", type: "DESCONTO", value: shares[index].toFixed(2), method: "PROGRESSIVA", formula: null, base: "IRRF", rate: null, fixed: null, movement: "0.00" });
+          const existingTax = row.result.items.find(item => item.code === "IRRF");
+          if (existingTax && taxGroup !== "UNICA") existingTax.value = D(existingTax.value).add(shares[index]).toFixed(2);
+          else row.result.items.push({ code: "IRRF", name: "Imposto de Renda", type: "DESCONTO", value: shares[index].toFixed(2), method: "PROGRESSIVA", formula: null, base: "IRRF", rate: null, fixed: null, movement: "0.00" });
+          if (taxGroup !== "UNICA") terminationTaxMemory.set(row.contract.id, { ...terminationTaxMemory.get(row.contract.id), [`irrf_${taxGroup}`]: { ...taxMemory, previousTax: priorTax.toFixed(2), allocatedTax: shares[index].toFixed(2), allocatedBase: bases[index].toFixed(2), pensionAllocation: row.pensions.filter(pension => pension.deductFromIncomeTax).map(pension => ({ pensionId: pension.id, allocation: pension.terminationTaxAllocation })) } });
         });
+        }
       }
     }
     const fgtsRate = ruleSet.rules.find(rule => rule.code === "FGTS_ALIQUOTA");
+    const pisRule = ruleSet.rules.find(rule => rule.code === "PIS_PASEP_FOLHA");
     for (const row of calculated) {
+      const pisBase = row.result.bases.PIS_PASEP ?? D(0);
+      if (pisBase.gt(0)) {
+        if (!pisRule) throw new Error("Base PIS/PASEP exige regra PIS_PASEP_FOLHA com enquadramento e fundamento.");
+        const policy = z.object({ origin: z.literal("PIS_PASEP_FOLHA"), rate: z.coerce.number().min(0).max(100), regimeIds: z.array(z.string()).min(1), payrollTypes: z.array(z.string()).min(1), legalReference: z.string().trim().min(3) }).strict().parse(pisRule.value);
+        if (!policy.regimeIds.includes(row.regime.id) || !policy.payrollTypes.includes(payroll.type)) throw new Error("Base PIS/PASEP presente fora das modalidades ou regimes autorizados na regra.");
+        const amount = pisBase.mul(policy.rate).div(100).toDecimalPlaces(2);
+        row.result.employer = row.result.employer.add(amount);
+        employerComponents.get(row.contract.id)!.PIS_PASEP = amount.toFixed(2);
+        row.result.items.push({ code: "PIS_PASEP", name: "PIS/PASEP sobre a folha", type: "INFORMATIVA", value: amount.toFixed(2), method: "PERCENTUAL", formula: policy.legalReference, base: "PIS_PASEP", rate: String(policy.rate), fixed: null, movement: "0.00" });
+      }
       const fgtsBase = row.result.bases.FGTS ?? D(0);
       if (fgtsBase.gt(0)) {
         if (!fgtsRate) throw new Error("Base FGTS exige FGTS_ALIQUOTA configurada.");
@@ -454,9 +628,10 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
         const amount = fgtsBase.mul(rate).div(100).toDecimalPlaces(2);
         row.result.employer = row.result.employer.add(amount);
         row.result.items.push({ code: "FGTS", name: "FGTS", type: "INFORMATIVA", value: amount.toFixed(2), method: "PERCENTUAL", formula: null, base: "FGTS", rate: rate.toString(), fixed: null, movement: "0.00" });
+        employerComponents.get(row.contract.id)!.FGTS = amount.toFixed(2);
       }
       row.result.net = row.result.gross.sub(row.result.deductions);
-      if (row.result.net.lt(0) && ruleSet.calculationPolicy.negativeNetPayPolicy !== "PERMITIR") throw new Error(`Líquido negativo em ${row.contract.registration}.`);
+      if (row.result.net.lt(0) && ruleSet.calculationPolicy.negativeNetPayPolicy !== "PERMITIR" && input.mode === "OFICIAL") throw new Error(`Líquido negativo em ${row.contract.registration}. Consulte a prévia para conferir as origens antes do cálculo oficial.`);
     }
     const marginRule = ruleSet.rules.find(rule => rule.code === "MARGEM_CONSIGNAVEL");
     const margins = new Map<string, ReturnType<typeof calculateConsignmentMargin>>();
@@ -471,18 +646,38 @@ export async function calculatePayrollRun(db: DatabaseConnection, actorId: strin
       }
     }
     postPensions("APOS_IRRF");
+    for (const row of calculated) {
+      row.result.net = row.result.gross.sub(row.result.deductions);
+      if (row.result.net.lt(0) && ruleSet.calculationPolicy.negativeNetPayPolicy !== "PERMITIR" && input.mode === "OFICIAL") throw new Error(`Líquido negativo após pensões em ${row.contract.registration}. Consulte a prévia antes do cálculo oficial.`);
+    }
     const sum = (key: "gross" | "deductions" | "net" | "employer") => calculated.reduce((total, row) => total.add(row.result[key]), D(0));
     const messagesRule = ruleSet.rules.find(rule => rule.code === "MENSAGENS_RECIBO");
     if (canonicalItems.some(item => !contracts.some(c => c.employeeId === item.employeeId))) throw new Error("Inclua todos os servidores com origens lançadas nesta folha.");
     if (new Set(contracts.map(c => c.employeeId)).size !== contracts.length && canonicalItems.length) throw new Error("Origens por servidor exigem alocação explícita entre vínculos antes deste cálculo.");
-    const [run] = await tx.insert(hrPayrollRuns).values({ payrollId: input.payrollId, requestKey: input.requestKey, mode: input.mode, scope: input.scope, ruleSetId: ruleSet.id, actorId, snapshot: json({ payroll, ruleSet, contractIds: ids, canonicalItems, monthlyProration: input.monthlyProration ?? false, specialParameters: input.specialParameters ?? null, contractVersions: contracts.map(c => ({ id: c.id, version: c.version })) }), gross: sum("gross"), deductions: sum("deductions"), net: sum("net"), employer: sum("employer") }).returning();
-    const statements = await tx.insert(hrPayrollStatements).values(calculated.map(row => ({ runId: run.id, contractId: row.contract.id, gross: row.result.gross, deductions: row.result.deductions, net: row.result.net, employer: row.result.employer, snapshot: json({ contract: row.contract, regime: row.regime, days: row.days, items: row.result.items, bases: row.result.bases, pensions: row.pensions, proration: row.proration, incomeTax: incomeTaxMemory.get(row.contract.employee.personId!) ?? null, specialPayroll: row.specialMemory, messages: messagesRule ? selectReceiptMessages(messagesRule.value, messagesRule.id, { contractId: row.contract.id, regimeId: row.regime.id, payrollType: payroll.type, period }) : [], consignmentMargin: margins.get(row.contract.employee.personId!) ?? null, familyWage: familyMemory.get(row.contract.employee.personId!) ?? null, irrfDependents: irrfDependentMemory.get(row.contract.employee.personId!) ?? null }) }))).returning();
+    const accountingAllocations = (await readPayrollAccountingAllocations(tx)).filter(row => ids.includes(row.details.contractId));
+    const statementExtras = new Map<string, Record<string, unknown>>();
+    for (const row of calculated) statementExtras.set(row.contract.id, {
+      payrollCategory: payrollCategories.get(row.contract.id),
+      terminationTax: terminationTaxMemory.get(row.contract.id) ?? null,
+      specialFunctionalBasis: specialBases.get(row.contract.id)?.memory ?? null,
+      thirteenthEntitlement: thirteenthEntitlements.get(row.contract.id) ?? null,
+      specialAverage: specialAverages.get(row.contract.id) ?? null,
+      beneficiaryContribution: beneficiaryContributionMemory.get(row.contract.id) ?? null,
+      categoryIncidences: categoryIncidences.get(row.contract.id)!.policy,
+      employerComponents: employerComponents.get(row.contract.id),
+      familyAllowance: familyAllowanceMemory.get(row.contract.employee.personId!) ?? null,
+      automaticServiceAllowances: automaticAllowances.get(row.contract.id)?.memory ?? [],
+      consignments: await consignmentStatementDetails(tx, row.contract.id, row.contract.movements.map(movement => movement.id)),
+    });
+    const [run] = await tx.insert(hrPayrollRuns).values({ payrollId: input.payrollId, requestKey: input.requestKey, mode: input.mode, scope: input.scope, ruleSetId: ruleSet.id, actorId, snapshot: json({ payroll, ruleSet, contractIds: ids, canonicalItems, accountingAllocations, monthlyProration: input.monthlyProration ?? false, specialParameters: input.specialParameters ?? null, contractVersions: contracts.map(c => ({ id: c.id, version: c.version })) }), gross: sum("gross"), deductions: sum("deductions"), net: sum("net"), employer: sum("employer") }).returning();
+    const statements = await tx.insert(hrPayrollStatements).values(calculated.map(row => ({ runId: run.id, contractId: row.contract.id, gross: row.result.gross, deductions: row.result.deductions, net: row.result.net, employer: row.result.employer, snapshot: json({ ...statementExtras.get(row.contract.id), contract: row.contract, regime: row.regime, days: row.days, items: row.result.items, bases: row.result.bases, functionalRecords: row.functionalRecords, optionalPension: row.optionalPension, remunerationLimits: row.remunerationLimits, pensions: row.pensions, proration: row.proration, incomeTax: incomeTaxMemory.get(row.contract.employee.personId!) ?? null, specialPayroll: row.specialMemory, messages: messagesRule ? selectReceiptMessages(messagesRule.value, messagesRule.id, { contractId: row.contract.id, regimeId: row.regime.id, payrollType: payroll.type, period }) : [], consignmentMargin: margins.get(row.contract.employee.personId!) ?? null, familyWage: familyMemory.get(row.contract.employee.personId!) ?? null, irrfDependents: irrfDependentMemory.get(row.contract.employee.personId!) ?? null }) }))).returning();
     return { ...run, statements };
   }, { timeoutMs: 60000 });
 }
 
 export async function closePayrollRun(db: DatabaseConnection, actorId: string, runId: string) {
   return withDatabaseTransaction(db, async tx => {
+    await lock(tx, "functional-configuration");
     const run = await requirePayrollRun(tx, runId);
     await lock(tx, `payroll:${run.payrollId}`);
     await tx.execute(sql`SELECT id FROM "Payroll" WHERE id=${run.payrollId} FOR UPDATE`);
@@ -492,6 +687,16 @@ export async function closePayrollRun(db: DatabaseConnection, actorId: string, r
     const payroll = await requirePayroll(tx, run.payrollId);
     if (["Fechada", "Paga"].includes(payroll.status)) throw new Error("Folha já consolidada por outra execução.");
     const snapshot = current.snapshot as { canonicalItems?: unknown; contractVersions?: { id: string; version: number }[] };
+    const originalRules = (current.snapshot as unknown as { ruleSet: Awaited<ReturnType<typeof requirePayrollCalculationRules>> }).ruleSet;
+    const normalizeRules = (rules: typeof originalRules) => ({ ...rules, rules: [...rules.rules].sort((a, b) => a.id.localeCompare(b.id)), rubrics: [...rules.rubrics].sort((a, b) => a.id.localeCompare(b.id)).map(rubric => ({ ...rubric, incidences: [...rubric.incidences].sort((a, b) => a.id.localeCompare(b.id)) })) });
+    const currentRules = await requirePayrollCalculationRules(tx, current.ruleSetId);
+    if (stableJson(json(normalizeRules(originalRules))) !== stableJson(json(normalizeRules(currentRules)))) throw new Error("Conjunto, política de cálculo, rubricas ou incidências mudaram após o cálculo. Recalcule antes de fechar.");
+    const allocationSnapshot = (current.snapshot as { accountingAllocations?: unknown }).accountingAllocations;
+    if (allocationSnapshot !== undefined) {
+      const ids = (snapshot.contractVersions ?? []).map(row => row.id);
+      const allocations = (await readPayrollAccountingAllocations(tx)).filter(row => ids.includes(row.details.contractId));
+      if (stableJson(allocations) !== stableJson(allocationSnapshot)) throw new Error("Rateios ou classificações orçamentárias mudaram após o cálculo. Recalcule antes de fechar.");
+    }
     const canonicalItems = await listCanonicalPayrollItems(tx, payroll.id);
     if (stableJson(canonicalItems) !== stableJson(snapshot.canonicalItems)) throw new Error("Origens contratuais mudaram após o cálculo. Recalcule antes de fechar.");
     for (const version of snapshot.contractVersions ?? []) {
@@ -504,9 +709,48 @@ export async function closePayrollRun(db: DatabaseConnection, actorId: string, r
       await tx.execute(sql`SELECT id FROM "Employee" WHERE id=${contract.employeeId} FOR SHARE`);
       await assertServiceTimeAllowanceCurrent(tx, contract.id, payroll.competence);
       const employee = await requireEmployeeWithPerson(tx, contract.employeeId);
-      if (!employee.isActive || contract.status !== "ATIVO") throw new Error("Servidor/contrato inativado após o cálculo. Recalcule a seleção antes de fechar.");
+      const currentFunctional = await functionalRecordsAt(tx, { employeeId: contract.employeeId, contractId: contract.id, from: periodForRevision.start, until: periodForRevision.end });
+      const payrollCategory = resolvePayrollCategory(currentFunctional, { ...contract, employee }, periodForRevision);
+      if ((!employee.isActive && payrollCategory.category === "ATIVO") || employee.person?.status !== "Ativo" || contract.status !== "ATIVO") throw new Error("Titular, pessoa ou contrato indisponível após o cálculo. Recalcule a seleção antes de fechar.");
       if (contract.version !== version.version) throw new Error("Contrato mudou após o cálculo. Recalcule antes de fechar.");
       const statement = await requirePayrollStatement(tx, runId, version.id);
+      const [regime] = await tx.select().from(hrEmploymentRegimes).where(eq(hrEmploymentRegimes.id, contract.regimeId));
+      const schemes = regime?.socialSecuritySchemeId ? await listSocialSecuritySchemes(tx, [regime.socialSecuritySchemeId]) : [];
+      if (!regime || stableJson(json({ ...regime, socialSecurityScheme: schemes[0] ?? null })) !== stableJson((statement.snapshot as { regime: unknown }).regime)) throw new Error("Regime, faixas ou contribuições previdenciárias mudaram após o cálculo. Recalcule antes de fechar.");
+      const recordedFunctional = (statement.snapshot as { functionalRecords?: unknown }).functionalRecords;
+      if ((recordedFunctional !== undefined || currentFunctional.length > 0) && stableJson(recordedFunctional ?? []) !== stableJson(currentFunctional)) throw new Error("Vigências e regras funcionais mudaram após o cálculo. Recalcule antes de fechar.");
+      const originalParameters = (current.snapshot as { specialParameters?: unknown }).specialParameters;
+      const recordedBasis = (statement.snapshot as { specialFunctionalBasis?: unknown }).specialFunctionalBasis;
+      const recordedThirteenth = (statement.snapshot as { thirteenthEntitlement?: unknown }).thirteenthEntitlement;
+      const recordedAverage = (statement.snapshot as { specialAverage?: { ruleId: string; from: string; until: string } }).specialAverage;
+      if (recordedAverage) {
+        const reassessed = await calculateRemunerationAverage(tx, { contractId: contract.id, ruleId: recordedAverage.ruleId, from: recordedAverage.from, until: recordedAverage.until });
+        if (stableJson(recordedAverage) !== stableJson(reassessed)) throw new Error("Fontes, índices ou política de média da folha especial mudaram após o cálculo. Recalcule antes de fechar.");
+      }
+      if (recordedThirteenth) {
+        const reassessed = await assessThirteenthEntitlement(tx, contract, periodForRevision.end);
+        if (stableJson(recordedThirteenth) !== stableJson(reassessed)) throw new Error("Tempo de serviço ou avos de 13º mudaram após o cálculo. Recalcule antes de fechar.");
+      }
+      if (payroll.type !== "Mensal" && payroll.type !== "Rescisão" && recordedBasis !== undefined) {
+        const rules = await requirePayrollCalculationRules(tx, current.ruleSetId);
+        const incidence = resolveCategoryIncidences(currentFunctional, contract, payrollCategory.category, payroll.type, periodForRevision, rules.rubrics);
+        const basis = await specialFunctionalBasis(tx, contract, currentFunctional, { payrollType: payroll.type, competence: payroll.competence, rubrics: incidence.rubrics });
+        if (stableJson(recordedBasis) !== stableJson(basis?.memory ?? null)) throw new Error("Base remuneratória funcional da folha especial mudou após o cálculo. Recalcule antes de fechar.");
+      }
+      if (payroll.type === "Rescisão" && originalParameters && typeof originalParameters === "object" && "terminationDate" in originalParameters) {
+        const parameters = pocSpecialParametersSchema.parse(originalParameters);
+        const rules = await requirePayrollCalculationRules(tx, current.ruleSetId);
+        const incidence = resolveCategoryIncidences(currentFunctional, contract, payrollCategory.category, payroll.type, periodForRevision, rules.rubrics);
+        const prepared = await prepareTerminationRubrics(tx, { ...contract, salary: payrollCategory.salary }, currentFunctional, { payrollType: payroll.type, competence: payroll.competence, parameters, rubrics: incidence.rubrics }, current.scope);
+        const recorded = (statement.snapshot as { specialPayroll: unknown }).specialPayroll;
+        const reassessed = { ...prepared.memory, history: null, vacationReservations: null, rightsConsumed: false, rightsConsumptionOrigin: null };
+        if (stableJson(recorded) !== stableJson(reassessed)) throw new Error("Direitos, frequência ou médias da rescisão mudaram após o cálculo. Recalcule antes de fechar.");
+      }
+      const recordedAllowances = (statement.snapshot as { automaticServiceAllowances?: unknown }).automaticServiceAllowances;
+      if (recordedAllowances !== undefined && payroll.type === "Mensal" && payrollCategory.category === "ATIVO") {
+        const assessment = await automaticServiceAllowances(tx, contract, matchingFunctionalRules(currentFunctional, "REGRA_ATS", contract, periodForRevision), periodForRevision, current.scope);
+        if (stableJson(recordedAllowances) !== stableJson(assessment.memory)) throw new Error("Contagem de tempo, faltas ou averbações mudaram após o cálculo. Recalcule antes de fechar.");
+      }
       if (segments) {
         const originalSegments = (statement.snapshot as unknown as { contract: { monthlySegments: typeof segments } }).contract.monthlySegments;
         const normalized = (values: typeof segments) => values.map(segment => ({ revisionId: segment.revisionId, start: segment.start, end: segment.end, calendarDays: segment.calendarDays, version: segment.contract.version, salary: segment.contract.salary.toString(), monthlyHours: segment.contract.monthlyHours, regimeId: segment.contract.regimeId, roleId: segment.contract.roleId, departmentId: segment.contract.departmentId, costCenterId: segment.contract.costCenterId, workLocation: segment.contract.workLocation, details: segment.contract.details }));
@@ -515,14 +759,19 @@ export async function closePayrollRun(db: DatabaseConnection, actorId: string, r
       }
       const contractSnapshot = (statement.snapshot as { contract: { movements: unknown } }).contract;
       const dependentsSnapshot = statement.snapshot as { familyWage?: unknown; irrfDependents?: unknown };
+      const allowance = (statement.snapshot as { familyAllowance?: { policy: unknown; memory: unknown; employeeIds: string[] } }).familyAllowance;
+      if (allowance) {
+        const assessment = await assessPayrollDependents(tx, allowance.employeeIds, "familyAllowance", allowance.policy, payrollPeriod(payroll.competence));
+        if (stableJson(assessment.memory) !== stableJson(allowance.memory)) throw new Error("Elegibilidade do abono-família mudou após o cálculo. Recalcule antes de fechar.");
+      }
       if (dependentsSnapshot.familyWage) {
         const family = familyWageSnapshotSchema.parse(dependentsSnapshot.familyWage);
-        const currentAssessment = await assessPayrollDependents(tx, [contract.employeeId], "familyWage", family.policy.eligibility, payrollPeriod(payroll.competence));
+        const currentAssessment = await assessPayrollDependents(tx, family.employeeIds ?? [contract.employeeId], "familyWage", family.policy.eligibility, payrollPeriod(payroll.competence));
         if (stableJson(currentAssessment.memory) !== stableJson(family.memory)) throw new Error("Elegibilidade/documentos de salário-família mudaram após o cálculo. Recalcule antes de fechar.");
       }
       if (dependentsSnapshot.irrfDependents) {
         const originalAssessment = dependentAssessmentSchema.parse(dependentsSnapshot.irrfDependents);
-        const currentAssessment = await assessPayrollDependents(tx, [contract.employeeId], "irrfDependent", originalAssessment.policy, payrollPeriod(payroll.competence));
+        const currentAssessment = await assessPayrollDependents(tx, originalAssessment.employeeIds ?? [contract.employeeId], "irrfDependent", originalAssessment.policy, payrollPeriod(payroll.competence));
         if (stableJson(currentAssessment.memory) !== stableJson(originalAssessment.memory)) throw new Error("Elegibilidade/documentos de IRRF mudaram após o cálculo. Recalcule antes de fechar.");
       }
       const period = payrollPeriod(payroll.competence);
@@ -531,6 +780,11 @@ export async function closePayrollRun(db: DatabaseConnection, actorId: string, r
       if (normalize(movements) !== normalize(contractSnapshot.movements)) throw new Error("Movimentos mudaram após o cálculo. Recalcule antes de fechar.");
     }
     const ruleSnapshot = (current.snapshot as { ruleSet: { rules: { code: string; value: unknown }[] } }).ruleSet;
+    for (const code of ["PIS_PASEP_FOLHA", "FGTS_ALIQUOTA", "COMPENSACAO_TRIBUTARIA_FOLHA"]) {
+      const original = ruleSnapshot.rules.find(rule => rule.code === code)?.value ?? null;
+      const actual = await findActivePayrollRule(tx, current.ruleSetId, code);
+      if (stableJson(original) !== stableJson(actual?.value ?? null)) throw new Error(`Parâmetro ${code} mudou após o cálculo. Recalcule antes de fechar.`);
+    }
     const originalPensions = ruleSnapshot.rules.find(rule => rule.code === "PENSOES_FOLHA")?.value ?? null;
     const currentPensions = await findActivePayrollRule(tx, current.ruleSetId, "PENSOES_FOLHA");
     if (stableJson(originalPensions) !== stableJson(currentPensions?.value ?? null)) throw new Error("Política de pensões mudou após o cálculo. Recalcule antes de fechar.");
@@ -565,6 +819,12 @@ export async function closePayrollRun(db: DatabaseConnection, actorId: string, r
       }
     }
     if (payroll.type === "Mensal") await assertConsignmentSchedulePosted(tx, (snapshot.contractVersions ?? []).map(version => version.id), payrollPeriod(payroll.competence).start, current.scope, ruleSnapshot.rules.some(rule => rule.code === "MARGEM_CONSIGNAVEL"));
+    if (payroll.type === "Rescisão" && parameters && "terminationDate" in parameters) {
+      for (const version of snapshot.contractVersions ?? []) {
+        const statement = await requirePayrollStatement(tx, runId, version.id);
+        await settleTerminationVacation(tx, { contractId: version.id, runId, scope: current.scope, actorId, memory: (statement.snapshot as { specialPayroll: unknown }).specialPayroll });
+      }
+    }
     const mapping = z.record(z.string(), z.string().min(1)).parse(ruleSnapshot.rules.find(rule => rule.code === "FOLHA_EVENTOS")?.value);
     const statementRows = await tx.select().from(hrPayrollStatements).where(eq(hrPayrollStatements.runId, runId)).orderBy(asc(hrPayrollStatements.id));
     const statements = [];

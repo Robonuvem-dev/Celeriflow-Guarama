@@ -17,7 +17,7 @@ import { readPersonnelDashboard } from "@/db/repositories/personnel-pages/record
 
 export default async function RHDashboard() {
   const context = await getTenantContextForModule("RH");
-  const { totalEmployees, activeEmployees, totalRoles, activeRoles, activePayrolls, vacationRequests, totalAttendances } = await readPersonnelDashboard(context.database ?? db);
+  const { totalEmployees, activeEmployees, totalRoles, activeRoles, activePayrolls, vacationRequests, totalAttendances } = await readPersonnelDashboard(context.database ?? db, context.user);
 
   return (
     <PageFrame className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">
@@ -88,9 +88,9 @@ export default async function RHDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Link href="/rh/poc" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
+              <Link href="/rh/parametrizacoes" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <FileText className="mr-3 size-5 text-blue-500" />
-                <div><div className="font-semibold">Demonstração POC</div><div className="text-xs text-muted-foreground">Base fictícia, nove tipos de folha e parâmetros documentais</div></div>
+                <div><div className="font-semibold">Parametrizações da folha</div><div className="text-xs text-muted-foreground">Regimes, rubricas, critérios e vigências de cálculo</div></div>
               </Link>
               <Link href="/rh/diarias" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <FileText className="mr-3 size-5 text-blue-500" />
@@ -128,17 +128,17 @@ export default async function RHDashboard() {
                   <div className="text-xs text-muted-foreground">Afastamentos legais</div>
                 </div>
               </Link>
-              <Link href="/rh/cargos" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
+              <Link href="/administracao/cargos" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <Briefcase className="mr-3 size-5 text-indigo-500" />
                 <div>
                   <div className="font-semibold">Cargos e Salários</div>
                   <div className="text-xs text-muted-foreground">Estrutura organizacional</div>
                 </div>
               </Link>
-              <Link href="/rh/treinamentos" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
+              <Link href="/rh/atividades-funcionais" className="flex items-center rounded-md border p-2.5 transition-colors hover:bg-muted">
                 <GraduationCap className="mr-3 size-5 text-slate-500" />
                 <div>
-                  <div className="font-semibold">Treinamentos</div>
+                  <div className="font-semibold">Treinamentos e Atividades</div>
                   <div className="text-xs text-muted-foreground">Capacitação contínua</div>
                 </div>
               </Link>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock, Loader2, ArrowRight, ArrowLeft, CheckCircle2, Eye, EyeOff } from "lucide-react";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithCustomToken, sendPasswordResetEmail, sendEmailVerification } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -34,7 +34,18 @@ export default function LoginPage() {
     setErrorMsg("");
     
     try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const cpfLogin = !email.includes("@");
+      let credential;
+      if (cpfLogin) {
+        const response = await fetch("/api/auth/cpf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cpf: email, password }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error);
+        credential = await signInWithCustomToken(auth, result.token);
+      } else credential = await signInWithEmailAndPassword(auth, email, password);
+      if (!credential.user.emailVerified) {
+        await sendEmailVerification(credential.user);
+        throw new Error("Confirme o e-mail de verificação enviado antes de acessar o sistema.");
+      }
       const idToken = await credential.user.getIdToken();
       
       const response = await fetch("/api/auth/session", {
@@ -114,14 +125,15 @@ export default function LoginPage() {
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="email" className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                      E-mail Institucional
+                      CPF ou e-mail institucional
                     </Label>
                     <div className="relative group">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="email"
-                        type="email"
-                        placeholder="voce@prefeitura.gov.br"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="CPF ou voce@prefeitura.gov.br"
                         className="pl-9 h-11 bg-muted/50 border-transparent transition-all focus:bg-background focus:border-primary/50 focus:ring-1 focus:ring-primary/50 text-sm"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -260,6 +272,7 @@ export default function LoginPage() {
                 <p className="text-xs text-muted-foreground">
                   Se houver uma conta ativa para este endereço, você receberá as instruções de recuperação.
                 </p>
+                <a href="/login/recuperar" className="text-sm underline">Informar a chave recebida e cadastrar nova senha</a>
               </div>
               <Button
                 type="button"

@@ -81,7 +81,7 @@ export default function DownloadExtratosClient({ initialHistory = [] }: { initia
             Automação de Download de Extratos Bancários
           </h1>
           <p className="text-xs text-slate-600">
-            Acesso automatizado ao banco simulado externo, com arquivamento privado do extrato original e registro de auditoria.
+            Acesso à conexão bancária cadastrada, com arquivamento privado do extrato original e registro de auditoria.
           </p>
         </div>
       </div>
@@ -102,7 +102,7 @@ export default function DownloadExtratosClient({ initialHistory = [] }: { initia
               <div className="w-full rounded-lg border border-slate-300 bg-slate-100 p-2.5 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 {banco}
               </div>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Banco externo de testes exclusivo desta POC.</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Conexão e ambiente definidos no cadastro de integrações.</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

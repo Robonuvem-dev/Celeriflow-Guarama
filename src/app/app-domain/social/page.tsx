@@ -1,82 +1,16 @@
-import { Users, Building2, FileText, Gift } from "lucide-react";
-import { PageFrame } from "@/components/app-ui/PageFrame";
-import { PageHeader } from "@/components/app-ui/PageHeader";
+import Link from "next/link";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { resolveSocialAccess } from "@/lib/social/access-policy";
 import { db } from "@/db/client";
-import { socialDashboardTotals } from "@/db/repositories/social/queries";
+import { buildSocialReport } from "@/db/repositories/social/reports";
+import { socialReportFilter } from "@/lib/social/report-contract";
+import { socialAccessibleUnitOptions } from "@/db/repositories/social/queries";
 
-export default async function SocialDashboardPage() {
-  const context = await getTenantContextForModuleOperation("SOCIAL", "issueReports");
-  const access = await resolveSocialAccess(context);
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const [families, units, attendances, concessions, deliveries] = await socialDashboardTotals(context.database ?? db, access, monthStart, nextMonth);
-  return (
-    <PageFrame className="space-y-2 px-1 py-1 md:px-2">
-      <PageHeader
-        title="Painel da Assistência Social"
-        icon={<Users className="size-4 shrink-0 text-blue-600" />}
-      />
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-md bg-blue-100 p-2.5 text-blue-600">
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">Famílias Ativas</p>
-              <h3 className="text-2xl font-bold text-slate-800">{families.toLocaleString("pt-BR")}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-md bg-emerald-100 p-2.5 text-emerald-600">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">Unidades CRAS/CREAS</p>
-              <h3 className="text-2xl font-bold text-slate-800">{units.toLocaleString("pt-BR")}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-md bg-purple-100 p-2.5 text-purple-600">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">Atendimentos no Mês</p>
-              <h3 className="text-2xl font-bold text-slate-800">{attendances.toLocaleString("pt-BR")}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-md bg-amber-100 p-2.5 text-amber-600">
-              <Gift className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">Concessões / Entregas no Mês</p>
-              <h3 className="text-2xl font-bold text-slate-800">{(concessions + deliveries).toLocaleString("pt-BR")}</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-2 text-sm font-semibold text-slate-800">Avisos e Ações Rápidas</h2>
-        <p className="mb-2 text-sm text-slate-500">Indicadores {access.administrator ? "municipais" : "do seu escopo de acesso"}. Período dos atendimentos e concessões: {monthStart.toLocaleDateString("pt-BR")} a {new Date(nextMonth.getTime() - 1).toLocaleDateString("pt-BR")}.</p>
-        <p className="text-slate-600">
-          Bem-vindo ao módulo de Gestão SUAS. Utilize o menu lateral para navegar entre Famílias, Unidades, Prontuário Eletrônico e Concessão de Benefícios.
-        </p>
-      </div>
-    </PageFrame>
-  );
+export default async function SocialDashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const context = await getTenantContextForModuleOperation("SOCIAL", "issueReports"), access = await resolveSocialAccess(context), query = await searchParams;
+  const today = new Date().toISOString().slice(0, 10);
+  const parsed = socialReportFilter.safeParse({ from: today.slice(0, 8) + "01", to: today, ...query, kind: "dashboard" });
+  if (!parsed.success) return <main className="p-4"><p role="alert">Período inválido.</p><Link href="/social">Limpar</Link></main>;
+  const report = await buildSocialReport(context.database ?? db, access, parsed.data), units = await socialAccessibleUnitOptions(context.database ?? db, access), params = new URLSearchParams(parsed.data);
+  return <main className="space-y-4 p-3"><h1 className="text-xl font-bold">Painel da Assistência Social</h1><form className="flex flex-wrap items-end gap-3 rounded border bg-white p-3"><label className="text-sm">Início<input required className="block rounded border p-2" type="date" name="from" defaultValue={parsed.data.from} /></label><label className="text-sm">Fim<input required className="block rounded border p-2" type="date" name="to" defaultValue={parsed.data.to} /></label><label className="text-sm">Unidade<select name="unitId" defaultValue={parsed.data.unitId} className="block rounded border p-2"><option value="">Todas autorizadas</option>{units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label><button className="rounded bg-blue-600 px-3 py-2 text-sm text-white">Atualizar painel</button></form><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Atendimentos realizados", report.totals.attendances], ["Eventos SCFV realizados", report.totals.events], ["Encaminhamentos", report.totals.referrals], ["Entregas de benefícios", report.totals.deliveries]].map(([label, total]) => <section key={String(label)} className="rounded border bg-white p-4"><h2 className="text-sm text-slate-600">{label}</h2><strong className="text-3xl">{total}</strong><p className="text-xs">{report.period}</p></section>)}</div><nav className="flex flex-wrap gap-4 text-sm"><Link className="text-blue-700 underline" href={`/social/relatorios?${params}`}>Consultar detalhes do período</Link>{["pdf", "csv", "xlsx"].map(format => <a key={format} className="text-blue-700 underline" href={`/api/social/relatorios?${params}&format=${format}`}>Relatório {format.toUpperCase()}</a>)}<Link href="/social/gestao/beneficiarios">Cadastro de beneficiários</Link><Link href="/social/gestao/scfv">SCFV</Link></nav><p className="text-xs text-slate-500">Indicadores calculados a partir dos registros persistidos, no período e escopo de acesso selecionados.</p></main>;
 }

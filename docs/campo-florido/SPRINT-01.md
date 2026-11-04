@@ -21,7 +21,7 @@ Na conferência do catálogo físico versionado tests/fixtures/installed-physica
 
 ## Arquivos
 
-- db/migrations/20261101120000_cf10_recycling_stock/migration.sql: três tabelas aditivas, FKs compostas por instância, checks de saldo/quantidade/aritmética e trigger de histórico imutável.
+- db/migrations/20261102120000_cf10_recycling_stock/migration.sql: três tabelas aditivas, FKs compostas por instância, checks de saldo/quantidade/aritmética e trigger de histórico imutável. Reposicionada na integração de 02/11, antes da primeira aplicação, para preservar o prefixo já instalado de migrações sociais.
 - src/db/schema/environment-recycling.ts: mapeamentos das tabelas; SQL é autoridade das constraints e trigger.
 - src/lib/environment/recycling-stock.ts: validação, valores decimais e data municipal America/Sao_Paulo; DTOs sem Decimal na fronteira client.
 - src/db/repositories/environment/recycling-stock.ts: disponibilidade do schema, movimento atômico/auditado, idempotência, bloqueios e leitura paginada.

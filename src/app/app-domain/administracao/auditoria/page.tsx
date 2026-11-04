@@ -62,6 +62,7 @@ const eventLabels: Record<AuditEventType, string> = {
   ASSET_ACQUIRED_FROM_RECEIPT: "Aquisição patrimonial por recebimento",
   INTERNAL_CONTROL_FINDING_REGISTERED: "Registro de apontamento de controle",
   FLEET_OPERATION_REGISTERED: "Registro de operação de frota",
+  CEMETERY_EXTERNAL_ENTRY_REGISTERED: "Registro de ingresso externo no cemitério",
 };
 
 const targetLabels: Record<string, string> = {

@@ -7,13 +7,13 @@ import { readAttendance, readEmployeeOptions } from "@/db/repositories/personnel
 export default async function EditarPontoPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  const record = await readAttendance(database, id);
+  const record = await readAttendance(database, id, context.user);
 
   if (!record) {
     notFound();
   }
 
-  const employees = await readEmployeeOptions(database);
+  const employees = await readEmployeeOptions(database, context.user);
 
   return (
     <PontoForm data={record} employees={employees} />

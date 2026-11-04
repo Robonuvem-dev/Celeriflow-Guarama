@@ -43,27 +43,27 @@ export function calculateServiceTimeAllowance(rawPolicy: unknown, input: { admit
 }
 
 export async function registerServiceTimeCredit(db: DatabaseConnection, actorId: string, raw: unknown) {
-  const input = z.object({ contractId: z.string().min(1), sourceKey: z.string().trim().min(1).max(120), start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), recognizedDays: z.coerce.number().int().min(1).max(55000), scope: z.enum(["DEMONSTRACAO", "HOMOLOGACAO", "PRODUCAO"]), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
+  const input = z.object({ contractId: z.string().min(1), sourceKey: z.string().trim().min(1).max(120), start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), recognizedDays: z.coerce.number().int().min(1).max(55000), scope: z.enum(["DEMONSTRACAO", "HOMOLOGACAO", "PRODUCAO"]), appliesTo: z.enum(["ATS", "PROGRESSAO", "TODOS"]).default("ATS"), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
   const start = new Date(`${input.start}T00:00:00.000Z`); const end = new Date(`${input.end}T00:00:00.000Z`);
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start.toISOString().slice(0, 10) !== input.start || end.toISOString().slice(0, 10) !== input.end || end < start || input.recognizedDays > (end.getTime() - start.getTime()) / day + 1) throw new Error("Período/dias da averbação inválidos.");
   return withDatabaseTransaction(db, async tx => {
     const initial = await requireEmploymentContract(tx, input.contractId);
     await lockPersonnel(tx, `employee:${initial.employeeId}`);
     await lockPersonnel(tx, `contract:${initial.id}`);
-    const sourceKey = `AVERBACAO:ATS:${input.sourceKey}`;
+    const sourceKey = `AVERBACAO:${input.appliesTo}:${input.sourceKey}`;
     const [previous] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
     if (previous) {
       const memory = (previous.details as { input: typeof input }).input;
-      if (Object.keys(input).some(key => memory[key as keyof typeof input] !== input[key as keyof typeof input])) throw new Error("Averbação repetida com dados diferentes.");
+      if (Object.keys(input).some(key => (key === "appliesTo" ? memory.appliesTo ?? "ATS" : memory[key as keyof typeof input]) !== input[key as keyof typeof input])) throw new Error("Averbação repetida com dados diferentes.");
       return previous;
     }
     await tx.execute(sql`SELECT id FROM "Employee" WHERE id=${initial.employeeId} FOR UPDATE`);
     const employee = await requireEmployeeWithPerson(tx, initial.employeeId);
     if (!employee.personId || !employee.isActive) throw new Error("Averbação exige titular ativo no Cadastro Único.");
     if (end >= initial.admittedAt) throw new Error("Averbação de tempo anterior deve terminar antes da admissão do vínculo.");
-    const [existing] = await tx.select({ id: hrRightEntries.id }).from(hrRightEntries).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrRightEntries.contractId)).where(and(eq(hrEmploymentContracts.employeeId, initial.employeeId), eq(hrRightEntries.kind, "TEMPO_SERVICO"), lte(hrRightEntries.periodStart, end), gte(hrRightEntries.periodEnd, start), sql`${hrRightEntries.details}->>'scope' = ${input.scope}`)).limit(1);
+    const [existing] = await tx.select({ id: hrRightEntries.id }).from(hrRightEntries).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrRightEntries.contractId)).where(and(eq(hrEmploymentContracts.employeeId, initial.employeeId), eq(hrRightEntries.kind, "TEMPO_SERVICO"), lte(hrRightEntries.periodStart, end), gte(hrRightEntries.periodEnd, start), sql`${hrRightEntries.details}->>'scope' = ${input.scope}`, sql`(${input.appliesTo}='TODOS' OR coalesce(${hrRightEntries.details}->>'appliesTo','ATS') IN (${input.appliesTo},'TODOS'))`)).limit(1);
     if (existing) throw new Error("Período já averbado para a identidade funcional; não duplique tempo entre vínculos.");
-    const [entry] = await tx.insert(hrRightEntries).values({ contractId: initial.id, sourceKey, kind: "TEMPO_SERVICO", periodStart: start, periodEnd: end, quantity: new Decimal(input.recognizedDays), amount: new Decimal(0), actorId, details: json({ input, scope: input.scope, appliesTo: "ATS", reason: input.reason }) }).returning();
+    const [entry] = await tx.insert(hrRightEntries).values({ contractId: initial.id, sourceKey, kind: "TEMPO_SERVICO", periodStart: start, periodEnd: end, quantity: new Decimal(input.recognizedDays), amount: new Decimal(0), actorId, details: json({ input, scope: input.scope, appliesTo: input.appliesTo, reason: input.reason }) }).returning();
     await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: input.scope, eventType: "TEMPO_SERVICO_AVERBADO", payload: { entryId: entry.id, input, actorId } });
     return entry;
   }, { timeoutMs: 60000 });
@@ -73,7 +73,7 @@ export async function reverseServiceTimeCredit(db: DatabaseConnection, actorId: 
   const input = z.object({ entryId: z.string().min(1), reason: z.string().trim().min(10).max(2000) }).strict().parse(raw);
   return withDatabaseTransaction(db, async tx => {
     const original = await requireRightEntry(tx, input.entryId);
-    if (original.kind !== "TEMPO_SERVICO" || !original.sourceKey.startsWith("AVERBACAO:ATS:") || !original.quantity.gt(0)) throw new Error("Selecione uma averbação original de tempo para ATS.");
+    if (original.kind !== "TEMPO_SERVICO" || !/^AVERBACAO:(ATS|PROGRESSAO|TODOS):/.test(original.sourceKey) || !original.quantity.gt(0)) throw new Error("Selecione uma averbação original de tempo de serviço.");
     const scope = z.object({ scope: z.string() }).parse(original.details).scope;
     const contract = await requireEmploymentContract(tx, original.contractId);
     await lockPersonnel(tx, `employee:${contract.employeeId}`);
@@ -82,7 +82,8 @@ export async function reverseServiceTimeCredit(db: DatabaseConnection, actorId: 
     const sourceKey = `ESTORNO:AVERBACAO:${original.id}`;
     const [previous] = await tx.select().from(hrRightEntries).where(eq(hrRightEntries.sourceKey, sourceKey)).limit(1);
     if (previous) { if ((previous.details as { reason: string }).reason !== input.reason) throw new Error("Averbação já estornada com outro fundamento."); return previous; }
-    const [entry] = await tx.insert(hrRightEntries).values({ contractId: original.contractId, sourceKey, kind: original.kind, periodStart: original.periodStart, periodEnd: original.periodEnd, quantity: original.quantity.negated(), amount: new Decimal(0), actorId, details: { scope, appliesTo: "ATS", originalEntryId: original.id, reason: input.reason } }).returning();
+    const appliesTo = (original.details as { appliesTo?: string }).appliesTo ?? "ATS";
+    const [entry] = await tx.insert(hrRightEntries).values({ contractId: original.contractId, sourceKey, kind: original.kind, periodStart: original.periodStart, periodEnd: original.periodEnd, quantity: original.quantity.negated(), amount: new Decimal(0), actorId, details: { scope, appliesTo, originalEntryId: original.id, reason: input.reason } }).returning();
     await enqueueHrIntegration(tx, { sourceKey, domain: "AUDITORIA", environment: scope, eventType: "AVERBACAO_ESTORNADA", payload: { entryId: entry.id, originalEntryId: original.id, actorId, reason: input.reason } });
     return entry;
   }, { timeoutMs: 60000 });
@@ -93,7 +94,7 @@ async function hasClosedCompetence(tx: DatabaseExecutor, employeeId: string, com
 }
 async function allowanceSources(tx: DatabaseExecutor, employeeId: string, admittedAt: Date, end: Date, scope: string) {
   const absences = await tx.select().from(leaves).where(and(eq(leaves.employeeId, employeeId), eq(leaves.status, "Ativa"), lte(leaves.startDate, end), gte(leaves.endDate, admittedAt)));
-  const credits = await tx.select({ entry: hrRightEntries }).from(hrRightEntries).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrRightEntries.contractId)).where(and(eq(hrEmploymentContracts.employeeId, employeeId), eq(hrRightEntries.kind, "TEMPO_SERVICO"), lt(hrRightEntries.periodEnd, admittedAt), sql`${hrRightEntries.details}->>'scope' = ${scope}`));
+  const credits = await tx.select({ entry: hrRightEntries }).from(hrRightEntries).innerJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrRightEntries.contractId)).where(and(eq(hrEmploymentContracts.employeeId, employeeId), eq(hrRightEntries.kind, "TEMPO_SERVICO"), lt(hrRightEntries.periodEnd, admittedAt), sql`${hrRightEntries.details}->>'scope' = ${scope}`, sql`coalesce(${hrRightEntries.details}->>'appliesTo','ATS') IN ('ATS','TODOS')`));
   return { absences, credits: credits.map(row => row.entry) };
 }
 

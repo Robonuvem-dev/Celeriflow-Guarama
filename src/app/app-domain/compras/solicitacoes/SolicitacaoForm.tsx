@@ -242,7 +242,7 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
               </div>
             </div>
             {originLocked ? <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">A origem da solicitacao esta vinculada ao seu setor e secretaria autorizados.</p> : null}
-            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Visão de planejamento POC: esta solicitação registra necessidade, itens, quantidades, estimativa e prioridade, sem gerar reserva ou empenho. O período esperado não possui campo estruturado no modelo atual.</p>
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Etapa de planejamento: registre a necessidade, os itens, as quantidades, a estimativa e a prioridade. Reserva orçamentária e empenho são realizados nas etapas próprias da contratação.</p>
 
             <div className="space-y-2">
               <Label>Valor Estimado Total (R$)</Label>
