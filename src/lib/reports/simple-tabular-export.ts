@@ -1,6 +1,6 @@
 import { formulaSafeCell } from "./tabular-renderers";
 
-export type SimpleTabularFormat = "pdf" | "xlsx" | "docx" | "txt" | "csv";
+export type SimpleTabularFormat = "pdf" | "xlsx" | "xls" | "docx" | "doc" | "txt" | "csv";
 export type SimpleTabularData = { title: string; columns: string[]; rows: (string | number | null)[][] };
 type SimpleTabularExport = { body: Uint8Array | string; contentType: string; extension: string };
 
@@ -14,7 +14,7 @@ export async function exportSimpleTable(table: SimpleTabularData, format: Simple
     const clean = (value: string | number | null) => String(value ?? "").replace(/[\t\r\n]+/g, " ");
     return { body: `${clean(table.title)}\r\n${rows.map(row => row.map(clean).join("\t")).join("\r\n")}\r\n`, contentType: "text/plain; charset=utf-8", extension: "txt" };
   }
-  if (format === "xlsx") {
+  if (format === "xlsx" || format === "xls") {
     const { default: ExcelJS } = await import("exceljs");
     const book = new ExcelJS.Workbook();
     book.title = table.title;
@@ -23,9 +23,13 @@ export async function exportSimpleTable(table: SimpleTabularData, format: Simple
     sheet.getRow(1).font = { bold: true };
     sheet.views = [{ state: "frozen", ySplit: 1 }];
     sheet.columns = table.columns.map(name => ({ width: Math.min(48, Math.max(14, name.length + 2)) }));
-    return { body: new Uint8Array(await book.xlsx.writeBuffer()), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: "xlsx" };
+    return {
+      body: new Uint8Array(await book.xlsx.writeBuffer()),
+      contentType: format === "xls" ? "application/vnd.ms-excel" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      extension: format,
+    };
   }
-  if (format === "docx") {
+  if (format === "docx" || format === "doc") {
     const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } = await import("docx");
     const document = new Document({ sections: [{ children: [
       new Paragraph({ children: [new TextRun({ text: table.title, bold: true })] }),
@@ -34,7 +38,11 @@ export async function exportSimpleTable(table: SimpleTabularData, format: Simple
         children: table.columns.map((_, column) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(row[column] ?? ""), bold: index === 0 })] })] })),
       })) })] : []),
     ] }] });
-    return { body: new Uint8Array(await Packer.toBuffer(document)), contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", extension: "docx" };
+    return {
+      body: new Uint8Array(await Packer.toBuffer(document)),
+      contentType: format === "doc" ? "application/msword" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      extension: format,
+    };
   }
   if (format !== "pdf") throw new Error("Formato de exportação não suportado.");
   const { default: PDFDocument } = await import("pdfkit");

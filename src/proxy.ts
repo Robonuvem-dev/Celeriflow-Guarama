@@ -43,16 +43,16 @@ export default function proxy(req: NextRequest) {
   // Public display is a dedicated page, outside the administrative rewrite.
   if (url.pathname === "/Smarttv") return NextResponse.next();
   // Entradas institucionais reutilizam os portais existentes e seus filtros.
-   if (url.pathname === "/portal/portaldoservidor") {
+  if (url.pathname === "/portal/portaldoservidor") {
     const destination = url.clone();
-     destination.pathname = "/portal-servidor";
-     return NextResponse.redirect(destination);
-   }
-   if (url.pathname === "/portal-transparencia") {
-     const destination = url.clone();
-     destination.pathname = "/portal/portaldatransparencia";
-     return NextResponse.redirect(destination);
-   }
+    destination.pathname = "/portal-servidor";
+    return NextResponse.redirect(destination);
+  }
+  if (url.pathname === "/portal-transparencia") {
+    const destination = url.clone();
+    destination.pathname = "/portal/portaldatransparencia";
+    return NextResponse.redirect(destination);
+  }
 
   // O autosserviço funcional também funciona no domínio institucional.
   // A página e as actions verificam a sessão e o vínculo funcional no servidor.
@@ -73,7 +73,6 @@ export default function proxy(req: NextRequest) {
     || /^\/validar-assinatura(?:\/[^/]+)?\/?$/.test(url.pathname);
   const isPublicProtocolPortal = url.pathname === "/portal-protocolos";
   const isPublicInstitutionalPortal = url.pathname === "/portal" || url.pathname.startsWith("/portal/");
-  const isPublicTransparencyPortal = url.pathname === "/portal-transparencia";
   if (isPublicValidation) {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || "unknown";
     const rateLimit = checkRateLimit(`public-read:${ip}`);
@@ -87,13 +86,19 @@ export default function proxy(req: NextRequest) {
   }
   // Navegação e prefetch não são tentativas de autenticação. O limite de
   // consultas de validação não deve bloquear páginas públicas do cidadão.
-  if (isPublicProtocolPortal || isPublicInstitutionalPortal || isPublicTransparencyPortal) {
+  if (isPublicProtocolPortal || isPublicInstitutionalPortal) {
     return NextResponse.next();
   }
   const hostname = (req.headers.get("host") || "").toLowerCase().split(":")[0];
 
   const systemDomain = configuredSystemHostname();
-  const isSystemDomain = hostname === GUARAMA_SYSTEM_HOSTNAME || hostname === systemDomain || hostname === "app.localhost" || hostname.endsWith(".vercel.app");
+  const isSystemDomain =
+    hostname === GUARAMA_SYSTEM_HOSTNAME ||
+    hostname === systemDomain ||
+    hostname === "app.localhost" ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.endsWith(".vercel.app");
 
   // Se o usuário tentar acessar a pasta interna via URL, reescreve ou redireciona
   if (url.pathname.startsWith("/app-domain")) {

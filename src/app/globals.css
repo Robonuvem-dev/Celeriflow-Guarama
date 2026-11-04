@@ -128,3 +128,31 @@
     @apply font-sans;
   }
 }
+
+/* Padronizacao Visual (Estilo Portal) */
+select, textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]) {
+  border-color: #cbd5e1;
+}
+
+select:focus, textarea:focus, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):focus {
+  outline: none;
+  border-color: #0e4c7e !important;
+  box-shadow: 0 0 0 1.5px rgba(14, 76, 126, 0.25) !important;
+}
+
+button.portal-btn, a.portal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #0e4c7e;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.15s ease;
+  text-decoration: none;
+}
+button.portal-btn:hover, a.portal-btn:hover {
+  background-color: #0a3a5f;
+}

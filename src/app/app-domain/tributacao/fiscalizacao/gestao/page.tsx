@@ -10,7 +10,7 @@ import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/plat
 import { assessFiscalPeriod, manageFiscalOrder } from "./actions";
 
 export const dynamic = "force-dynamic";
-const cls = "rounded border p-2 text-sm";
+const cls = "mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-[#0e4c7e] focus:outline-none focus:ring-1 focus:ring-[#0e4c7e]";
 const text = (value: unknown) => typeof value === "string" ? value : "";
 export default async function FiscalManagementPage({ searchParams }: { searchParams: Promise<{ orderId?: string; start?: string; end?: string; taxpayerId?: string; employeeId?: string; userId?: string; status?: string; model?: string; kind?: string }> }) {
   const query = await searchParams, context = await getTenantContextForModule("TRIBUTACAO"), database = context.database ?? db;

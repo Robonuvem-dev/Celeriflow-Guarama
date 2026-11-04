@@ -26,7 +26,7 @@ export default async function BannersPage() {
 
   return (
     <>
-      <OperationalHeaderActions><Link href="/transparencia/banners/novo" className={styles.newButton}>Novo banner</Link></OperationalHeaderActions>
+      <OperationalHeaderActions><Link href="/transparencia/banners" className={styles.newButton}>Atualizar banners</Link></OperationalHeaderActions>
       <BannersClient rows={rows} />
     </>
   );

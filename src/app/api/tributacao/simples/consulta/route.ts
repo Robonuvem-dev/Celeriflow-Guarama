@@ -10,8 +10,8 @@ export async function GET(request: Request) {
     const context = await getTenantContextForModuleOperation("TRIBUTACAO", "issueReports");
     const query = new URL(request.url).searchParams;
     const dossier = await readSimplesDossier(context.database ?? db, query.get("taxpayerId") ?? "", Number(query.get("year")), query.get("recordType")?.trim());
-    const format = query.get("format") ?? "json";
-    if (!["json", "csv", "pdf", "xlsx", "docx", "txt"].includes(format)) return Response.json({ error: "Formato inválido." }, { status: 400 });
+    const format = (query.get("format") ?? "json").toLowerCase();
+    if (!["json", "csv", "pdf", "xlsx", "xls", "docx", "doc", "txt"].includes(format)) return Response.json({ error: "Formato inválido." }, { status: 400 });
     const exported = format === "json" ? { body: JSON.stringify(dossier, null, 2), contentType: "application/json; charset=utf-8", extension: "json" }
       : format === "csv" ? { body: simplesDossierCsv(dossier.records), contentType: "text/csv; charset=utf-8", extension: "csv" }
       : await exportSimpleTable({ title: `Simples Nacional — ${dossier.taxpayer.company?.corporateName ?? dossier.taxpayer.taxpayer.id} — ${dossier.year}`, columns: ["Competência", "Tipo", "Receita nacional", "Serviços declarados", "ISS municipal", "Confirmado", "Atividade", "Alíquota", "Situação"], rows: dossier.records.map(row => [row.competence, row.recordType, row.nationalRevenueDecimal.toString(), row.declaredServiceDecimal.toString(), row.municipalIssDecimal.toString(), row.confirmedPaymentDecimal.toString(), row.activityCode, row.rate?.toString() ?? null, row.status]) }, format as SimpleTabularFormat);
