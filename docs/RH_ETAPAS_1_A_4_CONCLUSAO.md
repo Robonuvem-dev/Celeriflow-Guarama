@@ -2,6 +2,8 @@
 
 Referência: 03/11/2026. Município de apresentação: **Prefeitura Municipal de Vereda das Auroras**.
 
+**Continuidade:** este documento conserva o fechamento histórico de E1–E4. A implementação posterior dos requisitos 179, 138 e 135 e a consolidação correspondente estão em [RH / E5 — relatório sindical e arquivos bancários](RH_E5_ENTREGA_2026-11-03.md).
+
 ## Escopo e critério
 
 Esta reconciliação substitui o inventário prospectivo de pendências de `IMPLEMENTACAO_RH_ETAPAS_1_A_4_EM_ANDAMENTO.md`. O plano original foi preservado em `PLANO_DESENVOLVIMENTO_RH_DEMONSTRACAO_FUNCIONAL.md`.

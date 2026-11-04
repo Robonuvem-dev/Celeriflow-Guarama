@@ -15,7 +15,7 @@ async function main() {
       await tx.execute(sql`SET TRANSACTION READ ONLY`);
       const [holder] = (await tx.execute<{ id: string }>(sql`SELECT c."employeeId" id FROM "HrPayrollStatement" s JOIN "HrEmploymentContract" c ON c.id=s."contractId" JOIN "HrPayrollRun" r ON r.id=s."runId" WHERE r."payrollId"='RH_PORTAL_2026_V1:10' ORDER BY c.id LIMIT 1`)).rows;
       assert.ok(holder, "Titular original para verificação não encontrado.");
-      assert.equal(hrReportCatalog.length, 130);
+      assert.equal(hrReportCatalog.length, 131);
       for (const item of hrReportCatalog) {
         try {
           assert.ok(item.kind, `Modalidade ${item.id} sem implementação.`);

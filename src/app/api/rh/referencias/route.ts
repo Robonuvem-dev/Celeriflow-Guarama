@@ -6,7 +6,7 @@ import { departments, employees, roles } from "@/db/schema/administration";
 import { dependents } from "@/db/schema/personnel-records";
 import { hrEmploymentRegimes } from "@/db/schema/personnel-configuration";
 import { people } from "@/db/schema/people";
-import { hrEmploymentContracts, hrPayrollRuns, payrolls } from "@/db/schema/personnel-workforce";
+import { hrEmploymentContracts, hrPayrollRuns, hrPayrollStatements, payrolls } from "@/db/schema/personnel-workforce";
 import { hrPayrollRules } from "@/db/schema/personnel-configuration";
 import { costCenters } from "@/db/schema/master-data";
 import { z } from "zod";
@@ -16,7 +16,7 @@ import { hrFunctionalRecords, hrRetirementAssessments } from "@/db/schema/person
 
 export async function GET(request: NextRequest) {
   const context = await getTenantContextForModule("RH"), { user } = context, executor = context.database ?? db;
-   const input = z.object({ kind: z.enum(["employee", "person", "contract", "ended-contract", "department", "center", "payroll", "payroll-run", "rule", "retirement-rule", "retirement-assessment", "role", "regime", "dependent", "bank"]), q: z.string().max(200).default(""), page: z.coerce.number().int().positive().default(1), id: z.string().optional() }).parse(Object.fromEntries(request.nextUrl.searchParams));
+   const input = z.object({ kind: z.enum(["employee", "person", "contract", "ended-contract", "department", "center", "payroll", "payroll-run", "payroll-statement", "bank-credit-convention", "rule", "retirement-rule", "retirement-assessment", "role", "regime", "dependent", "bank"]), q: z.string().max(200).default(""), page: z.coerce.number().int().positive().default(1), id: z.string().optional() }).parse(Object.fromEntries(request.nextUrl.searchParams));
   const employeeScope = personnelEmployeeWhere(user, employees.departmentId, employees.id);
   const offset = (input.page - 1) * 20;
   let total = 0;
@@ -41,6 +41,15 @@ export async function GET(request: NextRequest) {
     const where = input.id ? eq(costCenters.id, input.id) : sql`strpos(lower(${costCenters.name}),lower(${input.q})) > 0`;
     total = (await executor.select({ total: count() }).from(costCenters).where(where))[0].total;
     items = (await executor.select({ id: costCenters.id, name: costCenters.name }).from(costCenters).where(where).orderBy(asc(costCenters.name), asc(costCenters.id)).limit(20).offset(offset)).map(row => ({ id: row.id, label: row.name }));
+  } else if (input.kind === "payroll-statement") {
+    const where = and(accessiblePayrollWhere(user), eq(hrPayrollRuns.status, "FECHADA"), eq(hrPayrollRuns.mode, "OFICIAL"), input.id ? eq(hrPayrollStatements.id, input.id) : sql`strpos(lower(concat_ws(' ',${payrolls.competence},${payrolls.type},${hrPayrollStatements.snapshot}#>>'{contract,employee,name}',${hrPayrollStatements.snapshot}#>>'{contract,registration}')),lower(${input.q}))>0`);
+    const source = () => executor.select().from(hrPayrollStatements).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId));
+    total = (await executor.select({ total: count() }).from(hrPayrollStatements).innerJoin(hrPayrollRuns, eq(hrPayrollRuns.id, hrPayrollStatements.runId)).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(where))[0].total;
+    items = (await source().where(where).orderBy(desc(hrPayrollRuns.createdAt), asc(hrPayrollStatements.id)).limit(20).offset(offset)).map(row => {
+      const state = row.HrPayrollStatement.snapshot as { contract?: { registration?: string; employee?: { name?: string } }; items?: { code: string; type: string; value: string }[] };
+      const deductions = state.items?.filter(item => item.type === "DESCONTO").map(item => `${item.code}: ${item.value}`).join("; ") ?? "";
+      return { id: row.HrPayrollStatement.id, label: `${row.Payroll.competence} · ${row.Payroll.type} · ${state.contract?.registration} · ${state.contract?.employee?.name} · descontos: ${deductions}` };
+    });
   } else if (input.kind === "payroll-run") {
     const where = and(accessiblePayrollWhere(user), eq(hrPayrollRuns.status, "FECHADA"), eq(hrPayrollRuns.mode, "OFICIAL"), input.id ? eq(hrPayrollRuns.id, input.id) : sql`strpos(lower(${payrolls.competence}||' '||${payrolls.type}||' '||${hrPayrollRuns.requestKey}),lower(${input.q}))>0`);
     total = (await executor.select({ total: count() }).from(hrPayrollRuns).innerJoin(payrolls, eq(payrolls.id, hrPayrollRuns.payrollId)).where(where))[0].total;
@@ -69,6 +78,10 @@ export async function GET(request: NextRequest) {
     const where = and(employeeScope, input.id ? eq(dependents.id, input.id) : sql`strpos(lower(${dependents.name}||' '||${employees.name}),lower(${input.q}))>0`);
     total = (await executor.select({ total: count() }).from(dependents).innerJoin(employees, eq(employees.id, dependents.employeeId)).where(where))[0].total;
     items = (await executor.select({ id: dependents.id, name: dependents.name, holder: employees.name }).from(dependents).innerJoin(employees, eq(employees.id, dependents.employeeId)).where(where).orderBy(asc(dependents.name), asc(dependents.id)).limit(20).offset(offset)).map(row => ({ id: row.id, label: `${row.name} · titular: ${row.holder}` }));
+  } else if (input.kind === "bank-credit-convention") {
+    const where = sql`v.kind='CONVENIO_BANCARIO' AND v.details->>'direction'='CREDITO' AND b.compe='001' ${input.id ? sql`AND v.id=${input.id}` : sql`AND strpos(lower(v.name),lower(${input.q}))>0`}`;
+    total = Number((await executor.execute<{ total: number }>(sql`SELECT count(*)::int total FROM "HrReferenceRecord" v JOIN "Bank" b ON b.id=v.details->>'bankId' WHERE ${where}`)).rows[0].total);
+    items = (await executor.execute<{ id: string; label: string }>(sql`SELECT v.id,v.name||' · BB · '||(v.details->>'from')||' a '||(v.details->>'until') label FROM "HrReferenceRecord" v JOIN "Bank" b ON b.id=v.details->>'bankId' WHERE ${where} ORDER BY v.name,v.id LIMIT 20 OFFSET ${offset}`)).rows;
   } else if (input.kind === "bank") {
     const where = input.id ? sql`id=${input.id}` : sql`strpos(lower(name||' '||coalesce(compe,'')),lower(${input.q}))>0`;
     total = Number((await executor.execute<{ total: number }>(sql`SELECT count(*)::int total FROM "Bank" WHERE ${where}`)).rows[0].total);

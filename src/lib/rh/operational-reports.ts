@@ -22,6 +22,7 @@ import { reportContractPredicate, reportEmployeePredicate, reportPayrollAllocati
 import { buildRightsPlanningReport } from "./rights-planning-report";
 import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
 import { buildIssuedRetirementAssessments } from "./retirement-assessment-issuance";
+import { buildUnionContributionReport } from "./union-contribution";
 import { payrollConfigurationObservedAt } from "./configuration-timeline-query";
 import { referenceRecordsObservedAt } from "./reference-timeline-query";
 import { buildAbsenceDaysReport } from "./absence-days-report";
@@ -48,6 +49,7 @@ export const operationalReportKinds = [
   "CERTIDOES_TEMPO_EMITIDAS",
   "BASE_ATUARIAL_COLUNAR",
   "PLANEJAMENTO_FERIAS_LICENCAS",
+  "CONTRIBUICAO_SINDICAL_NT202",
 ] as const;
 export type OperationalReportKind = typeof operationalReportKinds[number];
 export type OperationalReportInput = AdvancedHrReportFilters & {
@@ -63,6 +65,7 @@ const value = (entry: unknown): string => entry === null || entry === undefined 
 const snapshotSchema = z.object({ contract: z.object({ employeeId: z.string(), registration: z.string(), departmentId: z.string().nullable(), workLocation: z.string(), employee: z.object({ name: z.string(), unitId: z.string().nullable().optional() }) }), items: z.array(z.object({ code: z.string(), name: z.string(), type: z.string(), value: z.string() })) });
 
 export async function buildOperationalHrReport(db: DatabaseExecutor, input: OperationalReportInput, payrollScope?: SQL, budgetUnitIds?: readonly string[]): Promise<PersonnelReport> {
+  if (input.kind === "CONTRIBUICAO_SINDICAL_NT202") return buildUnionContributionReport(db, input, payrollScope, budgetUnitIds);
   if (["DIAS_AFASTADOS", "CAUSAS_AFASTAMENTO"].includes(input.kind)) return buildAbsenceDaysReport(db, input, budgetUnitIds);
   if (input.kind === "MEMORIAS_CONCESSAO_EMITIDAS") return buildIssuedRetirementAssessments(db, input, budgetUnitIds);
   if (input.kind === "PLANEJAMENTO_FERIAS_LICENCAS") return buildRightsPlanningReport(db, input, budgetUnitIds);

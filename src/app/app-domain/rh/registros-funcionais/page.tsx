@@ -13,7 +13,7 @@ import styles from "@/components/app-ui/operational/operational.module.css";
 import { rhColumn } from "../_components/operational-columns";
 import { FunctionalRecordForm } from "./FunctionalRecordForm";
 import { canAccessPersonnelClinicalData } from "@/lib/rh/clinical-access";
-import { personnelEmployeeWhere } from "@/lib/rh/personnel-scope";
+import { personnelEmployeeWhere, personnelRubricWhere } from "@/lib/rh/personnel-scope";
 
 export const dynamic = "force-dynamic";
 export default async function FunctionalRecordsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -23,7 +23,7 @@ export default async function FunctionalRecordsPage({ searchParams }: { searchPa
   const definition = functionalDefinition(kind), admin = isSystemAdministrator(context.user);
   if (kind === "READAPTACAO" && !canAccessPersonnelClinicalData(context.user)) throw new Error("Seu perfil não possui autorização clínica de RH.");
   const scope = admin ? undefined : personnelEmployeeWhere(context.user, employees.departmentId, employees.id);
-  const where = and(eq(hrFunctionalRecords.kind, kind), scope, params.q ? or(sql`strpos(lower(${hrFunctionalRecords.name}),lower(${params.q}))>0`, sql`strpos(lower(${employees.name}),lower(${params.q}))>0`) : undefined);
+  const where = and(eq(hrFunctionalRecords.kind, kind), scope, kind === "RECOLHIMENTO_SINDICAL" ? personnelRubricWhere(context.user, sql`${hrFunctionalRecords.data}->>'rubricCode'`) : undefined, params.q ? or(sql`strpos(lower(${hrFunctionalRecords.name}),lower(${params.q}))>0`, sql`strpos(lower(${employees.name}),lower(${params.q}))>0`) : undefined);
   const base = () => database.select().from(hrFunctionalRecords).leftJoin(employees, eq(employees.id, hrFunctionalRecords.employeeId)).leftJoin(hrEmploymentContracts, eq(hrEmploymentContracts.id, hrFunctionalRecords.contractId));
   if (params.view === "manage") {
     const selected = params.edit ? (await base().where(and(where, eq(hrFunctionalRecords.id, params.edit))).limit(1))[0]?.HrFunctionalRecord : undefined;

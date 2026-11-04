@@ -87,6 +87,7 @@ export default async function WorkforcePage({ searchParams }: { searchParams: Pr
     <Link href="/rh/operacoes/medias" className="text-xs underline">Médias e seleção das maiores remunerações</Link>
     <Link href="/rh/recadastramento" className="text-xs underline">Campanhas e pendências de recadastramento</Link>
     <Link href="/rh/consignacoes" className="text-xs underline">Contratos, reservas e parcelas de consignação</Link>
+    <Link href="/rh/arquivos-bancarios" className="text-xs underline">Arquivos bancários e relações de crédito</Link>
     <Link href="/rh/quadro-cargos" className="text-xs underline">Quadro de cargos, vagas autorizadas e níveis salariais</Link>
     <Link href="/rh/ocorrencias" className="text-xs underline">Ocorrências funcionais, atos e anexos GED</Link>
     {customPolicyErrors.length > 0 && <p role="alert" className="rounded border border-amber-300 p-2 text-xs">Política de campos configuráveis inválida nos regimes: {customPolicyErrors.join(", ")}. Corrija a regra CAMPOS_CONTRATO em <Link href="/rh/parametrizacoes" className="underline">Parametrizações</Link> antes de salvar contratos nesses regimes.</p>}

@@ -97,6 +97,7 @@ export default async function PersonnelReportsPage({ searchParams }: { searchPar
         <p>Campos: name, registration, role, department, birthday, period, monthly. O PDF mantém o texto integral.</p><button className={styles.primaryButton}>Aplicar modelo</button>
       </form></OperationalFilters>}
       {params.kind === "EVENTOS_VARIAVEIS_PLANILHA" && <Link href="/rh/operacoes?tab=movimentos">Lançar eventos ou conferir/importar CSV por lote</Link>}
+      {params.kind === "CONTRIBUICAO_SINDICAL_NT202" && <Link href="/rh/registros-funcionais?kind=RECOLHIMENTO_SINDICAL">Consultar e certificar recolhimentos documentais</Link>}
       {error && <span role="alert">{error}</span>}
     </>}
     pagination={<OperationalLinkPagination page={page} total={total} pathname="/rh/relatorios" values={values} />}>

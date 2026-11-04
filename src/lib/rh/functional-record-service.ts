@@ -14,6 +14,7 @@ import { requireValidCpf, requireValidCnpj } from "@/lib/identifiers/brazilian-i
 import { canAccessPersonnelClinicalData } from "./clinical-access";
 import { assertPersonnelDepartment, assertPersonnelRubrics } from "./personnel-scope";
 import { personnelBudgetEmployeeWhere } from "./personnel-budget-scope";
+import { validateUnionRemittance } from "./union-contribution";
 
 export type FunctionalRecord = typeof hrFunctionalRecords.$inferSelect;
 export const functionalRecordInput = z.object({
@@ -87,7 +88,7 @@ export async function saveFunctionalRecord(db: DatabaseConnection, context: AppC
         .where(and(eq(hrEmploymentContracts.employeeId, employeeId), eq(hrPayrollRuns.mode, "OFICIAL"), eq(hrPayrollRuns.status, "FECHADA"),
           sql`to_date(${payrolls.competence},'MM/YYYY') <= ${!endsAt || previous && !previous.endsAt ? new Date("2200-12-31") : previous?.endsAt && previous.endsAt > endsAt ? previous.endsAt : endsAt}::date`,
           sql`(to_date(${payrolls.competence},'MM/YYYY') + interval '1 month') > ${previous && previous.startsAt < startsAt ? previous.startsAt : startsAt}::date`)).limit(1);
-      if (closed.length && !["DADOS_ATUARIAIS", "DEPENDENTE_ATUARIAL", "HISTORICO_CONTRIBUTIVO", "IDENTIFICACAO_TRABALHISTA", "ESTAGIO", "READAPTACAO", "AVALIACAO_TREINAMENTO"].includes(input.kind)) throw new Error("O período alcança folha encerrada. Registre os efeitos em período aberto.");
+      if (closed.length && !["DADOS_ATUARIAIS", "DEPENDENTE_ATUARIAL", "HISTORICO_CONTRIBUTIVO", "IDENTIFICACAO_TRABALHISTA", "ESTAGIO", "READAPTACAO", "AVALIACAO_TREINAMENTO", "RECOLHIMENTO_SINDICAL"].includes(input.kind)) throw new Error("O período alcança folha encerrada. Registre os efeitos em período aberto.");
     }
     for (const name of ["roleId", "targetRoleId"]) if (data[name]) {
       if (!(await tx.select({ id: roles.id }).from(roles).where(eq(roles.id, data[name])).limit(1)).length) throw new Error("Cargo não encontrado.");
@@ -102,13 +103,14 @@ export async function saveFunctionalRecord(db: DatabaseConnection, context: AppC
     if (input.kind === "COMISSAO") {
       if (data.sourceContractId !== contractId) throw new Error("A comissão deve ser registrada no contrato efetivo de origem.");
     }
+    if (input.kind === "RECOLHIMENTO_SINDICAL") await validateUnionRemittance(tx, context, { contractId: contractId!, startsAt: input.startsAt, endsAt: input.endsAt, status: input.status, data }, previous);
     const competing = await tx.select().from(hrFunctionalRecords).where(and(eq(hrFunctionalRecords.kind, input.kind), sql`${hrFunctionalRecords.status}<>'CANCELADO'`,
       employeeId ? eq(hrFunctionalRecords.employeeId, employeeId) : sql`${hrFunctionalRecords.employeeId} IS NULL`,
       contractId ? eq(hrFunctionalRecords.contractId, contractId) : sql`${hrFunctionalRecords.contractId} IS NULL`,
       lte(hrFunctionalRecords.startsAt, endsAt ?? new Date("2200-12-31")), or(sql`${hrFunctionalRecords.endsAt} IS NULL`, gte(hrFunctionalRecords.endsAt, startsAt))));
     const discriminator = (row: Record<string, string>) => input.kind === "INDICE_PREVIDENCIARIO" ? `${row.series}:${row.competence}` : input.kind === "AVALIACAO_TREINAMENTO" ? `${row.course}:${row.question}` : input.kind === "DEPENDENTE_VIGENCIA" ? `${row.dependentId}:${row.benefit}` : input.kind === "REGRA_ATS" || input.kind === "PREVIDENCIA_OPCAO" ? row.rubricCode : !definition.holder ? `${row.regimeId ?? ""}:${row.roleId ?? ""}:${row.rubricCode ?? ""}:${row.gender ?? ""}:${row.reason ?? ""}` : "holder";
     const identity = (row: Record<string, string>) => input.kind === "HORA_AULA" ? `${row.regimeId ?? ""}:${row.roleId ?? ""}:${row.level}:${row.rubricCode}` : ["REGRA_PREVIDENCIA_BENEFICIO", "REGRA_INCIDENCIAS_CATEGORIA"].includes(input.kind) ? `${row.regimeId ?? ""}:${row.roleId ?? ""}:${row.category}:${row.payrollTypes.split(";").map(value => value.trim()).sort().join(";")}` : input.kind === "DEPENDENTE_ATUARIAL" ? row.dependentId : input.kind === "HISTORICO_CONTRIBUTIVO" ? `${row.competence}:${row.regime}` : input.kind === "TREINAMENTO_INSTRUMENTO" ? `${row.courseId}:${row.code}` : discriminator(row);
-    if (input.status !== "CANCELADO" && input.kind !== "REGRA_APOSENTADORIA" && competing.some(row => row.id !== previous?.id && identity(row.data) === identity(data))) throw new Error("Há outra regra ou ocorrência desta modalidade sobreposta ao período.");
+    if (input.status !== "CANCELADO" && !["REGRA_APOSENTADORIA", "RECOLHIMENTO_SINDICAL"].includes(input.kind) && competing.some(row => row.id !== previous?.id && identity(row.data) === identity(data))) throw new Error("Há outra regra ou ocorrência desta modalidade sobreposta ao período.");
     const values = { kind: input.kind, key: input.key, name: input.name, employeeId, contractId, startsAt, endsAt, status: input.status, data, actorId: context.user.id, version: (previous?.version ?? 0) + 1, updatedAt: new Date() };
     const [record] = previous ? await tx.update(hrFunctionalRecords).set(values).where(and(eq(hrFunctionalRecords.id, previous.id), eq(hrFunctionalRecords.version, previous.version))).returning() : await tx.insert(hrFunctionalRecords).values(values).returning();
     if (!record) throw new Error("O registro foi alterado por outro usuário.");

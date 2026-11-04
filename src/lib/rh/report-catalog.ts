@@ -102,4 +102,5 @@ export const hrReportCatalog: HrReportCatalogItem[] = [
   { id: 128, name: "Resumo por classificação funcional orçamentária", kind: "CONTABIL_CLASSIFICACAO_FUNCIONAL", phase: 5 },
   { id: 129, name: "Planejamento de férias e licença-prêmio", kind: "PLANEJAMENTO_FERIAS_LICENCAS", phase: 4 },
   { id: 130, name: "Memórias de concessão de aposentadoria emitidas", kind: "MEMORIAS_CONCESSAO_EMITIDAS", phase: 4 },
+  { id: 131, name: "Contribuição sindical — NT/SRT/MTE 202/2009", kind: "CONTRIBUICAO_SINDICAL_NT202", phase: 5 },
 ];

@@ -23,7 +23,8 @@ export function FunctionalRecordForm({ kind, values }: { kind: FunctionalKind; v
     } catch { setError("Falha de comunicação ao salvar. O rascunho permanece nesta ficha."); }
     finally { setPending(false); }
   }
-  return <form action={submit} className="grid grid-cols-1 gap-4 rounded border bg-white p-4 md:grid-cols-2">
+  return <form onSubmit={event => { event.preventDefault(); void submit(new FormData(event.currentTarget)); }} className="grid grid-cols-1 gap-4 rounded border bg-white p-4 md:grid-cols-2">
+    {kind === "RECOLHIMENTO_SINDICAL" && <p className="text-sm md:col-span-2">Registre somente recolhimento comprovado. Use a data do recolhimento no início e fim da vigência. PIS e função devem corresponder à competência do desconto e à fonte documental. Para corrigir, cancele a comprovação e cadastre a retificação. <a className="underline" href="/rh/relatorios?report=131">Emitir relação sindical</a></p>}
     <label>Identificação do registro<input className="block w-full rounded border p-2" name="name" defaultValue={values?.name} required maxLength={200} /></label>
     {definition.holder && <label>{definition.holder === "contract" ? "Contrato funcional" : "Servidor"}<ReferenceLookup kind={definition.holder === "contract" ? "contract" : "employee"} name={definition.holder === "contract" ? "contractId" : "employeeId"} initialValue={(definition.holder === "contract" ? values?.contractId : values?.employeeId) ?? ""} required /></label>}
     <label>Início da vigência<input className="block w-full rounded border p-2" type="date" name="startsAt" required defaultValue={values?.startsAt} /></label>
