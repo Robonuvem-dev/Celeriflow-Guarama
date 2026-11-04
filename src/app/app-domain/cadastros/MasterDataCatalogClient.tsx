@@ -11,7 +11,7 @@ import { useOperationalWorkspace } from "@/components/app-ui/operational/Operati
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { registryColumns } from "./operational-registry";
 import styles from "@/components/app-ui/operational/operational.module.css";
-import { createLegalTextComment, createLegalTextRelation, mutateMasterDataRecord, setMasterDataRecordActive } from "./master-data-actions";
+import { createLegalTextComment, createLegalTextRelation, importLegalTextsFromExistingDatabase, mutateMasterDataRecord, setMasterDataRecordActive } from "./master-data-actions";
 import type { MasterDataCatalog, MasterDataColumn, MasterDataField, MasterDataRow, MasterDataValue } from "./master-data-types";
 
 type Props = { catalog: MasterDataCatalog; pathname: string; rows: MasterDataRow[]; columns: MasterDataColumn[]; fields: MasterDataField[]; page: number; total: number; query: string; extraQuery?: Record<string, string>; statusMutable?: boolean; canCreate?: boolean; canUpdate?: boolean; tabs?: { value: string; label: string }[] };
@@ -43,6 +43,7 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
   const [draft, setDraft] = useState<Record<string, MasterDataValue>>({});
   const [block, setBlock] = useState(0);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [pending, startTransition] = useTransition();
   const blocks = Math.max(1, Math.ceil(fields.length / 3));
   const tableColumns = useMemo(() => registryColumns([...columns.map(column => [column.key, column.label, ...(widths[column.key] || [200, 100])] as [string, string, number, number]), ["_status", "Status", 85, 65, "status"], ["_actions", "Ações", catalog === "legalTexts" ? 120 : 64, catalog === "legalTexts" ? 120 : 64, "actions"]]), [columns, catalog]);
@@ -83,7 +84,7 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
   }
 
   return <>
-    <OperationalListFrame actions={canCreate && <button type="button" aria-label="Adicionar registro" onClick={event => begin(null, event.currentTarget)} className={styles.newButton}><Plus /><span className={styles.newLabel}>Adicionar</span></button>}
+    <OperationalListFrame actions={canCreate && <div className="flex items-center gap-1.5">{catalog === "legalTexts" && <button type="button" disabled={pending} aria-label="Importar do banco existente" onClick={() => { setError(""); setNotice(""); startTransition(async () => { try { const result = await importLegalTextsFromExistingDatabase(); if (result.error) return setError(result.error); setNotice(`Importação concluída: ${result.imported ?? 0} texto(s) incluído(s), ${result.skipped ?? 0} já existente(s).`); router.refresh(); } catch { setError("Não foi possível importar os textos jurídicos do banco existente."); } }); }} className={styles.filterButton}>Importar do banco existente</button>}<button type="button" aria-label="Adicionar registro" onClick={event => begin(null, event.currentTarget)} className={styles.newButton}><Plus /><span className={styles.newLabel}>Adicionar</span></button></div>}
       toolbar={<><form action={pathname} className={styles.searchForm}>{Object.entries(extraQuery || {}).filter(([key]) => key !== "tab" || !tabs).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
         {tabs && <select name="tab" aria-label="Tipo de catálogo" defaultValue={extraQuery?.tab} className={styles.filterButton}>{tabs.map(tab => <option key={tab.value} value={tab.value}>{tab.label}</option>)}</select>}
         <input name="q" type="search" defaultValue={query} maxLength={catalog === "legalTexts" ? 240 : undefined} placeholder="Buscar registros" aria-label="Buscar registros" className={styles.searchInput} /><button className={styles.filterButton}>Buscar</button></form>
@@ -102,6 +103,7 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
             </div>
           </form>
         </OperationalFilters>}
+        {notice && !open && <span role="status" className="text-[13px] text-emerald-700">{notice}</span>}
         {error && !open && <span role="alert" className="text-[13px] text-red-700">{error}</span>}</>}
       pagination={<OperationalLinkPagination page={page} total={total} pathname={pathname} values={{ q: query, ...extraQuery }} />}>
       <OperationalTable preferenceId={`cadastros-catalogo-${catalog}`} caption={`Catálogo ${catalog}`} emptyMessage="Nenhum registro encontrado." columns={tableColumns}

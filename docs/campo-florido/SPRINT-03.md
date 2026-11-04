@@ -1,5 +1,18 @@
 # Sprint 03 — CF33, cadastro e documentos
 
+## Incremento 04 — gravação direta no banco (33.11) e integração automática da base existente (33.15), 03/11/2026
+
+Os requisitos **33.11** e **33.15** foram concluídos na branch `feat/cf10-cf30-cf33-mateus`:
+
+- **33.11 (Gravação direta de Word e LibreOffice no banco sem conversão e sem perda de desempenho):**
+  - Migração aditiva `db/migrations/20261103160000_cf33_database_files_and_import/migration.sql` cria `"LegalTextDatabaseDocument"` (metadados leves indexados por versão jurídica) e `"LegalTextDatabaseDocumentBlob"` (conteúdo binário codificado separadamente em tabela 1:1 para não degradar consultas de listagem/paginação), com triggers de imutabilidade SQL.
+  - Repositório `src/db/repositories/registry/legal-documents.ts` (`saveLegalDatabaseDocument`, `readLegalDatabaseDocument`) valida a integridade binária/estrutura OpenXML/ODF/OLE/RTF via `inspectGedBytes`, preserva os bytes originais e SHA-256 sem conversão e lista metadados em `listLegalDocuments` via `UNION ALL` sem tocar na tabela de BLOBs.
+  - Rota `/api/cadastros/textos-juridicos/documentos` e tela `LegalDocumentsView.tsx` oferecem a ação **"Gravar Word ou LibreOffice no banco"** (`.doc`, `.docx`, `.rtf`, `.odt`, `.odf`, `.ods`) e download direto com verificação de integridade SHA-256.
+- **33.15 (Integração automática de documentos e leis já existentes na base sem redigitação):**
+  - Repositório `src/db/repositories/registry/legal-text-import.ts` (`syncLegalTextsFromExistingDatabase`) importa de forma transacional, auditada e idempotente tanto registros da tabela de integração `"LegacyLegalTextSource"` quanto documentos jurídicos já catalogados no acervo `"Document"`/`"GedEntry"`/`"DocumentPageText"`, preenchendo automaticamente `LegalText` e `LegalTextVersion` (`v1`) sem necessidade de redigitação.
+  - Action `importLegalTextsFromExistingDatabase` em `master-data-actions.ts` e botão **"Importar do banco existente"** em `MasterDataCatalogClient.tsx` para o catálogo `legalTexts`.
+  - Migração duplicada `prisma/migrations/20261103120000_cf33_legal_text_comments/migration.sql` removida, mantendo apenas a autoridade oficial em `db/migrations/`.
+
 ## Incremento 03 — formatos originais e esferas jurídicas
 
 Base `0018bfb8b8bdecebd720eed60c30a93015f67659`. Os itens 33.4, 33.8 e 33.9 têm implementação e testes internos; homologação permanece pendente.

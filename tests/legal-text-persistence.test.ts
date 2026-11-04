@@ -7,6 +7,7 @@ import { withDatabaseTransaction } from "../src/db/transaction";
 import { saveLegalText, setMasterDataActive } from "../src/db/repositories/registry/master-data-operations";
 import { loadMasterDataPage } from "../src/db/repositories/registry/master-data-queries";
 import { insertLegalTextComment, listLegalTextComments } from "../src/db/repositories/registry/legal-text-comments";
+import { syncLegalTextsFromExistingDatabase } from "../src/db/repositories/registry/legal-text-import";
 import { listLegalTextRelations, registerLegalTextRelation } from "../src/db/repositories/registry/legal-text-relations";
 import { legalTexts, legalTextVersions } from "../src/db/schema/master-data";
 import { insertAuditEvent } from "../src/db/repositories/platform/audit";
@@ -158,4 +159,38 @@ test("33.13: comentários preservam autoria e ficam restritos ao ato", async () 
   assert.deepEqual(await listLegalTextComments(db, other), []);
   await assert.rejects(insertLegalTextComment(db, "missing", "actor", "Inválido"));
   await assert.rejects(insertLegalTextComment(db, act, "missing", "Inválido"));
+});
+
+
+test("33.15: importa automaticamente leis e documentos já existentes na base de dados sem redigitação e mantém idempotência", async () => {
+  await fixture.database.exec(await readFile("db/migrations/20261103160000_cf33_database_files_and_import/migration.sql", "utf8"));
+  await fixture.database.exec(`
+    CREATE TABLE IF NOT EXISTS "Document" (id text PRIMARY KEY, title text NOT NULL, "documentType" text NOT NULL, status text NOT NULL, "createdAt" timestamp DEFAULT now());
+    CREATE TABLE IF NOT EXISTS "GedEntry" ("documentId" text PRIMARY KEY, filename text NOT NULL, "mimeType" text NOT NULL, "byteLength" int NOT NULL, origin text NOT NULL, "legacyReference" text NOT NULL, archived boolean DEFAULT false);
+    CREATE TABLE IF NOT EXISTS "DocumentPageText" (id text PRIMARY KEY, "documentId" text NOT NULL, "pageNumber" int NOT NULL, content text NOT NULL);
+    INSERT INTO "LegacyLegalTextSource" (id, "sourceApplication", "externalId", type, number, summary, "governmentLevel", "issuingBody", "publicationDate", content)
+    VALUES ('legacy-1', 'LEGADO_MUNICIPAL', 'EXT-405-2024', 'Lei Complementar', '405/2024', 'Código Tributário Municipal consolidado da base existente', 'MUNICIPAL', 'Prefeitura Municipal de Campo Florido', '2024-11-10', 'Art. 1º Fica instituído o Código Tributário Municipal na íntegra sem necessidade de redigitação.');
+    INSERT INTO "Document" (id, title, "documentType", status, "createdAt")
+    VALUES ('ged-doc-812', 'Decreto 812/2025 - Regulamento de Atos Administrativos', 'DECRETO', 'PUBLICADO', '2025-02-15T12:00:00Z');
+    INSERT INTO "GedEntry" ("documentId", filename, "mimeType", "byteLength", origin, "legacyReference", archived)
+    VALUES ('ged-doc-812', 'decreto-812-2025.odt', 'application/vnd.oasis.opendocument.text', 1024, 'MIGRACAO', 'DEC-812/2025', false);
+    INSERT INTO "DocumentPageText" (id, "documentId", "pageNumber", content)
+    VALUES ('page-1', 'ged-doc-812', 1, 'Art. 1º Este Decreto regulamenta o registro eletrônico de atos administrativos.');
+  `);
+
+  const firstRun = await withDatabaseTransaction(fixture.connection, tx => syncLegalTextsFromExistingDatabase(tx, "actor"));
+  assert.equal(firstRun.imported, 2);
+  assert.equal(firstRun.importedIds.length, 2);
+
+  const importedLegacy = await loadMasterDataPage(fixture.connection.db, "legalTexts", "sem necessidade de redigitação", 1, { numero: "405/2024" });
+  assert.equal(importedLegacy.total, 1);
+  assert.equal(importedLegacy.rows[0].values.type, "Lei Complementar");
+  assert.match(String(importedLegacy.rows[0].values.content), /sem necessidade de redigitação/);
+
+  const importedGed = await loadMasterDataPage(fixture.connection.db, "legalTexts", "registro eletrônico de atos administrativos", 1, {});
+  assert.equal(importedGed.total, 1);
+
+  const secondRun = await withDatabaseTransaction(fixture.connection, tx => syncLegalTextsFromExistingDatabase(tx, "actor"));
+  assert.equal(secondRun.imported, 0);
+  assert.ok(secondRun.skipped >= 1);
 });

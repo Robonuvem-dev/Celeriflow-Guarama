@@ -9,6 +9,7 @@ before(async () => {
   const stubs = {
     "next/cache": 'export function revalidatePath(path){fixture.events.push(["revalidate",path]);}',
     "@/db/repositories/registry/legal-text-comments": 'export async function insertLegalTextComment(tx,...args){fixture.events.push(["comment",...args]);return "comment-id";}',
+    "@/db/repositories/registry/legal-text-import": 'export async function syncLegalTextsFromExistingDatabase(tx,actorId){fixture.events.push(["import-db",actorId]);return {imported:2,skipped:1,importedIds:["l1","l2"]};}',
     "@/db/client": 'export const db={};export const databaseConnection={};',
     "@/db/transaction": 'export async function withDatabaseTransaction(connection,work){fixture.events.push(["transaction"]);return work({});}',
     "@/db/repositories/registry/master-data-operations": 'import {MasterDataValidationError} from "@/lib/cadastros/master-data-service";export async function saveLegalText(...args){fixture.events.push(["save"]);fixture.saved=args;if(fixture.conflict)throw new MasterDataValidationError("Este texto foi alterado por outra pessoa.");return "legal-id";}',
@@ -72,4 +73,15 @@ test("33.13: grava comentário com autoria da sessão e exige permissão de edi�
   assert.deepEqual(await actions.createLegalTextComment(form), {});
   assert.deepEqual(fixture.events.slice(0, 3), [["auth", "CADASTROS", "update"], ["transaction"], ["comment", "legal-id", "actor", "Observação interna"]]);
   assert.equal(fixture.events[3][1].targetId, "comment-id");
+});
+
+
+test("33.15: importação automática do banco existente exige permissão de criação e revalida catálogo", async () => {
+  reset({ denied: true });
+  assert.ok((await actions.importLegalTextsFromExistingDatabase()).error);
+  assert.deepEqual(fixture.events, [["auth", "CADASTROS", "create"]]);
+  reset();
+  assert.deepEqual(await actions.importLegalTextsFromExistingDatabase(), { imported: 2, skipped: 1 });
+  assert.deepEqual(fixture.events.slice(0, 3), [["auth", "CADASTROS", "create"], ["transaction"], ["import-db", "actor"]]);
+  assert.ok(fixture.events.some(event => event[0] === "revalidate" && event[1] === "/app-domain/cadastros/textos-juridicos"));
 });

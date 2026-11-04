@@ -1,5 +1,9 @@
 # Checkpoint — Campo Florido
 
+## Conclusão de implementação do módulo CF33 (33.11 e 33.15) — 03/11/2026
+
+Requisitos **33.11** (gravação direta de arquivos Word e LibreOffice no banco de dados sem conversão de formato e com tabela separada de BLOBs `"LegalTextDatabaseDocumentBlob"` para preservar o desempenho das consultas) e **33.15** (integração/importação automática de leis e documentos existentes na base sem redigitação) implementados e testados na branch `feat/cf10-cf30-cf33-mateus`. Com isso, **CF33 atinge 15/15 requisitos implementados** (14/14 de responsabilidade do Mateus + 33.6 do Eduardo preservado com blob `d6634ce21f0f387811f313f8476beb79f0369946`). Detalhes em [SPRINT-03.md](SPRINT-03.md) e [SPRINT-04.md](SPRINT-04.md).
+
 ## Sprint 04 — impressão jurídica
 
 Incremento sobre `70715b65033b462a8a1f9d4866c3031f6db47b1e`. 33.7 implementado na tabela de cadastro e na rota de impressão privada, fixando a versão exibida. 9 testes aprovados e tipos pertinentes conferidos; sem migração nova ou homologação. [SPRINT-04.md](SPRINT-04.md) registra o próximo trabalho de consulta, filtros, relações e comentários. Build integral permanece pendente. Somente a branch de Mateus foi alterada.

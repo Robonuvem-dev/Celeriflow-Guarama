@@ -8,6 +8,7 @@ import { databaseConnection } from "@/db/client";
 import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
 import { getPostgresError, PersistenceError } from "@/db/errors";
 import { insertLegalTextComment } from "@/db/repositories/registry/legal-text-comments";
+import { syncLegalTextsFromExistingDatabase } from "@/db/repositories/registry/legal-text-import";
 import { registerLegalTextRelation } from "@/db/repositories/registry/legal-text-relations";
 import * as master from "@/db/repositories/registry/master-data-operations";
 import { assertCanInactivate } from "@/db/repositories/registry/master-data-guards";
@@ -329,5 +330,20 @@ export async function createLegalTextComment(form: FormData): Promise<MasterData
   } catch (error) {
     if (error instanceof AccessError) return { error: "Você não tem permissão para adicionar comentários." };
     return { error: "Não foi possível salvar o comentário." };
+  }
+}
+
+
+export async function importLegalTextsFromExistingDatabase(): Promise<MasterDataActionResult & { imported?: number; skipped?: number }> {
+  try {
+    const context = await getTenantContextForModuleOperation("CADASTROS", "create");
+    const result = await withDatabaseTransaction(databaseConnection, async tx => {
+      return syncLegalTextsFromExistingDatabase(tx, context.user.id);
+    }, { timeoutMs: 30000 });
+    revalidatePath(paths.legalTexts);
+    revalidatePath("/app-domain/cadastros");
+    return { imported: result.imported, skipped: result.skipped };
+  } catch (error) {
+    return resultError(error);
   }
 }

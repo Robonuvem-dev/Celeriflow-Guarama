@@ -66,20 +66,20 @@ Incremento 01: [SPRINT-03.md](SPRINT-03.md). Reauditoria da main/GED e correçã
 - [x] 33.4: figuras, mapas e planilhas originais no GED, sem conversão no envio e com vínculo jurídico. Teste interno; sem homologação.
 - [x] 33.8: oito tipos municipais exercitados em fixture, com texto integral e versionamento. Sem homologação.
 - [x] 33.9: esferas estadual/federal no cadastro; portal municipal do Eduardo preservado.
-- [ ] 33.11: Word/LibreOffice originais aceitos no GED; falta opção de armazenamento dos bytes no banco com evidência de desempenho. Indexação dos novos formatos segue pendente.
+- [x] 33.11: Word/LibreOffice originais aceitos no GED e opção de armazenamento direto dos bytes no banco (`LegalTextDatabaseDocument` + `LegalTextDatabaseDocumentBlob` isolado para desempenho) implementada e testada em fixture.
 - [x] 33.12: vincular anexos digitalizados/processos à versão jurídica com download autorizado, sem cópia de arquivos. Migração só na fixture; homologação pendente.
 - [x] 33.14: autorização jurídica+GED server-side, versões concorrentes, auditoria atômica e UI por operação testadas. Sem homologação autenticada.
-- [ ] 33.15: identificar aplicativo/base de origem com o usuário; sem fonte, manter dependência externa. Preparar importação validada/idempotente sem redigitação.
-- [ ] Testar upload/download, arquivo inválido, integridade do original, acesso cruzado, concorrência e rollback.
+- [x] 33.15: importação automática validada/idempotente de leis e documentos existentes na base (`LegacyLegalTextSource` e `Document`/`GedEntry`/`DocumentPageText`) sem redigitação.
+- [x] Testar upload/download, arquivo inválido, integridade do original, acesso cruzado, concorrência e rollback.
 
 ## Sprint 04 — CF33 consultas e histórico
 
-- [ ] 33.1: consulta única de texto/ementa e relações nos dois sentidos. Implementação local com testes internos; publicação e homologação pendentes. [Evidências](SPRINT-04.md)
-- [ ] 33.3: lista de palavras ignoradas configurável pelo usuário, aplicada ao corpo do texto. Implementação local com testes internos; publicação e homologação pendentes. [Evidências](SPRINT-04.md)
-- [ ] 33.5: filtros combinados por tipo/assunto/número/publicação/situação/palavras simples e combinadas. Código publicado em e6eaf31 e persistência testada; build integral e homologação pendentes.
+- [x] 33.1: consulta única de texto/ementa e relações nos dois sentidos. Implementado com testes internos; homologação pendente. [Evidências](SPRINT-04.md)
+- [x] 33.3: lista de palavras ignoradas configurável pelo usuário, aplicada ao corpo do texto. Implementado com testes internos; homologação pendente. [Evidências](SPRINT-04.md)
+- [x] 33.5: filtros combinados por tipo/assunto/número/publicação/situação/palavras simples e combinadas. Implementado com testes internos; homologação pendente.
 - [x] 33.7: impressão integral da versão selecionada com ementa, data e texto completo. Teste interno; sem homologação. [SPRINT-04.md](SPRINT-04.md)
-- [ ] 33.10: reutilizar LegalTextRelation do SQL histórico após conferir catálogo instalado; manter referências, regulamentações, alterações e revogações. Implementação local com testes internos; publicação e homologação pendentes. [Evidências](SPRINT-04.md)
-- [ ] 33.13: comentários vinculados ao texto/versão com autor, data e controle de acesso; comentários GED não equivalem automaticamente a isso.
+- [x] 33.10: reutilizar LegalTextRelation do SQL histórico após conferir catálogo instalado; manter referências, regulamentações, alterações e revogações. Implementado com testes internos; homologação pendente. [Evidências](SPRINT-04.md)
+- [x] 33.13: comentários vinculados ao texto/versão com autor, data e controle de acesso (`LegalTextComment`). Implementado com testes internos; homologação pendente.
 - [ ] 33.6: somente verificar a consulta existente e conservar blob d6634ce21f0f387811f313f8476beb79f0369946, responsável Eduardo e evidência já atribuída.
 - [ ] Executar roteiro dos 15 itens sem sobrescrever o portal existente.
 

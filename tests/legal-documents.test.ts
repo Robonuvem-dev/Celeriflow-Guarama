@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { before, after, test } from "node:test";
 import { readFile } from "node:fs/promises";
+import JSZip from "jszip";
 import { createLocalDrizzleDatabase } from "./helpers/local-drizzle-database";
 import { withDatabaseTransaction } from "../src/db/transaction";
 import { saveLegalText } from "../src/db/repositories/registry/master-data-operations";
-import { bindLegalDocument, listLegalDocuments, requireLegalDocumentSchema } from "../src/db/repositories/registry/legal-documents";
-import { legalDocumentInput } from "../src/lib/cadastros/legal-document-policy";
+import { bindLegalDocument, listLegalDocuments, readLegalDatabaseDocument, requireLegalDatabaseDocumentSchema, requireLegalDocumentSchema, saveLegalDatabaseDocument } from "../src/db/repositories/registry/legal-documents";
+import { legalDatabaseDocumentInput, legalDocumentInput } from "../src/lib/cadastros/legal-document-policy";
 import type { AppContext } from "../src/lib/platform/tenant-context";
 
 let f: Awaited<ReturnType<typeof createLocalDrizzleDatabase>>, actor: AppContext, legalId: string, versionId: string;
@@ -86,4 +87,68 @@ test("documento original legado permanece exclusivo e a nova revisão pode ser a
   await withDatabaseTransaction(f.connection, tx => bindLegalDocument(tx, actor, { ...next, role: "ATTACHMENT" }));
   const data = await withDatabaseTransaction(f.connection, tx => listLegalDocuments(tx, actor, next.legalTextVersionId));
   assert.equal(data.rows[0].documentVersionId, "v-new"); assert.equal(data.rows[0].versionNumber, 2);
+});
+
+
+test("33.11: grava Word (.docx) e LibreOffice (.odt) diretamente no banco sem conversão, lista sem ler BLOB e preserva imutabilidade", async () => {
+  const migration = await readFile("db/migrations/20261103160000_cf33_database_files_and_import/migration.sql", "utf8");
+  await f.database.exec(migration);
+  await withDatabaseTransaction(f.connection, requireLegalDatabaseDocumentSchema);
+
+  const versions = await f.database.query<{ id: string }>('SELECT id FROM "LegalTextVersion" WHERE "legalTextId"=$1 AND "versionNumber"=2', [legalId]);
+  const v2Id = versions.rows[0].id;
+
+  const docxZip = new JSZip();
+  docxZip.file("[Content_Types].xml", "<Types/>");
+  docxZip.file("word/document.xml", "<w:document><w:body><w:p><w:r><w:t>Texto integral Word</w:t></w:r></w:p></w:body></w:document>");
+  const docxBytes = await docxZip.generateAsync({ type: "nodebuffer" });
+
+  const odtZip = new JSZip();
+  odtZip.file("mimetype", "application/vnd.oasis.opendocument.text");
+  odtZip.file("content.xml", "<office:document-content><office:body><office:text><text:p>Anexo LibreOffice</text:p></office:text></office:body></office:document-content>");
+  const odtBytes = await odtZip.generateAsync({ type: "nodebuffer" });
+
+  const docxInput = legalDatabaseDocumentInput.parse({
+    legalTextId: legalId,
+    legalTextVersionId: v2Id,
+    expectedVersion: 2,
+    role: "ORIGINAL",
+    filename: "lei-1-consolidada.docx",
+    contentBase64: docxBytes.toString("base64"),
+  });
+  const odtInput = legalDatabaseDocumentInput.parse({
+    legalTextId: legalId,
+    legalTextVersionId: v2Id,
+    expectedVersion: 2,
+    role: "ATTACHMENT",
+    filename: "anexo-unico.odt",
+    contentBase64: odtBytes.toString("base64"),
+  });
+
+  const docxId = await withDatabaseTransaction(f.connection, tx => saveLegalDatabaseDocument(tx, actor, docxInput));
+  const replayId = await withDatabaseTransaction(f.connection, tx => saveLegalDatabaseDocument(tx, actor, docxInput));
+  assert.equal(replayId, docxId);
+
+  const odtId = await withDatabaseTransaction(f.connection, tx => saveLegalDatabaseDocument(tx, actor, odtInput));
+  assert.notEqual(odtId, docxId);
+
+  const listed = await withDatabaseTransaction(f.connection, tx => listLegalDocuments(tx, actor, v2Id));
+  const dbRows = listed.rows.filter(r => r.storage === "DATABASE");
+  assert.equal(dbRows.length, 2);
+  assert.ok(dbRows.some(r => r.id === docxId && r.filename === "lei-1-consolidada.docx" && r.role === "ORIGINAL"));
+  assert.ok(dbRows.some(r => r.id === odtId && r.filename === "anexo-unico.odt" && r.role === "ATTACHMENT"));
+
+  const downloadedDocx = await withDatabaseTransaction(f.connection, tx => readLegalDatabaseDocument(tx, v2Id, docxId));
+  assert.ok(downloadedDocx);
+  assert.equal(Buffer.compare(downloadedDocx.bytes, docxBytes), 0);
+  assert.equal(downloadedDocx.mimeType, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
+  const downloadedOdt = await withDatabaseTransaction(f.connection, tx => readLegalDatabaseDocument(tx, v2Id, odtId));
+  assert.ok(downloadedOdt);
+  assert.equal(Buffer.compare(downloadedOdt.bytes, odtBytes), 0);
+  assert.equal(downloadedOdt.mimeType, "application/vnd.oasis.opendocument.text");
+
+  await assert.rejects(f.database.exec(`DELETE FROM "LegalTextDatabaseDocument"`));
+  await assert.rejects(f.database.exec(`UPDATE "LegalTextDatabaseDocument" SET filename='alterado.docx'`));
+  await assert.rejects(f.database.exec(`DELETE FROM "LegalTextDatabaseDocumentBlob"`));
 });

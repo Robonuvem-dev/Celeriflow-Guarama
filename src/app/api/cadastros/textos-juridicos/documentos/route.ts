@@ -5,12 +5,12 @@ import { withDatabaseTransaction } from "@/db/transaction";
 import { legalTexts, legalTextVersions } from "@/db/schema/master-data";
 import { legalTextDocuments } from "@/db/schema/legal-documents";
 import { documentVersions } from "@/db/schema/document-workflow";
-import { bindLegalDocument, listLegalDocuments, requireLegalDocumentSchema } from "@/db/repositories/registry/legal-documents";
+import * as legalDocumentsRepo from "@/db/repositories/registry/legal-documents";
 import { listManagedDocuments, requireManagedDocument } from "@/db/repositories/documents/ged";
 import { getGedContext } from "@/lib/documents/ged-access";
 import { gedQuerySchema } from "@/lib/documents/ged-policy";
 import { AccessError, getTenantContextForModule, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
-import { LegalDocumentError, legalDocumentInput } from "@/lib/cadastros/legal-document-policy";
+import { LegalDocumentError, legalDatabaseDocumentInput, legalDocumentInput } from "@/lib/cadastros/legal-document-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,19 +36,26 @@ export async function GET(request: Request) {
     const number = p.get("version") ? z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).parse(p.get("version")) : undefined;
     const view = z.enum(["linked", "available"]).parse(p.get("view") || "linked");
     const data = await withDatabaseTransaction(databaseConnection, async tx => {
-      await requireLegalDocumentSchema(tx);
+      await legalDocumentsRepo.requireLegalDocumentSchema(tx);
       const [legal] = await tx.select({ id: legalTexts.id, type: legalTexts.type, number: legalTexts.number, summary: legalTexts.summary }).from(legalTexts).where(eq(legalTexts.id, legalTextId));
       if (!legal) throw new LegalDocumentError("Texto jurídico não encontrado.", 404);
       const [current] = await tx.select().from(legalTextVersions).where(eq(legalTextVersions.legalTextId, legalTextId)).orderBy(desc(legalTextVersions.versionNumber)).limit(1);
       const selected = number ? (await tx.select().from(legalTextVersions).where(and(eq(legalTextVersions.legalTextId, legalTextId), eq(legalTextVersions.versionNumber, number))).limit(1))[0] : current;
       if (!selected || !current) throw new LegalDocumentError("Versão jurídica não encontrada.", 404);
       if (p.get("download")) {
-        const [link] = await tx.select({ documentId: documentVersions.documentId, versionId: documentVersions.id }).from(legalTextDocuments).innerJoin(documentVersions, eq(documentVersions.id, legalTextDocuments.documentVersionId)).where(and(eq(legalTextDocuments.id, z.string().max(100).parse(p.get("download"))), eq(legalTextDocuments.legalTextVersionId, selected.id))).limit(1);
-        if (!link) throw new LegalDocumentError("Vínculo não encontrado.", 404);
-        await requireManagedDocument(actor, link.documentId, tx);
-        return { download: link };
+        const downloadId = z.string().max(100).parse(p.get("download"));
+        const [link] = await tx.select({ documentId: documentVersions.documentId, versionId: documentVersions.id }).from(legalTextDocuments).innerJoin(documentVersions, eq(documentVersions.id, legalTextDocuments.documentVersionId)).where(and(eq(legalTextDocuments.id, downloadId), eq(legalTextDocuments.legalTextVersionId, selected.id))).limit(1);
+        if (link) {
+          await requireManagedDocument(actor, link.documentId, tx);
+          return { download: link };
+        }
+        const dbFile = typeof legalDocumentsRepo.readLegalDatabaseDocument === "function"
+          ? await legalDocumentsRepo.readLegalDatabaseDocument(tx, selected.id, downloadId)
+          : null;
+        if (!dbFile) throw new LegalDocumentError("Vínculo não encontrado.", 404);
+        return { databaseDownload: dbFile };
       }
-      const linked = view === "linked" ? await listLegalDocuments(tx, actor, selected.id, page) : null;
+      const linked = view === "linked" ? await legalDocumentsRepo.listLegalDocuments(tx, actor, selected.id, page) : null;
       const [original] = selected.documentId ? await tx.select({ id: legalTextDocuments.id }).from(legalTextDocuments).where(and(eq(legalTextDocuments.legalTextVersionId, selected.id), eq(legalTextDocuments.role, "ORIGINAL"))).limit(1) : [];
       return { legal, version: { id: selected.id, number: selected.versionNumber }, currentVersion: current.versionNumber, legacyOriginal: !!selected.documentId && !original, linked };
     }, { isolationLevel: "repeatable read", accessMode: "read only" });
@@ -56,6 +63,18 @@ export async function GET(request: Request) {
       const url = new URL("/api/assinatura-digital/ged/download", request.url);
       url.searchParams.set("items", JSON.stringify([{ id: data.download.documentId, versionId: data.download.versionId }]));
       return new Response(null, { status: 303, headers: { ...headers, Location: url.toString() } });
+    }
+    if ("databaseDownload" in data && data.databaseDownload) {
+      const safeName = data.databaseDownload.filename.replace(/["\\\r\n]/g, "_");
+      return new Response(new Uint8Array(data.databaseDownload.bytes), {
+        status: 200,
+        headers: {
+          ...headers,
+          "Content-Type": data.databaseDownload.mimeType,
+          "Content-Length": String(data.databaseDownload.byteLength),
+          "Content-Disposition": `attachment; filename="${safeName}"`,
+        },
+      });
     }
     const available = view === "available" ? await listManagedDocuments(actor, gedQuerySchema.parse({ text: p.get("q") || "", mode: "fragment" }), page) : null;
     return Response.json({ ...data, available }, { headers });
@@ -65,9 +84,18 @@ export async function POST(request: Request) {
   try {
     if (request.headers.get("origin") !== new URL(request.url).origin) throw new AccessError("Origem não permitida.", 403);
     const actor = await context(true);
-    const body = await request.text(); if (body.length > 4096) throw new LegalDocumentError("Dados excedem o limite da operação.");
-    const input = legalDocumentInput.parse(JSON.parse(body));
-    const id = await withDatabaseTransaction(databaseConnection, tx => bindLegalDocument(tx, actor, input));
+    const body = await request.text();
+    let parsed: unknown;
+    try { parsed = JSON.parse(body); } catch { throw new LegalDocumentError("Confira os campos informados.", 400); }
+    if (parsed && typeof parsed === "object" && "contentBase64" in parsed) {
+      if (body.length > 8_500_000) throw new LegalDocumentError("Dados excedem o limite da operação.");
+      const input = legalDatabaseDocumentInput.parse(parsed);
+      const id = await withDatabaseTransaction(databaseConnection, tx => legalDocumentsRepo.saveLegalDatabaseDocument(tx, actor, input));
+      return Response.json({ id, storage: "DATABASE" }, { headers });
+    }
+    if (body.length > 4096) throw new LegalDocumentError("Dados excedem o limite da operação.");
+    const input = legalDocumentInput.parse(parsed);
+    const id = await withDatabaseTransaction(databaseConnection, tx => legalDocumentsRepo.bindLegalDocument(tx, actor, input));
     return Response.json({ id }, { headers });
   } catch (error) { return failure(error); }
 }
