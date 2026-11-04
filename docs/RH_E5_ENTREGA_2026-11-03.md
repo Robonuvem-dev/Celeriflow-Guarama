@@ -57,3 +57,11 @@ Artefatos independentes do Desktop, em `C:\Users\trici\AppData\Local\Temp\openco
 - `rh-e5-planilha/verificacao-edicao-original.json`: comparação de células, demais conteúdos, fórmulas, formatos e estrutura.
 
 O estado final desses artefatos é confirmado no encerramento da entrega. O acesso do Google Sheets permanece no perfil Chrome independente via CDP, como nas revisões anteriores.
+
+### Confirmação final da publicação e da planilha
+
+- **Código publicado:** `b25793e5c3b3eeb876382fe196b6b491e21b5bed`, autor GitHub `Robonuvem-dev`.
+- **Vercel READY:** deployment `dpl_78YMmVzqToBYgjfqAtr1B18QJaar`, conferido em `2026-11-04T01:17:18.527Z`; alias `guarama.celeriflow.com.br` atribuído, `/api/health` com `status: ok` e `database: ready`.
+- **Planilha original PASS:** conferida em `2026-11-04T01:28:26.187Z`, após fechar a visualização temporária, com salvamento no Drive e exportação integral. Nove células C/F/G dos requisitos 5.135, 5.138 e 5.179 alteradas; responsáveis Thiago e observações anteriores preservados. Resultado **209 ATENDE / 10 NÃO ATENDE**, em 219 requisitos RH.
+- **Integridade:** oito abas e 670 fórmulas preservadas; nenhuma diferença inesperada de conteúdo, formato, validação ou estrutura na comparação final.
+- Um filtro compartilhado por responsável ocultava os alvos na reabertura do navegador. A conferência detectou duas células fora do alvo, restauradas integralmente antes da aplicação definitiva. A reaplicação usou uma visualização temporária pessoal e verificação explícita do endereço selecionado antes de cada escrita. A visualização temporária foi fechada ao concluir; o filtro compartilhado foi preservado.
