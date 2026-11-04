@@ -197,3 +197,27 @@ node --import tsx --test tests/recycling-stock-ui.test.tsx
 3. Completar prova de autorização e UI com perfis representativos em banco isolado de homologação, sem solicitar credenciais em chat nem aplicar migração em produção.
 4. Avaliar estorno vinculado antes do uso definitivo e avançar à Sprint 02 com relatórios/filtros/gráficos sobre os movimentos existentes. Não retirar a exigência de recebimento aprovado nem regras contábeis do patrimônio.
 5. Avançar conforme SPRINTS.md, mantendo itens externos pendentes: origem dos textos 33.15, provedor IA e garantia/suporte 30.14.
+
+
+---
+
+## Checkpoint Sprints 08 a 11 — CF31, CF32, CF26 e CF29 (`feat/cf26-cf29-cf31-cf32-mateus`) — 04/11/2026
+
+Todos os **46 requisitos** distribuídos nas Sprints 08 a 11 foram implementados e testados na branch modular `feat/cf26-cf29-cf31-cf32-mateus`:
+
+1. **Sprint 08 — `CF31 — Backup` (11/11 requisitos: `31.1` a `31.11`):**
+   - Motor criptográfico e de retenção em `src/lib/platform/backup-service.ts` + script instalador Windows Service `scripts/backup-service-windows.ps1` (`RunAsService` - `31.10`).
+   - Cobertura dos 33 sistemas do edital (`31.1`), automatização em nuvem sem intervenção humana (`31.2`, `31.3`), execução via Tecnologia Web em `/configuracoes/backup` (`31.4`), Backup Full Diário 7 dias (`31.5`), Backup Full Mensal no 1º dia de cada mês por 12 meses (`31.6`), Backup Diferencial de Log de 1 em 1 hora (`31.7`), Data Center Certificado (`31.8`), criptografia Padrão Militar `AES-256-GCM` de 256 bits (`31.9`) e controle estrito de cota de 3 Terabytes (`31.11`).
+   - API `/api/sistema/backup` e interface operacional `/configuracoes/backup` com `OperationalListFrame` e `OperationalTable`.
+
+2. **Sprint 09 — `CF32 — Serviço Data Center` (21/21 requisitos: `32.1` a `32.21`):**
+   - Governança e telemetria em `src/lib/platform/datacenter-governance.ts`, API `/api/sistema/datacenter/health` e interface operacional `/configuracoes/datacenter`.
+   - Certificações vigentes `ABNT NBR ISO/IEC 27001:2022` e `ABNT NBR ISO/IEC 20000-1:2018` (`32.2`), SLA mínimo de 99,6% em regime 24x7x365 (`32.3`), backup integrado (`32.4`), redundância N+1/2N (`32.6`), DNS hierárquico (`32.7`), elasticidade dinâmica sem interrupções (`32.8`), Firewall/WAF/Appliance (`32.9`), segurança física e virtual (`32.10`, `32.11`), licenciamento incluso de SO/SGBD/Antivírus (`32.12`), monitoramento e suporte 24x7x365 (`32.13`–`32.19`), WildCard SSL (`32.20`) e validação de subdomínio com SSL sem portas após a URL (`32.21`).
+
+3. **Sprint 10 — `CF26 — Arrecadação Online Service (web)` (7/7 requisitos: `26.1` a `26.7`):**
+   - Serviço FEBRABAN Segmento 6 em `src/lib/tributacao/febraban-arrecadacao-service.ts`, endpoint SOAP/XML + WSDL + JSON REST `/api/tributacao/arrecadacao-online` e console operacional `/tributacao/arrecadacao` (`/tributacao/arrecadacao-online`).
+   - Implementa os 6 métodos oficiais do layout FEBRABAN: `consultarDebitoIPTUOp` (`26.2`), `consultarDebitoISSOp` (`26.3`), `consultarDebitoDividaAtivaOp` (`26.4`), `consultarDebitoParcelamentoOp` (`26.5`), `cancelamentoOp` (`26.6`) e `confirmacaoOp` (`26.7`).
+
+4. **Sprint 11 — `CF29 — Declaração das Informações das Administradoras de Cartões` (7/7 requisitos de Mateus: `29.1`, `29.3`, `29.4`, `29.5`, `29.7`, `29.8`, `29.9`; preservados `29.2` e `29.6` de Eduardo):**
+   - Serviço DECRED em `src/lib/tributacao/card-administrators-decred-service.ts`, APIs `/api/tributacao/decred` e `/api/tributacao/declaracao-cartoes/webservice`, e tela operacional `/tributacao/decred`.
+   - Inclusão, consulta e edição de equipamentos POS/TEF por PF ou Inscrição Municipal (`29.1`), aceite obrigatório do Termo de Responsabilidade (`29.3`), declaração da movimentação da administradora (`29.4`), geração de DAM com código de barras FEBRABAN (`29.5`), recepção via Web Service com Layout Padrão e operações autorizadas detalhadas (`29.7`), relatório de fiscalização por natureza de operação (`29.8`) e relatório de fiscalização de todos os equipamentos cadastrados (`29.9`).
