@@ -1,46 +1,42 @@
 import { createHash } from "node:crypto";
-import mammoth from "mammoth";
 import JSZip from "jszip";
-import { GED_MAX_BYTES, gedFileType } from "./ged-policy";
-import type { GedWord } from "./ocr-policy";
-import { requestGedOcr } from "./ocr-client";
+import mammoth from "mammoth";
+import { getFile, getBlobDocumentPrefix } from "@/lib/platform/blob";
+import { gedFileType, type GedZone } from "./ged-policy";
+import { gedWordSchema, type GedWord } from "./ged-processing";
 
-export function gedHash(bytes: Buffer) {
-  return createHash("sha256").update(bytes).digest("hex");
+export const GED_MAX_BYTES = 20 * 1024 * 1024;
+export function gedUploadPath(userId: string, id: string, filename: string) {
+  const safe = filename.normalize("NFKD").replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120) || "arquivo";
+  return `${getBlobDocumentPrefix()}ged/${userId}/${id}/${safe}`;
 }
-export function decodeGedPlainText(bytes: Buffer): string {
-  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(3));
-  }
-  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
-    return new TextDecoder("utf-16le", { fatal: true }).decode(bytes.subarray(2));
-  }
-  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-    return new TextDecoder("utf-16be", { fatal: true }).decode(bytes.subarray(2));
-  }
-  let isUtf16Le = false;
-  let isUtf16Be = false;
-  if (bytes.length >= 4) {
-    const zeroesEven = (bytes[0] === 0 ? 1 : 0) + (bytes[2] === 0 ? 1 : 0);
-    const zeroesOdd = (bytes[1] === 0 ? 1 : 0) + (bytes[3] === 0 ? 1 : 0);
-    if (zeroesOdd >= 2 && zeroesEven === 0) isUtf16Le = true;
-    else if (zeroesEven >= 2 && zeroesOdd === 0) isUtf16Be = true;
-  }
-  if (isUtf16Le) {
-    try { return new TextDecoder("utf-16le", { fatal: true }).decode(bytes); } catch {}
-  }
-  if (isUtf16Be) {
-    try { return new TextDecoder("utf-16be", { fatal: true }).decode(bytes); } catch {}
-  }
+export function gedHash(bytes: Uint8Array) { return createHash("sha256").update(bytes).digest("hex"); }
+export async function readGedBytes(url: string, expectedHash?: string) {
+  const result = await getFile(url);
+  if (!result || result.statusCode !== 200 || !result.stream) throw new Error("Original indisponível no armazenamento documental.");
+  const reader = result.stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    try {
-      return new TextDecoder("windows-1252", { fatal: true }).decode(bytes);
-    } catch {
-      return new TextDecoder("iso-8859-1").decode(bytes);
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      size += chunk.value.byteLength;
+      if (size > GED_MAX_BYTES) { await reader.cancel(); throw new Error("Arquivo superior a 20 MiB."); }
+      chunks.push(chunk.value);
     }
-  }
+  } finally { reader.releaseLock(); }
+  const bytes = Buffer.concat(chunks);
+  if (expectedHash && gedHash(bytes) !== expectedHash) throw new Error("A integridade do arquivo diverge da versão registrada.");
+  return bytes;
+}
+export function decodeGedPlainText(bytes: Buffer) {
+  const bom = bytes.subarray(0, 2).toString("hex");
+  let text: string;
+  if (bom === "fffe" || bom === "feff") text = new TextDecoder(bom === "fffe" ? "utf-16le" : "utf-16be", { fatal: true }).decode(bytes);
+  else { try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { text = new TextDecoder("windows-1252", { fatal: true }).decode(bytes); } }
+  if (text.includes("\0") || /[\u0001-\u0008\u000E-\u001F]/.test(text)) throw new Error("TXT contém dados binários ou controles inválidos.");
+  return text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
 }
 export async function inspectGedBytes(filename: string, bytes: Buffer) {
   const mimeType = gedFileType(filename);
@@ -95,17 +91,37 @@ export async function extractGedText(filename: string, bytes: Buffer): Promise<A
       if (length > 2_000_000) throw new Error("Texto superior ao limite de processamento.");
       pages.push({ page, text, method: "PDF_TEXT" });
     }
-    if (length < 20) {
-      const ocrPages = await requestGedOcr(bytes, mimeType, []);
-      if (ocrPages.length) return ocrPages;
+    const missing = pages.filter(p => !p.text.trim()).map(p => p.page);
+    if (missing.length) {
+      const ocr = await requestGedOcr(bytes, mimeType, missing);
+      for (const page of ocr) { const target = pages.find(p => p.page === page.page); if (target) Object.assign(target, page); }
     }
     return pages;
-  } finally {
-    await task.destroy();
-  }
+  } finally { await task.destroy(); }
 }
-export async function downloadGedBlob(url: string) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("Não foi possível carregar o arquivo armazenado.");
-  return Buffer.from(await response.arrayBuffer());
+
+export async function requestGedOcr(bytes: Buffer, mimeType: string, pages: number[], zone?: GedZone) {
+  const { readGedProviderConfig } = await import("./ged-provider-config");
+  const endpoint = (await readGedProviderConfig()).ocrEndpoint;
+  const input = { contentBase64: bytes.toString("base64"), mimeType, pages, language: "por", ...(zone ? { zones: [zone], coordinateSystem: "normalized-top-left" } : {}) };
+  let raw: unknown;
+  if (endpoint) {
+    const url = new URL(endpoint);
+    if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) throw new Error("Endpoint OCR inválido.");
+    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...(process.env.GED_OCR_API_KEY ? { Authorization: `Bearer ${process.env.GED_OCR_API_KEY}` } : {}) }, body: JSON.stringify(input), signal: AbortSignal.timeout(60_000) });
+    if (!response.ok) throw new Error("O serviço OCR não concluiu o reconhecimento.");
+    raw = await response.json();
+  } else {
+    const { runGedInternalTask } = await import("./ged-internal-runtime");
+    raw = await runGedInternalTask("ocr", input);
+  }
+  const { z } = await import("zod");
+   const result = z.object({ pages: z.array(z.object({ page: z.number().int().min(1).max(200), text: z.string().max(100_000), confidence: z.number().min(0).max(1).nullable().optional(), label: z.string().optional(), words: z.array(gedWordSchema).max(20000).optional() })).max(200) }).parse(raw);
+  const seen = new Set<number>();
+  for (const item of result.pages) {
+    if (seen.has(item.page) || (pages.length && !pages.includes(item.page)) || (zone && (item.page !== zone.page || item.label !== zone.label))) throw new Error("Resposta OCR não corresponde às páginas/região solicitadas.");
+    seen.add(item.page);
+  }
+  if (!result.pages.length || (pages.length && pages.some(page => !seen.has(page)))) throw new Error("O OCR não retornou todas as páginas solicitadas.");
+  return result.pages.map(p => ({ ...p, method: zone ? "OCR_ZONE" : "OCR" }));
 }

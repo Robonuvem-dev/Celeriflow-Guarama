@@ -1,33 +1,26 @@
 import { z } from "zod";
 
-export const GED_MAX_BYTES = 20 * 1024 * 1024;
-export const gedStages = ["DRAFT", "CONSENSUS", "APPROVAL", "HOMOLOGATION"] as const;
-export type GedStage = (typeof gedStages)[number];
-export const gedStageLabels: Record<GedStage, string> = {
-  DRAFT: "Elaboração",
-  CONSENSUS: "Consenso",
-  APPROVAL: "Aprovação",
-  HOMOLOGATION: "Homologação",
+export const gedCapabilities = ["read", "import", "edit", "review", "models", "configure", "delete", "share"] as const;
+export type GedCapability = typeof gedCapabilities[number];
+export const gedCapabilityLabels: Record<GedCapability, string> = {
+  read: "Consultar acervo", import: "Importar documentos", edit: "Editar e reservar versões",
+  review: "Revisar e homologar", models: "Gerenciar modelos", configure: "Configurar GED",
+  delete: "Excluir e restaurar documentos", share: "Compartilhar e administrar acessos",
 };
-export const gedReviewDecisions = ["APPROVE", "RETURN"] as const;
-export type GedReviewDecision = (typeof gedReviewDecisions)[number];
-
-export const gedEditorialStatuses = ["DRAFT", "IN_REVIEW", "HOMOLOGADO", "CANCELLED"] as const;
-export type GedEditorialStatus = (typeof gedEditorialStatuses)[number];
-
-export const gedClassificationSchemes = ["SYSTEM", "CONARQ", "CUSTOM"] as const;
-export type GedClassificationScheme = (typeof gedClassificationSchemes)[number];
-
 export const gedQuerySchema = z.object({
-  folderId: z.string().trim().max(100).optional(),
-  classCode: z.string().trim().max(100).optional(),
-  text: z.string().trim().max(200).optional(),
-  status: z.string().trim().max(50).optional(),
-  tag: z.string().trim().max(100).optional(),
-  mode: z.enum(["exact", "fragment", "prefix"]).default("fragment"),
+  text: z.string().trim().max(300).default(""),
+  mode: z.enum(["words", "phrase", "fragment", "proximity", "boolean", "wildcard", "fuzzy", "semantic"]).default("words"),
+  distance: z.coerce.number().int().min(0).max(50).default(5),
+  thesaurus: z.boolean().default(false), status: z.string().max(50).default(""),
+  folderId: z.string().max(100).default(""),
+  descendants: z.boolean().default(false), classCode: z.string().max(100).default(""),
+  departmentId: z.string().max(100).default(""), from: z.string().regex(/^(?:\d{4}-\d{2}-\d{2})?$/).default(""), to: z.string().regex(/^(?:\d{4}-\d{2}-\d{2})?$/).default(""),
+  history: z.boolean().default(false), favorites: z.boolean().default(false), deleted: z.boolean().default(false),
+  metadata: z.record(z.string().regex(/^[a-z][a-z0-9_]{0,49}$/), z.string().max(500)).default({}),
 });
 export type GedQuery = z.infer<typeof gedQuerySchema>;
-
+export const gedStages = ["ELABORACAO", "CONSENSO", "APROVACAO", "HOMOLOGACAO"] as const;
+export const gedStageLabels = { ELABORACAO: "Elaboração", CONSENSO: "Consenso", APROVACAO: "Aprovação", HOMOLOGACAO: "Homologação" };
 export const gedZoneSchema = z.object({
   page: z.number().int().min(1).max(200), label: z.string().trim().min(1).max(100),
   x: z.number().min(0).max(1), y: z.number().min(0).max(1),
@@ -48,7 +41,7 @@ export const gedMimeTypes = {
 export const gedAcceptedExtensions = Object.keys(gedMimeTypes).map(extension => `.${extension}`).join(",");
 export function gedFileType(filename: string) {
   const extension = filename.split(".").pop()?.toLowerCase();
-  const mime = extension && Object.hasOwn(gedMimeTypes, extension) ? gedMimeTypes[extension as keyof typeof gedMimeTypes] : undefined;
+  const mime = gedMimeTypes[extension as keyof typeof gedMimeTypes];
   if (!mime) throw new Error("Formato documental não suportado.");
   return mime;
 }
@@ -61,34 +54,39 @@ export function gedTokens(value: string) {
 export function templateMarkers(content: string) {
   return [...new Set([...content.matchAll(/\{\{\s*([a-zA-Z][a-zA-Z0-9_.]*)\s*\}\}/g)].map(m => m[1]))];
 }
+export function fillGedTemplate(content: string, values: Record<string, string>) {
+  const markers = templateMarkers(content);
+  for (const key of markers) if (!(key in values) || typeof values[key] !== "string" || values[key].length > 5000) throw new Error(`Preencha o marcador ${key}.`);
+  return content.replace(/\{\{\s*([a-zA-Z][a-zA-Z0-9_.]*)\s*\}\}/g, (_, key: string) => values[key]);
+}
 
-export type GedManifestItem = {
-  filename: string;
-  title: string;
-  folderPath: string;
-  classCode: string;
-  legacyReference?: string;
-};
-
-export function parseGedManifest(csv: string): GedManifestItem[] {
-  const lines = csv.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (!lines.length) return [];
-  const [header, ...data] = lines;
-  const columns = header.split(",").map(c => c.trim().toLowerCase());
-  const required = ["filename", "title", "folderpath", "classcode"];
-  for (const col of required) {
-    if (!columns.includes(col)) throw new Error(`Coluna obrigatória ausente no manifesto: ${col}`);
+export type GedManifestItem = { filename: string; title: string; folderPath: string[]; classCode: string; legacyReference: string };
+export function parseGedManifest(input: string): GedManifestItem[] {
+  if (input.length > 1_000_000) throw new Error("Manifesto superior a 1 MB.");
+  const text = input.replace(/^\uFEFF/, "");
+  const delimiter = text.split(/\r?\n/, 1)[0].includes(";") ? ";" : ",";
+  const rows: string[][] = []; let row: string[] = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const character = text[i];
+    if (character === '"') { if (quoted && text[i + 1] === '"') { field += '"'; i++; } else quoted = !quoted; }
+    else if (!quoted && (character === delimiter || character === "\n")) {
+      row.push(field.replace(/\r$/, "").trim()); field = "";
+      if (character === "\n") { if (row.some(Boolean)) rows.push(row); row = []; }
+    } else field += character;
   }
-  return data.map((line, index) => {
-    const values = line.split(",").map(v => v.trim());
-    const row = Object.fromEntries(columns.map((col, i) => [col, values[i] ?? ""]));
-    if (!row.filename || !row.title || !row.classcode) throw new Error(`Linha ${index + 2} incompleta no manifesto.`);
-    return {
-      filename: row.filename,
-      title: row.title,
-      folderPath: row.folderpath || "Geral",
-      classCode: row.classcode,
-      legacyReference: row.legacyreference || undefined,
-    };
+  if (quoted) throw new Error("Aspas não fechadas no manifesto.");
+  row.push(field.replace(/\r$/, "").trim()); if (row.some(Boolean)) rows.push(row);
+  const header = rows.shift() ?? [];
+  if (!header.includes("filename")) throw new Error("O CSV precisa da coluna filename; opcionais: title, folderPath, classCode, legacyReference.");
+  if (rows.length > 1000) throw new Error("Divida manifestos com mais de 1000 arquivos.");
+  const seen = new Set<string>();
+  return rows.map(values => {
+    const value = (key: string) => values[header.indexOf(key)] || "";
+    const filename = value("filename");
+    if (!filename || filename.length > 250 || seen.has(filename)) throw new Error("Nomes ausentes ou repetidos no manifesto.");
+    seen.add(filename);
+    const folderPath = value("folderPath").split(/[\\/]/).filter(Boolean);
+    if (folderPath.length > 20 || folderPath.some(part => part === "." || part === ".." || part.length > 150)) throw new Error("Caminho de pasta inválido no manifesto.");
+    return { filename, title: value("title") || filename.replace(/\.[^.]+$/, ""), folderPath, classCode: value("classCode"), legacyReference: value("legacyReference") };
   });
 }
