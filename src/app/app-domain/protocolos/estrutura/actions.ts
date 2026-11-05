@@ -6,12 +6,12 @@ import { databaseConnection } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { administrativeUnits, departments, employees, secretariats } from "@/db/schema/administration";
 import { processDepartmentMetadata, processUnitMetadata } from "@/db/schema/process-reference-catalog";
-import { getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
+import { getTenantContextForModuleOperation, getTenantContextForSystemAdministration } from "@/lib/platform/tenant-context";
 import { insertAuditEvent } from "@/db/repositories/platform/audit";
 import { auditEventTypes } from "@/lib/contracts/audit";
 const schema = z.object({ kind: z.enum(["unit", "department"]), id: z.string(), name: z.string().trim().min(1).max(200), acronym: z.string().trim().min(1).max(30), secretariatId: z.string().min(1), unitId: z.string(), responsibleEmployeeId: z.string().nullable(), isActive: z.boolean() });
 export async function saveProcessStructure(form: FormData): Promise<void> {
-  const context = await getTenantContextForSystemAdministration();
+  const context = await getTenantContextForSystemAdministration().catch(() => getTenantContextForModuleOperation("PROCESSOS", "create"));
   const input = schema.parse({ kind: form.get("kind"), id: String(form.get("id") || ""), name: form.get("name"), acronym: form.get("acronym"), secretariatId: form.get("secretariatId"), unitId: String(form.get("unitId") || ""), responsibleEmployeeId: String(form.get("responsibleEmployeeId") || "") || null, isActive: form.get("isActive") === "on" });
   await withDatabaseTransaction(databaseConnection, async tx => {
     const [parent] = await tx.select({ id: secretariats.id }).from(secretariats).where(and(eq(secretariats.id,input.secretariatId),eq(secretariats.isActive,true))).limit(1);

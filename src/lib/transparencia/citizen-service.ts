@@ -10,16 +10,19 @@ import { processes } from "@/db/schema/processes";
 import {getTransparencySettings} from "./presentation-settings";
 import { openCitizenChannelProcess } from "@/lib/portal-cidadao/citizen-channel-process";
 import { ombudsmanReferenceCatalog as catalog } from "@/db/schema/ombudsman-reference-catalog";
-import { publicOmbudsmanTypes } from "@/lib/attendance/public-ombudsman-types";
+import { DEFAULT_PUBLIC_OMBUDSMAN_CATALOG, publicOmbudsmanTypes } from "@/lib/attendance/public-ombudsman-types";
 
 export const citizenRequestSchema=z.object({requestKey:z.uuid().optional(),type:z.enum(["ESIC","DENUNCIA","RECLAMACAO","SUGESTAO","ELOGIO","SOLICITACAO","OCORRENCIA"]),entity:z.enum(["prefeitura","camara"]).default("prefeitura"),name:z.string().trim().max(200).default(""),email:z.union([z.email(),z.literal("")]).default(""),subjectId:z.string().max(100).optional(),subsubjectId:z.string().max(100).optional(),subject:z.string().trim().min(5).max(250),message:z.string().trim().min(20).max(12000)}).strict().refine(value=>value.type!=="ESIC"||Boolean(value.name&&value.email),"Informe nome e e-mail para pedidos de informação.").refine(value=>Boolean(value.name)||!value.email,"Uma manifestação anônima não deve informar e-mail.");
 const accessHash=(token:string)=>createHash("sha256").update(token).digest("hex");
 export async function createCitizenRequest(db:DatabaseConnection,input:unknown){
   const {requestKey,subjectId,subsubjectId,...data}=citizenRequestSchema.parse(input);
   if(data.type!=="ESIC"){
-   const entries=await db.db.select().from(catalog).where(eq(catalog.requestType,publicOmbudsmanTypes[data.type]));
+   const requestTypeLabel=publicOmbudsmanTypes[data.type];
+   const dbEntries=await db.db.select().from(catalog).where(eq(catalog.requestType,requestTypeLabel));
+   const fallbackEntries=DEFAULT_PUBLIC_OMBUDSMAN_CATALOG.filter(entry=>entry.requestType===requestTypeLabel&&!dbEntries.some(dbItem=>dbItem.id===entry.id)).map(entry=>({...entry,isActive:true,isOnline:true}));
+   const entries=dbEntries.length?[...dbEntries,...fallbackEntries]:(subjectId?fallbackEntries:[]);
    const subject=entries.find(entry=>entry.id===subjectId&&entry.kind==="SUBJECT"&&entry.isActive&&entry.isOnline);
-   if(subjectId&&!subject||!subjectId&&entries.some(entry=>entry.kind==="SUBJECT"&&entry.isActive&&entry.isOnline))throw new Error("Selecione um assunto disponível no portal.");
+   if(subjectId&&!subject||!subjectId&&dbEntries.some(entry=>entry.kind==="SUBJECT"&&entry.isActive&&entry.isOnline))throw new Error("Selecione um assunto disponível no portal.");
    const subsubject=entries.find(entry=>entry.id===subsubjectId&&entry.kind==="SUBSUBJECT"&&entry.subjectId===subject?.id&&entry.isActive&&entry.isOnline);
    if(subsubjectId&&!subsubject||subject&&!subsubjectId&&entries.some(entry=>entry.kind==="SUBSUBJECT"&&entry.subjectId===subject.id&&entry.isActive&&entry.isOnline))throw new Error("Selecione um subassunto disponível no portal.");
    if(subsubject&&!subsubject.isAnonymous&&!data.name)throw new Error("Este serviço exige identificação.");

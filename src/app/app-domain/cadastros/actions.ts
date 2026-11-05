@@ -106,9 +106,64 @@ export async function createPerson(formData: FormData): Promise<void> {
         birthDate: new Date(`${birthDate}T12:00:00.000Z`),
         status,
     }, { zipCode, streetName, number, complement: textValue(formData, "complement") || null });
-    await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PERSON", targetId: person.id });
+    try {
+      await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PERSON", targetId: person.id });
+    } catch (auditErr) {
+      console.warn("Aviso ao registrar evento de auditoria de pessoa física:", auditErr);
+    }
   });
   revalidatePath("/cadastros/pessoas-fisicas");
+  redirect("/cadastros/pessoas-fisicas");
+}
+
+export async function createPersonWithFeedback(formData: FormData): Promise<{ error?: string }> {
+  try {
+    const context = await getTenantContextForModuleOperation("CADASTROS", "create");
+    const fullName = textValue(formData, "fullName");
+    const cpf = requireValidCpf(textValue(formData, "cpf"));
+    const birthDate = textValue(formData, "birthDate");
+    const gender = textValue(formData, "gender");
+    const raceColor = textValue(formData, "raceColor");
+    const motherName = textValue(formData, "motherName");
+    const zipCode = textValue(formData, "zipCode");
+    const streetName = textValue(formData, "streetName");
+    const number = textValue(formData, "number");
+    const status = textValue(formData, "status") || "Ativo";
+    if (!fullName) return { error: "Nome completo é obrigatório." };
+    if (!["Ativo", "Inativo"].includes(status)) return { error: "Situação cadastral inválida." };
+    if (!birthDate || !gender || !raceColor || !motherName || !zipCode || !streetName || !number) {
+      return { error: "Data de nascimento, sexo, raça/cor, nome da mãe e endereço residencial são obrigatórios." };
+    }
+    const parsedBirthDate = new Date(`${birthDate}T12:00:00.000Z`);
+    if (Number.isNaN(parsedBirthDate.getTime())) {
+      return { error: "Data de nascimento inválida." };
+    }
+    await withDatabaseTransaction(databaseConnection, async tx => {
+      const person = await registry.insertPersonWithAddress(tx, {
+          fullName, cpf, gender, raceColor, motherName,
+          email: textValue(formData, "email") || null,
+          phonePrimary: textValue(formData, "phonePrimary") || null,
+          phoneSecondary: textValue(formData, "phoneSecondary") || null,
+          whatsapp: textValue(formData, "whatsapp") || null,
+          maritalStatus: textValue(formData, "maritalStatus") || null,
+          nationality: textValue(formData, "nationality") || null,
+          birthDate: parsedBirthDate,
+          status,
+      }, { zipCode, streetName, number, complement: textValue(formData, "complement") || null });
+      try {
+        await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "PERSON", targetId: person.id });
+      } catch (auditErr) {
+        console.warn("Aviso ao registrar evento de auditoria de pessoa física:", auditErr);
+      }
+    });
+    revalidatePath("/cadastros/pessoas-fisicas");
+    return {};
+  } catch (error) {
+    if (error && typeof error === "object" && "kind" in error && error.kind === "unique") {
+      return { error: "Já existe uma pessoa física cadastrada com este CPF." };
+    }
+    return supplierActionError(error, "Não foi possível salvar o cadastro da pessoa física.");
+  }
 }
 
 export async function createCompany(formData: FormData): Promise<void> {

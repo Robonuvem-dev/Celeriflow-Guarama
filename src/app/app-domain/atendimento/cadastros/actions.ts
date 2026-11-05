@@ -31,7 +31,7 @@ export async function saveOmbudsmanConfiguration(form:FormData):Promise<void>{
  if(kind==="STATUS")settings={availableToApplicant:form.get("availableToApplicant")==="on",status:z.enum(["Cancelado","Encerrado","Movimentado"]).parse(form.get("status"))};
  if(kind==="ROUTE"){
   const route=z.object({requestType:z.enum(ombudsmanRequestTypes),subjectId:z.string().min(1),subsubjectId:z.string().min(1),routeNumber:z.coerce.number().int().positive(),sequence:z.coerce.number().int().positive(),secretariatId:z.string().min(1),unitId:z.string().min(1),departmentId:z.string().min(1),dueDays:z.coerce.number().int().min(0).max(3650)}).parse(Object.fromEntries(form));
-  const [[subject],[subsubject],[org],[unit],[department],[metadata]]=await Promise.all([
+  const [[subject],[subsubject],[org],[unit],[department]]=await Promise.all([
    database.select().from(catalog).where(and(eq(catalog.id,route.subjectId),eq(catalog.kind,"SUBJECT"),eq(catalog.requestType,route.requestType))).limit(1),
    database.select().from(catalog).where(and(eq(catalog.id,route.subsubjectId),eq(catalog.kind,"SUBSUBJECT"),eq(catalog.subjectId,route.subjectId),eq(catalog.requestType,route.requestType))).limit(1),
    database.select().from(secretariats).where(and(eq(secretariats.id,route.secretariatId),eq(secretariats.isActive,true))).limit(1),
@@ -39,7 +39,7 @@ export async function saveOmbudsmanConfiguration(form:FormData):Promise<void>{
    database.select().from(departments).where(and(eq(departments.id,route.departmentId),eq(departments.secretariatId,route.secretariatId),eq(departments.isActive,true))).limit(1),
    database.select().from(processDepartmentMetadata).where(and(eq(processDepartmentMetadata.departmentId,route.departmentId),eq(processDepartmentMetadata.unitId,route.unitId))).limit(1),
   ]);
-  if(!subject||!subsubject||!org||!unit||!department||!metadata)throw new Error("Confira os vínculos de tipo, assunto/subassunto e órgão/unidade/setor do roteiro.");
+  if(!subject||!subsubject||!org||!unit||!department)throw new Error("Confira os vínculos de tipo, assunto/subassunto e órgão/unidade/setor do roteiro.");
   settings=route;
  }
  if(id){

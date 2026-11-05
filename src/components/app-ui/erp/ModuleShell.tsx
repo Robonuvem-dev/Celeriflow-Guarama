@@ -343,7 +343,7 @@ export function ModuleShell({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[min(19.5rem,calc(100vw-2rem))] -translate-x-full flex-col border-r px-3 py-4 shadow-2xl transition-[transform,width,padding] duration-200 lg:sticky lg:top-0 lg:z-20 lg:flex lg:h-full lg:translate-x-0 lg:shadow-none",
+          "fixed inset-y-0 left-0 z-50 flex w-[min(19.5rem,calc(100vw-2rem))] -translate-x-full shrink-0 flex-col border-r px-3 py-4 shadow-2xl transition-[transform,width,padding] duration-200 lg:sticky lg:top-0 lg:z-20 lg:flex lg:h-full lg:self-stretch lg:translate-x-0 lg:shadow-none",
           desktopCollapsible ? "lg:w-52" : "lg:w-52",
           isLightSidebar
             ? "border-slate-300 bg-slate-100 text-slate-800"
@@ -445,7 +445,7 @@ export function ModuleShell({
         </div>
       </aside>
 
-      <main className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-slate-100">
+      <main className="flex min-w-0 min-h-0 flex-1 flex-col overflow-y-auto bg-slate-100 p-3 sm:p-5">
         {children}
       </main>
     </div>

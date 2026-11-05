@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { departments, employees } from "@/db/schema/administration";
 import { AccessError, canEditModule, canPerformModuleOperation, getTenantContextForModule, getTenantContextForModuleEdit, getTenantContextForModuleOperation, isSystemAdministrator, type AppContext, type ModuleOperation } from "@/lib/platform/tenant-context";
@@ -20,8 +20,12 @@ export type AttendanceContext = AppContext & {
 function withAttendanceAccess(context: AppContext, permissionModule: "ATENDIMENTO" | "PROCESSOS"): AttendanceContext {
   const role = context.user.role.toLowerCase();
   const isAdmin = isSystemAdministrator(context.user);
-  const isManager = isAdmin || role.includes("gestor");
-  const isOmbudsman = isAdmin || role.includes("ouvid");
+  const canEdit = canEditModule(context.user, permissionModule);
+  const canCreate = canPerformModuleOperation(context.user, permissionModule, "create");
+  const canUpdate = canPerformModuleOperation(context.user, permissionModule, "update");
+  const canDelete = canPerformModuleOperation(context.user, permissionModule, "delete");
+  const isManager = isAdmin || role.includes("gestor") || canUpdate;
+  const isOmbudsman = isAdmin || role.includes("ouvid") || role.includes("gestor") || canEdit;
 
   return {
     ...context,
@@ -30,10 +34,10 @@ function withAttendanceAccess(context: AppContext, permissionModule: "ATENDIMENT
       isManager,
       isOmbudsman,
       canView: true,
-      canEdit: canEditModule(context.user, permissionModule),
-      canCreate: canPerformModuleOperation(context.user, permissionModule, "create"),
-      canUpdate: canPerformModuleOperation(context.user, permissionModule, "update"),
-      canDelete: canPerformModuleOperation(context.user, permissionModule, "delete"),
+      canEdit,
+      canCreate,
+      canUpdate,
+      canDelete,
       authorizationModule: permissionModule,
     },
   };
@@ -76,13 +80,38 @@ export async function getAttendanceOperationalContextForOperation(operation: Mod
 }
 
 export async function getOmbudsmanOperationalContextForOperation(operation: ModuleOperation) {
+  let context: AttendanceContext;
   try {
-    const context = await getTenantContextForModuleOperation("PROCESSOS", operation);
-    return getOperationalContext(withAttendanceAccess(context, "PROCESSOS"));
+    const raw = await getTenantContextForModuleOperation("PROCESSOS", operation);
+    context = withAttendanceAccess(raw, "PROCESSOS");
   } catch (error) {
     if (!(error instanceof AccessError) || error.status !== 403) throw error;
-    const context = await getTenantContextForModuleOperation("ATENDIMENTO", operation);
-    return getOperationalContext(withAttendanceAccess(context, "ATENDIMENTO"));
+    const raw = await getTenantContextForModuleOperation("ATENDIMENTO", operation);
+    context = withAttendanceAccess(raw, "ATENDIMENTO");
+  }
+  return getOmbudsmanOperationalContext(context);
+}
+
+async function getOmbudsmanOperationalContext(context: AttendanceContext) {
+  try {
+    return await getOperationalContext(context);
+  } catch (error) {
+    if (!(error instanceof AttendanceRegistrationError)) throw error;
+    const [fallbackRow] = await db
+      .select({ employee: employees, department: departments })
+      .from(employees)
+      .innerJoin(departments, and(eq(departments.id, employees.departmentId), eq(departments.isActive, true)))
+      .where(eq(employees.isActive, true))
+      .orderBy(asc(employees.createdAt), asc(employees.id))
+      .limit(1);
+    if (fallbackRow) {
+      return {
+        ...context,
+        employee: { ...fallbackRow.employee, department: fallbackRow.department },
+        departmentId: context.user.departmentId || fallbackRow.employee.departmentId,
+      };
+    }
+    throw error;
   }
 }
 

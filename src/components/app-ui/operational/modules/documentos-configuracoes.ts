@@ -36,6 +36,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { title: "Fila do Setor", href: "/atendimento/fila", icon: "headphones" },
       { title: "Ouvidoria", href: "/atendimento/ouvidoria", icon: "messageSquareWarning" },
       { title: "Canais e Assuntos", href: "/atendimento/configuracoes", icon: "settings2" },
+      { title: "Assuntos e Justificativas", href: "/atendimento/cadastros", icon: "settings2" },
       { title: "Relatórios", href: "/atendimento/relatorios", icon: "barChart3" },
     ] }],
     routes: [

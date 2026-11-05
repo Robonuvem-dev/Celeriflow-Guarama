@@ -144,19 +144,36 @@ export async function createOmbudsman(formData: FormData): Promise<void> {
   const openedFromProtocols = formData.get("originModule") === "PROCESSOS" && context.attendanceAccess.authorizationModule === "PROCESSOS";
   if (!context.attendanceAccess.isOmbudsman) throw new Error("Somente a Ouvidoria pode registrar manifestacoes.");
   const type = stringValue(formData, "type");
-  const subject = stringValue(formData, "subject");
+  const rawSubject = stringValue(formData, "subject");
+  const subsubject = stringValue(formData, "subsubject");
+  const subject = subsubject && !rawSubject.includes(subsubject) ? `${rawSubject} — ${subsubject}` : rawSubject;
   const description = stringValue(formData, "description");
   const channelId = stringValue(formData, "channelId");
   const departmentId = stringValue(formData, "departmentId") || null;
-  const isAnonymous = formData.get("isAnonymous") === "on";
-  const isConfidential = formData.get("isConfidential") === "on";
-  if (!new Set(["Denúncia", "Reclamação", "Sugestão", "Elogio", "Solicitação", "Ocorrência"]).has(type) || !subject || !description || !channelId) {
-    throw new Error("Informe tipo, canal, assunto e descricao da manifestacao.");
+  const priorityRaw = stringValue(formData, "priority");
+  const priority = ["Baixa", "Normal", "Alta", "Urgente"].includes(priorityRaw) ? priorityRaw : "Normal";
+  const complaintTeam = type === "Reclamação" ? stringValue(formData, "complaintTeam").slice(0, 160) || null : null;
+  const isAnonymous = formData.get("isAnonymous") === "on" || formData.get("isAnonymous") === "true";
+  const isConfidential = formData.get("isConfidential") === "on" || formData.get("isConfidential") === "true";
+  if (!new Set(["Denúncia", "Reclamação", "Sugestão", "Elogio", "Solicitação", "Ocorrência"]).has(type) || !subject || !description) {
+    throw new Error("Informe tipo, assunto e descricao da manifestacao.");
   }
 
   const created = await withDatabaseTransaction(databaseConnection, async (tx) => {
-    const [channel] = await tx.select({ id: supportChannels.id }).from(supportChannels).where(and(eq(supportChannels.id, channelId), eq(supportChannels.isActive, true))).limit(1);
-    if (!channel) throw new Error("Selecione um canal de atendimento ativo.");
+    let resolvedChannelId = channelId;
+    if (resolvedChannelId) {
+      const [channel] = await tx.select({ id: supportChannels.id }).from(supportChannels).where(and(eq(supportChannels.id, resolvedChannelId), eq(supportChannels.isActive, true))).limit(1);
+      if (!channel) resolvedChannelId = "";
+    }
+    if (!resolvedChannelId) {
+      const [firstChannel] = await tx.select({ id: supportChannels.id }).from(supportChannels).where(eq(supportChannels.isActive, true)).limit(1);
+      if (firstChannel) {
+        resolvedChannelId = firstChannel.id;
+      } else {
+        const [createdChannel] = await tx.insert(supportChannels).values({ name: "Atendimento Ouvidoria", isActive: true, sortOrder: 1 }).returning({ id: supportChannels.id });
+        resolvedChannelId = createdChannel.id;
+      }
+    }
     if (departmentId) {
       const [department] = await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.id, departmentId), eq(departments.isActive, true))).limit(1);
       if (!department) throw new Error("Setor inicial invalido ou inativo.");
@@ -176,7 +193,8 @@ export async function createOmbudsman(formData: FormData): Promise<void> {
       existingCodes: await tx.select({ code: ombudsmans.protocolNumber }).from(ombudsmans),
     });
     const [ombudsman] = await tx.insert(ombudsmans).values({
-        protocolNumber, type, subject, description, channelId, departmentId,
+        protocolNumber, type, subject, description, channelId: resolvedChannelId, departmentId,
+        priority, complaintTeam,
         // New identities are stored separately so a department cannot obtain them from the body record.
         personId: null, isAnonymous, isConfidential,
     }).returning({ id: ombudsmans.id });
@@ -185,11 +203,97 @@ export async function createOmbudsman(formData: FormData): Promise<void> {
     if (departmentId) {
       await tx.insert(ombudsmanMovements).values({ ombudsmanId: ombudsman.id, toDepartmentId: departmentId, employeeId: context.employee.id, reason: "Distribuicao inicial" });
     }
-    await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: ombudsman.id, userId: context.user.id, employeeId: context.employee.id, action: "CREATED", details: { type, departmentId, isAnonymous, isConfidential } });
+    try {
+      await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: ombudsman.id, userId: context.user.id, employeeId: context.employee.id, action: "CREATED", details: { type, departmentId, isAnonymous, isConfidential } });
+    } catch (auditErr) {
+      console.warn("Aviso ao registrar auditoria de ouvidoria:", auditErr);
+    }
     return ombudsman;
   }, { timeoutMs: 5_000 });
   revalidateAttendance();
   redirect(openedFromProtocols ? `/protocolos/ouvidoria/${created.id}` : `/atendimento/ouvidoria/${created.id}`);
+}
+
+export async function createOmbudsmanWithFeedback(formData: FormData): Promise<{ id?: string; redirectUrl?: string; error?: string }> {
+  try {
+    const context = await getOmbudsmanOperationalContextForOperation("create");
+    const openedFromProtocols = formData.get("originModule") === "PROCESSOS" && context.attendanceAccess.authorizationModule === "PROCESSOS";
+    if (!context.attendanceAccess.isOmbudsman) return { error: "Somente a Ouvidoria pode registrar manifestações." };
+    const type = stringValue(formData, "type");
+    const rawSubject = stringValue(formData, "subject");
+    const subsubject = stringValue(formData, "subsubject");
+    const subject = subsubject && !rawSubject.includes(subsubject) ? `${rawSubject} — ${subsubject}` : rawSubject;
+    const description = stringValue(formData, "description");
+    const channelId = stringValue(formData, "channelId");
+    const departmentId = stringValue(formData, "departmentId") || null;
+    const priorityRaw = stringValue(formData, "priority");
+    const priority = ["Baixa", "Normal", "Alta", "Urgente"].includes(priorityRaw) ? priorityRaw : "Normal";
+    const complaintTeam = type === "Reclamação" ? stringValue(formData, "complaintTeam").slice(0, 160) || null : null;
+    const isAnonymous = formData.get("isAnonymous") === "on" || formData.get("isAnonymous") === "true";
+    const isConfidential = formData.get("isConfidential") === "on" || formData.get("isConfidential") === "true";
+    if (!new Set(["Denúncia", "Reclamação", "Sugestão", "Elogio", "Solicitação", "Ocorrência"]).has(type) || !subject || !description) {
+      return { error: "Informe tipo, assunto e descrição da manifestação." };
+    }
+
+    const created = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      let resolvedChannelId = channelId;
+      if (resolvedChannelId) {
+        const [channel] = await tx.select({ id: supportChannels.id }).from(supportChannels).where(and(eq(supportChannels.id, resolvedChannelId), eq(supportChannels.isActive, true))).limit(1);
+        if (!channel) resolvedChannelId = "";
+      }
+      if (!resolvedChannelId) {
+        const [firstChannel] = await tx.select({ id: supportChannels.id }).from(supportChannels).where(eq(supportChannels.isActive, true)).limit(1);
+        if (firstChannel) {
+          resolvedChannelId = firstChannel.id;
+        } else {
+          const [createdChannel] = await tx.insert(supportChannels).values({ name: "Atendimento Ouvidoria", isActive: true, sortOrder: 1 }).returning({ id: supportChannels.id });
+          resolvedChannelId = createdChannel.id;
+        }
+      }
+      if (departmentId) {
+        const [department] = await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.id, departmentId), eq(departments.isActive, true))).limit(1);
+        if (!department) throw new Error("Setor inicial inválido ou inativo.");
+      }
+      let personId: string | null = null;
+      if (!isAnonymous) {
+        const cpf = requireValidCpf(stringValue(formData, "cpf"));
+        const fullName = stringValue(formData, "fullName");
+        if (!cpf || !fullName) throw new Error("Informe CPF válido e nome completo, ou marque a manifestação como anônima.");
+        personId = (await tx.insert(people).values({ cpf, fullName, status: "Ativo" }).onConflictDoUpdate({ target: people.cpf, set: { fullName, updatedAt: new Date() } }).returning({ id: people.id }))[0].id;
+      }
+      const protocolNumber = await nextYearlyCodeDrizzle({
+        db: tx,
+        key: "OUV",
+        prefix: "OUV",
+        padding: 6,
+        existingCodes: await tx.select({ code: ombudsmans.protocolNumber }).from(ombudsmans),
+      });
+      const [ombudsman] = await tx.insert(ombudsmans).values({
+          protocolNumber, type, subject, description, channelId: resolvedChannelId, departmentId,
+          priority, complaintTeam,
+          personId: null, isAnonymous, isConfidential,
+      }).returning({ id: ombudsmans.id });
+      if (personId) await tx.insert(ombudsmanIdentities).values({ ombudsmanId: ombudsman.id, personId });
+      await tx.insert(ombudsmanInteractions).values({ ombudsmanId: ombudsman.id, type: "Registro", message: "Manifestação registrada.", employeeId: context.employee.id });
+      if (departmentId) {
+        await tx.insert(ombudsmanMovements).values({ ombudsmanId: ombudsman.id, toDepartmentId: departmentId, employeeId: context.employee.id, reason: "Distribuição inicial" });
+      }
+      try {
+        await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: ombudsman.id, userId: context.user.id, employeeId: context.employee.id, action: "CREATED", details: { type, departmentId, isAnonymous, isConfidential } });
+      } catch (auditErr) {
+        console.warn("Aviso ao registrar auditoria de ouvidoria:", auditErr);
+      }
+      return ombudsman;
+    }, { timeoutMs: 5_000 });
+
+    revalidateAttendance();
+    return {
+      id: created.id,
+      redirectUrl: openedFromProtocols ? `/protocolos/ouvidoria/${created.id}` : `/atendimento/ouvidoria/${created.id}`,
+    };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Não foi possível registrar a manifestação." };
+  }
 }
 
 export async function assumeTicket(formData: FormData): Promise<void> {
