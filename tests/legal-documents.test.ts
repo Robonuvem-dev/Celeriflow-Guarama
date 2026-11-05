@@ -39,7 +39,7 @@ function list(page = 1, context = actor) { return withDatabaseTransaction(f.conn
 
 test("sem migração, recurso responde indisponível; migração aplica apenas na fixture", async () => {
   await assert.rejects(withDatabaseTransaction(f.connection, requireLegalDocumentSchema), { status: 503 });
-  const migration = await readFile("db/migrations/20261102150000_cf33_legal_documents/migration.sql", "utf8");
+  const migration = await readFile("db/migrations/20261103220000_cf33_legal_documents/migration.sql", "utf8");
   await f.database.exec(`BEGIN; ${migration} ROLLBACK;`);
   await assert.rejects(withDatabaseTransaction(f.connection, requireLegalDocumentSchema), { status: 503 });
   await f.database.exec(migration);
