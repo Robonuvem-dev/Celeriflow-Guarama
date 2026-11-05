@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizeApiRequest } from "@/lib/platform/api-access";
 import {
   listBackupSnapshots,
   triggerWebBackupExecution,
@@ -9,6 +10,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const denied = await authorizeApiRequest(request, { moduleCode: "CONFIGURACOES", tokenEnv: "BACKUP_AGENT_TOKEN" });
+  if (denied) return denied;
   const { searchParams } = new URL(request.url);
   const tierParam = (searchParams.get("tier") ?? "ALL") as BackupTier | "ALL";
   const search = searchParams.get("q") ?? "";
@@ -26,6 +29,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = await authorizeApiRequest(request, { moduleCode: "CONFIGURACOES", mutate: true, tokenEnv: "BACKUP_AGENT_TOKEN" });
+  if (denied) return denied;
   try {
     const body = (await request.json().catch(() => ({}))) as {
       action?: "TRIGGER_BACKUP" | "TEST_RESTORE";

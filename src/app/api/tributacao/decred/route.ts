@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizeApiRequest } from "@/lib/platform/api-access";
 import {
   acceptCredenciadoResponsibilityTerm,
   generateCardAdministratorDam,
@@ -12,7 +13,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO" });
+  if (denied) return denied;
   return NextResponse.json({
     ok: true,
     module: "CF29 — Declaração das Informações das Administradoras de Cartões (DECRED)",
@@ -21,6 +24,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO", mutate: true });
+  if (denied) return denied;
   try {
     const body = (await request.json().catch(() => ({}))) as {
       action?: "UPSERT_EQUIPMENT" | "ACCEPT_TERM" | "SUBMIT_DECLARATION" | "GENERATE_DAM";

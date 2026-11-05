@@ -113,11 +113,11 @@ export default async function ConfiguracoesDashboard() {
         </Link>
         <Link href="/configuracoes/backup" className="group flex h-32 flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
           <DatabaseZap className="h-6 w-6 text-emerald-700 dark:text-emerald-300 mb-2" />
-          <div><h4 className="font-medium text-gray-900 dark:text-white flex items-center justify-between">Backup em Nuvem (CF31)<ArrowRight className="h-4 w-4" /></h4><p className="text-xs text-gray-500 mt-1">Full 7d, Mensal 12m, Log 1h, AES-256 Militar e Cota 3 TB</p></div>
+          <div><h4 className="font-medium text-gray-900 dark:text-white flex items-center justify-between">Backup em Nuvem (CF31)<ArrowRight className="h-4 w-4" /></h4><p className="text-xs text-gray-500 mt-1">Protótipo: retenção, AES-256 e cota de 3 TB (destino ainda não definido)</p></div>
         </Link>
         <Link href="/configuracoes/datacenter" className="group flex h-32 flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
           <Server className="h-6 w-6 text-indigo-700 dark:text-indigo-300 mb-2" />
-          <div><h4 className="font-medium text-gray-900 dark:text-white flex items-center justify-between">Data Center Certificado (CF32)<ArrowRight className="h-4 w-4" /></h4><p className="text-xs text-gray-500 mt-1">ISO 27001, ISO 20000-1, SLA 99,6% 24x7x365 e WildCard SSL</p></div>
+          <div><h4 className="font-medium text-gray-900 dark:text-white flex items-center justify-between">Data Center (CF32)<ArrowRight className="h-4 w-4" /></h4><p className="text-xs text-gray-500 mt-1">Requisitos do data center: diagnóstico de DNS/TLS e pendências do provedor</p></div>
         </Link>
         {isSystemAdministrator(user) && <>
           <Link href="/configuracoes/certificados" className="group flex h-32 flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">

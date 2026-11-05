@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Activity, Award, FileText, GlobeLock, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { Award, FileText, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalTable, type OperationalRow } from "@/components/app-ui/operational/OperationalTable";
 import { OperationalPagedContent } from "@/components/app-ui/operational/OperationalPagedContent";
@@ -12,16 +12,18 @@ import styles from "@/components/app-ui/operational/operational.module.css";
 import { OPERATIONAL_PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
 import type {
   DataCenterCertificateDescriptor,
-  DataCenterLiveTelemetry,
   DataCenterRequirementItem,
+  HostSecurityProbe,
 } from "@/lib/platform/datacenter-governance";
 
 type CategoryFilter = "ALL" | DataCenterRequirementItem["category"];
 
+type UrlValidation = { valid: boolean; hasHttpsSsl: boolean; hasSubdomain: boolean; hasExplicitPortInUrl: boolean; normalizedOrigin: string };
+
 type Props = {
-  initialTelemetry: DataCenterLiveTelemetry;
   certifications: readonly DataCenterCertificateDescriptor[];
   requirements: DataCenterRequirementItem[];
+  summary: { total: number; verifiedInSystem: number; dependsOnProvider: number; contractedMinimumAvailabilityPercent: number };
   activeCategory: CategoryFilter;
   page: number;
 };
@@ -30,12 +32,15 @@ const pathname = "/configuracoes/datacenter";
 
 const requirementColumns: readonly OperationalColumn[] = [
   { key: "code", label: "Requisito", type: "identifier", initialWidth: 95, minWidth: 80, resizable: true, sortable: false, details: "overflow" },
-  { key: "title", label: "Diretriz Obrigatória do Data Center (CF32)", type: "text", initialWidth: 270, minWidth: 180, resizable: true, sortable: false, details: "overflow" },
-  { key: "specification", label: "Especificação Técnica Implantada", type: "text", initialWidth: 340, minWidth: 200, resizable: true, sortable: false, details: "overflow" },
-  { key: "evidence", label: "Evidência Operacional / Verificação", type: "text", initialWidth: 290, minWidth: 180, resizable: true, sortable: false, details: "overflow" },
-  { key: "status", label: "Conformidade", type: "status", initialWidth: 145, minWidth: 125, resizable: true, sortable: false, details: "overflow" },
-  { key: "actions", label: "Laudo", type: "actions", initialWidth: 72, minWidth: 68, maxWidth: 84, resizable: false, sortable: false, details: "none", align: "right" },
+  { key: "title", label: "Diretriz do Edital (CF32)", type: "text", initialWidth: 270, minWidth: 180, resizable: true, sortable: false, details: "overflow" },
+  { key: "specification", label: "O que precisa ser comprovado", type: "text", initialWidth: 300, minWidth: 200, resizable: true, sortable: false, details: "overflow" },
+  { key: "evidence", label: "Situação / Evidência atual", type: "text", initialWidth: 340, minWidth: 200, resizable: true, sortable: false, details: "overflow" },
+  { key: "status", label: "Quem comprova", type: "status", initialWidth: 175, minWidth: 140, resizable: true, sortable: false, details: "overflow" },
+  { key: "actions", label: "Detalhe", type: "actions", initialWidth: 72, minWidth: 68, maxWidth: 84, resizable: false, sortable: false, details: "none", align: "right" },
 ];
+
+const statusLabel = (status: DataCenterRequirementItem["status"]) =>
+  status === "VERIFICADO_NO_SISTEMA" ? "Sistema (verificável)" : "Provedor (pendente)";
 
 function RequirementDetailsDialog({ item }: { item: DataCenterRequirementItem }) {
   const [open, setOpen] = useState(false);
@@ -44,14 +49,7 @@ function RequirementDetailsDialog({ item }: { item: DataCenterRequirementItem })
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <button
-        ref={trigger}
-        type="button"
-        className={styles.iconButton}
-        aria-label={`Abrir laudo técnico do item ${item.code} - ${item.title}`}
-        title="Laudo técnico detalhado"
-        onClick={() => setOpen(true)}
-      >
+      <button ref={trigger} type="button" className={styles.iconButton} aria-label={`Detalhes do item ${item.code} - ${item.title}`} title="Detalhes" onClick={() => setOpen(true)}>
         <FileText />
       </button>
       <DialogContent className={`${styles.dialog} ${styles.filtersDialog}`} data-device={device} showCloseButton={false} finalFocus={trigger}>
@@ -59,33 +57,12 @@ function RequirementDetailsDialog({ item }: { item: DataCenterRequirementItem })
           <DialogTitle>Item {item.code} — {item.title}</DialogTitle>
           <DialogDescription>Serviço Data Center (Requisito Obrigatório CF32)</DialogDescription>
         </DialogHeader>
-        <OperationalPagedContent
-          device={device}
-          label={`Detalhes do Requisito ${item.code}`}
-          footer={
-            <button type="button" className={styles.dialogButton} onClick={() => setOpen(false)}>
-              <X />
-              Fechar
-            </button>
-          }
-        >
+        <OperationalPagedContent device={device} label={`Detalhes do Requisito ${item.code}`} footer={<button type="button" className={styles.dialogButton} onClick={() => setOpen(false)}><X />Fechar</button>}>
           <dl className="grid gap-3 text-xs">
-            <div>
-              <dt className="font-semibold text-slate-700">Descrição no Edital</dt>
-              <dd className="mt-0.5 text-slate-900">{item.description}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-slate-700">Arquitetura e Especificação Técnica</dt>
-              <dd className="mt-0.5 text-slate-900">{item.specification}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-slate-700">Evidência Técnica Auditável</dt>
-              <dd className="mt-0.5 text-slate-900">{item.technicalEvidence}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-slate-700">Status de Atendimento</dt>
-              <dd className="mt-0.5 font-bold text-emerald-800">CONFORME E ATIVO EM PRODUÇÃO (24x7x365)</dd>
-            </div>
+            <div><dt className="font-semibold text-slate-700">Descrição no Edital</dt><dd className="mt-0.5">{item.description}</dd></div>
+            <div><dt className="font-semibold text-slate-700">O que precisa ser comprovado</dt><dd className="mt-0.5">{item.specification}</dd></div>
+            <div><dt className="font-semibold text-slate-700">Situação atual</dt><dd className="mt-0.5">{item.technicalEvidence}</dd></div>
+            <div><dt className="font-semibold text-slate-700">Quem comprova</dt><dd className="mt-0.5 font-bold">{statusLabel(item.status)}</dd></div>
           </dl>
         </OperationalPagedContent>
       </DialogContent>
@@ -93,13 +70,7 @@ function RequirementDetailsDialog({ item }: { item: DataCenterRequirementItem })
   );
 }
 
-function IsoCertificationsDialog({
-  certifications,
-  telemetry,
-}: {
-  certifications: readonly DataCenterCertificateDescriptor[];
-  telemetry: DataCenterLiveTelemetry;
-}) {
+function CertificationsDialog({ certifications }: { certifications: readonly DataCenterCertificateDescriptor[] }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const { device } = useOperationalWorkspace();
@@ -108,44 +79,22 @@ function IsoCertificationsDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <button ref={trigger} type="button" className={styles.dialogButton} onClick={() => setOpen(true)}>
         <Award />
-        Certificações ISO 27001 / 20000-1 & Telemetria
+        Certificações exigidas (32.2)
       </button>
       <DialogContent className={`${styles.dialog} ${styles.filtersDialog}`} data-device={device} showCloseButton={false} finalFocus={trigger}>
         <DialogHeader>
-          <DialogTitle>Certificações ABNT NBR ISO/IEC e Telemetria Cloud 24x7x365</DialogTitle>
-          <DialogDescription>Requisitos 32.2, 32.3, 32.6, 32.8, 32.9, 32.12, 32.20 e 32.21</DialogDescription>
+          <DialogTitle>Certificações exigidas do data center</DialogTitle>
+          <DialogDescription>Ainda não comprovadas: dependem do provedor de hospedagem, que ainda não foi definido.</DialogDescription>
         </DialogHeader>
-        <OperationalPagedContent
-          device={device}
-          label="Certificações e Telemetria do Data Center"
-          footer={
-            <button type="button" className={styles.dialogButton} onClick={() => setOpen(false)}>
-              <X />
-              Fechar
-            </button>
-          }
-        >
+        <OperationalPagedContent device={device} label="Certificações exigidas" footer={<button type="button" className={styles.dialogButton} onClick={() => setOpen(false)}><X />Fechar</button>}>
           <div className="grid gap-3 text-xs">
             {certifications.map((cert) => (
-              <div key={cert.normCode} className="rounded border border-emerald-200 bg-emerald-50/70 p-2.5">
-                <p className="font-bold text-emerald-950">{cert.normCode} — {cert.status}</p>
-                <p className="mt-0.5 text-slate-800">{cert.scope}</p>
-                <p className="mt-1 font-mono text-[11px] text-slate-600">
-                  Série: {cert.certificateSerial} · Vigência: {cert.validFrom} a {cert.validUntil} · {cert.tierClassification}
-                </p>
+              <div key={cert.normCode} className="rounded border border-amber-300 bg-amber-50 p-2.5">
+                <p className="font-bold">{cert.normCode} — a comprovar pelo provedor</p>
+                <p className="mt-0.5">{cert.scope}</p>
+                <p className="mt-1"><b>Evidência necessária:</b> {cert.requiredEvidence}</p>
               </div>
             ))}
-            <div className="rounded border border-slate-200 bg-white p-2.5">
-              <p className="font-bold text-slate-900">Disponibilidade, WildCard SSL e URL Sem Porta (32.3, 32.20, 32.21)</p>
-              <dl className="mt-1.5 grid gap-1">
-                <div><b>SLA Mínimo Exigido (32.3):</b> {telemetry.contractedMinimumAvailabilityPercent}% (24x7x365) · <b>Medido (30d):</b> {telemetry.measuredAvailabilityPercent30d}%</div>
-                <div><b>Certificado WildCard SSL (32.20):</b> {telemetry.wildcardSslDomain} ({telemetry.sslProtocol})</div>
-                <div><b>Subdomínio HTTPS Sem Porta na URL (32.21):</b> <code className="font-mono">{telemetry.cleanHttpsUrlExample}</code> (Usa porta na URL: {telemetry.urlUsesPortSuffix ? "Sim" : "NÃO"})</div>
-                <div><b>Elasticidade Dinâmica (32.8):</b> {telemetry.elasticityStatus.activeNodes} nós ativos (escala {telemetry.elasticityStatus.minNodes}..{telemetry.elasticityStatus.maxNodes} sem interrupção)</div>
-                <div><b>Firewall / WAF / IPS (32.9 / 32.11):</b> {telemetry.firewallAndWaf.hardwareAndSoftwareAppliance} ({telemetry.firewallAndWaf.blockedThreatsLast24h} ameaças bloqueadas/24h)</div>
-                <div><b>Licenciamento Incluso (32.12):</b> {telemetry.includedLicensing.operatingSystem} | {telemetry.includedLicensing.databaseManagementSystem}</div>
-              </dl>
-            </div>
           </div>
         </OperationalPagedContent>
       </DialogContent>
@@ -154,161 +103,87 @@ function IsoCertificationsDialog({
 }
 
 export function DataCenterClient(props: Props) {
-  const [telemetry, setTelemetry] = useState<DataCenterLiveTelemetry>(props.initialTelemetry);
   const [probing, setProbing] = useState(false);
-  const [probeBanner, setProbeBanner] = useState<string | null>(null);
+  const [probe, setProbe] = useState<HostSecurityProbe | null>(null);
+  const [urlValidation, setUrlValidation] = useState<UrlValidation | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredRequirements = props.requirements.filter((item) =>
-    props.activeCategory === "ALL" ? true : item.category === props.activeCategory,
-  );
+  const filteredRequirements = props.requirements.filter((item) => props.activeCategory === "ALL" ? true : item.category === props.activeCategory);
 
-  async function handleLiveDiagnostic() {
+  async function runDiagnostic() {
     setProbing(true);
-    setProbeBanner(null);
+    setError(null);
     try {
-      const res = await fetch("/api/sistema/datacenter/health?url=https://guarama.celeriflow.com.br");
+      const res = await fetch("/api/sistema/datacenter/health");
       const data = await res.json();
-      if (data.telemetry) {
-        setTelemetry(data.telemetry);
-      }
-      if (data.urlValidation) {
-        setProbeBanner(
-          `Diagnóstico 24x7x365 OK: SLA ${data.telemetry.measuredAvailabilityPercent30d}% (>= 99,6%) | WildCard SSL ${data.telemetry.wildcardSslDomain} | URL ${data.urlValidation.normalizedOrigin} sem portas explícitas (32.21 Validado).`,
-        );
-      }
+      if (!res.ok || data.error) { setError(data.error ?? "Falha no diagnóstico."); return; }
+      setProbe(data.probe);
+      setUrlValidation(data.urlValidation);
+    } catch {
+      setError("Não foi possível executar o diagnóstico.");
     } finally {
       setProbing(false);
     }
   }
 
-  const categoryHref = (cat: CategoryFilter) => {
-    const query = new URLSearchParams();
-    if (cat !== "ALL") query.set("categoria", cat);
-    return `${pathname}${query.size ? `?${query}` : ""}`;
+  const diagnosticSummary = () => {
+    if (error) return `Erro: ${error}`;
+    if (!probe || !urlValidation) return null;
+    if (!probe.verifiable) return `${probe.reason} URL atual: ${urlValidation.normalizedOrigin}.`;
+    const dnsPart = probe.dns.resolved ? `DNS ok (${probe.dns.addresses.join(", ")})` : `DNS falhou${probe.dns.error ? `: ${probe.dns.error}` : ""}`;
+    const tlsPart = probe.tls.reached
+      ? `TLS ${probe.tls.protocol ?? ""} válido até ${probe.tls.validTo}; curinga: ${probe.tls.hasWildcard ? "sim" : "não"}; cobre o host: ${probe.tls.coversHost ? "sim" : "não"}`
+      : `TLS não verificado${probe.tls.error ? `: ${probe.tls.error}` : ""}`;
+    const urlPart = `URL ${urlValidation.normalizedOrigin}: ${urlValidation.valid ? "HTTPS, subdomínio e sem porta" : "fora do padrão do 32.21"}`;
+    return `${dnsPart} | ${tlsPart} | ${urlPart}`;
   };
 
+  const categoryHref = (cat: CategoryFilter) => `${pathname}${cat !== "ALL" ? `?${new URLSearchParams({ categoria: cat })}` : ""}`;
+  const categoryLink = (cat: CategoryFilter, label: string) => (
+    <Link key={cat} href={categoryHref(cat)} scroll={false} aria-current={props.activeCategory === cat ? "page" : undefined} className={`${styles.dialogButton} ${props.activeCategory === cat ? styles.primaryButton : ""}`}>{label}</Link>
+  );
+
   const start = (props.page - 1) * OPERATIONAL_PAGE_SIZE;
-  const rows: OperationalRow[] = filteredRequirements
-    .slice(start, start + OPERATIONAL_PAGE_SIZE)
-    .map((item) => ({
-      id: item.code,
-      label: `${item.code} · ${item.title}`,
-      values: {
-        code: item.code,
-        title: item.title,
-        specification: item.specification,
-        evidence: item.technicalEvidence,
-        status: "Conforme (24x7x365)",
-      },
-      actions: (
-        <div className="flex items-center justify-end">
-          <RequirementDetailsDialog item={item} />
-        </div>
-      ),
-    }));
+  const rows: OperationalRow[] = filteredRequirements.slice(start, start + OPERATIONAL_PAGE_SIZE).map((item) => ({
+    id: item.code,
+    label: `${item.code} · ${item.title}`,
+    values: { code: item.code, title: item.title, specification: item.specification, evidence: item.technicalEvidence, status: statusLabel(item.status) },
+    actions: <div className="flex items-center justify-end"><RequirementDetailsDialog item={item} /></div>,
+  }));
+
+  const summaryText = diagnosticSummary();
 
   return (
     <OperationalListFrame
-      label="Serviço Data Center em Nuvem Certificado (CF32 — 32.1 a 32.21)"
+      label="Serviço Data Center (CF32 — 32.1 a 32.21)"
       actions={
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            className={`${styles.dialogButton} ${styles.primaryButton}`}
-            disabled={probing}
-            onClick={() => void handleLiveDiagnostic()}
-          >
+          <button type="button" className={`${styles.dialogButton} ${styles.primaryButton}`} disabled={probing} onClick={() => void runDiagnostic()}>
             <RefreshCw />
-            {probing ? "Verificando..." : "Verificar SLA 99,6% & SSL Sem Porta"}
+            {probing ? "Verificando..." : "Diagnóstico do host (DNS, TLS, URL)"}
           </button>
-          <IsoCertificationsDialog certifications={props.certifications} telemetry={telemetry} />
-          <Link href="/configuracoes/backup" className={styles.dialogButton}>
-            <ShieldCheck />
-            Cofre de Backup (CF31)
-          </Link>
+          <CertificationsDialog certifications={props.certifications} />
+          <Link href="/configuracoes/backup" className={styles.dialogButton}><ShieldCheck />Backup (CF31)</Link>
         </div>
       }
       toolbar={
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
           <nav aria-label="Categorias de Requisitos do Data Center" className="flex flex-wrap items-center gap-1.5">
-            <Link
-              href={categoryHref("ALL")}
-              scroll={false}
-              aria-current={props.activeCategory === "ALL" ? "page" : undefined}
-              className={`${styles.dialogButton} ${props.activeCategory === "ALL" ? styles.primaryButton : ""}`}
-            >
-              Todos os Requisitos ({props.requirements.length}/21)
-            </Link>
-            <Link
-              href={categoryHref("CERTIFICACAO_E_DISPONIBILIDADE")}
-              scroll={false}
-              aria-current={props.activeCategory === "CERTIFICACAO_E_DISPONIBILIDADE" ? "page" : undefined}
-              className={`${styles.dialogButton} ${props.activeCategory === "CERTIFICACAO_E_DISPONIBILIDADE" ? styles.primaryButton : ""}`}
-            >
-              ISO 27001 / 20000-1 & SLA 99,6%
-            </Link>
-            <Link
-              href={categoryHref("REDE_DNS_SSL")}
-              scroll={false}
-              aria-current={props.activeCategory === "REDE_DNS_SSL" ? "page" : undefined}
-              className={`${styles.dialogButton} ${props.activeCategory === "REDE_DNS_SSL" ? styles.primaryButton : ""}`}
-            >
-              DNS, WildCard SSL & URL Sem Porta
-            </Link>
-            <Link
-              href={categoryHref("SEGURANCA_FISICA_E_VIRTUAL")}
-              scroll={false}
-              aria-current={props.activeCategory === "SEGURANCA_FISICA_E_VIRTUAL" ? "page" : undefined}
-              className={`${styles.dialogButton} ${props.activeCategory === "SEGURANCA_FISICA_E_VIRTUAL" ? styles.primaryButton : ""}`}
-            >
-              Firewall, Segurança Física e Virtual
-            </Link>
-            <Link
-              href={categoryHref("OPERACAO_LICENCIAMENTO_E_SUPORTE")}
-              scroll={false}
-              aria-current={props.activeCategory === "OPERACAO_LICENCIAMENTO_E_SUPORTE" ? "page" : undefined}
-              className={`${styles.dialogButton} ${props.activeCategory === "OPERACAO_LICENCIAMENTO_E_SUPORTE" ? styles.primaryButton : ""}`}
-            >
-              Elasticidade, Licenças & Suporte 24x7
-            </Link>
+            {categoryLink("ALL", `Todos (${props.summary.total})`)}
+            {categoryLink("CERTIFICACAO_E_DISPONIBILIDADE", "Certificação e disponibilidade")}
+            {categoryLink("REDE_DNS_SSL", "DNS, SSL e acesso")}
+            {categoryLink("SEGURANCA_FISICA_E_VIRTUAL", "Segurança")}
+            {categoryLink("OPERACAO_LICENCIAMENTO_E_SUPORTE", "Operação, licenças e suporte")}
           </nav>
-          <div className="flex items-center gap-2 text-xs text-slate-700">
-            <span className="inline-flex items-center gap-1">
-              <Activity className="size-3.5 text-emerald-700" />
-              <b>Uptime 24x7x365:</b> {telemetry.measuredAvailabilityPercent30d}% (Mín. {telemetry.contractedMinimumAvailabilityPercent}%)
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <GlobeLock className="size-3.5 text-emerald-700" />
-              <b>SSL:</b> {telemetry.wildcardSslDomain} ({telemetry.cleanHttpsUrlExample})
-            </span>
-            {probeBanner && (
-              <span className="rounded bg-emerald-100 px-2 py-0.5 font-medium text-emerald-900">
-                {probeBanner}
-              </span>
-            )}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
+            <span><b>Verificáveis no sistema:</b> {props.summary.verifiedInSystem} · <b>Dependem do provedor:</b> {props.summary.dependsOnProvider}</span>
+            {summaryText && <span className="rounded bg-slate-100 px-2 py-0.5 font-medium">{summaryText}</span>}
           </div>
         </div>
       }
-      pagination={
-        <OperationalLinkPagination
-          pathname={pathname}
-          values={{
-            categoria: props.activeCategory !== "ALL" ? props.activeCategory : undefined,
-          }}
-          pageParam="page"
-          page={props.page}
-          total={filteredRequirements.length}
-        />
-      }
+      pagination={<OperationalLinkPagination pathname={pathname} values={{ categoria: props.activeCategory !== "ALL" ? props.activeCategory : undefined }} pageParam="page" page={props.page} total={filteredRequirements.length} />}
     >
-      <OperationalTable
-        columns={requirementColumns}
-        rows={rows}
-        preferenceId="cf32-datacenter-requirements"
-        caption="Matriz de Conformidade Técnica e Operacional do Data Center em Nuvem (Itens 32.1 a 32.21)"
-        emptyMessage="Nenhum requisito encontrado para o filtro selecionado."
-      />
+      <OperationalTable columns={requirementColumns} rows={rows} preferenceId="cf32-datacenter-requirements" caption="Requisitos do Data Center (32.1 a 32.21): o que o sistema verifica e o que depende do provedor" emptyMessage="Nenhum requisito encontrado para o filtro selecionado." />
     </OperationalListFrame>
   );
 }
-

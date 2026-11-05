@@ -126,7 +126,7 @@ function SnapshotDetailsDialog({
               <dd>{snapshot.coveredSystemsSummary}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-700">Data Center Certificado de Destino (31.8)</dt>
+              <dt className="font-semibold text-slate-700">Destino de armazenamento (31.8) — ainda não definido</dt>
               <dd>{snapshot.datacenterId} · {snapshot.datacenterCertification}</dd>
             </div>
             <div>
@@ -268,7 +268,7 @@ export function BackupClient(props: Props) {
         setCounts(listData.countsByTier);
       }
       setBannerMessage(
-        `Backup ${data.snapshot.id} (${data.snapshot.tierLabel}) criptografado com AES-256-GCM e armazenado em Data Center Certificado! Retidos nesta camada: ${data.retainedCountForTier}.`,
+        `Backup simulado ${data.snapshot.id} (${data.snapshot.tierLabel}) registrado com manifesto cifrado em AES-256-GCM. Ainda não enviado a nenhum armazenamento externo. Retidos nesta camada: ${data.retainedCountForTier}.`,
       );
     } finally {
       setRunningTier(null);
@@ -330,7 +330,7 @@ export function BackupClient(props: Props) {
         values: {
           code: code || `CF${idx + 1}`,
           system: rest.join(" — ") || sys,
-          cloudStorage: "Data Center Certificado ISO 27001 / 20000-1",
+          cloudStorage: "Destino ainda não definido (VPS pendente)",
           encryption: "AES-256-GCM (256 bits)",
           automation: "Automático (7d / 12m / 1h Log)",
         },

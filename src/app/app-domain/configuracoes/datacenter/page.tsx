@@ -30,12 +30,11 @@ export default async function DataCenterConfigPage({
 
   return (
     <DataCenterClient
-      initialTelemetry={overview.telemetry}
       certifications={overview.certifications}
       requirements={overview.requirements}
+      summary={overview.summary}
       activeCategory={activeCategory}
       page={page}
     />
   );
 }
-

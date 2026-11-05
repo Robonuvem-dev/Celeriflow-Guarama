@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizeApiRequest } from "@/lib/platform/api-access";
 import {
   DECRED_WEBSERVICE_STANDARD_LAYOUT_SPEC,
   getDecredOverviewState,
@@ -10,7 +11,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO", tokenEnv: "DECRED_WS_TOKEN" });
+  if (denied) return denied;
   return NextResponse.json({
     ok: true,
     requirement: "29.7 — Módulo de Recepção das Declarações da Administradora de Cartões via Web Service",
@@ -19,6 +22,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO", mutate: true, tokenEnv: "DECRED_WS_TOKEN" });
+  if (denied) return denied;
   try {
     const body = (await request.json().catch(() => ({}))) as {
       competencia?: string;

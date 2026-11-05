@@ -1,339 +1,174 @@
-import { listBackupSnapshots } from "./backup-service";
+import dns from "node:dns/promises";
+import tls from "node:tls";
 
 /**
- * CF32 — Serviço Data Center (Requisito Obrigatório - Itens 32.1 a 32.21)
+ * CF32 — Serviço Data Center (32.1 a 32.21).
  *
- * Implementa a governança técnica, telemetria em tempo real, certificações ISO/IEC,
- * disponibilidade mínima de 99,6% (24x7x365), WildCard SSL e domínio sem portas na URL.
+ * Muitos itens deste módulo são requisitos do PROVEDOR de infraestrutura (certificações, SLA, segurança física,
+ * redundância, licenças, suporte). O sistema não gera nem mede essas evidências: aqui elas aparecem como
+ * "DEPENDE_DO_PROVEDOR" até que o provedor/VPS seja definido e apresente a documentação.
+ * O que o sistema consegue verificar de verdade — URL limpa com HTTPS e subdomínio, DNS e certificado TLS do
+ * host que atende a requisição — é verificado em tempo real por `probeHostSecurity`.
  */
+
+export type DataCenterRequirementStatus = "VERIFICADO_NO_SISTEMA" | "DEPENDE_DO_PROVEDOR";
+
+export type DataCenterRequirementCategory =
+  | "CERTIFICACAO_E_DISPONIBILIDADE"
+  | "REDE_DNS_SSL"
+  | "SEGURANCA_FISICA_E_VIRTUAL"
+  | "OPERACAO_LICENCIAMENTO_E_SUPORTE";
 
 export type DataCenterRequirementItem = {
   code: string;
   title: string;
   description: string;
-  category:
-    | "CERTIFICACAO_E_DISPONIBILIDADE"
-    | "REDE_DNS_SSL"
-    | "SEGURANCA_FISICA_E_VIRTUAL"
-    | "OPERACAO_LICENCIAMENTO_E_SUPORTE";
+  category: DataCenterRequirementCategory;
+  /** O que o edital exige comprovar. */
   specification: string;
+  /** O que existe hoje, sem inventar: evidência do sistema ou pendência do provedor. */
   technicalEvidence: string;
-  status: "CONFORME_ATIVO";
-  verifiedAt: string;
+  status: DataCenterRequirementStatus;
 };
 
 export type DataCenterCertificateDescriptor = {
   normCode: "ABNT NBR ISO/IEC 27001:2022" | "ABNT NBR ISO/IEC 20000-1:2018";
   scope: string;
-  issuingBody: string;
-  certificateSerial: string;
-  validFrom: string;
-  validUntil: string;
-  tierClassification: "Tier III / Tier IV Fault-Tolerant Cloud Data Center";
-  status: "VIGENTE_VERIFICADO";
-};
-
-export type DataCenterLiveTelemetry = {
-  checkedAt: string;
-  contractedMinimumAvailabilityPercent: 99.6;
-  measuredAvailabilityPercent30d: number;
-  regimeOperation: "24x7x365 Ininterrupto";
-  primaryDomain: string;
-  wildcardSslDomain: string;
-  sslIssuer: string;
-  sslProtocol: "TLS 1.3 (ECDHE-RSA-AES256-GCM-SHA384)";
-  urlUsesPortSuffix: false;
-  cleanHttpsUrlExample: string;
-  hierarchicalDnsZones: string[];
-  elasticityStatus: {
-    mode: "AUTO_SCALING_DYNAMIC";
-    activeNodes: number;
-    minNodes: number;
-    maxNodes: number;
-    cpuUtilizationPercent: number;
-    memoryUtilizationPercent: number;
-    zeroDowntimeScaling: true;
-  };
-  firewallAndWaf: {
-    packetFilterActive: true;
-    applicationProxyActive: true;
-    hardwareAndSoftwareAppliance: string;
-    ipsIdsActive: true;
-    blockedThreatsLast24h: number;
-  };
-  includedLicensing: {
-    operatingSystem: string;
-    databaseManagementSystem: string;
-    endpointAntivirusAndEdr: string;
-    additionalMunicipalityLicenseCost: 0;
-  };
-  integratedBackupStatus: {
-    linkedModule: "CF31 — Serviço de Backup em Nuvem";
-    encryption: "AES-256-GCM (256 bits)";
-    totalSnapshots: number;
-    quotaLimitFormatted: string;
-    quotaUsedFormatted: string;
-    withinQuota: boolean;
-  };
+  status: "A_COMPROVAR_PELO_PROVEDOR";
+  requiredEvidence: string;
 };
 
 export const DATACENTER_ISO_CERTIFICATIONS: readonly DataCenterCertificateDescriptor[] = [
   {
     normCode: "ABNT NBR ISO/IEC 27001:2022",
-    scope: "Sistema de Gestão de Segurança da Informação (SGSI) para Hospedagem em Nuvem, Banco de Dados, Processamento e Backup Criptografado AES-256",
-    issuingBody: "Organismo Certificador Credenciado IAF / INMETRO",
-    certificateSerial: "ISO27001-2022-BR-CF32-994821",
-    validFrom: "2025-01-15",
-    validUntil: "2028-01-15",
-    tierClassification: "Tier III / Tier IV Fault-Tolerant Cloud Data Center",
-    status: "VIGENTE_VERIFICADO",
+    scope: "Sistema de Gestão de Segurança da Informação do data center que hospedará a aplicação.",
+    status: "A_COMPROVAR_PELO_PROVEDOR",
+    requiredEvidence: "Certificado vigente emitido por organismo certificador acreditado, com escopo que cubra a hospedagem contratada.",
   },
   {
     normCode: "ABNT NBR ISO/IEC 20000-1:2018",
-    scope: "Sistema de Gestão de Serviços de Tecnologia da Informação (SGSTI), Alta Disponibilidade (SLA >= 99,6%), Suporte 24x7x365 e Recuperação de Desastres",
-    issuingBody: "Organismo Certificador Credenciado IAF / INMETRO",
-    certificateSerial: "ISO20000-1-2018-BR-CF32-773190",
-    validFrom: "2025-01-15",
-    validUntil: "2028-01-15",
-    tierClassification: "Tier III / Tier IV Fault-Tolerant Cloud Data Center",
-    status: "VIGENTE_VERIFICADO",
+    scope: "Sistema de Gestão de Serviços de TI do data center (alta disponibilidade, suporte e recuperação de desastres).",
+    status: "A_COMPROVAR_PELO_PROVEDOR",
+    requiredEvidence: "Certificado vigente emitido por organismo certificador acreditado, mais o plano de recuperação de desastres.",
   },
 ] as const;
 
-export function getDataCenterRequirementsMatrix(nowIso: string = new Date().toISOString()): DataCenterRequirementItem[] {
+const PROVIDER = (what: string) => `Depende do provedor/VPS (ainda não definido): ${what}`;
+
+export function getDataCenterRequirementsMatrix(): DataCenterRequirementItem[] {
+  const item = (
+    code: string,
+    title: string,
+    description: string,
+    category: DataCenterRequirementCategory,
+    specification: string,
+    technicalEvidence: string,
+    status: DataCenterRequirementStatus,
+  ): DataCenterRequirementItem => ({ code, title, description, category, specification, technicalEvidence, status });
+
   return [
-    {
-      code: "32.1",
-      title: "Serviço de Data Center em Nuvem (Hospedagem, Disponibilização e Backup)",
-      description: "Para a hospedagem, disponibilização e backup dos sistemas, a empresa licitante deverá dispor de serviço de data center, em nuvem.",
-      category: "CERTIFICACAO_E_DISPONIBILIDADE",
-      specification: "Infraestrutura Cloud Multi-Zona com hospedagem integral dos 33 módulos, banco PostgreSQL gerenciado e cofre de backup integrado.",
-      technicalEvidence: "Cluster Cloud ativo em produção (guarama.celeriflow.com.br) com replicação multi-AZ e cofre CF31 integrado.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.2",
-      title: "Certificações ABNT NBR ISO/IEC 27001:2022 e ABNT NBR ISO/IEC 20000-1:2018",
-      description: "Data center certificado nas normas ABNT NBR ISO/IEC 27001:2022 e ABNT NBR ISO/IEC 20000-1:2018 com alta disponibilidade, redundância e recuperação de desastres.",
-      category: "CERTIFICACAO_E_DISPONIBILIDADE",
-      specification: "Certificados vigentes ISO/IEC 27001:2022 (SGSI) e ISO/IEC 20000-1:2018 (SGSTI) com plano de DR (RPO <= 1h, RTO <= 15min).",
-      technicalEvidence: "Certificados ISO27001-2022-BR-CF32-994821 e ISO20000-1-2018-BR-CF32-773190 registrados e auditáveis no painel.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.3",
-      title: "Acessibilidade 24x7x365 com Disponibilidade Mínima de 99,6%",
-      description: "Garantia de utilização dos sistemas através da Internet com disponibilidade mínima de 99,6%, em regime 24x7x365.",
-      category: "CERTIFICACAO_E_DISPONIBILIDADE",
-      specification: "SLA contratual mínimo de 99,60% em regime 24x7x365; disponibilidade medida nos últimos 30 dias: 99,98%.",
-      technicalEvidence: "Monitoramento contínuo de uptime 24x7x365 com indicador real >= 99,98% (acima do piso de 99,6%).",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.4",
-      title: "Backup Seguro Integrado ao Serviço de Backup (CF31)",
-      description: "Cópias de segurança realizadas e mantidas pela infraestrutura do Data Center, integradas ao Serviço de Backup.",
-      category: "CERTIFICACAO_E_DISPONIBILIDADE",
-      specification: "Integração direta com o motor CF31 (Full Diário 7d, Full Mensal 12m, Diferencial de Log 1h, AES-256-GCM, cota 3 TB).",
-      technicalEvidence: "Sincronização ativa com /configuracoes/backup e validação criptográfica SHA-256 + AES-256-GCM.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.5",
-      title: "Hosting em Nuvem e Conexão Redundante à Internet",
-      description: "Serviços de hospedagem em nuvem e conexão dos servidores à Internet.",
-      category: "REDE_DNS_SSL",
-      specification: "BGP Multi-Homing com múltiplas operadoras Tier-1, CDN global Anycast e links ópticos redundantes de 40 Gbps.",
-      technicalEvidence: "Conectividade ativa HTTPS/2 e HTTPS/3 com baixa latência e balanceamento de carga redundante.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.6",
-      title: "Redundância de Hardware, Ativos de Rede e Replicação",
-      description: "Redundância de todos os componentes de hardware, ativos e serviços, incluindo replicação da infraestrutura para substituição imediata em caso de falha.",
-      category: "CERTIFICACAO_E_DISPONIBILIDADE",
-      specification: "Arquitetura N+1 / 2N para fontes, switches, storage NVMe em RAID distribuído e failover automático de banco de dados (Hot Standby).",
-      technicalEvidence: "Cluster com nós redundantes ativos e réplica síncrona pronta para assunção imediata sem perda de transações.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.7",
-      title: "DNS Hierárquico por Nomes Amigáveis",
-      description: "Sistema de DNS hierárquico para resolução de endereços por nomes amigáveis na Internet.",
-      category: "REDE_DNS_SSL",
-      specification: "DNS Autoritativo Anycast com DNSSEC habilitado resolvendo celeriflow.com.br e subdomínio amigável guarama.celeriflow.com.br.",
-      technicalEvidence: "Resolução DNS hierárquica ativa para guarama.celeriflow.com.br sem exposição de IPs brutos ao usuário.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.8",
-      title: "Elasticidade Dinâmica sem Interrupções",
-      description: "Capacidade de ampliação ou redução dinâmica dos recursos computacionais sem interrupções, adequando-se a picos de demanda.",
-      category: "OPERACAO_LICENCIAMENTO_E_SUPORTE",
-      specification: "Auto-scaling horizontal e vertical sem downtime (Zero-Downtime Scaling) para CPU, RAM e conexões de banco em picos fiscais/folha.",
-      technicalEvidence: "Política de escalonamento elástico ativa (2 a 16 nós serverless/containers sob demanda sem queda de sessão).",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.9",
-      title: "Firewall (Filtro de Pacotes, Proxy de Aplicações e Appliance)",
-      description: "Sistema de segurança para proteção contra acessos não autorizados, compreendendo filtro de pacotes, proxy de aplicações e appliance de software e hardware.",
-      category: "SEGURANCA_FISICA_E_VIRTUAL",
-      specification: "Next-Generation Firewall (NGFW) em appliance dedicado + Web Application Firewall (WAF Layer 7) + Reverse Proxy TLS.",
-      technicalEvidence: "Filtro de pacotes L3/L4, WAF OWASP Core Rule Set e proxy reverso ativos bloqueando tráfego malicioso.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.10",
-      title: "Segurança Física do Data Center (Biometria, CFTV e Controle de Acesso)",
-      description: "Proteção das instalações físicas do data center contra acessos não autorizados, com mecanismos de controle de acesso, câmeras e biometria.",
-      category: "SEGURANCA_FISICA_E_VIRTUAL",
-      specification: "Controle perimetral 24x7, eclusas biométricas multifator, CFTV digital com retenção de 90 dias, detecção precoce de incêndio VESDA e geradores N+1.",
-      technicalEvidence: "Escopo físico auditado na certificação ABNT NBR ISO/IEC 27001:2022 (Anexo A.11 / Controles Físicos).",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.11",
-      title: "Segurança Virtual (IDS/IPS, Antivírus e Backups na Nuvem)",
-      description: "Proteção lógica dos dados e sistemas contra ataques, invasões e perdas, incluindo detecção e bloqueio de intrusão, antivírus e backups na nuvem.",
-      category: "SEGURANCA_FISICA_E_VIRTUAL",
-      specification: "IDS/IPS em tempo real, mitigação DDoS L3/L4/L7, EDR/Antivírus nos hosts, rate-limiting por IP/usuário e cofre de backup imutável.",
-      technicalEvidence: "Sensores IDS/IPS, EDR ativo e proteção de rotas com trilha de auditoria imutável em produção.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.12",
-      title: "Licenciamento Incluso (Sistemas Operacionais, SGBD e Antivírus)",
-      description: "Todas as licenças necessárias para o funcionamento dos servidores, incluindo Sistemas Operacionais, SGBD e antivírus, inclusas nos serviços.",
-      category: "OPERACAO_LICENCIAMENTO_E_SUPORTE",
-      specification: "Licenciamento integral incluído no serviço Cloud (Linux Enterprise / Windows Server Datacenter, PostgreSQL Enterprise e EDR/Antivírus corporativo).",
-      technicalEvidence: "Custo adicional R$ 0,00 para o Município referente a licenças de SO, banco de dados e proteção antivírus.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.13",
-      title: "Monitoramento Contínuo de Sistemas, Serviços e Recursos de TI",
-      description: "Acompanhamento contínuo dos sistemas, serviços e recursos de TI para garantir disponibilidade, desempenho e identificação preventiva de falhas.",
-      category: "OPERACAO_LICENCIAMENTO_E_SUPORTE",
-      specification: "Observabilidade 24x7 com APM, métricas de latência P95/P99, uso de CPU/Memória/Disco, conexões SQL e alertas preventivos.",
-      technicalEvidence: "Endpoint /api/sistema/datacenter/health e painel de telemetria em /configuracoes/datacenter operando em tempo real.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.14",
-      title: "Gestão e Administração de Sistemas, SO e Bancos de Dados",
-      description: "Administração técnica do ambiente, contemplando gerenciamento de sistemas, sistemas operacionais e bancos de dados.",
-      category: "OPERACAO_LICENCIAMENTO_E_SUPORTE",
-      specification: "Equipe DevOps/DBA dedicada para aplicação de patches de segurança, tuning de queries, vacuum/indexação e gestão de migrações.",
-      technicalEvidence: "Governança automatizada de schema/migrações e administração contínua de SO e SGBD.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.15",
-      title: "Acessibilidade Web (Computação em Nuvem via Navegador)",
-      description: "Disponibilização dos sistemas no modelo de computação em nuvem, permitindo acesso remoto seguro por meio de navegadores web.",
-      category: "REDE_DNS_SSL",
-      specification: "Aplicação 100% Web responsiva compatível com Chrome, Edge, Firefox e Safari em desktop, notebook, tablet e smartphone sem plugins.",
-      technicalEvidence: "Acesso nativo via navegador em https://guarama.celeriflow.com.br com suporte multi-dispositivo.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.16",
-      title: "Migração Simples e Assistida para a Nuvem",
-      description: "Processo estruturado e assistido de transição dos sistemas e dados para o ambiente em nuvem, com baixo impacto operacional.",
-      category: "OPERACAO_LICENCIAMENTO_E_SUPORTE",
-      specification: "Pipeline assistido de importação, validação de integridade referencial, reconciliação de saldos e virada sem perda de dados.",
-      technicalEvidence: "Ferramental de importação validada e scripts de verificação de migração integrados ao projeto.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.17",
-      title: "Redução de Custos de Infraestrutura Local",
-      description: "Eliminação ou redução de despesas do município com aquisição, manutenção, atualização e operação de infraestrutura física local de TI.",
-      category: "OPERACAO_LICENCIAMENTO_E_SUPORTE",
-      specification: "Modelo SaaS/Cloud integral que dispensa servidores locais, nobreaks de grande porte, refrigeração dedicada e licenças avulsas na Prefeitura.",
-      technicalEvidence: "Demonstrativo TCO Cloud com eliminação de CAPEX local de servidores e licenciamento.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.18",
-      title: "Suporte à Plataforma de Hospedagem 24x7x365",
-      description: "Atendimento técnico para sustentação da plataforma de hospedagem em regime 24x7x365.",
-      category: "OPERACAO_LICENCIAMENTO_E_SUPORTE",
-      specification: "NOC/SOC em regime 24 horas por dia, 7 dias por semana, 365 dias por ano com atendimento imediato a incidentes críticos.",
-      technicalEvidence: "Canal NOC 24x7x365 vinculado à certificação ABNT NBR ISO/IEC 20000-1:2018.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.19",
-      title: "Plataforma Integrada com Login Unificado no Navegador",
-      description: "Permitir a visualização dos módulos/sistemas disponíveis, através do navegador de internet, permitindo o acesso através de login na plataforma.",
-      category: "REDE_DNS_SSL",
-      specification: "Portal unificado CeleriFlow (/dashboard) com autenticação única (SSO), controle RBAC por perfil e navegação entre todos os módulos contratados.",
-      technicalEvidence: "Autenticação unificada em /login e seletor completo de módulos em /dashboard e /configuracoes/modulos.",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.20",
-      title: "Certificado Digital WildCard SSL",
-      description: "Fornecimento e configuração de certificado digital padrão WildCard SSL, cobrindo o domínio principal e seus subdomínios.",
-      category: "REDE_DNS_SSL",
-      specification: "Certificado WildCard SSL (*.celeriflow.com.br e celeriflow.com.br) com criptografia TLS 1.3, HSTS e renovação automática.",
-      technicalEvidence: "Certificado SSL ativo cobrindo *.celeriflow.com.br (incluindo guarama.celeriflow.com.br).",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
-    {
-      code: "32.21",
-      title: "Subdomínio com SSL e Sem Uso de Portas após a URL",
-      description: "Cada domínio de aplicações web deve estar associado a um subdomínio com certificado SSL e não utilizar portas após a URL.",
-      category: "REDE_DNS_SSL",
-      specification: "Acesso padrão na porta HTTPS implícita (443) em https://guarama.celeriflow.com.br sem sufixos de porta (:8080, :3000, :8443, etc.).",
-      technicalEvidence: "Validação automática de URL limpa: https://guarama.celeriflow.com.br (urlUsesPortSuffix = false).",
-      status: "CONFORME_ATIVO",
-      verifiedAt: nowIso,
-    },
+    item("32.1", "Data center em nuvem (hospedagem, disponibilização e backup)",
+      "Para a hospedagem, disponibilização e backup dos sistemas, a licitante deverá dispor de serviço de data center, em nuvem.",
+      "CERTIFICACAO_E_DISPONIBILIDADE", "Contrato de hospedagem em nuvem cobrindo aplicação, banco e backup.",
+      PROVIDER("contrato e infraestrutura de hospedagem."), "DEPENDE_DO_PROVEDOR"),
+    item("32.2", "Certificações ABNT NBR ISO/IEC 27001:2022 e 20000-1:2018",
+      "Certificações e acreditações de segurança e conformidade emitidas pela ABNT NBR ISO/IEC 27001:2022 e 20000-1:2018, com alta disponibilidade, redundância e recuperação de desastres.",
+      "CERTIFICACAO_E_DISPONIBILIDADE", "Certificados vigentes e plano de recuperação de desastres do provedor.",
+      PROVIDER("certificados emitidos por organismo certificador e plano de DR. O sistema não emite nem comprova certificações."), "DEPENDE_DO_PROVEDOR"),
+    item("32.3", "Disponibilidade mínima de 99,6% (24x7x365)",
+      "Garantia de utilização dos sistemas pela Internet com disponibilidade mínima de 99,6%, em regime 24x7x365.",
+      "CERTIFICACAO_E_DISPONIBILIDADE", "SLA contratual e medição contínua de disponibilidade.",
+      PROVIDER("SLA contratual e ferramenta de monitoramento de uptime. Nenhuma disponibilidade é medida por este sistema."), "DEPENDE_DO_PROVEDOR"),
+    item("32.4", "Backup seguro integrado ao serviço de backup (CF31)",
+      "Cópias de segurança realizadas e mantidas pela infraestrutura do data center, integradas ao Serviço de Backup.",
+      "CERTIFICACAO_E_DISPONIBILIDADE", "Backup real do banco e dos arquivos, cifrado e armazenado fora da aplicação.",
+      PROVIDER("destino de armazenamento e agendador do backup (CF31 hoje é protótipo)."), "DEPENDE_DO_PROVEDOR"),
+    item("32.5", "Hospedagem em nuvem e conexão à Internet",
+      "Serviços de hospedagem em nuvem e conexão dos servidores à Internet.",
+      "REDE_DNS_SSL", "Servidores conectados à Internet com links redundantes.",
+      PROVIDER("links e rede do provedor."), "DEPENDE_DO_PROVEDOR"),
+    item("32.6", "Redundância de hardware, ativos e replicação",
+      "Redundância de todos os componentes de hardware, ativos e serviços, incluindo replicação da infraestrutura.",
+      "CERTIFICACAO_E_DISPONIBILIDADE", "Arquitetura redundante e replicação com failover.",
+      PROVIDER("arquitetura de redundância e replicação."), "DEPENDE_DO_PROVEDOR"),
+    item("32.7", "DNS hierárquico com nomes amigáveis",
+      "Sistema de DNS hierárquico para resolução de endereços por nomes amigáveis na Internet.",
+      "REDE_DNS_SSL", "Subdomínio da aplicação resolvendo por DNS.",
+      "Verificado em tempo real pelo botão de diagnóstico: resolução DNS do host que atende a requisição.", "VERIFICADO_NO_SISTEMA"),
+    item("32.8", "Elasticidade dinâmica sem interrupções",
+      "Ampliação ou redução dinâmica dos recursos computacionais sem interrupções.",
+      "OPERACAO_LICENCIAMENTO_E_SUPORTE", "Escalonamento automático sem queda de sessão.",
+      PROVIDER("capacidade de escalonamento da hospedagem escolhida."), "DEPENDE_DO_PROVEDOR"),
+    item("32.9", "Firewall (filtro de pacotes, proxy de aplicações, appliance)",
+      "Sistema de segurança contra acessos não autorizados: filtro de pacotes, proxy de aplicações e appliance de software e hardware.",
+      "SEGURANCA_FISICA_E_VIRTUAL", "Firewall/WAF documentado e ativo.",
+      PROVIDER("firewall e WAF da hospedagem."), "DEPENDE_DO_PROVEDOR"),
+    item("32.10", "Segurança física do data center",
+      "Proteção das instalações físicas, com controle de acesso, câmeras e biometria.",
+      "SEGURANCA_FISICA_E_VIRTUAL", "Descrição e auditoria da segurança física do data center.",
+      PROVIDER("documentação do data center."), "DEPENDE_DO_PROVEDOR"),
+    item("32.11", "Segurança virtual (IDS/IPS, antivírus, backups)",
+      "Proteção lógica contra ataques e invasões, com detecção e bloqueio de intrusão, antivírus e backups na nuvem.",
+      "SEGURANCA_FISICA_E_VIRTUAL", "IDS/IPS e antivírus ativos nos servidores.",
+      PROVIDER("ferramentas de segurança dos servidores."), "DEPENDE_DO_PROVEDOR"),
+    item("32.12", "Licenciamento incluso (SO, SGBD e antivírus)",
+      "Todas as licenças necessárias, incluindo sistemas operacionais, SGBD e antivírus, inclusas nos serviços.",
+      "OPERACAO_LICENCIAMENTO_E_SUPORTE", "Relação de licenças cobertas no contrato.",
+      PROVIDER("licenças da VPS/servidores escolhidos."), "DEPENDE_DO_PROVEDOR"),
+    item("32.13", "Monitoramento contínuo",
+      "Acompanhamento contínuo dos sistemas, serviços e recursos de TI.",
+      "OPERACAO_LICENCIAMENTO_E_SUPORTE", "Ferramenta de monitoramento com alertas.",
+      PROVIDER("ferramenta de monitoramento. O diagnóstico desta tela é pontual, não é monitoramento contínuo."), "DEPENDE_DO_PROVEDOR"),
+    item("32.14", "Gestão e administração de sistemas, SO e bancos",
+      "Administração técnica do ambiente: sistemas, sistemas operacionais e bancos de dados.",
+      "OPERACAO_LICENCIAMENTO_E_SUPORTE", "Responsável e rotina de administração do ambiente.",
+      PROVIDER("equipe e processo de administração da infraestrutura."), "DEPENDE_DO_PROVEDOR"),
+    item("32.15", "Acesso via navegador (computação em nuvem)",
+      "Sistemas em nuvem, com acesso remoto seguro por navegadores web.",
+      "REDE_DNS_SSL", "Aplicação web acessível por navegador.",
+      "A aplicação é web e acessada por navegador; o HTTPS depende do certificado do host (ver diagnóstico).", "VERIFICADO_NO_SISTEMA"),
+    item("32.16", "Migração simples e assistida para a nuvem",
+      "Processo assistido de transição dos sistemas e dados para a nuvem.",
+      "OPERACAO_LICENCIAMENTO_E_SUPORTE", "Plano de migração.",
+      PROVIDER("plano de migração para a infraestrutura escolhida."), "DEPENDE_DO_PROVEDOR"),
+    item("32.17", "Redução de custos de infraestrutura",
+      "Redução de despesas do município com infraestrutura física local de TI.",
+      "OPERACAO_LICENCIAMENTO_E_SUPORTE", "Demonstrativo de custo.",
+      PROVIDER("proposta comercial da hospedagem."), "DEPENDE_DO_PROVEDOR"),
+    item("32.18", "Suporte 24x7x365 à plataforma de hospedagem",
+      "Atendimento técnico para sustentação da plataforma de hospedagem em regime 24x7x365.",
+      "OPERACAO_LICENCIAMENTO_E_SUPORTE", "Canal e SLA de suporte do provedor.",
+      PROVIDER("contrato de suporte."), "DEPENDE_DO_PROVEDOR"),
+    item("32.19", "Plataforma integrada com login unificado",
+      "Visualização dos módulos disponíveis pelo navegador, com acesso por login na plataforma.",
+      "REDE_DNS_SSL", "Login único e navegação entre módulos conforme perfil.",
+      "Existe: login da plataforma (/login) e painel de módulos (/dashboard) com controle de acesso por perfil.", "VERIFICADO_NO_SISTEMA"),
+    item("32.20", "Certificado WildCard SSL",
+      "Certificado digital WildCard SSL cobrindo o domínio principal e seus subdomínios.",
+      "REDE_DNS_SSL", "Certificado cujo SAN contém *.dominio.",
+      "Verificado em tempo real pelo botão de diagnóstico: lê o certificado TLS do host e confere se há curinga cobrindo-o.", "VERIFICADO_NO_SISTEMA"),
+    item("32.21", "Subdomínio com SSL e sem porta na URL",
+      "Cada domínio de aplicação associado a subdomínio com SSL, sem portas após a URL.",
+      "REDE_DNS_SSL", "URL com HTTPS, subdomínio e sem porta explícita.",
+      "Verificado em tempo real pelo botão de diagnóstico: valida a URL que atende a requisição.", "VERIFICADO_NO_SISTEMA"),
   ];
 }
 
-/**
- * Valida se uma URL de aplicação web obedece estritamente ao requisito 32.21:
- * - Deve usar protocolo HTTPS (SSL ativo)
- * - Deve estar associada a um subdomínio válido
- * - Não pode conter porta explícita após o domínio na URL
- */
-export function verifyCleanSubdomainSslUrl(rawUrl: string): {
-  valid: boolean;
-  hasHttpsSsl: boolean;
-  hasSubdomain: boolean;
-  hasExplicitPortInUrl: boolean;
-  normalizedOrigin: string;
-} {
+/** Sufixos de segundo nível comuns no Brasil: o domínio registrável tem um rótulo a mais. */
+const SECOND_LEVEL_SUFFIXES = new Set(["com.br", "gov.br", "org.br", "net.br", "edu.br", "mil.br", "leg.br", "jus.br"]);
+
+function hasSubdomainLabel(hostname: string) {
+  const labels = hostname.split(".").filter(Boolean);
+  const suffixLabels = SECOND_LEVEL_SUFFIXES.has(labels.slice(-2).join(".")) ? 2 : 1;
+  return labels.length > suffixLabels + 1;
+}
+
+/** 32.21: HTTPS, subdomínio de um domínio registrável e sem porta explícita. */
+export function verifyCleanSubdomainSslUrl(rawUrl: string) {
   const parsed = new URL(rawUrl);
   const hasHttpsSsl = parsed.protocol === "https:";
-  const hostParts = parsed.hostname.split(".").filter(Boolean);
-  const hasSubdomain = hostParts.length >= 3;
+  const hasSubdomain = hasSubdomainLabel(parsed.hostname);
   const hasExplicitPortInUrl = parsed.port !== "" || /:\/\/[^/]+:\d+/.test(rawUrl);
-
   return {
     valid: hasHttpsSsl && hasSubdomain && !hasExplicitPortInUrl,
     hasHttpsSsl,
@@ -343,67 +178,79 @@ export function verifyCleanSubdomainSslUrl(rawUrl: string): {
   };
 }
 
-export function getDataCenterGovernanceOverview(now: Date = new Date()): {
-  telemetry: DataCenterLiveTelemetry;
-  certifications: readonly DataCenterCertificateDescriptor[];
-  requirements: DataCenterRequirementItem[];
-} {
-  const backupData = listBackupSnapshots();
-  const nowIso = now.toISOString();
-
-  const telemetry: DataCenterLiveTelemetry = {
-    checkedAt: nowIso,
-    contractedMinimumAvailabilityPercent: 99.6,
-    measuredAvailabilityPercent30d: 99.98,
-    regimeOperation: "24x7x365 Ininterrupto",
-    primaryDomain: "celeriflow.com.br",
-    wildcardSslDomain: "*.celeriflow.com.br",
-    sslIssuer: "Let's Encrypt / DigiCert Cloud Trust TLS CA",
-    sslProtocol: "TLS 1.3 (ECDHE-RSA-AES256-GCM-SHA384)",
-    urlUsesPortSuffix: false,
-    cleanHttpsUrlExample: "https://guarama.celeriflow.com.br",
-    hierarchicalDnsZones: [
-      "celeriflow.com.br (Zona Raiz Autoritativa DNSSEC)",
-      "guarama.celeriflow.com.br (Subdomínio Oficial da Instância Municipal - Sem Porta na URL)",
-      "api.guarama.celeriflow.com.br (Gateway de WebServices FEBRABAN / DECRED / NFS-e)",
-      "backup.guarama.celeriflow.com.br (Cofre de Backup Criptografado AES-256)",
-    ],
-    elasticityStatus: {
-      mode: "AUTO_SCALING_DYNAMIC",
-      activeNodes: 4,
-      minNodes: 2,
-      maxNodes: 16,
-      cpuUtilizationPercent: 24.5,
-      memoryUtilizationPercent: 41.2,
-      zeroDowntimeScaling: true,
-    },
-    firewallAndWaf: {
-      packetFilterActive: true,
-      applicationProxyActive: true,
-      hardwareAndSoftwareAppliance: "Cloud NGFW Hardware Appliance + Edge WAF Layer-7 Reverse Proxy",
-      ipsIdsActive: true,
-      blockedThreatsLast24h: 142,
-    },
-    includedLicensing: {
-      operatingSystem: "Enterprise Linux Cloud Kernel / Windows Server Datacenter (Licença Inclusa)",
-      databaseManagementSystem: "PostgreSQL 16 Enterprise Managed Cloud (Licença Inclusa)",
-      endpointAntivirusAndEdr: "Cloud Workload Protection EDR & Antimalware 24x7 (Licença Inclusa)",
-      additionalMunicipalityLicenseCost: 0,
-    },
-    integratedBackupStatus: {
-      linkedModule: "CF31 — Serviço de Backup em Nuvem",
-      encryption: "AES-256-GCM (256 bits)",
-      totalSnapshots: backupData.snapshots.length,
-      quotaLimitFormatted: backupData.quota.limitFormatted,
-      quotaUsedFormatted: backupData.quota.usedFormatted,
-      withinQuota: backupData.quota.withinQuota,
-    },
-  };
-
-  return {
-    telemetry,
-    certifications: DATACENTER_ISO_CERTIFICATIONS,
-    requirements: getDataCenterRequirementsMatrix(nowIso),
-  };
+/** 32.20: algum nome do SAN cobre o host (curinga cobre exatamente um nível de subdomínio). */
+export function certificateCoversHost(subjectAltName: string | undefined, hostname: string) {
+  const host = hostname.toLowerCase();
+  const names = (subjectAltName ?? "").split(",").map((part) => part.trim()).filter((part) => part.startsWith("DNS:")).map((part) => part.slice(4).toLowerCase());
+  const exact = names.includes(host);
+  const wildcard = names.some((name) => name.startsWith("*.") && host.endsWith(name.slice(1)) && host.slice(0, host.length - name.length + 1).split(".").length === 1);
+  return { covered: exact || wildcard, hasWildcard: names.some((name) => name.startsWith("*.")), names };
 }
 
+export type HostSecurityProbe = {
+  hostname: string;
+  checkedAt: string;
+  verifiable: boolean;
+  reason: string | null;
+  dns: { resolved: boolean; addresses: string[]; error: string | null };
+  tls: { reached: boolean; protocol: string | null; validTo: string | null; issuer: string | null; subjectAltNames: string[]; hasWildcard: boolean; coversHost: boolean; error: string | null };
+};
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}: tempo esgotado`)), ms);
+    promise.then((value) => { clearTimeout(timer); resolve(value); }, (error) => { clearTimeout(timer); reject(error); });
+  });
+}
+
+/** Verificação real de DNS e certificado TLS (32.7, 32.20, 32.21) do host informado, na porta 443. */
+export async function probeHostSecurity(hostname: string): Promise<HostSecurityProbe> {
+  const host = hostname.split(":")[0].toLowerCase();
+  const base: HostSecurityProbe = {
+    hostname: host,
+    checkedAt: new Date().toISOString(),
+    verifiable: true,
+    reason: null,
+    dns: { resolved: false, addresses: [], error: null },
+    tls: { reached: false, protocol: null, validTo: null, issuer: null, subjectAltNames: [], hasWildcard: false, coversHost: false, error: null },
+  };
+  if (!host || host === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.endsWith(".local")) {
+    return { ...base, verifiable: false, reason: "Host local ou por IP: DNS e certificado só podem ser verificados em um domínio público." };
+  }
+  try {
+    base.dns.addresses = await withTimeout(dns.resolve4(host), 4000, "DNS");
+    base.dns.resolved = base.dns.addresses.length > 0;
+  } catch (error) {
+    base.dns.error = error instanceof Error ? error.message : "Falha de DNS";
+  }
+  try {
+    const details = await withTimeout(new Promise<{ protocol: string | null; validTo: string; issuer: string; san: string | undefined }>((resolve, reject) => {
+      const socket = tls.connect({ host, port: 443, servername: host, rejectUnauthorized: false }, () => {
+        const cert = socket.getPeerCertificate();
+        const result = { protocol: socket.getProtocol(), validTo: cert.valid_to, issuer: String(cert.issuer?.O ?? cert.issuer?.CN ?? ""), san: cert.subjectaltname };
+        socket.end();
+        resolve(result);
+      });
+      socket.on("error", reject);
+    }), 5000, "TLS");
+    const coverage = certificateCoversHost(details.san, host);
+    base.tls = { reached: true, protocol: details.protocol, validTo: details.validTo, issuer: details.issuer, subjectAltNames: coverage.names, hasWildcard: coverage.hasWildcard, coversHost: coverage.covered, error: null };
+  } catch (error) {
+    base.tls.error = error instanceof Error ? error.message : "Falha de TLS";
+  }
+  return base;
+}
+
+export function getDataCenterGovernanceOverview() {
+  const requirements = getDataCenterRequirementsMatrix();
+  return {
+    certifications: DATACENTER_ISO_CERTIFICATIONS,
+    requirements,
+    summary: {
+      total: requirements.length,
+      verifiedInSystem: requirements.filter((r) => r.status === "VERIFICADO_NO_SISTEMA").length,
+      dependsOnProvider: requirements.filter((r) => r.status === "DEPENDE_DO_PROVEDOR").length,
+      contractedMinimumAvailabilityPercent: 99.6,
+    },
+  };
+}

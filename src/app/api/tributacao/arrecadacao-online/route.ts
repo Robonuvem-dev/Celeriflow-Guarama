@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizeApiRequest } from "@/lib/platform/api-access";
 import {
   cancelamentoOp,
   confirmacaoOp,
@@ -22,6 +23,8 @@ export async function GET(request: Request) {
     });
   }
 
+  const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO", tokenEnv: "FEBRABAN_WS_TOKEN" });
+  if (denied) return denied;
   return NextResponse.json({
     ok: true,
     module: "CF26 — Arrecadação Online Service (Padrão FEBRABAN)",
@@ -30,6 +33,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO", mutate: true, tokenEnv: "FEBRABAN_WS_TOKEN" });
+  if (denied) return denied;
   try {
     const contentType = request.headers.get("content-type") || "";
 

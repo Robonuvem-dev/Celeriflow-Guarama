@@ -21,6 +21,46 @@ export const BACKUP_QUOTA_LIMIT_BYTES = 3 * 1024 * 1024 * 1024 * 1024; // 3 TB =
 export const BACKUP_ENCRYPTION_ALGORITHM = "aes-256-gcm" as const;
 export const BACKUP_ENCRYPTION_STANDARD = "AES-256-GCM (Padrão Militar FIPS 197 / NIST SP 800-38D - 256 bits)" as const;
 
+export type CloudStorageTarget = {
+  provider: "S3_COMPATIBLE" | "AZURE_BLOB" | "LOCAL_FALLBACK";
+  bucketName: string;
+  endpoint: string;
+  region: string;
+  status: "PREPARADO_AGUARDANDO_CREDENCIAL" | "CONECTADO_ATIVO";
+  encryptionProtocol: "TLS 1.3 + AES-256-GCM";
+  autoSyncEnabled: boolean;
+  notes: string;
+};
+
+export function getCloudBackupTargetConfig(): CloudStorageTarget {
+  const customBucket = process.env.BACKUP_S3_BUCKET;
+  const customEndpoint = process.env.BACKUP_S3_ENDPOINT;
+
+  if (customBucket && customEndpoint) {
+    return {
+      provider: "S3_COMPATIBLE",
+      bucketName: customBucket,
+      endpoint: customEndpoint,
+      region: process.env.BACKUP_S3_REGION ?? "sa-east-1",
+      status: "CONECTADO_ATIVO",
+      encryptionProtocol: "TLS 1.3 + AES-256-GCM",
+      autoSyncEnabled: true,
+      notes: "Destino em nuvem conectado e pronto para sincronização.",
+    };
+  }
+
+  return {
+    provider: "S3_COMPATIBLE",
+    bucketName: "celeriflow-campoflorido-backups",
+    endpoint: "https://s3.sa-east-1.amazonaws.com (ou endpoint VPS compatível S3)",
+    region: "sa-east-1",
+    status: "PREPARADO_AGUARDANDO_CREDENCIAL",
+    encryptionProtocol: "TLS 1.3 + AES-256-GCM",
+    autoSyncEnabled: true,
+    notes: "Módulo de sincronização em nuvem preparado no código; ativado mediante credenciais da VPS contratada.",
+  };
+}
+
 export type BackupTier = "FULL_DAILY" | "FULL_MONTHLY" | "DIFFERENTIAL_HOURLY_LOG";
 
 export type BackupSnapshotRecord = {
@@ -129,7 +169,7 @@ export const EDITAL_COVERED_SYSTEMS: readonly string[] = [
   "CF29 — Declaração das Administradoras de Cartões (DECRED)",
   "CF30 — Planejamento e Fase Interna de Contratações (Lei 14.133/2021)",
   "CF31 — Serviço de Backup em Nuvem Criptografado AES-256",
-  "CF32 — Serviço Data Center Certificado (ISO 27001 / ISO 20000-1)",
+  "CF32 — Serviço Data Center (ISO 27001 / ISO 20000-1)",
   "CF33 — Textos Jurídicos, Leis e Atos Normativos",
 ] as const;
 
@@ -352,8 +392,8 @@ function buildDeterministicSnapshot(params: {
     sha256Checksum: envelope.plaintextSha256,
     encryptionAlgorithm: BACKUP_ENCRYPTION_STANDARD,
     keyBits: 256,
-    datacenterId: "DC-CLOUD-BR-ISO27001-PRIMARY",
-    datacenterCertification: "ABNT NBR ISO/IEC 27001:2022 + ABNT NBR ISO/IEC 20000-1:2018 (Tier III/IV)",
+    datacenterId: "DESTINO-NAO-DEFINIDO",
+    datacenterCertification: "Destino de armazenamento ainda não definido (VPS/provedor pendente); sem envio real a nuvem",
     transferProtocol: "TLS 1.3 + AES-256-GCM",
     automated: true,
     triggeredBy: params.triggeredBy ?? "Agendador Automático Web / RunAsService (Sem Intervenção Humana)",
@@ -443,6 +483,7 @@ export function listBackupSnapshots(filter?: {
   schedules: readonly BackupPolicySchedule[];
   coveredSystems: readonly string[];
   windowsService: WindowsServiceDescriptor;
+  cloudTarget: CloudStorageTarget;
 } {
   const all = ensureBackupStore();
   const countsByTier: Record<BackupTier, number> = {
@@ -471,6 +512,7 @@ export function listBackupSnapshots(filter?: {
     schedules: BACKUP_SCHEDULES,
     coveredSystems: EDITAL_COVERED_SYSTEMS,
     windowsService: getWindowsBackupServiceDescriptor(),
+    cloudTarget: getCloudBackupTargetConfig(),
   };
 }
 

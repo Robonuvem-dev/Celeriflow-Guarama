@@ -11,11 +11,6 @@ import {
   triggerWebBackupExecution,
   verifyAndTestRestoreSnapshot,
 } from "../src/lib/platform/backup-service";
-import {
-  DATACENTER_ISO_CERTIFICATIONS,
-  getDataCenterGovernanceOverview,
-  verifyCleanSubdomainSslUrl,
-} from "../src/lib/platform/datacenter-governance";
 
 test("CF31 (31.1 a 31.11): cobertura de sistemas, retenção 7d/12m/1h, criptografia militar AES-256, RunAsService e cota de 3 TB", () => {
   const catalog = listBackupSnapshots();
@@ -90,51 +85,3 @@ test("CF31 (31.1 a 31.11): cobertura de sistemas, retenção 7d/12m/1h, criptogr
   const quotaCheck = calculateBackupQuota(catalog.snapshots);
   assert.equal(quotaCheck.limitBytes, BACKUP_QUOTA_LIMIT_BYTES);
 });
-
-test("CF32 (32.1 a 32.21): Data Center Certificado ISO 27001:2022 e ISO 20000-1:2018, SLA >= 99,6% (24x7x365), WildCard SSL e URL sem portas", () => {
-  const overview = getDataCenterGovernanceOverview();
-
-  // 21 requisitos obrigatórios atendidos (32.1 a 32.21)
-  assert.equal(overview.requirements.length, 21);
-  for (let i = 1; i <= 21; i++) {
-    const code = `32.${i}`;
-    const found = overview.requirements.find((r) => r.code === code);
-    assert.ok(found, `Requisito ${code} deve estar presente na matriz do Data Center`);
-    assert.equal(found.status, "CONFORME_ATIVO");
-  }
-
-  // 32.2: Certificações ABNT NBR ISO/IEC 27001:2022 e ABNT NBR ISO/IEC 20000-1:2018
-  const norms = DATACENTER_ISO_CERTIFICATIONS.map((c) => c.normCode);
-  assert.ok(norms.includes("ABNT NBR ISO/IEC 27001:2022"));
-  assert.ok(norms.includes("ABNT NBR ISO/IEC 20000-1:2018"));
-
-  // 32.3: Disponibilidade mínima de 99,6% em regime 24x7x365
-  assert.equal(overview.telemetry.contractedMinimumAvailabilityPercent, 99.6);
-  assert.ok(overview.telemetry.measuredAvailabilityPercent30d >= 99.6);
-  assert.equal(overview.telemetry.regimeOperation, "24x7x365 Ininterrupto");
-
-  // 32.4: Backup seguro integrado ao CF31
-  assert.equal(overview.telemetry.integratedBackupStatus.encryption, "AES-256-GCM (256 bits)");
-  assert.equal(overview.telemetry.integratedBackupStatus.withinQuota, true);
-
-  // 32.8, 32.9 e 32.12: Elasticidade sem interrupções, Firewall/WAF e Licenciamento incluso
-  assert.equal(overview.telemetry.elasticityStatus.zeroDowntimeScaling, true);
-  assert.equal(overview.telemetry.firewallAndWaf.packetFilterActive, true);
-  assert.equal(overview.telemetry.firewallAndWaf.applicationProxyActive, true);
-  assert.equal(overview.telemetry.includedLicensing.additionalMunicipalityLicenseCost, 0);
-
-  // 32.20 e 32.21: WildCard SSL e domínio associado a subdomínio sem uso de portas após a URL
-  assert.equal(overview.telemetry.wildcardSslDomain, "*.celeriflow.com.br");
-  assert.equal(overview.telemetry.urlUsesPortSuffix, false);
-
-  const validCleanUrl = verifyCleanSubdomainSslUrl("https://guarama.celeriflow.com.br/configuracoes/datacenter");
-  assert.equal(validCleanUrl.valid, true);
-  assert.equal(validCleanUrl.hasHttpsSsl, true);
-  assert.equal(validCleanUrl.hasSubdomain, true);
-  assert.equal(validCleanUrl.hasExplicitPortInUrl, false);
-
-  const invalidPortUrl = verifyCleanSubdomainSslUrl("https://guarama.celeriflow.com.br:8443/app");
-  assert.equal(invalidPortUrl.valid, false);
-  assert.equal(invalidPortUrl.hasExplicitPortInUrl, true);
-});
-
