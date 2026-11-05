@@ -84,10 +84,10 @@ async function createCf30Fixture() {
       "status" TEXT NOT NULL DEFAULT 'SIGNED'
     );
   `);
-  await pg.exec(await readFile("db/migrations/20261103130000_cf30_demand_versions/migration.sql", "utf8"));
-  await pg.exec(await readFile("db/migrations/20261103140000_cf30_demand_workflow/migration.sql", "utf8"));
-  await pg.exec(await readFile("db/migrations/20261103150000_cf30_pca_objectives/migration.sql", "utf8"));
-  await pg.exec(await readFile("db/migrations/20261103170000_cf30_internal_phase_documents/migration.sql", "utf8"));
+  await pg.exec(await readFile("db/migrations/20261104130000_cf30_demand_versions/migration.sql", "utf8"));
+  await pg.exec(await readFile("db/migrations/20261104140000_cf30_demand_workflow/migration.sql", "utf8"));
+  await pg.exec(await readFile("db/migrations/20261104150000_cf30_pca_objectives/migration.sql", "utf8"));
+  await pg.exec(await readFile("db/migrations/20261104170000_cf30_internal_phase_documents/migration.sql", "utf8"));
 
   await pg.exec(`
     INSERT INTO "CatalogItem" ("id", "code", "name", "unit") VALUES ('cat-1', 'MAT-01', 'Notebook Corporativo', 'un');

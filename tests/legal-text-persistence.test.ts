@@ -34,7 +34,7 @@ before(async () => {
     CREATE TABLE "GovernmentEntity" (id text PRIMARY KEY, name text NOT NULL, status text NOT NULL);
     CREATE TABLE "AuditEvent" (id text PRIMARY KEY,"eventType" text NOT NULL,"targetType" text NOT NULL,"targetId" text NOT NULL,"actorUsuarioId" text NOT NULL REFERENCES "Usuario"(id),"createdAt" timestamp DEFAULT now());
   `);
-  await fixture.database.exec(await readFile("db/migrations/20261103120000_cf33_legal_text_comments/migration.sql", "utf8"));
+  await fixture.database.exec(await readFile("db/migrations/20261104120000_cf33_legal_text_comments/migration.sql", "utf8"));
 });
 after(async () => { await fixture?.close(); });
 function input(overrides: Partial<LegalTextInput> = {}): LegalTextInput { return { type: "Lei", number: String(++sequence), summary: "Ementa fixture", governmentLevel: "MUNICIPAL", issuingBody: "Prefeitura fixture", governmentEntityId: null, publicationDate: new Date("2026-01-01T12:00:00Z"), effectiveFrom: null, effectiveUntil: null, ...overrides }; }
@@ -163,7 +163,7 @@ test("33.13: comentários preservam autoria e ficam restritos ao ato", async () 
 
 
 test("33.15: importa automaticamente leis e documentos já existentes na base de dados sem redigitação e mantém idempotência", async () => {
-  await fixture.database.exec(await readFile("db/migrations/20261103160000_cf33_database_files_and_import/migration.sql", "utf8"));
+  await fixture.database.exec(await readFile("db/migrations/20261104160000_cf33_database_files_and_import/migration.sql", "utf8"));
   await fixture.database.exec(`
     CREATE TABLE IF NOT EXISTS "Document" (id text PRIMARY KEY, title text NOT NULL, "documentType" text NOT NULL, status text NOT NULL, "createdAt" timestamp DEFAULT now());
     CREATE TABLE IF NOT EXISTS "GedEntry" ("documentId" text PRIMARY KEY, filename text NOT NULL, "mimeType" text NOT NULL, "byteLength" int NOT NULL, origin text NOT NULL, "legacyReference" text NOT NULL, archived boolean DEFAULT false);

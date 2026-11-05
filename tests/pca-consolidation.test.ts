@@ -61,7 +61,7 @@ test("PCA objective migration preserves legacy records and rejects invalid links
       INSERT INTO "PurchasePlanning" VALUES ('plan');
       INSERT INTO "ObjectivePPA" VALUES ('objective');
     `);
-    await pg.exec(await readFile("db/migrations/20261103150000_cf30_pca_objectives/migration.sql", "utf8"));
+    await pg.exec(await readFile("db/migrations/20261104150000_cf30_pca_objectives/migration.sql", "utf8"));
     await assert.rejects(pg.exec(`UPDATE "PurchasePlanning" SET "objectiveId"='unknown'`), /foreign key/);
     await pg.exec(`UPDATE "PurchasePlanning" SET "objectiveId"='objective'`);
     assert.deepEqual((await pg.query(`SELECT "objectiveId" FROM "PurchasePlanning"`)).rows, [{ objectiveId: "objective" }]);

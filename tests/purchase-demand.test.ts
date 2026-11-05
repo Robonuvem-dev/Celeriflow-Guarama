@@ -10,7 +10,7 @@ test("DFD preserves prior snapshots and rejects conflicting revisions", async ()
   const pg = new PGlite();
   try {
     await pg.exec('CREATE TABLE "PurchaseRequest" ("id" TEXT PRIMARY KEY); INSERT INTO "PurchaseRequest" VALUES (\'req\');');
-    await pg.exec(await readFile("db/migrations/20261103130000_cf30_demand_versions/migration.sql", "utf8"));
+    await pg.exec(await readFile("db/migrations/20261104130000_cf30_demand_versions/migration.sql", "utf8"));
     const db = drizzle(pg) as unknown as DatabaseExecutor;
     const snapshot = {
       number: "1", object: "Compra", justification: "Necessidade original",
