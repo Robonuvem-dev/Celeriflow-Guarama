@@ -91,7 +91,7 @@ test("documento original legado permanece exclusivo e a nova revisão pode ser a
 
 
 test("33.11: grava Word (.docx) e LibreOffice (.odt) diretamente no banco sem conversão, lista sem ler BLOB e preserva imutabilidade", async () => {
-  const migration = await readFile("db/migrations/20261103160000_cf33_database_files_and_import/migration.sql", "utf8");
+  const migration = await readFile("db/migrations/20261104160000_cf33_database_files_and_import/migration.sql", "utf8");
   await f.database.exec(migration);
   await withDatabaseTransaction(f.connection, requireLegalDatabaseDocumentSchema);
 

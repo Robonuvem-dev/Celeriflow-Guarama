@@ -15,7 +15,7 @@ test("DFD tramita com versão fixa do GED, autoria separada e proteção contra 
       INSERT INTO "PurchaseDemandVersion" VALUES ('dfd'), ('other');
       INSERT INTO "DocumentVersion" VALUES ('ged-v1');
     `);
-    await pg.exec(await readFile("db/migrations/20261103140000_cf30_demand_workflow/migration.sql", "utf8"));
+    await pg.exec(await readFile("db/migrations/20261104140000_cf30_demand_workflow/migration.sql", "utf8"));
     const db = drizzle(pg) as unknown as DatabaseExecutor;
     await assert.rejects(advanceDemandWorkflow(db, "dfd", "reviewer", 0, "APROVADO", "Análise", null), /inválida/);
     await assert.rejects(advanceDemandWorkflow(db, "dfd", "author", 0, "EM_ANALISE", "Envio", null), /GED/);
