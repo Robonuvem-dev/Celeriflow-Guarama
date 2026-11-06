@@ -8,6 +8,7 @@ import { OperationalTable, OperationalPagination } from "@/components/app-ui/ope
 import { operationalColumns } from "../patrimonio/_components/operational-columns";
 import styles from "@/components/app-ui/operational/operational.module.css";
 import { categories, labels, type FleetArea, type FleetQuery } from "@/lib/frotas/contract";
+import { fleetControlReportLabels, fleetControlReports } from "@/lib/frotas/control-report";
 import type { FleetList, FleetRow } from "@/lib/frotas/queries";
 import { FleetEditor, type Editor } from "./FleetEditor";
 import { fieldClass, ReferencePicker } from "./ReferencePicker";
@@ -114,7 +115,7 @@ export function FrotasClient({ query, list, selectedUnit, selectedUnits = [], pe
                 <label className="min-w-44 flex-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 xl:max-w-72">
                   Relatório
                   <select className="mt-0.5 h-7 w-full rounded border border-slate-300 bg-white px-2 text-[11px] text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600" value={filters.report} onChange={e => setFilters({ ...filters, report: e.target.value as FleetQuery["report"] })}>
-                    {Object.entries({ frota: "Listagem geral da frota", vencimentos: "Vencimentos de documentos", abastecimentos: "Abastecimentos por veículo", gastos: "Gastos realizados", manutencoes: "Manutenções efetuadas" }).map(([key, title]) => <option key={key} value={key}>{title}</option>)}
+                    {fleetControlReports.map(key => <option key={key} value={key}>{fleetControlReportLabels[key] || key}</option>)}
                   </select>
                 </label>
               )}

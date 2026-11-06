@@ -11,6 +11,7 @@ import { fleetDates, fleetSearch } from "@/db/repositories/fleet/filters";
 import type { FleetContext as AppContext } from "@/lib/contracts/fleet";
 import { dateOnly, labels, todayInBrazil, type FleetArea, type FleetQuery } from "./contract";
 import { fleetScope } from "./service";
+import { buildFleetControlReport } from "./control-report";
 
 export type FleetColumn = { key: string; label: string; numeric?: boolean };
 export type FleetRow = { id: string; unitId?: string; cells: Record<string, string>; detail: Record<string, string>; data?: Record<string, string>; status?: string; actions: string[] };
@@ -37,13 +38,41 @@ function documentStatus(v: { kind: string; status: string; dueAt: Date; startsAt
 
 export async function queryFleet(context: AppContext, q: FleetQuery, full = false): Promise<FleetList> {
   const db = fleetDatabase(context), scope = fleetScope(context);
-  const area = q.area === "relatorios" ? ({ frota: "frota", vencimentos: "documentos", abastecimentos: "consumos", gastos: "gastos", manutencoes: "manutencoes" } as const)[q.report] : q.area;
+  const area = q.area === "relatorios"
+    ? ((q.report in { frota: "frota", vencimentos: "documentos", abastecimentos: "consumos", gastos: "gastos", manutencoes: "manutencoes" }
+        ? { frota: "frota", vencimentos: "documentos", abastecimentos: "consumos", gastos: "gastos", manutencoes: "manutencoes" }[q.report as "frota" | "vencimentos" | "abastecimentos" | "gastos" | "manutencoes"]
+        : "frota") as FleetArea)
+    : q.area;
   const unit = and(fleetDepartmentFilter(scope), q.unitId ? eq(f.fleetUnits.id, q.unitId) : undefined, q.unitIds ? inArray(f.fleetUnits.id, q.unitIds.split(",")) : undefined, q.category ? eq(f.fleetUnits.category, q.category) : undefined);
   const unitIds = db.select({ id: f.fleetUnits.id }).from(f.fleetUnits).where(unit);
   const byUnitSearch = db.select({ id: f.fleetUnits.id }).from(f.fleetUnits).where(fleetSearch(q.q, f.fleetUnits.code, f.fleetUnits.name, f.fleetUnits.plate));
   let total = 0, rows: FleetRow[] = [], columns: FleetColumn[] = [], amount: string | null = null, missingCosts = 0, quantities: Record<string, string> = {};
   let page = q.page;
   const paginate = (count: number) => { total = count; page = Math.min(q.page, Math.max(1, Math.ceil(count / q.pageSize))); return { offset: full ? 0 : (page - 1) * q.pageSize, limit: full ? 2147483647 : q.pageSize }; };
+  if (q.area === "relatorios" && !["frota", "vencimentos", "abastecimentos", "gastos", "manutencoes"].includes(q.report)) {
+    const dataset = await buildFleetControlReport(context, {
+      query: q,
+      report: q.report as any,
+      unitIds: q.unitIds ? q.unitIds.split(",").filter(Boolean) : q.unitId ? [q.unitId] : undefined,
+    });
+    const mainSection = dataset.sections.find(s => !s.title.toLowerCase().startsWith("total") && !s.title.toLowerCase().startsWith("resumo")) || dataset.sections[0];
+    const allRows = mainSection?.rows || [];
+    const count = allRows.length;
+    const paging = paginate(count);
+    const pagedRows = allRows.slice(paging.offset, paging.offset + paging.limit);
+    const sample = pagedRows[0] || allRows[0] || {};
+    const cols = Object.keys(sample);
+    columns = cols.map(key => ({
+      key,
+      label: key,
+      numeric: typeof sample[key] === "number" || /^\d+(\.\d+)?$/.test(String(sample[key] || "")),
+    }));
+    rows = pagedRows.map((r, i) => {
+      const cells: Record<string, string> = Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v == null ? "—" : String(v)]));
+      return row(`rep-${paging.offset + i}`, cells, cells, ["detail"], undefined, undefined, cells.Situação || cells.Status);
+    });
+    return { rows, columns, total, page, pageSize: q.pageSize, amount, missingCosts, quantities };
+  }
   if (area === "frota") {
     const where = and(unit, q.area === "relatorios" ? fleetDates(f.fleetUnits.createdAt, q.from, q.to) : undefined, q.status ? eq(f.fleetUnits.status, q.status) : undefined, fleetSearch(q.q, f.fleetUnits.code, f.fleetUnits.name, f.fleetUnits.plate));
     const paging = paginate(await countFleetRecords(db, f.fleetUnits, where));
@@ -105,7 +134,7 @@ export async function queryFleet(context: AppContext, q: FleetQuery, full = fals
     const items = await db.select({ ...getTableColumns(f.fleetExpenses), unit: getTableColumns(f.fleetUnits) }).from(f.fleetExpenses).innerJoin(f.fleetUnits, eq(f.fleetUnits.id, f.fleetExpenses.unitId)).where(where).orderBy(desc(f.fleetExpenses.occurredAt), desc(f.fleetExpenses.id)).limit(paging.limit).offset(paging.offset);
     columns = [...common, c("description", "Descrição"), c("nature", "Natureza / origem"), c("amount", "Realizado", true)];
     rows = items.map(v => row(v.id, { unit: unitLabel(v.unit), date: day(v.occurredAt), description: v.description, nature: `${label(v.nature)} / ${label(v.sourceType)}`, amount: money(v.amount) }, { "Unidade": unitLabel(v.unit), "Data do fato": day(v.occurredAt), "Descrição": v.description, "Natureza": label(v.nature), "Valor realizado (não significa pago)": money(v.amount), "Origem": label(v.sourceType), "Identificação do fato": v.sourceId, "Referência informada": v.reference || "—" }, ["detail", "source"], v.unitId, { sourceType: v.sourceType, sourceId: v.sourceId }));
-  } else if (["seguros", "obrigacoes", "documentos"].includes(area)) {
+  } else if (["seguros", "obrigacoes", "documentos"].includes(area || "")) {
     const kind = area === "seguros" ? "SEGURO" : area === "obrigacoes" ? "OBRIGACAO" : undefined;
     const where = and(inArray(f.fleetDocuments.unitId, unitIds), kind ? eq(f.fleetDocuments.kind, kind) : undefined, fleetDates(f.fleetDocuments.dueAt, q.from, q.to), q.status ? eq(f.fleetDocuments.status, q.status) : undefined, q.type ? eq(f.fleetDocuments.type, q.type) : undefined, q.q ? or(inArray(f.fleetDocuments.unitId, byUnitSearch), fleetSearch(q.q, f.fleetDocuments.title, f.fleetDocuments.reference, f.fleetDocuments.insurerName)) : undefined);
     const paging = paginate(await countFleetRecords(db, f.fleetDocuments, where));
