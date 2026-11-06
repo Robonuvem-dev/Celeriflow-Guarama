@@ -120,7 +120,7 @@ export async function listLegalDocuments(db: DatabaseExecutor, context: AppConte
     const from = sql`FROM "LegalTextDocument" l JOIN "DocumentVersion" v ON v.id=l."documentVersionId" JOIN "Document" d ON d.id=v."documentId" JOIN "GedEntry" e ON e."documentId"=d.id WHERE l."legalTextVersionId"=${legalTextVersionId} AND NOT e.archived AND ${gedEntryScope(context)}`;
     const count = await db.execute<{ total: number }>(sql`SELECT count(*)::int AS total ${from}`);
     const total = count.rows[0]?.total ?? 0, page = Math.max(1, Math.min(requestedPage, Math.max(1, Math.ceil(total / 20))));
-    const rows = await db.execute<{ id: string; role: string; filename: string; documentId: string; documentVersionId: string; versionNumber: number; hash: string }>(sql`SELECT l.id,l.role,l.label AS filename,d.id AS "documentId",v.id AS "documentVersionId",v."versionNumber",v."hashSha256" AS hash ${from} ORDER BY l."createdAt",l.id LIMIT 20 OFFSET ${(page - 1) * 20}`);
+    const rows = await db.execute<{ id: string; role: string; filename: string; documentId: string; documentVersionId: string; versionNumber: number; hash: string; storage?: "GED" | "DATABASE" }>(sql`SELECT l.id,l.role,l.label AS filename,d.id AS "documentId",v.id AS "documentVersionId",v."versionNumber",v."hashSha256" AS hash, 'GED'::text AS storage ${from} ORDER BY l."createdAt",l.id LIMIT 20 OFFSET ${(page - 1) * 20}`);
     return { rows: rows.rows, page, total };
   }
   const combined = sql`(

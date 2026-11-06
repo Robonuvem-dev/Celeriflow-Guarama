@@ -43,7 +43,7 @@ export async function publishCollectionMessage(tx: DatabaseTransaction, input: {
     try {
       const [box] = await tx.select({
         establishmentCnpj: dteMailboxes.establishmentCnpj,
-        companyEmail: companies.email,
+        companyEmail: companies.emailFiscal || companies.emailPrimary,
         personEmail: people.email,
       }).from(dteMailboxes)
       .leftJoin(taxpayers, eq(taxpayers.id, dteMailboxes.taxpayerId))

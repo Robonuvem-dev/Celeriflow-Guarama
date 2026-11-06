@@ -16,7 +16,7 @@ export async function notifySupplierBiddingCalling(input: {
       .select({
         id: suppliers.id,
         personEmail: people.email,
-        companyEmail: companies.email,
+        companyEmail: companies.emailFiscal || companies.emailPrimary,
         personName: people.fullName,
         companyName: companies.corporateName,
         tradeName: companies.tradeName,

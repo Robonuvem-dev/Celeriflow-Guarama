@@ -303,7 +303,7 @@ export async function inviteSupplierToPriceResearch(db: Db, input: { researchId:
       const baseUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
       const link = `${baseUrl.replace(/\/$/, "")}/compras/pesquisas-precos/${research.id}`;
       const sName = supplierName(supplier);
-      const pNumber = research.processNumber || research.id;
+      const pNumber = research.id;
       // Dispara envio do mapa de cotação (11.182) e carta-convite (11.183)
       NotificationDispatcher.sendLicitacaoMapaCotacao({
         to: targetEmail,

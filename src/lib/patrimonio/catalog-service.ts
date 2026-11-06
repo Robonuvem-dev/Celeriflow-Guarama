@@ -96,7 +96,7 @@ export async function saveAssetCatalog(connection: DatabaseConnection, user: Per
       if (email) {
         NotificationDispatcher.sendPatrimonioGarantiaVencimento({
           to: email,
-          responsavel: user.nome || "Responsável",
+          responsavel: user.name || "Responsável",
           patrimonio: input.code,
           descricao: input.name,
           data: String(details.endsAt),
