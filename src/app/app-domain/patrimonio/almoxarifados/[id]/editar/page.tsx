@@ -10,7 +10,8 @@ import { costCenters as costCenterTable } from "@/db/schema/master-data";
 
 export default async function EditarAlmoxarifadoPage({ params }: { params: Promise<{ id: string }> }) {
   await getTenantContextForModule("PATRIMONIO");
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = decodeURIComponent(rawId);
   const [loaded] = await db.select({ warehouse: warehouses, manager: { name: employees.name } }).from(warehouses).leftJoin(employees, eq(employees.id, warehouses.managerId)).where(eq(warehouses.id, id)).limit(1);
   const warehouse = loaded ? { ...loaded.warehouse, manager: loaded.manager } : undefined;
   if (!warehouse) notFound();

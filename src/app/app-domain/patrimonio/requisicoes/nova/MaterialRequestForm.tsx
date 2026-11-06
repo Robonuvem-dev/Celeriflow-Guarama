@@ -9,7 +9,8 @@ import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { SearchReferenceField, type SearchReferenceRecord } from "../../_components/SearchReferenceField";
 import { createMaterialRequestAction } from "../actions";
-import { Pencil, Trash2 } from "lucide-react";
+import { createQuickMaterialAction, createQuickWarehouseAction, createQuickEmployeeAction } from "../quick-actions";
+import { Pencil, Plus, Trash2, UserPlus, Warehouse, PackagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
@@ -21,11 +22,25 @@ import styles from "@/components/app-ui/operational/operational.module.css";
 type Option = { id: string; name: string };
 type ItemInput = { key: number; material: SearchReferenceRecord | null; quantityRequested: number };
 
-export function MaterialRequestForm({ warehouses, departments, categories, initialRequester, canSelectRequester }: { warehouses: Option[]; departments: Option[]; categories: Option[]; initialRequester: SearchReferenceRecord | null; canSelectRequester: boolean }) {
+export function MaterialRequestForm({
+  warehouses: initialWarehouses,
+  departments,
+  categories,
+  initialRequester,
+  canSelectRequester,
+}: {
+  warehouses: Option[];
+  departments: Option[];
+  categories: Option[];
+  initialRequester: SearchReferenceRecord | null;
+  canSelectRequester: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const idempotencyKey = useRef(crypto.randomUUID());
   const nextKey = useRef(1);
+
+  const [warehousesList, setWarehousesList] = useState<Option[]>(initialWarehouses);
   const [warehouseId, setWarehouseId] = useState("");
   const [requester, setRequester] = useState(initialRequester);
   const [departmentId, setDepartmentId] = useState(initialRequester?.departmentId || "");
@@ -37,71 +52,640 @@ export function MaterialRequestForm({ warehouses, departments, categories, initi
   const [feedback, setFeedback] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [editingKey, setEditingKey] = useState<number | null>(null);
+
+  // Quick modals state
+  const [openNewWarehouse, setOpenNewWarehouse] = useState(false);
+  const [newWhName, setNewWhName] = useState("");
+  const [newWhType, setNewWhType] = useState("Central");
+
+  const [openNewEmployee, setOpenNewEmployee] = useState(false);
+  const [newEmpName, setNewEmpName] = useState("");
+  const [newEmpCpf, setNewEmpCpf] = useState("");
+  const [newEmpReg, setNewEmpReg] = useState("");
+
+  const [openNewMaterial, setOpenNewMaterial] = useState(false);
+  const [newMatName, setNewMatName] = useState("");
+  const [newMatUnit, setNewMatUnit] = useState("UN");
+  const [newMatCat, setNewMatCat] = useState(categories[0]?.id || "");
+  const [newMatMin, setNewMatMin] = useState(0);
+
   const activePage = Math.min(page, Math.max(1, Math.ceil(items.length / OPERATIONAL_PAGE_SIZE)));
-  const editingItem = items.find(item => item.key === editingKey);
+  const editingItem = items.find((item) => item.key === editingKey);
   const selectClass = "h-8 w-full rounded border bg-white px-2 text-xs";
 
   function updateItem(key: number, values: Partial<ItemInput>) {
-    setItems(current => current.map(item => item.key === key ? { ...item, ...values } : item));
+    setItems((current) => current.map((item) => (item.key === key ? { ...item, ...values } : item)));
   }
+
   function addItem() {
     const key = nextKey.current++;
-    setItems(current => [...current, { key, material: null, quantityRequested: 1 }]);
+    setItems((current) => [...current, { key, material: null, quantityRequested: 1 }]);
     setPage(Math.ceil((items.length + 1) / OPERATIONAL_PAGE_SIZE));
     setEditingKey(key);
+  }
+
+  function handleCreateWarehouse(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await createQuickWarehouseAction({ name: newWhName, type: newWhType });
+      if (res.warehouse) {
+        setWarehousesList((prev) => [...prev, res.warehouse!]);
+        setWarehouseId(res.warehouse.id);
+        setOpenNewWarehouse(false);
+        setNewWhName("");
+      }
+    });
+  }
+
+  function handleCreateEmployee(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await createQuickEmployeeAction({
+        fullName: newEmpName,
+        cpf: newEmpCpf,
+        registration: newEmpReg,
+        departmentId,
+      });
+      if (res.employee) {
+        setRequester({ id: res.employee.id, label: res.employee.label, departmentId });
+        setOpenNewEmployee(false);
+        setNewEmpName("");
+        setNewEmpCpf("");
+        setNewEmpReg("");
+      }
+    });
+  }
+
+  function handleCreateMaterial(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await createQuickMaterialAction({
+        name: newMatName,
+        unitOfMeasure: newMatUnit,
+        categoryId: newMatCat,
+        minStock: newMatMin,
+      });
+      if (res.material && editingKey !== null) {
+        updateItem(editingKey, {
+          material: {
+            id: res.material.id,
+            label: res.material.label,
+            unitOfMeasure: res.material.unitOfMeasure,
+          },
+        });
+        setOpenNewMaterial(false);
+        setNewMatName("");
+      }
+    });
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     setFeedback(null);
-    const invalidIndex = items.findIndex(item => !item.material || !Number.isFinite(item.quantityRequested) || item.quantityRequested < 0.000001);
+    const invalidIndex = items.findIndex(
+      (item) => !item.material || !Number.isFinite(item.quantityRequested) || item.quantityRequested < 0.000001,
+    );
     if (invalidIndex >= 0) {
       setPage(Math.floor(invalidIndex / OPERATIONAL_PAGE_SIZE) + 1);
-      setFeedback(`Selecione o material e informe quantidade maior que zero no item ${invalidIndex + 1}, inclusive nas outras páginas.`);
+      setFeedback(
+        `Selecione o material e informe quantidade maior que zero no item ${invalidIndex + 1}, inclusive nas outras páginas.`,
+      );
       return;
     }
     startTransition(async () => {
       try {
-        const result = await createMaterialRequestAction({ sourceWarehouseId: warehouseId, requesterId: requester?.id || "", departmentId, justification: justification || undefined, idempotencyKey: idempotencyKey.current, items: items.map(item => ({ materialId: item.material?.id || "", quantityRequested: item.quantityRequested })) });
+        const result = await createMaterialRequestAction({
+          sourceWarehouseId: warehouseId,
+          requesterId: requester?.id || "",
+          departmentId,
+          justification: justification || undefined,
+          idempotencyKey: idempotencyKey.current,
+          items: items.map((item) => ({
+            materialId: item.material?.id || "",
+            quantityRequested: item.quantityRequested,
+          })),
+        });
         if (result.error) setFeedback(result.error);
         else router.push(`/patrimonio/requisicoes/${encodeURIComponent(result.requestId!)}`);
-      } catch { setFeedback("Não foi possível confirmar o registro. Tente novamente."); }
+      } catch {
+        setFeedback("Não foi possível confirmar o registro. Tente novamente.");
+      }
     });
   }
 
-  return <PageFrame className="min-h-0 max-w-5xl flex-1 space-y-3 overflow-y-auto p-3">
-    <PageHeader title="Nova requisição interna" action={<Link href="/patrimonio/requisicoes" className="text-xs underline">Voltar</Link>} />
-    <p className="rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">1. Registrar pedido → 2. Aprovar quantidades → 3. Entregar materiais. O estoque é baixado na entrega, com origem, destino e histórico.</p>
-    <form id="material-request" onSubmit={submit} className="space-y-4 rounded border bg-white p-4">
-      <div className="grid items-start gap-3 md:grid-cols-2">
-        <div className="grid gap-1 text-xs font-semibold">Código<Input readOnly value="Gerado automaticamente: REQ-AAAA-000001" className="bg-slate-50 text-xs" /></div>
-        <label className="grid gap-1 text-xs font-semibold">Almoxarifado de origem *<select required value={warehouseId} onChange={event => { setWarehouseId(event.target.value); setEditingKey(null); setItems(current => current.map(item => ({ ...item, material: null }))); }} className={selectClass}><option value="">Selecione a origem do estoque</option>{warehouses.map(warehouse => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
-        <label className="grid gap-1 text-xs font-semibold">Setor de destino *<select required value={departmentId} disabled={!canSelectRequester} onChange={event => { setDepartmentId(event.target.value); setRequester(null); }} className={selectClass}><option value="">Selecione o setor que receberá</option>{departments.map(department => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
-        {canSelectRequester ? <SearchReferenceField key={departmentId} label="Servidor solicitante / recebedor *" kind="employees" value={requester?.id || ""} selectedLabel={requester?.label || ""} filters={{ departmentId }} onSelect={record => { setRequester(record); if (record?.departmentId) setDepartmentId(record.departmentId); }} /> : <div className="text-xs"><p className="font-semibold">Servidor solicitante / recebedor</p><p className="mt-1 rounded border bg-slate-50 p-2">{requester?.label || "Seu usuário precisa estar vinculado a um servidor cadastrado."}</p></div>}
-      </div>
-      <label className="grid gap-1 text-xs font-semibold">Justificativa<textarea required value={justification} maxLength={1000} onChange={event => setJustification(event.target.value)} rows={2} className="rounded border px-3 py-2 text-sm" placeholder="Informe a finalidade dos materiais para o setor de destino" /></label>
-      <section className="space-y-3 border-t pt-3">
-        <h2 className="text-sm font-semibold">Itens solicitados · {items.length}</h2>
-        {!warehouseId && <p className="text-xs text-slate-500">Selecione o almoxarifado de origem para pesquisar os materiais disponíveis.</p>}
-        <OperationalTablePanel title="Itens da nova requisição" description="Seleção e quantidades permanecem no formulário ao fechar a consulta ou trocar de página.">
-          <OperationalListFrame label="Itens solicitados" actions={<><button type="button" disabled={pending || !warehouseId} className={styles.newButton} onClick={addItem}>Adicionar item</button><button type="submit" form="material-request" disabled={pending || !warehouseId || !requester || items.some(item => !item.material)} className={styles.dialogButton}>Registrar e acompanhar</button>{feedback && <OperationalFilters label="Resultado"><p role="alert">{feedback}</p></OperationalFilters>}</>}
-            toolbar={<span>Selecione o material pelo botão de edição; as quantidades são editáveis na grade.</span>}
-            pagination={<OperationalPagination page={activePage} total={items.length} onPageChange={setPage} />}>
-            <OperationalTable preferenceId="patrimonio-requisicao-nova-itens-edicao" caption="Itens solicitados" columns={operationalColumns([["material", "Material", 400, 160, "identifier"], ["detail", "Descrição", 250, 110], ["unit", "Unidade", 90, 65], ["quantity", "Quantidade", 130, 90, "text", "right"], ["stock", "Saldo na origem", 130, 90, "text", "right"], ["actions", "Ações", 80, 75, "actions"]])}
-              rows={items.slice((activePage - 1) * OPERATIONAL_PAGE_SIZE, activePage * OPERATIONAL_PAGE_SIZE).map(item => ({ id: String(item.key), label: item.material?.label || `Item ${item.key + 1}`, values: { material: item.material?.label || "Selecione o material", detail: item.material?.detail || "—", unit: item.material?.unitOfMeasure || "—", quantity: String(item.quantityRequested), stock: item.material?.quantity?.toLocaleString("pt-BR") || "—" },
-                cells: { quantity: <input form="material-request" aria-label={`Quantidade do item ${item.key + 1}`} type="number" required min="0.000001" step="any" disabled={pending} value={item.quantityRequested} onChange={event => updateItem(item.key, { quantityRequested: Number(event.target.value) })} className="h-6 w-full min-w-0 rounded border bg-transparent px-1" /> },
-                actions: <div className={styles.rowActions}><button type="button" disabled={pending || !warehouseId} className={styles.iconButton} aria-label={`Selecionar material do item ${item.key + 1}`} onClick={() => setEditingKey(item.key)}><Pencil /></button><button type="button" disabled={pending || items.length === 1} className={styles.iconButton} aria-label={`Remover item ${item.key + 1}`} onClick={() => setItems(current => current.filter(row => row.key !== item.key))}><Trash2 /></button></div>,
-              }))} />
-          </OperationalListFrame>
-          <Dialog open={Boolean(editingItem)} onOpenChange={open => { if (!open) setEditingKey(null); }}><DialogContent><DialogHeader><DialogTitle>Material do item</DialogTitle><DialogDescription>Altere os filtros e pesquise no almoxarifado de origem. A seleção permanece no rascunho.</DialogDescription></DialogHeader>
-            <div className="grid gap-2 sm:grid-cols-2"><label>Categoria<select aria-label="Categoria dos materiais" value={categoryId} onChange={event => setCategoryId(event.target.value)} className={selectClass}><option value="">Todas as categorias</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Tipo<select aria-label="Tipo dos materiais" value={type} onChange={event => setType(event.target.value)} className={selectClass}><option value="">Todos os tipos</option><option value="MATERIAL">Material</option><option value="PATRIMONIO">Equipamento</option></select></label><label><input type="checkbox" checked={inStock} onChange={event => setInStock(event.target.checked)} /> Somente com saldo na origem</label></div>
-            {editingItem && <><SearchReferenceField key={`${warehouseId}-${categoryId}-${type}-${inStock}-${editingItem.key}`} label="Pesquisar material *" kind="materials" value={editingItem.material?.id || ""} selectedLabel={editingItem.material?.label || ""} filters={{ warehouseId, categoryId, type, inStock: String(inStock) }} onSelect={record => updateItem(editingItem.key, { material: record })} /><label>Quantidade<Input form="material-request" type="number" required min="0.000001" step="any" disabled={pending} value={editingItem.quantityRequested} onChange={event => updateItem(editingItem.key, { quantityRequested: Number(event.target.value) })} /></label></>}
-          </DialogContent></Dialog>
-        </OperationalTablePanel>
-      </section>
-      {feedback && <p role="alert" className="rounded bg-red-50 p-2 text-xs text-red-700">{feedback}</p>}
-      <div className="flex justify-end border-t pt-3"><Button type="submit" disabled={pending || !warehouseId || !requester || items.some(item => !item.material)}>{pending ? "Registrando..." : "Registrar e acompanhar"}</Button></div>
-    </form>
-  </PageFrame>;
+  return (
+    <PageFrame className="min-h-0 max-w-5xl flex-1 space-y-3 overflow-y-auto p-3">
+      <PageHeader
+        title="Nova requisição interna"
+        action={
+          <Link href="/patrimonio/requisicoes" className="text-xs underline">
+            Voltar
+          </Link>
+        }
+      />
+      <p className="rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+        1. Registrar pedido → 2. Aprovar quantidades → 3. Entregar materiais. O estoque é baixado na entrega, com origem,
+        destino e histórico.
+      </p>
+      <form id="material-request" onSubmit={submit} className="space-y-4 rounded border bg-white p-4">
+        <div className="grid items-start gap-3 md:grid-cols-2">
+          <div className="grid gap-1 text-xs font-semibold">
+            Código
+            <Input readOnly value="Gerado automaticamente: REQ-AAAA-000001" className="bg-slate-50 text-xs" />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold">Almoxarifado de origem *</label>
+              <button
+                type="button"
+                onClick={() => setOpenNewWarehouse(true)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline"
+              >
+                <Plus className="size-3" />
+                + Novo
+              </button>
+            </div>
+            <select
+              required
+              value={warehouseId}
+              onChange={(event) => {
+                setWarehouseId(event.target.value);
+                setEditingKey(null);
+                setItems((current) => current.map((item) => ({ ...item, material: null })));
+              }}
+              className={selectClass}
+            >
+              <option value="">Selecione a origem do estoque</option>
+              {warehousesList.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <label className="grid gap-1 text-xs font-semibold">
+            Setor de destino *
+            <select
+              required
+              value={departmentId}
+              disabled={!canSelectRequester}
+              onChange={(event) => {
+                setDepartmentId(event.target.value);
+                setRequester(null);
+              }}
+              className={selectClass}
+            >
+              <option value="">Selecione o setor que receberá</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold">Servidor solicitante / recebedor *</span>
+              {canSelectRequester && (
+                <button
+                  type="button"
+                  onClick={() => setOpenNewEmployee(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline"
+                >
+                  <UserPlus className="size-3" />
+                  + Novo
+                </button>
+              )}
+            </div>
+            {canSelectRequester ? (
+              <SearchReferenceField
+                key={departmentId}
+                label=""
+                kind="employees"
+                value={requester?.id || ""}
+                selectedLabel={requester?.label || ""}
+                filters={{ departmentId }}
+                onSelect={(record) => {
+                  setRequester(record);
+                  if (record?.departmentId) setDepartmentId(record.departmentId);
+                }}
+              />
+            ) : (
+              <div className="text-xs">
+                <p className="mt-1 rounded border bg-slate-50 p-2">
+                  {requester?.label || "Seu usuário precisa estar vinculado a um servidor cadastrado."}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <label className="grid gap-1 text-xs font-semibold">
+          Justificativa
+          <textarea
+            required
+            value={justification}
+            maxLength={1000}
+            onChange={(event) => setJustification(event.target.value)}
+            rows={2}
+            className="rounded border px-3 py-2 text-sm"
+            placeholder="Informe a finalidade dos materiais para o setor de destino"
+          />
+        </label>
+
+        <section className="space-y-3 border-t pt-3">
+          <h2 className="text-sm font-semibold">Itens solicitados · {items.length}</h2>
+          {!warehouseId && (
+            <p className="text-xs text-slate-500">
+              Selecione o almoxarifado de origem para pesquisar os materiais disponíveis.
+            </p>
+          )}
+
+          <OperationalTablePanel
+            title="Itens da nova requisição"
+            description="Seleção e quantidades permanecem no formulário ao fechar a consulta ou trocar de página."
+          >
+            <OperationalListFrame
+              label="Itens solicitados"
+              actions={
+                <>
+                  <button
+                    type="button"
+                    disabled={pending || !warehouseId}
+                    className={styles.newButton}
+                    onClick={addItem}
+                  >
+                    Adicionar item
+                  </button>
+                  <button
+                    type="submit"
+                    form="material-request"
+                    disabled={pending || !warehouseId || !requester || items.some((item) => !item.material)}
+                    className={styles.dialogButton}
+                  >
+                    Registrar e acompanhar
+                  </button>
+                  {feedback && (
+                    <OperationalFilters label="Resultado">
+                      <p role="alert">{feedback}</p>
+                    </OperationalFilters>
+                  )}
+                </>
+              }
+              toolbar={<span>Selecione o material pelo botão de edição; as quantidades são editáveis na grade.</span>}
+              pagination={<OperationalPagination page={activePage} total={items.length} onPageChange={setPage} />}
+            >
+              <OperationalTable
+                preferenceId="patrimonio-requisicao-nova-itens-edicao"
+                caption="Itens solicitados"
+                columns={operationalColumns([
+                  ["material", "Material", 400, 160, "identifier"],
+                  ["detail", "Descrição", 250, 110],
+                  ["unit", "Unidade", 90, 65],
+                  ["quantity", "Quantidade", 130, 90, "text", "right"],
+                  ["stock", "Saldo na origem", 130, 90, "text", "right"],
+                  ["actions", "Ações", 80, 75, "actions"],
+                ])}
+                rows={items
+                  .slice((activePage - 1) * OPERATIONAL_PAGE_SIZE, activePage * OPERATIONAL_PAGE_SIZE)
+                  .map((item) => ({
+                    id: String(item.key),
+                    label: item.material?.label || `Item ${item.key + 1}`,
+                    values: {
+                      material: item.material?.label || "Selecione o material",
+                      detail: item.material?.detail || "—",
+                      unit: item.material?.unitOfMeasure || "—",
+                      quantity: String(item.quantityRequested),
+                      stock: item.material?.quantity?.toLocaleString("pt-BR") || "—",
+                    },
+                    cells: {
+                      quantity: (
+                        <input
+                          form="material-request"
+                          aria-label={`Quantidade do item ${item.key + 1}`}
+                          type="number"
+                          required
+                          min="0.000001"
+                          step="any"
+                          disabled={pending}
+                          value={item.quantityRequested}
+                          onChange={(event) => updateItem(item.key, { quantityRequested: Number(event.target.value) })}
+                          className="h-6 w-full min-w-0 rounded border bg-transparent px-1"
+                        />
+                      ),
+                    },
+                    actions: (
+                      <div className={styles.rowActions}>
+                        <button
+                          type="button"
+                          disabled={pending || !warehouseId}
+                          className={styles.iconButton}
+                          aria-label={`Selecionar material do item ${item.key + 1}`}
+                          onClick={() => setEditingKey(item.key)}
+                        >
+                          <Pencil />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending || items.length === 1}
+                          className={styles.iconButton}
+                          aria-label={`Remover item ${item.key + 1}`}
+                          onClick={() => setItems((current) => current.filter((row) => row.key !== item.key))}
+                        >
+                          <Trash2 />
+                        </button>
+                      </div>
+                    ),
+                  }))}
+              />
+            </OperationalListFrame>
+
+            <Dialog
+              open={Boolean(editingItem)}
+              onOpenChange={(open) => {
+                if (!open) setEditingKey(null);
+              }}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Material do item</DialogTitle>
+                  <DialogDescription>
+                    Altere os filtros e pesquise no almoxarifado de origem. A seleção permanece no rascunho.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label>
+                    Categoria
+                    <select
+                      aria-label="Categoria dos materiais"
+                      value={categoryId}
+                      onChange={(event) => setCategoryId(event.target.value)}
+                      className={selectClass}
+                    >
+                      <option value="">Todas as categorias</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Tipo
+                    <select
+                      aria-label="Tipo dos materiais"
+                      value={type}
+                      onChange={(event) => setType(event.target.value)}
+                      className={selectClass}
+                    >
+                      <option value="">Todos os tipos</option>
+                      <option value="MATERIAL">Material</option>
+                      <option value="PATRIMONIO">Equipamento</option>
+                    </select>
+                  </label>
+                  <label className="sm:col-span-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={inStock}
+                        onChange={(event) => setInStock(event.target.checked)}
+                      />
+                      Somente com saldo na origem
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenNewMaterial(true)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline"
+                    >
+                      <PackagePlus className="size-3.5" />
+                      + Novo Material
+                    </button>
+                  </label>
+                </div>
+                {editingItem && (
+                  <>
+                    <SearchReferenceField
+                      key={`${warehouseId}-${categoryId}-${type}-${inStock}-${editingItem.key}`}
+                      label="Pesquisar material *"
+                      kind="materials"
+                      value={editingItem.material?.id || ""}
+                      selectedLabel={editingItem.material?.label || ""}
+                      filters={{ warehouseId, categoryId, type, inStock: String(inStock) }}
+                      onSelect={(record) => updateItem(editingItem.key, { material: record })}
+                    />
+                    <label>
+                      Quantidade
+                      <Input
+                        form="material-request"
+                        type="number"
+                        required
+                        min="0.000001"
+                        step="any"
+                        disabled={pending}
+                        value={editingItem.quantityRequested}
+                        onChange={(event) =>
+                          updateItem(editingItem.key, { quantityRequested: Number(event.target.value) })
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+              </DialogContent>
+            </Dialog>
+          </OperationalTablePanel>
+        </section>
+      </form>
+
+      {/* Modal Rápido: Novo Almoxarifado */}
+      <Dialog open={openNewWarehouse} onOpenChange={setOpenNewWarehouse}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar Novo Almoxarifado</DialogTitle>
+            <DialogDescription>Crie o depósito/almoxarifado para seleção imediata.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateWarehouse} className="space-y-3 text-xs">
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">Nome do Almoxarifado *</label>
+              <input
+                type="text"
+                required
+                value={newWhName}
+                onChange={(e) => setNewWhName(e.target.value)}
+                placeholder="Ex: Almoxarifado Educação"
+                className="h-8 w-full rounded border px-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">Tipo</label>
+              <select
+                value={newWhType}
+                onChange={(e) => setNewWhType(e.target.value)}
+                className="h-8 w-full rounded border px-2 text-xs"
+              >
+                <option value="Central">Central</option>
+                <option value="Setorial">Setorial</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setOpenNewWarehouse(false)}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={pending}
+                className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {pending ? "Criando..." : "Criar e Selecionar"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Rápido: Novo Servidor */}
+      <Dialog open={openNewEmployee} onOpenChange={setOpenNewEmployee}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar Novo Servidor Solicitante</DialogTitle>
+            <DialogDescription>Cadastre o servidor para selecioná-lo na requisição.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateEmployee} className="space-y-3 text-xs">
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">Nome Completo *</label>
+              <input
+                type="text"
+                required
+                value={newEmpName}
+                onChange={(e) => setNewEmpName(e.target.value)}
+                placeholder="Ex: Maria Ferreira"
+                className="h-8 w-full rounded border px-2 text-xs"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block font-semibold text-slate-700">CPF *</label>
+                <input
+                  type="text"
+                  required
+                  value={newEmpCpf}
+                  onChange={(e) => setNewEmpCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                  className="h-8 w-full rounded border px-2 text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block font-semibold text-slate-700">Matrícula</label>
+                <input
+                  type="text"
+                  value={newEmpReg}
+                  onChange={(e) => setNewEmpReg(e.target.value)}
+                  placeholder="Ex: 54321"
+                  className="h-8 w-full rounded border px-2 text-xs"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setOpenNewEmployee(false)}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={pending}
+                className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {pending ? "Cadastrando..." : "Cadastrar e Selecionar"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Rápido: Novo Material */}
+      <Dialog open={openNewMaterial} onOpenChange={setOpenNewMaterial}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar Novo Material</DialogTitle>
+            <DialogDescription>Crie o material para inclusão na requisição atual.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateMaterial} className="space-y-3 text-xs">
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">Nome do Material *</label>
+              <input
+                type="text"
+                required
+                value={newMatName}
+                onChange={(e) => setNewMatName(e.target.value)}
+                placeholder="Ex: Papel A4 75g"
+                className="h-8 w-full rounded border px-2 text-xs"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block font-semibold text-slate-700">Unidade de Medida</label>
+                <input
+                  type="text"
+                  value={newMatUnit}
+                  onChange={(e) => setNewMatUnit(e.target.value.toUpperCase())}
+                  placeholder="UN, CX, PCT..."
+                  className="h-8 w-full rounded border px-2 text-xs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block font-semibold text-slate-700">Estoque Mínimo</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newMatMin}
+                  onChange={(e) => setNewMatMin(Number(e.target.value))}
+                  className="h-8 w-full rounded border px-2 text-xs"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">Categoria *</label>
+              <select
+                value={newMatCat}
+                onChange={(e) => setNewMatCat(e.target.value)}
+                className="h-8 w-full rounded border px-2 text-xs"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setOpenNewMaterial(false)}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={pending}
+                className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {pending ? "Criando..." : "Criar e Selecionar"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </PageFrame>
+  );
 }

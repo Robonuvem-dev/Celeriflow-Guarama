@@ -16,7 +16,18 @@ import { clampPatrimonioListPage, patrimonioListHref, parsePatrimonioListPage, P
 type MaterialView = "catalogo" | "movimentar";
 type MaterialStatus = "" | "ATIVO" | "INATIVO" | "SEM_ESTOQUE";
 type MaterialOrder = "code-asc" | "code-desc" | "name-asc" | "name-desc" | "description-asc" | "description-desc";
-type SearchParams = { q?: string; page?: string; view?: string; type?: string; category?: string; status?: string; warehouse?: string; order?: string };
+type SearchParams = {
+  q?: string;
+  page?: string;
+  view?: string;
+  type?: string;
+  category?: string;
+  status?: string;
+  warehouse?: string;
+  order?: string;
+  periodStart?: string;
+  periodEnd?: string;
+};
 
 function getStatus(value?: string): MaterialStatus {
   return value === "ATIVO" || value === "INATIVO" || value === "SEM_ESTOQUE" ? value : "";
@@ -54,6 +65,8 @@ export async function MaterialStockList({ searchParams, equipmentOnly = false }:
   const status = getStatus(params?.status);
   const warehouseId = params?.warehouse || "";
   const order = getOrder(params?.order);
+  const periodStart = params?.periodStart || "";
+  const periodEnd = params?.periodEnd || "";
   const requestedPage = parsePatrimonioListPage(params?.page);
   const pattern = `%${q}%`;
   const catalogWhere = and(
@@ -63,7 +76,7 @@ export async function MaterialStockList({ searchParams, equipmentOnly = false }:
     status === "SEM_ESTOQUE" ? sql`NOT EXISTS (SELECT 1 FROM "MaterialStock" s WHERE s."materialId"=${materialTable.id} AND s.quantity>0 ${warehouseId ? sql`AND s."warehouseId"=${warehouseId}` : sql``})` : undefined,
     warehouseId && status !== "SEM_ESTOQUE" ? sql`EXISTS (SELECT 1 FROM "MaterialStock" s WHERE s."materialId"=${materialTable.id} AND s."warehouseId"=${warehouseId})` : undefined,
   );
-  const catalogValues = { q, type, category: categoryId, status, warehouse: warehouseId, order };
+  const catalogValues = { q, type, category: categoryId, status, warehouse: warehouseId, order, periodStart, periodEnd };
   const [{ total: catalogTotal }] = await db.select({ total: count() }).from(materialTable).where(catalogWhere);
   const page = view === "movimentar" ? 1 : clampPatrimonioListPage(requestedPage, catalogTotal);
 
@@ -117,10 +130,12 @@ export async function MaterialStockList({ searchParams, equipmentOnly = false }:
         <input name="q" aria-label="Buscar material por código, nome ou descrição" defaultValue={q} placeholder="Código, nome ou descrição…" className={styles.searchInput} />
         <button type="submit" className={styles.iconButton} aria-label="Pesquisar materiais"><Search /></button>
       </form>
-      <OperationalFilters activeCount={[categoryId, status, warehouseId, order !== "code-asc"].filter(Boolean).length}>
+      <OperationalFilters activeCount={[categoryId, status, warehouseId, order !== "code-asc", periodStart, periodEnd].filter(Boolean).length}>
         <form action={pathname} className="grid gap-3">
           <input type="hidden" name="q" value={q} /><input type="hidden" name="view" value="catalogo" /><input type="hidden" name="type" value={type} />
           <div className={styles.filterFields}>
+            <label>Período Inicial<input type="date" name="periodStart" defaultValue={periodStart} className="h-8 rounded border px-2 text-xs" /></label>
+            <label>Período Final<input type="date" name="periodEnd" defaultValue={periodEnd} className="h-8 rounded border px-2 text-xs" /></label>
             <label>Categoria<select name="category" defaultValue={categoryId}><option value="">Todas</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
             <label>Status<select name="status" defaultValue={status}><option value="">Todos</option><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option><option value="SEM_ESTOQUE">Sem estoque</option></select></label>
             <label>Almoxarifado<select name="warehouse" defaultValue={warehouseId}><option value="">Todos</option>{warehouses.map(warehouse => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
@@ -131,7 +146,7 @@ export async function MaterialStockList({ searchParams, equipmentOnly = false }:
       </OperationalFilters>
     </>}
     pagination={<OperationalLinkPagination page={page} total={catalogTotal} pathname={pathname} values={{ ...catalogValues, view: "catalogo" }} />}
-  ><MaterialCatalogTable materials={materialRows} categories={categories} subcategories={subcategories} canUpdate={canUpdate} canDelete={canDelete} /></OperationalListFrame>;
+  ><MaterialCatalogTable materials={materialRows} categories={categories} subcategories={subcategories} canUpdate={canUpdate} canDelete={canDelete} periodStart={periodStart} periodEnd={periodEnd} /></OperationalListFrame>;
 
   return <div className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:p-3">
     <ErpPageTitle title={equipmentOnly ? "Equipamentos em estoque" : "Estoque de Materiais"} action={equipmentOnly ? <Link href="/patrimonio/bens" className="text-xs underline">Bens patrimoniais</Link> : undefined} />

@@ -74,3 +74,55 @@ export async function loadSupplierRows(db: DatabaseExecutor, filters: SupplierFi
     company: row.company ? { corporateName: row.company.corporateName, tradeName: row.company.tradeName, cnpj: row.company.cnpj, companyType: row.company.companyType, primaryCnae: row.company.primaryCnae, secondaryCnaes: row.company.secondaryCnaes, documents: byCompany.get(row.company.id) ?? [] } : null,
   }));
 }
+
+
+export async function findSupplierRowById(db: DatabaseExecutor, id: string): Promise<SupplierSourceRow | null> {
+  const [row] = await db.select({
+    id: suppliers.id, category: suppliers.category, businessBranch: suppliers.businessBranch, bankData: suppliers.bankData,
+    certificationsValidUntil: suppliers.certificationsValidUntil, notes: suppliers.notes, status: suppliers.status,
+    person: { id: people.id, fullName: people.fullName, cpf: people.cpf },
+    company: { id: companies.id, corporateName: companies.corporateName, tradeName: companies.tradeName, cnpj: companies.cnpj, companyType: companies.companyType, primaryCnae: companies.primaryCnae, secondaryCnaes: companies.secondaryCnaes },
+  }).from(suppliers)
+    .leftJoin(people, eq(suppliers.personId, people.id))
+    .leftJoin(companies, eq(suppliers.companyId, companies.id))
+    .where(eq(suppliers.id, id))
+    .limit(1);
+
+  if (!row) return null;
+
+  const evidence = row.person || row.company
+    ? await db.select({
+        personId: documents.personId,
+        companyId: documents.companyId,
+        document: { title: documents.title, documentType: documents.documentType, status: documents.status, validUntil: documents.validUntil },
+      })
+      .from(documents)
+      .where(
+        or(
+          row.person ? eq(documents.personId, row.person.id) : undefined,
+          row.company ? eq(documents.companyId, row.company.id) : undefined,
+        ),
+      )
+      .orderBy(asc(documents.validUntil), asc(documents.createdAt))
+    : [];
+
+  return {
+    id: row.id,
+    category: row.category,
+    businessBranch: row.businessBranch,
+    bankData: row.bankData,
+    certificationsValidUntil: row.certificationsValidUntil,
+    notes: row.notes,
+    status: row.status,
+    person: row.person ? { fullName: row.person.fullName, cpf: row.person.cpf, documents: evidence.filter((item) => item.personId === row.person?.id).map((item) => item.document) } : null,
+    company: row.company ? {
+      corporateName: row.company.corporateName,
+      tradeName: row.company.tradeName,
+      cnpj: row.company.cnpj,
+      companyType: row.company.companyType,
+      primaryCnae: row.company.primaryCnae,
+      secondaryCnaes: row.company.secondaryCnaes,
+      documents: evidence.filter((item) => item.companyId === row.company?.id).map((item) => item.document),
+    } : null,
+  };
+}
