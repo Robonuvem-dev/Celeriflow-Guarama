@@ -116,7 +116,7 @@ async function getOmbudsmanOperationalContext(context: AttendanceContext) {
       ...context,
       employee: {
         id: context.user.employeeId || "operador-sistema",
-        name: context.user.nome || "Operador do Sistema",
+        name: context.user.name || "Operador do Sistema",
         departmentId: context.user.departmentId || "depto-central",
         department: { id: context.user.departmentId || "depto-central", name: "Atendimento Geral", isActive: true },
         isActive: true,
