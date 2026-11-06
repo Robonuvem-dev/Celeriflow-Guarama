@@ -1,0 +1,38 @@
+{
+  "startedAt": "2026-11-06T18:09:26.591Z",
+  "repository": "Robonuvem-dev/Celeriflow-Guarama",
+  "sha": "0542151cfdfb32927d1fcaec82c527377a472923",
+  "authenticatedLogin": "Robonuvem-dev",
+  "observations": [
+    {
+      "observedAt": "2026-11-06T18:09:27.470Z",
+      "overallState": "failure",
+      "statuses": [
+        {
+          "context": "Vercel",
+          "state": "failure",
+          "description": "Deployment has failed — run this Vercel CLI command: npx vercel inspect dpl_9hca9mja1f3S6Ux8hPf5nqS7YyoK --logs",
+          "targetUrl": "https://vercel.com/celeriflow-dev/celeriflow-guarama/9hca9mja1f3S6Ux8hPf5nqS7YyoK",
+          "updatedAt": "2026-11-06T00:53:32Z"
+        }
+      ],
+      "checks": [
+        {
+          "name": "verify",
+          "status": "completed",
+          "conclusion": "failure",
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42137701745/job/127629936765"
+        },
+        {
+          "name": "Frotas isolado",
+          "status": "completed",
+          "conclusion": "success",
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42137701745/job/127629936268"
+        }
+      ],
+      "deployments": []
+    }
+  ],
+  "result": "VERCEL_FAILED",
+  "finishedAt": "2026-11-06T18:09:27.473Z"
+}

@@ -1,0 +1,148 @@
+{
+  "packageId": "CHECKUP_APRESENTACAO_2026_V1",
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-06T15:17:26.159Z",
+  "changes": [
+    {
+      "table": "TaxGrave",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:grave:1",
+      "operation": "UPDATE:ownerTaxpayerId"
+    },
+    {
+      "table": "TaxGrave",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:grave:3",
+      "operation": "UPDATE:ownerTaxpayerId"
+    },
+    {
+      "table": "FLEET_ROUTE",
+      "id": "cmw54bvwj000018hyxb4529gc",
+      "operation": "route"
+    },
+    {
+      "table": "FLEET_PLAN",
+      "id": "cmw54bw10000218hygxj1f8th",
+      "operation": "plan"
+    },
+    {
+      "table": "FLEET_WORK_ORDER",
+      "id": "cmw54bw90000418hy9ke0pv3y",
+      "operation": "generateOrder"
+    },
+    {
+      "table": "FLEET_WORK_ORDER",
+      "id": "cmw54bw90000418hy9ke0pv3y",
+      "operation": "startOrder"
+    },
+    {
+      "table": "FLEET_WORK_ORDER",
+      "id": "cmw54bw90000418hy9ke0pv3y",
+      "operation": "completeOrder"
+    },
+    {
+      "table": "FLEET_CONSUMPTION",
+      "id": "cmw54bwsg000a18hy1k7ishup",
+      "operation": "consumption"
+    },
+    {
+      "table": "FLEET_DOCUMENT",
+      "id": "cmw54bwy2000d18hyz75gje25",
+      "operation": "document"
+    },
+    {
+      "table": "FLEET_OCCURRENCE",
+      "id": "cmw54bx2e000f18hyo6rfrlpb",
+      "operation": "occurrence"
+    },
+    {
+      "table": "FLEET_ROUTE",
+      "id": "cmw54bx7l000h18hyqwj1n0np",
+      "operation": "route"
+    },
+    {
+      "table": "FLEET_PLAN",
+      "id": "cmw54bxbm000j18hykakwahel",
+      "operation": "plan"
+    },
+    {
+      "table": "FLEET_WORK_ORDER",
+      "id": "cmw54bxh7000l18hyn92t9rfr",
+      "operation": "generateOrder"
+    },
+    {
+      "table": "FLEET_CONSUMPTION",
+      "id": "cmw54bxli000n18hycy8snzvq",
+      "operation": "consumption"
+    },
+    {
+      "table": "FLEET_DOCUMENT",
+      "id": "cmw54bxr5000q18hyyhzh6gxo",
+      "operation": "document"
+    },
+    {
+      "table": "FLEET_OCCURRENCE",
+      "id": "cmw54bxvk000s18hyypn2vckv",
+      "operation": "occurrence"
+    },
+    {
+      "table": "FLEET_ROUTE",
+      "id": "cmw54by46000u18hyfc2062er",
+      "operation": "route"
+    },
+    {
+      "table": "FLEET_PLAN",
+      "id": "cmw54byd9000w18hyq520qs8o",
+      "operation": "plan"
+    },
+    {
+      "table": "FLEET_WORK_ORDER",
+      "id": "cmw54byu9000y18hyjzgnk56f",
+      "operation": "generateOrder"
+    },
+    {
+      "table": "FLEET_CONSUMPTION",
+      "id": "cmw54bz50001018hy67r7myu8",
+      "operation": "consumption"
+    },
+    {
+      "table": "FLEET_DOCUMENT",
+      "id": "cmw54bzd5001318hymyiv00ap",
+      "operation": "document"
+    },
+    {
+      "table": "FLEET_OCCURRENCE",
+      "id": "cmw54bzia001518hy9n8zhb9v",
+      "operation": "occurrence"
+    },
+    {
+      "table": "HrFunctionalRecord",
+      "id": "cmw54c01x001718hyrf4yye0w",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrFunctionalRecord",
+      "id": "cmw54c195001918hyc6vdi4uv",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrReferenceRecord",
+      "id": "cmw54c1iv001b18hy4y7fkkk0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrPayrollRule",
+      "id": "cmw54c1sk001d18hyrie1x3y4",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrPayrollRule",
+      "id": "cmw54c22z001g18hy12wd50th",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrPayrollRule",
+      "id": "cmw54c2d8001j18hybqz0l0mm",
+      "operation": "INSERT"
+    }
+  ],
+  "portalContents": []
+}

@@ -1,0 +1,649 @@
+{
+  "startedAt": "2026-11-06T13:35:48.838Z",
+  "base": "https://guarama.celeriflow.com.br",
+  "scope": "modules",
+  "mode": "Authenticated GET navigation; no form submissions or business mutations",
+  "cases": [
+    {
+      "pathname": "/portal-servidor",
+      "finalPath": "/portal-servidor",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7158,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor",
+        "Portal do Servidor",
+        "Acesso funcional indisponível"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia",
+      "finalPath": "/transparencia",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7435,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Portal da Transparência — acesso público e gestão"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-cidadao",
+      "finalPath": "/portal-cidadao",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5871,
+      "headings": [
+        "Portal do Cidadão",
+        "Portal do Cidadão",
+        "Portal do Cidadão — Gestão de Conteúdo e Serviços",
+        "Gerenciamento centralizado da presença digital do Município"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras",
+      "finalPath": "/compras",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 6130,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Compras e Contratos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos",
+      "finalPath": "/protocolos",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 8237,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Painel operacional"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh",
+      "finalPath": "/rh",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 6302,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "RH e Folha"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao",
+      "finalPath": "/tributacao",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 8273,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Painel Tributário"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro",
+      "finalPath": "/financeiro",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7743,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Painel Financeiro",
+        "Painel Financeiro"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao",
+      "finalPath": "/educacao",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7033,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Educação",
+        "Acesso Rápido"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/dashboard",
+      "finalPath": "/dashboard",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7486,
+      "headings": [
+        "Módulos do sistema"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao",
+      "finalPath": "/administracao",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5987,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Painel de gestão municipal",
+        "Servidores por secretaria",
+        "Demandas internas",
+        "Entrada de demandas",
+        "Comparativo das secretarias"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/saneamento",
+      "finalPath": "/saneamento",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5860,
+      "headings": [
+        "Saneamento",
+        "Saneamento",
+        "Água e Saneamento",
+        "18500",
+        "55500",
+        "900"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/patrimonio",
+      "finalPath": "/patrimonio",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 6173,
+      "headings": [
+        "Almoxarifado e Patrimônio",
+        "Almoxarifado e Patrimônio",
+        "Almoxarifado e Patrimônio",
+        "Operações do módulo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/social",
+      "finalPath": "/social",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 8021,
+      "headings": [
+        "Assistência Social",
+        "Assistência Social",
+        "Painel da Assistência Social",
+        "Atendimentos realizados",
+        "Eventos SCFV realizados",
+        "Encaminhamentos",
+        "Entregas de benefícios"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/atendimento",
+      "finalPath": "/atendimento",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 6009,
+      "headings": [
+        "Atendimento Central",
+        "Atendimento Central",
+        "Painel de Atendimento",
+        "Ouvidoria",
+        "Atendimentos por setor",
+        "Atendimentos por canal",
+        "Atendimentos por prioridade",
+        "Chamados recentes"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/camara",
+      "finalPath": "/camara",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5528,
+      "headings": [
+        "Câmara Municipal",
+        "Câmara Municipal",
+        "Câmara Municipal",
+        "9",
+        "4",
+        "4",
+        "0"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/cemiterios",
+      "finalPath": "/cemiterios/estrutura",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 8373,
+      "headings": [
+        "Estrutura dos cemitérios"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/cultura",
+      "finalPath": "/cultura",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 4964,
+      "headings": [
+        "Cultura e Lazer",
+        "Cultura e Lazer",
+        "Cultura, Esporte e Lazer",
+        "8",
+        "3",
+        "8"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/frotas",
+      "finalPath": "/frotas",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5558,
+      "headings": [
+        "Frotas — gestão operacional"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/assinatura-digital",
+      "finalPath": "/assinatura-digital",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 6357,
+      "headings": [
+        "GED e Assinatura Digital",
+        "GED e Assinatura Digital",
+        "GED e Assinatura Digital",
+        "Documentos e pastas",
+        "Pesquisa e pastas inteligentes",
+        "Gestão documental",
+        "Modelos",
+        "Assine Agora",
+        "Registros e comprovantes",
+        "Pendentes de assinatura"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/iluminacao-publica",
+      "finalPath": "/iluminacao-publica",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5564,
+      "headings": [
+        "Iluminação Pública",
+        "Iluminação Pública",
+        "Dashboard de Iluminação Pública",
+        "Usuários ativos",
+        "Solicitações registradas",
+        "Ordens concluídas",
+        "Tempo médio de atendimento",
+        "Solicitações por mês",
+        "Situação dos atendimentos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/meio-ambiente",
+      "finalPath": "/meio-ambiente",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5279,
+      "headings": [
+        "Meio Ambiente",
+        "Meio Ambiente",
+        "Painel do Meio Ambiente",
+        "Módulos do Meio Ambiente"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/obras",
+      "finalPath": "/obras",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7813,
+      "headings": [
+        "Obras e Construção Civil",
+        "Obras e Construção Civil",
+        "Obras e Construção Civil",
+        "0",
+        "0",
+        "20"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/planejamento",
+      "finalPath": "/planejamento",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5932,
+      "headings": [
+        "Planejamento e Orçamento",
+        "Planejamento e Orçamento",
+        "Planejamento e Orçamento",
+        "Plano Plurianual — PPA",
+        "Lei de Diretrizes Orçamentárias — LDO",
+        "Lei Orçamentária Anual — LOA"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/saude",
+      "finalPath": "/saude",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7148,
+      "headings": [
+        "Saúde Pública",
+        "Saúde Pública",
+        "Saúde",
+        "Acesso Rápido"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/sst",
+      "finalPath": "/sst",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7184,
+      "headings": [
+        "Segurança e Medicina do Trabalho",
+        "Segurança e Medicina do Trabalho",
+        "Segurança e Medicina do Trabalho",
+        "Acessos integrados disponíveis",
+        "Áreas previstas para a próxima etapa"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/seguranca",
+      "finalPath": "/seguranca",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5836,
+      "headings": [
+        "Segurança e Mobilidade",
+        "Segurança e Mobilidade",
+        "Seguranca e Mobilidade",
+        "Guarda e Equipes",
+        "Ocorrencias",
+        "Rondas e Cameras",
+        "Transito",
+        "Mobilidade e Rotas",
+        "OS e Equipamentos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/suporte-tecnico",
+      "finalPath": "/suporte-tecnico",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 4949,
+      "headings": [
+        "Suporte Técnico Robonuvem",
+        "Central técnica da Robonuvem para a sustentação do CeleriFlow",
+        " Roadmap de capacidades"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/configuracoes",
+      "finalPath": "/configuracoes",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 5375,
+      "headings": [
+        "Configurações",
+        "Configurações",
+        "Configurações e Integrações",
+        "Sim",
+        "28",
+        "5"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    }
+  ],
+  "discoveredDynamicPatterns": 0,
+  "queuedStaticPages": 29,
+  "finishedAt": "2026-11-06T13:39:01.633Z",
+  "summary": {
+    "RESOURCE_ERROR": 29
+  }
+}

@@ -1,0 +1,267 @@
+{
+  "startedAt": "2026-11-06T15:12:32.594Z",
+  "base": "http://localhost:3100",
+  "cases": [
+    {
+      "device": "notebook-1366",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "observations": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "device": "desktop",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "observations": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "device": "desktop",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "observations": {
+        "found": 1,
+        "detailOpened": true,
+        "layout": {
+          "width": 1366,
+          "height": 768,
+          "documentWidth": 1366,
+          "documentHeight": 768,
+          "device": "desktop",
+          "sidebars": 1,
+          "workspaces": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Tabela fiscal com 20 registros, próxima página e menu expandido/recolhido",
+      "observations": {
+        "rows": 20,
+        "page": 2,
+        "expanded": {
+          "width": 1366,
+          "height": 768,
+          "documentWidth": 1366,
+          "documentHeight": 768,
+          "device": "desktop",
+          "sidebars": 1,
+          "workspaces": 1
+        },
+        "collapsed": {
+          "width": 1366,
+          "height": 768,
+          "documentWidth": 1366,
+          "documentHeight": 768,
+          "device": "desktop",
+          "sidebars": 1,
+          "workspaces": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Confirmação tributária abre painel e conserva acesso à configuração",
+      "observations": {
+        "confirmationPanelOpened": true,
+        "configurationLinkPreserved": true
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "observations": {
+        "width": 1280,
+        "height": 720,
+        "documentWidth": 1280,
+        "documentHeight": 720,
+        "device": "desktop",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "observations": {
+        "width": 1280,
+        "height": 720,
+        "documentWidth": 1280,
+        "documentHeight": 720,
+        "device": "desktop",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "observations": {
+        "found": 1,
+        "detailOpened": true,
+        "layout": {
+          "width": 1280,
+          "height": 720,
+          "documentWidth": 1280,
+          "documentHeight": 720,
+          "device": "desktop",
+          "sidebars": 1,
+          "workspaces": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Tabela fiscal com 20 registros, próxima página e menu expandido/recolhido",
+      "observations": {
+        "rows": 20,
+        "page": 2,
+        "expanded": {
+          "width": 1280,
+          "height": 720,
+          "documentWidth": 1280,
+          "documentHeight": 720,
+          "device": "desktop",
+          "sidebars": 1,
+          "workspaces": 1
+        },
+        "collapsed": {
+          "width": 1280,
+          "height": 720,
+          "documentWidth": 1280,
+          "documentHeight": 720,
+          "device": "desktop",
+          "sidebars": 1,
+          "workspaces": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Confirmação tributária abre painel e conserva acesso à configuração",
+      "observations": {
+        "confirmationPanelOpened": true,
+        "configurationLinkPreserved": true
+      },
+      "passed": true
+    },
+    {
+      "device": "tablet",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "observations": {
+        "width": 820,
+        "height": 1180,
+        "documentWidth": 820,
+        "documentHeight": 1180,
+        "device": "tablet",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "tablet",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "observations": {
+        "width": 820,
+        "height": 1180,
+        "documentWidth": 820,
+        "documentHeight": 1180,
+        "device": "tablet",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "tablet",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "observations": {
+        "found": 1,
+        "detailOpened": true,
+        "layout": {
+          "width": 820,
+          "height": 1180,
+          "documentWidth": 820,
+          "documentHeight": 1180,
+          "device": "tablet",
+          "sidebars": 1,
+          "workspaces": 1
+        }
+      },
+      "passed": true
+    },
+    {
+      "device": "phone",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "observations": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "documentHeight": 1186,
+        "device": "phone",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "phone",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "observations": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "documentHeight": 1622,
+        "device": "phone",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "phone",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "observations": {
+        "found": 1,
+        "detailOpened": true,
+        "layout": {
+          "width": 390,
+          "height": 844,
+          "documentWidth": 390,
+          "documentHeight": 844,
+          "device": "phone",
+          "sidebars": 1,
+          "workspaces": 1
+        }
+      },
+      "passed": true
+    }
+  ],
+  "finishedAt": "2026-11-06T15:14:33.840Z",
+  "summary": {
+    "passed": 16,
+    "failed": 0
+  }
+}

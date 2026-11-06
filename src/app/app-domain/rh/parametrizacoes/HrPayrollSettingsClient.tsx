@@ -196,7 +196,7 @@ function dateInputValue(value: string | null) {
 
 function prettyDate(value: string | null) {
   if (!value) return "Sem término";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" }).format(
     new Date(value),
   );
 }
@@ -537,14 +537,14 @@ function Overview({
           <div className="sm:col-span-2">
             <dt className="text-slate-500">Referência legal</dt>
             <dd className="mt-0.5 leading-5 text-slate-800">
-              {settings.ruleSet.legalReference ||
+              {personnelDisplayText(settings.ruleSet.legalReference || "") ||
                 "Não informada — não ativar em produção."}
             </dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-slate-500">Observações</dt>
             <dd className="mt-0.5 leading-5 text-slate-700">
-              {settings.ruleSet.notes || "Sem observações."}
+              {personnelDisplayText(settings.ruleSet.notes || "") || "Sem observações."}
             </dd>
           </div>
         </dl>

@@ -36,7 +36,9 @@ type TaxpayerListRow = Omit<TaxpayerDetails, "person" | "company"> & {
   _count: { realEstates: number; economicRegistrations: number; taxCaseLinks: number };
 };
 export async function readFiscalPeoplePage(database: DatabaseExecutor, q: string, page: number): Promise<{ total: number; taxpayers: TaxpayerListRow[] }> {
-  const predicate = q ? or(ilike(taxpayers.municipalInsc, `%${q}%`), ilike(people.fullName, `%${q}%`), like(people.cpf, `%${q.replace(/\D/g, "")}%`), ilike(companies.corporateName, `%${q}%`), like(companies.cnpj, `%${q.replace(/[^A-Za-z0-9]/g, "")}%`)) : undefined;
+  const cpfQuery = q.replace(/\D/g, "");
+  const cnpjQuery = q.replace(/[^A-Za-z0-9]/g, "");
+  const predicate = q ? or(ilike(taxpayers.municipalInsc, `%${q}%`), ilike(people.fullName, `%${q}%`), cpfQuery ? like(people.cpf, `%${cpfQuery}%`) : undefined, ilike(companies.corporateName, `%${q}%`), cnpjQuery ? like(companies.cnpj, `%${cnpjQuery}%`) : undefined) : undefined;
   const [countRows, rows] = await Promise.all([
     database.select({ total: sql<number>`count(*)::integer` }).from(taxpayers).leftJoin(people, eq(people.id, taxpayers.personId)).leftJoin(companies, eq(companies.id, taxpayers.companyId)).where(predicate),
     database.select({ taxpayer: taxpayers, person: people, company: companies,

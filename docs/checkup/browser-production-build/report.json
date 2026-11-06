@@ -1,0 +1,123 @@
+{
+  "date": "2026-11-06T13:43:46.887Z",
+  "base": "http://localhost:3100",
+  "scope": "Real pages, anonymous browser; login redirects do not validate authenticated content",
+  "cases": [
+    {
+      "pathname": "/portal/construcao-civil/autorizacoes",
+      "finalUrl": "http://localhost:3100/login?returnTo=%2Fportal%2Fconstrucao-civil%2Fautorizacoes",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal/construcao-civil/nova",
+      "finalUrl": "http://localhost:3100/portal/construcao-civil/entrar?returnTo=%2Fportal%2Fconstrucao-civil%2Fnova",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Entrar na minha área",
+        "Menu geral",
+        "Serviços",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal/construcao-civil/pedidos-administrativos",
+      "finalUrl": "http://localhost:3100/login?returnTo=%2Fportal%2Fconstrucao-civil%2Fpedidos-administrativos",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal/convenentes",
+      "finalUrl": "http://localhost:3100/login?returnTo=%2Fportal%2Fconvenentes",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal/departamentos/atestados",
+      "finalUrl": "http://localhost:3100/login?returnTo=%2Fportal%2Fdepartamentos%2Fatestados",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal/portaldatransparencia",
+      "finalUrl": "http://localhost:3100/portal/portaldatransparencia",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Portal da Transparência",
+        "Atendimento ao cidadão",
+        "Receitas e despesas",
+        "Pessoal e diárias",
+        "Compras, contratos e obras",
+        "Bens e recursos públicos",
+        "Planejamento, contas e legislação",
+        "Saúde e educação",
+        "Informação e participação",
+        "Não encontrou o que procura?",
+        "Qual o seu nível de satisfação com esta página?",
+        "Menu geral",
+        "Serviços",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal/licitacoes-e-contratos",
+      "finalUrl": "http://localhost:3100/portal/licitacoes-e-contratos",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Licitações e Contratos",
+        "Menu geral",
+        "Serviços",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/entrar",
+      "finalUrl": "http://localhost:3100/portal-servidor/entrar",
+      "status": 200,
+      "result": "PASS",
+      "headings": [
+        "Portal do Servidor",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": []
+    }
+  ]
+}

@@ -1,6 +1,7 @@
+"use server";
+
 import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 import { transparencyCitizenRequests } from "@/db/schema/citizen-channels";
-"use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";

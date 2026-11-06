@@ -20,7 +20,7 @@ export default async function SolicitacaoDetalhesPage({ params }: { params: Prom
   const context = await getTenantContextForModule("COMPRAS");
   const { user } = context;
   const resolvedParams = await params;
-  const solicitacao = await loadPurchaseRequestDetail(context.database ?? db, resolvedParams.id);
+  const solicitacao = await loadPurchaseRequestDetail(context.database ?? db, decodeURIComponent(resolvedParams.id));
 
   if (!solicitacao) {
     notFound();

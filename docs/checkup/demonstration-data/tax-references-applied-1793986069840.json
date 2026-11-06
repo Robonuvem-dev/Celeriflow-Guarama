@@ -1,0 +1,74 @@
+{
+  "packageId": "CHECKUP_REFERENCIAS_FISCAIS_2026_V1",
+  "mode": "APPLIED",
+  "startedAt": "2026-11-06T17:27:46.093Z",
+  "origin": {
+    "governmentEntityId": "p0-current-exe",
+    "budgetUnitId": "aurora-system-v1:budget-unit:000",
+    "name": "Prefeitura Municipal de Aurora das Veredas"
+  },
+  "changes": [
+    {
+      "kind": "atividade",
+      "code": "ATV-001",
+      "name": "Suporte técnico e manutenção de sistemas",
+      "id": "26edb73e-f6b1-4573-8137-cc83566b80c4"
+    },
+    {
+      "kind": "atividade",
+      "code": "ATV-002",
+      "name": "Assessoria e apoio administrativo",
+      "id": "0583bc3f-997d-44eb-8a13-1eb6f13bfcbd"
+    },
+    {
+      "kind": "procedimento-fiscal",
+      "code": "CAD-001",
+      "name": "Conferência cadastral da atividade econômica",
+      "procedureType": "Revisão cadastral",
+      "id": "64f4a96c-9aaf-41bb-8eeb-551ae637cb1d"
+    },
+    {
+      "kind": "procedimento-fiscal",
+      "code": "CAD-002",
+      "name": "Orientação para atualização da inscrição municipal",
+      "procedureType": "Orientação cadastral",
+      "id": "1c44eb41-db5e-4309-89e5-14148ee0f5aa"
+    },
+    {
+      "kind": "evento-contabil",
+      "code": "EVT-001",
+      "name": "Conferência da receita de serviços",
+      "id": "12a9e1f2-cbd1-4fc9-8047-8f09beba0fa5"
+    },
+    {
+      "kind": "evento-contabil",
+      "code": "EVT-002",
+      "name": "Conciliação da classificação da receita",
+      "id": "a0f2500d-7d2e-473e-847f-ce61ae8805cc"
+    },
+    {
+      "kind": "codigo-tributacao-desif",
+      "code": "CTD-001",
+      "name": "Atendimento e apoio administrativo",
+      "id": "898ffab4-9130-4f5c-8ebf-419656b8dd58"
+    },
+    {
+      "kind": "codigo-tributacao-desif",
+      "code": "CTD-002",
+      "name": "Processamento e organização de informações",
+      "id": "ac1f725b-8e47-4982-81f7-5fc15f21e662"
+    },
+    {
+      "kind": "codigo-tributacao-municipal",
+      "code": "CTM-001",
+      "name": "Serviços de apoio à gestão administrativa",
+      "id": "d0f27424-d5fe-4eaa-8d45-ef4f8fe84f02"
+    },
+    {
+      "kind": "codigo-tributacao-municipal",
+      "code": "CTM-002",
+      "name": "Serviços de suporte em tecnologia da informação",
+      "id": "31eb46f2-d1c2-4fec-8910-02472587c519"
+    }
+  ]
+}

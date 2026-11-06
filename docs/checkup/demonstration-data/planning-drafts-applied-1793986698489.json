@@ -1,0 +1,18 @@
+{
+  "packageId": "CHECKUP_PLANEJAMENTO_MINUTAS_2026_V1",
+  "mode": "APPLIED",
+  "startedAt": "2026-11-06T17:38:17.361Z",
+  "references": {
+    "LDO": "cmw599c0s0001gchymhv20hk1",
+    "LOA": "cmw599c8i0004gchy601v86jw",
+    "hearing": "cmw599cgo0006gchys9gxitbi",
+    "demand": "cmw59cznd0000vkhy8fhgzrb0"
+  },
+  "changes": [
+    {
+      "table": "PlanningCommunityDemand",
+      "id": "cmw59cznd0000vkhy8fhgzrb0",
+      "state": "PENDING"
+    }
+  ]
+}

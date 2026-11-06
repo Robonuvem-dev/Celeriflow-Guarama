@@ -6,6 +6,12 @@ import { resolve } from "node:path";
 
 // Production excludes tooling and tests. Check all of those roots here, while
 // following their normal imports and inheriting the project's strict options.
+// Fresh CI checkouts do not have Next's generated stylesheet/fetch declarations.
+if (!existsSync("next-env.d.ts")) {
+  const generated = spawnSync(process.execPath, [resolve("node_modules/next/dist/bin/next"), "typegen"], { stdio: "inherit" });
+  if (generated.error) throw generated.error;
+  assert.equal(generated.status, 0, "Next.js type generation failed.");
+}
 const directory = resolve(".next/cache/auxiliary-typecheck");
 const inventory = [...new Set(execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).split("\0"))].filter(path => path && existsSync(path)).sort();
 const sources = inventory.filter(path => /\.(?:ts|tsx|mts|cts)$/.test(path) && !path.endsWith(".d.ts") && (/^(?:scripts|tests|prisma)\//.test(path) || /^src\/.*(?:\/__tests__\/|\.(?:test|spec)\.)/.test(path) || path === "drizzle.config.ts"));

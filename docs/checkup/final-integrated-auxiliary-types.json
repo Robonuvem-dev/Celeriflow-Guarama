@@ -1,0 +1,121 @@
+{
+  "recordedAt": "2026-11-06T18:53:57.542Z",
+  "id": "sh_1b22c8a74001H1NaiuQuhSJrlN",
+  "result": "PASS",
+  "records": [
+    {
+      "scope": "AUXILIARY_TYPESCRIPT",
+      "sources": 713,
+      "partitions": 12,
+      "inputsDigest": "68e4adc581a02275b11f1fd55b2c39244f4610a5f73bcc21b1b8bc8ca4fb3e31"
+    },
+    {
+      "partition": 1,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "1519399K",
+      "totalTime": "96.90s"
+    },
+    {
+      "partition": 2,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "1504797K",
+      "totalTime": "41.27s"
+    },
+    {
+      "partition": 3,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "2027869K",
+      "totalTime": "42.25s"
+    },
+    {
+      "partition": 4,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "1508559K",
+      "totalTime": "32.42s"
+    },
+    {
+      "partition": 5,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "1644909K",
+      "totalTime": "41.30s"
+    },
+    {
+      "partition": 6,
+      "roots": 54,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "2680177K",
+      "totalTime": "73.06s"
+    },
+    {
+      "partition": 7,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "2364041K",
+      "totalTime": "84.44s"
+    },
+    {
+      "partition": 8,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "1440821K",
+      "totalTime": "32.88s"
+    },
+    {
+      "partition": 9,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "2193713K",
+      "totalTime": "41.31s"
+    },
+    {
+      "partition": 10,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "1451156K",
+      "totalTime": "31.03s"
+    },
+    {
+      "partition": 11,
+      "roots": 65,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "2364489K",
+      "totalTime": "41.77s"
+    },
+    {
+      "partition": 12,
+      "roots": 9,
+      "exit": 0,
+      "signal": null,
+      "diagnostics": [],
+      "memory": "1240051K",
+      "totalTime": "24.88s"
+    }
+  ]
+}

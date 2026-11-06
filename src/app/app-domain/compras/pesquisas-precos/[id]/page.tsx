@@ -15,7 +15,8 @@ function supplierName(supplier: { person: { fullName: string } | null; company: 
 
 export default async function PriceResearchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
-  const { id } = await params;
+  const { id: routeId } = await params;
+  const id = decodeURIComponent(routeId);
   const [research, suppliers] = await Promise.all([
     loadPriceResearchDetail(context.database ?? db, id),
     listPriceResearchSuppliers(context.database ?? db),

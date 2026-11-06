@@ -1,0 +1,41 @@
+{
+  "packageId": "CHECKUP_FINANCE_SST_2026_V1",
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-06T16:45:57.689Z",
+  "references": {
+    "budgetUnitId": "aurora-system-v1:budget-unit:000",
+    "employeeId": "THIAGO_MORCATTY_DEMO_2026_V1:employee",
+    "professionalPersonId": "aurora-system-v1:person:022",
+    "professionalName": "Renata Barbosa Ferreira",
+    "appropriation": {
+      "id": "aurora-mg-50k-v1:appropriation:001",
+      "code": "AV-2026-1-2",
+      "nature": "Material de consumo"
+    }
+  },
+  "changes": [
+    {
+      "table": "SstScheduleAvailability",
+      "id": "cmw57hp73000090hyq5rvsah1"
+    },
+    {
+      "table": "SstAppointment",
+      "id": "cmw57hpop000290hyhh84mh1y",
+      "state": "BOOKED"
+    },
+    {
+      "table": "SstScheduleAvailability",
+      "id": "cmw57hq0f000490hymq24f7dr"
+    },
+    {
+      "table": "Expense",
+      "id": "cmw57hqm1000690hywu56uso9",
+      "state": "Solicitada"
+    },
+    {
+      "table": "Expense",
+      "id": "cmw57hr34000890hymul3mmvp",
+      "state": "Solicitada"
+    }
+  ]
+}

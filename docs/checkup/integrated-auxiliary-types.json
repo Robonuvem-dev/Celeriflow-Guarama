@@ -1,0 +1,147 @@
+{
+  "recordedAt": "2026-11-06T18:30:58.168Z",
+  "scope": "Initial full check and targeted partition 9 retry after literal type correction; earlier failure retained.",
+  "runs": [
+    {
+      "id": "sh_1b2107003001Pavi94gRrMqUaT",
+      "records": [
+        {
+          "scope": "AUXILIARY_TYPESCRIPT",
+          "sources": 713,
+          "partitions": 12,
+          "inputsDigest": "cdb47baa66bc716d453f4ed885603b198cac9f7a8fcd666ae63c69dfe58f7ad5"
+        },
+        {
+          "partition": 1,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1649271K",
+          "totalTime": "55.29s"
+        },
+        {
+          "partition": 2,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1553860K",
+          "totalTime": "61.49s"
+        },
+        {
+          "partition": 3,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1757465K",
+          "totalTime": "85.13s"
+        },
+        {
+          "partition": 4,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1508044K",
+          "totalTime": "59.05s"
+        },
+        {
+          "partition": 5,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1716957K",
+          "totalTime": "56.67s"
+        },
+        {
+          "partition": 6,
+          "roots": 54,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "2623374K",
+          "totalTime": "77.28s"
+        },
+        {
+          "partition": 7,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "2313602K",
+          "totalTime": "72.47s"
+        },
+        {
+          "partition": 8,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1555604K",
+          "totalTime": "39.17s"
+        },
+        {
+          "partition": 9,
+          "roots": 65,
+          "exit": 2,
+          "signal": null,
+          "diagnostics": [
+            "tests/portal-page-access.test.ts(28,125): error TS2345: Argument of type 'number' is not assignable to parameter of type '401 | 403 | 404 | 423'."
+          ],
+          "memory": "2144405K",
+          "totalTime": "43.63s"
+        },
+        {
+          "partition": 10,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1519466K",
+          "totalTime": "34.49s"
+        },
+        {
+          "partition": 11,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "2073208K",
+          "totalTime": "195.41s"
+        },
+        {
+          "partition": 12,
+          "roots": 9,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "1273869K",
+          "totalTime": "89.94s"
+        }
+      ]
+    },
+    {
+      "id": "sh_1b21e70f5001v87Vkska1AmpID",
+      "records": [
+        {
+          "scope": "AUXILIARY_TYPESCRIPT",
+          "sources": 713,
+          "partitions": 12,
+          "inputsDigest": "3b86ba3450016089a1a4687937c31c298b7037a268c715940b4cb00343674959"
+        },
+        {
+          "partition": 9,
+          "roots": 65,
+          "exit": 0,
+          "signal": null,
+          "diagnostics": [],
+          "memory": "2146040K",
+          "totalTime": "58.59s"
+        }
+      ]
+    }
+  ]
+}

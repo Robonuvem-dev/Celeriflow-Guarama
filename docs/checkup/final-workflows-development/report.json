@@ -1,0 +1,30 @@
+{
+  "startedAt": "2026-11-06T16:27:40.795Z",
+  "base": "http://localhost:3103",
+  "cases": [
+    {
+      "label": "Motor fiscal: tabela, busca e rascunhos das operações",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "passed": false,
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(await page.locator(\"[data-operational-list] table\").isVisible())\n",
+      "errors": [
+        "Failed query: select \"Usuario\".\"id\", \"Usuario\".\"nome\", \"Usuario\".\"email\", \"Usuario\".\"ativo\", \"ConfiguracaoPerfil\".\"id\", \"ConfiguracaoPerfil\".\"nome\", \"ConfiguracaoPerfil\".\"codigo\", \"ConfiguracaoPerfil\".\"ativo\", \"ConfiguracaoPerfil\".\"permissoes\", \"Employee\".\"id\", \"Employee\".\"departmentId\", \"Employee\".\"secretariatId\" from \"Usuario\" inner join \"ConfiguracaoPerfil\" on \"Usuario\".\"perfilId\" = \"ConfiguracaoPerfil\".\"id\" left join \"Employee\" on \"Usuario\".\"employeeId\" = \"Employee\".\"id\" where \"Usuario\".\"firebaseUid\" = $1 limit $2\nparams: NW2drtY7bqPPpmXa1UucoiGBLQb2,1"
+      ]
+    },
+    {
+      "label": "Usuários: tabela e perfis complementares com rascunho preservado",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "passed": false,
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(await page.locator(\"[data-operational-list] table\").isVisible())\n",
+      "errors": [
+        "Failed query: select \"Usuario\".\"id\", \"Usuario\".\"nome\", \"Usuario\".\"email\", \"Usuario\".\"ativo\", \"ConfiguracaoPerfil\".\"id\", \"ConfiguracaoPerfil\".\"nome\", \"ConfiguracaoPerfil\".\"codigo\", \"ConfiguracaoPerfil\".\"ativo\", \"ConfiguracaoPerfil\".\"permissoes\", \"Employee\".\"id\", \"Employee\".\"departmentId\", \"Employee\".\"secretariatId\" from \"Usuario\" inner join \"ConfiguracaoPerfil\" on \"Usuario\".\"perfilId\" = \"ConfiguracaoPerfil\".\"id\" left join \"Employee\" on \"Usuario\".\"employeeId\" = \"Employee\".\"id\" where \"Usuario\".\"firebaseUid\" = $1 limit $2\nparams: NW2drtY7bqPPpmXa1UucoiGBLQb2,1"
+      ]
+    }
+  ]
+}

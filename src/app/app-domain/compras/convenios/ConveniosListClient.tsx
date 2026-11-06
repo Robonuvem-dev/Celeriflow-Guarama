@@ -12,7 +12,7 @@ type CovenantListRow = {
   partyCount: number; measurementCount: number; installmentCount: number;
 };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-function formatDate(value: string) { return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(value)); }
+function formatDate(value: string) { return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", dateStyle: "short" }).format(new Date(value)); }
 const columns = [
   comprasColumn("number", "Convênio", 100, 140, "identifier"), comprasColumn("grantor", "Concedente", 140, 200),
   comprasColumn("object", "Objeto", 160, 280), comprasColumn("start", "Início", 90, 110), comprasColumn("end", "Fim", 90, 110),

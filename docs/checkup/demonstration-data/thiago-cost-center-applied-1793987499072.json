@@ -1,0 +1,21 @@
+{
+  "packageId": "CHECKUP_THIAGO_CUSTOS_2026_V1",
+  "mode": "APPLIED",
+  "startedAt": "2026-11-06T17:51:36.993Z",
+  "changes": [
+    {
+      "contractId": "cmw519rhr0001uohydvgktkea",
+      "beforeVersion": 1,
+      "afterVersion": 2,
+      "costCenterId": "aurora-mg-50k-v1:cost-center:000",
+      "effectiveFrom": "2026-11-06"
+    }
+  ],
+  "verification": {
+    "totalPeople": 1,
+    "totalContracts": 1,
+    "center": "Paço Municipal",
+    "historicalOctoberPreserved": true,
+    "closedStatementPreserved": true
+  }
+}

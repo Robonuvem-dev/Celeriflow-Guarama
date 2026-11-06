@@ -74,7 +74,12 @@
         "FinanceOperationalList.tsx",
         "FinanceTablePanel.tsx",
         "FiscalTermsDraft.tsx",
-        "automacoes/AutomationRuns.tsx"
+        "automacoes/AutomationRuns.tsx",
+        "cheques/page.tsx",
+        "cheques/[id]/page.tsx",
+        "relatorios/cadastros/page.tsx",
+        "relatorios/ensino-decendial/page.tsx",
+        "relatorios/fontes/page.tsx"
       ]
     }
   }

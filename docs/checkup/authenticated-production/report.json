@@ -1,0 +1,6114 @@
+{
+  "startedAt": "2026-11-06T13:38:27.135Z",
+  "base": "https://guarama.celeriflow.com.br",
+  "scope": "all",
+  "mode": "Authenticated GET navigation; no form submissions or business mutations",
+  "cases": [
+    {
+      "pathname": "/portal-servidor",
+      "finalPath": "/portal-servidor",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 5547,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor",
+        "Portal do Servidor",
+        "Acesso funcional indisponível"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia",
+      "finalPath": "/transparencia",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7766,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Portal da Transparência — acesso público e gestão"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-cidadao",
+      "finalPath": "/portal-cidadao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5560,
+      "headings": [
+        "Portal do Cidadão",
+        "Portal do Cidadão",
+        "Portal do Cidadão — Gestão de Conteúdo e Serviços",
+        "Gerenciamento centralizado da presença digital do Município"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras",
+      "finalPath": "/compras",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5088,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Compras e Contratos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos",
+      "finalPath": "/protocolos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6683,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Painel operacional"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh",
+      "finalPath": "/rh",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5817,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "RH e Folha"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao",
+      "finalPath": "/tributacao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7941,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Painel Tributário"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro",
+      "finalPath": "/financeiro",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6662,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Painel Financeiro",
+        "Painel Financeiro"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao",
+      "finalPath": "/educacao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7840,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Educação",
+        "Acesso Rápido"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/dashboard",
+      "finalPath": "/dashboard",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6586,
+      "headings": [
+        "Módulos do sistema"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao",
+      "finalPath": "/administracao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5588,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Painel de gestão municipal",
+        "Servidores por secretaria",
+        "Demandas internas",
+        "Entrada de demandas",
+        "Comparativo das secretarias"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/saneamento",
+      "finalPath": "/saneamento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5754,
+      "headings": [
+        "Saneamento",
+        "Saneamento",
+        "Água e Saneamento",
+        "18500",
+        "55500",
+        "900"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/patrimonio",
+      "finalPath": "/patrimonio",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5901,
+      "headings": [
+        "Almoxarifado e Patrimônio",
+        "Almoxarifado e Patrimônio",
+        "Almoxarifado e Patrimônio",
+        "Operações do módulo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/social",
+      "finalPath": "/social",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7739,
+      "headings": [
+        "Assistência Social",
+        "Assistência Social",
+        "Painel da Assistência Social",
+        "Atendimentos realizados",
+        "Eventos SCFV realizados",
+        "Encaminhamentos",
+        "Entregas de benefícios"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/atendimento",
+      "finalPath": "/atendimento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6029,
+      "headings": [
+        "Atendimento Central",
+        "Atendimento Central",
+        "Painel de Atendimento",
+        "Ouvidoria",
+        "Atendimentos por setor",
+        "Atendimentos por canal",
+        "Atendimentos por prioridade",
+        "Chamados recentes"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/camara",
+      "finalPath": "/camara",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5346,
+      "headings": [
+        "Câmara Municipal",
+        "Câmara Municipal",
+        "Câmara Municipal",
+        "9",
+        "4",
+        "4",
+        "0"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/cemiterios",
+      "finalPath": "/cemiterios/estrutura",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7727,
+      "headings": [
+        "Estrutura dos cemitérios"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/cultura",
+      "finalPath": "/cultura",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5601,
+      "headings": [
+        "Cultura e Lazer",
+        "Cultura e Lazer",
+        "Cultura, Esporte e Lazer",
+        "8",
+        "3",
+        "8"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/frotas",
+      "finalPath": "/frotas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5516,
+      "headings": [
+        "Frotas — gestão operacional"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/assinatura-digital",
+      "finalPath": "/assinatura-digital",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7122,
+      "headings": [
+        "GED e Assinatura Digital",
+        "GED e Assinatura Digital",
+        "GED e Assinatura Digital",
+        "Documentos e pastas",
+        "Pesquisa e pastas inteligentes",
+        "Gestão documental",
+        "Modelos",
+        "Assine Agora",
+        "Registros e comprovantes",
+        "Pendentes de assinatura"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/iluminacao-publica",
+      "finalPath": "/iluminacao-publica",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5164,
+      "headings": [
+        "Iluminação Pública",
+        "Iluminação Pública",
+        "Dashboard de Iluminação Pública",
+        "Usuários ativos",
+        "Solicitações registradas",
+        "Ordens concluídas",
+        "Tempo médio de atendimento",
+        "Solicitações por mês",
+        "Situação dos atendimentos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/meio-ambiente",
+      "finalPath": "/meio-ambiente",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4612,
+      "headings": [
+        "Meio Ambiente",
+        "Meio Ambiente",
+        "Painel do Meio Ambiente",
+        "Módulos do Meio Ambiente"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/obras",
+      "finalPath": "/obras",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6167,
+      "headings": [
+        "Obras e Construção Civil",
+        "Obras e Construção Civil",
+        "Obras e Construção Civil",
+        "0",
+        "0",
+        "20"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/planejamento",
+      "finalPath": "/planejamento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5433,
+      "headings": [
+        "Planejamento e Orçamento",
+        "Planejamento e Orçamento",
+        "Planejamento e Orçamento",
+        "Plano Plurianual — PPA",
+        "Lei de Diretrizes Orçamentárias — LDO",
+        "Lei Orçamentária Anual — LOA"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/saude",
+      "finalPath": "/saude",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8384,
+      "headings": [
+        "Saúde Pública",
+        "Saúde Pública",
+        "Saúde",
+        "Acesso Rápido"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/sst",
+      "finalPath": "/sst",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6171,
+      "headings": [
+        "Segurança e Medicina do Trabalho",
+        "Segurança e Medicina do Trabalho",
+        "Segurança e Medicina do Trabalho",
+        "Acessos integrados disponíveis",
+        "Áreas previstas para a próxima etapa"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/seguranca",
+      "finalPath": "/seguranca",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5328,
+      "headings": [
+        "Segurança e Mobilidade",
+        "Segurança e Mobilidade",
+        "Seguranca e Mobilidade",
+        "Guarda e Equipes",
+        "Ocorrencias",
+        "Rondas e Cameras",
+        "Transito",
+        "Mobilidade e Rotas",
+        "OS e Equipamentos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/suporte-tecnico",
+      "finalPath": "/suporte-tecnico",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4646,
+      "headings": [
+        "Suporte Técnico Robonuvem",
+        "Central técnica da Robonuvem para a sustentação do CeleriFlow",
+        " Roadmap de capacidades"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/configuracoes",
+      "finalPath": "/configuracoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5917,
+      "headings": [
+        "Configurações",
+        "Configurações",
+        "Configurações e Integrações",
+        "Sim",
+        "28",
+        "5"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/aniversariantes",
+      "finalPath": "/portal-servidor/aniversariantes",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 6182,
+      "headings": [
+        "Aniversariantes"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/atendimento",
+      "finalPath": "/portal-servidor/atendimento",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 6432,
+      "headings": [
+        "Locais de atendimento"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/avaliacoes",
+      "finalPath": "/portal-servidor/avaliacoes",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 6446,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/banco-horas",
+      "finalPath": "/portal-servidor/banco-horas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6401,
+      "headings": [
+        "Meu banco de horas"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/beneficios",
+      "finalPath": "/portal-servidor/beneficios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7936,
+      "headings": [
+        "Meus benefícios"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/biblioteca",
+      "finalPath": "/portal-servidor/biblioteca",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 9340,
+      "headings": [
+        "Documentos, normas e manuais"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/capacitacao",
+      "finalPath": "/portal-servidor/capacitacao",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 5264,
+      "headings": [
+        "Minha capacitação"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/consignacoes",
+      "finalPath": "/portal-servidor/consignacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7876,
+      "headings": [
+        "Minhas consignações"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/credito",
+      "finalPath": "/portal-servidor/credito",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6490,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/demonstrativos",
+      "finalPath": "/portal-servidor/demonstrativos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6840,
+      "headings": [
+        "Demonstrativos completos"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/documentos",
+      "finalPath": "/portal-servidor/documentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6813,
+      "headings": [
+        "Documentos e assinaturas"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/documentos-funcionais",
+      "finalPath": "/portal-servidor/documentos-funcionais",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 7217,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/emissoes",
+      "finalPath": "/portal-servidor/emissoes",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 6569,
+      "headings": [
+        "Emissões funcionais"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/ferias",
+      "finalPath": "/portal-servidor/ferias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5915,
+      "headings": [
+        "Férias e afastamentos"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/ficha-funcional",
+      "finalPath": "/portal-servidor/ficha-funcional",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6621,
+      "headings": [
+        "Minha ficha funcional"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/folha",
+      "finalPath": "/portal-servidor/folha",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6659,
+      "headings": [
+        "Demonstrativo de folha"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/licenca-premio",
+      "finalPath": "/portal-servidor/licenca-premio",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6374,
+      "headings": [
+        "Minha licença-prêmio"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/margem",
+      "finalPath": "/portal-servidor/margem",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5779,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/ponto",
+      "finalPath": "/portal-servidor/ponto",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6491,
+      "headings": [
+        "Meu espelho de ponto"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/ponto/registro",
+      "finalPath": "/portal-servidor/ponto/registro",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 5247,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/protocolos",
+      "finalPath": "/portal-servidor/protocolos",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 7108,
+      "headings": [
+        "Meus protocolos funcionais"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/recadastramento",
+      "finalPath": "/portal-servidor/recadastramento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5700,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/relatorios",
+      "finalPath": "/portal-servidor/relatorios",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 5917,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/seguranca",
+      "finalPath": "/portal-servidor/seguranca",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 5466,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/servicos",
+      "finalPath": "/portal-servidor/servicos",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 5516,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/solicitacoes-rh",
+      "finalPath": "/portal-servidor/solicitacoes-rh",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6056,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/sst/agenda",
+      "finalPath": "/portal-servidor/sst/agenda",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "durationMs": 6123,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/sst/cat",
+      "finalPath": "/portal-servidor/sst/cat",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5545,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/sst/cipa",
+      "finalPath": "/portal-servidor/sst/cipa",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5816,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/sst/planos",
+      "finalPath": "/portal-servidor/sst/planos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5339,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/portal-servidor/sst/relatorios",
+      "finalPath": "/portal-servidor/sst/relatorios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5778,
+      "headings": [
+        "Portal do Servidor",
+        "Portal do Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/acessos",
+      "finalPath": "/transparencia/acessos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6229,
+      "headings": [
+        "Inventário e acessos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/apresentacao",
+      "finalPath": "/transparencia/apresentacao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6479,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Apresentação e navegação pública",
+        "Abertura e preferências",
+        "Seções, ordem e fundamentos legais",
+        "Destinos complementares"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/avaliacoes",
+      "finalPath": "/transparencia/avaliacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5011,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Avaliações de usabilidade das páginas",
+        "0 avaliação(ões)",
+        "Comentários e contexto"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/banners",
+      "finalPath": "/transparencia/banners",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5620,
+      "headings": [
+        "Banners"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/contratos",
+      "finalPath": "/transparencia/contratos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4848,
+      "headings": [
+        "Contratos públicos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/diario-oficial",
+      "finalPath": "/transparencia/diario-oficial",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5431,
+      "headings": [
+        "Diário Oficial"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/diario-oficial/novo",
+      "finalPath": "/transparencia/diario-oficial/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5932,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Nova edição"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/fontes",
+      "finalPath": "/transparencia/fontes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6255,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Fontes nativas e escopo público",
+        "Últimos 100 vínculos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/licitacoes",
+      "finalPath": "/transparencia/licitacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5461,
+      "headings": [
+        "Licitações abertas"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/noticias",
+      "finalPath": "/transparencia/noticias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4728,
+      "headings": [
+        "Notícias"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/noticias/novo",
+      "finalPath": "/transparencia/noticias/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6025,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Nova notícia"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/paginas",
+      "finalPath": "/transparencia/paginas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5542,
+      "headings": [
+        "Páginas institucionais"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/paginas/novo",
+      "finalPath": "/transparencia/paginas/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6337,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Nova página"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/pntp",
+      "finalPath": "/transparencia/pntp",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5762,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "PNTP 2026 — matriz oficial e evidências"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/publicacoes",
+      "finalPath": "/transparencia/publicacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6006,
+      "headings": [
+        "Documentos públicos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/transparencia/solicitacoes",
+      "finalPath": "/transparencia/solicitacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5234,
+      "headings": [
+        "Portal e Transparência",
+        "Portal e Transparência",
+        "Pedidos, prazos e recursos do cidadão",
+        "2026-C435C98579CD · prefeitura · RECLAMACAO · RECEBIDO",
+        "2026-9F1F98C72032 · prefeitura · DENUNCIA · RECEBIDO",
+        "2026-62A5873A1346 · prefeitura · RECLAMACAO · RECEBIDO",
+        "2026-3B59F4F9B982 · prefeitura · ESIC · RECEBIDO",
+        "2026-1D396D22CA2D · prefeitura · DENUNCIA · RECEBIDO"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 11,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/cadastros",
+      "finalPath": "/compras/cadastros",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8211,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Cadastros de Compras e Licitação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/cadastros/crc/relatorio",
+      "finalPath": "/compras/cadastros/crc/relatorio",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5672,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Totalização de CRC por período"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/catalogo",
+      "finalPath": "/compras/catalogo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4858,
+      "headings": [
+        "Catálogo de Itens"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/contratos",
+      "finalPath": "/compras/contratos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5671,
+      "headings": [
+        "Gestão de Contratos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/contratos/novo",
+      "finalPath": "/compras/contratos/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6477,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Formalizar Novo Contrato"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/convenios",
+      "finalPath": "/compras/convenios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4660,
+      "headings": [
+        "Gestão de Convênios"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/convenios/novo",
+      "finalPath": "/compras/convenios/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5872,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Novo Convênio"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/dispensas/novo",
+      "finalPath": "/compras/dispensas/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5771,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Nova Contratação Direta"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/exportacoes",
+      "finalPath": "/compras/exportacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5460,
+      "headings": [
+        "Pacotes de Exportação de Compras"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/licitacoes",
+      "finalPath": "/compras/licitacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5517,
+      "headings": [
+        "Licitações e dispensas"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/licitacoes/novo",
+      "finalPath": "/compras/licitacoes/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5089,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Nova Licitação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/licitacoes/portal",
+      "finalPath": "/compras/licitacoes/portal",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4729,
+      "headings": [
+        "Portal do fornecedor"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/licitacoes/registro-precos-externo",
+      "finalPath": "/compras/licitacoes/registro-precos-externo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 18989,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Processos de Registro de Preços Externo (Adesão/Carona)",
+        "Processos Registrados (2)",
+        "Consórcio Intermunicipal de Saúde do Alto Tietê (CISAT)"
+      ],
+      "operationalShell": false,
+      "tables": 2,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/pesquisas-precos",
+      "finalPath": "/compras/pesquisas-precos",
+      "status": 200,
+      "result": "ERROR",
+      "durationMs": 6707,
+      "headings": [
+        "Pesquisas de Preços"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/pesquisas-precos/nova",
+      "finalPath": "/compras/pesquisas-precos/nova",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5187,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Nova Pesquisa de Preços",
+        "Origem e prazo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/planejamento",
+      "finalPath": "/compras/planejamento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5437,
+      "headings": [
+        "Planejamento de Compras",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/planejamento/novo",
+      "finalPath": "/compras/planejamento/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5784,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Novo planejamento de compra"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/processos",
+      "finalPath": "/compras/processos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6653,
+      "headings": [
+        "Processos de Compra"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/processos/novo",
+      "finalPath": "/compras/processos/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5643,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Novo Processo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/recebimentos",
+      "finalPath": "/compras/recebimentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5871,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Recebimentos de Compra",
+        "Recebimentos recentes"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/solicitacoes",
+      "finalPath": "/compras/solicitacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8844,
+      "headings": [
+        "Solicitações de Compra"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/compras/solicitacoes/novo",
+      "finalPath": "/compras/solicitacoes/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5103,
+      "headings": [
+        "Compras e Contratos",
+        "Compras e Contratos",
+        "Nova Solicitação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/acompanhamento",
+      "finalPath": "/protocolos/acompanhamento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8338,
+      "headings": [
+        "Acompanhamento"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/arquivados",
+      "finalPath": "/protocolos/arquivados",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5413,
+      "headings": [
+        "Processos arquivados"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/assinaturas",
+      "finalPath": "/protocolos/assinaturas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5826,
+      "headings": [
+        "Assinaturas pendentes"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/busca",
+      "finalPath": "/protocolos/busca",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7018,
+      "headings": [
+        "Buscar processos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/cadastros",
+      "finalPath": "/protocolos/cadastros",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5516,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Cadastros de processos — Subassuntos",
+        "Novo cadastro",
+        "Registros (0)"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/consultas-construcao-civil",
+      "finalPath": "/protocolos/consultas-construcao-civil",
+      "status": 404,
+      "result": "ERROR",
+      "durationMs": 4588,
+      "headings": [
+        "404",
+        "This page could not be found."
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": [
+        {
+          "pathname": "/protocolos/consultas-construcao-civil",
+          "status": 404,
+          "resourceType": "document"
+        }
+      ]
+    },
+    {
+      "pathname": "/protocolos/estrutura",
+      "finalPath": "/protocolos/estrutura",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4351,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Estrutura de Atendimento e Processos",
+        "Unidades Administrativas",
+        "Setores e Responsáveis"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 57,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/notificacoes",
+      "finalPath": "/protocolos/notificacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5146,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Notificações internas"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/ouvidoria",
+      "finalPath": "/protocolos/ouvidoria",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6092,
+      "headings": [
+        "Ouvidoria"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/ouvidoria/nova",
+      "finalPath": "/protocolos/ouvidoria/nova",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6037,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Nova Manifestação",
+        "1. Classificação e Canal de Entrada",
+        "2. Relato / Descrição da Manifestação",
+        "3. Sigilo e Identificação do Manifestante"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/processos",
+      "finalPath": "/protocolos/processos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8915,
+      "headings": [
+        "Protocolos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/processos/novo",
+      "finalPath": "/protocolos/processos/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6588,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Novo Protocolo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/relatorios",
+      "finalPath": "/protocolos/relatorios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5689,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Relatórios de Protocolos",
+        "Por status",
+        "Por tipo",
+        "Por setor atual"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/servicos",
+      "finalPath": "/protocolos/servicos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5995,
+      "headings": [
+        "Serviços e Autoatendimento"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/servicos/acessos",
+      "finalPath": "/protocolos/servicos/acessos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5445,
+      "headings": [
+        "Protocolos e Processos",
+        "Protocolos e Processos",
+        "Conferência de acesso ao Autoatendimento",
+        "PROC-2026-000001 — thiago.morcatty@gmail.com",
+        "PROC-2026-000007 — 2011bernardoalves@gmail.com"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/protocolos/servicos/solicitacoes",
+      "finalPath": "/protocolos/servicos/solicitacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5817,
+      "headings": [
+        "Solicitações de serviços"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/adiantamentos",
+      "finalPath": "/rh/adiantamentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6446,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Adiantamentos — concessão e prestação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/arquivos-bancarios",
+      "finalPath": "/rh/arquivos-bancarios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 10525,
+      "headings": [
+        "Arquivos bancários de RH"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/atividades-funcionais",
+      "finalPath": "/rh/atividades-funcionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6797,
+      "headings": [
+        "Capacitação e avaliações funcionais"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/atos",
+      "finalPath": "/rh/atos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8747,
+      "headings": [
+        "Atos de Pessoal"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/atos/novo",
+      "finalPath": "/rh/atos/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6677,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Registrar Ato de Pessoal"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/beneficios",
+      "finalPath": "/rh/beneficios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6026,
+      "headings": [
+        "Benefícios"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/beneficios/novo",
+      "finalPath": "/rh/beneficios/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6626,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Novo Benefício"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/cadastros",
+      "finalPath": "/rh/cadastros",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 12803,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Cadastros de RH · Feriados"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/concursos",
+      "finalPath": "/rh/concursos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6266,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Concursos e processos seletivos",
+        "0 inscrições no escopo autorizado"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/consignacoes",
+      "finalPath": "/rh/consignacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8800,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Contratos e parcelas de consignação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 5,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/dependentes",
+      "finalPath": "/rh/dependentes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6889,
+      "headings": [
+        "Dependentes"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/dependentes/novo",
+      "finalPath": "/rh/dependentes/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 13410,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Cadastrar Dependente"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/diarias",
+      "finalPath": "/rh/diarias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6130,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Diárias — solicitação, autorização e prestação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/documentos",
+      "finalPath": "/rh/documentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7336,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Contratos e decretos por servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/emissoes-funcionais",
+      "finalPath": "/rh/emissoes-funcionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5739,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Publicações funcionais do RH"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/esocial",
+      "finalPath": "/rh/esocial",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 18615,
+      "headings": [
+        "eSocial · preparação de RH/Folha"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/ferias",
+      "finalPath": "/rh/ferias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8977,
+      "headings": [
+        "Férias"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/ferias/novo",
+      "finalPath": "/rh/ferias/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5389,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Programar Férias"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/folha",
+      "finalPath": "/rh/folha",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8247,
+      "headings": [
+        "Folha de Pagamento"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/folha/eventos",
+      "finalPath": "/rh/folha/eventos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8364,
+      "headings": [
+        "Eventos da Folha"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/folha/eventos/novo",
+      "finalPath": "/rh/folha/eventos/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5637,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Novo Evento"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/folha/novo",
+      "finalPath": "/rh/folha/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5421,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Nova Folha"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/licencas",
+      "finalPath": "/rh/licencas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5625,
+      "headings": [
+        "Licenças e Afastamentos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/licencas/novo",
+      "finalPath": "/rh/licencas/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7516,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Registrar Licença/Afastamento"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/ocorrencias",
+      "finalPath": "/rh/ocorrencias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7680,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Ocorrências funcionais"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/operacoes",
+      "finalPath": "/rh/operacoes",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 18855,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Operações de RH e Folha"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 9,
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": [
+        {
+          "pathname": "/api/rh/relatorios",
+          "status": 500,
+          "resourceType": "fetch"
+        }
+      ]
+    },
+    {
+      "pathname": "/rh/operacoes/medias",
+      "finalPath": "/rh/operacoes/medias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7022,
+      "headings": [
+        "Memória de médias de remuneração"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/parametrizacoes",
+      "finalPath": "/rh/parametrizacoes",
+      "status": 200,
+      "result": "ERROR",
+      "durationMs": 7492,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Parametrizações de RH e Folha",
+        "Conjunto de regras",
+        "Cobertura configurada"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/pensoes",
+      "finalPath": "/rh/pensoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7767,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Pensões alimentícias — configuração e cálculo",
+        "Vereda das Auroras — pessoal e folha 2025 · cmvzf0epn0000kghyyr2c2m3w",
+        "Vereda das Auroras — pessoal e folha 2026 · cmvz9de6e0000q4hy8fa3n4t5",
+        "Contratos e identidades disponíveis para os modelos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/poc",
+      "finalPath": "/rh/parametrizacoes",
+      "status": 200,
+      "result": "ERROR",
+      "durationMs": 8971,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Parametrizações de RH e Folha",
+        "Conjunto de regras",
+        "Cobertura configurada"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/ponto",
+      "finalPath": "/rh/ponto",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 10242,
+      "headings": [
+        "Registro de Ponto"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/ponto/novo",
+      "finalPath": "/rh/ponto/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6294,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Registrar Ponto"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/portal-conteudos",
+      "finalPath": "/rh/portal-conteudos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5865,
+      "headings": [
+        "Locais e documentos do Portal",
+        "Locais e biblioteca do Portal do Servidor"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/portal-funcional",
+      "finalPath": "/rh/portal-funcional",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7048,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Gestão do Portal funcional",
+        "Emissões no escopo — 0 no filtro"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 6,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/processamentos-funcionais",
+      "finalPath": "/rh/processamentos-funcionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7796,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Processamentos e direitos funcionais"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/publicacao-funcional",
+      "finalPath": "/rh/publicacao-funcional",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8075,
+      "headings": [
+        "Disponibilização funcional da folha"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/quadro-cargos",
+      "finalPath": "/rh/quadro-cargos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6593,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Quadro de cargos, vagas e níveis"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/quadro-cargos/historico-legal",
+      "finalPath": "/rh/quadro-cargos/historico-legal",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6683,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "RH — histórico legal de cargos",
+        "Histórico aditivo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/recadastramento",
+      "finalPath": "/rh/recadastramento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6703,
+      "headings": [
+        "Campanhas de recadastramento"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/recadastramento/configurar",
+      "finalPath": "/rh/recadastramento/configurar",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7248,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Configurar campanha de recadastramento"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/registros-funcionais",
+      "finalPath": "/rh/registros-funcionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6955,
+      "headings": [
+        "Registros funcionais"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/relatorios",
+      "finalPath": "/rh/relatorios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8787,
+      "headings": [
+        "Relatórios de RH"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/requerimentos-funcionais",
+      "finalPath": "/rh/requerimentos-funcionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7082,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Requerimentos funcionais protocolados"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/servicos-funcionais",
+      "finalPath": "/rh/servicos-funcionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7192,
+      "headings": [
+        "Serviços funcionais do Portal"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/servidores",
+      "finalPath": "/rh/servidores",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9598,
+      "headings": [
+        "Servidores"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/servidores/novo",
+      "finalPath": "/rh/servidores/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6510,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Novo Servidor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/rh/solicitacoes",
+      "finalPath": "/rh/solicitacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6931,
+      "headings": [
+        "RH e Folha",
+        "RH e Folha",
+        "Solicitações do Portal ao RH"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/agrupamentos",
+      "finalPath": "/tributacao/agrupamentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7645,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Agrupamento de cadastros duplicados",
+        "Últimos agrupamentos"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/alvaras",
+      "finalPath": "/tributacao/alvaras",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7105,
+      "headings": [
+        "Alvarás e licenças"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/alvaras/configurados",
+      "finalPath": "/tributacao/alvaras/configurados",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9235,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Alvarás · configurações anuais e emissão",
+        "Consulta, reimpressão e autenticidade",
+        "Bloqueios cadastrais e emissão no portal",
+        "Assinatura digital do alvará"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/avaliacoes",
+      "finalPath": "/tributacao/avaliacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6987,
+      "headings": [
+        "Memórias de avaliação",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/avaliacoes/simulacao",
+      "finalPath": "/tributacao/avaliacoes/simulacao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7647,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Prévia individual e englobamento de unidades"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/base-territorial",
+      "finalPath": "/tributacao/base-territorial",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5915,
+      "headings": [
+        "Base territorial",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/bi-tributario",
+      "finalPath": "/tributacao/bi-tributario",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7496,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "BI Tributário",
+        "Arrecadação por tributo (previsto)",
+        "Arrecadação por tributo (realizado)",
+        "Tendência mensal de pagamentos",
+        "Tendência mensal do ISS apurado",
+        "Dívida ativa por situação",
+        "Dívida ativa por origem",
+        "Parcelamentos por situação",
+        "IPTU por zona fiscal",
+        "IPTU por uso do imóvel",
+        "ISS por atividade",
+        "Execução fiscal por situação",
+        "Protesto por situação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/calendarios",
+      "finalPath": "/tributacao/calendarios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6387,
+      "headings": [
+        "Calendário de cotas e parcelas"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/cemiterios",
+      "finalPath": "/cemiterios/estrutura",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 12439,
+      "headings": [
+        "Estrutura dos cemitérios"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/certidoes",
+      "finalPath": "/tributacao/certidoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6890,
+      "headings": [
+        "Certidões e situação fiscal"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/cobranca",
+      "finalPath": "/tributacao/cobranca",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6039,
+      "headings": [
+        "Cobrança e benefícios",
+        "Seleção e carteira",
+        "Régua, agenda e canais",
+        "Carteiras e histórico",
+        "Ranking de acompanhamento"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/comparativo-anual",
+      "finalPath": "/tributacao/comparativo-anual",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 18563,
+      "headings": [
+        "Comparativo anual",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Comparativo anual — IPTU, ISS e demais receitas tributárias"
+      ],
+      "operationalShell": true,
+      "tables": 2,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 ()"
+      ],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": [
+        {
+          "pathname": "/tributacao/comparativo-anual/exportar",
+          "status": 400,
+          "resourceType": "fetch"
+        }
+      ]
+    },
+    {
+      "pathname": "/tributacao/configuracoes-cadastrais",
+      "finalPath": "/tributacao/configuracoes-cadastrais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8926,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Catálogos e formulários fiscais",
+        "Configurar catálogo",
+        "Relacionar e preencher"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/configuracoes-cadastrais/pgv-lote",
+      "finalPath": "/tributacao/configuracoes-cadastrais/pgv-lote",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8792,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Alteração geral da planta genérica de valores"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/declaracao-cartoes",
+      "finalPath": "/tributacao/declaracao-cartoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5600,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Declaração das Administradoras de Cartões de Crédito e Débito"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/declaracoes-complementares",
+      "finalPath": "/tributacao/declaracoes-complementares",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5403,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Declarações complementares — diversos e cartórios",
+        "Cadastrar declaração"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/divida",
+      "finalPath": "/tributacao/divida",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7934,
+      "headings": [
+        "Dívida ativa"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/divida-ativa",
+      "finalPath": "/tributacao/divida-ativa",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7019,
+      "headings": [
+        "Dívida ativa, protesto e execução",
+        "Dívida Ativa, Protesto e Execução",
+        "Débitos elegíveis → validar → inscrever",
+        "Inscrição manual / arquivo",
+        "Suspensão com motivo e prazo"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/domicilio-tributario",
+      "finalPath": "/tributacao/domicilio-tributario",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6868,
+      "headings": [
+        "Domicílio tributário eletrônico"
+      ],
+      "operationalShell": true,
+      "tables": 2,
+      "forms": 4,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/economico",
+      "finalPath": "/tributacao/economico",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6529,
+      "headings": [
+        "Cadastro econômico",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/economico/alteracao-geral",
+      "finalPath": "/tributacao/economico/alteracao-geral",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4211,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Alteração geral do cadastro econômico",
+        "Campos para alterar na seleção",
+        "Alteração geral dos demais dados do perfil e formulários"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 4,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/economico/atividades",
+      "finalPath": "/tributacao/economico/atividades",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9060,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Atividades econômicas · CNAE, serviços e CBO",
+        "Unificar atividades econômicas"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/economico/consulta",
+      "finalPath": "/tributacao/economico/consulta",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6873,
+      "headings": [
+        "Consulta econômica",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/economico/contadores",
+      "finalPath": "/tributacao/economico/contadores",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6778,
+      "headings": [
+        "Cadastro de contadores"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/economico/eventos-veiculos",
+      "finalPath": "/tributacao/economico/eventos-veiculos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8531,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Eventos, alvarás de evento e veículos econômicos",
+        "Cadastro de eventos",
+        "Veículos vinculados às empresas"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 4,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/economico/novo",
+      "finalPath": "/tributacao/economico/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5851,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Incluir empresa com perfil completo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/fiscalizacao",
+      "finalPath": "/tributacao/fiscalizacao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7170,
+      "headings": [
+        "Fiscalização tributária",
+        "Novo planejamento"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/fiscalizacao/gestao",
+      "finalPath": "/tributacao/fiscalizacao/gestao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6801,
+      "headings": [
+        "Gestão e relatórios de ordens fiscais",
+        "Gestão e relatórios da fiscalização",
+        "Documentos (0)"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/fontes-cadastrais",
+      "finalPath": "/tributacao/fontes-cadastrais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9374,
+      "headings": [
+        "Fontes cadastrais"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/guias",
+      "finalPath": "/tributacao/guias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6480,
+      "headings": [
+        "Guias e arrecadação",
+        "Estorno de arrecadação tributária",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/imoveis",
+      "finalPath": "/tributacao/imoveis",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7401,
+      "headings": [
+        "Imóveis — IPTU",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/imoveis/alteracao-geral",
+      "finalPath": "/tributacao/imoveis/alteracao-geral",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6040,
+      "headings": [
+        "Alteração geral imobiliária",
+        "Alteração geral do cadastro imobiliário e BCI"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/imoveis/configuracao",
+      "finalPath": "/tributacao/imoveis/configuracao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5283,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Inscrição e controles imobiliários"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/imoveis/novo",
+      "finalPath": "/tributacao/imoveis/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7926,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Incluir imóvel com perfil completo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/imoveis/operacoes",
+      "finalPath": "/tributacao/imoveis/operacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8483,
+      "headings": [
+        "Operações imobiliárias",
+        "Operações do cadastro imobiliário",
+        "Alteração geral pelo filtro",
+        "Copiar cadastro",
+        "Desmembrar / remembrar"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 6,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/iss-bancario",
+      "finalPath": "/tributacao/iss-bancario",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6436,
+      "headings": [
+        "ISS bancário / DES-IF"
+      ],
+      "operationalShell": true,
+      "tables": 2,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/gestao",
+      "finalPath": "/tributacao/iss-bancario/gestao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7556,
+      "headings": [
+        "Gestão e relatórios bancários",
+        "DES-IF — declarações e autos",
+        "Exportar relatórios com os filtros atuais",
+        "Declarações recebidas (0; até 500 registros)",
+        "Autos e acompanhamento administrativo (0; até 500 registros)"
+      ],
+      "operationalShell": true,
+      "tables": 2,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/gestao/downloads",
+      "finalPath": "/tributacao/iss-bancario/gestao/downloads",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7686,
+      "headings": [
+        "Manuais e tabelas bancárias",
+        "Downloads e Tabelas Auxiliares DES-IF",
+        "Manual do usuário CeleriFlow / DES-IF",
+        "Parâmetros cadastrados do município",
+        "Códigos de tributação DES-IF",
+        "Códigos de tributação municipal",
+        "Eventos contábeis",
+        "Outros produtos e serviços",
+        "Tabela de títulos",
+        "Tarifas bancárias",
+        "Tipos de dependência"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/itbi",
+      "finalPath": "/tributacao/itbi",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7303,
+      "headings": [
+        "ITBI — transmissões",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 4,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/itbi/bloqueios",
+      "finalPath": "/tributacao/itbi/bloqueios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5585,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "ITBI · bloqueios e avisos de inclusão"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/itbi/cancelamento-automatico",
+      "finalPath": "/tributacao/itbi/cancelamento-automatico",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6833,
+      "headings": [
+        "Cancelamento por vencimento ITBI"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/itbi/comunicacao",
+      "finalPath": "/tributacao/itbi/comunicacao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4842,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Fila, comunicação e acesso externo do ITBI"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/itbi/modelos",
+      "finalPath": "/tributacao/itbi/modelos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 10083,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Modelos municipais de declarações do ITBI"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/itbi/online",
+      "finalPath": "/tributacao/itbi/online",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8288,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "ITBI on-line · liberação, modalidades e tabelionatos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/itbi/processos",
+      "finalPath": "/tributacao/itbi/processos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5761,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Processos ITBI · impugnação e readequação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/lotes-anuais",
+      "finalPath": "/tributacao/lotes-anuais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5684,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Simulação e efetivação anual tributária"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 4,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/motor-fiscal",
+      "finalPath": "/tributacao/motor-fiscal",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6308,
+      "headings": [
+        "Motor fiscal e arrecadação",
+        "Reversão de compensação, transferência ou restituição",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Regra fiscal versionada",
+        "Simular ou constituir crédito",
+        "Mapeamento financeiro do tributo"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 9,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/movimentacoes-contabeis",
+      "finalPath": "/tributacao/movimentacoes-contabeis",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4868,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Movimentações tributárias e partidas contábeis",
+        "Referências disponíveis aguardando partida — 0"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/nfse",
+      "finalPath": "/tributacao/nfse",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 7181,
+      "headings": [
+        "NFS-e",
+        "Oops!",
+        "Erro Interno do Servidor"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [
+        "Error: Minified React error #441; visit https://react.dev/errors/441 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "AppDomain Error: Error: Minified React error #441; visit https://react.dev/errors/441 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/notificacoes",
+      "finalPath": "/tributacao/notificacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6366,
+      "headings": [
+        "Notificações e avisos de débitos",
+        "Notificações e avisos de débitos · imóveis e empresas",
+        "Consulta, reimpressão e cancelamento"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/operacoes",
+      "finalPath": "/tributacao/operacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5513,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Operacoes Tributarias Internas",
+        "IPTU, taxas e parametros",
+        "ITBI e alvara via Processo/GED",
+        "ISS e catalogo de servicos",
+        "Nova atividade de servico ISS",
+        "Lançamento e emissão de DAM",
+        "Divida ativa e situacao fiscal",
+        "Parametros recentes",
+        "Fluxos solicitados",
+        "Avaliacoes fiscais"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 6,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/pessoas",
+      "finalPath": "/tributacao/pessoas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8988,
+      "headings": [
+        "Pessoas e cadastro fiscal",
+        "Esta área ainda não comporta a tabela no padrão."
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/recadastramento",
+      "finalPath": "/tributacao/recadastramento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8158,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Recadastramento imobiliário",
+        "Nova campanha por recorte",
+        "Solicitação do contribuinte"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/redesim",
+      "finalPath": "/tributacao/redesim",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6278,
+      "headings": [
+        "REDESIM — solicitações"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/referencias",
+      "finalPath": "/tributacao/referencias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5574,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Tabelas auxiliares fiscais",
+        "Novo registro"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/relatorios-cadastrais",
+      "finalPath": "/tributacao/relatorios-cadastrais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9153,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Relatórios cadastrais fiscais"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/resumo-anual",
+      "finalPath": "/tributacao/resumo-anual",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5606,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Resumo anual dos tributos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/seguranca",
+      "finalPath": "/tributacao/seguranca",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8308,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Confirmação de senha na Tributação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/simples-nacional",
+      "finalPath": "/tributacao/simples-nacional",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6193,
+      "headings": [
+        "Simples Nacional"
+      ],
+      "operationalShell": true,
+      "tables": 2,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/simples-nacional/arquivos",
+      "finalPath": "/tributacao/simples-nacional/arquivos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9574,
+      "headings": [
+        "Tributação",
+        "Tributação",
+        "Arquivos de Opção e Termos Municipais"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/simples-nacional/consulta",
+      "finalPath": "/tributacao/simples-nacional/consulta",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7082,
+      "headings": [
+        "Consulta fiscal e dossiê do Simples",
+        "Simples Nacional — Consulta Fiscal por Contribuinte",
+        "Boa Vista Confecções Ltda. — 12008019000163 (2026)",
+        "Cadastro municipal / CNPJ e endereços (2)",
+        "Períodos de opção (0)",
+        "Declarações e registros importados (0)",
+        "Rateios de pagamentos (0)",
+        "Malhas e regularização (0)",
+        "Preparações de exclusão (0)",
+        "Comunicações municipais DTE / ciência (0)",
+        "Rastreabilidade das importações (0)"
+      ],
+      "operationalShell": true,
+      "tables": 2,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/tributacao/vaf",
+      "finalPath": "/tributacao/vaf",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6905,
+      "headings": [
+        "VAF — valor adicionado fiscal"
+      ],
+      "operationalShell": true,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/automacoes",
+      "finalPath": "/financeiro/automacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6210,
+      "headings": [
+        "Central de Automações Financeiras"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/cheques",
+      "finalPath": "/financeiro/cheques",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8189,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Talões e cheques"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/conciliacao-bancaria",
+      "finalPath": "/financeiro/conciliacao-bancaria",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4844,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Motor Avançado de Conciliação Bancária",
+        " Abertura de Conciliação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/contabilidade",
+      "finalPath": "/financeiro/contabilidade",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6675,
+      "headings": [
+        "Contabilidade e Fechamento"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/contabilidade/disponibilidade",
+      "finalPath": "/financeiro/contabilidade/disponibilidade",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "durationMs": 19362,
+      "headings": [
+        "Disponibilidade de recursos por fonte"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 ()"
+      ],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": [
+        {
+          "pathname": "/api/financeiro/disponibilidade",
+          "status": 400,
+          "resourceType": "fetch"
+        }
+      ]
+    },
+    {
+      "pathname": "/financeiro/contabilidade/etapas-anuais",
+      "finalPath": "/financeiro/contabilidade/etapas-anuais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8288,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Transporte de programações de pagamento",
+        "Transporte de notas extraorçamentárias",
+        "Saldos de empenhos estimativos",
+        "Etapas contábeis anuais",
+        "Conferência pré-encerramento",
+        "Inscrição anual de restos a pagar",
+        "Histórico das etapas de inscrição",
+        "Partidas específicas de inscrição RAP",
+        "Desmovimentar encerramento",
+        "Edições documentais",
+        "Ativo e passivo financeiro por fonte na origem"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 9,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/contabilidade/eventos",
+      "finalPath": "/financeiro/contabilidade/eventos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9113,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Eventos e matriz contábil",
+        "Par principal — valor do evento",
+        "Pares complementares"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/contabilidade/lancamentos",
+      "finalPath": "/financeiro/contabilidade/lancamentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5675,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Consulta unificada de lançamentos contábeis",
+        "Soma dos lançamentos selecionados"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/contabilidade/msc",
+      "finalPath": "/financeiro/contabilidade/msc",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5723,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "MSC — referências e de-para por ente/UG",
+        "Capturar referência oficial",
+        "Perímetro da MSC agregada pelo Executivo",
+        "Edições publicadas no escopo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 4,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/contabilidade/saldos-fontes",
+      "finalPath": "/financeiro/contabilidade/saldos-fontes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8383,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Saldos mensais por conta e vínculo de recursos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/contas-bancarias",
+      "finalPath": "/financeiro/contas-bancarias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6114,
+      "headings": [
+        "Contas Bancárias",
+        "Fontes permitidas e disponibilidade por fonte",
+        "Transferências entre contas"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/custos",
+      "finalPath": "/financeiro/custos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7597,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Gestão e Controle de Custos",
+        "Apropriação manual de valores pendentes",
+        "Despesas, apropriações e correções",
+        "Relatório e totalizadores por tipo",
+        "Correções de origens de exercícios anteriores",
+        "Devoluções de consumo e teto líquido das origens"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 12,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/download-extratos",
+      "finalPath": "/financeiro/download-extratos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5294,
+      "headings": [
+        "Extratos Bancários"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/empenhos",
+      "finalPath": "/financeiro/empenhos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5985,
+      "headings": [
+        "Empenhos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/liquidacoes",
+      "finalPath": "/financeiro/liquidacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6166,
+      "headings": [
+        "Liquidações",
+        "Custos das liquidações"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/orcamento",
+      "finalPath": "/financeiro/orcamento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 10877,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Orçamento e Plano de Contas"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/orcamento/cadastros",
+      "finalPath": "/planejamento/cadastros/versions",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 9350,
+      "headings": [
+        "Catálogos normativos por exercício"
+      ],
+      "operationalShell": true,
+      "tables": 2,
+      "forms": 6,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/orcamento/planejamento",
+      "finalPath": "/planejamento",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8226,
+      "headings": [
+        "Planejamento e Orçamento",
+        "Planejamento e Orçamento",
+        "Planejamento e Orçamento",
+        "Plano Plurianual — PPA",
+        "Lei de Diretrizes Orçamentárias — LDO",
+        "Lei Orçamentária Anual — LOA"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/pagamentos",
+      "finalPath": "/financeiro/pagamentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7051,
+      "headings": [
+        "Pagamentos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/receitas",
+      "finalPath": "/financeiro/receitas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6126,
+      "headings": [
+        "Receitas"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/receitas-constitucionais",
+      "finalPath": "/financeiro/receitas-constitucionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6147,
+      "headings": [
+        "Receitas Constitucionais e Legais"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/relatorios",
+      "finalPath": "/financeiro/relatorios",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8560,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Relatórios Financeiros",
+        "Emitir relatório básico"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/relatorios/cadastros",
+      "finalPath": "/financeiro/relatorios/cadastros",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7433,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Cadastro de relatórios gerenciais"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/relatorios/ensino-decendial",
+      "finalPath": "/financeiro/relatorios/ensino-decendial",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8190,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Ensino 25% — acompanhamento decendial"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/relatorios/fontes",
+      "finalPath": "/financeiro/relatorios/fontes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7695,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Listagem de fontes de recurso"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/relatorios/indices-constitucionais",
+      "finalPath": "/financeiro/relatorios/indices-constitucionais",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7208,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Índices constitucionais — composição e memória",
+        "Saúde — Não avaliado",
+        "Educação — Não avaliado"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/relatorios/pessoal-fiscal",
+      "finalPath": "/financeiro/relatorios/pessoal-fiscal",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5635,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Pessoal e RCL ajustada — composição fiscal do ente",
+        "NOT_EVALUATED"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/rendimentos",
+      "finalPath": "/financeiro/rendimentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5982,
+      "headings": [
+        "Rendimentos de Aplicação Financeira"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/resgates-aplicacoes",
+      "finalPath": "/financeiro/resgates-aplicacoes",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4923,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Motor de Classificação de Resgates e Aplicações",
+        "Lançamentos do Extrato BancárioExibindo: 0 de 0",
+        "Resultado do Motor de Classificação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/financeiro/restos-a-pagar",
+      "finalPath": "/financeiro/restos-a-pagar",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5243,
+      "headings": [
+        "Financeiro",
+        "Financeiro",
+        "Transporte anual de RAP",
+        "Liquidar RAP não processado",
+        "Emitir ordem de pagamento de RAP liquidado",
+        "Restos a Pagar",
+        "Consulta",
+        "Vincular pagamento já efetivado"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 5,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/academico",
+      "finalPath": "/educacao/academico",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5811,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Núcleo acadêmico"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 5,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/alunos",
+      "finalPath": "/educacao/alunos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4958,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Alunos e responsáveis"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/biblioteca",
+      "finalPath": "/educacao/biblioteca",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5009,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Biblioteca escolar"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 5,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/calendario",
+      "finalPath": "/educacao/calendario",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5610,
+      "headings": [
+        "Calendário Escolar"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/disciplinas",
+      "finalPath": "/educacao/disciplinas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6377,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Disciplinas · nomenclatura e abreviação"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/documentos",
+      "finalPath": "/educacao/documentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5688,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Documentos acadêmicos"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/educacenso",
+      "finalPath": "/educacao/educacenso",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5662,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Educacenso",
+        "Importar arquivo",
+        "Gerar arquivo para conferência"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/escolas",
+      "finalPath": "/educacao/escolas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5567,
+      "headings": [
+        "Escolas"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/escolas/novo",
+      "finalPath": "/educacao/escolas/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5846,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Nova Escola",
+        "Informações Básicas",
+        " Gestão e Capacidade",
+        " Vínculo com Patrimônio"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/licencas",
+      "finalPath": "/educacao/licencas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6483,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Tipos de licença e férias escolares"
+      ],
+      "operationalShell": false,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/matriculas",
+      "finalPath": "/educacao/matriculas",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5594,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Matrículas e movimentações"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/merenda",
+      "finalPath": "/educacao/merenda",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6193,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Alimentação escolar"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/merenda/novo",
+      "finalPath": "/educacao/merenda/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6170,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Registrar Alimentação Servida"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/portal-interativo",
+      "finalPath": "/educacao/portal-interativo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5838,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Portal interativo"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/portal-responsavel",
+      "finalPath": "/educacao/portal-responsavel",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5463,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Portal do responsável"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/pre-matricula",
+      "finalPath": "/educacao/pre-matricula",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6270,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Pré-matrícula"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 4,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/professor",
+      "finalPath": "/educacao/professor",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6173,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Área do professor"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/professores",
+      "finalPath": "/educacao/professores",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5680,
+      "headings": [
+        "Professores"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/recursos-escolares",
+      "finalPath": "/educacao/recursos-escolares",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5409,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Recursos financeiros escolares"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 3,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/suporte",
+      "finalPath": "/educacao/suporte",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5479,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Suporte da Educação"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/educacao/transporte",
+      "finalPath": "/educacao/transporte",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5341,
+      "headings": [
+        "Educação",
+        "Educação",
+        "Transporte escolar"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 5,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/",
+      "finalPath": "/",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4476,
+      "headings": [],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/auditoria",
+      "finalPath": "/administracao/auditoria",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5304,
+      "headings": [
+        "Auditoria"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 2,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/bi/smarttv",
+      "finalPath": "/administracao/bi/smarttv",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6538,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Smart TV",
+        "Indicadores visíveis · até 6"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/calendario",
+      "finalPath": "/administracao/calendario",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 4872,
+      "headings": [
+        "Calendário Institucional"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/calendario/novo",
+      "finalPath": "/administracao/calendario/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6682,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Novo evento institucional"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/cargos",
+      "finalPath": "/administracao/cargos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5550,
+      "headings": [
+        "Cargos e Funções"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/cargos/novo",
+      "finalPath": "/administracao/cargos/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6558,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Novo Cargo/Função"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/demandas",
+      "finalPath": "/administracao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 8449,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Painel de gestão municipal",
+        "Servidores por secretaria",
+        "Demandas internas",
+        "Entrada de demandas",
+        "Comparativo das secretarias"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/departamentos",
+      "finalPath": "/administracao/departamentos",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5569,
+      "headings": [
+        "Departamentos"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/departamentos/novo",
+      "finalPath": "/administracao/departamentos/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7050,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Novo Departamento"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/indicadores",
+      "finalPath": "/administracao/indicadores",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7153,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Painel de gestão municipal",
+        "Servidores por secretaria",
+        "Demandas internas",
+        "Entrada de demandas",
+        "Comparativo das secretarias"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 0,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/instituicao",
+      "finalPath": "/administracao/instituicao",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 7376,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Dados da Prefeitura",
+        "Cadastro institucional"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/secretarias",
+      "finalPath": "/administracao/secretarias",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5860,
+      "headings": [
+        "Secretarias"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/secretarias/novo",
+      "finalPath": "/administracao/secretarias/novo",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 6473,
+      "headings": [
+        "Administração Geral",
+        "Administração Geral",
+        "Novo Órgão Administrativo ou Secretaria"
+      ],
+      "operationalShell": false,
+      "tables": 0,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    },
+    {
+      "pathname": "/administracao/servidores",
+      "finalPath": "/administracao/servidores",
+      "status": 200,
+      "result": "OPENED",
+      "durationMs": 5946,
+      "headings": [
+        "Servidores"
+      ],
+      "operationalShell": true,
+      "tables": 1,
+      "forms": 1,
+      "errors": [],
+      "consoleErrors": [],
+      "configurationDiagnostics": [
+        "The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+      ],
+      "httpErrors": []
+    }
+  ]
+}

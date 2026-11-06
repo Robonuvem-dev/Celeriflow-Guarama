@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { eq, sql } from "drizzle-orm";
 import { employees } from "../src/db/schema/administration";
-import { modules } from "../src/db/schema/identity";
+import { accessProfiles, modules, users } from "../src/db/schema/identity";
 import { AccessError } from "../src/lib/platform/tenant-context";
 import { assertEmployeePortalLogin } from "../src/lib/portal-servidor/login-policy";
 import { createEmployeePortalFixture, employeePortalUser } from "./helpers/employee-portal-fixture";
@@ -31,12 +31,22 @@ test("cadastro inativo é recusado antes da criação de sessão funcional", asy
   finally { await close(); }
 });
 
+test("bloqueio temporário usa erro de acesso tratado pelo layout funcional", async () => {
+  const { db, user, close } = await fixture();
+  try {
+    const [profile] = await db.insert(accessProfiles).values({ codigo: "PORTAL_LOCK", nome: "Servidor", permissoes: "{}" }).returning({ id: accessProfiles.id });
+    await db.insert(users).values({ id: user.id, nome: user.name, email: user.email, perfilId: profile.id });
+    await db.execute(sql`INSERT INTO "EmployeePortalLoginGuard" ("userId", "lockedUntil") VALUES (${user.id}, now() + interval '10 minutes')`);
+    await assert.rejects(assertEmployeePortalLogin(db, user), error => error instanceof AccessError && error.status === 423);
+  } finally { await close(); }
+});
+
 test("módulo inativo, perfil bloqueado e conta sem vínculo não consultam registros funcionais", async () => {
   const { db, user, close } = await fixture(true, false);
   try {
     // A functional query would now fail with a database error. Each refusal must
     // therefore happen at the authorization boundary before touching Employee.
-    await db.execute(sql`DROP TABLE "Employee"`);
+    await db.execute(sql`DROP TABLE "Employee" CASCADE`);
     await assert.rejects(assertEmployeePortalLogin(db, user), error => error instanceof AccessError && error.status === 423);
     await db.update(modules).set({ ativo: true }).where(eq(modules.codigo, "PORTAL_SERVIDOR"));
     await assert.rejects(assertEmployeePortalLogin(db, { ...user, permissions: JSON.stringify({ modules: { PORTAL_SERVIDOR: { blocked: true } } }) }), /autorização funcional/);

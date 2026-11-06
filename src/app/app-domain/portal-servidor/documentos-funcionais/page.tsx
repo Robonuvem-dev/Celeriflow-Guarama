@@ -9,12 +9,13 @@ import { ownReleasedStatementIds } from "@/lib/portal-servidor/payroll-publicati
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
 import { FunctionalEmissionForm } from "./EmissionForm";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 export const dynamic = "force-dynamic";
 export default async function FunctionalDocumentsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const access = await getEmployeePortalAccess(); if (access.status !== "AVAILABLE") return <p className="p-4">Acesso funcional indisponível.</p>;
   const models = await listOwnDocumentModels(access.context);
   const executor = access.context.database ?? db;
-  const contracts = await portalRows<{ id: string; registration: string; status: string }>(executor, sql`SELECT id,registration,status FROM "HrEmploymentContract" WHERE "employeeId"=${access.employee.id} ORDER BY registration`);
+  const contracts = (await portalRows<{ id: string; registration: string; status: string }>(executor, sql`SELECT id,registration,status FROM "HrEmploymentContract" WHERE "employeeId"=${access.employee.id} ORDER BY registration`)).map(contract => ({ ...contract, registration: personnelDisplayText(contract.registration) }));
   const ids = await ownReleasedStatementIds(executor, access.employee.id);
   const statements = await portalStatements(executor, sql`s.id=ANY(${sql.param(ids)}::text[]) AND p.type IN ('Férias','Rescisão')`);
   const supplierRows = await portalRows<{ id: string; companyId: string | null; corporateName: string | null; personId: string | null; fullName: string | null }>(executor, sql`SELECT s.id,c.id AS "companyId",c."corporateName",p.id AS "personId",p."fullName" FROM "Supplier" s LEFT JOIN "Company" c ON c.id=s."companyId" LEFT JOIN "Person" p ON p.id=s."personId" WHERE s.id=ANY(${sql.param([...new Set(models.flatMap(model => model.policy.supplierIds))])}::text[]) AND s.status='Ativo'`);

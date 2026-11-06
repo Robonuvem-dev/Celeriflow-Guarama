@@ -9,7 +9,8 @@ import { sstDatabase } from "@/lib/sst/database";
 
 export default async function EditSstReasonPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("SST");
-  const { id } = await params;
+  const { id: routeId } = await params;
+  const id = decodeURIComponent(routeId);
   const database = sstDatabase(context);
   const reason = await findSstReasonPage(database, id);
   if (!reason) notFound();

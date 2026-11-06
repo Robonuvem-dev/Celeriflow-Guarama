@@ -4,7 +4,7 @@ import type { PermissionUser } from "../../src/lib/contracts/identity";
 import { createLocalDrizzleDatabase } from "./local-drizzle-database";
 
 const fixtureTables = {
-  login: ["Employee", "ConfiguracaoModulo"],
+  login: ["Employee", "ConfiguracaoModulo", "ConfiguracaoPerfil", "Usuario"],
   attendance: ["Employee", "AttendanceRecord"],
   career: ["Employee", "ConfiguracaoPerfil", "Usuario", "AuditEvent", "HrPayrollRuleSet", "HrPayrollRule"],
   manifest: ["Payment"],
@@ -29,6 +29,9 @@ export async function createEmployeePortalFixture(kind: keyof typeof fixtureTabl
     }
     for (const match of baseline.matchAll(/ALTER TABLE "([A-Za-z0-9_]+)" ADD CONSTRAINT [^;]+ REFERENCES "([A-Za-z0-9_]+)"[^;]+;/g)) {
       if (tables.has(match[1]) && tables.has(match[2])) await fixture.database.exec(match[0]);
+    }
+    if (kind === "login") {
+      await fixture.database.exec(await readFile(new URL("../../db/migrations/20261102190000_employee_portal_auth/migration.sql", import.meta.url), "utf8"));
     }
     if (kind === "attendance" || kind === "career") {
       const workforce = await readFile(new URL("../../prisma/migrations-ibema/20261011030000_hr_workforce_foundation/migration.sql", import.meta.url), "utf8");

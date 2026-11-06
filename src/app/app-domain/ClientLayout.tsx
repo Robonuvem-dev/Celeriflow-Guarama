@@ -16,7 +16,8 @@ import UsageAuditTracker from "@/components/platform/UsageAuditTracker";
 import dashboardStyles from "./dashboard/dashboard.module.css";
 import { OperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
 import { operationalModules } from "@/components/app-ui/operational/modules";
-import { findOperationalRoute } from "@/components/app-ui/operational/routes";
+import { findOperationalRoute, findOperationalShell } from "@/components/app-ui/operational/routes";
+import { isEmployeePublicRoute } from "@/lib/portal-servidor/routes";
 
 type UserInfo = {
   id: string;
@@ -62,8 +63,9 @@ export default function ClientLayout({
     }
   };
 
-  const operational = findOperationalRoute(operationalModules, pathname, searchParams);
-  if (isLoginPage || (isEmployeePortal && !operational)) {
+  const listRoute = findOperationalRoute(operationalModules, pathname, searchParams);
+  const operational = findOperationalShell(operationalModules, pathname);
+  if (isLoginPage || (isEmployeePortal && isEmployeePublicRoute(pathname))) {
     return <>{children}</>;
   }
 
@@ -82,6 +84,7 @@ export default function ClientLayout({
     title={operational.route.title} moduleTitle={operational.module.moduleTitle} moduleCaption={operational.module.moduleCaption} moduleIcon={operational.module.moduleIcon} institutionName={institution?.name || "Prefeitura Municipal"}
     userId={user?.id || "anonymous"} userName={userName} userRole={userRole}
     navigation={navigation ?? []} onLogout={handleLogout}
+    contentMode={listRoute ? "list" : "page"}
   ><UsageAuditTracker />{children}</OperationalWorkspace>;
   const isFixedRhWorkspace = pathname === "/rh" || pathname.startsWith("/rh/");
   const fixedComprasRoutes = [

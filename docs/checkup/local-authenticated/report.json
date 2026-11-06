@@ -1,0 +1,731 @@
+{
+  "startedAt": "2026-11-06T14:13:07.538Z",
+  "base": "http://localhost:3100",
+  "scope": "Existing session reused only in memory in an isolated local browser context",
+  "cases": [
+    {
+      "path": "/compras/pesquisas-precos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pesquisas de Preços",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/parametrizacoes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Parametrizações",
+        "Parametrizações de RH e Folha",
+        "Conjunto de regras",
+        "Cobertura configurada",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/operacoes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "RH e Folha",
+        "Operações de RH e Folha",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/api/rh/relatorios?kind=CONTRATOS&format=CSV&q=",
+          "label": "CSV"
+        },
+        {
+          "href": "/api/rh/relatorios?kind=CONTRATOS&format=XLSX&q=",
+          "label": "XLSX"
+        },
+        {
+          "href": "/api/rh/relatorios?kind=CONTRATOS&format=PDF&q=",
+          "label": "PDF"
+        }
+      ]
+    },
+    {
+      "path": "/protocolos/consultas-construcao-civil",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "headings": [
+        "Protocolos e Processos",
+        "Consultas recebidas — Construção Civil",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ],
+      "httpErrors": [
+        {
+          "path": "/api/rh/relatorios",
+          "status": 500,
+          "type": "fetch"
+        }
+      ],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/protocolos",
+        "/assinatura-digital/origens?module=PROCESSOS",
+        "/protocolos/processos",
+        "/protocolos/acompanhamento",
+        "/protocolos/busca",
+        "/protocolos/ouvidoria",
+        "/protocolos/notificacoes",
+        "/protocolos/assinaturas",
+        "/protocolos/relatorios",
+        "/protocolos/arquivados",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/nfse",
+      "status": 200,
+      "result": "SERVER_ERROR",
+      "headings": [
+        "NFS-e",
+        "Oops!",
+        "Erro Interno do Servidor",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Error: Minified React error #441; visit https://react.dev/errors/441 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "AppDomain Error: Error: Minified React error #441; visit https://react.dev/errors/441 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/comparativo-anual",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "headings": [
+        "Comparativo anual",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Comparativo anual — IPTU, ISS e demais receitas tributárias",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "httpErrors": [
+        {
+          "path": "/tributacao/comparativo-anual/exportar",
+          "status": 400,
+          "type": "fetch"
+        }
+      ],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        },
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        }
+      ]
+    },
+    {
+      "path": "/financeiro/contabilidade/disponibilidade",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "headings": [
+        "Disponibilidade de recursos por fonte",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "httpErrors": [
+        {
+          "path": "/api/financeiro/disponibilidade",
+          "status": 400,
+          "type": "fetch"
+        }
+      ],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/financeiro",
+        "/financeiro/empenhos",
+        "/financeiro/liquidacoes",
+        "/assinatura-digital/origens?module=FINANCEIRO",
+        "/financeiro/pagamentos",
+        "/financeiro/restos-a-pagar",
+        "/financeiro/custos",
+        "/financeiro/receitas",
+        "/financeiro/receitas-constitucionais",
+        "/financeiro/contas-bancarias",
+        "/financeiro/download-extratos",
+        "/financeiro/automacoes",
+        "/financeiro/resgates-aplicacoes",
+        "/financeiro/rendimentos",
+        "/financeiro/conciliacao-bancaria",
+        "/financeiro/contabilidade",
+        "/financeiro/relatorios",
+        "/financeiro/relatorios/indices-constitucionais",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/api/financeiro/disponibilidade?financialYearId=aurora-mg-50k-v1%3Afinancial-year%3A000&governmentEntityId=p0-current-exe",
+          "label": "Baixar relatório CSV"
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/pessoas/THIAGO_MORCATTY_DEMO_2026_V1:taxpayer",
+      "status": 200,
+      "result": "NOT_FOUND",
+      "headings": [
+        "404",
+        "This page could not be found.",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "httpErrors": [
+        {
+          "path": "/api/audit/interaction",
+          "status": 400,
+          "type": "fetch"
+        }
+      ],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 0,
+        "sidebars": 0
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/servidores",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Servidores",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/servidores/novo",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Servidores",
+        "Novo Servidor",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/registros-funcionais",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Registros funcionais",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/registros-funcionais?view=manage",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Registros funcionais",
+        "Cessões e recebimentos",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    }
+  ],
+  "shellChecks": [
+    {
+      "list": "/rh/servidores",
+      "form": "/rh/servidores/novo",
+      "sameMenu": true,
+      "listLayout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "formLayout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      }
+    },
+    {
+      "list": "/rh/registros-funcionais",
+      "form": "/rh/registros-funcionais?view=manage",
+      "sameMenu": true,
+      "listLayout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "formLayout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      }
+    }
+  ],
+  "finishedAt": "2026-11-06T14:14:01.432Z"
+}

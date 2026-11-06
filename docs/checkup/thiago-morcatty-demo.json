@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-11-06T13:51:59.049Z",
+  "mode": "APPLIED",
+  "packageId": "THIAGO_MORCATTY_DEMO_2026_V1",
+  "fictional": true,
+  "name": "Thiago Morcatty",
+  "registration": "DEMO-TI-2026-001",
+  "role": "Coordenador de TI",
+  "employeeId": "THIAGO_MORCATTY_DEMO_2026_V1:employee",
+  "personId": "THIAGO_MORCATTY_DEMO_2026_V1:person",
+  "taxpayerId": "THIAGO_MORCATTY_DEMO_2026_V1:taxpayer",
+  "contractId": "cmw519rhr0001uohydvgktkea",
+  "address": {
+    "street": "Rua das Acácias (fictícia)",
+    "number": "150",
+    "zipCode": "39999000"
+  },
+  "attendance": {
+    "records": 23,
+    "october": 20,
+    "november": 3
+  },
+  "vacation": [
+    {
+      "startsAt": "2026-12-01T00:00:00.000Z",
+      "endsAt": "2026-12-30T00:00:00.000Z",
+      "days": 30,
+      "status": "Programada"
+    }
+  ],
+  "payroll": {
+    "competence": "10/2026",
+    "scope": "DEMONSTRACAO",
+    "status": "FECHADA",
+    "statementId": "cmw519vid000vuohy4co53zwb",
+    "gross": "8500.00",
+    "deductions": "2145.14",
+    "net": "6354.86",
+    "availableInPortal": true
+  },
+  "accountProfilePreserved": true
+}

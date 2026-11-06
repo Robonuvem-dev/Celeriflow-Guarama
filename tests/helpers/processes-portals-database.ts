@@ -9,6 +9,7 @@ export async function createProcessesPortalsDatabase() {
     const root = new URL("../../prisma/migrations-ibema/", import.meta.url);
     const directories = (await readdir(root, { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
     for (const directory of directories) await fixture.database.exec(await readFile(new URL(`${directory}/migration.sql`, root), "utf8"));
+    await fixture.database.exec(await readFile(new URL("../../db/migrations/20261031140200_ombudsman_classification/migration.sql", import.meta.url), "utf8"));
     return fixture;
   } catch (error) {
     await fixture.close();

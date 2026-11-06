@@ -1,16 +1,16 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { and, asc, count, desc, eq, exists, ilike, isNull } from "drizzle-orm";
 import { constructionCases, constructionParticipants } from "@/db/schema/construction-core";
 import { processes } from "@/db/schema/processes";
-import { AccessError } from "@/lib/platform/tenant-context";
 import { getConstructionPortalIdentity } from "@/lib/obras/construction-portal-access";
 import { PublicOperationalList } from "../PublicOperationalList";
 import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 
 export default async function ConstructionPortalPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string }> }) {
-  const identity = await getConstructionPortalIdentity().catch((error) => { if (error instanceof AccessError && error.status === 401) redirect("/portal/construcao-civil/entrar"); throw error; });
+  const identity = await getPortalPageAccess(getConstructionPortalIdentity, "/portal/construcao-civil", "/portal/construcao-civil/entrar");
+  if (!identity) return <PortalPageAccessDenied />;
   const query = await searchParams; const q = (query.q || "").trim().slice(0, 100);
   const where = and(exists(db.select({ id: constructionParticipants.id }).from(constructionParticipants).where(and(eq(constructionParticipants.caseId, constructionCases.id), eq(constructionParticipants.identityId, identity.id), eq(constructionParticipants.isActive, true), isNull(constructionParticipants.endsAt)))), q ? ilike(processes.protocolNumber, `%${q}%`) : undefined);
   const total = (await db.select({ value: count() }).from(constructionCases).innerJoin(processes, eq(processes.id, constructionCases.processId)).where(where))[0].value;

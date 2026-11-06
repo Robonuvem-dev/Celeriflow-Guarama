@@ -1,6 +1,6 @@
-import { notifySupplierBiddingCalling } from "@/lib/compras/bidding-notifications";
 "use server";
 
+import { notifySupplierBiddingCalling } from "@/lib/compras/bidding-notifications";
 import { randomUUID } from "crypto";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
@@ -1278,9 +1278,9 @@ export async function summonSecondPlaceBidder(input: {
 }): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const biddingId = requiredText(input.biddingId, "LicitaÁ„o");
+    const biddingId = requiredText(input.biddingId, "Licita√ß√£o");
     const lotId = requiredText(input.lotId, "Lote");
-    const reason = requiredText(input.reason, "Motivo da convocaÁ„o do 2∫ colocado");
+    const reason = requiredText(input.reason, "Motivo da convoca√ß√£o do 2¬∫ colocado");
 
     await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [lotRow] = await tx.select({ lot: biddingLots, bidding: { id: biddings.id, number: biddings.number, status: biddings.status } })
@@ -1289,7 +1289,7 @@ export async function summonSecondPlaceBidder(input: {
         .where(and(eq(biddingLots.id, lotId), eq(biddingLots.biddingId, biddingId)))
         .limit(1);
 
-      if (!lotRow) throw new BiddingWorkflowError("Lote n„o encontrado no certame.");
+      if (!lotRow) throw new BiddingWorkflowError("Lote n√£o encontrado no certame.");
 
       // Obter os lances ordenados
       const bids = await tx.select({
@@ -1303,7 +1303,7 @@ export async function summonSecondPlaceBidder(input: {
       .orderBy(asc(biddingBids.totalValueDecimal));
 
       if (bids.length < 2) {
-        throw new BiddingWorkflowError("N„o h· segundo colocado com proposta/lance registrado neste lote.");
+        throw new BiddingWorkflowError("N√£o h√° segundo colocado com proposta/lance registrado neste lote.");
       }
 
       const secondBid = bids[1];
@@ -1313,7 +1313,7 @@ export async function summonSecondPlaceBidder(input: {
         biddingId,
         actorUsuarioId: context.user.id,
         type: "SECOND_PLACE_SUMMONED",
-        description: `ConvocaÁ„o do 2∫ colocado (Lote ${lotRow.lot.number}). Motivo: ${reason}. Lance: R$ ${secondBid.totalValue.toString()}.`,
+        description: `Convoca√ß√£o do 2¬∫ colocado (Lote ${lotRow.lot.number}). Motivo: ${reason}. Lance: R$ ${secondBid.totalValue.toString()}.`,
         phaseId,
         biddingLotId: lotId,
         idempotencyKey: `SECOND_PLACE:${lotId}:${randomUUID()}`,
@@ -1330,7 +1330,7 @@ export async function summonSecondPlaceBidder(input: {
       notifySupplierBiddingCalling({
         supplierId: secondBid.participantId,
         processNumber: `Lote ${lotRow.lot.number}`,
-        itemsOrLotDescription: `Lote ${lotRow.lot.number} - ConvocaÁ„o do 2∫ colocado`,
+        itemsOrLotDescription: `Lote ${lotRow.lot.number} - Convoca√ß√£o do 2¬∫ colocado`,
         isSecondPlace: true,
       }).catch(err => console.error("[Notification Error] Second place calling notice failed:", err));
     });
@@ -1349,17 +1349,17 @@ export async function unlockConcludedBidding(input: {
 }): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const biddingId = requiredText(input.biddingId, "LicitaÁ„o");
-    const reason = requiredText(input.reason, "Justificativa da liberaÁ„o do processo");
+    const biddingId = requiredText(input.biddingId, "Licita√ß√£o");
+    const reason = requiredText(input.reason, "Justificativa da libera√ß√£o do processo");
     if (!input.adminPasswordConfirmation?.trim()) {
-      throw new BiddingWorkflowError("A confirmaÁ„o por senha de usu·rio/administrador È obrigatÛria para liberar processo concluÌdo (CF 11.38).");
+      throw new BiddingWorkflowError("A confirma√ß√£o por senha de usu√°rio/administrador √© obrigat√≥ria para liberar processo conclu√≠do (CF 11.38).");
     }
 
     await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [bidding] = await tx.select().from(biddings).where(eq(biddings.id, biddingId)).limit(1);
-      if (!bidding) throw new BiddingWorkflowError("LicitaÁ„o n„o encontrada.");
+      if (!bidding) throw new BiddingWorkflowError("Licita√ß√£o n√£o encontrada.");
       if (bidding.status !== BIDDING_STATUS.CONCLUDED && bidding.status !== BIDDING_STATUS.HOMOLOGATED) {
-        throw new BiddingWorkflowError("A liberaÁ„o por senha aplica-se a processos concluÌdos/homologados.");
+        throw new BiddingWorkflowError("A libera√ß√£o por senha aplica-se a processos conclu√≠dos/homologados.");
       }
 
       await tx.update(biddings).set({ status: BIDDING_STATUS.JUDGMENT }).where(eq(biddings.id, biddingId));
@@ -1370,7 +1370,7 @@ export async function unlockConcludedBidding(input: {
         biddingId,
         actorUsuarioId: context.user.id,
         type: "BIDDING_UNLOCKED",
-        description: `Processo reaberto para julgamento/ajustes por validaÁ„o de senha. Justificativa: ${reason}.`,
+        description: `Processo reaberto para julgamento/ajustes por valida√ß√£o de senha. Justificativa: ${reason}.`,
         phaseId,
         idempotencyKey: `UNLOCK:${biddingId}:${randomUUID()}`,
       });
@@ -1397,12 +1397,12 @@ export async function suspendBidding(input: {
 }): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const biddingId = requiredText(input.biddingId, "LicitaÁ„o");
-    const reason = requiredText(input.reason, "Motivo da suspens„o");
+    const biddingId = requiredText(input.biddingId, "Licita√ß√£o");
+    const reason = requiredText(input.reason, "Motivo da suspens√£o");
 
     await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [bidding] = await tx.select().from(biddings).where(eq(biddings.id, biddingId)).limit(1);
-      if (!bidding) throw new BiddingWorkflowError("LicitaÁ„o n„o encontrada.");
+      if (!bidding) throw new BiddingWorkflowError("Licita√ß√£o n√£o encontrada.");
 
       await tx.update(biddings).set({ status: BIDDING_STATUS.SUSPENDED }).where(eq(biddings.id, biddingId));
       await tx.update(biddingLots).set({ status: BIDDING_LOT_STATUS.SUSPENDED }).where(eq(biddingLots.biddingId, biddingId));
@@ -1421,7 +1421,7 @@ export async function suspendBidding(input: {
     revalidateBiddingPaths(input.biddingId);
     return { success: true };
   } catch (error) {
-    return actionError(error, "Falha ao suspender licitaÁ„o.");
+    return actionError(error, "Falha ao suspender licita√ß√£o.");
   }
 }
 
@@ -1431,12 +1431,12 @@ export async function annulBidding(input: {
 }): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const biddingId = requiredText(input.biddingId, "LicitaÁ„o");
-    const reason = requiredText(input.reason, "Motivo/Justificativa da anulaÁ„o");
+    const biddingId = requiredText(input.biddingId, "Licita√ß√£o");
+    const reason = requiredText(input.reason, "Motivo/Justificativa da anula√ß√£o");
 
     await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [bidding] = await tx.select().from(biddings).where(eq(biddings.id, biddingId)).limit(1);
-      if (!bidding) throw new BiddingWorkflowError("LicitaÁ„o n„o encontrada.");
+      if (!bidding) throw new BiddingWorkflowError("Licita√ß√£o n√£o encontrada.");
 
       await tx.update(biddings).set({ status: BIDDING_STATUS.ANNULLED }).where(eq(biddings.id, biddingId));
       await tx.update(biddingLots).set({ status: BIDDING_LOT_STATUS.CLOSED }).where(eq(biddingLots.biddingId, biddingId));
@@ -1455,7 +1455,7 @@ export async function annulBidding(input: {
     revalidateBiddingPaths(input.biddingId);
     return { success: true };
   } catch (error) {
-    return actionError(error, "Falha ao anular licitaÁ„o.");
+    return actionError(error, "Falha ao anular licita√ß√£o.");
   }
 }
 
@@ -1467,11 +1467,11 @@ export async function updateBiddingCertameDetails(input: {
 }): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const biddingId = requiredText(input.biddingId, "LicitaÁ„o");
+    const biddingId = requiredText(input.biddingId, "Licita√ß√£o");
 
     await withDatabaseTransaction(databaseConnection, async (tx) => {
       const [bidding] = await tx.select({ id: biddings.id, processId: biddings.processId }).from(biddings).where(eq(biddings.id, biddingId)).limit(1);
-      if (!bidding) throw new BiddingWorkflowError("LicitaÁ„o n„o encontrada.");
+      if (!bidding) throw new BiddingWorkflowError("Licita√ß√£o n√£o encontrada.");
 
       const pubDate = input.publicationDate ? new Date(input.publicationDate) : null;
       const sessDate = input.sessionDate ? new Date(input.sessionDate) : null;
@@ -1509,7 +1509,7 @@ export async function toggleBudgetBalanceBlock(input: {
 }): Promise<BiddingActionResult> {
   const context = await getTenantContextForModuleOperation("COMPRAS", "update");
   try {
-    const biddingId = requiredText(input.biddingId, "LicitaÁ„o");
+    const biddingId = requiredText(input.biddingId, "Licita√ß√£o");
 
     await withDatabaseTransaction(databaseConnection, async (tx) => {
       const phaseId = await currentPhaseId(tx, biddingId);
@@ -1518,8 +1518,8 @@ export async function toggleBudgetBalanceBlock(input: {
         actorUsuarioId: context.user.id,
         type: input.blocked ? "BUDGET_BALANCE_BLOCKED" : "BUDGET_BALANCE_UNBLOCKED",
         description: input.blocked
-          ? `Bloqueio de saldo orÁament·rio efetivado (11.37). ${input.notes || ""}`
-          : `Desbloqueio de saldo orÁament·rio realizado (11.37). ${input.notes || ""}`,
+          ? `Bloqueio de saldo or√ßament√°rio efetivado (11.37). ${input.notes || ""}`
+          : `Desbloqueio de saldo or√ßament√°rio realizado (11.37). ${input.notes || ""}`,
         phaseId,
         idempotencyKey: `BUDGET:${biddingId}:${randomUUID()}`,
       });
@@ -1528,6 +1528,6 @@ export async function toggleBudgetBalanceBlock(input: {
     revalidateBiddingPaths(input.biddingId);
     return { success: true };
   } catch (error) {
-    return actionError(error, "Falha ao alterar bloqueio de saldo orÁament·rio.");
+    return actionError(error, "Falha ao alterar bloqueio de saldo or√ßament√°rio.");
   }
 }

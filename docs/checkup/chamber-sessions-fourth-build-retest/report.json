@@ -1,0 +1,57 @@
+{
+  "startedAt": "2026-11-06T16:24:30.679Z",
+  "base": "http://localhost:3102",
+  "appliesFictionalData": true,
+  "cases": [
+    {
+      "label": "Nova sessão abre e preserva rascunho ao fechar e reabrir",
+      "passed": true,
+      "observations": {
+        "number": "8205",
+        "draftPreserved": true
+      }
+    },
+    {
+      "label": "Sessão fictícia salva pela UI e reaberta com horário de Brasília preservado",
+      "passed": true,
+      "observations": {
+        "number": "8205",
+        "status": "Agendada",
+        "savedLocalTime": "2026-11-29T14:00"
+      }
+    },
+    {
+      "label": "Gerenciar sessão existente preenche os campos",
+      "passed": true,
+      "observations": {
+        "fieldsPopulated": true
+      }
+    },
+    {
+      "label": "Visualizar ata mostra conteúdo integral somente para leitura",
+      "passed": true,
+      "observations": {
+        "characters": 168,
+        "readOnly": true
+      }
+    },
+    {
+      "label": "Editar ata preserva texto ao fechar e reabrir",
+      "passed": true,
+      "observations": {
+        "draftPreserved": true,
+        "originalTextRestored": true
+      }
+    },
+    {
+      "label": "Salvar ata em rascunho e rejeitar edição concorrente com versão antiga",
+      "passed": true,
+      "observations": {
+        "staleEditRejected": true,
+        "textPreserved": true
+      }
+    }
+  ],
+  "finishedAt": "2026-11-06T16:25:01.019Z",
+  "errors": []
+}

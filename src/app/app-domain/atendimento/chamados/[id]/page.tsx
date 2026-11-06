@@ -15,7 +15,8 @@ import { PageHeader } from "@/components/app-ui/PageHeader";
 export const dynamic = "force-dynamic";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: routeId } = await params;
+  const id = decodeURIComponent(routeId);
   const context = await getAttendanceContext();
   const ticket = await readTicketDetail(db, id, ticketScopeCondition(context));
   if (!ticket) notFound();

@@ -1,0 +1,17 @@
+{
+  "packageId": "CHECKUP_APRESENTACAO_2026_V1",
+  "mode": "APPLIED",
+  "created": [
+    {
+      "id": "f6719992-4353-429c-aa2a-2030dc5fe8f5",
+      "title": "Guia de navegação do Portal do Servidor",
+      "sha256": "f86071b3e01590ca1390569a6ce7dbab66b870872469d55e40d57d3ddc7dfadb"
+    },
+    {
+      "id": "ff0cae66-f380-40e9-b17d-8da279e6688c",
+      "title": "Orientações para conferência cadastral e atendimento",
+      "sha256": "6a888303b933cba481292c5f45dd1a96ba90f53eacbcc6880298cb9bbccea4b7"
+    }
+  ],
+  "planned": []
+}

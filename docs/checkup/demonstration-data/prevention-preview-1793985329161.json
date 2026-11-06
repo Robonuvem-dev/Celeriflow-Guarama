@@ -1,0 +1,19 @@
+{
+  "packageId": "CHECKUP_PREVENCAO_2026_V1",
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-06T17:15:27.763Z",
+  "changes": [
+    {
+      "table": "SstPreventionRecord",
+      "id": "4d05a5cd-f09f-4915-8fbe-85446b00541b",
+      "title": "Semana de orientação sobre organização e bem-estar no trabalho",
+      "kind": "SIPAT"
+    },
+    {
+      "table": "SstPreventionRecord",
+      "id": "b75e3772-d5b0-4d4e-98bd-d93529376ac9",
+      "title": "Visita técnica programada aos postos de atendimento administrativo",
+      "kind": "VISIT"
+    }
+  ]
+}

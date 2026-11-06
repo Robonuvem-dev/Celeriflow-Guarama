@@ -1,0 +1,11 @@
+{
+  "packageId": "CHECKUP_REFERENCIAS_FISCAIS_2026_V1",
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-06T17:28:19.144Z",
+  "origin": {
+    "governmentEntityId": "p0-current-exe",
+    "budgetUnitId": "aurora-system-v1:budget-unit:000",
+    "name": "Prefeitura Municipal de Aurora das Veredas"
+  },
+  "changes": []
+}

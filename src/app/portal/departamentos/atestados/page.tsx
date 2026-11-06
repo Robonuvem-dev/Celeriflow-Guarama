@@ -6,14 +6,20 @@ import { db } from "@/db/client";
 import { portalRows } from "@/db/repositories/portal-servidor/records";
 import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell";
 import { DepartmentCertificateForm } from "./CertificateForm";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 
 export const dynamic = "force-dynamic";
 export default async function DepartmentCertificates({ searchParams }: { searchParams: Promise<{ unitId?: string }> }) {
-  const context = await getTenantContextForModuleOperation("SST", "create"), params = await searchParams;
+  const params = await searchParams;
+  const context = await getPortalPageAccess(() => getTenantContextForModuleOperation("SST", "create"), `/portal/departamentos/atestados${params.unitId ? `?${new URLSearchParams({ unitId: params.unitId })}` : ""}`);
+  if (!context) return <PortalPageAccessDenied />;
   const executor = context.database ?? db, administrator = isSystemAdministrator(context.user), departmentId = context.user.departmentId || "__SEM_DEPARTAMENTO__";
   const units = await portalRows<{ id: string; name: string; secretariatId: string }>(executor, sql`SELECT id,name,"secretariatId" FROM "BudgetUnit" WHERE ${administrator ? sql`TRUE` : sql`id=ANY(${sql.param(context.user.allowedBudgetUnitIds)}::text[])`} ORDER BY name ASC`);
   const unit = units.find(row => row.id === params.unitId);
-  if (unit) await assertSstClinicalAccess(context, unit.id);
+  if (unit) {
+    const clinicalAccess = await getPortalPageAccess(async () => { await assertSstClinicalAccess(context, unit.id); return true; }, `/portal/departamentos/atestados?${new URLSearchParams({ unitId: unit.id })}`);
+    if (!clinicalAccess) return <PortalPageAccessDenied />;
+  }
   const employees = unit ? await portalRows<{ id: string; name: string }>(executor, sql`SELECT id,name FROM "Employee" WHERE "isActive" AND "secretariatId"=${unit.secretariatId} ${administrator ? sql`` : sql`AND "departmentId"=${departmentId}`} ORDER BY name ASC`) : [];
   const reasons = unit ? await portalRows<{ id: string; name: string }>(executor, sql`SELECT id,name FROM "SstCertificateReason" WHERE "budgetUnitId"=${unit.id} AND "isActive" ORDER BY name ASC`) : [];
   const receipts = unit ? await portalRows<{ id: string; protocolNumber: string; status: string }>(executor, sql`SELECT c.id,c."protocolNumber",c.status FROM "SstMedicalCertificate" c WHERE c."budgetUnitId"=${unit.id} AND c."createdById"=${context.user.id} ${administrator ? sql`` : sql`AND c."departmentIdSnapshot"=${departmentId} AND EXISTS(SELECT 1 FROM "Employee" e WHERE e.id=c."employeeId" AND e."departmentId"=${departmentId})`} ORDER BY c."createdAt" DESC LIMIT 20`) : [];

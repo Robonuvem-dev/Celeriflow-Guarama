@@ -1,0 +1,186 @@
+{
+  "packageId": "CHECKUP_APRESENTACAO_2026_V1",
+  "mode": "APPLIED",
+  "startedAt": "2026-11-06T15:13:25.470Z",
+  "changes": [
+    {
+      "table": "BiddingAppointment",
+      "id": "cmw2nii9q000708jr1t7xby3l",
+      "operation": "UPDATE:name"
+    },
+    {
+      "table": "BiddingLot",
+      "id": "cmw2nj544000708l61ykx742r",
+      "operation": "UPDATE:description"
+    },
+    {
+      "table": "OmbudsmanConfiguration",
+      "id": "cmw46wqgz000s08ifnmvep7r9",
+      "operation": "UPDATE:name"
+    },
+    {
+      "table": "OmbudsmanConfiguration",
+      "id": "cmw45245e001208jyj5jz39gs",
+      "operation": "UPDATE:name"
+    },
+    {
+      "table": "OmbudsmanConfiguration",
+      "id": "cmw451t2z000u08jy4r9l2837",
+      "operation": "UPDATE:name"
+    },
+    {
+      "table": "OmbudsmanConfiguration",
+      "id": "cmw451uc5000y08jydqxwmgks",
+      "operation": "UPDATE:name"
+    },
+    {
+      "table": "Secretariat",
+      "id": "cmw3fehvx000508js6r53e682",
+      "operation": "UPDATE:name"
+    },
+    {
+      "table": "Secretariat",
+      "id": "cmw3fehvx000508js6r53e682",
+      "operation": "UPDATE:acronym"
+    },
+    {
+      "table": "Contract",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:contract:0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "Contract",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:contract:1",
+      "operation": "INSERT"
+    },
+    {
+      "table": "Contract",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:contract:2",
+      "operation": "INSERT"
+    },
+    {
+      "table": "Covenant",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:covenant:0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "Covenant",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:covenant:1",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CamAta",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:minutes:0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CamAudiencia",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:hearing:0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CamLei",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:law:0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CamAta",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:minutes:1",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CamAudiencia",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:hearing:1",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CamLei",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:law:1",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CemeteryChapel",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:chapel",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CemeteryOssuary",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:ossuary",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CemeteryIdentificationField",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:cemetery-field",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CemeteryLot",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:lot:0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "TaxGrave",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:grave:0",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CemeteryLot",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:lot:1",
+      "operation": "INSERT"
+    },
+    {
+      "table": "TaxGrave",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:grave:1",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CemeteryLot",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:lot:2",
+      "operation": "INSERT"
+    },
+    {
+      "table": "TaxGrave",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:grave:2",
+      "operation": "INSERT"
+    },
+    {
+      "table": "CemeteryLot",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:lot:3",
+      "operation": "INSERT"
+    },
+    {
+      "table": "TaxGrave",
+      "id": "CHECKUP_APRESENTACAO_2026_V1:grave:3",
+      "operation": "INSERT"
+    },
+    {
+      "table": "TaxServiceActivity",
+      "id": "cmw546q6a0005tchy0e5q1c85",
+      "operation": "INSERT"
+    },
+    {
+      "table": "TaxServiceActivity",
+      "id": "cmw546qb70007tchy1iq34pvt",
+      "operation": "INSERT"
+    },
+    {
+      "table": "TaxServiceActivity",
+      "id": "cmw546qfy0009tchykqwd65ji",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrIntegrationEvent",
+      "id": "7e358cbf-1434-4691-a5f1-6bfe00a757bf",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrIntegrationEvent",
+      "id": "39aec194-a3c8-4e7c-8c94-d1f6081f573d",
+      "operation": "INSERT"
+    }
+  ],
+  "portalContents": [
+    "7e358cbf-1434-4691-a5f1-6bfe00a757bf",
+    "39aec194-a3c8-4e7c-8c94-d1f6081f573d"
+  ]
+}

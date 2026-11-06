@@ -1,0 +1,115 @@
+{
+  "startedAt": "2026-11-06T16:06:34.211Z",
+  "base": "https://guarama.celeriflow.com.br",
+  "scope": "Rendered tables and visible labels; no business mutations",
+  "total": 3,
+  "cases": [
+    {
+      "path": "/seguranca/ordens",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Ordens de Serviço e Equipamentos"
+      ],
+      "tables": [
+        {
+          "caption": "Ordens de Servico e Equipamentos — Controle administrativo de ordens de servico, manutencao de viaturas, radios, cones e demais ativos operacionais.",
+          "headers": [
+            "Numero da OS",
+            "Descricao do servico",
+            "Tipo",
+            "Setor / Deposito",
+            "Bairro/região",
+            "Status",
+            "Data",
+            "Ações"
+          ],
+          "rows": 3,
+          "samples": [
+            "OS-2026-8301\n\t\nRevisão dos rádios de comunicação da equipe\n\t\nReparo de Radio\n\t\nBase de Apoio Operacional\n\t\n—\n\t\nAberta\n\t\n06/11/2026",
+            "OS-2026-8302\n\t\nConferência dos cones e barreiras de sinalização\n\t\nVistoria de Equipamento\n\t\nBase de Apoio Operacional\n\t\n—\n\t\nAberta\n\t\n06/11/2026",
+            "EQ-2026-8301\n\t\nKit de sinalização para apoio em eventos comunitários\n\t\nVistoria de Equipamento\n\t\nBase de Apoio Operacional\n\t\n—\n\t\nAberta\n\t\n06/11/2026"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/cadastros/textos-juridicos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Textos Jurídicos",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Catálogo legalTexts",
+          "headers": [
+            "Tipo",
+            "Número",
+            "Ementa",
+            "Órgão",
+            "Versão",
+            "Status",
+            "Ações"
+          ],
+          "rows": 2,
+          "samples": [
+            "Minuta de instrução normativa\n\t\nMINUTA-TI-2026-01\n\t\nDiretrizes de uso dos recursos de tecnologia da informação\n\t\nPrefeitura Municipal de Vereda das Auroras\n\t\n1\n\t\nInativo\n\t\nConsultar ato",
+            "Minuta de instrução normativa\n\t\nMINUTA-ADM-2026-01\n\t\nOrganização do atendimento no Centro Administrativo\n\t\nPrefeitura Municipal de Vereda das Auroras\n\t\n1\n\t\nInativo\n\t\nConsultar ato"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/portal-servidor/capacitacao",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Minha capacitação",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Histórico de participações",
+          "headers": [
+            "Curso",
+            "Inscrição",
+            "Situação",
+            "Documentos"
+          ],
+          "rows": 1,
+          "samples": [
+            "Atendimento digital e organização do serviço público\n\t\n06/11/2026\n\t\nINSCRITA\n\t\nComprovante"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    }
+  ],
+  "finishedAt": "2026-11-06T16:06:48.043Z",
+  "summary": {
+    "inspected": 3,
+    "markerScreens": 0,
+    "emptyTableScreens": 0,
+    "errors": 0,
+    "layoutBlocked": 0
+  }
+}

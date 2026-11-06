@@ -12,9 +12,12 @@ import ConstructionUpload from "@/components/construction/ConstructionUpload";
 import ConstructionExternalRequests from "@/components/construction/ConstructionExternalRequests";
 import ConstructionInspectionRequirements from "@/components/construction/ConstructionInspectionRequirements";
 import { getConstructionInspectionCorrections } from "@/lib/obras/construction-lifecycle-deadlines";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 
 export default async function ConstructionPortalDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
-  const identity = await getConstructionPortalIdentity(); const { id } = await params;
+  const { id } = await params;
+  const identity = await getPortalPageAccess(getConstructionPortalIdentity, `/portal/construcao-civil/${encodeURIComponent(id)}`, "/portal/construcao-civil/entrar");
+  if (!identity) return <PortalPageAccessDenied />;
   const item = await findConstructionCaseForPortal(db, id, identity.id);
   if (!item) notFound();
   const [inspectionRequirements, inspectionTypes] = await Promise.all([

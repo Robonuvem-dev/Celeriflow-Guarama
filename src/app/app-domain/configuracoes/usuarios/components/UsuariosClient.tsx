@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { deleteUsuario, upsertUsuario, toggleUsuarioStatus } from "../actions";
 import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalPagedContent } from "@/components/app-ui/operational/OperationalPagedContent";
+import { useOperationalDevice } from "@/components/app-ui/operational/OperationalContext";
 import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
 import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
 import styles from "@/components/app-ui/operational/operational.module.css";
@@ -40,12 +42,17 @@ type Servidor = {
 export default function UsuariosClient({
   usuarios,
   perfis,
-  servidores
+  servidores,
+  additionalProfiles,
 }: {
   usuarios: Usuario[];
   perfis: Perfil[];
   servidores: Servidor[];
+  additionalProfiles?: ReactNode;
 }) {
+  const device = useOperationalDevice();
+  const formId = useId();
+  const [profilesOpen, setProfilesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -138,8 +145,8 @@ export default function UsuariosClient({
 
   return (
     <>
-      <OperationalListFrame label="Gestão de usuários"
-        actions={<button onClick={openNewModal} disabled={!perfis.length} className={styles.newButton}><Plus />Novo usuário</button>}
+      {!profilesOpen && <OperationalListFrame label="Gestão de usuários"
+        actions={<><button onClick={openNewModal} disabled={!perfis.length} className={styles.newButton}><Plus />Novo usuário</button>{additionalProfiles && <button type="button" className={styles.filterButton} onClick={() => setProfilesOpen(true)}>Perfis complementares</button>}</>}
         toolbar={<input type="search" aria-label="Buscar usuários por nome ou e-mail" placeholder="Buscar por nome ou e-mail..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }} className={styles.searchInput} />}
         pagination={<OperationalPagination page={activePage} total={filteredUsuarios.length} onPageChange={setPage} />}>
         <OperationalTable columns={columns} preferenceId="configuracoes-usuarios" caption="Usuários" emptyMessage="Nenhum usuário encontrado." rows={pageUsuarios.map((u) => ({
@@ -148,7 +155,11 @@ export default function UsuariosClient({
           cells: { status: <button onClick={() => handleToggleStatus(u.id, !u.ativo)} aria-label={`Alterar status de ${u.nome}`} className="h-6 max-w-full rounded px-1 font-medium">{u.ativo ? "Ativo" : "Inativo"}</button> },
           actions: <div className={styles.rowActions}><button onClick={() => openEditModal(u)} className={styles.iconButton} aria-label={`Editar ${u.nome}`} title="Editar usuário"><Pencil /></button><button onClick={() => handleDelete(u)} disabled={deletingId === u.id} className={styles.iconButton} aria-label={`Excluir ${u.nome}`} title="Excluir usuário"><Trash2 /></button></div>,
         }))} />
-      </OperationalListFrame>
+      </OperationalListFrame>}
+      <div className={profilesOpen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "hidden"}>
+        <button type="button" className={styles.filterButton} onClick={() => setProfilesOpen(false)}>Voltar aos usuários</button>
+        <OperationalPagedContent device={device} label="Perfis complementares">{additionalProfiles}</OperationalPagedContent>
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -162,7 +173,7 @@ export default function UsuariosClient({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4">
+            <form id={formId} onSubmit={handleSubmit} className="p-4">
               <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
@@ -243,7 +254,7 @@ export default function UsuariosClient({
                 Cancelar
               </button>
               <button 
-                onClick={handleSubmit}
+                type="submit" form={formId}
                 disabled={isSubmitting}
                 className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-70 flex items-center gap-2"
               >

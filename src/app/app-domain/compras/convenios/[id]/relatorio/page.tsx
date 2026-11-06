@@ -42,7 +42,7 @@ const eventLabels: Record<string, string> = {
 export default async function ConvenioRelatorioPage({ params }: { params: Promise<{ id: string }> }) {
   await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const covenant = await loadCovenantDetail(databaseConnection.db, id);
+  const covenant = await loadCovenantDetail(databaseConnection.db, decodeURIComponent(id));
   if (!covenant) notFound();
 
   const events = await loadInstrumentEvents(databaseConnection.db, { kind: "COVENANT", id: covenant.id });

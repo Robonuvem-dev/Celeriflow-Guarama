@@ -1,0 +1,130 @@
+{
+  "startedAt": "2026-11-06T14:18:45.597Z",
+  "base": "http://localhost:3101",
+  "scope": "Existing session reused only in memory in an isolated local browser context",
+  "cases": [
+    {
+      "path": "/tributacao/pessoas/THIAGO_MORCATTY_DEMO_2026_V1:taxpayer",
+      "status": 200,
+      "result": "NOT_FOUND",
+      "headings": [
+        "404",
+        "This page could not be found.",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 0,
+        "sidebars": 0
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/nfse",
+      "status": 200,
+      "result": "RESOURCE_ERROR",
+      "headings": [
+        "NFS-e",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "httpErrors": [
+        {
+          "path": "/api/audit/interaction",
+          "status": 400,
+          "type": "fetch"
+        },
+        {
+          "path": "/api/audit/interaction",
+          "status": 400,
+          "type": "fetch"
+        }
+      ],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    }
+  ],
+  "shellChecks": [],
+  "finishedAt": "2026-11-06T14:19:22.138Z"
+}

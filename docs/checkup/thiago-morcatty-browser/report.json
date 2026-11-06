@@ -1,0 +1,131 @@
+{
+  "checkedAt": "2026-11-06T14:00:18.576Z",
+  "base": "https://guarama.celeriflow.com.br",
+  "mode": "Authenticated consultations of the newly created fictional employee",
+  "cases": [
+    {
+      "name": "portal",
+      "path": "/portal-servidor",
+      "status": 200,
+      "missing": [],
+      "rows": 0,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "ficha",
+      "path": "/portal-servidor/ficha-funcional",
+      "status": 200,
+      "missing": [],
+      "rows": 1,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "ponto-outubro",
+      "path": "/portal-servidor/ponto?month=2026-10",
+      "status": 200,
+      "missing": [],
+      "rows": 20,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "ponto-novembro",
+      "path": "/portal-servidor/ponto?month=2026-11",
+      "status": 200,
+      "missing": [],
+      "rows": 3,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "ferias",
+      "path": "/portal-servidor/ferias",
+      "status": 200,
+      "missing": [],
+      "rows": 1,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "contracheque",
+      "path": "/portal-servidor/demonstrativos?competence=10%2F2026",
+      "status": 200,
+      "missing": [],
+      "rows": 1,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "folha",
+      "path": "/portal-servidor/folha?competence=10%2F2026",
+      "status": 200,
+      "missing": [],
+      "rows": 3,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "rh-servidor",
+      "path": "/rh/servidores?q=Morcatty",
+      "status": 200,
+      "missing": [],
+      "rows": 1,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "cadastro-pessoa",
+      "path": "/cadastros/pessoas-fisicas",
+      "status": 200,
+      "missing": [],
+      "rows": 1,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "administracao",
+      "path": "/administracao/servidores",
+      "status": 200,
+      "missing": [],
+      "rows": 1,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "tributacao",
+      "path": "/tributacao/pessoas?q=99377290171",
+      "status": 200,
+      "missing": [],
+      "rows": 1,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "name": "ficha-fiscal",
+      "path": "/tributacao/pessoas/THIAGO_MORCATTY_DEMO_2026_V1:taxpayer",
+      "status": 200,
+      "missing": [
+        "Thiago Morcatty"
+      ],
+      "rows": 0,
+      "pageErrors": [],
+      "passed": false,
+      "knownIssue": "Production renders a streamed 404 for existing and new taxpayer details"
+    },
+    {
+      "name": "contracheque-pdf",
+      "status": 200,
+      "contentType": "application/pdf",
+      "bytes": 5408,
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed": 12,
+    "knownIssues": 1,
+    "failed": 0
+  },
+  "finishedAt": "2026-11-06T14:01:37.005Z"
+}

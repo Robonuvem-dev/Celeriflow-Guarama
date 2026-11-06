@@ -4,11 +4,13 @@ import { getConstructionPortalIdentity } from "@/lib/obras/construction-portal-a
 import { listConstructionAutomaticViability } from "@/lib/obras/construction-automatic-viability";
 import { automaticViabilityDisclaimer } from "@/lib/obras/construction-automatic-viability-policy";
 import AutomaticViabilityButton from "./AutomaticViabilityButton";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 
 const outcomes: Record<string, string> = { APPROVED: "Favorável nos indicadores modelados", DENIED: "Incompatível com os indicadores modelados", MANUAL: "Sem decisão automática — dados ou regras insuficientes" };
 export default async function AutomaticViabilityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const identity = await getConstructionPortalIdentity();
+  const identity = await getPortalPageAccess(getConstructionPortalIdentity, `/portal/construcao-civil/${encodeURIComponent(id)}/viabilidade-automatica`, "/portal/construcao-civil/entrar");
+  if (!identity) return <PortalPageAccessDenied />;
   const runs = await listConstructionAutomaticViability(databaseConnection, identity.id, id);
   return <main className="mx-auto max-w-5xl space-y-5 p-6">
     <h1 className="text-xl font-semibold">Viabilidade online automática — demonstrativo</h1>

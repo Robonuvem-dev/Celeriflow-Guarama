@@ -1,0 +1,5611 @@
+{
+  "date": "2026-11-06T18:44:07.123Z",
+  "summary": {
+    "pages": 799,
+    "modules": 30,
+    "shellPages": 708,
+    "listPages": 301,
+    "brokenLiteralLinks": 0,
+    "invalidMenuLinks": 0,
+    "invalidRegistrations": 0
+  },
+  "invalidMenuLinks": [],
+  "invalidRegistrations": [],
+  "brokenLiteralLinks": [],
+  "inventory": [
+    {
+      "pathname": "/",
+      "file": "src/app/(marketing)/page.tsx",
+      "module": "",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/login",
+      "file": "src/app/app-domain/(auth)/login/page.tsx",
+      "module": "login",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/login/recuperar",
+      "file": "src/app/app-domain/(auth)/login/recuperar/page.tsx",
+      "module": "login",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/auditoria",
+      "file": "src/app/app-domain/administracao/auditoria/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/administracao/bi/smarttv",
+      "file": "src/app/app-domain/administracao/bi/smarttv/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/calendario/novo",
+      "file": "src/app/app-domain/administracao/calendario/novo/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/calendario",
+      "file": "src/app/app-domain/administracao/calendario/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/administracao/cargos/novo",
+      "file": "src/app/app-domain/administracao/cargos/novo/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/cargos",
+      "file": "src/app/app-domain/administracao/cargos/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/administracao/demandas",
+      "file": "src/app/app-domain/administracao/demandas/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/departamentos/novo",
+      "file": "src/app/app-domain/administracao/departamentos/novo/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/departamentos",
+      "file": "src/app/app-domain/administracao/departamentos/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/administracao/indicadores",
+      "file": "src/app/app-domain/administracao/indicadores/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/instituicao",
+      "file": "src/app/app-domain/administracao/instituicao/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao",
+      "file": "src/app/app-domain/administracao/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/secretarias/novo",
+      "file": "src/app/app-domain/administracao/secretarias/novo/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/secretarias",
+      "file": "src/app/app-domain/administracao/secretarias/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/administracao/secretarias/[id]/editar",
+      "file": "src/app/app-domain/administracao/secretarias/[id]/editar/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/servidores/novo",
+      "file": "src/app/app-domain/administracao/servidores/novo/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/servidores",
+      "file": "src/app/app-domain/administracao/servidores/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/administracao/unidades/novo",
+      "file": "src/app/app-domain/administracao/unidades/novo/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/administracao/unidades",
+      "file": "src/app/app-domain/administracao/unidades/page.tsx",
+      "module": "administracao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/acervo/integrados",
+      "file": "src/app/app-domain/assinatura-digital/acervo/integrados/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/acervo",
+      "file": "src/app/app-domain/assinatura-digital/acervo/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/acervo/[id]",
+      "file": "src/app/app-domain/assinatura-digital/acervo/[id]/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/assinatura-digital/assine-agora",
+      "file": "src/app/app-domain/assinatura-digital/assine-agora/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/assinatura-digital/calendario",
+      "file": "src/app/app-domain/assinatura-digital/calendario/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/classes",
+      "file": "src/app/app-domain/assinatura-digital/classes/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/documentos",
+      "file": "src/app/app-domain/assinatura-digital/documentos/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/fluxos",
+      "file": "src/app/app-domain/assinatura-digital/fluxos/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/gestao",
+      "file": "src/app/app-domain/assinatura-digital/gestao/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/historico",
+      "file": "src/app/app-domain/assinatura-digital/historico/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/importacoes",
+      "file": "src/app/app-domain/assinatura-digital/importacoes/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/integracoes",
+      "file": "src/app/app-domain/assinatura-digital/integracoes/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/meu-painel",
+      "file": "src/app/app-domain/assinatura-digital/meu-painel/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/modelos/anteriores",
+      "file": "src/app/app-domain/assinatura-digital/modelos/anteriores/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/modelos",
+      "file": "src/app/app-domain/assinatura-digital/modelos/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/origens",
+      "file": "src/app/app-domain/assinatura-digital/origens/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital",
+      "file": "src/app/app-domain/assinatura-digital/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/assinatura-digital/pastas-inteligentes",
+      "file": "src/app/app-domain/assinatura-digital/pastas-inteligentes/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/pendentes",
+      "file": "src/app/app-domain/assinatura-digital/pendentes/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/pesquisa",
+      "file": "src/app/app-domain/assinatura-digital/pesquisa/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/processamento",
+      "file": "src/app/app-domain/assinatura-digital/processamento/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/registros",
+      "file": "src/app/app-domain/assinatura-digital/registros/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/tarefas",
+      "file": "src/app/app-domain/assinatura-digital/tarefas/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/thesaurus",
+      "file": "src/app/app-domain/assinatura-digital/thesaurus/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/usuarios",
+      "file": "src/app/app-domain/assinatura-digital/usuarios/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/assinatura-digital/validacao",
+      "file": "src/app/app-domain/assinatura-digital/validacao/page.tsx",
+      "module": "assinatura-digital",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/cadastros/configuracoes",
+      "file": "src/app/app-domain/atendimento/cadastros/configuracoes/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/cadastros",
+      "file": "src/app/app-domain/atendimento/cadastros/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/central",
+      "file": "src/app/app-domain/atendimento/central/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/atendimento/chamados/[id]",
+      "file": "src/app/app-domain/atendimento/chamados/[id]/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/configuracoes",
+      "file": "src/app/app-domain/atendimento/configuracoes/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/fila",
+      "file": "src/app/app-domain/atendimento/fila/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/novo",
+      "file": "src/app/app-domain/atendimento/novo/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/ouvidoria/nova",
+      "file": "src/app/app-domain/atendimento/ouvidoria/nova/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/ouvidoria",
+      "file": "src/app/app-domain/atendimento/ouvidoria/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/atendimento/ouvidoria/[id]",
+      "file": "src/app/app-domain/atendimento/ouvidoria/[id]/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento",
+      "file": "src/app/app-domain/atendimento/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/atendimento/relatorios",
+      "file": "src/app/app-domain/atendimento/relatorios/page.tsx",
+      "module": "atendimento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/auditoria",
+      "file": "src/app/app-domain/auditoria/page.tsx",
+      "module": "auditoria",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/assinantes-legais",
+      "file": "src/app/app-domain/cadastros/assinantes-legais/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/bancos-agencias",
+      "file": "src/app/app-domain/cadastros/bancos-agencias/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/cbo",
+      "file": "src/app/app-domain/cadastros/cbo/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/centros-custo",
+      "file": "src/app/app-domain/cadastros/centros-custo/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/documentos/novo",
+      "file": "src/app/app-domain/cadastros/documentos/novo/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/documentos",
+      "file": "src/app/app-domain/cadastros/documentos/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/entidades",
+      "file": "src/app/app-domain/cadastros/entidades/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/familias",
+      "file": "src/app/app-domain/cadastros/familias/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/fornecedores/novo",
+      "file": "src/app/app-domain/cadastros/fornecedores/novo/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/fornecedores",
+      "file": "src/app/app-domain/cadastros/fornecedores/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/fornecedores/[id]",
+      "file": "src/app/app-domain/cadastros/fornecedores/[id]/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/imoveis/atualizacoes-construcao",
+      "file": "src/app/app-domain/cadastros/imoveis/atualizacoes-construcao/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/imoveis/novo",
+      "file": "src/app/app-domain/cadastros/imoveis/novo/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/imoveis",
+      "file": "src/app/app-domain/cadastros/imoveis/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/localidades",
+      "file": "src/app/app-domain/cadastros/localidades/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/moedas",
+      "file": "src/app/app-domain/cadastros/moedas/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/organograma",
+      "file": "src/app/app-domain/cadastros/organograma/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros",
+      "file": "src/app/app-domain/cadastros/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/pessoas-fisicas/novo",
+      "file": "src/app/app-domain/cadastros/pessoas-fisicas/novo/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/pessoas-fisicas",
+      "file": "src/app/app-domain/cadastros/pessoas-fisicas/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/pessoas-juridicas/novo",
+      "file": "src/app/app-domain/cadastros/pessoas-juridicas/novo/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cadastros/pessoas-juridicas",
+      "file": "src/app/app-domain/cadastros/pessoas-juridicas/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/produtos",
+      "file": "src/app/app-domain/cadastros/produtos/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/qualidade",
+      "file": "src/app/app-domain/cadastros/qualidade/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/textos-juridicos/documentos",
+      "file": "src/app/app-domain/cadastros/textos-juridicos/documentos/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/textos-juridicos",
+      "file": "src/app/app-domain/cadastros/textos-juridicos/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cadastros/tributos",
+      "file": "src/app/app-domain/cadastros/tributos/page.tsx",
+      "module": "cadastros",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/camara/audiencias",
+      "file": "src/app/app-domain/camara/audiencias/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/comissoes",
+      "file": "src/app/app-domain/camara/comissoes/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/legislaturas",
+      "file": "src/app/app-domain/camara/legislaturas/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/camara/leis",
+      "file": "src/app/app-domain/camara/leis/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/camara",
+      "file": "src/app/app-domain/camara/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/planejamento/audiencias",
+      "file": "src/app/app-domain/camara/planejamento/audiencias/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/camara/planejamento/cadastros/[catalog]",
+      "file": "src/app/app-domain/camara/planejamento/cadastros/[catalog]/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/planejamento/entidades",
+      "file": "src/app/app-domain/camara/planejamento/entidades/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/planejamento/importacoes",
+      "file": "src/app/app-domain/camara/planejamento/importacoes/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/camara/planejamento",
+      "file": "src/app/app-domain/camara/planejamento/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/planejamento/[kind]",
+      "file": "src/app/app-domain/camara/planejamento/[kind]/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/planejamento/[kind]/[id]/gestao/[section]",
+      "file": "src/app/app-domain/camara/planejamento/[kind]/[id]/gestao/[section]/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/planejamento/[kind]/[id]",
+      "file": "src/app/app-domain/camara/planejamento/[kind]/[id]/page.tsx",
+      "module": "compartilhados-planejamento-camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/portal",
+      "file": "src/app/app-domain/camara/portal/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/camara/proposicoes",
+      "file": "src/app/app-domain/camara/proposicoes/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/camara/sessoes",
+      "file": "src/app/app-domain/camara/sessoes/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/camara/vereadores",
+      "file": "src/app/app-domain/camara/vereadores/page.tsx",
+      "module": "camara",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/complementos",
+      "file": "src/app/app-domain/cemiterios/complementos/page.tsx",
+      "module": "cemiterios",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/comprovante/[code]",
+      "file": "src/app/app-domain/cemiterios/comprovante/[code]/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cemiterios/consulta",
+      "file": "src/app/app-domain/cemiterios/consulta/page.tsx",
+      "module": "cemiterios",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/estrutura",
+      "file": "src/app/app-domain/cemiterios/estrutura/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/estrutura/[id]",
+      "file": "src/app/app-domain/cemiterios/estrutura/[id]/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/obito/[id]",
+      "file": "src/app/app-domain/cemiterios/obito/[id]/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cemiterios/ocupacao",
+      "file": "src/app/app-domain/cemiterios/ocupacao/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/ocupacao/[id]",
+      "file": "src/app/app-domain/cemiterios/ocupacao/[id]/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios",
+      "file": "src/app/app-domain/cemiterios/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cemiterios/processos",
+      "file": "src/app/app-domain/cemiterios/processos/page.tsx",
+      "module": "cemiterios",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/processos/[id]",
+      "file": "src/app/app-domain/cemiterios/processos/[id]/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cemiterios/relatorio",
+      "file": "src/app/app-domain/cemiterios/relatorio/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cemiterios/taxas/guias/[id]",
+      "file": "src/app/app-domain/cemiterios/taxas/guias/[id]/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cemiterios/taxas",
+      "file": "src/app/app-domain/cemiterios/taxas/page.tsx",
+      "module": "cemiterios",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cemiterios/transferencias",
+      "file": "src/app/app-domain/cemiterios/transferencias/page.tsx",
+      "module": "compartilhados-cemiterios-estrutura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/cadastros/alienacoes",
+      "file": "src/app/app-domain/compras/cadastros/alienacoes/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/cadastros/crc/relatorio",
+      "file": "src/app/app-domain/compras/cadastros/crc/relatorio/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/cadastros",
+      "file": "src/app/app-domain/compras/cadastros/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/cadastros/[catalogo]",
+      "file": "src/app/app-domain/compras/cadastros/[catalogo]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/catalogo",
+      "file": "src/app/app-domain/compras/catalogo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/contratos/novo",
+      "file": "src/app/app-domain/compras/contratos/novo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/contratos",
+      "file": "src/app/app-domain/compras/contratos/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/contratos/[id]/editar",
+      "file": "src/app/app-domain/compras/contratos/[id]/editar/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/contratos/[id]",
+      "file": "src/app/app-domain/compras/contratos/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/contratos/[id]/relatorio",
+      "file": "src/app/app-domain/compras/contratos/[id]/relatorio/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/convenios/novo",
+      "file": "src/app/app-domain/compras/convenios/novo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/convenios",
+      "file": "src/app/app-domain/compras/convenios/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/convenios/[id]/editar",
+      "file": "src/app/app-domain/compras/convenios/[id]/editar/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/convenios/[id]",
+      "file": "src/app/app-domain/compras/convenios/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/convenios/[id]/relatorio",
+      "file": "src/app/app-domain/compras/convenios/[id]/relatorio/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/dispensas/novo",
+      "file": "src/app/app-domain/compras/dispensas/novo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/dispensas/[id]/editar",
+      "file": "src/app/app-domain/compras/dispensas/[id]/editar/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/dispensas/[id]",
+      "file": "src/app/app-domain/compras/dispensas/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/exportacoes",
+      "file": "src/app/app-domain/compras/exportacoes/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/licitacoes/novo",
+      "file": "src/app/app-domain/compras/licitacoes/novo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/licitacoes",
+      "file": "src/app/app-domain/compras/licitacoes/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/licitacoes/portal",
+      "file": "src/app/app-domain/compras/licitacoes/portal/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/licitacoes/portal/[participantId]",
+      "file": "src/app/app-domain/compras/licitacoes/portal/[participantId]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/licitacoes/registro-precos-externo",
+      "file": "src/app/app-domain/compras/licitacoes/registro-precos-externo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/licitacoes/relatorios",
+      "file": "src/app/app-domain/compras/licitacoes/relatorios/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/licitacoes/[id]/editar",
+      "file": "src/app/app-domain/compras/licitacoes/[id]/editar/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/licitacoes/[id]",
+      "file": "src/app/app-domain/compras/licitacoes/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/licitacoes/[id]/relatorio",
+      "file": "src/app/app-domain/compras/licitacoes/[id]/relatorio/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras",
+      "file": "src/app/app-domain/compras/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/pesquisas-precos/nova",
+      "file": "src/app/app-domain/compras/pesquisas-precos/nova/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/pesquisas-precos",
+      "file": "src/app/app-domain/compras/pesquisas-precos/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/pesquisas-precos/portal/[key]",
+      "file": "src/app/app-domain/compras/pesquisas-precos/portal/[key]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/pesquisas-precos/portal/[key]/relatorio",
+      "file": "src/app/app-domain/compras/pesquisas-precos/portal/[key]/relatorio/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/pesquisas-precos/[id]",
+      "file": "src/app/app-domain/compras/pesquisas-precos/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/pesquisas-precos/[id]/relatorio",
+      "file": "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/planejamento/novo",
+      "file": "src/app/app-domain/compras/planejamento/novo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/planejamento",
+      "file": "src/app/app-domain/compras/planejamento/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/planejamento/pca",
+      "file": "src/app/app-domain/compras/planejamento/pca/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/planejamento/[id]/editar",
+      "file": "src/app/app-domain/compras/planejamento/[id]/editar/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/planejamento/[id]",
+      "file": "src/app/app-domain/compras/planejamento/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/processos/novo",
+      "file": "src/app/app-domain/compras/processos/novo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/processos",
+      "file": "src/app/app-domain/compras/processos/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/processos/[id]/editar",
+      "file": "src/app/app-domain/compras/processos/[id]/editar/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/processos/[id]",
+      "file": "src/app/app-domain/compras/processos/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/recebimentos",
+      "file": "src/app/app-domain/compras/recebimentos/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/solicitacoes/novo",
+      "file": "src/app/app-domain/compras/solicitacoes/novo/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/solicitacoes",
+      "file": "src/app/app-domain/compras/solicitacoes/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/compras/solicitacoes/[id]/dfd",
+      "file": "src/app/app-domain/compras/solicitacoes/[id]/dfd/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/solicitacoes/[id]/editar",
+      "file": "src/app/app-domain/compras/solicitacoes/[id]/editar/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/compras/solicitacoes/[id]",
+      "file": "src/app/app-domain/compras/solicitacoes/[id]/page.tsx",
+      "module": "compras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/auditoria",
+      "file": "src/app/app-domain/configuracoes/auditoria/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/configuracoes/certificados",
+      "file": "src/app/app-domain/configuracoes/certificados/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/conta",
+      "file": "src/app/app-domain/configuracoes/conta/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/instancia",
+      "file": "src/app/app-domain/configuracoes/instancia/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/integracoes",
+      "file": "src/app/app-domain/configuracoes/integracoes/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/mesclagem-pf",
+      "file": "src/app/app-domain/configuracoes/mesclagem-pf/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/modulos",
+      "file": "src/app/app-domain/configuracoes/modulos/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes",
+      "file": "src/app/app-domain/configuracoes/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/perfis",
+      "file": "src/app/app-domain/configuracoes/perfis/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/configuracoes/processos/etapas",
+      "file": "src/app/app-domain/configuracoes/processos/etapas/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/configuracoes/processos",
+      "file": "src/app/app-domain/configuracoes/processos/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/relatorios",
+      "file": "src/app/app-domain/configuracoes/relatorios/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/configuracoes/usuarios",
+      "file": "src/app/app-domain/configuracoes/usuarios/page.tsx",
+      "module": "configuracoes",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/controle-interno/consultas/judicial",
+      "file": "src/app/app-domain/controle-interno/consultas/judicial/page.tsx",
+      "module": "controle-interno",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/controle-interno/consultas/ouvidoria",
+      "file": "src/app/app-domain/controle-interno/consultas/ouvidoria/page.tsx",
+      "module": "controle-interno",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/controle-interno/consultas/rh",
+      "file": "src/app/app-domain/controle-interno/consultas/rh/page.tsx",
+      "module": "controle-interno",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/controle-interno",
+      "file": "src/app/app-domain/controle-interno/page.tsx",
+      "module": "controle-interno",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/controle-interno/relatorios",
+      "file": "src/app/app-domain/controle-interno/relatorios/page.tsx",
+      "module": "controle-interno",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cultura/conselhos-fundos",
+      "file": "src/app/app-domain/cultura/conselhos-fundos/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cultura/documentos",
+      "file": "src/app/app-domain/cultura/documentos/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cultura/espacos-reservas",
+      "file": "src/app/app-domain/cultura/espacos-reservas/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cultura/esporte-lazer",
+      "file": "src/app/app-domain/cultura/esporte-lazer/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cultura/eventos",
+      "file": "src/app/app-domain/cultura/eventos/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/cultura/fomento-projetos",
+      "file": "src/app/app-domain/cultura/fomento-projetos/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cultura/gestao-cultural",
+      "file": "src/app/app-domain/cultura/gestao-cultural/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/cultura",
+      "file": "src/app/app-domain/cultura/page.tsx",
+      "module": "cultura",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/dashboard",
+      "file": "src/app/app-domain/dashboard/page.tsx",
+      "module": "dashboard",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/documentos/assinaturas",
+      "file": "src/app/app-domain/documentos/assinaturas/page.tsx",
+      "module": "documentos",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/documentos/ged",
+      "file": "src/app/app-domain/documentos/ged/page.tsx",
+      "module": "documentos",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/documentos/modelos",
+      "file": "src/app/app-domain/documentos/modelos/page.tsx",
+      "module": "documentos",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/documentos",
+      "file": "src/app/app-domain/documentos/page.tsx",
+      "module": "documentos",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/academico",
+      "file": "src/app/app-domain/educacao/academico/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/alunos",
+      "file": "src/app/app-domain/educacao/alunos/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/biblioteca",
+      "file": "src/app/app-domain/educacao/biblioteca/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/calendario",
+      "file": "src/app/app-domain/educacao/calendario/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/educacao/disciplinas",
+      "file": "src/app/app-domain/educacao/disciplinas/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/documentos",
+      "file": "src/app/app-domain/educacao/documentos/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/educacenso",
+      "file": "src/app/app-domain/educacao/educacenso/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/escolas/novo",
+      "file": "src/app/app-domain/educacao/escolas/novo/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/escolas",
+      "file": "src/app/app-domain/educacao/escolas/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/educacao/licencas",
+      "file": "src/app/app-domain/educacao/licencas/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/matriculas",
+      "file": "src/app/app-domain/educacao/matriculas/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/merenda/novo",
+      "file": "src/app/app-domain/educacao/merenda/novo/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/merenda",
+      "file": "src/app/app-domain/educacao/merenda/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao",
+      "file": "src/app/app-domain/educacao/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/portal-interativo",
+      "file": "src/app/app-domain/educacao/portal-interativo/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/portal-responsavel",
+      "file": "src/app/app-domain/educacao/portal-responsavel/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/pre-matricula",
+      "file": "src/app/app-domain/educacao/pre-matricula/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/professor",
+      "file": "src/app/app-domain/educacao/professor/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/professores",
+      "file": "src/app/app-domain/educacao/professores/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/educacao/recursos-escolares",
+      "file": "src/app/app-domain/educacao/recursos-escolares/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/suporte",
+      "file": "src/app/app-domain/educacao/suporte/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/educacao/transporte",
+      "file": "src/app/app-domain/educacao/transporte/page.tsx",
+      "module": "educacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/automacoes",
+      "file": "src/app/app-domain/financeiro/automacoes/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/cheques",
+      "file": "src/app/app-domain/financeiro/cheques/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/cheques/[id]",
+      "file": "src/app/app-domain/financeiro/cheques/[id]/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/conciliacao-bancaria",
+      "file": "src/app/app-domain/financeiro/conciliacao-bancaria/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/contabilidade/disponibilidade",
+      "file": "src/app/app-domain/financeiro/contabilidade/disponibilidade/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/contabilidade/etapas-anuais",
+      "file": "src/app/app-domain/financeiro/contabilidade/etapas-anuais/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/contabilidade/eventos",
+      "file": "src/app/app-domain/financeiro/contabilidade/eventos/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/contabilidade/lancamentos",
+      "file": "src/app/app-domain/financeiro/contabilidade/lancamentos/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/contabilidade/msc",
+      "file": "src/app/app-domain/financeiro/contabilidade/msc/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/contabilidade",
+      "file": "src/app/app-domain/financeiro/contabilidade/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/contabilidade/saldos-fontes",
+      "file": "src/app/app-domain/financeiro/contabilidade/saldos-fontes/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/contas-bancarias",
+      "file": "src/app/app-domain/financeiro/contas-bancarias/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/custos",
+      "file": "src/app/app-domain/financeiro/custos/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/download-extratos",
+      "file": "src/app/app-domain/financeiro/download-extratos/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/empenhos",
+      "file": "src/app/app-domain/financeiro/empenhos/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/liquidacoes",
+      "file": "src/app/app-domain/financeiro/liquidacoes/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/orcamento/cadastros",
+      "file": "src/app/app-domain/financeiro/orcamento/cadastros/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/orcamento",
+      "file": "src/app/app-domain/financeiro/orcamento/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/orcamento/planejamento",
+      "file": "src/app/app-domain/financeiro/orcamento/planejamento/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/pagamentos",
+      "file": "src/app/app-domain/financeiro/pagamentos/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro",
+      "file": "src/app/app-domain/financeiro/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/receitas",
+      "file": "src/app/app-domain/financeiro/receitas/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/receitas-constitucionais",
+      "file": "src/app/app-domain/financeiro/receitas-constitucionais/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/relatorios/cadastros",
+      "file": "src/app/app-domain/financeiro/relatorios/cadastros/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/relatorios/ensino-decendial",
+      "file": "src/app/app-domain/financeiro/relatorios/ensino-decendial/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/relatorios/fontes",
+      "file": "src/app/app-domain/financeiro/relatorios/fontes/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/relatorios/indices-constitucionais",
+      "file": "src/app/app-domain/financeiro/relatorios/indices-constitucionais/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/relatorios",
+      "file": "src/app/app-domain/financeiro/relatorios/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/relatorios/pessoal-fiscal",
+      "file": "src/app/app-domain/financeiro/relatorios/pessoal-fiscal/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/rendimentos",
+      "file": "src/app/app-domain/financeiro/rendimentos/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/financeiro/resgates-aplicacoes",
+      "file": "src/app/app-domain/financeiro/resgates-aplicacoes/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/financeiro/restos-a-pagar",
+      "file": "src/app/app-domain/financeiro/restos-a-pagar/page.tsx",
+      "module": "financeiro",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/frotas/cadastros",
+      "file": "src/app/app-domain/frotas/cadastros/page.tsx",
+      "module": "frotas",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/frotas/gestao/anexos",
+      "file": "src/app/app-domain/frotas/gestao/anexos/page.tsx",
+      "module": "frotas",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/frotas/gestao",
+      "file": "src/app/app-domain/frotas/gestao/page.tsx",
+      "module": "frotas",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/frotas/movimentos",
+      "file": "src/app/app-domain/frotas/movimentos/page.tsx",
+      "module": "frotas",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/frotas",
+      "file": "src/app/app-domain/frotas/page.tsx",
+      "module": "frotas",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/iluminacao-publica/iluminacao-energia",
+      "file": "src/app/app-domain/iluminacao-publica/iluminacao-energia/page.tsx",
+      "module": "iluminacao-publica",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/iluminacao-publica/ordens-servico",
+      "file": "src/app/app-domain/iluminacao-publica/ordens-servico/page.tsx",
+      "module": "iluminacao-publica",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/iluminacao-publica",
+      "file": "src/app/app-domain/iluminacao-publica/page.tsx",
+      "module": "iluminacao-publica",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/indicadores",
+      "file": "src/app/app-domain/indicadores/page.tsx",
+      "module": "indicadores",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/meio-ambiente/areas-verdes",
+      "file": "src/app/app-domain/meio-ambiente/areas-verdes/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/denuncias",
+      "file": "src/app/app-domain/meio-ambiente/denuncias/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/documentos",
+      "file": "src/app/app-domain/meio-ambiente/documentos/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/educacao",
+      "file": "src/app/app-domain/meio-ambiente/educacao/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/empreendimentos",
+      "file": "src/app/app-domain/meio-ambiente/empreendimentos/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/fiscalizacao",
+      "file": "src/app/app-domain/meio-ambiente/fiscalizacao/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/licenciamento",
+      "file": "src/app/app-domain/meio-ambiente/licenciamento/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente",
+      "file": "src/app/app-domain/meio-ambiente/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/meio-ambiente/residuos/cadastros",
+      "file": "src/app/app-domain/meio-ambiente/residuos/cadastros/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/residuos/estoque",
+      "file": "src/app/app-domain/meio-ambiente/residuos/estoque/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/residuos",
+      "file": "src/app/app-domain/meio-ambiente/residuos/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/residuos/relatorios",
+      "file": "src/app/app-domain/meio-ambiente/residuos/relatorios/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/meio-ambiente/solicitacoes",
+      "file": "src/app/app-domain/meio-ambiente/solicitacoes/page.tsx",
+      "module": "meio-ambiente",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/notificacoes",
+      "file": "src/app/app-domain/notificacoes/page.tsx",
+      "module": "notificacoes",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/configuracoes",
+      "file": "src/app/app-domain/obras/construcao-civil/configuracoes/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/construtoras",
+      "file": "src/app/app-domain/obras/construcao-civil/construtoras/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/consultas",
+      "file": "src/app/app-domain/obras/construcao-civil/consultas/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/documentos",
+      "file": "src/app/app-domain/obras/construcao-civil/documentos/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/equipe",
+      "file": "src/app/app-domain/obras/construcao-civil/equipe/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/fiscalizacao",
+      "file": "src/app/app-domain/obras/construcao-civil/fiscalizacao/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/fiscalizacao/[id]/atos/[actId]",
+      "file": "src/app/app-domain/obras/construcao-civil/fiscalizacao/[id]/atos/[actId]/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/fiscalizacao/[id]",
+      "file": "src/app/app-domain/obras/construcao-civil/fiscalizacao/[id]/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/integracoes",
+      "file": "src/app/app-domain/obras/construcao-civil/integracoes/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/novo",
+      "file": "src/app/app-domain/obras/construcao-civil/novo/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil",
+      "file": "src/app/app-domain/obras/construcao-civil/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/participacao",
+      "file": "src/app/app-domain/obras/construcao-civil/participacao/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/profissionais",
+      "file": "src/app/app-domain/obras/construcao-civil/profissionais/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/regras",
+      "file": "src/app/app-domain/obras/construcao-civil/regras/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/construcao-civil/taxas/guias/[id]",
+      "file": "src/app/app-domain/obras/construcao-civil/taxas/guias/[id]/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/taxas",
+      "file": "src/app/app-domain/obras/construcao-civil/taxas/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/vistorias",
+      "file": "src/app/app-domain/obras/construcao-civil/vistorias/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/[id]/ciclo",
+      "file": "src/app/app-domain/obras/construcao-civil/[id]/ciclo/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/[id]/documentos",
+      "file": "src/app/app-domain/obras/construcao-civil/[id]/documentos/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/[id]",
+      "file": "src/app/app-domain/obras/construcao-civil/[id]/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/construcao-civil/[id]/pranchas",
+      "file": "src/app/app-domain/obras/construcao-civil/[id]/pranchas/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/documentos",
+      "file": "src/app/app-domain/obras/documentos/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/fiscalizacao-medicoes",
+      "file": "src/app/app-domain/obras/fiscalizacao-medicoes/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/iluminacao-energia",
+      "file": "src/app/app-domain/obras/iluminacao-energia/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/maquinas-equipes",
+      "file": "src/app/app-domain/obras/maquinas-equipes/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/obras-projetos",
+      "file": "src/app/app-domain/obras/obras-projetos/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/ordens-servico",
+      "file": "src/app/app-domain/obras/ordens-servico/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras",
+      "file": "src/app/app-domain/obras/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/obras/relatorios",
+      "file": "src/app/app-domain/obras/relatorios/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/obras/servicos-urbanos",
+      "file": "src/app/app-domain/obras/servicos-urbanos/page.tsx",
+      "module": "obras",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/almoxarifados/novo",
+      "file": "src/app/app-domain/patrimonio/almoxarifados/novo/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/almoxarifados",
+      "file": "src/app/app-domain/patrimonio/almoxarifados/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/almoxarifados/[id]/editar",
+      "file": "src/app/app-domain/patrimonio/almoxarifados/[id]/editar/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/bens/editar",
+      "file": "src/app/app-domain/patrimonio/bens/editar/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/bens/estoque",
+      "file": "src/app/app-domain/patrimonio/bens/estoque/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/bens/novo",
+      "file": "src/app/app-domain/patrimonio/bens/novo/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/bens",
+      "file": "src/app/app-domain/patrimonio/bens/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/bens/[id]/editar",
+      "file": "src/app/app-domain/patrimonio/bens/[id]/editar/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/bens/[id]",
+      "file": "src/app/app-domain/patrimonio/bens/[id]/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/cadastros",
+      "file": "src/app/app-domain/patrimonio/cadastros/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/centros-custo/novo",
+      "file": "src/app/app-domain/patrimonio/centros-custo/novo/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/centros-custo",
+      "file": "src/app/app-domain/patrimonio/centros-custo/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/centros-custo/[id]/editar",
+      "file": "src/app/app-domain/patrimonio/centros-custo/[id]/editar/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/ciclo-vida",
+      "file": "src/app/app-domain/patrimonio/ciclo-vida/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/inventario-bens",
+      "file": "src/app/app-domain/patrimonio/inventario-bens/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/inventarios",
+      "file": "src/app/app-domain/patrimonio/inventarios/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/inventarios/[id]",
+      "file": "src/app/app-domain/patrimonio/inventarios/[id]/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/manutencoes/[id]",
+      "file": "src/app/app-domain/patrimonio/manutencoes/[id]/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/materiais/movimentos/[id]",
+      "file": "src/app/app-domain/patrimonio/materiais/movimentos/[id]/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/materiais/novo",
+      "file": "src/app/app-domain/patrimonio/materiais/novo/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/materiais",
+      "file": "src/app/app-domain/patrimonio/materiais/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/materiais/subclasses",
+      "file": "src/app/app-domain/patrimonio/materiais/subclasses/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio",
+      "file": "src/app/app-domain/patrimonio/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/relatorios",
+      "file": "src/app/app-domain/patrimonio/relatorios/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/requisicoes/nova",
+      "file": "src/app/app-domain/patrimonio/requisicoes/nova/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/requisicoes",
+      "file": "src/app/app-domain/patrimonio/requisicoes/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/patrimonio/requisicoes/[id]",
+      "file": "src/app/app-domain/patrimonio/requisicoes/[id]/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/patrimonio/valorizacao",
+      "file": "src/app/app-domain/patrimonio/valorizacao/page.tsx",
+      "module": "patrimonio",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/planejamento/audiencias",
+      "file": "src/app/app-domain/planejamento/audiencias/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/planejamento/cadastros/[catalog]",
+      "file": "src/app/app-domain/planejamento/cadastros/[catalog]/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/planejamento/entidades",
+      "file": "src/app/app-domain/planejamento/entidades/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/planejamento/importacoes",
+      "file": "src/app/app-domain/planejamento/importacoes/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/planejamento",
+      "file": "src/app/app-domain/planejamento/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/planejamento/regionalizacao",
+      "file": "src/app/app-domain/planejamento/regionalizacao/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/planejamento/[kind]",
+      "file": "src/app/app-domain/planejamento/[kind]/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/planejamento/[kind]/[id]/gestao/[section]",
+      "file": "src/app/app-domain/planejamento/[kind]/[id]/gestao/[section]/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/planejamento/[kind]/[id]",
+      "file": "src/app/app-domain/planejamento/[kind]/[id]/page.tsx",
+      "module": "compartilhados-planejamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-cidadao",
+      "file": "src/app/app-domain/portal-cidadao/page.tsx",
+      "module": "portal-cidadao",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-paciente/agenda",
+      "file": "src/app/app-domain/portal-paciente/agenda/page.tsx",
+      "module": "portal-paciente",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-paciente/dados",
+      "file": "src/app/app-domain/portal-paciente/dados/page.tsx",
+      "module": "portal-paciente",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-paciente/ouvidoria",
+      "file": "src/app/app-domain/portal-paciente/ouvidoria/page.tsx",
+      "module": "portal-paciente",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-paciente",
+      "file": "src/app/app-domain/portal-paciente/page.tsx",
+      "module": "portal-paciente",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-paciente/saude",
+      "file": "src/app/app-domain/portal-paciente/saude/page.tsx",
+      "module": "portal-paciente",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/aniversariantes",
+      "file": "src/app/app-domain/portal-servidor/aniversariantes/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/atendimento",
+      "file": "src/app/app-domain/portal-servidor/atendimento/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/avaliacoes",
+      "file": "src/app/app-domain/portal-servidor/avaliacoes/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/banco-horas",
+      "file": "src/app/app-domain/portal-servidor/banco-horas/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/beneficios",
+      "file": "src/app/app-domain/portal-servidor/beneficios/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/biblioteca",
+      "file": "src/app/app-domain/portal-servidor/biblioteca/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/capacitacao",
+      "file": "src/app/app-domain/portal-servidor/capacitacao/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/capacitacao/[id]/avaliacao",
+      "file": "src/app/app-domain/portal-servidor/capacitacao/[id]/avaliacao/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/consignacoes",
+      "file": "src/app/app-domain/portal-servidor/consignacoes/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/credito",
+      "file": "src/app/app-domain/portal-servidor/credito/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/demonstrativos",
+      "file": "src/app/app-domain/portal-servidor/demonstrativos/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/documentos",
+      "file": "src/app/app-domain/portal-servidor/documentos/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/documentos-funcionais",
+      "file": "src/app/app-domain/portal-servidor/documentos-funcionais/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/emissoes",
+      "file": "src/app/app-domain/portal-servidor/emissoes/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/entrar",
+      "file": "src/app/app-domain/portal-servidor/entrar/page.tsx",
+      "module": "portal-servidor",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/ferias",
+      "file": "src/app/app-domain/portal-servidor/ferias/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/ficha-funcional",
+      "file": "src/app/app-domain/portal-servidor/ficha-funcional/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/folha",
+      "file": "src/app/app-domain/portal-servidor/folha/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/licenca-premio",
+      "file": "src/app/app-domain/portal-servidor/licenca-premio/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/margem",
+      "file": "src/app/app-domain/portal-servidor/margem/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor",
+      "file": "src/app/app-domain/portal-servidor/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/ponto",
+      "file": "src/app/app-domain/portal-servidor/ponto/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/ponto/registro",
+      "file": "src/app/app-domain/portal-servidor/ponto/registro/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/protocolos",
+      "file": "src/app/app-domain/portal-servidor/protocolos/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal-servidor/protocolos/[id]",
+      "file": "src/app/app-domain/portal-servidor/protocolos/[id]/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/recadastramento",
+      "file": "src/app/app-domain/portal-servidor/recadastramento/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/recuperar-senha",
+      "file": "src/app/app-domain/portal-servidor/recuperar-senha/page.tsx",
+      "module": "portal-servidor",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/relatorios",
+      "file": "src/app/app-domain/portal-servidor/relatorios/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/seguranca",
+      "file": "src/app/app-domain/portal-servidor/seguranca/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/servicos",
+      "file": "src/app/app-domain/portal-servidor/servicos/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/solicitacoes-rh",
+      "file": "src/app/app-domain/portal-servidor/solicitacoes-rh/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/sst/agenda",
+      "file": "src/app/app-domain/portal-servidor/sst/agenda/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/sst/cat",
+      "file": "src/app/app-domain/portal-servidor/sst/cat/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/sst/cipa",
+      "file": "src/app/app-domain/portal-servidor/sst/cipa/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/sst/planos",
+      "file": "src/app/app-domain/portal-servidor/sst/planos/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/sst/planos/[id]",
+      "file": "src/app/app-domain/portal-servidor/sst/planos/[id]/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor/sst/relatorios",
+      "file": "src/app/app-domain/portal-servidor/sst/relatorios/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/processos",
+      "file": "src/app/app-domain/processos/page.tsx",
+      "module": "processos",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/acompanhamento",
+      "file": "src/app/app-domain/protocolos/acompanhamento/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/arquivados",
+      "file": "src/app/app-domain/protocolos/arquivados/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/assinaturas",
+      "file": "src/app/app-domain/protocolos/assinaturas/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/busca",
+      "file": "src/app/app-domain/protocolos/busca/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/cadastros",
+      "file": "src/app/app-domain/protocolos/cadastros/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/consultas-construcao-civil",
+      "file": "src/app/app-domain/protocolos/consultas-construcao-civil/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/estrutura",
+      "file": "src/app/app-domain/protocolos/estrutura/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/notificacoes",
+      "file": "src/app/app-domain/protocolos/notificacoes/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/ouvidoria/nova",
+      "file": "src/app/app-domain/protocolos/ouvidoria/nova/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/ouvidoria",
+      "file": "src/app/app-domain/protocolos/ouvidoria/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/ouvidoria/[id]",
+      "file": "src/app/app-domain/protocolos/ouvidoria/[id]/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos",
+      "file": "src/app/app-domain/protocolos/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/processos/novo",
+      "file": "src/app/app-domain/protocolos/processos/novo/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/processos",
+      "file": "src/app/app-domain/protocolos/processos/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/processos/[id]/impressao",
+      "file": "src/app/app-domain/protocolos/processos/[id]/impressao/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/processos/[id]/judicial",
+      "file": "src/app/app-domain/protocolos/processos/[id]/judicial/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/processos/[id]",
+      "file": "src/app/app-domain/protocolos/processos/[id]/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/relatorios",
+      "file": "src/app/app-domain/protocolos/relatorios/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/servicos/acessos",
+      "file": "src/app/app-domain/protocolos/servicos/acessos/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/protocolos/servicos",
+      "file": "src/app/app-domain/protocolos/servicos/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/servicos/solicitacoes",
+      "file": "src/app/app-domain/protocolos/servicos/solicitacoes/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/protocolos/servicos/solicitacoes/[id]",
+      "file": "src/app/app-domain/protocolos/servicos/solicitacoes/[id]/page.tsx",
+      "module": "protocolos",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/adiantamentos",
+      "file": "src/app/app-domain/rh/adiantamentos/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/arquivos-bancarios",
+      "file": "src/app/app-domain/rh/arquivos-bancarios/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/atividades-funcionais",
+      "file": "src/app/app-domain/rh/atividades-funcionais/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/atos/novo",
+      "file": "src/app/app-domain/rh/atos/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/atos",
+      "file": "src/app/app-domain/rh/atos/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/atos/[id]/editar",
+      "file": "src/app/app-domain/rh/atos/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/beneficios/novo",
+      "file": "src/app/app-domain/rh/beneficios/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/beneficios",
+      "file": "src/app/app-domain/rh/beneficios/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/beneficios/[id]/editar",
+      "file": "src/app/app-domain/rh/beneficios/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/cadastros",
+      "file": "src/app/app-domain/rh/cadastros/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/concursos",
+      "file": "src/app/app-domain/rh/concursos/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/consignacoes",
+      "file": "src/app/app-domain/rh/consignacoes/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/dependentes/novo",
+      "file": "src/app/app-domain/rh/dependentes/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/dependentes",
+      "file": "src/app/app-domain/rh/dependentes/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/dependentes/[id]/editar",
+      "file": "src/app/app-domain/rh/dependentes/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/diarias",
+      "file": "src/app/app-domain/rh/diarias/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/documentos",
+      "file": "src/app/app-domain/rh/documentos/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/emissoes-funcionais",
+      "file": "src/app/app-domain/rh/emissoes-funcionais/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/esocial",
+      "file": "src/app/app-domain/rh/esocial/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/ferias/novo",
+      "file": "src/app/app-domain/rh/ferias/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/ferias",
+      "file": "src/app/app-domain/rh/ferias/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/ferias/[id]/editar",
+      "file": "src/app/app-domain/rh/ferias/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/folha/eventos/novo",
+      "file": "src/app/app-domain/rh/folha/eventos/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/folha/eventos",
+      "file": "src/app/app-domain/rh/folha/eventos/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/folha/eventos/[id]/editar",
+      "file": "src/app/app-domain/rh/folha/eventos/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/folha/novo",
+      "file": "src/app/app-domain/rh/folha/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/folha",
+      "file": "src/app/app-domain/rh/folha/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/folha/[id]/editar",
+      "file": "src/app/app-domain/rh/folha/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/licencas/novo",
+      "file": "src/app/app-domain/rh/licencas/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/licencas",
+      "file": "src/app/app-domain/rh/licencas/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/licencas/[id]/editar",
+      "file": "src/app/app-domain/rh/licencas/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/ocorrencias",
+      "file": "src/app/app-domain/rh/ocorrencias/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/operacoes/calculos/[id]",
+      "file": "src/app/app-domain/rh/operacoes/calculos/[id]/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/operacoes/contratos/[id]",
+      "file": "src/app/app-domain/rh/operacoes/contratos/[id]/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/operacoes/demonstrativos/[id]",
+      "file": "src/app/app-domain/rh/operacoes/demonstrativos/[id]/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/operacoes/medias",
+      "file": "src/app/app-domain/rh/operacoes/medias/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/operacoes",
+      "file": "src/app/app-domain/rh/operacoes/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh",
+      "file": "src/app/app-domain/rh/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/parametrizacoes",
+      "file": "src/app/app-domain/rh/parametrizacoes/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/pasta-funcional/[id]",
+      "file": "src/app/app-domain/rh/pasta-funcional/[id]/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/pensoes",
+      "file": "src/app/app-domain/rh/pensoes/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/poc",
+      "file": "src/app/app-domain/rh/poc/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/ponto/novo",
+      "file": "src/app/app-domain/rh/ponto/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/ponto",
+      "file": "src/app/app-domain/rh/ponto/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/ponto/[id]/editar",
+      "file": "src/app/app-domain/rh/ponto/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/portal-conteudos",
+      "file": "src/app/app-domain/rh/portal-conteudos/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/portal-funcional",
+      "file": "src/app/app-domain/rh/portal-funcional/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/processamentos-funcionais",
+      "file": "src/app/app-domain/rh/processamentos-funcionais/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/publicacao-funcional",
+      "file": "src/app/app-domain/rh/publicacao-funcional/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/quadro-cargos/historico-legal",
+      "file": "src/app/app-domain/rh/quadro-cargos/historico-legal/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/quadro-cargos",
+      "file": "src/app/app-domain/rh/quadro-cargos/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/recadastramento/configurar",
+      "file": "src/app/app-domain/rh/recadastramento/configurar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/recadastramento",
+      "file": "src/app/app-domain/rh/recadastramento/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/registros-funcionais",
+      "file": "src/app/app-domain/rh/registros-funcionais/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/relatorios",
+      "file": "src/app/app-domain/rh/relatorios/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/requerimentos-funcionais",
+      "file": "src/app/app-domain/rh/requerimentos-funcionais/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/servicos-funcionais",
+      "file": "src/app/app-domain/rh/servicos-funcionais/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/servidores/novo",
+      "file": "src/app/app-domain/rh/servidores/novo/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/servidores",
+      "file": "src/app/app-domain/rh/servidores/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/rh/servidores/[id]/editar",
+      "file": "src/app/app-domain/rh/servidores/[id]/editar/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/rh/solicitacoes",
+      "file": "src/app/app-domain/rh/solicitacoes/page.tsx",
+      "module": "rh",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saneamento/cadastros",
+      "file": "src/app/app-domain/saneamento/cadastros/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saneamento/faturamento",
+      "file": "src/app/app-domain/saneamento/faturamento/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saneamento/faturas",
+      "file": "src/app/app-domain/saneamento/faturas/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saneamento/leituras",
+      "file": "src/app/app-domain/saneamento/leituras/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saneamento",
+      "file": "src/app/app-domain/saneamento/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saneamento/portal",
+      "file": "src/app/app-domain/saneamento/portal/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saneamento/qualidade",
+      "file": "src/app/app-domain/saneamento/qualidade/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saneamento/relatorios",
+      "file": "src/app/app-domain/saneamento/relatorios/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saneamento/servicos",
+      "file": "src/app/app-domain/saneamento/servicos/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saneamento/unidades",
+      "file": "src/app/app-domain/saneamento/unidades/page.tsx",
+      "module": "saneamento",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/acolhimento",
+      "file": "src/app/app-domain/saude/acolhimento/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/acompanhamento",
+      "file": "src/app/app-domain/saude/acompanhamento/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/acompanhamento/receptores/[id]",
+      "file": "src/app/app-domain/saude/acompanhamento/receptores/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/acompanhamento/remessas/[id]",
+      "file": "src/app/app-domain/saude/acompanhamento/remessas/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/administracao/documentos",
+      "file": "src/app/app-domain/saude/administracao/documentos/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/administracao/importacoes",
+      "file": "src/app/app-domain/saude/administracao/importacoes/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/administracao/laboratorio",
+      "file": "src/app/app-domain/saude/administracao/laboratorio/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/administracao",
+      "file": "src/app/app-domain/saude/administracao/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/administracao/procedimentos",
+      "file": "src/app/app-domain/saude/administracao/procedimentos/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/administracao/rede",
+      "file": "src/app/app-domain/saude/administracao/rede/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/administracao/unificacoes",
+      "file": "src/app/app-domain/saude/administracao/unificacoes/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/agenda/gestao",
+      "file": "src/app/app-domain/saude/agenda/gestao/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/agenda",
+      "file": "src/app/app-domain/saude/agenda/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/atendimentos",
+      "file": "src/app/app-domain/saude/atendimentos/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/atendimentos/[id]/complementos",
+      "file": "src/app/app-domain/saude/atendimentos/[id]/complementos/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/atendimentos/[id]/linhas-cuidado",
+      "file": "src/app/app-domain/saude/atendimentos/[id]/linhas-cuidado/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/atendimentos/[id]",
+      "file": "src/app/app-domain/saude/atendimentos/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/centro-especializado",
+      "file": "src/app/app-domain/saude/centro-especializado/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/equipes",
+      "file": "src/app/app-domain/saude/equipes/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/esus",
+      "file": "src/app/app-domain/saude/esus/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia/catalogo",
+      "file": "src/app/app-domain/saude/farmacia/catalogo/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia/chamadas",
+      "file": "src/app/app-domain/saude/farmacia/chamadas/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia/dispensacoes",
+      "file": "src/app/app-domain/saude/farmacia/dispensacoes/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia/inventario",
+      "file": "src/app/app-domain/saude/farmacia/inventario/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia/judicial",
+      "file": "src/app/app-domain/saude/farmacia/judicial/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia/kits",
+      "file": "src/app/app-domain/saude/farmacia/kits/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia/notas",
+      "file": "src/app/app-domain/saude/farmacia/notas/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/farmacia",
+      "file": "src/app/app-domain/saude/farmacia/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/farmacia/requisicoes",
+      "file": "src/app/app-domain/saude/farmacia/requisicoes/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/gerencial",
+      "file": "src/app/app-domain/saude/gerencial/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/indicadores",
+      "file": "src/app/app-domain/saude/indicadores/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/integracoes",
+      "file": "src/app/app-domain/saude/integracoes/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/laboratorio",
+      "file": "src/app/app-domain/saude/laboratorio/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/linhas-cuidado",
+      "file": "src/app/app-domain/saude/linhas-cuidado/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/pacientes",
+      "file": "src/app/app-domain/saude/pacientes/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/pacientes/[id]",
+      "file": "src/app/app-domain/saude/pacientes/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude",
+      "file": "src/app/app-domain/saude/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/painel/[id]",
+      "file": "src/app/app-domain/saude/painel/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/prestador",
+      "file": "src/app/app-domain/saude/prestador/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/producao/fatos/[id]",
+      "file": "src/app/app-domain/saude/producao/fatos/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/producao/laudos/novo",
+      "file": "src/app/app-domain/saude/producao/laudos/novo/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/producao/laudos",
+      "file": "src/app/app-domain/saude/producao/laudos/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/producao/laudos/[id]",
+      "file": "src/app/app-domain/saude/producao/laudos/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/producao",
+      "file": "src/app/app-domain/saude/producao/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/producao/previas",
+      "file": "src/app/app-domain/saude/producao/previas/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/producao/raas",
+      "file": "src/app/app-domain/saude/producao/raas/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/producao/tabelas",
+      "file": "src/app/app-domain/saude/producao/tabelas/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/profissionais",
+      "file": "src/app/app-domain/saude/profissionais/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/pronto-atendimento",
+      "file": "src/app/app-domain/saude/pronto-atendimento/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/regulacao",
+      "file": "src/app/app-domain/saude/regulacao/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/relatorios",
+      "file": "src/app/app-domain/saude/relatorios/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/sisab",
+      "file": "src/app/app-domain/saude/sisab/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/territorio/atencao-primaria",
+      "file": "src/app/app-domain/saude/territorio/atencao-primaria/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/territorio",
+      "file": "src/app/app-domain/saude/territorio/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/tfd/laudos",
+      "file": "src/app/app-domain/saude/tfd/laudos/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/tfd/laudos/[id]",
+      "file": "src/app/app-domain/saude/tfd/laudos/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/tfd",
+      "file": "src/app/app-domain/saude/tfd/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/tfd/viagens",
+      "file": "src/app/app-domain/saude/tfd/viagens/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/tfd/viagens/[id]",
+      "file": "src/app/app-domain/saude/tfd/viagens/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/unidades",
+      "file": "src/app/app-domain/saude/unidades/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/vacinacao/carteira/[id]",
+      "file": "src/app/app-domain/saude/vacinacao/carteira/[id]/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/vacinacao/carteiras",
+      "file": "src/app/app-domain/saude/vacinacao/carteiras/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/vacinacao/esavi",
+      "file": "src/app/app-domain/saude/vacinacao/esavi/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/vacinacao/gestao",
+      "file": "src/app/app-domain/saude/vacinacao/gestao/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/saude/vacinacao",
+      "file": "src/app/app-domain/saude/vacinacao/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/saude/vigilancia",
+      "file": "src/app/app-domain/saude/vigilancia/page.tsx",
+      "module": "saude",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/defesa-civil",
+      "file": "src/app/app-domain/seguranca/defesa-civil/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/documentos",
+      "file": "src/app/app-domain/seguranca/documentos/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/guardas",
+      "file": "src/app/app-domain/seguranca/guardas/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/infracoes",
+      "file": "src/app/app-domain/seguranca/infracoes/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/mobilidade",
+      "file": "src/app/app-domain/seguranca/mobilidade/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/ocorrencias",
+      "file": "src/app/app-domain/seguranca/ocorrencias/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/ordens",
+      "file": "src/app/app-domain/seguranca/ordens/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca",
+      "file": "src/app/app-domain/seguranca/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/seguranca/rondas",
+      "file": "src/app/app-domain/seguranca/rondas/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/seguranca/transito",
+      "file": "src/app/app-domain/seguranca/transito/page.tsx",
+      "module": "seguranca",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/anexar",
+      "file": "src/app/app-domain/social/anexar/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/atendimentos",
+      "file": "src/app/app-domain/social/atendimentos/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/beneficios",
+      "file": "src/app/app-domain/social/beneficios/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/configuracoes",
+      "file": "src/app/app-domain/social/configuracoes/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/documentos/[id]",
+      "file": "src/app/app-domain/social/documentos/[id]/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/encaminhamentos",
+      "file": "src/app/app-domain/social/encaminhamentos/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/encaminhamentos/[id]/comprovante",
+      "file": "src/app/app-domain/social/encaminhamentos/[id]/comprovante/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/familias",
+      "file": "src/app/app-domain/social/familias/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/gestao/[area]",
+      "file": "src/app/app-domain/social/gestao/[area]/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/gestao/[area]/[id]/historico",
+      "file": "src/app/app-domain/social/gestao/[area]/[id]/historico/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/importacoes",
+      "file": "src/app/app-domain/social/importacoes/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/modelos",
+      "file": "src/app/app-domain/social/modelos/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social",
+      "file": "src/app/app-domain/social/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/pessoas",
+      "file": "src/app/app-domain/social/pessoas/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/pessoas/[id]",
+      "file": "src/app/app-domain/social/pessoas/[id]/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/profissionais",
+      "file": "src/app/app-domain/social/profissionais/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/prontuario",
+      "file": "src/app/app-domain/social/prontuario/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/relatorios",
+      "file": "src/app/app-domain/social/relatorios/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/requisicoes",
+      "file": "src/app/app-domain/social/requisicoes/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/requisicoes/[id]/comprovante",
+      "file": "src/app/app-domain/social/requisicoes/[id]/comprovante/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/social/unidades",
+      "file": "src/app/app-domain/social/unidades/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/social/visitas",
+      "file": "src/app/app-domain/social/visitas/page.tsx",
+      "module": "social",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/acidentes",
+      "file": "src/app/app-domain/sst/acidentes/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/acidentes/[id]/imprimir",
+      "file": "src/app/app-domain/sst/acidentes/[id]/imprimir/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/acidentes/[id]",
+      "file": "src/app/app-domain/sst/acidentes/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/agenda/agendamentos",
+      "file": "src/app/app-domain/sst/agenda/agendamentos/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/agenda/agendamentos/[id]",
+      "file": "src/app/app-domain/sst/agenda/agendamentos/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/agenda",
+      "file": "src/app/app-domain/sst/agenda/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/anamneses/[id]",
+      "file": "src/app/app-domain/sst/anamneses/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/aso/branco",
+      "file": "src/app/app-domain/sst/aso/branco/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/aso",
+      "file": "src/app/app-domain/sst/aso/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/aso/[id]/anamnese",
+      "file": "src/app/app-domain/sst/aso/[id]/anamnese/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/aso/[id]/imprimir",
+      "file": "src/app/app-domain/sst/aso/[id]/imprimir/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/aso/[id]",
+      "file": "src/app/app-domain/sst/aso/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/atestados/novo",
+      "file": "src/app/app-domain/sst/atestados/novo/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/atestados",
+      "file": "src/app/app-domain/sst/atestados/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/atestados/[id]/comprovante",
+      "file": "src/app/app-domain/sst/atestados/[id]/comprovante/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/atestados/[id]",
+      "file": "src/app/app-domain/sst/atestados/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/configuracoes",
+      "file": "src/app/app-domain/sst/configuracoes/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/configuracoes/[id]",
+      "file": "src/app/app-domain/sst/configuracoes/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/consolidado",
+      "file": "src/app/app-domain/sst/consolidado/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/equipamentos/entregas",
+      "file": "src/app/app-domain/sst/equipamentos/entregas/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/equipamentos/entregas/[id]/comprovante",
+      "file": "src/app/app-domain/sst/equipamentos/entregas/[id]/comprovante/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/equipamentos/entregas/[id]",
+      "file": "src/app/app-domain/sst/equipamentos/entregas/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/equipamentos/necessidades",
+      "file": "src/app/app-domain/sst/equipamentos/necessidades/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/equipamentos",
+      "file": "src/app/app-domain/sst/equipamentos/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/equipamentos/relatorios",
+      "file": "src/app/app-domain/sst/equipamentos/relatorios/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/equipamentos/[id]",
+      "file": "src/app/app-domain/sst/equipamentos/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/ghe",
+      "file": "src/app/app-domain/sst/ghe/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/integracoes",
+      "file": "src/app/app-domain/sst/integracoes/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/integracoes/[id]",
+      "file": "src/app/app-domain/sst/integracoes/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/jornadas",
+      "file": "src/app/app-domain/sst/jornadas/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/juntas",
+      "file": "src/app/app-domain/sst/juntas/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/ordens-servico",
+      "file": "src/app/app-domain/sst/ordens-servico/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/ordens-servico/[id]",
+      "file": "src/app/app-domain/sst/ordens-servico/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst",
+      "file": "src/app/app-domain/sst/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/planos/cadastro",
+      "file": "src/app/app-domain/sst/planos/cadastro/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/planos",
+      "file": "src/app/app-domain/sst/planos/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/planos/[id]",
+      "file": "src/app/app-domain/sst/planos/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/ppp",
+      "file": "src/app/app-domain/sst/ppp/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/prevencao/calendario",
+      "file": "src/app/app-domain/sst/prevencao/calendario/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/prevencao/novo",
+      "file": "src/app/app-domain/sst/prevencao/novo/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/prevencao",
+      "file": "src/app/app-domain/sst/prevencao/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/prevencao/[id]/imprimir",
+      "file": "src/app/app-domain/sst/prevencao/[id]/imprimir/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/prevencao/[id]",
+      "file": "src/app/app-domain/sst/prevencao/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/profissionais",
+      "file": "src/app/app-domain/sst/profissionais/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/programas",
+      "file": "src/app/app-domain/sst/programas/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/programas/[id]",
+      "file": "src/app/app-domain/sst/programas/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/prontuarios",
+      "file": "src/app/app-domain/sst/prontuarios/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/prontuarios/[id]",
+      "file": "src/app/app-domain/sst/prontuarios/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/questionarios",
+      "file": "src/app/app-domain/sst/questionarios/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/questionarios/[id]",
+      "file": "src/app/app-domain/sst/questionarios/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/relatorios",
+      "file": "src/app/app-domain/sst/relatorios/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/restricoes",
+      "file": "src/app/app-domain/sst/restricoes/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/restricoes/[id]",
+      "file": "src/app/app-domain/sst/restricoes/[id]/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/sst/vacinacao",
+      "file": "src/app/app-domain/sst/vacinacao/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/sst/vinculos",
+      "file": "src/app/app-domain/sst/vinculos/page.tsx",
+      "module": "sst",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/suporte-tecnico",
+      "file": "src/app/app-domain/suporte-tecnico/page.tsx",
+      "module": "suporte-tecnico",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/acessos",
+      "file": "src/app/app-domain/transparencia/acessos/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia/apresentacao",
+      "file": "src/app/app-domain/transparencia/apresentacao/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/avaliacoes",
+      "file": "src/app/app-domain/transparencia/avaliacoes/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/banners",
+      "file": "src/app/app-domain/transparencia/banners/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia/contratos",
+      "file": "src/app/app-domain/transparencia/contratos/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia/diario-oficial/novo",
+      "file": "src/app/app-domain/transparencia/diario-oficial/novo/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/diario-oficial",
+      "file": "src/app/app-domain/transparencia/diario-oficial/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia/fontes",
+      "file": "src/app/app-domain/transparencia/fontes/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/licitacoes",
+      "file": "src/app/app-domain/transparencia/licitacoes/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia/noticias/novo",
+      "file": "src/app/app-domain/transparencia/noticias/novo/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/noticias",
+      "file": "src/app/app-domain/transparencia/noticias/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia",
+      "file": "src/app/app-domain/transparencia/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/paginas/novo",
+      "file": "src/app/app-domain/transparencia/paginas/novo/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/paginas",
+      "file": "src/app/app-domain/transparencia/paginas/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia/pntp",
+      "file": "src/app/app-domain/transparencia/pntp/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/transparencia/publicacoes",
+      "file": "src/app/app-domain/transparencia/publicacoes/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/transparencia/solicitacoes",
+      "file": "src/app/app-domain/transparencia/solicitacoes/page.tsx",
+      "module": "transparencia",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/agrupamentos",
+      "file": "src/app/app-domain/tributacao/agrupamentos/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/alvaras/configurados",
+      "file": "src/app/app-domain/tributacao/alvaras/configurados/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/alvaras",
+      "file": "src/app/app-domain/tributacao/alvaras/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/avaliacoes",
+      "file": "src/app/app-domain/tributacao/avaliacoes/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/avaliacoes/simulacao",
+      "file": "src/app/app-domain/tributacao/avaliacoes/simulacao/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/base-territorial",
+      "file": "src/app/app-domain/tributacao/base-territorial/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/bi-tributario",
+      "file": "src/app/app-domain/tributacao/bi-tributario/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/calendarios",
+      "file": "src/app/app-domain/tributacao/calendarios/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/cemiterios",
+      "file": "src/app/app-domain/tributacao/cemiterios/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/certidoes",
+      "file": "src/app/app-domain/tributacao/certidoes/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/cobranca",
+      "file": "src/app/app-domain/tributacao/cobranca/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/comparativo-anual",
+      "file": "src/app/app-domain/tributacao/comparativo-anual/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/configuracoes-cadastrais",
+      "file": "src/app/app-domain/tributacao/configuracoes-cadastrais/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/configuracoes-cadastrais/pgv-lote",
+      "file": "src/app/app-domain/tributacao/configuracoes-cadastrais/pgv-lote/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/declaracao-cartoes",
+      "file": "src/app/app-domain/tributacao/declaracao-cartoes/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/declaracoes-complementares",
+      "file": "src/app/app-domain/tributacao/declaracoes-complementares/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/divida",
+      "file": "src/app/app-domain/tributacao/divida/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/divida-ativa",
+      "file": "src/app/app-domain/tributacao/divida-ativa/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/domicilio-tributario",
+      "file": "src/app/app-domain/tributacao/domicilio-tributario/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/economico/alteracao-geral",
+      "file": "src/app/app-domain/tributacao/economico/alteracao-geral/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/economico/atividades",
+      "file": "src/app/app-domain/tributacao/economico/atividades/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/economico/consulta",
+      "file": "src/app/app-domain/tributacao/economico/consulta/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/economico/contadores",
+      "file": "src/app/app-domain/tributacao/economico/contadores/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/economico/eventos-veiculos",
+      "file": "src/app/app-domain/tributacao/economico/eventos-veiculos/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/economico/novo",
+      "file": "src/app/app-domain/tributacao/economico/novo/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/economico",
+      "file": "src/app/app-domain/tributacao/economico/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/economico/[id]",
+      "file": "src/app/app-domain/tributacao/economico/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/economico/[id]/perfil",
+      "file": "src/app/app-domain/tributacao/economico/[id]/perfil/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/fiscalizacao/gestao",
+      "file": "src/app/app-domain/tributacao/fiscalizacao/gestao/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/fiscalizacao",
+      "file": "src/app/app-domain/tributacao/fiscalizacao/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/fontes-cadastrais",
+      "file": "src/app/app-domain/tributacao/fontes-cadastrais/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/guias",
+      "file": "src/app/app-domain/tributacao/guias/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/imoveis/alteracao-geral",
+      "file": "src/app/app-domain/tributacao/imoveis/alteracao-geral/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/imoveis/configuracao",
+      "file": "src/app/app-domain/tributacao/imoveis/configuracao/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/imoveis/novo",
+      "file": "src/app/app-domain/tributacao/imoveis/novo/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/imoveis/operacoes/comprovante/[id]",
+      "file": "src/app/app-domain/tributacao/imoveis/operacoes/comprovante/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/imoveis/operacoes",
+      "file": "src/app/app-domain/tributacao/imoveis/operacoes/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/imoveis",
+      "file": "src/app/app-domain/tributacao/imoveis/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/imoveis/[id]/bloqueio",
+      "file": "src/app/app-domain/tributacao/imoveis/[id]/bloqueio/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/imoveis/[id]",
+      "file": "src/app/app-domain/tributacao/imoveis/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/imoveis/[id]/perfil",
+      "file": "src/app/app-domain/tributacao/imoveis/[id]/perfil/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/fiscalizacoes/[id]/auto",
+      "file": "src/app/app-domain/tributacao/iss-bancario/fiscalizacoes/[id]/auto/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/gestao/anexos/[id]",
+      "file": "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/gestao/autos/[id]",
+      "file": "src/app/app-domain/tributacao/iss-bancario/gestao/autos/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/gestao/declaracoes/[id]",
+      "file": "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/gestao/downloads",
+      "file": "src/app/app-domain/tributacao/iss-bancario/gestao/downloads/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/iss-bancario/gestao",
+      "file": "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/iss-bancario",
+      "file": "src/app/app-domain/tributacao/iss-bancario/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/itbi/bloqueios",
+      "file": "src/app/app-domain/tributacao/itbi/bloqueios/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/itbi/cancelamento-automatico",
+      "file": "src/app/app-domain/tributacao/itbi/cancelamento-automatico/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/itbi/comunicacao",
+      "file": "src/app/app-domain/tributacao/itbi/comunicacao/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/itbi/modelos",
+      "file": "src/app/app-domain/tributacao/itbi/modelos/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/itbi/online",
+      "file": "src/app/app-domain/tributacao/itbi/online/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/itbi",
+      "file": "src/app/app-domain/tributacao/itbi/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/itbi/processos",
+      "file": "src/app/app-domain/tributacao/itbi/processos/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/lotes-anuais",
+      "file": "src/app/app-domain/tributacao/lotes-anuais/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/motor-fiscal",
+      "file": "src/app/app-domain/tributacao/motor-fiscal/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/motor-fiscal/[id]",
+      "file": "src/app/app-domain/tributacao/motor-fiscal/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/movimentacoes-contabeis",
+      "file": "src/app/app-domain/tributacao/movimentacoes-contabeis/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/nfse",
+      "file": "src/app/app-domain/tributacao/nfse/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/notificacoes",
+      "file": "src/app/app-domain/tributacao/notificacoes/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/operacoes",
+      "file": "src/app/app-domain/tributacao/operacoes/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao",
+      "file": "src/app/app-domain/tributacao/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/pessoas",
+      "file": "src/app/app-domain/tributacao/pessoas/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/pessoas/[id]",
+      "file": "src/app/app-domain/tributacao/pessoas/[id]/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/recadastramento",
+      "file": "src/app/app-domain/tributacao/recadastramento/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/redesim",
+      "file": "src/app/app-domain/tributacao/redesim/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/referencias",
+      "file": "src/app/app-domain/tributacao/referencias/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/relatorios-cadastrais",
+      "file": "src/app/app-domain/tributacao/relatorios-cadastrais/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/resumo-anual",
+      "file": "src/app/app-domain/tributacao/resumo-anual/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/seguranca",
+      "file": "src/app/app-domain/tributacao/seguranca/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/simples-nacional/arquivos",
+      "file": "src/app/app-domain/tributacao/simples-nacional/arquivos/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/tributacao/simples-nacional/consulta",
+      "file": "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/simples-nacional",
+      "file": "src/app/app-domain/tributacao/simples-nacional/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/tributacao/vaf",
+      "file": "src/app/app-domain/tributacao/vaf/page.tsx",
+      "module": "tributacao",
+      "shell": true,
+      "list": true
+    },
+    {
+      "pathname": "/portal/acessibilidade",
+      "file": "src/app/portal/acessibilidade/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/acesso-informacao",
+      "file": "src/app/portal/acesso-informacao/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/busca",
+      "file": "src/app/portal/busca/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/cadastrar",
+      "file": "src/app/portal/cadastrar/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/concursos",
+      "file": "src/app/portal/concursos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil/autorizacoes",
+      "file": "src/app/portal/construcao-civil/autorizacoes/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil/entrar",
+      "file": "src/app/portal/construcao-civil/entrar/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil/nova",
+      "file": "src/app/portal/construcao-civil/nova/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil",
+      "file": "src/app/portal/construcao-civil/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil/pedidos-administrativos",
+      "file": "src/app/portal/construcao-civil/pedidos-administrativos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil/[id]/documentos",
+      "file": "src/app/portal/construcao-civil/[id]/documentos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil/[id]",
+      "file": "src/app/portal/construcao-civil/[id]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/construcao-civil/[id]/viabilidade-automatica",
+      "file": "src/app/portal/construcao-civil/[id]/viabilidade-automatica/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/contato",
+      "file": "src/app/portal/contato/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/convenentes",
+      "file": "src/app/portal/convenentes/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/dados-abertos",
+      "file": "src/app/portal/dados-abertos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/departamentos/atestados",
+      "file": "src/app/portal/departamentos/atestados/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/entrar",
+      "file": "src/app/portal/entrar/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/frota/atendimento",
+      "file": "src/app/portal/frota/atendimento/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/frota/motorista",
+      "file": "src/app/portal/frota/motorista/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/historia",
+      "file": "src/app/portal/historia/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/leis-municipais",
+      "file": "src/app/portal/leis-municipais/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/licitacoes-e-contratos",
+      "file": "src/app/portal/licitacoes-e-contratos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/mapa-do-site",
+      "file": "src/app/portal/mapa-do-site/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/minha-area",
+      "file": "src/app/portal/minha-area/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/minha-area/processos",
+      "file": "src/app/portal/minha-area/processos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/minha-area/processos/[id]",
+      "file": "src/app/portal/minha-area/processos/[id]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/minha-area/servicos",
+      "file": "src/app/portal/minha-area/servicos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/minha-area/servicos/[slug]",
+      "file": "src/app/portal/minha-area/servicos/[slug]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/minha-area/solicitacoes",
+      "file": "src/app/portal/minha-area/solicitacoes/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/minha-area/solicitacoes/[id]",
+      "file": "src/app/portal/minha-area/solicitacoes/[id]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/nfse",
+      "file": "src/app/portal/nfse/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/nfse/[code]",
+      "file": "src/app/portal/nfse/[code]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/noticias",
+      "file": "src/app/portal/noticias/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/noticias/[slug]",
+      "file": "src/app/portal/noticias/[slug]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/ouvidoria",
+      "file": "src/app/portal/ouvidoria/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal",
+      "file": "src/app/portal/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/perguntas-frequentes",
+      "file": "src/app/portal/perguntas-frequentes/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/planejamento",
+      "file": "src/app/portal/planejamento/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/portaldatransparencia/estatisticas",
+      "file": "src/app/portal/portaldatransparencia/estatisticas/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/portaldatransparencia/mapa",
+      "file": "src/app/portal/portaldatransparencia/mapa/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/portaldatransparencia",
+      "file": "src/app/portal/portaldatransparencia/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/portaldatransparencia/painel",
+      "file": "src/app/portal/portaldatransparencia/painel/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/portaldatransparencia/pesquisa",
+      "file": "src/app/portal/portaldatransparencia/pesquisa/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/portaldatransparencia/pntp",
+      "file": "src/app/portal/portaldatransparencia/pntp/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/privacidade",
+      "file": "src/app/portal/privacidade/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/recuperar-senha",
+      "file": "src/app/portal/recuperar-senha/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/secretarias",
+      "file": "src/app/portal/secretarias/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/servicos",
+      "file": "src/app/portal/servicos/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/servicos/[slug]",
+      "file": "src/app/portal/servicos/[slug]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/tributario/alvaras",
+      "file": "src/app/portal/tributario/alvaras/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/tributario/declaracoes",
+      "file": "src/app/portal/tributario/declaracoes/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/tributario/empresas",
+      "file": "src/app/portal/tributario/empresas/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/tributario/itbi/novo",
+      "file": "src/app/portal/tributario/itbi/novo/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/tributario/itbi",
+      "file": "src/app/portal/tributario/itbi/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/tributario",
+      "file": "src/app/portal/tributario/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/tributario/premios/[slug]",
+      "file": "src/app/portal/tributario/premios/[slug]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal/[slug]",
+      "file": "src/app/portal/[slug]/page.tsx",
+      "module": "portal",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-paciente",
+      "file": "src/app/portal-paciente/page.tsx",
+      "module": "portal-paciente",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-protocolos",
+      "file": "src/app/portal-protocolos/page.tsx",
+      "module": "portal-protocolos",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/portal-servidor",
+      "file": "src/app/portal-servidor/page.tsx",
+      "module": "portal-servidor",
+      "shell": true,
+      "list": false
+    },
+    {
+      "pathname": "/portal-transparencia",
+      "file": "src/app/portal-transparencia/page.tsx",
+      "module": "portal-transparencia",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/Smarttv",
+      "file": "src/app/Smarttv/page.tsx",
+      "module": "Smarttv",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-alvara/[code]",
+      "file": "src/app/validar-alvara/[code]/page.tsx",
+      "module": "validar-alvara",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-assinatura",
+      "file": "src/app/validar-assinatura/page.tsx",
+      "module": "validar-assinatura",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-assinatura/[code]",
+      "file": "src/app/validar-assinatura/[code]/page.tsx",
+      "module": "validar-assinatura",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-aviso/[code]",
+      "file": "src/app/validar-aviso/[code]/page.tsx",
+      "module": "validar-aviso",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-documento/[code]",
+      "file": "src/app/validar-documento/[code]/page.tsx",
+      "module": "validar-documento",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-emissao/[code]",
+      "file": "src/app/validar-emissao/[code]/page.tsx",
+      "module": "validar-emissao",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-recibo",
+      "file": "src/app/validar-recibo/page.tsx",
+      "module": "validar-recibo",
+      "shell": false,
+      "list": false
+    },
+    {
+      "pathname": "/validar-recibo/[code]",
+      "file": "src/app/validar-recibo/[code]/page.tsx",
+      "module": "validar-recibo",
+      "shell": false,
+      "list": false
+    }
+  ],
+  "http": []
+}

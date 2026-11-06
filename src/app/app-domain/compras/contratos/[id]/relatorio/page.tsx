@@ -43,7 +43,7 @@ const eventLabels: Record<string, string> = {
 export default async function ContratoRelatorioPage({ params }: { params: Promise<{ id: string }> }) {
   await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const contract = await loadContractDetail(databaseConnection.db, id);
+  const contract = await loadContractDetail(databaseConnection.db, decodeURIComponent(id));
   if (!contract) notFound();
 
   const events = await loadInstrumentEvents(databaseConnection.db, { kind: "CONTRACT", id: contract.id });

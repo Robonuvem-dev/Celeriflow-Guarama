@@ -14,6 +14,7 @@ import { rhColumn } from "../_components/operational-columns";
 import { FunctionalRecordForm } from "./FunctionalRecordForm";
 import { canAccessPersonnelClinicalData } from "@/lib/rh/clinical-access";
 import { personnelEmployeeWhere, personnelRubricWhere } from "@/lib/rh/personnel-scope";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export const dynamic = "force-dynamic";
 export default async function FunctionalRecordsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -39,7 +40,7 @@ export default async function FunctionalRecordsPage({ searchParams }: { searchPa
     pagination={<OperationalLinkPagination page={page} total={total} pathname="/rh/registros-funcionais" values={{ kind, q: params.q ?? "" }} />}>
     <OperationalTable preferenceId={`rh-registros-funcionais-${kind}`} caption={definition.title} columns={[rhColumn("name", "Registro", 220, 120), rhColumn("holder", "Servidor / vínculo", 230, 130), rhColumn("period", "Vigência", 190, 120), rhColumn("status", "Situação", 100, 80), rhColumn("contents", "Dados integrais", 400, 180), rhColumn("actions", "Ações", 80, 70, "actions")]} rows={selected.map(row => {
       const record = row.HrFunctionalRecord;
-      return { id: record.id, label: record.name, values: { name: record.name, holder: [row.Employee?.name, row.HrEmploymentContract?.registration].filter(Boolean).join(" · ") || "Regra geral", period: `${record.startsAt.toISOString().slice(0, 10)} a ${record.endsAt?.toISOString().slice(0, 10) ?? "sem término"}`, status: record.status, contents: definition.fields.map(field => `${field.label}: ${record.data[field.name] ?? ""}`).join(" · ") }, actions: canPerformModuleOperation(context.user, "RH", "update") ? <Link href={`/rh/registros-funcionais?kind=${kind}&view=manage&edit=${record.id}`}>Editar</Link> : undefined };
+      return { id: record.id, label: personnelDisplayText(record.name), values: { name: personnelDisplayText(record.name), holder: personnelDisplayText([row.Employee?.name, row.HrEmploymentContract?.registration].filter(Boolean).join(" · ")) || "Regra geral", period: `${record.startsAt.toISOString().slice(0, 10)} a ${record.endsAt?.toISOString().slice(0, 10) ?? "sem término"}`, status: record.status, contents: definition.fields.map(field => `${field.label}: ${personnelDisplayText(record.data[field.name] ?? "")}`).join(" · ") }, actions: canPerformModuleOperation(context.user, "RH", "update") ? <Link href={`/rh/registros-funcionais?kind=${kind}&view=manage&edit=${record.id}`}>Editar</Link> : undefined };
     })} />
   </OperationalListFrame>;
 }

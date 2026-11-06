@@ -3,6 +3,15 @@ import { structureConfig, structureKinds } from "@/lib/cemeteries/structure-conf
 
 export const operationalModules: OperationalModuleConfig[] = [
   {
+    key: "iluminacao-publica", moduleTitle: "Iluminação Pública", moduleCaption: "Indicadores e acesso ao IluminaFlow", moduleIcon: "lightbulb", shellPathname: "/iluminacao-publica",
+    navigation: [{ title: "IluminaFlow", items: [
+      { title: "Dashboard", href: "/iluminacao-publica", icon: "layoutDashboard", exact: true },
+      { title: "IluminaFlow", href: "https://app.iluminaflow.com.br/", icon: "lightbulb" },
+      { title: "Site IluminaFlow", href: "https://www.iluminaflow.com.br/", icon: "globe" },
+    ] }],
+    routes: [],
+  },
+  {
     key: "camara", moduleTitle: "Câmara Municipal", moduleCaption: "Gestão legislativa", moduleIcon: "landmark",
     navigation: [{ title: "Legislativo", items: [
       { title: "Painel", href: "/camara", icon: "layoutDashboard", exact: true },

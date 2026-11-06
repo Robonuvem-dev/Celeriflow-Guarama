@@ -247,7 +247,7 @@ export default function ModulosClient({ initialModulos }: { initialModulos: Modu
                   <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                     <span className="text-[11px] text-slate-400">
                       {modulo.dataAtivacao
-                        ? `Ativado em: ${new Date(modulo.dataAtivacao).toLocaleDateString("pt-BR")}`
+                        ? `Ativado em: ${new Date(modulo.dataAtivacao).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
                         : "Não ativado"}
                     </span>
 

@@ -14,7 +14,7 @@ type ErpPageTitleProps = {
 
 export function ErpPageTitle({ title, description, action, icon, className }: ErpPageTitleProps) {
   const operational = useOptionalOperationalWorkspace();
-  if (operational) return action ? <OperationalHeaderActions>{action}</OperationalHeaderActions> : null;
+  if (operational && operational.contentMode !== "page") return action ? <OperationalHeaderActions>{action}</OperationalHeaderActions> : null;
   return (
     <header className={cn("flex min-h-8 shrink-0 flex-wrap items-center justify-between gap-2 px-1 py-0.5", className)}>
       <div className="flex min-w-0 items-center gap-2">

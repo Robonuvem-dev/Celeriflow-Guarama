@@ -1,0 +1,42 @@
+{
+  "startedAt": "2026-11-06T17:39:23.393Z",
+  "base": "http://localhost:3100",
+  "cases": [
+    {
+      "label": "Planejamento: LDO em elaboração na listagem",
+      "path": "/planejamento/ldo",
+      "passed": false,
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'http://localhost:3100/planejamento/ldo',\n+   'http://localhost:3100/planejamento/ldo',\n+   'http://localhost:3100/planejamento/ldo'\n+ ]\n- []\n",
+      "errors": []
+    },
+    {
+      "label": "Planejamento: detalhe da minuta LDO",
+      "path": "/planejamento/ldo/cmw599c0s0001gchymhv20hk1",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 1\n",
+      "errors": []
+    },
+    {
+      "label": "Planejamento: LOA em elaboração na listagem",
+      "path": "/planejamento/loa",
+      "passed": false,
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'http://localhost:3100/planejamento/loa',\n+   'http://localhost:3100/planejamento/loa',\n+   'http://localhost:3100/planejamento/loa'\n+ ]\n- []\n",
+      "errors": []
+    },
+    {
+      "label": "Planejamento: detalhe da minuta LOA",
+      "path": "/planejamento/loa/cmw599c8i0004gchy601v86jw",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 1\n",
+      "errors": []
+    },
+    {
+      "label": "Planejamento: audiência programada e contribuição comunitária em análise",
+      "path": "/planejamento/audiencias?hearingId=cmw599cgo0006gchys9gxitbi",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 1\n",
+      "errors": []
+    }
+  ],
+  "finishedAt": "2026-11-06T17:40:04.161Z"
+}

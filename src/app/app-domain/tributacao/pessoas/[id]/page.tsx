@@ -11,7 +11,7 @@ import { readFiscalTaxpayerCard } from "@/db/repositories/taxation-pages/cadastr
 export const dynamic = "force-dynamic";
 
 export default async function PessoaFiscalDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const id = decodeURIComponent((await params).id);
   const context = await getTenantContextForModule("TRIBUTACAO"); const database = context.database ?? db;
   const taxpayer = await readFiscalTaxpayerCard(database, id);
   if (!taxpayer) notFound();

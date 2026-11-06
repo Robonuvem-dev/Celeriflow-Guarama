@@ -111,7 +111,7 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
   }
   const uploadStatus = items.map(i => `${i.file.name}: ${i.status}${i.error ? ` — ${i.error}` : ""}`);
   function chooseFiles(files: File[]) { setBatchId(crypto.randomUUID()); setItems(files.map(file => ({ id: crypto.randomUUID(), file, title: file.name.replace(/\.[^.]+$/, ""), status: "PENDING" }))); }
-  return <><div className={isCollection ? "grid min-h-0 gap-3 lg:grid-cols-[240px_minmax(0,1fr)]" : ""}>
+  return <><div className={isCollection ? "grid min-h-0 flex-1 gap-3 lg:grid-cols-[240px_minmax(0,1fr)]" : "flex min-h-0 flex-1 flex-col"}>
     {isCollection && <GedExplorerTree key={treeRevision} selected={query.folderId} onSelect={folderId => { const next = { ...query, folderId }; setQuery(next); setSmartId(""); void load(1, next, ""); }} />}
     <OperationalListFrame label={labels[section]} actions={<>
       {(isCollection || section === "importacoes") && bootstrap.capabilities.import && <button className={`${styles.newButton} ${workspaceStyles.action}`} aria-label="Importar lote" title="Importar lote" onClick={() => { setPanel("import"); if (!batchId) setBatchId(crypto.randomUUID()); }}><Upload /><span className={workspaceStyles.actionLabel}>Importar lote</span></button>}

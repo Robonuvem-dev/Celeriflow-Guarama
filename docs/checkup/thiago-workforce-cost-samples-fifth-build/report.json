@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-11-06T17:52:20.228Z",
+  "base": "http://localhost:3100",
+  "cases": [
+    {
+      "label": "Controle Interno: Thiago integrado ao centro de custo e à revisão contratual",
+      "path": "/controle-interno/consultas/rh?employeeId=THIAGO_MORCATTY_DEMO_2026_V1%3Aemployee&financialYearId=aurora-mg-50k-v1%3Afinancial-year%3A000&referenceDate=2026-12-31",
+      "passed": true,
+      "observations": {
+        "people": 1,
+        "contracts": 1,
+        "contractVersion": 2,
+        "center": "Paço Municipal"
+      },
+      "readOnlyLookups": 0
+    },
+    {
+      "label": "Controle Interno: consulta histórica de outubro não recebe o vínculo de novembro",
+      "path": "/controle-interno/consultas/rh?employeeId=THIAGO_MORCATTY_DEMO_2026_V1%3Aemployee&financialYearId=aurora-mg-50k-v1%3Afinancial-year%3A000&referenceDate=2026-10-31",
+      "passed": true,
+      "observations": {
+        "historicalOctoberPreserved": true,
+        "costScopeRows": 0
+      },
+      "readOnlyLookups": 0
+    }
+  ],
+  "finishedAt": "2026-11-06T17:52:36.767Z"
+}

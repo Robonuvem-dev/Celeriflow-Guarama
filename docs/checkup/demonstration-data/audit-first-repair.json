@@ -1,0 +1,4814 @@
+{
+  "startedAt": "2026-11-06T15:41:04.707Z",
+  "mode": "READ_ONLY",
+  "tables": [
+    {
+      "table": "AcademicDocumentIssue",
+      "rows": 0
+    },
+    {
+      "table": "AcademicPeriod",
+      "rows": 3
+    },
+    {
+      "table": "AccountingEntry",
+      "rows": 0
+    },
+    {
+      "table": "AccountingEventCatalog",
+      "rows": 0
+    },
+    {
+      "table": "AccountingPlan",
+      "rows": 0
+    },
+    {
+      "table": "AccountingPostingComponent",
+      "rows": 0
+    },
+    {
+      "table": "AccountingPostingRule",
+      "rows": 0
+    },
+    {
+      "table": "AccountingTransaction",
+      "rows": 0
+    },
+    {
+      "table": "ActionPPA",
+      "rows": 8
+    },
+    {
+      "table": "ActiveDebt",
+      "rows": 0
+    },
+    {
+      "table": "Address",
+      "rows": 304
+    },
+    {
+      "table": "AdministrativeUnit",
+      "rows": 20
+    },
+    {
+      "table": "AnnualAccountingClose",
+      "rows": 0
+    },
+    {
+      "table": "AnnualBudgetExpenseFixation",
+      "rows": 0
+    },
+    {
+      "table": "AnnualBudgetLaw",
+      "rows": 0
+    },
+    {
+      "table": "AnnualBudgetRevenueForecast",
+      "rows": 0
+    },
+    {
+      "table": "Asset",
+      "rows": 40
+    },
+    {
+      "table": "AssetCatalogRecord",
+      "rows": 0
+    },
+    {
+      "table": "AssetCategory",
+      "rows": 3
+    },
+    {
+      "table": "AssetIntegrationPendingConfiguration",
+      "rows": 0
+    },
+    {
+      "table": "AssetMaintenance",
+      "rows": 1
+    },
+    {
+      "table": "AssetTransfer",
+      "rows": 0
+    },
+    {
+      "table": "AssetValueAdjustment",
+      "rows": 0
+    },
+    {
+      "table": "AssetValueHistory",
+      "rows": 0
+    },
+    {
+      "table": "AssetWriteOff",
+      "rows": 0
+    },
+    {
+      "table": "Attendance",
+      "rows": 0
+    },
+    {
+      "table": "AttendanceRecord",
+      "rows": 51743
+    },
+    {
+      "table": "AuditEvent",
+      "rows": 5810
+    },
+    {
+      "table": "AutomatedBankDownload",
+      "rows": 0
+    },
+    {
+      "table": "Bank",
+      "rows": 2
+    },
+    {
+      "table": "BankAccount",
+      "rows": 4
+    },
+    {
+      "table": "BankAccountResourceSource",
+      "rows": 0
+    },
+    {
+      "table": "BankBranch",
+      "rows": 0
+    },
+    {
+      "table": "BankReconciliation",
+      "rows": 0
+    },
+    {
+      "table": "BankReconciliationAllocation",
+      "rows": 0
+    },
+    {
+      "table": "BankReconciliationAllocationGroup",
+      "rows": 0
+    },
+    {
+      "table": "BankReconciliationMatch",
+      "rows": 0
+    },
+    {
+      "table": "BankReconciliationSession",
+      "rows": 0
+    },
+    {
+      "table": "BankStatementImport",
+      "rows": 0
+    },
+    {
+      "table": "BankStatementItem",
+      "rows": 0
+    },
+    {
+      "table": "BenefitConfig",
+      "rows": 0
+    },
+    {
+      "table": "BiDisplayChannel",
+      "rows": 1
+    },
+    {
+      "table": "BiDisplayChannelVersion",
+      "rows": 5
+    },
+    {
+      "table": "BiDisplaySnapshot",
+      "rows": 5
+    },
+    {
+      "table": "BiMediaAsset",
+      "rows": 4
+    },
+    {
+      "table": "Bidding",
+      "rows": 1
+    },
+    {
+      "table": "BiddingAct",
+      "rows": 7
+    },
+    {
+      "table": "BiddingAppointment",
+      "rows": 1
+    },
+    {
+      "table": "BiddingAppointmentAssignment",
+      "rows": 1
+    },
+    {
+      "table": "BiddingAppointmentMember",
+      "rows": 1
+    },
+    {
+      "table": "BiddingBid",
+      "rows": 0
+    },
+    {
+      "table": "BiddingEligibility",
+      "rows": 0
+    },
+    {
+      "table": "BiddingLot",
+      "rows": 1
+    },
+    {
+      "table": "BiddingLotItem",
+      "rows": 1
+    },
+    {
+      "table": "BiddingParticipant",
+      "rows": 1
+    },
+    {
+      "table": "BiddingPhase",
+      "rows": 6
+    },
+    {
+      "table": "BiddingResult",
+      "rows": 0
+    },
+    {
+      "table": "BimonthlyRevenueTarget",
+      "rows": 0
+    },
+    {
+      "table": "BudgetAppropriation",
+      "rows": 54
+    },
+    {
+      "table": "BudgetGuideline",
+      "rows": 0
+    },
+    {
+      "table": "BudgetGuidelinePriority",
+      "rows": 0
+    },
+    {
+      "table": "BudgetGuidelineRisk",
+      "rows": 0
+    },
+    {
+      "table": "BudgetMovement",
+      "rows": 0
+    },
+    {
+      "table": "BudgetReservation",
+      "rows": 0
+    },
+    {
+      "table": "BudgetUnit",
+      "rows": 9
+    },
+    {
+      "table": "CadUnicoRecord",
+      "rows": 1
+    },
+    {
+      "table": "CalendarEvent",
+      "rows": 3
+    },
+    {
+      "table": "CamAdvisor",
+      "rows": 0
+    },
+    {
+      "table": "CamAta",
+      "rows": 2
+    },
+    {
+      "table": "CamAudiencia",
+      "rows": 2
+    },
+    {
+      "table": "CamComissao",
+      "rows": 3
+    },
+    {
+      "table": "CamComissaoMembro",
+      "rows": 9
+    },
+    {
+      "table": "CamDocumentoLegislativo",
+      "rows": 0
+    },
+    {
+      "table": "CamGabinete",
+      "rows": 9
+    },
+    {
+      "table": "CamLegislatura",
+      "rows": 1
+    },
+    {
+      "table": "CamLei",
+      "rows": 2
+    },
+    {
+      "table": "CamMesaDiretora",
+      "rows": 3
+    },
+    {
+      "table": "CamParecer",
+      "rows": 0
+    },
+    {
+      "table": "CamPauta",
+      "rows": 4
+    },
+    {
+      "table": "CamPresencaSessao",
+      "rows": 0
+    },
+    {
+      "table": "CamProposicao",
+      "rows": 4
+    },
+    {
+      "table": "CamSessao",
+      "rows": 4
+    },
+    {
+      "table": "CamVereador",
+      "rows": 9
+    },
+    {
+      "table": "CamVotacao",
+      "rows": 0
+    },
+    {
+      "table": "CamVoto",
+      "rows": 0
+    },
+    {
+      "table": "CatalogItem",
+      "rows": 10
+    },
+    {
+      "table": "CemeteryAttachment",
+      "rows": 0
+    },
+    {
+      "table": "CemeteryChangeHistory",
+      "rows": 3
+    },
+    {
+      "table": "CemeteryChapel",
+      "rows": 1
+    },
+    {
+      "table": "CemeteryFeeEvent",
+      "rows": 0
+    },
+    {
+      "table": "CemeteryFeeRule",
+      "rows": 1
+    },
+    {
+      "table": "CemeteryFeeRuleVersion",
+      "rows": 0
+    },
+    {
+      "table": "CemeteryIdentificationField",
+      "rows": 1
+    },
+    {
+      "table": "CemeteryLot",
+      "rows": 4
+    },
+    {
+      "table": "CemeteryOssuary",
+      "rows": 1
+    },
+    {
+      "table": "CemeteryProcess",
+      "rows": 0
+    },
+    {
+      "table": "CertificateUseAudit",
+      "rows": 0
+    },
+    {
+      "table": "CitizenAccessApplication",
+      "rows": 2
+    },
+    {
+      "table": "CitizenRegistryIdentity",
+      "rows": 0
+    },
+    {
+      "table": "City",
+      "rows": 2
+    },
+    {
+      "table": "ClassDiary",
+      "rows": 12
+    },
+    {
+      "table": "ClassScheduleBoard",
+      "rows": 0
+    },
+    {
+      "table": "ClassScheduleEntry",
+      "rows": 0
+    },
+    {
+      "table": "ClassificationRule",
+      "rows": 0
+    },
+    {
+      "table": "Commitment",
+      "rows": 0
+    },
+    {
+      "table": "CommitmentMovement",
+      "rows": 0
+    },
+    {
+      "table": "Company",
+      "rows": 20
+    },
+    {
+      "table": "ConfiguracaoInstancia",
+      "rows": 1
+    },
+    {
+      "table": "ConfiguracaoModulo",
+      "rows": 30
+    },
+    {
+      "table": "ConfiguracaoParametroInstancia",
+      "rows": 0
+    },
+    {
+      "table": "ConfiguracaoPerfil",
+      "rows": 5
+    },
+    {
+      "table": "ConstructionAnalystReplacement",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionAutomaticViabilityRun",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionCase",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionCaseProperty",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionCatalogEntry",
+      "rows": 26
+    },
+    {
+      "table": "ConstructionCompanyProfile",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionCompanyProfileEvent",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionCompletion",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionCompletionSequence",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionConfigVersion",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionConsultation",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionConsultationResponse",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionDefinitionVersion",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionDistributionVersion",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionDocumentRequest",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionDocumentTemplateVersion",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionEnforcementAcknowledgement",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionEnforcementAct",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionEnforcementAssignment",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionEnforcementCase",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionEnforcementEvidence",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionEnforcementSequence",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionEnforcementVisit",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionExternalApplication",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionExternalDocument",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionFederalExport",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionFederalExportItem",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionFederalExportReceipt",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionFee",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionInspection",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionInspectionDeadlineExtension",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionInspectionPlan",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionInternalOpeningDocument",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionIssuedDocument",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionLifecycleStart",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionMessage",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionParticipant",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionPdfAnnotation",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionPlanExtraction",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionPortalIdentity",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionProfessional",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionProfessionalEmployer",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionProjectStamp",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionPropertyUpdate",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionPropertyZone",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionReview",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionServiceRequest",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionStaffRole",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionTaxRuleVersion",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionTermAcceptance",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionTermVersion",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionViabilityResult",
+      "rows": 0
+    },
+    {
+      "table": "ConstructionZoneVersion",
+      "rows": 0
+    },
+    {
+      "table": "Contract",
+      "rows": 3
+    },
+    {
+      "table": "ContractAmendment",
+      "rows": 0
+    },
+    {
+      "table": "ControlledMedicineBook",
+      "rows": 0
+    },
+    {
+      "table": "CostCenter",
+      "rows": 16
+    },
+    {
+      "table": "Covenant",
+      "rows": 2
+    },
+    {
+      "table": "CreditRequest",
+      "rows": 0
+    },
+    {
+      "table": "CreditRequestItem",
+      "rows": 0
+    },
+    {
+      "table": "Creditor",
+      "rows": 20
+    },
+    {
+      "table": "CulturaAgente",
+      "rows": 8
+    },
+    {
+      "table": "CulturaAtividade",
+      "rows": 4
+    },
+    {
+      "table": "CulturaConselho",
+      "rows": 1
+    },
+    {
+      "table": "CulturaConselhoDocumento",
+      "rows": 0
+    },
+    {
+      "table": "CulturaEspaco",
+      "rows": 3
+    },
+    {
+      "table": "CulturaEvento",
+      "rows": 8
+    },
+    {
+      "table": "CulturaEventoDocumento",
+      "rows": 0
+    },
+    {
+      "table": "CulturaFundo",
+      "rows": 1
+    },
+    {
+      "table": "CulturaPatrimonio",
+      "rows": 3
+    },
+    {
+      "table": "CulturaProjeto",
+      "rows": 8
+    },
+    {
+      "table": "CulturaProjetoDocumento",
+      "rows": 0
+    },
+    {
+      "table": "CulturaReserva",
+      "rows": 8
+    },
+    {
+      "table": "CulturaReservaDocumento",
+      "rows": 0
+    },
+    {
+      "table": "CulturalIncentiveProject",
+      "rows": 0
+    },
+    {
+      "table": "Currency",
+      "rows": 1
+    },
+    {
+      "table": "CurriculumMatrix",
+      "rows": 0
+    },
+    {
+      "table": "CurriculumMatrixSubject",
+      "rows": 0
+    },
+    {
+      "table": "DebtInstallment",
+      "rows": 0
+    },
+    {
+      "table": "DebtInstallmentSchedule",
+      "rows": 0
+    },
+    {
+      "table": "Department",
+      "rows": 34
+    },
+    {
+      "table": "Dependent",
+      "rows": 8
+    },
+    {
+      "table": "DesifAgency",
+      "rows": 0
+    },
+    {
+      "table": "DesifAssessment",
+      "rows": 0
+    },
+    {
+      "table": "DesifCosifAccount",
+      "rows": 0
+    },
+    {
+      "table": "DesifFinancialInstitution",
+      "rows": 0
+    },
+    {
+      "table": "DesifFiscalCase",
+      "rows": 0
+    },
+    {
+      "table": "DesifFiscalEvent",
+      "rows": 0
+    },
+    {
+      "table": "DesifImportBatch",
+      "rows": 0
+    },
+    {
+      "table": "DesifPackage",
+      "rows": 0
+    },
+    {
+      "table": "DesifPackageItem",
+      "rows": 0
+    },
+    {
+      "table": "DesifPackageMovement",
+      "rows": 0
+    },
+    {
+      "table": "DesifPgccAccount",
+      "rows": 0
+    },
+    {
+      "table": "DesifPgccCosifLink",
+      "rows": 0
+    },
+    {
+      "table": "DesifPgccPlan",
+      "rows": 0
+    },
+    {
+      "table": "DesifSubtitle",
+      "rows": 0
+    },
+    {
+      "table": "DesifTariff",
+      "rows": 0
+    },
+    {
+      "table": "DesifTrialBalance",
+      "rows": 0
+    },
+    {
+      "table": "DigitalCertificate",
+      "rows": 2
+    },
+    {
+      "table": "DirectContracting",
+      "rows": 0
+    },
+    {
+      "table": "Document",
+      "rows": 28
+    },
+    {
+      "table": "DocumentClass",
+      "rows": 8
+    },
+    {
+      "table": "DocumentIcpEvidence",
+      "rows": 0
+    },
+    {
+      "table": "DocumentSignature",
+      "rows": 3
+    },
+    {
+      "table": "DocumentVersion",
+      "rows": 31
+    },
+    {
+      "table": "DteAccessGrant",
+      "rows": 0
+    },
+    {
+      "table": "DteCategory",
+      "rows": 6
+    },
+    {
+      "table": "DteMailbox",
+      "rows": 0
+    },
+    {
+      "table": "DteMessage",
+      "rows": 0
+    },
+    {
+      "table": "DteMessageEvent",
+      "rows": 0
+    },
+    {
+      "table": "DtePowerOfAttorney",
+      "rows": 0
+    },
+    {
+      "table": "DtePowerOfAttorneyEvent",
+      "rows": 0
+    },
+    {
+      "table": "EconomicRegistration",
+      "rows": 0
+    },
+    {
+      "table": "EducacensoOperation",
+      "rows": 0
+    },
+    {
+      "table": "EducationApplicationPlan",
+      "rows": 0
+    },
+    {
+      "table": "EducationAssessment",
+      "rows": 0
+    },
+    {
+      "table": "EducationFinancialAccount",
+      "rows": 0
+    },
+    {
+      "table": "EducationFinancialMovement",
+      "rows": 0
+    },
+    {
+      "table": "EducationFoodMovement",
+      "rows": 0
+    },
+    {
+      "table": "EducationLibraryCopy",
+      "rows": 12
+    },
+    {
+      "table": "EducationLibraryLoan",
+      "rows": 0
+    },
+    {
+      "table": "EducationLibraryReservation",
+      "rows": 0
+    },
+    {
+      "table": "EducationLibraryTitle",
+      "rows": 4
+    },
+    {
+      "table": "EducationSchoolMenu",
+      "rows": 3
+    },
+    {
+      "table": "EducationSupportRequest",
+      "rows": 4
+    },
+    {
+      "table": "EducationTransportEvent",
+      "rows": 0
+    },
+    {
+      "table": "EducationTransportJourney",
+      "rows": 0
+    },
+    {
+      "table": "EducationTransportRoute",
+      "rows": 0
+    },
+    {
+      "table": "EducationTransportStop",
+      "rows": 0
+    },
+    {
+      "table": "EducationTransportStudent",
+      "rows": 0
+    },
+    {
+      "table": "EducationalGuardian",
+      "rows": 20
+    },
+    {
+      "table": "Employee",
+      "rows": 199
+    },
+    {
+      "table": "EmployeePortalAccessLink",
+      "rows": 0
+    },
+    {
+      "table": "EmployeePortalLoginGuard",
+      "rows": 0
+    },
+    {
+      "table": "Enrollment",
+      "rows": 20
+    },
+    {
+      "table": "EnrollmentMovement",
+      "rows": 0
+    },
+    {
+      "table": "EnvComplaint",
+      "rows": 4
+    },
+    {
+      "table": "EnvDocument",
+      "rows": 6
+    },
+    {
+      "table": "EnvEduProgram",
+      "rows": 3
+    },
+    {
+      "table": "EnvEnterprise",
+      "rows": 6
+    },
+    {
+      "table": "EnvGreenArea",
+      "rows": 3
+    },
+    {
+      "table": "EnvInfraction",
+      "rows": 0
+    },
+    {
+      "table": "EnvInspection",
+      "rows": 6
+    },
+    {
+      "table": "EnvLicense",
+      "rows": 6
+    },
+    {
+      "table": "EnvRecyclingMaterialBinding",
+      "rows": 0
+    },
+    {
+      "table": "EnvRecyclingMovement",
+      "rows": 0
+    },
+    {
+      "table": "EnvRecyclingStock",
+      "rows": 0
+    },
+    {
+      "table": "EnvRequest",
+      "rows": 6
+    },
+    {
+      "table": "EnvWaste",
+      "rows": 6
+    },
+    {
+      "table": "EnvironmentalLicense",
+      "rows": 0
+    },
+    {
+      "table": "EquipmentCustody",
+      "rows": 0
+    },
+    {
+      "table": "ExceptionQueueItem",
+      "rows": 0
+    },
+    {
+      "table": "Expense",
+      "rows": 0
+    },
+    {
+      "table": "ExpenseNature",
+      "rows": 6
+    },
+    {
+      "table": "Family",
+      "rows": 26
+    },
+    {
+      "table": "FamilyMember",
+      "rows": 63
+    },
+    {
+      "table": "FinanceCheckbook",
+      "rows": 0
+    },
+    {
+      "table": "FinanceCheque",
+      "rows": 0
+    },
+    {
+      "table": "FinancialAuditLog",
+      "rows": 85
+    },
+    {
+      "table": "FinancialDocument",
+      "rows": 0
+    },
+    {
+      "table": "FinancialYear",
+      "rows": 1
+    },
+    {
+      "table": "FiscalAssessmentMap",
+      "rows": 0
+    },
+    {
+      "table": "FiscalAuditPlan",
+      "rows": 0
+    },
+    {
+      "table": "FiscalAuditPlanEvent",
+      "rows": 0
+    },
+    {
+      "table": "FiscalAuditPlanInspector",
+      "rows": 0
+    },
+    {
+      "table": "FiscalAuditPlanSelection",
+      "rows": 0
+    },
+    {
+      "table": "FiscalDocumentRequest",
+      "rows": 0
+    },
+    {
+      "table": "FiscalDocumentTemplate",
+      "rows": 0
+    },
+    {
+      "table": "FiscalInspectionDocument",
+      "rows": 0
+    },
+    {
+      "table": "FiscalMeshFinding",
+      "rows": 0
+    },
+    {
+      "table": "FiscalMeshOrderLink",
+      "rows": 0
+    },
+    {
+      "table": "FiscalPenaltyRule",
+      "rows": 0
+    },
+    {
+      "table": "FiscalProductivityConfig",
+      "rows": 0
+    },
+    {
+      "table": "FiscalProductivityEntry",
+      "rows": 0
+    },
+    {
+      "table": "FiscalProductivityLedger",
+      "rows": 0
+    },
+    {
+      "table": "FiscalProductivityPeriod",
+      "rows": 0
+    },
+    {
+      "table": "FiscalProductivityTaskRule",
+      "rows": 0
+    },
+    {
+      "table": "FiscalServiceOrder",
+      "rows": 0
+    },
+    {
+      "table": "FiscalServiceOrderEvent",
+      "rows": 0
+    },
+    {
+      "table": "FleetAssetEvent",
+      "rows": 2
+    },
+    {
+      "table": "FleetAttachment",
+      "rows": 0
+    },
+    {
+      "table": "FleetAuthorization",
+      "rows": 0
+    },
+    {
+      "table": "FleetBooking",
+      "rows": 1
+    },
+    {
+      "table": "FleetCatalogEntry",
+      "rows": 0
+    },
+    {
+      "table": "FleetCatalogVersion",
+      "rows": 0
+    },
+    {
+      "table": "FleetClaim",
+      "rows": 0
+    },
+    {
+      "table": "FleetComponent",
+      "rows": 0
+    },
+    {
+      "table": "FleetComponentInstallation",
+      "rows": 0
+    },
+    {
+      "table": "FleetConsumption",
+      "rows": 3
+    },
+    {
+      "table": "FleetControlEvent",
+      "rows": 0
+    },
+    {
+      "table": "FleetDebtPayment",
+      "rows": 0
+    },
+    {
+      "table": "FleetDebtSettings",
+      "rows": 0
+    },
+    {
+      "table": "FleetDestination",
+      "rows": 0
+    },
+    {
+      "table": "FleetDocument",
+      "rows": 26
+    },
+    {
+      "table": "FleetDriver",
+      "rows": 1
+    },
+    {
+      "table": "FleetExpense",
+      "rows": 4
+    },
+    {
+      "table": "FleetExternalEvent",
+      "rows": 0
+    },
+    {
+      "table": "FleetExternalThrottle",
+      "rows": 0
+    },
+    {
+      "table": "FleetFine",
+      "rows": 0
+    },
+    {
+      "table": "FleetFinePayment",
+      "rows": 0
+    },
+    {
+      "table": "FleetFuelAgreement",
+      "rows": 0
+    },
+    {
+      "table": "FleetFuelQuota",
+      "rows": 0
+    },
+    {
+      "table": "FleetGateEvent",
+      "rows": 0
+    },
+    {
+      "table": "FleetMachineType",
+      "rows": 0
+    },
+    {
+      "table": "FleetMutation",
+      "rows": 20
+    },
+    {
+      "table": "FleetOccurrence",
+      "rows": 3
+    },
+    {
+      "table": "FleetOperation",
+      "rows": 0
+    },
+    {
+      "table": "FleetPlan",
+      "rows": 33
+    },
+    {
+      "table": "FleetProvider",
+      "rows": 0
+    },
+    {
+      "table": "FleetRoute",
+      "rows": 3
+    },
+    {
+      "table": "FleetSequence",
+      "rows": 0
+    },
+    {
+      "table": "FleetTrip",
+      "rows": 0
+    },
+    {
+      "table": "FleetUnit",
+      "rows": 30
+    },
+    {
+      "table": "FleetUnitControl",
+      "rows": 30
+    },
+    {
+      "table": "FleetUsage",
+      "rows": 0
+    },
+    {
+      "table": "FleetWorkOrder",
+      "rows": 3
+    },
+    {
+      "table": "FleetWorkshopReport",
+      "rows": 0
+    },
+    {
+      "table": "Folder",
+      "rows": 4
+    },
+    {
+      "table": "FundedDebt",
+      "rows": 0
+    },
+    {
+      "table": "GedAcl",
+      "rows": 0
+    },
+    {
+      "table": "GedActivity",
+      "rows": 17
+    },
+    {
+      "table": "GedArtifact",
+      "rows": 4
+    },
+    {
+      "table": "GedCalendarEvent",
+      "rows": 0
+    },
+    {
+      "table": "GedCentralArchive",
+      "rows": 3
+    },
+    {
+      "table": "GedCentralSignature",
+      "rows": 3
+    },
+    {
+      "table": "GedCheckout",
+      "rows": 3
+    },
+    {
+      "table": "GedComment",
+      "rows": 0
+    },
+    {
+      "table": "GedDisposal",
+      "rows": 0
+    },
+    {
+      "table": "GedEmbedding",
+      "rows": 0
+    },
+    {
+      "table": "GedEntry",
+      "rows": 24
+    },
+    {
+      "table": "GedEventQueue",
+      "rows": 0
+    },
+    {
+      "table": "GedFavorite",
+      "rows": 0
+    },
+    {
+      "table": "GedFlowDecision",
+      "rows": 0
+    },
+    {
+      "table": "GedFlowDefinition",
+      "rows": 0
+    },
+    {
+      "table": "GedFlowRun",
+      "rows": 0
+    },
+    {
+      "table": "GedFolderAccess",
+      "rows": 4
+    },
+    {
+      "table": "GedGeneratedDocument",
+      "rows": 3
+    },
+    {
+      "table": "GedGroup",
+      "rows": 0
+    },
+    {
+      "table": "GedGroupMember",
+      "rows": 0
+    },
+    {
+      "table": "GedIntegrationLink",
+      "rows": 0
+    },
+    {
+      "table": "GedMailIntent",
+      "rows": 0
+    },
+    {
+      "table": "GedMetadata",
+      "rows": 0
+    },
+    {
+      "table": "GedOperationLease",
+      "rows": 0
+    },
+    {
+      "table": "GedPreference",
+      "rows": 0
+    },
+    {
+      "table": "GedProcessingJob",
+      "rows": 27
+    },
+    {
+      "table": "GedPublicationLink",
+      "rows": 0
+    },
+    {
+      "table": "GedReview",
+      "rows": 6
+    },
+    {
+      "table": "GedReviewDecision",
+      "rows": 24
+    },
+    {
+      "table": "GedRule",
+      "rows": 0
+    },
+    {
+      "table": "GedRuleActionResult",
+      "rows": 0
+    },
+    {
+      "table": "GedRuleExecution",
+      "rows": 0
+    },
+    {
+      "table": "GedRuleVersion",
+      "rows": 0
+    },
+    {
+      "table": "GedSetting",
+      "rows": 0
+    },
+    {
+      "table": "GedSmartFolder",
+      "rows": 3
+    },
+    {
+      "table": "GedSourceImport",
+      "rows": 0
+    },
+    {
+      "table": "GedTask",
+      "rows": 0
+    },
+    {
+      "table": "GedTemplateVersion",
+      "rows": 6
+    },
+    {
+      "table": "GedTextPage",
+      "rows": 27
+    },
+    {
+      "table": "GedThesaurus",
+      "rows": 4
+    },
+    {
+      "table": "GedTypeDefinition",
+      "rows": 0
+    },
+    {
+      "table": "GedUpload",
+      "rows": 24
+    },
+    {
+      "table": "GedVersionFile",
+      "rows": 27
+    },
+    {
+      "table": "GenericProcessWorkflowDefinition",
+      "rows": 0
+    },
+    {
+      "table": "GenericProcessWorkflowEvent",
+      "rows": 0
+    },
+    {
+      "table": "GenericProcessWorkflowInstance",
+      "rows": 0
+    },
+    {
+      "table": "GenericProcessWorkflowStage",
+      "rows": 0
+    },
+    {
+      "table": "GoalPPA",
+      "rows": 32
+    },
+    {
+      "table": "GovernmentEntity",
+      "rows": 4
+    },
+    {
+      "table": "Grade",
+      "rows": 0
+    },
+    {
+      "table": "HealthAdministrativeMerge",
+      "rows": 0
+    },
+    {
+      "table": "HealthAppointment",
+      "rows": 20
+    },
+    {
+      "table": "HealthAppointmentEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthAssistentialDevice",
+      "rows": 0
+    },
+    {
+      "table": "HealthAuthorizationIssuer",
+      "rows": 0
+    },
+    {
+      "table": "HealthAuthorizationNumberRange",
+      "rows": 0
+    },
+    {
+      "table": "HealthBed",
+      "rows": 0
+    },
+    {
+      "table": "HealthBedOccupancy",
+      "rows": 0
+    },
+    {
+      "table": "HealthCallPanel",
+      "rows": 0
+    },
+    {
+      "table": "HealthCareAgreement",
+      "rows": 0
+    },
+    {
+      "table": "HealthCareCoverage",
+      "rows": 0
+    },
+    {
+      "table": "HealthCareProgram",
+      "rows": 0
+    },
+    {
+      "table": "HealthCareProgramEnrollment",
+      "rows": 0
+    },
+    {
+      "table": "HealthCareRevision",
+      "rows": 0
+    },
+    {
+      "table": "HealthCareSchedule",
+      "rows": 0
+    },
+    {
+      "table": "HealthCatmatUnitMapping",
+      "rows": 0
+    },
+    {
+      "table": "HealthCbo",
+      "rows": 2
+    },
+    {
+      "table": "HealthChronicAssessment",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalDocument",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalDocumentOrder",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalDocumentTemplate",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalEvolution",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalExamReview",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalQuestionnaire",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalQuestionnaireResponse",
+      "rows": 0
+    },
+    {
+      "table": "HealthClinicalScreening",
+      "rows": 0
+    },
+    {
+      "table": "HealthCollectiveActivity",
+      "rows": 0
+    },
+    {
+      "table": "HealthCounterreference",
+      "rows": 0
+    },
+    {
+      "table": "HealthDcbSubstance",
+      "rows": 0
+    },
+    {
+      "table": "HealthDentalMark",
+      "rows": 0
+    },
+    {
+      "table": "HealthDestination",
+      "rows": 0
+    },
+    {
+      "table": "HealthDeviceMessage",
+      "rows": 0
+    },
+    {
+      "table": "HealthDiagnosis",
+      "rows": 0
+    },
+    {
+      "table": "HealthDispensationEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthEsusBatch",
+      "rows": 0
+    },
+    {
+      "table": "HealthEsusBatchItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthEsusForm",
+      "rows": 0
+    },
+    {
+      "table": "HealthExamRequest",
+      "rows": 0
+    },
+    {
+      "table": "HealthFamily",
+      "rows": 20
+    },
+    {
+      "table": "HealthFamilyDocument",
+      "rows": 0
+    },
+    {
+      "table": "HealthFamilyEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthFamilyMember",
+      "rows": 40
+    },
+    {
+      "table": "HealthFollowupBatch",
+      "rows": 0
+    },
+    {
+      "table": "HealthFollowupBatchItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthFollowupBinding",
+      "rows": 0
+    },
+    {
+      "table": "HealthFollowupProcessedKey",
+      "rows": 0
+    },
+    {
+      "table": "HealthFollowupReceipt",
+      "rows": 0
+    },
+    {
+      "table": "HealthFollowupReceiver",
+      "rows": 0
+    },
+    {
+      "table": "HealthFollowupRecord",
+      "rows": 0
+    },
+    {
+      "table": "HealthFollowupResult",
+      "rows": 0
+    },
+    {
+      "table": "HealthFoodMarker",
+      "rows": 0
+    },
+    {
+      "table": "HealthHabilitation",
+      "rows": 0
+    },
+    {
+      "table": "HealthHomeCareAssessment",
+      "rows": 0
+    },
+    {
+      "table": "HealthHomeCareAttendance",
+      "rows": 0
+    },
+    {
+      "table": "HealthHomeCareRequest",
+      "rows": 0
+    },
+    {
+      "table": "HealthHomeVisit",
+      "rows": 0
+    },
+    {
+      "table": "HealthHomeVisitParticipant",
+      "rows": 0
+    },
+    {
+      "table": "HealthHousehold",
+      "rows": 20
+    },
+    {
+      "table": "HealthInternalCareReferral",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabExamMaterial",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabExamModel",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabOrder",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabOrderEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabProviderQuota",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabQuestionGroup",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabQuestionItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabQuestionnaire",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabReport",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabResult",
+      "rows": 0
+    },
+    {
+      "table": "HealthLabSchedule",
+      "rows": 0
+    },
+    {
+      "table": "HealthLaboratoryConfiguration",
+      "rows": 0
+    },
+    {
+      "table": "HealthMaintainer",
+      "rows": 0
+    },
+    {
+      "table": "HealthMaterialProfile",
+      "rows": 44
+    },
+    {
+      "table": "HealthMedicationAdministration",
+      "rows": 0
+    },
+    {
+      "table": "HealthMicroarea",
+      "rows": 4
+    },
+    {
+      "table": "HealthObservation",
+      "rows": 0
+    },
+    {
+      "table": "HealthOngoingMedication",
+      "rows": 0
+    },
+    {
+      "table": "HealthPanelCall",
+      "rows": 0
+    },
+    {
+      "table": "HealthPatientCall",
+      "rows": 0
+    },
+    {
+      "table": "HealthPatientCondition",
+      "rows": 0
+    },
+    {
+      "table": "HealthPatientConditionRevision",
+      "rows": 0
+    },
+    {
+      "table": "HealthPatientContact",
+      "rows": 0
+    },
+    {
+      "table": "HealthPatientDocument",
+      "rows": 0
+    },
+    {
+      "table": "HealthPatientRegistration",
+      "rows": 0
+    },
+    {
+      "table": "HealthPatientRegistrationChange",
+      "rows": 0
+    },
+    {
+      "table": "HealthPerformedProcedure",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyJudicialCase",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyJudicialDocument",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyJudicialEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyJudicialItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyKit",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyKitDelivery",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyKitDeliveryItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyKitEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyKitItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthPharmacyLawyer",
+      "rows": 0
+    },
+    {
+      "table": "HealthPostpartumVisit",
+      "rows": 0
+    },
+    {
+      "table": "HealthPregnancy",
+      "rows": 0
+    },
+    {
+      "table": "HealthPregnancyVisit",
+      "rows": 0
+    },
+    {
+      "table": "HealthPrescription",
+      "rows": 0
+    },
+    {
+      "table": "HealthPrescriptionItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthPrescriptionTemplate",
+      "rows": 0
+    },
+    {
+      "table": "HealthProcedurePriceItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthProcedurePriceTable",
+      "rows": 0
+    },
+    {
+      "table": "HealthProductionCompetence",
+      "rows": 0
+    },
+    {
+      "table": "HealthProductionCriticism",
+      "rows": 0
+    },
+    {
+      "table": "HealthProductionFact",
+      "rows": 0
+    },
+    {
+      "table": "HealthProductionFactRevision",
+      "rows": 0
+    },
+    {
+      "table": "HealthProductionTarget",
+      "rows": 0
+    },
+    {
+      "table": "HealthProfessional",
+      "rows": 2
+    },
+    {
+      "table": "HealthProfessionalAssignment",
+      "rows": 0
+    },
+    {
+      "table": "HealthProfessionalShift",
+      "rows": 0
+    },
+    {
+      "table": "HealthProviderAccess",
+      "rows": 0
+    },
+    {
+      "table": "HealthReception",
+      "rows": 0
+    },
+    {
+      "table": "HealthReferral",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegistrationStatusHistory",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegulationAttachment",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegulationEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegulationQuota",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegulationQuotaAllocation",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegulationRequest",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegulationReview",
+      "rows": 0
+    },
+    {
+      "table": "HealthRegulationSector",
+      "rows": 0
+    },
+    {
+      "table": "HealthRiskProtocol",
+      "rows": 5
+    },
+    {
+      "table": "HealthRoom",
+      "rows": 4
+    },
+    {
+      "table": "HealthScheduleBlock",
+      "rows": 0
+    },
+    {
+      "table": "HealthSchedulingGroup",
+      "rows": 0
+    },
+    {
+      "table": "HealthService",
+      "rows": 0
+    },
+    {
+      "table": "HealthServiceAssignment",
+      "rows": 0
+    },
+    {
+      "table": "HealthSpecialty",
+      "rows": 0
+    },
+    {
+      "table": "HealthSpecialtyGroup",
+      "rows": 0
+    },
+    {
+      "table": "HealthSpecialtyGroupMember",
+      "rows": 0
+    },
+    {
+      "table": "HealthSpecialtyGroupService",
+      "rows": 0
+    },
+    {
+      "table": "HealthSpecialtyProcedureRule",
+      "rows": 0
+    },
+    {
+      "table": "HealthStandardDocument",
+      "rows": 0
+    },
+    {
+      "table": "HealthStockPolicy",
+      "rows": 0
+    },
+    {
+      "table": "HealthStockReceipt",
+      "rows": 0
+    },
+    {
+      "table": "HealthStockReceiptItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthStockTransfer",
+      "rows": 0
+    },
+    {
+      "table": "HealthStockTransferItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthSusFile",
+      "rows": 0
+    },
+    {
+      "table": "HealthSusImportBatch",
+      "rows": 0
+    },
+    {
+      "table": "HealthSusImportIssue",
+      "rows": 0
+    },
+    {
+      "table": "HealthSusProcedure",
+      "rows": 0
+    },
+    {
+      "table": "HealthSusProcedureReference",
+      "rows": 0
+    },
+    {
+      "table": "HealthSusReference",
+      "rows": 0
+    },
+    {
+      "table": "HealthTeam",
+      "rows": 2
+    },
+    {
+      "table": "HealthTeamClassificationEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthTerritoryArea",
+      "rows": 2
+    },
+    {
+      "table": "HealthTfdBenefit",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdClinicalReport",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdPassenger",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdPassengerRemoval",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdReportRevision",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdReportSupplement",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdRequest",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdRequestEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdTrip",
+      "rows": 0
+    },
+    {
+      "table": "HealthTfdTripEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthTherapySession",
+      "rows": 0
+    },
+    {
+      "table": "HealthTreatmentAuthorization",
+      "rows": 0
+    },
+    {
+      "table": "HealthTreatmentReport",
+      "rows": 0
+    },
+    {
+      "table": "HealthTreatmentReportEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthTreatmentReportProcedure",
+      "rows": 0
+    },
+    {
+      "table": "HealthTreatmentReportRevision",
+      "rows": 0
+    },
+    {
+      "table": "HealthTriage",
+      "rows": 0
+    },
+    {
+      "table": "HealthUnit",
+      "rows": 3
+    },
+    {
+      "table": "HealthUnitCeiling",
+      "rows": 0
+    },
+    {
+      "table": "HealthUnitShift",
+      "rows": 10
+    },
+    {
+      "table": "HealthUnitSpecialty",
+      "rows": 0
+    },
+    {
+      "table": "HealthUserAccessScope",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccinationCampaign",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccinationCardEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineAdverseEvent",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineAdverseFollowup",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineCalendarRule",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineCodeMapping",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineInteraction",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineLotProfile",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineManufacturer",
+      "rows": 0
+    },
+    {
+      "table": "HealthVaccineOpenedVial",
+      "rows": 0
+    },
+    {
+      "table": "HealthVigilanceComplaint",
+      "rows": 0
+    },
+    {
+      "table": "HealthVigilanceEstablishment",
+      "rows": 0
+    },
+    {
+      "table": "HealthVigilanceInspection",
+      "rows": 0
+    },
+    {
+      "table": "HealthVigilanceInspectionItem",
+      "rows": 0
+    },
+    {
+      "table": "HealthVigilanceLicense",
+      "rows": 0
+    },
+    {
+      "table": "HealthWaitlist",
+      "rows": 0
+    },
+    {
+      "table": "HealthWaitlistEvent",
+      "rows": 0
+    },
+    {
+      "table": "HrBudgetUnitEntityMapping",
+      "rows": 0
+    },
+    {
+      "table": "HrCalculationPolicy",
+      "rows": 2
+    },
+    {
+      "table": "HrConsignmentAgreement",
+      "rows": 0
+    },
+    {
+      "table": "HrConsignmentEntry",
+      "rows": 0
+    },
+    {
+      "table": "HrConsignmentInstallment",
+      "rows": 0
+    },
+    {
+      "table": "HrEmployeeDocument",
+      "rows": 0
+    },
+    {
+      "table": "HrEmployeeFunctionalPeriod",
+      "rows": 0
+    },
+    {
+      "table": "HrEmploymentContract",
+      "rows": 397
+    },
+    {
+      "table": "HrEmploymentRegime",
+      "rows": 4
+    },
+    {
+      "table": "HrEmploymentRevision",
+      "rows": 595
+    },
+    {
+      "table": "HrFunctionalRecord",
+      "rows": 267
+    },
+    {
+      "table": "HrIntegrationEvent",
+      "rows": 2024
+    },
+    {
+      "table": "HrMovement",
+      "rows": 702
+    },
+    {
+      "table": "HrPayrollAccountingEvidence",
+      "rows": 15
+    },
+    {
+      "table": "HrPayrollConfigurationChange",
+      "rows": 0
+    },
+    {
+      "table": "HrPayrollItemOrigin",
+      "rows": 7542
+    },
+    {
+      "table": "HrPayrollRubric",
+      "rows": 35
+    },
+    {
+      "table": "HrPayrollRubricIncidence",
+      "rows": 45
+    },
+    {
+      "table": "HrPayrollRule",
+      "rows": 42
+    },
+    {
+      "table": "HrPayrollRuleSet",
+      "rows": 2
+    },
+    {
+      "table": "HrPayrollRun",
+      "rows": 20
+    },
+    {
+      "table": "HrPayrollStatement",
+      "rows": 3415
+    },
+    {
+      "table": "HrPersonalRevision",
+      "rows": 397
+    },
+    {
+      "table": "HrPortalRequest",
+      "rows": 218
+    },
+    {
+      "table": "HrPortalRequestBinding",
+      "rows": 0
+    },
+    {
+      "table": "HrPortalServiceConfiguration",
+      "rows": 3
+    },
+    {
+      "table": "HrRecruitmentApplication",
+      "rows": 0
+    },
+    {
+      "table": "HrReferenceRecord",
+      "rows": 1351
+    },
+    {
+      "table": "HrReferenceRevision",
+      "rows": 1716
+    },
+    {
+      "table": "HrRetirementAssessment",
+      "rows": 0
+    },
+    {
+      "table": "HrRightEntry",
+      "rows": 98
+    },
+    {
+      "table": "HrRoleLegalHistory",
+      "rows": 0
+    },
+    {
+      "table": "HrSocialSecurityBand",
+      "rows": 8
+    },
+    {
+      "table": "HrSocialSecurityScheme",
+      "rows": 2
+    },
+    {
+      "table": "HrTimeCertificate",
+      "rows": 0
+    },
+    {
+      "table": "HrVacationConcessionSource",
+      "rows": 0
+    },
+    {
+      "table": "HrVacationPolicy",
+      "rows": 2
+    },
+    {
+      "table": "IndicatorPPA",
+      "rows": 8
+    },
+    {
+      "table": "InformationRequest",
+      "rows": 4
+    },
+    {
+      "table": "Infraction",
+      "rows": 0
+    },
+    {
+      "table": "Institution",
+      "rows": 1
+    },
+    {
+      "table": "InstrumentInstallment",
+      "rows": 0
+    },
+    {
+      "table": "InstrumentMeasurement",
+      "rows": 0
+    },
+    {
+      "table": "InstrumentMeasurementItem",
+      "rows": 0
+    },
+    {
+      "table": "InstrumentParty",
+      "rows": 0
+    },
+    {
+      "table": "InstrumentResponsibilityGroup",
+      "rows": 0
+    },
+    {
+      "table": "IntegrationConnection",
+      "rows": 0
+    },
+    {
+      "table": "IntegrationRun",
+      "rows": 0
+    },
+    {
+      "table": "InternalControlEvent",
+      "rows": 0
+    },
+    {
+      "table": "InternalControlFinding",
+      "rows": 0
+    },
+    {
+      "table": "InternalControlPlan",
+      "rows": 0
+    },
+    {
+      "table": "InternalDemand",
+      "rows": 6
+    },
+    {
+      "table": "InventorySession",
+      "rows": 1
+    },
+    {
+      "table": "InventorySessionItem",
+      "rows": 1
+    },
+    {
+      "table": "InvestmentAllocation",
+      "rows": 0
+    },
+    {
+      "table": "Invoice",
+      "rows": 0
+    },
+    {
+      "table": "ItbiDeclaration",
+      "rows": 0
+    },
+    {
+      "table": "ItbiEvent",
+      "rows": 0
+    },
+    {
+      "table": "ItbiParty",
+      "rows": 0
+    },
+    {
+      "table": "ItbiTransactionType",
+      "rows": 2
+    },
+    {
+      "table": "Lead",
+      "rows": 0
+    },
+    {
+      "table": "LearningActivity",
+      "rows": 0
+    },
+    {
+      "table": "LearningQuestion",
+      "rows": 0
+    },
+    {
+      "table": "LearningSubmission",
+      "rows": 0
+    },
+    {
+      "table": "Leave",
+      "rows": 0
+    },
+    {
+      "table": "LegacyLegalTextSource",
+      "rows": 0
+    },
+    {
+      "table": "LegalReportSigner",
+      "rows": 0
+    },
+    {
+      "table": "LegalRepresentative",
+      "rows": 0
+    },
+    {
+      "table": "LegalText",
+      "rows": 0
+    },
+    {
+      "table": "LegalTextComment",
+      "rows": 0
+    },
+    {
+      "table": "LegalTextDatabaseDocument",
+      "rows": 0
+    },
+    {
+      "table": "LegalTextDatabaseDocumentBlob",
+      "rows": 0
+    },
+    {
+      "table": "LegalTextDocument",
+      "rows": 0
+    },
+    {
+      "table": "LegalTextRelation",
+      "rows": 0
+    },
+    {
+      "table": "LegalTextVersion",
+      "rows": 0
+    },
+    {
+      "table": "License",
+      "rows": 0
+    },
+    {
+      "table": "MasterDataConsistencyIssue",
+      "rows": 0
+    },
+    {
+      "table": "MasterDataConsistencyRun",
+      "rows": 0
+    },
+    {
+      "table": "Material",
+      "rows": 120
+    },
+    {
+      "table": "MaterialCategory",
+      "rows": 15
+    },
+    {
+      "table": "MaterialMovement",
+      "rows": 156
+    },
+    {
+      "table": "MaterialRequest",
+      "rows": 0
+    },
+    {
+      "table": "MaterialRequestItem",
+      "rows": 0
+    },
+    {
+      "table": "MaterialRequestRevision",
+      "rows": 0
+    },
+    {
+      "table": "MaterialStock",
+      "rows": 156
+    },
+    {
+      "table": "MaterialStockValuation",
+      "rows": 0
+    },
+    {
+      "table": "MaterialStockValuationEvent",
+      "rows": 0
+    },
+    {
+      "table": "MaterialSubcategory",
+      "rows": 0
+    },
+    {
+      "table": "MedicalRecord",
+      "rows": 0
+    },
+    {
+      "table": "Medicine",
+      "rows": 44
+    },
+    {
+      "table": "MedicineBatch",
+      "rows": 88
+    },
+    {
+      "table": "MedicineDispensation",
+      "rows": 0
+    },
+    {
+      "table": "MedicineDosageTemplate",
+      "rows": 0
+    },
+    {
+      "table": "MedicineInteraction",
+      "rows": 0
+    },
+    {
+      "table": "MonthlyAccountingClose",
+      "rows": 0
+    },
+    {
+      "table": "MonthlyAccountingCloseEvent",
+      "rows": 0
+    },
+    {
+      "table": "MonthlyDisbursementSchedule",
+      "rows": 0
+    },
+    {
+      "table": "MultiYearPlan",
+      "rows": 1
+    },
+    {
+      "table": "MunicipalCostAllocation",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostItem",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostMovement",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostObject",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostObjectItem",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostPolicy",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostRule",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostSource",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalCostSourceReduction",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalFiscalIndexDefinition",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalPersonnelFiscalDefinition",
+      "rows": 0
+    },
+    {
+      "table": "MunicipalPresentationRevision",
+      "rows": 1267
+    },
+    {
+      "table": "Neighborhood",
+      "rows": 7
+    },
+    {
+      "table": "NfseCorrectionLetter",
+      "rows": 0
+    },
+    {
+      "table": "NfseCredentialEvent",
+      "rows": 0
+    },
+    {
+      "table": "NfseCredentialRequest",
+      "rows": 0
+    },
+    {
+      "table": "NfseDeductionConsumption",
+      "rows": 0
+    },
+    {
+      "table": "NfseDeductionCredit",
+      "rows": 0
+    },
+    {
+      "table": "NfseDmsDeclaration",
+      "rows": 0
+    },
+    {
+      "table": "NfseEvent",
+      "rows": 0
+    },
+    {
+      "table": "NfseInvoiceData",
+      "rows": 0
+    },
+    {
+      "table": "NfseOccasionalRequest",
+      "rows": 0
+    },
+    {
+      "table": "NfseRpsBatch",
+      "rows": 0
+    },
+    {
+      "table": "NfseRpsItem",
+      "rows": 0
+    },
+    {
+      "table": "ObjectivePPA",
+      "rows": 8
+    },
+    {
+      "table": "ObrasEquipe",
+      "rows": 3
+    },
+    {
+      "table": "ObrasEquipeMembro",
+      "rows": 2
+    },
+    {
+      "table": "ObrasMedicao",
+      "rows": 0
+    },
+    {
+      "table": "ObrasObra",
+      "rows": 8
+    },
+    {
+      "table": "ObrasServico",
+      "rows": 20
+    },
+    {
+      "table": "ObrasServicoCompra",
+      "rows": 0
+    },
+    {
+      "table": "ObrasServicoDocumento",
+      "rows": 0
+    },
+    {
+      "table": "ObrasServicoEmployee",
+      "rows": 20
+    },
+    {
+      "table": "ObrasServicoEquipamento",
+      "rows": 4
+    },
+    {
+      "table": "ObrasServicoEquipe",
+      "rows": 20
+    },
+    {
+      "table": "ObrasServicoMaterial",
+      "rows": 0
+    },
+    {
+      "table": "OfficialDiary",
+      "rows": 0
+    },
+    {
+      "table": "OfficialPublication",
+      "rows": 0
+    },
+    {
+      "table": "Ombudsman",
+      "rows": 3
+    },
+    {
+      "table": "OmbudsmanAccess",
+      "rows": 0
+    },
+    {
+      "table": "OmbudsmanAuditLog",
+      "rows": 24
+    },
+    {
+      "table": "OmbudsmanConfiguration",
+      "rows": 7
+    },
+    {
+      "table": "OmbudsmanDocument",
+      "rows": 0
+    },
+    {
+      "table": "OmbudsmanIdentity",
+      "rows": 0
+    },
+    {
+      "table": "OmbudsmanInteraction",
+      "rows": 2
+    },
+    {
+      "table": "OmbudsmanMovement",
+      "rows": 0
+    },
+    {
+      "table": "OmbudsmanReferenceCatalog",
+      "rows": 11
+    },
+    {
+      "table": "Patient",
+      "rows": 20
+    },
+    {
+      "table": "PayableCarryForward",
+      "rows": 0
+    },
+    {
+      "table": "PayableCarryForwardEvent",
+      "rows": 0
+    },
+    {
+      "table": "PayableCarryForwardSettlementLink",
+      "rows": 0
+    },
+    {
+      "table": "Payment",
+      "rows": 0
+    },
+    {
+      "table": "PaymentRetention",
+      "rows": 0
+    },
+    {
+      "table": "Payroll",
+      "rows": 21
+    },
+    {
+      "table": "PayrollBenefit",
+      "rows": 0
+    },
+    {
+      "table": "PayrollEvent",
+      "rows": 19
+    },
+    {
+      "table": "PayrollItem",
+      "rows": 7722
+    },
+    {
+      "table": "PedagogicalAttempt",
+      "rows": 0
+    },
+    {
+      "table": "PedagogicalCatalogItem",
+      "rows": 0
+    },
+    {
+      "table": "PedagogicalRelease",
+      "rows": 0
+    },
+    {
+      "table": "Person",
+      "rows": 285
+    },
+    {
+      "table": "PersonMergeLedger",
+      "rows": 0
+    },
+    {
+      "table": "PersonMergeRequest",
+      "rows": 0
+    },
+    {
+      "table": "PersonnelAct",
+      "rows": 19
+    },
+    {
+      "table": "PharmacyRequest",
+      "rows": 0
+    },
+    {
+      "table": "PharmacyRequestEvent",
+      "rows": 0
+    },
+    {
+      "table": "PharmacyRequestFulfillment",
+      "rows": 0
+    },
+    {
+      "table": "PharmacyRequestItem",
+      "rows": 0
+    },
+    {
+      "table": "PlanningAmendment",
+      "rows": 0
+    },
+    {
+      "table": "PlanningAmendmentItem",
+      "rows": 0
+    },
+    {
+      "table": "PlanningAnnualProgram",
+      "rows": 0
+    },
+    {
+      "table": "PlanningBudgetLine",
+      "rows": 0
+    },
+    {
+      "table": "PlanningCalculationMemory",
+      "rows": 0
+    },
+    {
+      "table": "PlanningCatalogEntry",
+      "rows": 0
+    },
+    {
+      "table": "PlanningCatalogVersion",
+      "rows": 0
+    },
+    {
+      "table": "PlanningCommunityDemand",
+      "rows": 0
+    },
+    {
+      "table": "PlanningCreditBatch",
+      "rows": 0
+    },
+    {
+      "table": "PlanningCreditLine",
+      "rows": 0
+    },
+    {
+      "table": "PlanningDocumentLink",
+      "rows": 0
+    },
+    {
+      "table": "PlanningEntityScope",
+      "rows": 2
+    },
+    {
+      "table": "PlanningEntityUnit",
+      "rows": 9
+    },
+    {
+      "table": "PlanningFiscalRule",
+      "rows": 0
+    },
+    {
+      "table": "PlanningHearing",
+      "rows": 0
+    },
+    {
+      "table": "PlanningImportBatch",
+      "rows": 0
+    },
+    {
+      "table": "PlanningInstrument",
+      "rows": 1
+    },
+    {
+      "table": "PlanningInstrumentSource",
+      "rows": 0
+    },
+    {
+      "table": "PlanningIntegrationCommand",
+      "rows": 0
+    },
+    {
+      "table": "PlanningLegislativeAmendment",
+      "rows": 0
+    },
+    {
+      "table": "PlanningLegislativeLink",
+      "rows": 0
+    },
+    {
+      "table": "PlanningLineMovement",
+      "rows": 0
+    },
+    {
+      "table": "PlanningPhysicalEvent",
+      "rows": 0
+    },
+    {
+      "table": "PlanningPlannedWork",
+      "rows": 0
+    },
+    {
+      "table": "PlanningPublicationEvent",
+      "rows": 0
+    },
+    {
+      "table": "PlanningQuota",
+      "rows": 0
+    },
+    {
+      "table": "PlanningQuotaEvent",
+      "rows": 0
+    },
+    {
+      "table": "PlanningRegionalAction",
+      "rows": 0
+    },
+    {
+      "table": "PlanningReportPublication",
+      "rows": 0
+    },
+    {
+      "table": "PlanningReportSnapshot",
+      "rows": 0
+    },
+    {
+      "table": "PlanningRevenueAllocation",
+      "rows": 0
+    },
+    {
+      "table": "PlanningRevenueWaiver",
+      "rows": 0
+    },
+    {
+      "table": "PlanningVersion",
+      "rows": 0
+    },
+    {
+      "table": "PortalBanner",
+      "rows": 0
+    },
+    {
+      "table": "PortalMenu",
+      "rows": 4
+    },
+    {
+      "table": "PortalNews",
+      "rows": 3
+    },
+    {
+      "table": "PortalPage",
+      "rows": 2
+    },
+    {
+      "table": "PortalScheduleRequest",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceConfiguration",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceFavorite",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceNotice",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceRating",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceRequest",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceRequestEvent",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceSchedule",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceUpload",
+      "rows": 0
+    },
+    {
+      "table": "PortalServiceVersion",
+      "rows": 0
+    },
+    {
+      "table": "PreEnrollment",
+      "rows": 0
+    },
+    {
+      "table": "PreEnrollmentProcess",
+      "rows": 0
+    },
+    {
+      "table": "PreliminaryTechnicalStudy",
+      "rows": 10
+    },
+    {
+      "table": "PriceQuote",
+      "rows": 30
+    },
+    {
+      "table": "PriceResearch",
+      "rows": 10
+    },
+    {
+      "table": "Process",
+      "rows": 27
+    },
+    {
+      "table": "ProcessCitizenAccess",
+      "rows": 0
+    },
+    {
+      "table": "ProcessDepartmentMetadata",
+      "rows": 0
+    },
+    {
+      "table": "ProcessDispatch",
+      "rows": 0
+    },
+    {
+      "table": "ProcessDocument",
+      "rows": 0
+    },
+    {
+      "table": "ProcessEvent",
+      "rows": 7
+    },
+    {
+      "table": "ProcessJudicialCase",
+      "rows": 0
+    },
+    {
+      "table": "ProcessJudicialCaseEvent",
+      "rows": 0
+    },
+    {
+      "table": "ProcessJunction",
+      "rows": 0
+    },
+    {
+      "table": "ProcessMovement",
+      "rows": 20
+    },
+    {
+      "table": "ProcessPrintSetting",
+      "rows": 0
+    },
+    {
+      "table": "ProcessReferenceCatalog",
+      "rows": 0
+    },
+    {
+      "table": "ProcessRegistrationDetail",
+      "rows": 0
+    },
+    {
+      "table": "ProcessSequence",
+      "rows": 1
+    },
+    {
+      "table": "ProcessType",
+      "rows": 4
+    },
+    {
+      "table": "ProcessUnitMetadata",
+      "rows": 4
+    },
+    {
+      "table": "ProcessWorkflowStage",
+      "rows": 0
+    },
+    {
+      "table": "ProcurementLifecycleEvent",
+      "rows": 9
+    },
+    {
+      "table": "ProgramPPA",
+      "rows": 8
+    },
+    {
+      "table": "PropertyValuation",
+      "rows": 0
+    },
+    {
+      "table": "ProtocolNotification",
+      "rows": 24
+    },
+    {
+      "table": "PublicNotice",
+      "rows": 0
+    },
+    {
+      "table": "PublicService",
+      "rows": 3
+    },
+    {
+      "table": "PublicityCampaign",
+      "rows": 0
+    },
+    {
+      "table": "PurchasePlanning",
+      "rows": 10
+    },
+    {
+      "table": "Role",
+      "rows": 44
+    },
+    {
+      "table": "Revenue",
+      "rows": 0
+    },
+    {
+      "table": "RealEstate",
+      "rows": 20
+    },
+    {
+      "table": "PurchasePlanningDocumentVersion",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseReceiptItem",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseReceipt",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseRequest",
+      "rows": 20
+    },
+    {
+      "table": "PurchasePlanningAiSuggestionLog",
+      "rows": 0
+    },
+    {
+      "table": "RetentionRule",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseProcess",
+      "rows": 10
+    },
+    {
+      "table": "RevenueResourceRedistribution",
+      "rows": 0
+    },
+    {
+      "table": "ResourceSource",
+      "rows": 4
+    },
+    {
+      "table": "ReportTemplate",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseDemandEvent",
+      "rows": 0
+    },
+    {
+      "table": "RevenueReversal",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseRequestItem",
+      "rows": 20
+    },
+    {
+      "table": "PurchaseProcessItem",
+      "rows": 10
+    },
+    {
+      "table": "SanSavedReport",
+      "rows": 36
+    },
+    {
+      "table": "RevenueNature",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseRequestItemBudgetAllocation",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseDemandVersion",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseProcessItemOrigin",
+      "rows": 0
+    },
+    {
+      "table": "PurchaseProcessRequestOrigin",
+      "rows": 0
+    },
+    {
+      "table": "SanPortalRequest",
+      "rows": 900
+    },
+    {
+      "table": "SanServiceOrder",
+      "rows": 900
+    },
+    {
+      "table": "SanWaterMeter",
+      "rows": 18500
+    },
+    {
+      "table": "SanConsumerUnit",
+      "rows": 18500
+    },
+    {
+      "table": "SanInvoice",
+      "rows": 55500
+    },
+    {
+      "table": "SanMeterReading",
+      "rows": 55500
+    },
+    {
+      "table": "SanWaterQualityAnalysis",
+      "rows": 720
+    },
+    {
+      "table": "SatisfactionSurvey",
+      "rows": 0
+    },
+    {
+      "table": "School",
+      "rows": 3
+    },
+    {
+      "table": "SchoolBus",
+      "rows": 0
+    },
+    {
+      "table": "SchoolCalendarEvent",
+      "rows": 3
+    },
+    {
+      "table": "SchoolClass",
+      "rows": 6
+    },
+    {
+      "table": "SchoolMeal",
+      "rows": 0
+    },
+    {
+      "table": "SchoolShift",
+      "rows": 6
+    },
+    {
+      "table": "SchoolSubject",
+      "rows": 7
+    },
+    {
+      "table": "Secretariat",
+      "rows": 14
+    },
+    {
+      "table": "SegurancaGuarda",
+      "rows": 2
+    },
+    {
+      "table": "SegurancaInfracao",
+      "rows": 0
+    },
+    {
+      "table": "SegurancaMobilidadeRegistro",
+      "rows": 6
+    },
+    {
+      "table": "SegurancaOcorrencia",
+      "rows": 4
+    },
+    {
+      "table": "SequenceCounter",
+      "rows": 1
+    },
+    {
+      "table": "ServiceSubject",
+      "rows": 5
+    },
+    {
+      "table": "Settlement",
+      "rows": 0
+    },
+    {
+      "table": "SettlementRetention",
+      "rows": 0
+    },
+    {
+      "table": "SignatureCentralA1Integration",
+      "rows": 2
+    },
+    {
+      "table": "SignatureCentralDocumentType",
+      "rows": 16
+    },
+    {
+      "table": "SignatureCentralRecord",
+      "rows": 43
+    },
+    {
+      "table": "SignatureCentralSigner",
+      "rows": 5
+    },
+    {
+      "table": "SimplesDivergence",
+      "rows": 0
+    },
+    {
+      "table": "SimplesExclusionCase",
+      "rows": 0
+    },
+    {
+      "table": "SimplesFiscalRecord",
+      "rows": 0
+    },
+    {
+      "table": "SimplesImportBatch",
+      "rows": 0
+    },
+    {
+      "table": "SimplesOptionPeriod",
+      "rows": 0
+    },
+    {
+      "table": "SimplesPaymentAllocation",
+      "rows": 0
+    },
+    {
+      "table": "SimplesRegularizationEvent",
+      "rows": 0
+    },
+    {
+      "table": "SocialAttachment",
+      "rows": 4
+    },
+    {
+      "table": "SocialAttendance",
+      "rows": 35
+    },
+    {
+      "table": "SocialBeneficiaryRegistration",
+      "rows": 63
+    },
+    {
+      "table": "SocialBenefit",
+      "rows": 4
+    },
+    {
+      "table": "SocialBenefitClassification",
+      "rows": 4
+    },
+    {
+      "table": "SocialBenefitConcession",
+      "rows": 0
+    },
+    {
+      "table": "SocialBenefitQuota",
+      "rows": 8
+    },
+    {
+      "table": "SocialBenefitRequest",
+      "rows": 26
+    },
+    {
+      "table": "SocialBenefitRequestItem",
+      "rows": 26
+    },
+    {
+      "table": "SocialBenefitStock",
+      "rows": 8
+    },
+    {
+      "table": "SocialBenefitStockMovement",
+      "rows": 15
+    },
+    {
+      "table": "SocialCadastreSnapshot",
+      "rows": 0
+    },
+    {
+      "table": "SocialCaseFile",
+      "rows": 25
+    },
+    {
+      "table": "SocialCatalogEntry",
+      "rows": 6
+    },
+    {
+      "table": "SocialConditionality",
+      "rows": 25
+    },
+    {
+      "table": "SocialFamily",
+      "rows": 26
+    },
+    {
+      "table": "SocialFamilyMember",
+      "rows": 37
+    },
+    {
+      "table": "SocialFamilyRegistration",
+      "rows": 26
+    },
+    {
+      "table": "SocialFinancialEntry",
+      "rows": 50
+    },
+    {
+      "table": "SocialFollowup",
+      "rows": 25
+    },
+    {
+      "table": "SocialFollowupNote",
+      "rows": 25
+    },
+    {
+      "table": "SocialImportBatch",
+      "rows": 1
+    },
+    {
+      "table": "SocialImportLayout",
+      "rows": 1
+    },
+    {
+      "table": "SocialImportRow",
+      "rows": 1
+    },
+    {
+      "table": "SocialIssuedDocument",
+      "rows": 0
+    },
+    {
+      "table": "SocialMessage",
+      "rows": 26
+    },
+    {
+      "table": "SocialMessageDispatch",
+      "rows": 0
+    },
+    {
+      "table": "SocialMinimumWage",
+      "rows": 1
+    },
+    {
+      "table": "SocialMonthlyStatement",
+      "rows": 2
+    },
+    {
+      "table": "SocialMunicipalSettings",
+      "rows": 1
+    },
+    {
+      "table": "SocialNetworkOrganization",
+      "rows": 3
+    },
+    {
+      "table": "SocialPersonFact",
+      "rows": 25
+    },
+    {
+      "table": "SocialPersonProfile",
+      "rows": 63
+    },
+    {
+      "table": "SocialPocDataset",
+      "rows": 2
+    },
+    {
+      "table": "SocialProfessionalLink",
+      "rows": 2
+    },
+    {
+      "table": "SocialProfessionalRegistration",
+      "rows": 1
+    },
+    {
+      "table": "SocialProgram",
+      "rows": 3
+    },
+    {
+      "table": "SocialProgramEnrollment",
+      "rows": 25
+    },
+    {
+      "table": "SocialProgramParticipation",
+      "rows": 10
+    },
+    {
+      "table": "SocialQuestionnaire",
+      "rows": 1
+    },
+    {
+      "table": "SocialQuestionnaireResponse",
+      "rows": 1
+    },
+    {
+      "table": "SocialRecord",
+      "rows": 10
+    },
+    {
+      "table": "SocialReferral",
+      "rows": 6
+    },
+    {
+      "table": "SocialReferralDetails",
+      "rows": 6
+    },
+    {
+      "table": "SocialRequestDetails",
+      "rows": 26
+    },
+    {
+      "table": "SocialScfvAttendance",
+      "rows": 27
+    },
+    {
+      "table": "SocialScfvEnrollment",
+      "rows": 27
+    },
+    {
+      "table": "SocialScfvEvent",
+      "rows": 6
+    },
+    {
+      "table": "SocialScfvGroup",
+      "rows": 3
+    },
+    {
+      "table": "SocialUnit",
+      "rows": 2
+    },
+    {
+      "table": "SocialUnitRegistration",
+      "rows": 2
+    },
+    {
+      "table": "SocialVisit",
+      "rows": 35
+    },
+    {
+      "table": "SocialVisitAttendance",
+      "rows": 0
+    },
+    {
+      "table": "SocialWorkflowRevision",
+      "rows": 35
+    },
+    {
+      "table": "SpecializedCatalogItem",
+      "rows": 0
+    },
+    {
+      "table": "SpecializedDistribution",
+      "rows": 0
+    },
+    {
+      "table": "SpecializedPlanEntry",
+      "rows": 0
+    },
+    {
+      "table": "SpecializedQuota",
+      "rows": 0
+    },
+    {
+      "table": "SpecializedTeamSchedule",
+      "rows": 0
+    },
+    {
+      "table": "SpecializedTherapeuticPlan",
+      "rows": 0
+    },
+    {
+      "table": "SstAccessGrant",
+      "rows": 0
+    },
+    {
+      "table": "SstAnamnesis",
+      "rows": 0
+    },
+    {
+      "table": "SstAppointment",
+      "rows": 0
+    },
+    {
+      "table": "SstAso",
+      "rows": 0
+    },
+    {
+      "table": "SstAsoCorrection",
+      "rows": 0
+    },
+    {
+      "table": "SstAsoDocument",
+      "rows": 0
+    },
+    {
+      "table": "SstAsoFlowSettings",
+      "rows": 0
+    },
+    {
+      "table": "SstAsoFlowSource",
+      "rows": 0
+    },
+    {
+      "table": "SstBenefitBeneficiary",
+      "rows": 0
+    },
+    {
+      "table": "SstBenefitCancellation",
+      "rows": 0
+    },
+    {
+      "table": "SstBenefitEntry",
+      "rows": 0
+    },
+    {
+      "table": "SstBenefitPayrollMapping",
+      "rows": 0
+    },
+    {
+      "table": "SstBenefitPayrollOrigin",
+      "rows": 0
+    },
+    {
+      "table": "SstBenefitPayrollScope",
+      "rows": 0
+    },
+    {
+      "table": "SstCat",
+      "rows": 0
+    },
+    {
+      "table": "SstCatEvidence",
+      "rows": 0
+    },
+    {
+      "table": "SstCatLayoutMedical",
+      "rows": 0
+    },
+    {
+      "table": "SstCatLayoutVersion",
+      "rows": 0
+    },
+    {
+      "table": "SstCatLedger",
+      "rows": 0
+    },
+    {
+      "table": "SstCertificateDecisionRevision",
+      "rows": 0
+    },
+    {
+      "table": "SstCertificateDocument",
+      "rows": 0
+    },
+    {
+      "table": "SstCertificateFunctionalSource",
+      "rows": 0
+    },
+    {
+      "table": "SstCertificateLeaveConfirmation",
+      "rows": 0
+    },
+    {
+      "table": "SstCertificateReason",
+      "rows": 3
+    },
+    {
+      "table": "SstClinicalRecord",
+      "rows": 0
+    },
+    {
+      "table": "SstClosureEmission",
+      "rows": 0
+    },
+    {
+      "table": "SstDisciplineGrant",
+      "rows": 0
+    },
+    {
+      "table": "SstElectionBallot",
+      "rows": 0
+    },
+    {
+      "table": "SstElectionCandidate",
+      "rows": 0
+    },
+    {
+      "table": "SstElectionElector",
+      "rows": 0
+    },
+    {
+      "table": "SstElectionTurnout",
+      "rows": 0
+    },
+    {
+      "table": "SstEquipment",
+      "rows": 0
+    },
+    {
+      "table": "SstEquipmentDelivery",
+      "rows": 0
+    },
+    {
+      "table": "SstEquipmentDeliveryItem",
+      "rows": 0
+    },
+    {
+      "table": "SstEquipmentEvent",
+      "rows": 0
+    },
+    {
+      "table": "SstEquipmentPolicy",
+      "rows": 0
+    },
+    {
+      "table": "SstEquipmentRequirement",
+      "rows": 0
+    },
+    {
+      "table": "SstEsocialAttempt",
+      "rows": 0
+    },
+    {
+      "table": "SstEsocialConfiguration",
+      "rows": 0
+    },
+    {
+      "table": "SstEsocialEvent",
+      "rows": 0
+    },
+    {
+      "table": "SstEsocialEvidence",
+      "rows": 0
+    },
+    {
+      "table": "SstExposureGroup",
+      "rows": 3
+    },
+    {
+      "table": "SstFoundationalRevocation",
+      "rows": 0
+    },
+    {
+      "table": "SstHealthPlan",
+      "rows": 0
+    },
+    {
+      "table": "SstLeavePayrollOrigin",
+      "rows": 0
+    },
+    {
+      "table": "SstLeavePayrollRuleVersion",
+      "rows": 0
+    },
+    {
+      "table": "SstLeavePayrollScopeEvidence",
+      "rows": 0
+    },
+    {
+      "table": "SstMedicalAssessment",
+      "rows": 0
+    },
+    {
+      "table": "SstMedicalBoard",
+      "rows": 0
+    },
+    {
+      "table": "SstMedicalBoardMember",
+      "rows": 0
+    },
+    {
+      "table": "SstMedicalCertificate",
+      "rows": 0
+    },
+    {
+      "table": "SstOccupationalExam",
+      "rows": 0
+    },
+    {
+      "table": "SstOccupationalProgram",
+      "rows": 0
+    },
+    {
+      "table": "SstPlannedShift",
+      "rows": 0
+    },
+    {
+      "table": "SstPreventionRecord",
+      "rows": 0
+    },
+    {
+      "table": "SstPreventionRevision",
+      "rows": 0
+    },
+    {
+      "table": "SstProfessionalRole",
+      "rows": 0
+    },
+    {
+      "table": "SstProgramExposureGroup",
+      "rows": 0
+    },
+    {
+      "table": "SstQuestionnaireVersion",
+      "rows": 0
+    },
+    {
+      "table": "SstReasonRegimePolicy",
+      "rows": 0
+    },
+    {
+      "table": "SstRestriction",
+      "rows": 0
+    },
+    {
+      "table": "SstRestrictionEmailOutbox",
+      "rows": 0
+    },
+    {
+      "table": "SstRestrictionFollowup",
+      "rows": 0
+    },
+    {
+      "table": "SstRoleAttribute",
+      "rows": 0
+    },
+    {
+      "table": "SstScheduleAvailability",
+      "rows": 0
+    },
+    {
+      "table": "SstScheduleBlock",
+      "rows": 0
+    },
+    {
+      "table": "SstServiceOrder",
+      "rows": 0
+    },
+    {
+      "table": "SstTechnicalResponsibility",
+      "rows": 0
+    },
+    {
+      "table": "SstVaccination",
+      "rows": 0
+    },
+    {
+      "table": "State",
+      "rows": 2
+    },
+    {
+      "table": "Street",
+      "rows": 7
+    },
+    {
+      "table": "Student",
+      "rows": 20
+    },
+    {
+      "table": "SuasProntuarioRma",
+      "rows": 0
+    },
+    {
+      "table": "Subject",
+      "rows": 4
+    },
+    {
+      "table": "Supplier",
+      "rows": 20
+    },
+    {
+      "table": "SupplierPortalIdentity",
+      "rows": 0
+    },
+    {
+      "table": "SupportChannel",
+      "rows": 3
+    },
+    {
+      "table": "Tax",
+      "rows": 4
+    },
+    {
+      "table": "TaxActiveDebtEvent",
+      "rows": 0
+    },
+    {
+      "table": "TaxAnnualBatch",
+      "rows": 0
+    },
+    {
+      "table": "TaxAnnualBatchItem",
+      "rows": 0
+    },
+    {
+      "table": "TaxAssessment",
+      "rows": 0
+    },
+    {
+      "table": "TaxAuditCrossCheck",
+      "rows": 0
+    },
+    {
+      "table": "TaxAuditLog",
+      "rows": 3
+    },
+    {
+      "table": "TaxBenefitGrant",
+      "rows": 0
+    },
+    {
+      "table": "TaxBenefitRule",
+      "rows": 0
+    },
+    {
+      "table": "TaxBurialMovement",
+      "rows": 0
+    },
+    {
+      "table": "TaxCaseLink",
+      "rows": 0
+    },
+    {
+      "table": "TaxCdaVersion",
+      "rows": 0
+    },
+    {
+      "table": "TaxCemetery",
+      "rows": 1
+    },
+    {
+      "table": "TaxCemeteryEmployee",
+      "rows": 1
+    },
+    {
+      "table": "TaxCemeterySector",
+      "rows": 1
+    },
+    {
+      "table": "TaxCertificate",
+      "rows": 0
+    },
+    {
+      "table": "TaxCertificateEvaluation",
+      "rows": 0
+    },
+    {
+      "table": "TaxCollectionAction",
+      "rows": 0
+    },
+    {
+      "table": "TaxCollectionActionEvent",
+      "rows": 0
+    },
+    {
+      "table": "TaxCollectionPortfolio",
+      "rows": 0
+    },
+    {
+      "table": "TaxCollectionPortfolioItem",
+      "rows": 0
+    },
+    {
+      "table": "TaxCollectionProfile",
+      "rows": 0
+    },
+    {
+      "table": "TaxCollectionRule",
+      "rows": 0
+    },
+    {
+      "table": "TaxDaPortfolio",
+      "rows": 0
+    },
+    {
+      "table": "TaxDaPortfolioItem",
+      "rows": 0
+    },
+    {
+      "table": "TaxDeathCause",
+      "rows": 6
+    },
+    {
+      "table": "TaxDebtSuspension",
+      "rows": 0
+    },
+    {
+      "table": "TaxDeceased",
+      "rows": 0
+    },
+    {
+      "table": "TaxDeclaration",
+      "rows": 0
+    },
+    {
+      "table": "TaxDocumentSequence",
+      "rows": 0
+    },
+    {
+      "table": "TaxExecutionBatch",
+      "rows": 0
+    },
+    {
+      "table": "TaxExecutionCase",
+      "rows": 0
+    },
+    {
+      "table": "TaxExecutionEvent",
+      "rows": 0
+    },
+    {
+      "table": "TaxFinancialMapping",
+      "rows": 0
+    },
+    {
+      "table": "TaxFuneralHome",
+      "rows": 1
+    },
+    {
+      "table": "TaxGrave",
+      "rows": 4
+    },
+    {
+      "table": "TaxGraveConcession",
+      "rows": 0
+    },
+    {
+      "table": "TaxGuide",
+      "rows": 0
+    },
+    {
+      "table": "TaxInstallmentAgreement",
+      "rows": 0
+    },
+    {
+      "table": "TaxInstallmentDebt",
+      "rows": 0
+    },
+    {
+      "table": "TaxInstallmentEvent",
+      "rows": 0
+    },
+    {
+      "table": "TaxInstallmentPaymentAllocation",
+      "rows": 0
+    },
+    {
+      "table": "TaxInstallmentQuota",
+      "rows": 0
+    },
+    {
+      "table": "TaxInstallmentRule",
+      "rows": 0
+    },
+    {
+      "table": "TaxIntegrationEvent",
+      "rows": 0
+    },
+    {
+      "table": "TaxParameter",
+      "rows": 0
+    },
+    {
+      "table": "TaxPasswordGrant",
+      "rows": 2
+    },
+    {
+      "table": "TaxPasswordPreference",
+      "rows": 0
+    },
+    {
+      "table": "TaxPayment",
+      "rows": 0
+    },
+    {
+      "table": "TaxPrizeCoupon",
+      "rows": 0
+    },
+    {
+      "table": "TaxPrizeDraw",
+      "rows": 0
+    },
+    {
+      "table": "TaxPrizeExecution",
+      "rows": 0
+    },
+    {
+      "table": "TaxPrizeWinner",
+      "rows": 0
+    },
+    {
+      "table": "TaxProtestBatch",
+      "rows": 0
+    },
+    {
+      "table": "TaxProtestItem",
+      "rows": 0
+    },
+    {
+      "table": "TaxRegistryEntry",
+      "rows": 20
+    },
+    {
+      "table": "TaxRegistryMerge",
+      "rows": 0
+    },
+    {
+      "table": "TaxRevenueIntegrationEvent",
+      "rows": 0
+    },
+    {
+      "table": "TaxServiceActivity",
+      "rows": 3
+    },
+    {
+      "table": "TaxServiceRequest",
+      "rows": 0
+    },
+    {
+      "table": "Taxpayer",
+      "rows": 41
+    },
+    {
+      "table": "TaxpayerPortalAccess",
+      "rows": 0
+    },
+    {
+      "table": "Teacher",
+      "rows": 2
+    },
+    {
+      "table": "TeacherAcademicRecord",
+      "rows": 0
+    },
+    {
+      "table": "TeacherClassAssignment",
+      "rows": 0
+    },
+    {
+      "table": "TermOfReference",
+      "rows": 10
+    },
+    {
+      "table": "Ticket",
+      "rows": 20
+    },
+    {
+      "table": "TicketAuditLog",
+      "rows": 0
+    },
+    {
+      "table": "TicketDocument",
+      "rows": 0
+    },
+    {
+      "table": "TicketInteraction",
+      "rows": 0
+    },
+    {
+      "table": "TicketMovement",
+      "rows": 0
+    },
+    {
+      "table": "TrafficInfractionTicket",
+      "rows": 0
+    },
+    {
+      "table": "TransparencyAccess",
+      "rows": 0
+    },
+    {
+      "table": "TransparencyCitizenAppeal",
+      "rows": 0
+    },
+    {
+      "table": "TransparencyCitizenRequest",
+      "rows": 5
+    },
+    {
+      "table": "TransparencyCriterion",
+      "rows": 0
+    },
+    {
+      "table": "TransparencyCriterionEvidence",
+      "rows": 0
+    },
+    {
+      "table": "TransparencyNativeBinding",
+      "rows": 0
+    },
+    {
+      "table": "TransparencyPageFeedback",
+      "rows": 0
+    },
+    {
+      "table": "TransparencyPublication",
+      "rows": 0
+    },
+    {
+      "table": "TransparencySatisfaction",
+      "rows": 0
+    },
+    {
+      "table": "TreasuryMovement",
+      "rows": 0
+    },
+    {
+      "table": "TreasuryTransfer",
+      "rows": 0
+    },
+    {
+      "table": "Usuario",
+      "rows": 2
+    },
+    {
+      "table": "UsuarioModulo",
+      "rows": 0
+    },
+    {
+      "table": "UsuarioPerfilAdicional",
+      "rows": 0
+    },
+    {
+      "table": "UsuarioUnidadeGestora",
+      "rows": 9
+    },
+    {
+      "table": "Vacation",
+      "rows": 53
+    },
+    {
+      "table": "VaccinationRecord",
+      "rows": 0
+    },
+    {
+      "table": "Vaccine",
+      "rows": 0
+    },
+    {
+      "table": "VafAccountant",
+      "rows": 0
+    },
+    {
+      "table": "VafActivity",
+      "rows": 0
+    },
+    {
+      "table": "VafCfopEntry",
+      "rows": 0
+    },
+    {
+      "table": "VafCompany",
+      "rows": 0
+    },
+    {
+      "table": "VafCompanyIndex",
+      "rows": 0
+    },
+    {
+      "table": "VafCrossCheck",
+      "rows": 0
+    },
+    {
+      "table": "VafEfdImport",
+      "rows": 0
+    },
+    {
+      "table": "VafEstimate",
+      "rows": 0
+    },
+    {
+      "table": "VafExercise",
+      "rows": 0
+    },
+    {
+      "table": "VafGiaImport",
+      "rows": 0
+    },
+    {
+      "table": "VafMonthlySummary",
+      "rows": 0
+    },
+    {
+      "table": "VafMunicipalIndex",
+      "rows": 0
+    },
+    {
+      "table": "VafNotification",
+      "rows": 0
+    },
+    {
+      "table": "VafProtocol",
+      "rows": 0
+    },
+    {
+      "table": "VafRepasse",
+      "rows": 0
+    },
+    {
+      "table": "VafResult",
+      "rows": 0
+    },
+    {
+      "table": "VafRule",
+      "rows": 0
+    },
+    {
+      "table": "Warehouse",
+      "rows": 9
+    },
+    {
+      "table": "WaterMeterReading",
+      "rows": 0
+    },
+    {
+      "table": "WithholdingPayable",
+      "rows": 0
+    },
+    {
+      "table": "YieldTransaction",
+      "rows": 0
+    }
+  ],
+  "findings": [
+    {
+      "table": "BiddingAct",
+      "column": "description",
+      "category": "CONTEXT_OR_PROVENANCE_REVIEW",
+      "matches": 1,
+      "samples": [
+        {
+          "id": "cmw2niio9000a08jr5qakpn68",
+          "value": "Teste foi designada para o certame."
+        }
+      ]
+    },
+    {
+      "table": "BudgetAppropriation",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 9,
+      "samples": [
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:000",
+          "value": "DEMO-RH-ENC-AV-2026-1-1"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:005",
+          "value": "DEMO-RH-ENC-AV-2026-2-1"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:010",
+          "value": "DEMO-RH-ENC-AV-2026-3-1"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:015",
+          "value": "DEMO-RH-ENC-AV-2026-4-1"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:020",
+          "value": "DEMO-RH-ENC-AV-2026-5-1"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:025",
+          "value": "DEMO-RH-ENC-AV-2026-6-1"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:030",
+          "value": "DEMO-RH-ENC-AV-2026-7-1"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:employer:aurora-mg-50k-v1:appropriation:035",
+          "value": "DEMO-RH-ENC-AV-2026-8-1"
+        }
+      ]
+    },
+    {
+      "table": "City",
+      "column": "ibgeCode",
+      "category": "CONTEXT_OR_PROVENANCE_REVIEW",
+      "matches": 1,
+      "samples": [
+        {
+          "id": "aurora-mg-50k-v1:city:000",
+          "value": "DEMO-AV-MG"
+        }
+      ]
+    },
+    {
+      "table": "Employee",
+      "column": "registration",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 1,
+      "samples": [
+        {
+          "id": "THIAGO_MORCATTY_DEMO_2026_V1:employee",
+          "value": "DEMO-TI-2026-001"
+        }
+      ]
+    },
+    {
+      "table": "HrEmploymentContract",
+      "column": "registration",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 199,
+      "samples": [
+        {
+          "id": "cmvz9di0t002cq4hyu734y73k",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:000"
+        },
+        {
+          "id": "cmvz9diku002fq4hy3xuqhnea",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:001"
+        },
+        {
+          "id": "cmvz9dj4b002iq4hybsa1tuem",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:002"
+        },
+        {
+          "id": "cmvz9djqg002lq4hyar70fd7g",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:003"
+        },
+        {
+          "id": "cmvz9dkbr002oq4hyfv4ggd63",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:004"
+        },
+        {
+          "id": "cmvz9dkvy002rq4hyq9z6uxro",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:005"
+        },
+        {
+          "id": "cmvz9dlf6002uq4hyn4j71d21",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:006"
+        },
+        {
+          "id": "cmvz9dlzl002xq4hyfftsv7zj",
+          "value": "DEMO26-aurora-mg-50k-v1:employee:007"
+        }
+      ]
+    },
+    {
+      "table": "HrEmploymentRegime",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 3,
+      "samples": [
+        {
+          "id": "cmvz9deff0008q4hyfbk3ynrr",
+          "value": "EFETIVO_POC"
+        },
+        {
+          "id": "cmvz9deh50009q4hyqw8zuuob",
+          "value": "COMISSIONADO_POC"
+        },
+        {
+          "id": "cmvz9deix000aq4hy4srxnd2u",
+          "value": "TEMPORARIO_POC"
+        }
+      ]
+    },
+    {
+      "table": "HrPayrollRubric",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 22,
+      "samples": [
+        {
+          "id": "cmvz9df6p000tq4hy0wa8hy7r",
+          "value": "POC_COMPLEMENTO"
+        },
+        {
+          "id": "cmvz9dfbh000xq4hylxp61hpv",
+          "value": "POC_FERIAS"
+        },
+        {
+          "id": "cmvz9dfgb0011q4hyu2sq427u",
+          "value": "POC_TERCO"
+        },
+        {
+          "id": "cmvz9dflw0015q4hytvgxt0ut",
+          "value": "POC_DECIMO_13"
+        },
+        {
+          "id": "cmvz9dfqa0019q4hyz4v9siq3",
+          "value": "POC_SALDO"
+        },
+        {
+          "id": "cmvz9dfuj001dq4hyyhpcbvoz",
+          "value": "POC_RRA"
+        },
+        {
+          "id": "cmvz9dfzt001hq4hy0nhqpbzg",
+          "value": "POC_ADIANTAMENTO"
+        },
+        {
+          "id": "cmvz9dg39001jq4hydy1aaxqc",
+          "value": "POC_ADIANTAMENTO_13"
+        }
+      ]
+    },
+    {
+      "table": "HrPayrollRule",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 13,
+      "samples": [
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:training:08",
+          "value": "PORTAL_CURSO_DEMO_AJUSTES_08"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:training:09",
+          "value": "PORTAL_CURSO_DEMO_AJUSTES_09"
+        },
+        {
+          "id": "RH_CENARIOS_AJUSTES_2026_V1:training:10",
+          "value": "PORTAL_CURSO_DEMO_AJUSTES_10"
+        },
+        {
+          "id": "cmvz9dgup001yq4hy64d7iv6h",
+          "value": "PREVIDENCIA_BASE_PATRONAL_RGPS_POC"
+        },
+        {
+          "id": "cmvz9dgwf001zq4hycbfzs897",
+          "value": "FOLHAS_ESPECIAIS_POC"
+        },
+        {
+          "id": "cmvz9dgzw0021q4hy69lwjlz5",
+          "value": "DIARIAS_POC"
+        },
+        {
+          "id": "cmvz9dh1n0022q4hy3f1m17q4",
+          "value": "FALTAS_FERIAS_POC"
+        },
+        {
+          "id": "cmvz9dhfk002aq4hyol931ip1",
+          "value": "POC_FONTES_E_ESTIMATIVAS"
+        }
+      ]
+    },
+    {
+      "table": "HrPayrollRuleSet",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 1,
+      "samples": [
+        {
+          "id": "cmvz9de6e0000q4hy8fa3n4t5",
+          "value": "RH_POC_DOCUMENTAL_2026_V1"
+        }
+      ]
+    },
+    {
+      "table": "HrSocialSecurityScheme",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 2,
+      "samples": [
+        {
+          "id": "cmvz9deao0002q4hy7jqo7ayw",
+          "value": "RGPS_POC"
+        },
+        {
+          "id": "cmvzf0euq0002kghyx7ic6fi5",
+          "value": "RGPS_POC"
+        }
+      ]
+    },
+    {
+      "table": "HrReferenceRecord",
+      "column": "name",
+      "category": "PRIMARY_LABEL",
+      "matches": 1014,
+      "samples": [
+        {
+          "id": "cmvzci3l00000kghyjl5insmr",
+          "value": "Bruna Almeida — REMUNERACAO — DEMO"
+        },
+        {
+          "id": "cmvzci3r10001kghytl64huum",
+          "value": "Bruna Almeida — ENCARGO — DEMO"
+        },
+        {
+          "id": "cmvzci40q0002kghyykwn1zie",
+          "value": "Bruno Xavier Teixeira Moreira — REMUNERACAO — DEMO"
+        },
+        {
+          "id": "cmvzci45t0003kghy51jk7c08",
+          "value": "Bruno Xavier Teixeira Moreira — ENCARGO — DEMO"
+        },
+        {
+          "id": "cmvzci4ey0004kghyu8pabnbw",
+          "value": "Camila Castro Duarte Moreira — REMUNERACAO — DEMO"
+        },
+        {
+          "id": "cmvzci4jp0005kghy2oha32c5",
+          "value": "Camila Castro Duarte Moreira — ENCARGO — DEMO"
+        },
+        {
+          "id": "cmvzci4su0006kghyai9babfh",
+          "value": "Carlos Lima Oliveira Moreira — REMUNERACAO — DEMO"
+        },
+        {
+          "id": "cmvzci4xn0007kghya78rjkrs",
+          "value": "Carlos Lima Oliveira Moreira — ENCARGO — DEMO"
+        }
+      ]
+    },
+    {
+      "table": "HrVacationPolicy",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 1,
+      "samples": [
+        {
+          "id": "cmvz9dede0007q4hym7rya181",
+          "value": "FERIAS_MESCLA_POC"
+        }
+      ]
+    },
+    {
+      "table": "PayrollEvent",
+      "column": "code",
+      "category": "DISPLAY_IDENTIFIER",
+      "matches": 18,
+      "samples": [
+        {
+          "id": "cmvz9denc000eq4hy37aifx2p",
+          "value": "POC_V1_VENCIMENTO"
+        },
+        {
+          "id": "cmvz9desh000iq4hyly3j9au6",
+          "value": "POC_V1_ATS"
+        },
+        {
+          "id": "cmvz9dewt000mq4hy4ad7ky3b",
+          "value": "POC_V1_EXTRA"
+        },
+        {
+          "id": "cmvz9df14000qq4hybk8x1fia",
+          "value": "POC_V1_VARIAVEL"
+        },
+        {
+          "id": "cmvz9df50000sq4hy2m7u3kyh",
+          "value": "POC_V1_CONSIGNADO"
+        },
+        {
+          "id": "cmvz9df9c000wq4hy10bwd2bo",
+          "value": "POC_V1_POC_COMPLEMENTO"
+        },
+        {
+          "id": "cmvz9dfej0010q4hyiz81rchv",
+          "value": "POC_V1_POC_FERIAS"
+        },
+        {
+          "id": "cmvz9dfju0014q4hy6zkhfbfc",
+          "value": "POC_V1_POC_TERCO"
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "finishedAt": "2026-11-06T15:41:21.485Z"
+}

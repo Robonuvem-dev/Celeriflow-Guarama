@@ -1,0 +1,3391 @@
+{
+  "generatedAt": "2026-11-06T17:57:56.321Z",
+  "originalFile": "docs/checkup/all-menu-production-retest/report.json",
+  "scope": "Reconciliation of the 65 originally non-open published destinations. Local evidence is not a published deploy or full CRUD validation. Patient identity gates were inspected individually in code.",
+  "summary": {
+    "OPENED_LOCALLY": 59,
+    "SEPARATE_PATIENT_IDENTITY_REQUIRED": 4,
+    "EXPECTED_ACCESS_MESSAGE": 2
+  },
+  "cases": [
+    {
+      "path": "/rh/parametrizacoes",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/pessoas",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/economico",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/imoveis",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/base-territorial",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/avaliacoes",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/motor-fiscal",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "LAYOUT_BLOCKED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/nfse",
+      "publishedResult": "SERVER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/itbi",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/guias",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/comparativo-anual",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/pesquisas-precos",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/planejamento",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/camara/sessoes",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/configuracoes/usuarios",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "LAYOUT_BLOCKED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/configuracoes/modulos",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/cultura/eventos",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/cultura/espacos-reservas",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/economico/consulta",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/frotas/movimentos",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/saude/agenda",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/saude/pacientes",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/social/atendimentos",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/social/prontuario",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/assinatura-digital/pastas-inteligentes",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/assinatura-digital/fluxos",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/assinatura-digital/modelos",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/assinatura-digital/usuarios",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/assinatura-digital/tarefas",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/assinatura-digital/classes",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/assinatura-digital/thesaurus",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-menu-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:25:11.077Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/rh/poc",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/notificacoes",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/portal-paciente/agenda",
+      "publishedResult": "AUTH_REQUIRED",
+      "classification": "SEPARATE_PATIENT_IDENTITY_REQUIRED",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "AUTH_REQUIRED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/portal-paciente/saude",
+      "publishedResult": "AUTH_REQUIRED",
+      "classification": "SEPARATE_PATIENT_IDENTITY_REQUIRED",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "AUTH_REQUIRED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/portal-paciente/ouvidoria",
+      "publishedResult": "AUTH_REQUIRED",
+      "classification": "SEPARATE_PATIENT_IDENTITY_REQUIRED",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "AUTH_REQUIRED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/portal-paciente/dados",
+      "publishedResult": "AUTH_REQUIRED",
+      "classification": "SEPARATE_PATIENT_IDENTITY_REQUIRED",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "AUTH_REQUIRED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "AUTH_REQUIRED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/portal/construcao-civil",
+      "publishedResult": "SERVER_ERROR",
+      "classification": "EXPECTED_ACCESS_MESSAGE",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "ACCESS_UNAVAILABLE",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-details-development/report.json",
+          "base": "http://localhost:3103",
+          "finishedAt": "2026-11-06T16:59:05.075Z",
+          "result": "NAVIGATION_ERROR"
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "ACCESS_UNAVAILABLE",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "ACCESS_UNAVAILABLE",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/portal/construcao-civil/nova",
+      "publishedResult": "SERVER_ERROR",
+      "classification": "EXPECTED_ACCESS_MESSAGE",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "ACCESS_UNAVAILABLE",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-details-development/report.json",
+          "base": "http://localhost:3103",
+          "finishedAt": "2026-11-06T16:59:05.075Z",
+          "result": "NAVIGATION_ERROR"
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "ACCESS_UNAVAILABLE",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "ACCESS_UNAVAILABLE",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/sst/aso/branco",
+      "publishedResult": "SERVER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/imoveis/aurora-system-v1:property:000",
+      "publishedResult": "SERVER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/sst/configuracoes/aurora-system-v1:certificate-reason:000",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/social/pessoas/aurora-system-v1:person:027",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/rh/folha/eventos/aurora-mg-50k-v1:salary-event:000/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/saude/vacinacao/carteira/aurora-system-v1%3Apatient%3A000",
+      "publishedResult": "RESOURCE_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/rh/servidores/aurora-system-v1:employee:007/editar",
+      "publishedResult": "SERVER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/rh/dependentes/RH_CENARIOS_AJUSTES_2026_V1:dependent:aurora-mg-50k-v1:employee:007/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/rh/folha/THIAGO_MORCATTY_DEMO_2026_V1:payroll/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/rh/ponto/RH_HISTORICO_2025_2026_V1:PONTO:aurora-mg-50k-v1:employee:003:2026-12-31/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/rh/atos/RH_CENARIOS_AJUSTES_2026_V1:act:aurora-mg-50k-v1:employee:000/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/solicitacoes/aurora-system-v1:purchase-request:000",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/solicitacoes/aurora-system-v1:purchase-request:000/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/pesquisas-precos/aurora-system-v1:price-research:000",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/processos/aurora-system-v1:purchase-process:000",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/processos/aurora-system-v1:purchase-process:000/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/compras/licitacoes/cmvv3edw9000508l5rgusxeg8",
+      "publishedResult": "RENDER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/protocolos/ouvidoria/aurora-system-v1:ombudsman:002",
+      "publishedResult": "RESOURCE_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "NOT_FOUND",
+          "errors": [],
+          "consoleErrors": [
+            "Failed to load resource: the server responded with a status of 404 (Not Found)"
+          ],
+          "httpErrors": [
+            {
+              "path": "/protocolos/ouvidoria/aurora-system-v1:ombudsman:002",
+              "status": 404,
+              "type": "document"
+            }
+          ],
+          "status": 404
+        },
+        {
+          "file": "docs/checkup/final-details-development/report.json",
+          "base": "http://localhost:3103",
+          "finishedAt": "2026-11-06T16:59:05.075Z",
+          "result": "NAVIGATION_ERROR"
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/planejamento/ppa/aurora-system-v1:ppa-instrument:000",
+      "publishedResult": "SERVER_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/atendimento/chamados/aurora-system-v1:ticket:015",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/atendimento/ouvidoria/aurora-system-v1:ombudsman:002",
+      "publishedResult": "RESOURCE_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "RESOURCE_ERROR",
+          "errors": [],
+          "consoleErrors": [
+            "Failed to load resource: the server responded with a status of 404 (Not Found)"
+          ],
+          "httpErrors": [
+            {
+              "path": "/atendimento/ouvidoria/aurora-system-v1:ombudsman:002",
+              "status": 404,
+              "type": "document"
+            }
+          ],
+          "status": 404
+        },
+        {
+          "file": "docs/checkup/final-details-development/report.json",
+          "base": "http://localhost:3103",
+          "finishedAt": "2026-11-06T16:59:05.075Z",
+          "result": "NAVIGATION_ERROR"
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/patrimonio/almoxarifados/aurora-system-v1%3Awarehouse%3A000/editar",
+      "publishedResult": "RESOURCE_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "NOT_FOUND",
+          "errors": [],
+          "consoleErrors": [
+            "Failed to load resource: the server responded with a status of 404 (Not Found)"
+          ],
+          "httpErrors": [
+            {
+              "path": "/patrimonio/almoxarifados/aurora-system-v1%3Awarehouse%3A000/editar",
+              "status": 404,
+              "type": "document"
+            }
+          ],
+          "status": 404
+        },
+        {
+          "file": "docs/checkup/final-details-development/report.json",
+          "base": "http://localhost:3103",
+          "finishedAt": "2026-11-06T16:59:05.075Z",
+          "result": "NAVIGATION_ERROR"
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/patrimonio/centros-custo/aurora-mg-50k-v1%3Acost-center%3A000/editar",
+      "publishedResult": "NOT_FOUND",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/patrimonio/bens/aurora-mg-50k-v1%3Afleet-asset%3A000",
+      "publishedResult": "RESOURCE_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/saude/pacientes/aurora-system-v1%3Apatient%3A000",
+      "publishedResult": "RESOURCE_ERROR",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    },
+    {
+      "path": "/tributacao/comparativo-anual?direction=ALL&firstYear=2025&governmentEntityId=p0-current-exe&metric=NET&minimumDifference=0&minimumPercentage=0&query=&secondYear=2026&view=rows",
+      "publishedResult": "LAYOUT_BLOCKED",
+      "classification": "OPENED_LOCALLY",
+      "latest": {
+        "file": "docs/checkup/all-screens-fifth-build/report.json",
+        "base": "http://localhost:3100",
+        "finishedAt": "2026-11-06T17:52:50.253Z",
+        "result": "OPENED",
+        "errors": [],
+        "consoleErrors": [],
+        "httpErrors": [],
+        "status": 200
+      },
+      "observations": [
+        {
+          "file": "docs/checkup/latest-fixes-fourth-build/report.json",
+          "base": "http://localhost:3102",
+          "finishedAt": "2026-11-06T16:25:26.103Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/final-corrections-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:13:00.476Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        },
+        {
+          "file": "docs/checkup/all-screens-fifth-build/report.json",
+          "base": "http://localhost:3100",
+          "finishedAt": "2026-11-06T17:52:50.253Z",
+          "result": "OPENED",
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": [],
+          "status": 200
+        }
+      ]
+    }
+  ]
+}

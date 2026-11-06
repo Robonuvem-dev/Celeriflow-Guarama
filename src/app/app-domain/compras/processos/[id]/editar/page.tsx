@@ -7,7 +7,7 @@ import { listActiveProcessCatalog, loadPurchaseProcessForEdit } from "@/db/repos
 export default async function EditarProcessoPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const processoPromise = loadPurchaseProcessForEdit(context.database ?? db, resolvedParams.id);
+  const processoPromise = loadPurchaseProcessForEdit(context.database ?? db, decodeURIComponent(resolvedParams.id));
   
   const catalogItemsPromise = listActiveProcessCatalog(context.database ?? db);
 

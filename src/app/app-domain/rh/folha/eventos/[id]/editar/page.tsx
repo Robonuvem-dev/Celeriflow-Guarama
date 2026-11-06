@@ -7,7 +7,7 @@ import { readPayrollEvent } from "@/db/repositories/personnel-pages/records";
 export default async function EditarEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH");
   const { id } = await params;
-  const event = await readPayrollEvent(context.database ?? db, id, context.user);
+  const event = await readPayrollEvent(context.database ?? db, decodeURIComponent(id), context.user);
 
   if (!event) {
     notFound();

@@ -1,0 +1,839 @@
+{
+  "startedAt": "2026-11-06T15:18:34.530Z",
+  "base": "http://localhost:3100",
+  "scope": "Rendered tables and visible labels; no business mutations",
+  "total": 27,
+  "cases": [
+    {
+      "path": "/compras/contratos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Gestão de Contratos"
+      ],
+      "tables": [
+        {
+          "caption": "Gestão de Contratos",
+          "headers": [
+            "Contrato",
+            "Fornecedor",
+            "Objeto",
+            "Início",
+            "Fim",
+            "Dias",
+            "Secretaria",
+            "Unidade gestora",
+            "Valor atual",
+            "Aditivos",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 3,
+          "samples": [
+            "CT-2026-8201\n\t\nVeredas Papelaria e Suprimentos Ltda.\n\t\nFornecimento de papel a4, resma de 500 folhas\n\t\n01/01/2027\n\t\n31/12/2027\n\t\n365\n\t\nSecretaria Municipal de Administração\n\t\nAV.03.001 - Gestão de Administração\n\t\nR$ 280,00\n\t\n0\n\t\nMinuta",
+            "CT-2026-8202\n\t\nSerra Clara Tecnologia Ltda.\n\t\nFornecimento de notebook 14 polegadas\n\t\n01/01/2027\n\t\n31/12/2027\n\t\n365\n\t\nSecretaria Municipal de Assistência Social\n\t\nAV.03.004 - Gestão de Assistência Social\n\t\nR$ 42.000,00\n\t\n0\n\t\nMinuta",
+            "CT-2026-8203\n\t\nCedros Móveis e Decorações Ltda.\n\t\nFornecimento de cadeira ergonômica\n\t\n01/01/2027\n\t\n31/12/2027\n\t\n365\n\t\nSecretaria Municipal de Cultura\n\t\nAV.03.006 - Gestão de Cultura\n\t\nR$ 8.500,00\n\t\n0\n\t\nMinuta"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0",
+      "status": 404,
+      "errors": [],
+      "headings": [
+        "404",
+        "This page could not be found.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": true,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "bcdee5b821bf8ac2.png"
+    },
+    {
+      "path": "/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0",
+      "status": 404,
+      "errors": [],
+      "headings": [
+        "404",
+        "This page could not be found.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": true,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "d2811fd6e33edf4e.png"
+    },
+    {
+      "path": "/compras/convenios",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Gestão de Convênios",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Gestão de Convênios",
+          "headers": [
+            "Convênio",
+            "Concedente",
+            "Objeto",
+            "Início",
+            "Fim",
+            "Dias",
+            "Valor total",
+            "Partes",
+            "Medições",
+            "Parcelas",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 2,
+          "samples": [
+            "CV-2026-8201\n\t\nInstituto Regional de Desenvolvimento das Veredas\n\t\nCooperação para oficinas de formação profissional e inclusão digital\n\t\n01/01/2027\n\t\n31/12/2027\n\t\n365\n\t\nR$ 85.000,00\n\t\n0\n\t\n0\n\t\n0\n\t\nEm análise",
+            "CV-2026-8202\n\t\nAssociação Cultural Vale Verde\n\t\nApoio à programação cultural dos bairros e espaços comunitários\n\t\n01/01/2027\n\t\n31/12/2027\n\t\n365\n\t\nR$ 120.000,00\n\t\n0\n\t\n0\n\t\n0\n\t\nEm análise"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/camara/audiencias",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Audiências",
+        "Audiências Públicas",
+        "Programação cultural e utilização dos espaços públicos",
+        "Prioridades de infraestrutura e mobilidade dos bairros",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/camara/leis",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Leis e atos normativos",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Leis e atos normativos",
+          "headers": [
+            "Número",
+            "Tipo",
+            "Ementa",
+            "Autoria",
+            "Publicação",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 2,
+          "samples": [
+            "MINUTA-2026-8202\n\t\nLei Ordinária\n\t\nOrganização das ações municipais de inclusão digital\n\t\nPoder Executivo\n\t\n—\n\t\nEm elaboração",
+            "MINUTA-2026-8201\n\t\nLei Ordinária\n\t\nDiretrizes para utilização e conservação dos espaços comunitários\n\t\nPoder Executivo\n\t\n—\n\t\nEm elaboração"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/camara/sessoes",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Sessões plenárias",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Sessões plenárias — sessoes",
+          "headers": [
+            "Número",
+            "Tipo",
+            "Data e hora",
+            "Local",
+            "Quórum",
+            "Status",
+            "Ações"
+          ],
+          "rows": 4,
+          "samples": [
+            "8104ª\n\t\nOrdinária\n\t\n24/11/2026, 09:00\n\t\nPlenário das Veredas\n\t\n—\n\t\nAgendada",
+            "8103ª\n\t\nOrdinária\n\t\n17/11/2026, 09:00\n\t\nPlenário das Veredas\n\t\n—\n\t\nAgendada",
+            "8102ª\n\t\nOrdinária\n\t\n10/11/2026, 09:00\n\t\nPlenário das Veredas\n\t\n—\n\t\nAgendada"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/cemiterios/estrutura?tipo=CAPELA",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Estrutura dos cemitérios",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Capelas",
+          "headers": [
+            "Identificação",
+            "Situação",
+            "Ativação",
+            "Ações"
+          ],
+          "rows": 1,
+          "samples": [
+            "Capela da Paz\n\t\nCadastrado\n\t\nAtivo\n\tAbrir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/cemiterios/estrutura?tipo=OSSUARIO",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Estrutura dos cemitérios",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Ossuários",
+          "headers": [
+            "Identificação",
+            "Situação",
+            "Ativação",
+            "Ações"
+          ],
+          "rows": 1,
+          "samples": [
+            "OSS-01\n\t\nCadastrado\n\t\nAtivo\n\tAbrir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/cemiterios/estrutura?tipo=CAMPO",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Estrutura dos cemitérios",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Campos adicionais",
+          "headers": [
+            "Identificação",
+            "Situação",
+            "Ativação",
+            "Ações"
+          ],
+          "rows": 1,
+          "samples": [
+            "Referência de localização\n\t\nCadastrado\n\t\nAtivo\n\tAbrir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/cemiterios/ocupacao?tipo=LOTE",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Lotes, sepulturas e lóculos",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Lotes",
+          "headers": [
+            "Identificação",
+            "Situação",
+            "Ativação",
+            "Cadastradas",
+            "Limite",
+            "Ocupadas",
+            "Vagas cadastro",
+            "Ações"
+          ],
+          "rows": 4,
+          "samples": [
+            "L-104\n\t\nLIVRE\n\t\nAtivo\n\t\n1\n\t\n2\n\t\n0\n\t\n1\n\tAbrir",
+            "L-103\n\t\nLIVRE\n\t\nAtivo\n\t\n1\n\t\n2\n\t\n0\n\t\n1\n\tAbrir",
+            "L-102\n\t\nLIVRE\n\t\nAtivo\n\t\n1\n\t\n2\n\t\n0\n\t\n1\n\tAbrir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/cemiterios/ocupacao?tipo=SEPULTURA",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Lotes, sepulturas e lóculos",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Sepulturas / Lóculos",
+          "headers": [
+            "Identificação",
+            "Situação",
+            "Ativação",
+            "Ocupantes",
+            "Capacidade",
+            "Tipo",
+            "Ações"
+          ],
+          "rows": 4,
+          "samples": [
+            "S-104\n\t\nLIVRE\n\t\nAtivo\n\t\n0\n\t\n2\n\t\nLóculo\n\tAbrir",
+            "S-103\n\t\nLIVRE\n\t\nAtivo\n\t\n0\n\t\n2\n\t\nCOVA\n\tAbrir",
+            "S-102\n\t\nLIVRE\n\t\nAtivo\n\t\n0\n\t\n2\n\t\nLóculo\n\tAbrir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/portal-servidor/atendimento",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Locais de atendimento",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Locais de atendimento ao público",
+          "headers": [
+            "Local",
+            "Endereço",
+            "Horário",
+            "Contato"
+          ],
+          "rows": 2,
+          "samples": [
+            "Apoio de Tecnologia da Informação\n\t\nCentro Administrativo — sala de suporte\n\t\nSegunda a sexta, das 8h às 17h\n\t\nAtendimento presencial no Centro Administrativo",
+            "Atendimento de Gestão de Pessoas\n\t\nCentro Administrativo — Rua das Acácias, 150\n\t\nSegunda a sexta, das 8h às 12h e das 13h às 17h\n\t\nAtendimento presencial no Centro Administrativo"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/rh/registros-funcionais",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Registros funcionais",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Cessões e recebimentos",
+          "headers": [
+            "Registro",
+            "Servidor / vínculo",
+            "Vigência",
+            "Situação",
+            "Dados integrais",
+            "Ações"
+          ],
+          "rows": 2,
+          "samples": [
+            "Cooperação administrativa — Bruna Almeida\n\t\nBruna Almeida · DEMO26-aurora-mg-50k-v1:employee:000\n\t\n2027-02-01 a 2027-03-31\n\t\nATIVO\n\t\nMovimento: CEDIDO · Órgão de origem: Prefeitura Municipal de Vereda das Auroras · Órgão de destino: Consórcio de Serviços das Veredas · Ônus da remuneração: ORIGEM · Percentual pago por este órgão: 100 · Rubricas remuneratórias afetadas (códigos separados por vírgula): VENCIMENTO · Conta para férias: SIM · Conta para 13º: SIM · Conta para ATS: SIM · Conta para aposentadoria: SIM · Conta para progressão: SIM · Efeito na aquisição de licença-prêmio: CONTAR · Lei, a",
+            "Cooperação administrativa — Bruno Xavier Teixeira Moreira\n\t\nBruno Xavier Teixeira Moreira · DEMO26-aurora-mg-50k-v1:employee:001\n\t\n2027-02-01 a 2027-03-31\n\t\nATIVO\n\t\nMovimento: CEDIDO · Órgão de origem: Prefeitura Municipal de Vereda das Auroras · Órgão de destino: Consórcio de Serviços das Veredas · Ônus da remuneração: ORIGEM · Percentual pago por este órgão: 100 · Rubricas remuneratórias afetadas (códigos separados por vírgula): VENCIMENTO · Conta para férias: SIM · Conta para 13º: SIM · Conta para ATS: SIM · Conta para aposentadoria: SIM · Conta para progressão: SIM · Efeito na aquisição de"
+          ],
+          "markers": [
+            "Cooperação administrativa — Bruna Almeida\n\t\nBruna Almeida · DEMO26-aurora-mg-50k-v1:employee:000\n\t\n2027-02-01 a 2027-03-31\n\t\nATIVO\n\t\nMovimento: CEDIDO · Órgão de origem: Prefeitura Municipal de Vereda das Auroras · Órgão de destino: Consórcio de Serviços das Veredas · Ônus da remuneração: ORIGEM · Percentual pago por este órgão: 100 · Rubricas remuneratórias afetadas (códigos separados por vírgula): VENCIMENTO · Conta para férias: SIM · Conta para 13º: SIM · Conta para ATS: SIM · Conta para aposentadoria: SIM · Conta para progressão: SIM · Efeito na aquisição de licença-prêmio: CONTAR · Lei, ato ou fundamento: Amostra fictícia autorizada no checkup de 06/11/2026; origem técnica preservada ne",
+            "Cooperação administrativa — Bruno Xavier Teixeira Moreira\n\t\nBruno Xavier Teixeira Moreira · DEMO26-aurora-mg-50k-v1:employee:001\n\t\n2027-02-01 a 2027-03-31\n\t\nATIVO\n\t\nMovimento: CEDIDO · Órgão de origem: Prefeitura Municipal de Vereda das Auroras · Órgão de destino: Consórcio de Serviços das Veredas · Ônus da remuneração: ORIGEM · Percentual pago por este órgão: 100 · Rubricas remuneratórias afetadas (códigos separados por vírgula): VENCIMENTO · Conta para férias: SIM · Conta para 13º: SIM · Conta para ATS: SIM · Conta para aposentadoria: SIM · Conta para progressão: SIM · Efeito na aquisição de licença-prêmio: CONTAR · Lei, ato ou fundamento: Amostra fictícia autorizada no checkup de 06/11/20"
+          ]
+        }
+      ],
+      "visibleMarkers": [
+        "Bruna Almeida · DEMO26-aurora-mg-50k-v1:employee:000",
+        "Bruno Xavier Teixeira Moreira · DEMO26-aurora-mg-50k-v1:employee:001"
+      ],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "6b017cb331b06b84.png"
+    },
+    {
+      "path": "/rh/servicos-funcionais",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Serviços funcionais do Portal",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Serviços funcionais do Portal",
+          "headers": [
+            "Serviço",
+            "Código",
+            "Grupo",
+            "Versão",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 3,
+          "samples": [
+            "Orientação cadastral e funcional\n\t\nPORTAL_SERVICO_ORIENTACAO_RH\n\t\nGestão de Pessoas\n\t\n1\n\t\nPublicado\n\tEditar",
+            "Solicitação de programação de férias\n\t\nPORTAL_SERVICO_PROGRAMACAO_FERIAS\n\t\nGestão de Pessoas\n\t\n1\n\t\nPublicado\n\tEditar",
+            "Solicitação de revisão do ponto\n\t\nPORTAL_SERVICO_REVISAO_PONTO\n\t\nGestão de Pessoas\n\t\n1\n\t\nPublicado\n\tEditar"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/portal-servidor/servicos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Catálogo funcional",
+        "Serviços funcionais",
+        "Orientação cadastral e funcional",
+        "Solicitação de programação de férias",
+        "Solicitação de revisão do ponto",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/educacao/licencas",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Educação",
+        "Tipos de licença e férias escolares",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": null,
+          "headers": [
+            "Código",
+            "Tipo",
+            "Limite (dias)",
+            "Fundamento",
+            "Ações"
+          ],
+          "rows": 1,
+          "samples": [
+            "LIC-EDU-2026-01\tAfastamento para formação pedagógica\t5\tAmostra fictícia autorizada no checkup de 06/11/2026; origem técnica preservada neste pacote e na auditoria.\tEditar\nExcluir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/tributacao/nfse",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "NFS-e",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "nfse",
+          "headers": [
+            "Número",
+            "Data",
+            "Prestador",
+            "Tomador",
+            "Serviço",
+            "Base",
+            "ISS",
+            "Recolhimento",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 0,
+          "samples": [],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [
+        "Nenhum registro encontrado."
+      ],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/frotas?area=rotas",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Frotas — gestão operacional",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Rotas",
+          "headers": [
+            "Código",
+            "Nome",
+            "Origem",
+            "Destino",
+            "Situação",
+            "Ação"
+          ],
+          "rows": 3,
+          "samples": [
+            "ROT-2026-8201\n\t\nCentro Administrativo — unidades municipais\n\t\nGaragem Municipal\n\t\nUnidades administrativas\n\t\nAtiva",
+            "ROT-2026-8202\n\t\nCentro — comunidade Vale Verde\n\t\nGaragem Municipal\n\t\nComunidade Vale Verde\n\t\nAtiva",
+            "ROT-2026-8203\n\t\nCentro — Jardim das Acácias\n\t\nGaragem Municipal\n\t\nJardim das Acácias\n\t\nAtiva"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/frotas?area=ordens",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Frotas — gestão operacional",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Ordens de serviço",
+          "headers": [
+            "Unidade da frota",
+            "Ordem de serviço",
+            "Programação",
+            "Situação",
+            "Previsto",
+            "Serviço realizado",
+            "Ação"
+          ],
+          "rows": 3,
+          "samples": [
+            "AV-003 · Chevrolet Onix 1.0 LT — Visitas da assistência social\n\t\nRevisão de óleo, filtros e itens de segurança\n\t\n16/11/2026\n\t\nEmitida\n\t\nR$ 420,00\n\t\nAinda não realizado",
+            "AV-002 · Fiat Cronos Drive 1.3 — Transporte administrativo\n\t\nRevisão de óleo, filtros e itens de segurança\n\t\n16/11/2026\n\t\nEmitida\n\t\nR$ 420,00\n\t\nAinda não realizado",
+            "AV-001 · Fiat Argo Drive 1.0 — Automóvel de apoio administrativo\n\t\nRevisão de óleo, filtros e itens de segurança\n\t\n06/11/2026\n\t\nConcluída\n\t\nR$ 420,00\n\t\nR$ 398,00"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/frotas?area=manutencoes",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Frotas — gestão operacional",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Manutenções efetuadas",
+          "headers": [
+            "Unidade da frota",
+            "Data",
+            "Descrição",
+            "Natureza / origem",
+            "Realizado",
+            "Ação"
+          ],
+          "rows": 1,
+          "samples": [
+            "AV-001 · Fiat Argo Drive 1.0 — Automóvel de apoio administrativo\n\t\n06/11/2026\n\t\nÓleo e filtro substituídos; freios, iluminação e pneus inspecionados.\n\t\nManutenção / Ordem de serviço\n\t\nR$ 398,00"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/frotas?area=consumos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Frotas — gestão operacional",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Abastecimentos e lubrificantes",
+          "headers": [
+            "Unidade da frota",
+            "Data",
+            "Material / tipo",
+            "Origem",
+            "Quantidade",
+            "Custo realizado",
+            "Ação"
+          ],
+          "rows": 3,
+          "samples": [
+            "AV-003 · Chevrolet Onix 1.0 LT — Visitas da assistência social\n\t\n06/11/2026\n\t\nGasolina comum · Combustível\n\t\nTerceiro\n\t\n35 L\n\t\nR$ 217,00",
+            "AV-002 · Fiat Cronos Drive 1.3 — Transporte administrativo\n\t\n06/11/2026\n\t\nGasolina comum · Combustível\n\t\nTerceiro\n\t\n30 L\n\t\nR$ 186,00",
+            "AV-001 · Fiat Argo Drive 1.0 — Automóvel de apoio administrativo\n\t\n06/11/2026\n\t\nGasolina comum · Combustível\n\t\nTerceiro\n\t\n25 L\n\t\nR$ 155,00"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/frotas?area=gastos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Frotas — gestão operacional",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Gastos realizados",
+          "headers": [
+            "Unidade da frota",
+            "Data",
+            "Descrição",
+            "Natureza / origem",
+            "Realizado",
+            "Ação"
+          ],
+          "rows": 4,
+          "samples": [
+            "AV-003 · Chevrolet Onix 1.0 LT — Visitas da assistência social\n\t\n06/11/2026\n\t\nGasolina comum\n\t\nCombustível / Consumo\n\t\nR$ 217,00",
+            "AV-002 · Fiat Cronos Drive 1.3 — Transporte administrativo\n\t\n06/11/2026\n\t\nGasolina comum\n\t\nCombustível / Consumo\n\t\nR$ 186,00",
+            "AV-001 · Fiat Argo Drive 1.0 — Automóvel de apoio administrativo\n\t\n06/11/2026\n\t\nGasolina comum\n\t\nCombustível / Consumo\n\t\nR$ 155,00"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/frotas?area=seguros",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Frotas — gestão operacional",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Seguros",
+          "headers": [
+            "Unidade da frota",
+            "Documento / referência",
+            "Tipo",
+            "Agendamento",
+            "Vencimento",
+            "Situação",
+            "Ação"
+          ],
+          "rows": 3,
+          "samples": [
+            "AV-001 · Fiat Argo Drive 1.0 — Automóvel de apoio administrativo\n\t\nCobertura compreensiva do veículo / AP-2026-8201\n\t\nSeguro · FACULTATIVO\n\t\n—\n\t\n31/10/2027\n\t\nVigente",
+            "AV-002 · Fiat Cronos Drive 1.3 — Transporte administrativo\n\t\nCobertura compreensiva do veículo / AP-2026-8202\n\t\nSeguro · FACULTATIVO\n\t\n—\n\t\n31/10/2027\n\t\nVigente",
+            "AV-003 · Chevrolet Onix 1.0 LT — Visitas da assistência social\n\t\nCobertura compreensiva do veículo / AP-2026-8203\n\t\nSeguro · FACULTATIVO\n\t\n—\n\t\n31/10/2027\n\t\nVigente"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/rh/cadastros?kind=RATEIO_FOLHA",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "RH e Folha",
+        "Cadastros de RH · Rateios da folha",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/frotas?area=ocorrencias",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Frotas — gestão operacional",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Ocorrências",
+          "headers": [
+            "Unidade da frota",
+            "Data",
+            "Tipo",
+            "Descrição",
+            "Valor envolvido",
+            "Ação"
+          ],
+          "rows": 3,
+          "samples": [
+            "AV-003 · Chevrolet Onix 1.0 LT — Visitas da assistência social\n\t\n06/11/2026\n\t\nOutro\n\t\nConferência de equipamentos de segurança e atualização da ficha do veículo.\n\t\nNão informado",
+            "AV-002 · Fiat Cronos Drive 1.3 — Transporte administrativo\n\t\n06/11/2026\n\t\nOutro\n\t\nConferência de equipamentos de segurança e atualização da ficha do veículo.\n\t\nNão informado",
+            "AV-001 · Fiat Argo Drive 1.0 — Automóvel de apoio administrativo\n\t\n06/11/2026\n\t\nOutro\n\t\nConferência de equipamentos de segurança e atualização da ficha do veículo.\n\t\nNão informado"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/rh/cadastros?kind=ESCALA",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "RH e Folha",
+        "Cadastros de RH · Escalas por funcionário",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    }
+  ],
+  "finishedAt": "2026-11-06T15:20:20.506Z",
+  "summary": {
+    "inspected": 27,
+    "markerScreens": 1,
+    "emptyTableScreens": 1,
+    "errors": 2,
+    "layoutBlocked": 0
+  }
+}

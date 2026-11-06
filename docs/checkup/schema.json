@@ -1,0 +1,8 @@
+{
+  "date": "2026-11-06T13:07:48.957Z",
+  "scope": "Physical table/column presence only; read-only metadata transaction. Does not validate data, constraints or external integrations.",
+  "expectedTables": 1009,
+  "physicalTables": 1122,
+  "missingTables": [],
+  "missingColumns": []
+}

@@ -7,6 +7,7 @@ export const OperationalContext = createContext<{
   userId: string;
   device: OperationalDevice;
   actionsHost: HTMLDivElement | null;
+  contentMode?: "list" | "page";
 } | null>(null);
 
 export const OperationalListReset = createContext(0);

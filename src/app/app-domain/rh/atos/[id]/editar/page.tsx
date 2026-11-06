@@ -7,7 +7,7 @@ import { readPersonnelAct, readEmployeeOptions } from "@/db/repositories/personn
 export default async function EditarAtoPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  const act = await readPersonnelAct(database, id, context.user);
+  const act = await readPersonnelAct(database, decodeURIComponent(id), context.user);
 
   if (!act) {
     notFound();

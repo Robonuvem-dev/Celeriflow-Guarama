@@ -1,0 +1,536 @@
+{
+  "capturedAt": "2026-11-06T17:56:27.787Z",
+  "scope": "Application sources captured during the sixth build, after all five route edits and before further source changes. Compared against the completed bundle separately.",
+  "files": [
+    {
+      "path": "src/app/api/audit/interaction/route.ts",
+      "modifiedAt": "2026-11-06T14:21:14.320Z",
+      "sha256": "5ed662e05544dcc8325cf9f4544dc07cebd7caa64c44ae08929f7e1eda2b6e20"
+    },
+    {
+      "path": "src/app/app-domain/ClientLayout.tsx",
+      "modifiedAt": "2026-11-06T12:59:20.328Z",
+      "sha256": "135fb56b49f1f932459524371920feb4e46e73a256c3689c1827a17e6c02a030"
+    },
+    {
+      "path": "src/app/app-domain/assinatura-digital/usuarios/UsuariosClient.tsx",
+      "modifiedAt": "2026-11-06T15:35:18.170Z",
+      "sha256": "49341fe374a7ffe2188cb94d5207522cbeea18b7c91200521b7c56e3581d774a"
+    },
+    {
+      "path": "src/app/app-domain/atendimento/chamados/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:56:40.194Z",
+      "sha256": "7513562c1a9416d32a2537f9c61acbcc17f2d5d75a5ddf668935e98120e7351d"
+    },
+    {
+      "path": "src/app/app-domain/atendimento/ouvidoria/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T16:25:55.985Z",
+      "sha256": "ecc5dd0e8671dcfc3aedf24ed32ef948caf96198f19829de203cbb7892d3af09"
+    },
+    {
+      "path": "src/app/app-domain/cadastros/MasterDataCatalogClient.tsx",
+      "modifiedAt": "2026-11-06T15:56:57.864Z",
+      "sha256": "e43844b8b7474f068fc775098eda5ea1b58f98b9ed8d1b7b506af2c96086748a"
+    },
+    {
+      "path": "src/app/app-domain/camara/planejamento/[kind]/[id]/gestao/[section]/page.tsx",
+      "modifiedAt": "2026-11-06T17:54:54.826Z",
+      "sha256": "f8e11787ca67f8f35c33a6ff98ffafb7ccd17007f9f253b9ca1a44739b787639"
+    },
+    {
+      "path": "src/app/app-domain/camara/sessoes/SessionEditors.tsx",
+      "modifiedAt": "2026-11-06T15:26:10.615Z",
+      "sha256": "2ac980e47309ee6ddd564281c44e5554882dd71f57dd26577750165ecb5663c0"
+    },
+    {
+      "path": "src/app/app-domain/camara/sessoes/SessoesClient.tsx",
+      "modifiedAt": "2026-11-06T15:26:10.621Z",
+      "sha256": "e566b1369c5db52282564f2ad23f5f1abea9cee5ad018977fb20369e3bd32665"
+    },
+    {
+      "path": "src/app/app-domain/camara/sessoes/actions.ts",
+      "modifiedAt": "2026-11-06T15:24:51.806Z",
+      "sha256": "e12023a2b02f17dd2b1a7742effaf351806cb02e57c57aeae79af98b79d54d35"
+    },
+    {
+      "path": "src/app/app-domain/camara/sessoes/page.tsx",
+      "modifiedAt": "2026-11-06T15:26:10.620Z",
+      "sha256": "54d1d453812442b0793f397eb82ea541e26ebc420879d5f192943cc4f6b4620f"
+    },
+    {
+      "path": "src/app/app-domain/compras/contratos/ContratosListClient.tsx",
+      "modifiedAt": "2026-11-06T15:58:11.091Z",
+      "sha256": "85f3fe732c67efe62a86a5f6e1e619d08e2b04af412c4a6083400aa791ced478"
+    },
+    {
+      "path": "src/app/app-domain/compras/contratos/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:21:10.539Z",
+      "sha256": "00328d25585614bdf0d6fde26087a687ae68aeb330c8e9e04a68666391d396ac"
+    },
+    {
+      "path": "src/app/app-domain/compras/contratos/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:21:10.538Z",
+      "sha256": "9ca1275c47e82296ceaaf628653995e711d86e692bdd332a03acc7ca942142e3"
+    },
+    {
+      "path": "src/app/app-domain/compras/contratos/[id]/relatorio/page.tsx",
+      "modifiedAt": "2026-11-06T15:21:10.540Z",
+      "sha256": "bdc6e8cd743d15369171c088c34ea524255e456555dc79790fa377825061d368"
+    },
+    {
+      "path": "src/app/app-domain/compras/convenios/ConveniosListClient.tsx",
+      "modifiedAt": "2026-11-06T15:58:11.093Z",
+      "sha256": "39bdbd24df1c1c0d3b23c8ceb047988a7a2b5a30e05f7ff93ed7053c2d18e622"
+    },
+    {
+      "path": "src/app/app-domain/compras/convenios/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:21:10.541Z",
+      "sha256": "b3696c6657be9ff40d89685d1cd617020ae30ce1c3e62941c8e85a0224d156dc"
+    },
+    {
+      "path": "src/app/app-domain/compras/convenios/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:21:10.540Z",
+      "sha256": "de76eadaef5c800b6cda1fbb63c38cdccf76524823ebf90478bea096878cc9c6"
+    },
+    {
+      "path": "src/app/app-domain/compras/convenios/[id]/relatorio/page.tsx",
+      "modifiedAt": "2026-11-06T15:21:10.541Z",
+      "sha256": "45e6cf331c4ff959839e77f5d327c60cca7dbabd657eb4ee53dc24166c5e0dd4"
+    },
+    {
+      "path": "src/app/app-domain/compras/licitacoes/BiddingWorkflowPanel.tsx",
+      "modifiedAt": "2026-11-06T15:56:40.199Z",
+      "sha256": "75ad0c90c771db8fdce307e0bd4d5caa72809f9c507fa0ea8831e11aad62410b"
+    },
+    {
+      "path": "src/app/app-domain/compras/licitacoes/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:56:40.200Z",
+      "sha256": "b6c7ab63e6f7d9e7aedcd41391cf72d032f75637bf9bce0495198f7f9cfd0226"
+    },
+    {
+      "path": "src/app/app-domain/compras/pesquisas-precos/PriceResearchListClient.tsx",
+      "modifiedAt": "2026-11-06T14:14:12.637Z",
+      "sha256": "a94b1c793d589ae721f28d4f04ae5eff853f98dc11adf67d5069eada607734c5"
+    },
+    {
+      "path": "src/app/app-domain/compras/pesquisas-precos/[id]/PriceResearchDetailClient.tsx",
+      "modifiedAt": "2026-11-06T15:58:11.093Z",
+      "sha256": "3432e1ce5be44629c6e13b1a84f0ba63a39910c41ca7e1bd9369d975c2d01860"
+    },
+    {
+      "path": "src/app/app-domain/compras/pesquisas-precos/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.608Z",
+      "sha256": "ce1fd5d084349046aa743e753738572cfd7dc2108a9a96eff09f0a1ad8ee48b5"
+    },
+    {
+      "path": "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx",
+      "modifiedAt": "2026-11-06T17:54:54.823Z",
+      "sha256": "0520f7f99f0bd7f4273687e551b91f7aacaea7145cffeff264cfda89eb947e78"
+    },
+    {
+      "path": "src/app/app-domain/compras/processos/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.610Z",
+      "sha256": "7efa90bb434a54bdbeb32420991f606284fa8fe865447113b268fa11f4a8f9dc"
+    },
+    {
+      "path": "src/app/app-domain/compras/processos/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.609Z",
+      "sha256": "bafd30df23b97f2daf4eb4cca4c91c2411143d29210450da2fe4a57d7b60f849"
+    },
+    {
+      "path": "src/app/app-domain/compras/solicitacoes/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.608Z",
+      "sha256": "3715fc702978de7c3959ad1ec60209d981e46d575f4ce17b1d3470d92efea088"
+    },
+    {
+      "path": "src/app/app-domain/compras/solicitacoes/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.607Z",
+      "sha256": "aca1394540b0524d79dfd739c9e80de371ffddc2eb7030e237daa5444ae85066"
+    },
+    {
+      "path": "src/app/app-domain/configuracoes/modulos/ModulosClient.tsx",
+      "modifiedAt": "2026-11-06T14:28:22.024Z",
+      "sha256": "cd4c5c3be3d3a115474c8b07f986b51746ab85499d4f63530d69e43e4ccf3d49"
+    },
+    {
+      "path": "src/app/app-domain/configuracoes/usuarios/components/UsuariosClient.tsx",
+      "modifiedAt": "2026-11-06T16:23:43.371Z",
+      "sha256": "ec4402e105fdc9bbb9716e01c48bbdb08c955e7e2522aca49b5de11861417f73"
+    },
+    {
+      "path": "src/app/app-domain/configuracoes/usuarios/page.tsx",
+      "modifiedAt": "2026-11-06T16:23:43.369Z",
+      "sha256": "6abcabed3a6edec05648d694465bb5e12ca7b78ce0c5347f185a9326d53c0ff9"
+    },
+    {
+      "path": "src/app/app-domain/cultura/components/CulturaEventosClient.tsx",
+      "modifiedAt": "2026-11-06T14:30:58.940Z",
+      "sha256": "d02788db5568b5bafc60a938e9489886b59e7b0c1b23c3d1fb69756229e202c2"
+    },
+    {
+      "path": "src/app/app-domain/cultura/components/ReservasAgendaClient.tsx",
+      "modifiedAt": "2026-11-06T14:30:58.944Z",
+      "sha256": "0543ac0b56afdb88103930030887d4ab588fd3c16c105fb924d70eee99757349"
+    },
+    {
+      "path": "src/app/app-domain/financeiro/contabilidade/disponibilidade/page.tsx",
+      "modifiedAt": "2026-11-06T14:24:27.364Z",
+      "sha256": "edcd28c5d3a90aa542d9dd0dcc88e839177bd5a64aa7e362a6bf03af192d5afc"
+    },
+    {
+      "path": "src/app/app-domain/frotas/movimentos/FleetMovementPanel.tsx",
+      "modifiedAt": "2026-11-06T16:27:33.727Z",
+      "sha256": "4d5def799ca15f61e6788b085ae33296efc5b5a91e63672b70cd9677158d7afb"
+    },
+    {
+      "path": "src/app/app-domain/frotas/movimentos/page.tsx",
+      "modifiedAt": "2026-11-06T16:25:38.343Z",
+      "sha256": "eace09312475ff7c155f07cef66b4a28c52f04f08dd36b2323be8be6e1f6724b"
+    },
+    {
+      "path": "src/app/app-domain/notificacoes/NotificationsClient.tsx",
+      "modifiedAt": "2026-11-06T15:35:18.174Z",
+      "sha256": "68f0d95dfed952e2d2772ae6f2107161bcfa05b6bf38ef6d0487925ac7d0fff8"
+    },
+    {
+      "path": "src/app/app-domain/patrimonio/almoxarifados/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T16:25:55.986Z",
+      "sha256": "5ea04bafb293683575174bd12acb84b4c029414e90a10bcf7dfeb66945ee110e"
+    },
+    {
+      "path": "src/app/app-domain/patrimonio/centros-custo/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:56:40.197Z",
+      "sha256": "ba9bda297f5f92c4d505839829f745a1057761899ec812ee1bb029b8824833f2"
+    },
+    {
+      "path": "src/app/app-domain/planejamento/[kind]/[id]/gestao/[section]/page.tsx",
+      "modifiedAt": "2026-11-06T17:54:54.824Z",
+      "sha256": "55b8206752fabf303fd159dba201748f65b73a2332de049188e34ed36ee135cd"
+    },
+    {
+      "path": "src/app/app-domain/planejamento/[kind]/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:56:40.198Z",
+      "sha256": "b93a6b184a14f8c87d4ae48b79026eb5352172dc50311b0710d9545dbd21246c"
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/documentos-funcionais/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:46.654Z",
+      "sha256": "3442c876607accbc08ca11cc795ab686b8f74e20765542b39ace12fe90714228"
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/margem/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:46.655Z",
+      "sha256": "92011ccc161107eb4ba35090785a92d1f2d715b11935d2394672c2d5be44ddc0"
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:01.568Z",
+      "sha256": "a091838ee93a975debf297bddbd65ecad043dccd5de2fd9b032518c81b6bf0d8"
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/sst/agenda/AgendaForm.tsx",
+      "modifiedAt": "2026-11-06T16:52:45.271Z",
+      "sha256": "878accec7a6f860ad08ed281e1e44bde6b8b129f6d1302eaa7f738aa06606585"
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/sst/agenda/page.tsx",
+      "modifiedAt": "2026-11-06T16:52:45.465Z",
+      "sha256": "90d9c00a1d697673ee32f8c8034d18bf6c6528cbf9f132927fa8d1531c474f07"
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/sst/cipa/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:46.661Z",
+      "sha256": "5e72a8449afde621fbe4970ecc309be9040ca8621af1873c61a9a588363ea23b"
+    },
+    {
+      "path": "src/app/app-domain/portal-servidor/sst/relatorios/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:46.667Z",
+      "sha256": "cc64d3858d5950516dd7b7d647e6d7f5d58dbc8bb5ebace933834b0d86709e59"
+    },
+    {
+      "path": "src/app/app-domain/protocolos/ouvidoria/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T16:25:55.983Z",
+      "sha256": "05e610561c0dcc66f1324c2a2bb658ca3d560c344fdb0ed25d7e7a9523af2741"
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.606Z",
+      "sha256": "3482d0c72fffba5e404d2c8da1559499572ba2b4e72888b903482b911fa0d504"
+    },
+    {
+      "path": "src/app/app-domain/rh/atos/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:01.571Z",
+      "sha256": "46b391fbdf2c7168b3637599e616ed2a435f2798de85a908c644bda3e2b904d9"
+    },
+    {
+      "path": "src/app/app-domain/rh/dependentes/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.598Z",
+      "sha256": "c689ecda3211f51ac59b6dc1cd9db0981e0128988b9c4d642bb48b12c71e8472"
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.600Z",
+      "sha256": "9da9556eb354e79df485f7b504bb9cc83f08c9c2497d7432c93d9e543804665a"
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/eventos/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:27:11.347Z",
+      "sha256": "bd55d7c7f1f5d43729f5dc1447f59d42d9e48d14c1cfb5266398d93ae1f31c26"
+    },
+    {
+      "path": "src/app/app-domain/rh/folha/eventos/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:01.600Z",
+      "sha256": "d45627ccc0514014c4dc188c65348bba30b93326a057de6790b706e5f06fd775"
+    },
+    {
+      "path": "src/app/app-domain/rh/operacoes/page.tsx",
+      "modifiedAt": "2026-11-06T14:24:27.350Z",
+      "sha256": "d7eb3411d61aa19cba8d6a142e3ceb0792b6e538f7f3b4939c52852578f4c937"
+    },
+    {
+      "path": "src/app/app-domain/rh/parametrizacoes/HrPayrollSettingsClient.tsx",
+      "modifiedAt": "2026-11-06T16:11:46.483Z",
+      "sha256": "5274794fbca3de269d14690f58c39c248fc51ebade4589887c72ebe7eae6d4f7"
+    },
+    {
+      "path": "src/app/app-domain/rh/ponto/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.602Z",
+      "sha256": "2b3abb7ca80ea368689c6282c1c8a32d5e45ea93a84ece84436132a17787d440"
+    },
+    {
+      "path": "src/app/app-domain/rh/publicacao-funcional/page.tsx",
+      "modifiedAt": "2026-11-06T15:50:01.573Z",
+      "sha256": "f0790297e93bb996a19dda304a162f653659335aa483bee967477da99045d5d5"
+    },
+    {
+      "path": "src/app/app-domain/rh/registros-funcionais/page.tsx",
+      "modifiedAt": "2026-11-06T15:21:10.541Z",
+      "sha256": "333999795c7f008c4c5c166cdb5866a5215f6c4bf80f5a26f67b3c1458a5d930"
+    },
+    {
+      "path": "src/app/app-domain/rh/servidores/[id]/editar/page.tsx",
+      "modifiedAt": "2026-11-06T15:55:33.597Z",
+      "sha256": "091a6d4fe909c348328abfb334696d1e99c6b6b8b4928e8cb7d8f633b8b7e24b"
+    },
+    {
+      "path": "src/app/app-domain/saude/agenda/AgendaClient.tsx",
+      "modifiedAt": "2026-11-06T15:35:18.152Z",
+      "sha256": "88f4a8cff6e9f170d29de6093d88e96f6ae30dd90147a45db938b85f2d11a209"
+    },
+    {
+      "path": "src/app/app-domain/saude/pacientes/PacientesClient.tsx",
+      "modifiedAt": "2026-11-06T15:35:18.156Z",
+      "sha256": "17f88bb973b090290be7caafd27db51dde0bdd218f34745ea1634649afab0cd8"
+    },
+    {
+      "path": "src/app/app-domain/social/atendimentos/AtendimentosClient.tsx",
+      "modifiedAt": "2026-11-06T15:35:18.162Z",
+      "sha256": "f0709fbf528d5df787e22be506bcaa3688a5a637ece3a898af05c98e53e22b34"
+    },
+    {
+      "path": "src/app/app-domain/social/pessoas/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:27:11.346Z",
+      "sha256": "28c722b89f023580c1c2dafcd6bf6a349a4a272b995cb8eeb96ffb4d18ae0693"
+    },
+    {
+      "path": "src/app/app-domain/social/prontuario/ProntuarioClient.tsx",
+      "modifiedAt": "2026-11-06T15:35:18.164Z",
+      "sha256": "afe6b01725d4bc2c64fa2bdb387d4d4ec26b2cb80a1cdd21d710551ebcbb682e"
+    },
+    {
+      "path": "src/app/app-domain/sst/agenda/agendamentos/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T16:52:45.474Z",
+      "sha256": "93537ceb51993e7ff23fb24a8d876cbdfc40d3f4c4f8c1321070cf9c6f2b27d5"
+    },
+    {
+      "path": "src/app/app-domain/sst/agenda/agendamentos/page.tsx",
+      "modifiedAt": "2026-11-06T16:52:45.457Z",
+      "sha256": "104ce3e322258197ea8fee160e8ee118e5111782e02d4c80bd5c67f9d6825af8"
+    },
+    {
+      "path": "src/app/app-domain/sst/agenda/page.tsx",
+      "modifiedAt": "2026-11-06T16:54:01.383Z",
+      "sha256": "c69d779f25e792a38dcf219483a7b6f952704e0db5ea0c353f6cbb1a0f2487ea"
+    },
+    {
+      "path": "src/app/app-domain/sst/aso/branco/page.tsx",
+      "modifiedAt": "2026-11-06T15:27:11.350Z",
+      "sha256": "eec1539e121d09949cf322654cd41ffefd62ba94a6055dd41f9c8c9f4105f0cc"
+    },
+    {
+      "path": "src/app/app-domain/sst/configuracoes/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:27:11.344Z",
+      "sha256": "5d7254efcc0ab67a1f93f826d4aa7039dbe5119dbb5cfd1b2e9a3b4932a06deb"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/comparativo-anual/page.tsx",
+      "modifiedAt": "2026-11-06T14:24:27.365Z",
+      "sha256": "c2b05803287b669ca16e345202eb02ecf4a006d89a516091132a7e04271a1e0f"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/imoveis/[id]/bloqueio/page.tsx",
+      "modifiedAt": "2026-11-06T17:54:54.821Z",
+      "sha256": "5a6349c5d9b6812ccdb6465d992974043250f8e27c1f0b9690faabce47a8c369"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/imoveis/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T15:27:11.343Z",
+      "sha256": "9556ab966d51751e8afe9964ed1c9dff8b0d48f971d29b20046435cf82232c17"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/imoveis/[id]/perfil/page.tsx",
+      "modifiedAt": "2026-11-06T17:54:54.822Z",
+      "sha256": "530c4422dade68d3865421a91e8adffd952652dd837c13d074a1c1aac81e078b"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/layout.tsx",
+      "modifiedAt": "2026-11-06T14:22:55.267Z",
+      "sha256": "77f13200ebe71b60a1e12ce6b57456f98329d090160bbff1270e83f46b5bbc3f"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/motor-fiscal/MotorFiscalClient.tsx",
+      "modifiedAt": "2026-11-06T16:22:24.805Z",
+      "sha256": "671573c4d976906a9b4298760ac3d12daef3144041f40023f536c7466ef03d02"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/motor-fiscal/page.tsx",
+      "modifiedAt": "2026-11-06T16:22:24.778Z",
+      "sha256": "7cf89adf8a834065dd3f9d810715646c0ff37543f6ec56796b1a9bc1b9ba074d"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/nfse/page.tsx",
+      "modifiedAt": "2026-11-06T14:18:21.924Z",
+      "sha256": "9baeec8ecb1df781cdf48c9e379d38c263d26cdeefe203744571cb27d8cdfcb0"
+    },
+    {
+      "path": "src/app/app-domain/tributacao/pessoas/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T14:21:14.320Z",
+      "sha256": "03654ab6901dbb6529ac551ff456644148648a4d55a605756511729274e24eb2"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/[id]/documentos/layout.tsx",
+      "modifiedAt": "2026-11-06T13:13:30.541Z",
+      "sha256": "19a55d8894d7e62f673c7b251f1c78f6d487b3b634caf158b8b92802bfdcfb52"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/[id]/documentos/page.tsx",
+      "modifiedAt": "2026-11-06T13:13:30.538Z",
+      "sha256": "bfbe91744292694a80e558e88b6e736463f0e0d78f370acf02c0da898ffc5ae5"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/[id]/page.tsx",
+      "modifiedAt": "2026-11-06T13:13:30.534Z",
+      "sha256": "e9d4933645e7ccfde6c4e5e30a875ecebb7d5144ad36993fd971b1cc2c680e15"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/[id]/viabilidade-automatica/page.tsx",
+      "modifiedAt": "2026-11-06T13:13:30.543Z",
+      "sha256": "66ce9cee5a6ae569bc1e7d66089246d41c0b3033378a38d72e8f289769e7fa7d"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/autorizacoes/page.tsx",
+      "modifiedAt": "2026-11-06T13:03:45.733Z",
+      "sha256": "15311f9f4774a44818029f1cb7996fa41491d92b5f2c5215f08d86ee7ca8a9c3"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/entrar/page.tsx",
+      "modifiedAt": "2026-11-06T13:13:30.553Z",
+      "sha256": "f4acd289a2e3f9971aaaed8375b00a4662f12e326b525a2287a891eccd63ae93"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/nova/page.tsx",
+      "modifiedAt": "2026-11-06T13:03:45.734Z",
+      "sha256": "afc5bbf4b5f188498b6758b1a02431f37634b1a54263df464cd3ab401927ef8a"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/page.tsx",
+      "modifiedAt": "2026-11-06T13:13:30.520Z",
+      "sha256": "7ee3e43f10b3d002bc574f69d97d2a6f1b80cd53990c371f5791cdb5e22c784f"
+    },
+    {
+      "path": "src/app/portal/construcao-civil/pedidos-administrativos/page.tsx",
+      "modifiedAt": "2026-11-06T13:03:45.736Z",
+      "sha256": "c78d4e54983179cdb59e946c9a4313e92cc878725c9eadd9c03fd2999c87321e"
+    },
+    {
+      "path": "src/app/portal/convenentes/page.tsx",
+      "modifiedAt": "2026-11-06T13:03:45.737Z",
+      "sha256": "19c97faa0bd88e8a615068809f2a2fa9e2fef3e52b92bd3b8b9b329260200919"
+    },
+    {
+      "path": "src/app/portal/departamentos/atestados/page.tsx",
+      "modifiedAt": "2026-11-06T13:14:26.740Z",
+      "sha256": "1fd296642beccd421c41deec33b3cb84aefa76c2047367f3e3962882caf6426c"
+    },
+    {
+      "path": "src/components/app-ui/PageFrame.tsx",
+      "modifiedAt": "2026-11-06T13:20:58.782Z",
+      "sha256": "288411b18dc89ad67ef95533cb7e1727d251bdb6c6ccba498ac518e22822b8dd"
+    },
+    {
+      "path": "src/components/app-ui/PageHeader.tsx",
+      "modifiedAt": "2026-11-06T13:20:58.792Z",
+      "sha256": "15de9142ab3bb67aa0dcd30632d07405096ffc9f361e21caea30ac23617aed39"
+    },
+    {
+      "path": "src/components/app-ui/erp/ErpPageTitle.tsx",
+      "modifiedAt": "2026-11-06T13:20:58.798Z",
+      "sha256": "7a769a634751064825704bbf5bd994bd14aaaa15d6deea33205464ebfa5c6d35"
+    },
+    {
+      "path": "src/components/app-ui/operational/OperationalContext.tsx",
+      "modifiedAt": "2026-11-06T13:20:58.772Z",
+      "sha256": "e675616ad08dd94a98cb48616760b40c7756b03ca8705ac0f0fa81decdbe2d39"
+    },
+    {
+      "path": "src/components/app-ui/operational/OperationalWorkspace.tsx",
+      "modifiedAt": "2026-11-06T13:20:58.778Z",
+      "sha256": "196e71e011cc49484b142ce64620ef336e937a7c5f74d829320853b898f1e5b3"
+    },
+    {
+      "path": "src/components/app-ui/operational/modules/especializados.ts",
+      "modifiedAt": "2026-11-06T13:08:43.755Z",
+      "sha256": "30c09b7472517eff45fe710ef9e670c6f3b1cf7da41c7c5012966a6622dd5d3a"
+    },
+    {
+      "path": "src/components/app-ui/operational/modules/financeiro-controle.ts",
+      "modifiedAt": "2026-11-06T13:08:43.753Z",
+      "sha256": "bbfa3119124c28808e7f99d029c8e53f1422f628257021d760fb3cdf6995c763"
+    },
+    {
+      "path": "src/components/app-ui/operational/modules/rh-sst.ts",
+      "modifiedAt": "2026-11-06T13:02:17.230Z",
+      "sha256": "e20e3a395d26997850cc2d163b10389890228a69a11691b2344eabcf99c7ae91"
+    },
+    {
+      "path": "src/components/app-ui/operational/routes.ts",
+      "modifiedAt": "2026-11-06T13:08:43.751Z",
+      "sha256": "6a39ac14f65dd5f3bead4da792f5b3d9c9893215bf65e77af9df3e5178425231"
+    },
+    {
+      "path": "src/components/auth/PortalPageAccess.tsx",
+      "modifiedAt": "2026-11-06T13:10:54.748Z",
+      "sha256": "3bd64bc1a6cc22a5ad6b8eff14d404b7a76f45ed18f9ed5f9e4f57fc4dbcc221"
+    },
+    {
+      "path": "src/components/signatures/ged/GedWorkspace.tsx",
+      "modifiedAt": "2026-11-06T15:27:44.906Z",
+      "sha256": "959eeb6f2a941dc60ddb383ade77e288b8f6b62fafddee03aaf4ef188f03cda5"
+    },
+    {
+      "path": "src/db/repositories/taxation-pages/cadastral-details.ts",
+      "modifiedAt": "2026-11-06T14:14:12.643Z",
+      "sha256": "661bc2ce4efab2c7d6671ae40b100b9d8852517c3f1ec9539a946a4f651f7f87"
+    },
+    {
+      "path": "src/lib/platform/page-access.ts",
+      "modifiedAt": "2026-11-06T13:10:54.744Z",
+      "sha256": "835a828739bee403c9a2966c05860b9fb7e0d4543df511c18889ef9926f29ea6"
+    },
+    {
+      "path": "src/lib/portal-servidor/credential-guard.ts",
+      "modifiedAt": "2026-11-06T13:08:43.750Z",
+      "sha256": "68cd0f70b366c53632d5fe378d071b45d352d5cb1620d754a7e38fd4a92983d6"
+    }
+  ]
+}
