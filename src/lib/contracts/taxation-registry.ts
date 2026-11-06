@@ -16,7 +16,7 @@ export type TaxAuditCrossCheckRecord = {
 };
 
 export type AccountantDirectory = {
-  taxpayers: { id: string; person: { fullName: string } | null; company: { corporateName: string } | null }[];
+  taxpayers: { id: string; person: { fullName: string; cpf?: string | null; phone?: string | null; email?: string | null } | null; company: { corporateName: string; cnpj?: string | null; phone?: string | null; email?: string | null } | null }[];
   entries: TaxRegistryEntryRecord[];
 };
 

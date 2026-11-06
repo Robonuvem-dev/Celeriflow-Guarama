@@ -9,23 +9,86 @@ import type { AccountantDirectory, TaxRegistryEntryRecord } from "@/lib/contract
 import { taxRegistrySnapshot } from "@/lib/tributacao/registry-data";
 
 export async function publishAccountantInTransaction(tx: DatabaseTransaction, actor: { usuarioId: string; employeeId?: string | null }, input: {
-  taxpayerId: string; crc: string; expectedVersion: number; reason: string;
+  taxpayerId: string;
+  crc: string;
+  expectedVersion: number;
+  reason: string;
+  cpf?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  associatedCompanies?: string[];
 }): Promise<TaxRegistryEntryRecord> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`ACCOUNTANT:${input.taxpayerId}`},0))::text`);
   const [taxpayer] = await tx.select({ id: taxpayers.id }).from(taxpayers).where(and(eq(taxpayers.id, input.taxpayerId), eq(taxpayers.status, "Ativo"))).limit(1);
   if (!taxpayer) throw new Error("Selecione um contribuinte ativo do cadastro único.");
   const [previous] = await tx.select().from(taxRegistryEntries).where(and(eq(taxRegistryEntries.entityType, "TAXPAYER"), eq(taxRegistryEntries.entityId, input.taxpayerId), eq(taxRegistryEntries.category, "ACCOUNTANT"))).orderBy(desc(taxRegistryEntries.version)).limit(1);
   if ((previous?.version ?? 0) !== input.expectedVersion) throw new Error("O cadastro do contador foi alterado. Recarregue antes de salvar.");
-  const [entry] = await tx.insert(taxRegistryEntries).values({ entityType: "TAXPAYER", entityId: input.taxpayerId, category: "ACCOUNTANT", title: input.crc, version: input.expectedVersion + 1, actorUsuarioId: actor.usuarioId, data: { crc: input.crc, reason: input.reason, previousId: previous?.id ?? null } }).returning();
-  await tx.insert(taxAuditLogs).values({ action: "PUBLISH_ACCOUNTANT", entityType: "Taxpayer", entityId: input.taxpayerId, authorUsuarioId: actor.usuarioId, authorEmployeeId: actor.employeeId, payload: { before: previous ? taxRegistrySnapshot(previous.data) : null, after: entry.data } });
+  
+  const payloadData = {
+    crc: input.crc,
+    cpf: input.cpf ?? null,
+    phone: input.phone ?? null,
+    email: input.email ?? null,
+    associatedCompanies: input.associatedCompanies ?? [],
+    reason: input.reason,
+    previousId: previous?.id ?? null
+  };
+
+  const [entry] = await tx.insert(taxRegistryEntries).values({
+    entityType: "TAXPAYER",
+    entityId: input.taxpayerId,
+    category: "ACCOUNTANT",
+    title: input.crc,
+    version: input.expectedVersion + 1,
+    actorUsuarioId: actor.usuarioId,
+    data: payloadData
+  }).returning();
+
+  await tx.insert(taxAuditLogs).values({
+    action: "PUBLISH_ACCOUNTANT",
+    entityType: "Taxpayer",
+    entityId: input.taxpayerId,
+    authorUsuarioId: actor.usuarioId,
+    authorEmployeeId: actor.employeeId,
+    payload: { before: previous ? taxRegistrySnapshot(previous.data) : null, after: entry.data }
+  });
   await insertAuditEvent(tx, { actorUsuarioId: actor.usuarioId, eventType: "ADMINISTRATIVE_MUTATION", targetType: "TaxRegistryEntry", targetId: entry.id });
   return entry;
 }
 
-export async function readAccountantDirectory(db: DatabaseExecutor): Promise<AccountantDirectory> {
-  const [rows, entries] = await Promise.all([
-    db.select({ id: taxpayers.id, person: { fullName: people.fullName }, company: { corporateName: companies.corporateName } }).from(taxpayers).leftJoin(people, eq(people.id, taxpayers.personId)).leftJoin(companies, eq(companies.id, taxpayers.companyId)).where(eq(taxpayers.status, "Ativo")),
-    db.select().from(taxRegistryEntries).where(and(eq(taxRegistryEntries.entityType, "TAXPAYER"), eq(taxRegistryEntries.category, "ACCOUNTANT"))).orderBy(desc(taxRegistryEntries.version), desc(taxRegistryEntries.createdAt)),
+export async function readAccountantDirectory(db: DatabaseExecutor): Promise<AccountantDirectory & {
+  companiesList: { id: string; name: string; municipalInsc: string | null }[];
+}> {
+  const [rows, entries, economicRows] = await Promise.all([
+    db.select({
+      id: taxpayers.id,
+      person: { fullName: people.fullName, cpf: people.cpf, phone: people.phonePrimary, email: people.email },
+      company: { corporateName: companies.corporateName, cnpj: companies.cnpj, phone: companies.phone, email: companies.emailPrimary }
+    }).from(taxpayers)
+      .leftJoin(people, eq(people.id, taxpayers.personId))
+      .leftJoin(companies, eq(companies.id, taxpayers.companyId))
+      .where(eq(taxpayers.status, "Ativo")),
+    db.select().from(taxRegistryEntries)
+      .where(and(eq(taxRegistryEntries.entityType, "TAXPAYER"), eq(taxRegistryEntries.category, "ACCOUNTANT")))
+      .orderBy(desc(taxRegistryEntries.version), desc(taxRegistryEntries.createdAt)),
+    db.select({
+      id: taxpayers.id,
+      person: { fullName: people.fullName },
+      company: { corporateName: companies.corporateName },
+      municipalInsc: taxpayers.municipalInsc
+    }).from(taxpayers)
+      .leftJoin(people, eq(people.id, taxpayers.personId))
+      .leftJoin(companies, eq(companies.id, taxpayers.companyId))
+      .where(eq(taxpayers.status, "Ativo"))
   ]);
-  return { taxpayers: rows, entries };
+
+  return {
+    taxpayers: rows,
+    entries,
+    companiesList: economicRows.map(r => ({
+      id: r.id,
+      name: r.company?.corporateName ?? r.person?.fullName ?? r.id,
+      municipalInsc: r.municipalInsc
+    }))
+  };
 }

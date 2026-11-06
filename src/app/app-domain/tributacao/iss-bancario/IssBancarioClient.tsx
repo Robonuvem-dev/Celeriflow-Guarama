@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useTransition } from "react";
 import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
 import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
@@ -177,7 +177,7 @@ export default function IssBancarioClient({ data }: { data: Data }) {
           ))}
         </select>
       </OperationalHeaderActions>
-      <a className="text-xs font-semibold underline" href="/tributacao/iss-bancario/gestao">Gestão de autos, declarações, relatórios e downloads</a>
+      <div className="flex flex-wrap items-center gap-3"><a className="text-xs font-semibold underline" href="/tributacao/iss-bancario/gestao">Gestão de autos, declarações, relatórios e downloads</a><a className="text-xs font-semibold text-emerald-700 underline" href="/tributacao/iss-bancario/agencias">Cadastro de agências e agentes arrecadadores</a></div>
       {!listView && navigation}
       {message && !listView && (
         <button

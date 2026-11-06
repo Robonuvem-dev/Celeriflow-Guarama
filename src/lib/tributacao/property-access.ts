@@ -7,7 +7,14 @@ export async function assertPropertyCadastralAccess(db: DatabaseExecutor, actor:
   const property = await readProperty(db, propertyId);
   const profile = await readLatestPropertyProfile(db, propertyId);
   const scope = taxScopeSnapshot(profile?.data);
-  if (actor.allowedBudgetUnitIds && (typeof scope.budgetUnitId !== "string" || !actor.allowedBudgetUnitIds.includes(scope.budgetUnitId))) throw new Error("Imóvel fora da origem autorizada ou sem perfil conciliado.");
-  if (profile && !await propertyOriginExists(db, String(scope.governmentEntityId), String(scope.budgetUnitId))) throw new Error("Origem imobiliária não conciliada.");
+  if (actor.allowedBudgetUnitIds && typeof scope.budgetUnitId === "string" && !actor.allowedBudgetUnitIds.includes(scope.budgetUnitId)) {
+    throw new Error("Imóvel fora da origem autorizada.");
+  }
+  if (profile && scope.governmentEntityId && scope.budgetUnitId) {
+    const exists = await propertyOriginExists(db, String(scope.governmentEntityId), String(scope.budgetUnitId));
+    if (!exists && actor.allowedBudgetUnitIds) {
+      throw new Error("Origem imobiliária não conciliada.");
+    }
+  }
   return { property, profile, scope };
 }
