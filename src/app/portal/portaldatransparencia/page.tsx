@@ -28,6 +28,39 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   return { title: `${presentation.title} | ${MUNICIPALITY_INSTITUTION_NAME}`, description: presentation.intro, alternates: { canonical: `${publicPortalOrigin(presentation)}${publicTransparencyPath}` }, ...(isTransparencyConsultation(raw) ? { robots: { index: false, follow: true } } : {}) };
 }
 const sources = transparencySourceLabels;
+
+const DASHBOARD_EDIT_PATHS: Record<string, { label: string; href: string }> = {
+  servidores: { label: "Cadastro de Servidores", href: "/rh/servidores" },
+  estagiarios: { label: "Gestão de Estagiários e Contratos", href: "/rh/servidores" },
+  autonomos: { label: "Gestão de Autônomos", href: "/rh/servidores" },
+  inativos: { label: "Aposentadorias e Pensões", href: "/rh/servidores" },
+  cessoes: { label: "Cessões e Disposições", href: "/rh/servidores" },
+  vagas: { label: "Cargos e Vagas", href: "/administracao/cargos" },
+  "padrao-remuneratorio": { label: "Parametrizações e Tabela Salarial", href: "/rh/parametrizacoes" },
+  "quantitativo-pessoal": { label: "Gestão de Pessoal", href: "/rh/servidores" },
+  diarias: { label: "Diárias e Despesas de Pessoal", href: "/financeiro/despesas" },
+  despesas: { label: "Execução da Despesa e Empenhos", href: "/financeiro/despesas" },
+  liquidacoes: { label: "Liquidações da Despesa", href: "/financeiro/despesas" },
+  pagamentos: { label: "Pagamentos e Tesouraria", href: "/financeiro/tesouraria" },
+  receitas: { label: "Arrecadação e Tributação", href: "/tributacao/receitas" },
+  "restos-a-pagar": { label: "Restos a Pagar", href: "/financeiro/despesas" },
+  repasses: { label: "Gestão Financeira e Repasses", href: "/financeiro" },
+  licitacoes: { label: "Licitações e Contratações", href: "/compras/licitacoes" },
+  contratos: { label: "Contratos e Aditivos", href: "/compras/contratos" },
+  compras: { label: "Compras e Suprimentos", href: "/compras/solicitacoes" },
+  convenios: { label: "Convênios e Termos de Parceria", href: "/compras/contratos" },
+  obras: { label: "Obras Públicas e Medições", href: "/patrimonio/obras" },
+  patrimonio: { label: "Bens e Patrimônio Municipal", href: "/patrimonio" },
+  estoque: { label: "Almoxarifado e Estoque", href: "/patrimonio/materiais" },
+  frota: { label: "Frota Municipal", href: "/patrimonio/frota" },
+  renuncia: { label: "Tributação e Benefícios Fiscais", href: "/tributacao" },
+  publicacoes: { label: "Publicações e Atos Oficiais", href: "/administracao/documentos" },
+  legislacao: { label: "Legislação Municipal", href: "/administracao/documentos" },
+  medicamentos: { label: "Almoxarifado e Medicamentos", href: "/patrimonio/materiais" },
+  "fila-saude": { label: "Atendimento e Regulação", href: "/atendimento" },
+  "fila-creches": { label: "Atendimento e Matrículas", href: "/atendimento" },
+};
+
 export default async function PublicTransparencyPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const raw = await searchParams;
   const [settings, presentation] = await Promise.all([getTransparencySettings(db), getDiscoverySettings(db)]);
@@ -95,6 +128,19 @@ export default async function PublicTransparencyPage({ searchParams }: { searchP
         </section>}
       </section>
     </div>
+    
+        {DASHBOARD_EDIT_PATHS[slug] && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-xs text-blue-900 shadow-sm flex items-center justify-between flex-wrap gap-2">
+            <span>É servidor público e precisa editar essas informações?</span>
+            <Link
+              href={DASHBOARD_EDIT_PATHS[slug].href}
+              className="font-bold underline text-[#0e4c7e] hover:text-[#0a355c] inline-flex items-center gap-1"
+            >
+              Clique aqui para acessar o módulo {DASHBOARD_EDIT_PATHS[slug].label} no Celeriflow &rarr;
+            </Link>
+          </div>
+        )}
+
     {presentation.feedbackEnabled && <PageFeedbackForm key={slug} page="CONSULTATION" collectionSlug={slug} />}
   </main>;
 }

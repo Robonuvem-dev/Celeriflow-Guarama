@@ -219,6 +219,7 @@ export async function nativeTransparencyDataset(db: DatabaseExecutor, collection
               created,
               occupied,
               available,
+              value: "3500.00",
               legalReference: "Lei Municipal do Quadro Geral de Vagas e Cargos Públicos",
             }
           });

@@ -188,8 +188,9 @@ export default async function SecretariasPage() {
   const defaultHours = transparencySettings?.openingHours || transparencySettings?.citizenService?.openingHours || "Segunda a Sexta, das 08h00 às 11h30 e das 13h00 às 17h00";
 
   // Build merged secretariat list prioritizing live database records
-  const items = (dbSecretariats.length > 0
-    ? dbSecretariats.map((sec) => {
+  const activeSecretariats = dbSecretariats.filter(sec => sec.isActive !== false);
+  const items = (activeSecretariats.length > 0
+    ? activeSecretariats.map((sec) => {
         const slug = generateSlug(sec.name);
         const baseKey = Object.keys(SECRETARIAS_BASE_COMPETENCIAS).find(k => slug.includes(k) || k.includes(slug)) || "administracao";
         const meta = SECRETARIAS_BASE_COMPETENCIAS[baseKey] || SECRETARIAS_BASE_COMPETENCIAS.administracao;
