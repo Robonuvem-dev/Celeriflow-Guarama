@@ -19,15 +19,37 @@ import {
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { databaseConnection } from "@/db/client";
-import { withDatabaseTransaction } from "@/db/transaction";
+import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transaction";
 import { procurementContracts, contractAmendments, purchaseProcesses } from "@/db/schema/procurement-core";
 import { procurementLifecycleEvents, purchaseRequests } from "@/db/schema/procurement-requests";
-import { instrumentMeasurements, instrumentInstallments } from "@/db/schema/procurement-instruments";
+import {
+  instrumentMeasurements,
+  instrumentInstallments,
+  instrumentResponsibilityGroups,
+  instrumentParties,
+} from "@/db/schema/procurement-instruments";
 import { procurementUnits } from "@/db/schema/procurement-budget";
 import { suppliers } from "@/db/schema/registry";
 import { employees as employeeTable } from "@/db/schema/administration";
 
 type ContractActionResult = { success: true } | { success: false; error: string };
+
+type SubmittedResponsibilityGroup = {
+  id?: string;
+  tempId?: string;
+  name: string;
+  description?: string;
+};
+
+type SubmittedInstrumentParty = {
+  id?: string;
+  role: string;
+  partyValue: string;
+  groupRef?: string;
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+};
 
 const contractStatuses = ["Minuta", "Vigente", "Encerrado", "Aditado", "Suspenso", "Rescindido", "Em Análise"];
 const directlyEditableStatuses = ["Minuta", "Vigente", "Encerrado"];
@@ -113,6 +135,181 @@ function revalidateContractPaths(id: string) {
   revalidatePath(`/compras/contratos/${id}/editar`);
 }
 
+function parsePartyIdentifier(rawValue: string) {
+  const [kind, ...rest] = rawValue.split(":");
+  const id = rest.join(":").trim();
+  if (!id) return null;
+  if (kind === "SUPPLIER") return { supplierId: id, personId: null, companyId: null, employeeId: null };
+  if (kind === "PERSON") return { supplierId: null, personId: id, companyId: null, employeeId: null };
+  if (kind === "COMPANY") return { supplierId: null, personId: null, companyId: id, employeeId: null };
+  if (kind === "EMPLOYEE") return { supplierId: null, personId: null, companyId: null, employeeId: id };
+  return null;
+}
+
+async function syncContractGroupsAndParties(
+  tx: DatabaseTransaction,
+  contractId: string,
+  groupsJson: string | null,
+  partiesJson: string | null,
+) {
+  const groupRefMap = new Map<string, string>();
+
+  if (groupsJson !== null) {
+    let parsedGroups: SubmittedResponsibilityGroup[] = [];
+    try {
+      const parsed = JSON.parse(groupsJson);
+      if (Array.isArray(parsed)) parsedGroups = parsed;
+    } catch {
+      parsedGroups = [];
+    }
+
+    const existingGroups = await tx
+      .select()
+      .from(instrumentResponsibilityGroups)
+      .where(eq(instrumentResponsibilityGroups.contractId, contractId));
+    const existingGroupIds = new Set(existingGroups.map((g) => g.id));
+    const keptGroupIds = new Set<string>();
+
+    for (const item of parsedGroups) {
+      const name = String(item.name || "").trim();
+      if (!name) continue;
+      const description = String(item.description || "").trim() || null;
+
+      if (item.id && existingGroupIds.has(item.id)) {
+        keptGroupIds.add(item.id);
+        await tx
+          .update(instrumentResponsibilityGroups)
+          .set({ name, description })
+          .where(eq(instrumentResponsibilityGroups.id, item.id));
+        groupRefMap.set(item.id, item.id);
+        if (item.tempId) groupRefMap.set(item.tempId, item.id);
+        groupRefMap.set(name, item.id);
+      } else {
+        const [inserted] = await tx
+          .insert(instrumentResponsibilityGroups)
+          .values({
+            name,
+            description,
+            contractId,
+            covenantId: null,
+          })
+          .returning({ id: instrumentResponsibilityGroups.id });
+        if (inserted) {
+          keptGroupIds.add(inserted.id);
+          if (item.id) groupRefMap.set(item.id, inserted.id);
+          if (item.tempId) groupRefMap.set(item.tempId, inserted.id);
+          groupRefMap.set(name, inserted.id);
+        }
+      }
+    }
+
+    const groupsToDelete = existingGroups
+      .filter((g) => !keptGroupIds.has(g.id))
+      .map((g) => g.id);
+    if (groupsToDelete.length > 0) {
+      await tx
+        .update(instrumentParties)
+        .set({ responsibilityGroupId: null })
+        .where(
+          and(
+            eq(instrumentParties.contractId, contractId),
+            inArray(instrumentParties.responsibilityGroupId, groupsToDelete),
+          ),
+        );
+      await tx
+        .delete(instrumentResponsibilityGroups)
+        .where(
+          and(
+            eq(instrumentResponsibilityGroups.contractId, contractId),
+            inArray(instrumentResponsibilityGroups.id, groupsToDelete),
+          ),
+        );
+    }
+  } else {
+    const existingGroups = await tx
+      .select()
+      .from(instrumentResponsibilityGroups)
+      .where(eq(instrumentResponsibilityGroups.contractId, contractId));
+    for (const g of existingGroups) {
+      groupRefMap.set(g.id, g.id);
+      groupRefMap.set(g.name, g.id);
+    }
+  }
+
+  if (partiesJson !== null) {
+    let parsedParties: SubmittedInstrumentParty[] = [];
+    try {
+      const parsed = JSON.parse(partiesJson);
+      if (Array.isArray(parsed)) parsedParties = parsed;
+    } catch {
+      parsedParties = [];
+    }
+
+    const existingParties = await tx
+      .select()
+      .from(instrumentParties)
+      .where(eq(instrumentParties.contractId, contractId));
+    const existingPartyIds = new Set(existingParties.map((p) => p.id));
+    const keptPartyIds = new Set<string>();
+
+    for (const item of parsedParties) {
+      const role = String(item.role || "").trim();
+      const target = parsePartyIdentifier(String(item.partyValue || "").trim());
+      if (!role || !target) continue;
+
+      const rawGroupRef = String(item.groupRef || "").trim();
+      const responsibilityGroupId = rawGroupRef ? (groupRefMap.get(rawGroupRef) ?? null) : null;
+      const activeFrom = parseContractDate(String(item.startDate || "").trim());
+      const activeTo = parseContractDate(String(item.endDate || "").trim());
+      const notes = String(item.notes || "").trim() || null;
+
+      if (item.id && existingPartyIds.has(item.id)) {
+        keptPartyIds.add(item.id);
+        await tx
+          .update(instrumentParties)
+          .set({
+            role,
+            ...target,
+            responsibilityGroupId,
+            activeFrom,
+            activeTo,
+            notes,
+          })
+          .where(eq(instrumentParties.id, item.id));
+      } else {
+        const [inserted] = await tx
+          .insert(instrumentParties)
+          .values({
+            role,
+            ...target,
+            responsibilityGroupId,
+            activeFrom,
+            activeTo,
+            notes,
+            contractId,
+            covenantId: null,
+          })
+          .returning({ id: instrumentParties.id });
+        if (inserted) keptPartyIds.add(inserted.id);
+      }
+    }
+
+    const partiesToDelete = existingParties
+      .filter((p) => !keptPartyIds.has(p.id))
+      .map((p) => p.id);
+    if (partiesToDelete.length > 0) {
+      await tx
+        .delete(instrumentParties)
+        .where(
+          and(
+            eq(instrumentParties.contractId, contractId),
+            inArray(instrumentParties.id, partiesToDelete),
+          ),
+        );
+    }
+  }
+}
+
 export async function deleteContract(id: string) {
   try {
     const contractId = String(id || "").trim();
@@ -152,6 +349,17 @@ export async function saveContract(formData: FormData) {
     const requestedInitialValue = formNumber(formData, "initialValue");
     const requestedStartDate = parseContractDate(formString(formData, "startDate"));
     const requestedEndDate = parseContractDate(formString(formData, "endDate"));
+
+    const hasManagerField = formData.has("managerId");
+    const hasInspectorField = formData.has("inspectorId");
+    const requestedManagerId = hasManagerField ? (formString(formData, "managerId") || null) : undefined;
+    const requestedInspectorId = hasInspectorField ? (formString(formData, "inspectorId") || null) : undefined;
+    const groupsJson = formData.has("responsibilityGroupsJson")
+      ? formString(formData, "responsibilityGroupsJson")
+      : null;
+    const partiesJson = formData.has("instrumentPartiesJson")
+      ? formString(formData, "instrumentPartiesJson")
+      : null;
 
     const current = id ? (await databaseConnection.db.select().from(procurementContracts).where(eq(procurementContracts.id, id)).limit(1))[0] : null;
     if (id && !current) return { success: false, error: "Contrato não encontrado." };
@@ -208,6 +416,8 @@ export async function saveContract(formData: FormData) {
       supplierId,
       secretariatId,
       sourceBudgetUnitId,
+      ...(requestedManagerId !== undefined ? { managerId: requestedManagerId } : {}),
+      ...(requestedInspectorId !== undefined ? { inspectorId: requestedInspectorId } : {}),
     };
 
     if (current) {
@@ -223,6 +433,20 @@ export async function saveContract(formData: FormData) {
         // Compare the source UG and version read before validation so a concurrent update cannot be overwritten.
         const updated = await tx.update(procurementContracts).set(data).where(contractVersionCondition(existing)).returning({ id: procurementContracts.id });
         if (updated.length !== 1) throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
+
+        if (groupsJson !== null || partiesJson !== null) {
+          await syncContractGroupsAndParties(tx, existing.id, groupsJson, partiesJson);
+        }
+      });
+    } else if (groupsJson !== null || partiesJson !== null) {
+      await withDatabaseTransaction(databaseConnection, async (tx) => {
+        const [inserted] = await tx
+          .insert(procurementContracts)
+          .values(data)
+          .returning({ id: procurementContracts.id });
+        if (inserted) {
+          await syncContractGroupsAndParties(tx, inserted.id, groupsJson, partiesJson);
+        }
       });
     } else {
       await databaseConnection.db.insert(procurementContracts).values(data);

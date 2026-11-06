@@ -1,33 +1,81 @@
 "use client";
 
 import { useState } from "react";
-import styles from "@/components/app-ui/operational/operational.module.css";
-import { Trash, Edit, FileText } from "lucide-react";
-import Link from "next/link";
 import { deleteContract } from "./actions";
+import { Trash2, Edit, Eye, Loader2, Users } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
-export function ContratoRowActions({ id }: { id: string }) {
+export default function ContratoRowActions({
+  id,
+  number,
+  onQuickEdit,
+}: {
+  id: string;
+  number: string;
+  onQuickEdit?: (trigger: HTMLButtonElement) => void;
+}) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   async function handleDelete() {
-    if (confirm("Tem certeza que deseja excluir este contrato?")) {
-      setIsDeleting(true);
-      const result = await deleteContract(id);
+    if (
+      !confirm(
+        `Tem certeza que deseja excluir o Contrato Nº ${number}? Esta ação não pode ser desfeita.`,
+      )
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    const res = await deleteContract(id);
+    if (!res.success) {
+      alert(res.error || "Erro ao excluir contrato.");
       setIsDeleting(false);
-      if (!result.success) alert(result.error || "Nao foi possivel excluir o contrato.");
+    } else {
+      router.refresh();
     }
   }
 
   return (
     <div className={styles.rowActions}>
-      <Link href={`/compras/contratos/${id}`} className={styles.iconButton} aria-label="Ver detalhes do contrato" title="Ver Detalhes">
-        <FileText className="h-4 w-4 text-blue-500" />
+      {onQuickEdit ? (
+        <button
+          type="button"
+          onClick={(e) => onQuickEdit(e.currentTarget)}
+          className="inline-flex h-7 items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100"
+          title={`Edição rápida de responsáveis, representantes e signatários do contrato ${number}`}
+        >
+          <Users className="size-3.5" />
+          Edição rápida
+        </button>
+      ) : null}
+      <Link
+        href={`/compras/contratos/${encodeURIComponent(id)}`}
+        className={styles.iconButton}
+        title="Ver Detalhes do Contrato"
+        aria-label={`Ver detalhes do contrato ${number}`}
+      >
+        <Eye />
       </Link>
-      <Link href={`/compras/contratos/${id}/editar`} className={styles.iconButton} aria-label="Editar contrato" title="Editar">
-        <Edit className="h-4 w-4 text-amber-500" />
+      <Link
+        href={`/compras/contratos/${encodeURIComponent(id)}/editar`}
+        className={styles.iconButton}
+        title="Editar Contrato"
+        aria-label={`Editar contrato ${number}`}
+      >
+        <Edit />
       </Link>
-      <button type="button" className={styles.iconButton} onClick={handleDelete} disabled={isDeleting} aria-label="Excluir contrato" title="Excluir">
-        <Trash className="h-4 w-4 text-rose-500" />
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={isDeleting}
+        className={styles.iconButton}
+        title="Excluir Contrato"
+        aria-label={`Excluir contrato ${number}`}
+      >
+        {isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
       </button>
     </div>
   );

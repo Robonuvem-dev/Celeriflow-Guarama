@@ -162,3 +162,229 @@ export async function loadContractDetail(db: DatabaseExecutor, id: string): Prom
     receipts: receipts.map(receipt => ({ ...receipt, items: receiptItems.filter(item => item.item.purchaseReceiptId === receipt.id).map(item => ({ ...item.item, material: item.material })) })),
   };
 }
+
+
+export async function loadContractFormSelectors(db: DatabaseExecutor, contractId?: string) {
+  const [employeeRows, personRows, companyRows, supplierRows, existingGroups, existingParties] = await Promise.all([
+    db
+      .select({
+        id: employees.id,
+        name: employees.name,
+        registration: employees.registration,
+        roleName: roles.name,
+      })
+      .from(employees)
+      .leftJoin(roles, eq(roles.id, employees.roleId))
+      .where(eq(employees.isActive, true))
+      .orderBy(asc(employees.name)),
+    db
+      .select({ id: people.id, fullName: people.fullName, cpf: people.cpf })
+      .from(people)
+      .where(eq(people.status, "Ativo"))
+      .orderBy(asc(people.fullName)),
+    db
+      .select({
+        id: companies.id,
+        corporateName: companies.corporateName,
+        tradeName: companies.tradeName,
+        cnpj: companies.cnpj,
+      })
+      .from(companies)
+      .where(eq(companies.status, "Ativo"))
+      .orderBy(asc(companies.corporateName)),
+    db
+      .select(supplierSelection)
+      .from(suppliers)
+      .leftJoin(companies, eq(companies.id, suppliers.companyId))
+      .leftJoin(people, eq(people.id, suppliers.personId))
+      .where(eq(suppliers.status, "Ativo"))
+      .orderBy(desc(suppliers.createdAt)),
+    contractId
+      ? db
+          .select()
+          .from(instrumentResponsibilityGroups)
+          .where(eq(instrumentResponsibilityGroups.contractId, contractId))
+          .orderBy(asc(instrumentResponsibilityGroups.createdAt))
+      : Promise.resolve([]),
+    contractId
+      ? db
+          .select()
+          .from(instrumentParties)
+          .where(eq(instrumentParties.contractId, contractId))
+          .orderBy(asc(instrumentParties.createdAt))
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    employees: employeeRows,
+    people: personRows,
+    companies: companyRows,
+    suppliers: supplierRows.map((row) => ({
+      ...row.supplier,
+      company: row.company,
+      person: row.person,
+    })),
+    responsibilityGroups: existingGroups,
+    instrumentParties: existingParties,
+  };
+}
+
+export async function loadContractsWorkspaceData(db: DatabaseExecutor) {
+  const [
+    contractRows,
+    amendmentRows,
+    groupRows,
+    partyRows,
+    employeeRows,
+    personRows,
+    companyRows,
+    supplierRows,
+  ] = await Promise.all([
+    db
+      .select({
+        contract: procurementContracts,
+        processNumber: purchaseProcesses.number,
+        ...supplierSelection,
+        secretariat: { name: secretariats.name },
+        sourceBudgetUnit: { code: procurementUnits.code, name: procurementUnits.name },
+      })
+      .from(procurementContracts)
+      .innerJoin(purchaseProcesses, eq(purchaseProcesses.id, procurementContracts.processId))
+      .innerJoin(suppliers, eq(suppliers.id, procurementContracts.supplierId))
+      .leftJoin(companies, eq(companies.id, suppliers.companyId))
+      .leftJoin(people, eq(people.id, suppliers.personId))
+      .innerJoin(secretariats, eq(secretariats.id, procurementContracts.secretariatId))
+      .leftJoin(procurementUnits, eq(procurementUnits.id, procurementContracts.sourceBudgetUnitId))
+      .orderBy(desc(procurementContracts.createdAt)),
+    db.select().from(contractAmendments).orderBy(desc(contractAmendments.createdAt)),
+    db
+      .select()
+      .from(instrumentResponsibilityGroups)
+      .orderBy(asc(instrumentResponsibilityGroups.createdAt)),
+    db
+      .select({
+        party: instrumentParties,
+        personName: people.fullName,
+        companyName: companies.corporateName,
+        employeeName: employees.name,
+      })
+      .from(instrumentParties)
+      .leftJoin(people, eq(people.id, instrumentParties.personId))
+      .leftJoin(companies, eq(companies.id, instrumentParties.companyId))
+      .leftJoin(employees, eq(employees.id, instrumentParties.employeeId))
+      .orderBy(asc(instrumentParties.createdAt)),
+    db
+      .select({
+        id: employees.id,
+        name: employees.name,
+        registration: employees.registration,
+        roleName: roles.name,
+      })
+      .from(employees)
+      .leftJoin(roles, eq(roles.id, employees.roleId))
+      .where(eq(employees.isActive, true))
+      .orderBy(asc(employees.name)),
+    db
+      .select({ id: people.id, fullName: people.fullName })
+      .from(people)
+      .where(eq(people.status, "Ativo"))
+      .orderBy(asc(people.fullName)),
+    db
+      .select({
+        id: companies.id,
+        corporateName: companies.corporateName,
+        tradeName: companies.tradeName,
+      })
+      .from(companies)
+      .where(eq(companies.status, "Ativo"))
+      .orderBy(asc(companies.corporateName)),
+    db
+      .select(supplierSelection)
+      .from(suppliers)
+      .leftJoin(companies, eq(companies.id, suppliers.companyId))
+      .leftJoin(people, eq(people.id, suppliers.personId))
+      .where(eq(suppliers.status, "Ativo"))
+      .orderBy(desc(suppliers.createdAt)),
+  ]);
+
+  const employeeById = new Map(employeeRows.map((emp) => [emp.id, emp]));
+  const supplierById = new Map(
+    supplierRows.map((row) => [
+      row.supplier.id,
+      row.company?.corporateName || row.person?.fullName || "Fornecedor",
+    ]),
+  );
+  const groupById = new Map(groupRows.map((g) => [g.id, g]));
+
+  return {
+    contracts: contractRows.map((row) => {
+      const contractId = row.contract.id;
+      const contractAmendmentsList = amendmentRows.filter((a) => a.contractId === contractId);
+      const contractGroups = groupRows
+        .filter((g) => g.contractId === contractId)
+        .map((g) => ({
+          ...g,
+          memberCount: partyRows.filter((p) => p.party.responsibilityGroupId === g.id).length,
+        }));
+      const contractParties = partyRows
+        .filter((p) => p.party.contractId === contractId)
+        .map((p) => {
+          const identityLabel =
+            p.personName ||
+            p.companyName ||
+            p.employeeName ||
+            (p.party.supplierId ? supplierById.get(p.party.supplierId) : null) ||
+            "Não identificado";
+          const partyValue = p.party.supplierId
+            ? `SUPPLIER:${p.party.supplierId}`
+            : p.party.personId
+              ? `PERSON:${p.party.personId}`
+              : p.party.companyId
+                ? `COMPANY:${p.party.companyId}`
+                : p.party.employeeId
+                  ? `EMPLOYEE:${p.party.employeeId}`
+                  : "";
+          return {
+            id: p.party.id,
+            role: p.party.role,
+            identityLabel,
+            partyValue,
+            responsibilityGroupId: p.party.responsibilityGroupId,
+            responsibilityGroupName: p.party.responsibilityGroupId
+              ? groupById.get(p.party.responsibilityGroupId)?.name ?? null
+              : null,
+            startDate: p.party.activeFrom,
+            endDate: p.party.activeTo,
+            notes: p.party.notes,
+          };
+        });
+
+      const manager = row.contract.managerId ? employeeById.get(row.contract.managerId) ?? null : null;
+      const inspector = row.contract.inspectorId
+        ? employeeById.get(row.contract.inspectorId) ?? null
+        : null;
+
+      return {
+        ...row.contract,
+        processNumber: row.processNumber,
+        supplier: { ...row.supplier, company: row.company, person: row.person },
+        secretariat: row.secretariat,
+        sourceBudgetUnit: row.sourceBudgetUnit,
+        managerName: manager ? manager.name : null,
+        inspectorName: inspector ? inspector.name : null,
+        amendments: contractAmendmentsList,
+        responsibilityGroups: contractGroups,
+        instrumentParties: contractParties,
+      };
+    }),
+    selectors: {
+      employees: employeeRows,
+      people: personRows,
+      companies: companyRows,
+      suppliers: supplierRows.map((row) => ({
+        id: row.supplier.id,
+        label: row.company?.corporateName || row.person?.fullName || "Fornecedor",
+      })),
+    },
+  };
+}

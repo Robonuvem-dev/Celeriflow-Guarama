@@ -12,7 +12,8 @@ import { inventorySessions, inventorySessionItems, warehouses, materialStocks, m
 import { users } from "@/db/schema/identity";
 
 export default async function InventarioDetalhePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = decodeURIComponent(rawId);
   await getTenantContextForModule("PATRIMONIO");
   const approvers = alias(users, "inventory_approvers");
   const [loaded] = await db.select({ session: inventorySessions, warehouse: { name: warehouses.name }, createdByUsuario: { nome: users.nome }, approvedByUsuario: { nome: approvers.nome } }).from(inventorySessions)

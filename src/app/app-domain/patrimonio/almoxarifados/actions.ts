@@ -9,11 +9,16 @@ import { db } from "@/db/client";
 import { warehouses } from "@/db/schema/assets-stock";
 import { employees } from "@/db/schema/administration";
 import { costCenters } from "@/db/schema/master-data";
+import { people } from "@/db/schema/people";
 
 const text = (maximum: number) => z.string().trim().max(maximum).optional();
 const warehouseInput = z.object({
   name: z.string().trim().min(1, "Informe o nome do almoxarifado.").max(160),
   type: z.enum(["Central", "Setorial"]),
+  storageLocationType: text(60),
+  aisle: text(60),
+  shelf: text(60),
+  bin: text(60),
   zipCode: text(16),
   streetName: text(180),
   number: text(30),
@@ -26,10 +31,62 @@ const warehouseInput = z.object({
 
 type WarehouseActionResult = { error?: string };
 
+export async function createEmployeeQuickAction(data: {
+  fullName: string;
+  cpf: string;
+  registration?: string;
+  role?: string;
+}): Promise<{ error?: string; employee?: { id: string; label: string } }> {
+  try {
+    await getTenantContextForModuleOperation("PATRIMONIO", "create");
+    const name = data.fullName.trim();
+    const rawCpf = data.cpf.replace(/\D/g, "");
+    if (!name) return { error: "Nome completo é obrigatório." };
+    if (!rawCpf) return { error: "CPF é obrigatório." };
+
+    let [person] = await db.select({ id: people.id }).from(people).where(eq(people.cpf, rawCpf)).limit(1);
+    if (!person) {
+      [person] = await db.insert(people).values({
+        fullName: name,
+        cpf: rawCpf,
+        gender: "Não informado",
+        raceColor: "Não informada",
+        motherName: "Não informada",
+        birthDate: new Date("1990-01-01T00:00:00.000Z"),
+        status: "Ativo",
+      }).returning({ id: people.id });
+    }
+
+    let [emp] = await db.select({ id: employees.id, name: employees.name, registration: employees.registration })
+      .from(employees)
+      .where(eq(employees.cpf, rawCpf))
+      .limit(1);
+
+    if (!emp) {
+      [emp] = await db.insert(employees).values({
+        name,
+        cpf: rawCpf,
+        registration: data.registration?.trim() || null,
+        personId: person.id,
+        isActive: true,
+      }).returning({ id: employees.id, name: employees.name, registration: employees.registration });
+    }
+
+    const label = [emp.name, emp.registration ? `Matrícula ${emp.registration}` : null].filter(Boolean).join(" · ");
+    return { employee: { id: emp.id, label } };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Não foi possível cadastrar o servidor." };
+  }
+}
+
 function formInput(formData: FormData) {
   return warehouseInput.safeParse({
     name: formData.get("name"),
     type: formData.get("type"),
+    storageLocationType: formData.get("storageLocationType"),
+    aisle: formData.get("aisle"),
+    shelf: formData.get("shelf"),
+    bin: formData.get("bin"),
     zipCode: formData.get("zipCode"),
     streetName: formData.get("streetName"),
     number: formData.get("number"),
@@ -48,7 +105,19 @@ function normalizedAddress(input: z.output<typeof warehouseInput>) {
     input.city && input.state ? `${input.city}/${input.state}` : input.city || input.state,
     input.zipCode ? `CEP ${input.zipCode}` : undefined,
   ].filter(Boolean);
-  return parts.join(" - ") || null;
+
+  const locationDetails = [
+    input.storageLocationType ? `Tipo: ${input.storageLocationType}` : null,
+    input.aisle ? `Corredor: ${input.aisle}` : null,
+    input.shelf ? `Prateleira: ${input.shelf}` : null,
+    input.bin ? `Escaninho/Box: ${input.bin}` : null,
+  ].filter(Boolean);
+
+  let finalAddress = parts.join(" - ") || null;
+  if (locationDetails.length > 0) {
+    finalAddress = finalAddress ? `${finalAddress} [${locationDetails.join(" | ")}]` : `[${locationDetails.join(" | ")}]`;
+  }
+  return finalAddress;
 }
 
 async function validateReferences(

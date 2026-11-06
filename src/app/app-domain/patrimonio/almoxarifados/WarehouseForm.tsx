@@ -50,6 +50,11 @@ export function WarehouseForm({ title, submitLabel, initial, costCenters, action
   const [cepMessage, setCepMessage] = useState<string | null>(null);
   const [isSearchingCep, setIsSearchingCep] = useState(false);
 
+  const [storageType, setStorageType] = useState("Depósito");
+  const [aisle, setAisle] = useState("");
+  const [shelf, setShelf] = useState("");
+  const [bin, setBin] = useState("");
+
   async function lookupCep() {
     const zipCode = address.zipCode.replace(/\D/g, "");
     if (zipCode.length !== 8) {
@@ -82,13 +87,42 @@ export function WarehouseForm({ title, submitLabel, initial, costCenters, action
     <PageFrame className="min-h-0 max-w-4xl flex-1 space-y-3 overflow-y-auto p-3">
       <PageHeader title={title} action={<Link href="/patrimonio/almoxarifados"><Button size="sm" variant="outline">Cancelar</Button></Link>} />
        <form action={action} className="grid items-start gap-4 rounded-md border bg-white p-4 md:grid-cols-2">
-        <label className="grid gap-1 text-sm font-medium md:col-span-2">Nome<input name="name" required maxLength={160} defaultValue={initial?.name || ""} className="h-9 rounded-md border bg-background px-3 text-sm" placeholder="Ex.: Almoxarifado Central" /></label>
-        <label className="grid gap-1 text-sm font-medium">Tipo<select name="type" defaultValue={initial?.type || "Central"} className="h-9 rounded-md border bg-background px-3 text-sm"><option value="Central">Central</option><option value="Setorial">Setorial</option></select></label>
+        <label className="grid gap-1 text-sm font-medium md:col-span-2">Nome do Almoxarifado / Local *<input name="name" required maxLength={160} defaultValue={initial?.name || ""} className="h-9 rounded-md border bg-background px-3 text-sm" placeholder="Ex.: Almoxarifado Central, Depósito 02, Prateleira Setorial..." /></label>
+        <label className="grid gap-1 text-sm font-medium">Tipo de Almoxarifado<select name="type" defaultValue={initial?.type || "Central"} className="h-9 rounded-md border bg-background px-3 text-sm"><option value="Central">Central</option><option value="Setorial">Setorial</option></select></label>
         <label className="grid gap-1 text-sm font-medium">Centro de custo<select name="costCenterId" defaultValue={initial?.costCenterId || ""} className="h-9 rounded-md border bg-background px-3 text-sm"><option value="">Não vincular agora</option>{costCenters.map((costCenter) => <option key={costCenter.id} value={costCenter.id}>{costCenter.code} · {costCenter.name}</option>)}</select></label>
-        <div className="rounded-md border bg-slate-50 p-3 md:col-span-2"><WarehouseEmployeePicker value={managerId} selectedLabel={managerLabel} onChange={(id, label) => { setManagerId(id); setManagerLabel(label); }} /></div>
+        
+        <div className="rounded-md border bg-slate-50 p-3 md:col-span-2">
+          <WarehouseEmployeePicker value={managerId} selectedLabel={managerLabel} onChange={(id, label) => { setManagerId(id); setManagerLabel(label); }} />
+        </div>
+
+        <fieldset className="grid gap-3 border-t pt-3 md:col-span-2 md:grid-cols-4">
+          <legend className="mb-1 text-sm font-semibold text-slate-800">Estrutura e Local de Armazenagem (Depósito / Prateleira / Endereço)</legend>
+          <label className="grid gap-1 text-sm font-medium md:col-span-1">
+            Tipo de Armazenagem
+            <select name="storageLocationType" value={storageType} onChange={(e) => setStorageType(e.target.value)} className="h-9 rounded-md border bg-background px-3 text-sm">
+              <option value="Depósito">Depósito</option>
+              <option value="Almoxarifado">Almoxarifado</option>
+              <option value="Prateleira">Prateleira</option>
+              <option value="Armário / Box">Armário / Box</option>
+              <option value="Palete / Racks">Palete / Racks</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-medium md:col-span-1">
+            Corredor / Ala
+            <Input name="aisle" value={aisle} onChange={(e) => setAisle(e.target.value)} placeholder="Ex: Corredor A" />
+          </label>
+          <label className="grid gap-1 text-sm font-medium md:col-span-1">
+            Prateleira / Nível
+            <Input name="shelf" value={shelf} onChange={(e) => setShelf(e.target.value)} placeholder="Ex: Prateleira 03" />
+          </label>
+          <label className="grid gap-1 text-sm font-medium md:col-span-1">
+            Escaninho / Box
+            <Input name="bin" value={bin} onChange={(e) => setBin(e.target.value)} placeholder="Ex: Box 12" />
+          </label>
+        </fieldset>
 
         <fieldset className="grid gap-3 border-t pt-3 md:col-span-2 md:grid-cols-6">
-          <legend className="mb-1 text-sm font-semibold text-slate-800">Endereço</legend>
+          <legend className="mb-1 text-sm font-semibold text-slate-800">Endereço Físico</legend>
           {initial?.address && !initial.streetName && !initial.neighborhood && !initial.city && <p className="text-xs text-slate-500 md:col-span-6">Endereço cadastrado anteriormente: {initial.address}. Preencha os campos abaixo para atualizá-lo de forma estruturada.</p>}
           <label className="grid gap-1 text-sm font-medium md:col-span-2">CEP<Input name="zipCode" inputMode="numeric" value={address.zipCode} onChange={(event) => setAddress((current) => ({ ...current, zipCode: event.target.value.replace(/\D/g, "").slice(0, 8) }))} onBlur={() => { if (address.zipCode.replace(/\D/g, "").length === 8) void lookupCep(); }} placeholder="00000000" /></label>
           <div className="flex items-end md:col-span-4"><Button type="button" variant="outline" disabled={isSearchingCep} onClick={() => void lookupCep()}>{isSearchingCep ? "Consultando CEP..." : "Buscar CEP"}</Button></div>
