@@ -54,8 +54,23 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     options.contratoId = contracts.filter(row => { try { if (row.sourceBudgetUnitId) assertBudgetUnitAccess(context.user, row.sourceBudgetUnitId); return true; } catch { return false; } }).map(row => ({ value: row.id, label: `${row.number} — ${row.object}` }));
     if (Object.hasOwn(fields, "aditivoId")) options.aditivoId = (await database.select().from(contractAmendments)).filter(row => options.contratoId.some(contract => contract.value === row.contractId)).map(row => ({ value: row.id, label: `${options.contratoId.find(contract => contract.value === row.contractId)?.label} — ${row.type}: ${row.justification}` }));
   }
-  if (Object.hasOwn(fields, "processoId")) options.processoId = (await database.select().from(purchaseProcesses)).map(row => ({ value: row.id, label: `${row.number} — ${row.object}` }));
+  if (Object.hasOwn(fields, "processoId") || Object.hasOwn(fields, "processoOrigemId") || Object.hasOwn(fields, "processoDestinoId")) {
+    const processes = (await database.select().from(purchaseProcesses)).map(row => ({ value: row.id, label: `${row.number} — ${row.object}` }));
+    if (Object.hasOwn(fields, "processoId")) options.processoId = processes;
+    if (Object.hasOwn(fields, "processoOrigemId")) options.processoOrigemId = processes;
+    if (Object.hasOwn(fields, "processoDestinoId")) options.processoDestinoId = processes;
+  }
   if (Object.hasOwn(fields, "processoAlienacaoId")) options.processoAlienacaoId = (await listProcurementAuxiliaryRecords(database, "alienacoes")).map(row => ({ value: row.id, label: `${row.code} — ${row.name}` }));
+  if (Object.hasOwn(fields, "responsavelId") || Object.hasOwn(fields, "presidenteId") || Object.hasOwn(fields, "requisitanteOrigemId") || Object.hasOwn(fields, "requisitanteDestinoId")) {
+    const emp = (await database.select().from(employees)).map(r => ({ value: r.id, label: r.name }));
+    if (Object.hasOwn(fields, "responsavelId")) options.responsavelId = emp;
+    if (Object.hasOwn(fields, "presidenteId")) options.presidenteId = emp;
+    if (Object.hasOwn(fields, "requisitanteOrigemId")) options.requisitanteOrigemId = emp;
+    if (Object.hasOwn(fields, "requisitanteDestinoId")) options.requisitanteDestinoId = emp;
+  }
+  if (Object.hasOwn(fields, "membrosIds")) {
+    options.membrosIds = (await database.select().from(employees)).map(r => ({ value: r.id, label: r.name }));
+  }
   if (Object.hasOwn(fields, "pesquisaId")) options.pesquisaId = (await listPriceResearches(database)).map(row => ({ value: row.id, label: `${row.process.number} — ${row.process.object} — ${row.date.toLocaleDateString("pt-BR")}` }));
   if (Object.hasOwn(fields, "itemProcessoId")) options.itemProcessoId = (await database.select({ id: purchaseProcessItems.id, customName: purchaseProcessItems.customName, quantity: purchaseProcessItems.quantity, processNumber: purchaseProcesses.number, catalogName: catalogItems.name, materialName: materials.name }).from(purchaseProcessItems).innerJoin(purchaseProcesses, eq(purchaseProcesses.id, purchaseProcessItems.purchaseProcessId)).leftJoin(catalogItems, eq(catalogItems.id, purchaseProcessItems.catalogItemId)).leftJoin(materials, eq(materials.id, purchaseProcessItems.materialId))).map(row => ({ value: row.id, label: `${row.processNumber} — ${row.catalogName || row.materialName || row.customName || "Item"} — quantidade ${row.quantity}` }));
   if (catalogo === "remanejamentos") {

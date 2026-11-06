@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, Edit, Gavel } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Gavel, BarChart3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { BiddingStatusControls } from "../BiddingStatusControls";
 import { BiddingWorkflowPanel } from "../BiddingWorkflowPanel";
 import { databaseConnection } from "@/db/client";
 import { loadBiddingDetail, loadBiddingSelectors } from "@/db/repositories/procurement/bidding";
+import { BIDDING_REPORT_LABELS, BIDDING_REPORT_TYPES } from "@/lib/compras/bidding-reports";
 
 function formatDate(value: Date | null, pattern: string) {
   return value ? format(value, pattern, { locale: ptBR }) : "Não informada";
@@ -53,10 +54,56 @@ export default async function LicitacaoDetalhesPage({ params }: { params: Promis
         action={(
           <>
             <Link href="/compras/licitacoes" aria-label="Voltar"><Button variant="outline" size="icon"><ArrowLeft className="size-4" /></Button></Link>
+            <Link href={`/compras/licitacoes/${licitacao.id}/relatorio`}><Button variant="outline" size="sm"><FileText className="size-3.5" /><span className="hidden sm:inline">Relatórios</span></Button></Link>
             {canEditDetails ? <Link href={`/compras/licitacoes/${licitacao.id}/editar`}><Button variant="outline" size="sm"><Edit className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button></Link> : null}
           </>
         )}
       />
+
+      <Card className="rounded-md">
+        <CardHeader className="border-b p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart3 className="size-4 text-primary" />
+                Relatórios Oficiais do Certame (CF11)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Acesse diretamente os relatórios de 11.1 a 11.8 exigidos para acompanhamento e fiscalização do certame.
+              </CardDescription>
+            </div>
+            <Link href={`/compras/licitacoes/${licitacao.id}/relatorio`}>
+              <Button variant="outline" size="sm">
+                <FileText className="size-3.5" />
+                Central de Relatórios
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { type: BIDDING_REPORT_TYPES.CLASSIFICACAO, label: "11.1 Classificação inicial" },
+              { type: BIDDING_REPORT_TYPES.LANCES_VERBAIS, label: "11.2 Lances verbais / abertos" },
+              { type: BIDDING_REPORT_TYPES.VENCEDORES, label: "11.3 Lances vencedores" },
+              { type: BIDDING_REPORT_TYPES.APURACAO, label: "11.4 Mapa de apuração" },
+              { type: BIDDING_REPORT_TYPES.ITENS_PREGAO, label: "11.5 Itens do pregão" },
+              { type: BIDDING_REPORT_TYPES.ITENS_OUTRAS_MODALIDADES, label: "11.6 Itens outras modalidades" },
+              { type: BIDDING_REPORT_TYPES.ETIQUETA, label: "11.7 Etiqueta do processo" },
+              { type: BIDDING_REPORT_TYPES.SALDO_RESTANTE, label: "11.8 Saldo restante do processo" },
+            ].map((rep) => (
+              <Link
+                key={rep.type}
+                href={`/compras/licitacoes/${licitacao.id}/relatorio?tipo=${rep.type}`}
+                className="flex items-center justify-between rounded-md border border-slate-200 p-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
+              >
+                <span>{rep.label}</span>
+                <span className="text-slate-400">&rarr;</span>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="rounded-md">
         <CardHeader className="border-b p-3"><CardTitle className="text-sm">Informações gerais</CardTitle></CardHeader>
@@ -198,6 +245,9 @@ export default async function LicitacaoDetalhesPage({ params }: { params: Promis
             } : null,
           };
         })}
+        processObject={licitacao.process.object}
+        publicationDate={licitacao.publicationDate?.toISOString() ?? null}
+        sessionDate={licitacao.sessionDate?.toISOString() ?? null}
         acts={licitacao.biddingActs.map((act) => ({
           id: act.id,
           type: act.type,

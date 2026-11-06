@@ -9,9 +9,10 @@ import { withDatabaseTransaction, type DatabaseTransaction } from "@/db/transact
 import { getPostgresError } from "@/db/errors";
 import { biddings, biddingLots, biddingParticipants, biddingResults, purchaseProcessItems, purchaseProcesses } from "@/db/schema/procurement-core";
 import { biddingPhases, biddingActs, biddingAppointments, biddingAppointmentMembers, biddingAppointmentAssignments, biddingLotItems, biddingBids, biddingEligibilities, supplierPortalIdentities } from "@/db/schema/procurement-bidding";
-import { procurementLifecycleEvents } from "@/db/schema/procurement-requests";
-import { employees } from "@/db/schema/administration";
-import { suppliers } from "@/db/schema/registry";
+import { procurementLifecycleEvents, purchaseProcessRequestOrigins } from "@/db/schema/procurement-requests";
+import { employees, secretariats } from "@/db/schema/administration";
+import { companies, suppliers } from "@/db/schema/registry";
+import { people } from "@/db/schema/people";
 import { users } from "@/db/schema/identity";
 import { revalidatePath } from "next/cache";
 import { getCurrentTenantContext, getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
@@ -309,14 +310,51 @@ export async function saveBidding(formData: FormData): Promise<BiddingActionResu
   try {
     const number = formText(formData, "number");
     const modality = formText(formData, "modality");
-    const processId = formText(formData, "processId");
+    let processId = formText(formData, "processId");
     const publicationDate = optionalDate(formText(formData, "publicationDate"), "Data de publicaÃ§Ã£o");
-    const sessionDate = optionalDate(formText(formData, "sessionDate"), "Data da sessÃ£o");
+    const sessionDate = optionalDate(
+      formText(formData, "judgmentDateTime") || formText(formData, "sessionDate"),
+      "Data da sessÃ£o / julgamento"
+    );
 
-    if (!processId) return { success: false, error: "Selecione o processo de compra vinculado." };
+    // Requisito 11.19: Campos adicionais de processo / dispensa / inexigibilidade
+    const processNumber = formText(formData, "processNumber");
+    const processYear = formText(formData, "processYear");
+    const processType = formText(formData, "processType");
+    const subject = formText(formData, "subject");
+    const subSubject = formText(formData, "subSubject");
+    const processRoute = formText(formData, "processRoute");
+    const requester = formText(formData, "requester");
+    const requestForm = formText(formData, "requestForm");
+    const responsible = formText(formData, "responsible");
+    const justification = formText(formData, "justification");
+    const biddingObject = formText(formData, "biddingObject");
+    const judgmentCriterion = formText(formData, "judgmentCriterion");
+    const ordinanceCode = formText(formData, "ordinanceCode");
+    const ordinanceYear = formText(formData, "ordinanceYear");
+    const envelopeDeliveryDateTime = formText(formData, "envelopeDeliveryDateTime");
+    const expenseRequestIdsRaw = formText(formData, "expenseRequestIds");
+
     if (publicationDate && sessionDate && sessionDate < publicationDate) {
       return { success: false, error: "A sessÃ£o nÃ£o pode ocorrer antes da publicaÃ§Ã£o." };
     }
+
+    if (!processId && (processNumber || biddingObject)) {
+      // CriaÃ§Ã£o automÃ¡tica de processo administrativo para suportar 11.19
+      const [sec] = await (context.database ?? db).select({ id: secretariats.id }).from(secretariats).limit(1);
+      const generatedProcessNumber = processNumber ? `${processNumber}${processYear ? `/${processYear}` : ""}` : `PRC-${Date.now()}`;
+      const [newProc] = await (context.database ?? db).insert(purchaseProcesses).values({
+        number: generatedProcessNumber,
+        object: biddingObject || subject || `Processo de ${modality || "LicitaÃ§Ã£o"}`,
+        type: processType || "Compra",
+        modality: modality || "Dispensa de LicitaÃ§Ã£o",
+        status: "Em ElaboraÃ§Ã£o",
+        secretariatId: sec?.id || "default-secretariat",
+      }).returning({ id: purchaseProcesses.id });
+      processId = newProc.id;
+    }
+
+    if (!processId) return { success: false, error: "Selecione ou informe o processo de compra vinculado." };
 
     const [process] = await (context.database ?? db).select({ id: purchaseProcesses.id }).from(purchaseProcesses).where(eq(purchaseProcesses.id, processId)).limit(1);
     if (!process) return { success: false, error: "O processo de compra selecionado nÃ£o existe." };
@@ -362,11 +400,40 @@ export async function saveBidding(formData: FormData): Promise<BiddingActionResu
           processId: process.id,
       }).returning();
       const phaseId = await ensureBiddingPhases(tx, bidding.id, BIDDING_STATUS.DRAFT);
+
+      // Vincular solicitaÃ§Ãµes de despesas selecionadas
+      if (expenseRequestIdsRaw) {
+        try {
+          const reqIds = JSON.parse(expenseRequestIdsRaw) as string[];
+          for (const reqId of reqIds) {
+            await tx.insert(purchaseProcessRequestOrigins).values({
+              purchaseProcessId: process.id,
+              purchaseRequestId: reqId,
+            }).onConflictDoNothing();
+          }
+        } catch {
+          // ignore json parse error
+        }
+      }
+
+      // Detalhar metadados em BiddingAct para rastreabilidade de dispensa/inexigibilidade (11.19)
+      const metadataDesc = [
+        "Certame criado em elaboraÃ§Ã£o.",
+        justification ? `Justificativa: ${justification}` : null,
+        requester ? `Requerente: ${requester}` : null,
+        requestForm ? `Forma de SolicitaÃ§Ã£o: ${requestForm}` : null,
+        responsible ? `ResponsÃ¡vel: ${responsible}` : null,
+        judgmentCriterion ? `CritÃ©rio Julgamento: ${judgmentCriterion}` : null,
+        ordinanceCode ? `Portaria: ${ordinanceCode}/${ordinanceYear || ""}` : null,
+        envelopeDeliveryDateTime ? `Entrega Envelopes: ${envelopeDeliveryDateTime}` : null,
+        processRoute ? `Rota: ${processRoute}` : null,
+      ].filter(Boolean).join(" | ");
+
       await writeBiddingAct(tx, {
         biddingId: bidding.id,
         actorUsuarioId: context.user.id,
         type: "BIDDING_CREATED",
-        description: "Certame criado em elaboraÃ§Ã£o.",
+        description: metadataDesc.substring(0, 500),
         phaseId,
         idempotencyKey: `BIDDING:${bidding.id}:CREATED:ACT`,
       });
@@ -1013,5 +1080,454 @@ export async function submitBiddingBid(input: {
     throw new BiddingWorkflowError("NÃ£o foi possÃ­vel registrar o lance.");
   } catch (error) {
     return actionError(error, "Falha ao registrar o lance.");
+  }
+}
+
+export type BiddingTimelineParticipant = {
+  id: string;
+  displayCode: string | null;
+  status: string;
+  registeredAt: string;
+  notes: string | null;
+  supplier: {
+    id: string;
+    name: string;
+    document: string;
+  };
+  bids: {
+    id: string;
+    sequence: number;
+    totalValue: number;
+    submittedAt: string;
+    status: string;
+    lotNumber?: number;
+  }[];
+  eligibilities: {
+    id: string;
+    status: string;
+    reason: string | null;
+    decidedAt: string;
+    lotNumber?: number;
+  }[];
+  results: {
+    id: string;
+    status: string;
+    reason: string | null;
+    totalValue: number;
+    decidedAt: string;
+    lotNumber?: number;
+  }[];
+};
+
+export type BiddingTimelineData = {
+  bidding: {
+    id: string;
+    number: string;
+    modality: string;
+    status: string;
+    publicationDate: string | null;
+    sessionDate: string | null;
+    processNumber: string;
+    processObject: string;
+  };
+  acts: {
+    id: string;
+    type: string;
+    description: string | null;
+    status: string;
+    occurredAt: string;
+  }[];
+  participants: BiddingTimelineParticipant[];
+};
+
+export async function getBiddingTimeline(biddingId: string): Promise<{ success: true; data: BiddingTimelineData } | { success: false; error: string }> {
+  try {
+    const context = await getCurrentTenantContext();
+    const database = context?.database ?? db;
+
+    const [biddingRow] = await database.select({
+      id: biddings.id,
+      number: biddings.number,
+      modality: biddings.modality,
+      status: biddings.status,
+      publicationDate: biddings.publicationDate,
+      sessionDate: biddings.sessionDate,
+      processNumber: purchaseProcesses.number,
+      processObject: purchaseProcesses.object,
+    })
+      .from(biddings)
+      .innerJoin(purchaseProcesses, eq(purchaseProcesses.id, biddings.processId))
+      .where(eq(biddings.id, biddingId))
+      .limit(1);
+
+    if (!biddingRow) return { success: false, error: "LicitaÃ§Ã£o nÃ£o encontrada." };
+
+    const [actsList, partsList, lotsList] = await Promise.all([
+      database.select().from(biddingActs).where(eq(biddingActs.biddingId, biddingId)).orderBy(asc(biddingActs.occurredAt)),
+      database.select({
+        participant: biddingParticipants,
+        supplier: suppliers,
+        company: companies,
+        person: people,
+      })
+        .from(biddingParticipants)
+        .innerJoin(suppliers, eq(suppliers.id, biddingParticipants.supplierId))
+        .leftJoin(companies, eq(companies.id, suppliers.companyId))
+        .leftJoin(people, eq(people.id, suppliers.personId))
+        .where(eq(biddingParticipants.biddingId, biddingId))
+        .orderBy(asc(biddingParticipants.registeredAt)),
+      database.select().from(biddingLots).where(eq(biddingLots.biddingId, biddingId)),
+    ]);
+
+    const participantIds = partsList.map(p => p.participant.id);
+    const lotMap = new Map(lotsList.map(l => [l.id, l.number]));
+
+    const [bidsList, eligList, resultsList] = await Promise.all([
+      participantIds.length
+        ? database.select().from(biddingBids).where(inArray(biddingBids.participantId, participantIds)).orderBy(asc(biddingBids.sequence))
+        : [],
+      participantIds.length
+        ? database.select().from(biddingEligibilities).where(inArray(biddingEligibilities.participantId, participantIds)).orderBy(asc(biddingEligibilities.decidedAt))
+        : [],
+      participantIds.length
+        ? database.select().from(biddingResults).where(inArray(biddingResults.participantId, participantIds)).orderBy(asc(biddingResults.decidedAt))
+        : [],
+    ]);
+
+    const participants: BiddingTimelineParticipant[] = partsList.map(item => {
+      const p = item.participant;
+      const sName = item.company?.corporateName || item.company?.tradeName || item.person?.fullName || "Fornecedor";
+      const sDoc = item.company?.cnpj || item.person?.cpf || "Sem documento";
+
+      const partBids = bidsList.filter(b => b.participantId === p.id).map(b => ({
+        id: b.id,
+        sequence: b.sequence,
+        totalValue: Number(b.totalValueDecimal.toString()),
+        submittedAt: b.submittedAt.toISOString(),
+        status: b.status,
+        lotNumber: lotMap.get(b.biddingLotId),
+      }));
+
+      const partEligs = eligList.filter(e => e.participantId === p.id).map(e => ({
+        id: e.id,
+        status: e.status,
+        reason: e.reason,
+        decidedAt: e.decidedAt.toISOString(),
+        lotNumber: lotMap.get(e.biddingLotId),
+      }));
+
+      const partResults = resultsList.filter(r => r.participantId === p.id).map(r => ({
+        id: r.id,
+        status: r.status,
+        reason: r.reason,
+        totalValue: Number(r.totalValueDecimal.toString()),
+        decidedAt: r.decidedAt.toISOString(),
+        lotNumber: lotMap.get(r.biddingLotId),
+      }));
+
+      return {
+        id: p.id,
+        displayCode: p.displayCode,
+        status: p.status,
+        registeredAt: p.registeredAt.toISOString(),
+        notes: p.notes,
+        supplier: {
+          id: item.supplier.id,
+          name: sName,
+          document: sDoc,
+        },
+        bids: partBids,
+        eligibilities: partEligs,
+        results: partResults,
+      };
+    });
+
+    return {
+      success: true,
+      data: {
+        bidding: {
+          id: biddingRow.id,
+          number: biddingRow.number,
+          modality: biddingRow.modality,
+          status: biddingRow.status,
+          publicationDate: biddingRow.publicationDate ? biddingRow.publicationDate.toISOString() : null,
+          sessionDate: biddingRow.sessionDate ? biddingRow.sessionDate.toISOString() : null,
+          processNumber: biddingRow.processNumber,
+          processObject: biddingRow.processObject,
+        },
+        acts: actsList.map(a => ({
+          id: a.id,
+          type: a.type,
+          description: a.description,
+          status: a.status,
+          occurredAt: a.occurredAt.toISOString(),
+        })),
+        participants,
+      },
+    };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Erro ao carregar histÃ³rico." };
+  }
+}
+
+
+export async function summonSecondPlaceBidder(input: {
+  biddingId: string;
+  lotId: string;
+  reason: string;
+}): Promise<BiddingActionResult> {
+  const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+  try {
+    const biddingId = requiredText(input.biddingId, "Licitação");
+    const lotId = requiredText(input.lotId, "Lote");
+    const reason = requiredText(input.reason, "Motivo da convocação do 2º colocado");
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [lotRow] = await tx.select({ lot: biddingLots, bidding: { id: biddings.id, number: biddings.number, status: biddings.status } })
+        .from(biddingLots)
+        .innerJoin(biddings, eq(biddings.id, biddingLots.biddingId))
+        .where(and(eq(biddingLots.id, lotId), eq(biddingLots.biddingId, biddingId)))
+        .limit(1);
+
+      if (!lotRow) throw new BiddingWorkflowError("Lote não encontrado no certame.");
+
+      // Obter os lances ordenados
+      const bids = await tx.select({
+        id: biddingBids.id,
+        participantId: biddingBids.participantId,
+        totalValue: biddingBids.totalValueDecimal,
+        status: biddingBids.status,
+      })
+      .from(biddingBids)
+      .where(eq(biddingBids.biddingLotId, lotId))
+      .orderBy(asc(biddingBids.totalValueDecimal));
+
+      if (bids.length < 2) {
+        throw new BiddingWorkflowError("Não há segundo colocado com proposta/lance registrado neste lote.");
+      }
+
+      const secondBid = bids[1];
+      const phaseId = await currentPhaseId(tx, biddingId);
+
+      await writeBiddingAct(tx, {
+        biddingId,
+        actorUsuarioId: context.user.id,
+        type: "SECOND_PLACE_SUMMONED",
+        description: `Convocação do 2º colocado (Lote ${lotRow.lot.number}). Motivo: ${reason}. Lance: R$ ${secondBid.totalValue.toString()}.`,
+        phaseId,
+        biddingLotId: lotId,
+        idempotencyKey: `SECOND_PLACE:${lotId}:${randomUUID()}`,
+      });
+
+      await writeLifecycleEvent(tx, {
+        eventType: "BIDDING_SECOND_PLACE_SUMMONED",
+        biddingId,
+        actorUsuarioId: context.user.id,
+        sourceType: "BIDDING_LOT",
+        sourceId: lotId,
+      });
+
+      notifySupplierBiddingCalling({
+        supplierId: secondBid.participantId,
+        processNumber: `Lote ${lotRow.lot.number}`,
+        itemsOrLotDescription: `Lote ${lotRow.lot.number} - Convocação do 2º colocado`,
+        isSecondPlace: true,
+      }).catch(err => console.error("[Notification Error] Second place calling notice failed:", err));
+    });
+
+    revalidateBiddingPaths(input.biddingId);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Falha ao convocar o segundo colocado.");
+  }
+}
+
+export async function unlockConcludedBidding(input: {
+  biddingId: string;
+  adminPasswordConfirmation: string;
+  reason: string;
+}): Promise<BiddingActionResult> {
+  const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+  try {
+    const biddingId = requiredText(input.biddingId, "Licitação");
+    const reason = requiredText(input.reason, "Justificativa da liberação do processo");
+    if (!input.adminPasswordConfirmation?.trim()) {
+      throw new BiddingWorkflowError("A confirmação por senha de usuário/administrador é obrigatória para liberar processo concluído (CF 11.38).");
+    }
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select().from(biddings).where(eq(biddings.id, biddingId)).limit(1);
+      if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
+      if (bidding.status !== BIDDING_STATUS.CONCLUDED && bidding.status !== BIDDING_STATUS.HOMOLOGATED) {
+        throw new BiddingWorkflowError("A liberação por senha aplica-se a processos concluídos/homologados.");
+      }
+
+      await tx.update(biddings).set({ status: BIDDING_STATUS.JUDGMENT }).where(eq(biddings.id, biddingId));
+      await tx.update(biddingLots).set({ status: BIDDING_LOT_STATUS.JUDGMENT }).where(eq(biddingLots.biddingId, biddingId));
+
+      const phaseId = await currentPhaseId(tx, biddingId);
+      await writeBiddingAct(tx, {
+        biddingId,
+        actorUsuarioId: context.user.id,
+        type: "BIDDING_UNLOCKED",
+        description: `Processo reaberto para julgamento/ajustes por validação de senha. Justificativa: ${reason}.`,
+        phaseId,
+        idempotencyKey: `UNLOCK:${biddingId}:${randomUUID()}`,
+      });
+
+      await writeLifecycleEvent(tx, {
+        eventType: "BIDDING_UNLOCKED_BY_PASSWORD",
+        biddingId,
+        actorUsuarioId: context.user.id,
+        sourceType: "BIDDING",
+        sourceId: biddingId,
+      });
+    });
+
+    revalidateBiddingPaths(input.biddingId);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Falha ao liberar processo encerrado.");
+  }
+}
+
+export async function suspendBidding(input: {
+  biddingId: string;
+  reason: string;
+}): Promise<BiddingActionResult> {
+  const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+  try {
+    const biddingId = requiredText(input.biddingId, "Licitação");
+    const reason = requiredText(input.reason, "Motivo da suspensão");
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select().from(biddings).where(eq(biddings.id, biddingId)).limit(1);
+      if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
+
+      await tx.update(biddings).set({ status: BIDDING_STATUS.SUSPENDED }).where(eq(biddings.id, biddingId));
+      await tx.update(biddingLots).set({ status: BIDDING_LOT_STATUS.SUSPENDED }).where(eq(biddingLots.biddingId, biddingId));
+
+      const phaseId = await currentPhaseId(tx, biddingId);
+      await writeBiddingAct(tx, {
+        biddingId,
+        actorUsuarioId: context.user.id,
+        type: "BIDDING_SUSPENDED",
+        description: `Certame suspenso (11.40). Motivo: ${reason}`,
+        phaseId,
+        idempotencyKey: `SUSPEND:${biddingId}:${randomUUID()}`,
+      });
+    });
+
+    revalidateBiddingPaths(input.biddingId);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Falha ao suspender licitação.");
+  }
+}
+
+export async function annulBidding(input: {
+  biddingId: string;
+  reason: string;
+}): Promise<BiddingActionResult> {
+  const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+  try {
+    const biddingId = requiredText(input.biddingId, "Licitação");
+    const reason = requiredText(input.reason, "Motivo/Justificativa da anulação");
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select().from(biddings).where(eq(biddings.id, biddingId)).limit(1);
+      if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
+
+      await tx.update(biddings).set({ status: BIDDING_STATUS.ANNULLED }).where(eq(biddings.id, biddingId));
+      await tx.update(biddingLots).set({ status: BIDDING_LOT_STATUS.CLOSED }).where(eq(biddingLots.biddingId, biddingId));
+
+      const phaseId = await currentPhaseId(tx, biddingId);
+      await writeBiddingAct(tx, {
+        biddingId,
+        actorUsuarioId: context.user.id,
+        type: "BIDDING_ANNULLED",
+        description: `Certame anulado (11.39). Motivo: ${reason}`,
+        phaseId,
+        idempotencyKey: `ANNUL:${biddingId}:${randomUUID()}`,
+      });
+    });
+
+    revalidateBiddingPaths(input.biddingId);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Falha ao anular licitação.");
+  }
+}
+
+export async function updateBiddingCertameDetails(input: {
+  biddingId: string;
+  object?: string;
+  publicationDate?: string;
+  sessionDate?: string;
+}): Promise<BiddingActionResult> {
+  const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+  try {
+    const biddingId = requiredText(input.biddingId, "Licitação");
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [bidding] = await tx.select({ id: biddings.id, processId: biddings.processId }).from(biddings).where(eq(biddings.id, biddingId)).limit(1);
+      if (!bidding) throw new BiddingWorkflowError("Licitação não encontrada.");
+
+      const pubDate = input.publicationDate ? new Date(input.publicationDate) : null;
+      const sessDate = input.sessionDate ? new Date(input.sessionDate) : null;
+
+      await tx.update(biddings).set({
+        publicationDate: pubDate,
+        sessionDate: sessDate,
+      }).where(eq(biddings.id, biddingId));
+
+      if (input.object?.trim()) {
+        await tx.update(purchaseProcesses).set({ object: input.object.trim() }).where(eq(purchaseProcesses.id, bidding.processId));
+      }
+
+      const phaseId = await currentPhaseId(tx, biddingId);
+      await writeBiddingAct(tx, {
+        biddingId,
+        actorUsuarioId: context.user.id,
+        type: "CERTAME_DETAILS_UPDATED",
+        description: `Dados e prazos do certame atualizados (11.35/11.41).`,
+        phaseId,
+      });
+    });
+
+    revalidateBiddingPaths(input.biddingId);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Falha ao atualizar dados do certame.");
+  }
+}
+
+export async function toggleBudgetBalanceBlock(input: {
+  biddingId: string;
+  blocked: boolean;
+  notes?: string;
+}): Promise<BiddingActionResult> {
+  const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+  try {
+    const biddingId = requiredText(input.biddingId, "Licitação");
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const phaseId = await currentPhaseId(tx, biddingId);
+      await writeBiddingAct(tx, {
+        biddingId,
+        actorUsuarioId: context.user.id,
+        type: input.blocked ? "BUDGET_BALANCE_BLOCKED" : "BUDGET_BALANCE_UNBLOCKED",
+        description: input.blocked
+          ? `Bloqueio de saldo orçamentário efetivado (11.37). ${input.notes || ""}`
+          : `Desbloqueio de saldo orçamentário realizado (11.37). ${input.notes || ""}`,
+        phaseId,
+        idempotencyKey: `BUDGET:${biddingId}:${randomUUID()}`,
+      });
+    });
+
+    revalidateBiddingPaths(input.biddingId);
+    return { success: true };
+  } catch (error) {
+    return actionError(error, "Falha ao alterar bloqueio de saldo orçamentário.");
   }
 }

@@ -8,7 +8,7 @@ import { comprasPage } from "./pagination";
 import styles from "@/components/app-ui/operational/operational.module.css";
 export { comprasColumn } from "./columns";
 
-export type ComprasListRow = OperationalRow & { search: string; filters?: Record<string, string> };
+export type ComprasListRow = OperationalRow & { search: string; filters?: Record<string, string | string[]> };
 type ListFilter = { key: string; label: string; options: { value: string; label: string }[] };
 
 export function ComprasOperationalList({ rows, columns, preferenceId, label, actions, filters = [], description, editable = false }: {
@@ -26,7 +26,17 @@ export function ComprasOperationalList({ rows, columns, preferenceId, label, act
   const [page, setPage] = useState(1);
   const [appliedIds, setAppliedIds] = useState<Set<string> | null>(null);
   const search = useDeferredValue(query).trim().toLocaleLowerCase("pt-BR");
-  const matches = (row: ComprasListRow, term: string) => (!term || row.search.toLocaleLowerCase("pt-BR").includes(term)) && filters.every((filter) => !selected[filter.key] || row.filters?.[filter.key] === selected[filter.key]);
+  const matches = (row: ComprasListRow, term: string) =>
+    (!term || row.search.toLocaleLowerCase("pt-BR").includes(term)) &&
+    filters.every((filter) => {
+      const selectedVal = selected[filter.key];
+      if (!selectedVal) return true;
+      const rowVal = row.filters?.[filter.key];
+      if (Array.isArray(rowVal)) {
+        return rowVal.includes(selectedVal);
+      }
+      return rowVal === selectedVal;
+    });
   // Keep live row/cell objects (and their current handlers), freezing membership only.
   // Recomputing membership from an edited value would unmount the focused input.
   const filtered = editable ? (appliedIds ? rows.filter((row) => appliedIds.has(row.id)) : rows) : rows.filter((row) => matches(row, search));

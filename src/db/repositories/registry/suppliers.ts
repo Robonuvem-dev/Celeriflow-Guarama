@@ -1,9 +1,11 @@
-import { and, asc, desc, eq, gt, gte, ilike, inArray, isNull, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, ilike, inArray, isNotNull, isNull, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import type { SupplierFilters, SupplierSourceRow } from "@/lib/contracts/supplier";
 import { dateOnly } from "@/app/app-domain/cadastros/fornecedores/supplier-utils";
 import type { DatabaseExecutor } from "../../transaction";
 import { people } from "../../schema/people";
-import { companies, documents, suppliers } from "../../schema/registry";
+import { companies, documents, suppliers, taxpayers } from "../../schema/registry";
+import { procurementLegalRepresentatives } from "../../schema/procurement-instruments";
+import { biddings, biddingParticipants } from "../../schema/procurement-core";
 
 function endOfUtcDay(value: Date): Date {
   const date = new Date(value);
@@ -22,6 +24,19 @@ export function buildSupplierWhere(filters: SupplierFilters, referenceDate = new
     search.push(exactStatus ? eq(suppliers.status, exactStatus) : ilike(suppliers.status, `%${query}%`));
     if (query.replace(/\s/g, "").toUpperCase() === "ME/EPP") search.push(inArray(companies.companyType, ["ME", "EPP"]));
     conditions.push(or(...search));
+  }
+  if (filters.document) {
+    const docClean = filters.document.replace(/\D/g, "");
+    if (docClean) {
+      conditions.push(or(like(people.cpf, `%${docClean}%`), like(companies.cnpj, `%${docClean}%`)));
+    } else {
+      conditions.push(or(ilike(people.cpf, `%${filters.document}%`), ilike(companies.cnpj, `%${filters.document}%`)));
+    }
+  }
+  if (filters.personType === "PF") {
+    conditions.push(isNotNull(suppliers.personId));
+  } else if (filters.personType === "PJ") {
+    conditions.push(isNotNull(suppliers.companyId));
   }
   if (filters.status !== "ALL") conditions.push(eq(suppliers.status, filters.status));
   if (filters.classification === "ME" || filters.classification === "EPP") conditions.push(eq(companies.companyType, filters.classification));
@@ -51,60 +66,174 @@ export async function loadSupplierRows(db: DatabaseExecutor, filters: SupplierFi
     id: suppliers.id, category: suppliers.category, businessBranch: suppliers.businessBranch, bankData: suppliers.bankData,
     certificationsValidUntil: suppliers.certificationsValidUntil, notes: suppliers.notes, status: suppliers.status,
     person: { id: people.id, fullName: people.fullName, cpf: people.cpf },
-    company: { id: companies.id, corporateName: companies.corporateName, tradeName: companies.tradeName, cnpj: companies.cnpj, companyType: companies.companyType, primaryCnae: companies.primaryCnae, secondaryCnaes: companies.secondaryCnaes },
-  }).from(suppliers).leftJoin(people, eq(suppliers.personId, people.id)).leftJoin(companies, eq(suppliers.companyId, companies.id))
+    company: { id: companies.id, corporateName: companies.corporateName, tradeName: companies.tradeName, cnpj: companies.cnpj, companyType: companies.companyType, primaryCnae: companies.primaryCnae, secondaryCnaes: companies.secondaryCnaes, stateInsc: companies.stateInsc, taxRegime: companies.taxRegime, municipalInsc: companies.municipalInsc },
+    personTaxpayer: { municipalInsc: taxpayers.municipalInsc, taxpayerType: taxpayers.taxpayerType, economicActivities: taxpayers.economicActivities, fiscalNotes: taxpayers.fiscalNotes },
+  }).from(suppliers)
+    .leftJoin(people, eq(suppliers.personId, people.id))
+    .leftJoin(companies, eq(suppliers.companyId, companies.id))
+    .leftJoin(taxpayers, or(eq(taxpayers.personId, suppliers.personId), eq(taxpayers.companyId, suppliers.companyId)))
     .where(buildSupplierWhere(filters, referenceDate)).orderBy(desc(suppliers.createdAt), desc(suppliers.id));
   const rows = await (pagination ? query.limit(pagination.limit).offset(pagination.offset) : query);
   if (!rows.length) return [];
   const personIds = rows.flatMap(row => row.person ? [row.person.id] : []);
   const companyIds = rows.flatMap(row => row.company ? [row.company.id] : []);
-  const evidence = personIds.length || companyIds.length ? await db.select({ personId: documents.personId, companyId: documents.companyId,
-    document: { title: documents.title, documentType: documents.documentType, status: documents.status, validUntil: documents.validUntil },
-  }).from(documents).where(or(personIds.length ? inArray(documents.personId, personIds) : undefined, companyIds.length ? inArray(documents.companyId, companyIds) : undefined))
-    .orderBy(asc(documents.validUntil), asc(documents.createdAt)) : [];
+  const supplierIds = rows.map(r => r.id);
+
+  const [evidence, reps, bids] = await Promise.all([
+    personIds.length || companyIds.length ? db.select({ personId: documents.personId, companyId: documents.companyId,
+      document: { title: documents.title, documentType: documents.documentType, status: documents.status, validUntil: documents.validUntil },
+    }).from(documents).where(or(personIds.length ? inArray(documents.personId, personIds) : undefined, companyIds.length ? inArray(documents.companyId, companyIds) : undefined))
+      .orderBy(asc(documents.validUntil), asc(documents.createdAt)) : [],
+    personIds.length || companyIds.length ? db.select({
+      id: procurementLegalRepresentatives.id,
+      representationType: procurementLegalRepresentatives.representationType,
+      status: procurementLegalRepresentatives.status,
+      representedPersonId: procurementLegalRepresentatives.representedPersonId,
+      representedCompanyId: procurementLegalRepresentatives.representedCompanyId,
+      repFullName: people.fullName,
+      repCpf: people.cpf,
+    }).from(procurementLegalRepresentatives)
+      .innerJoin(people, eq(people.id, procurementLegalRepresentatives.representativeId))
+      .where(and(eq(procurementLegalRepresentatives.status, "Ativo"), or(
+        companyIds.length ? inArray(procurementLegalRepresentatives.representedCompanyId, companyIds) : undefined,
+        personIds.length ? inArray(procurementLegalRepresentatives.representedPersonId, personIds) : undefined,
+      ))) : [],
+    supplierIds.length ? db.select({
+      supplierId: biddingParticipants.supplierId,
+      id: biddings.id,
+      number: biddings.number,
+      modality: biddings.modality,
+      status: biddings.status,
+    }).from(biddingParticipants)
+      .innerJoin(biddings, eq(biddings.id, biddingParticipants.biddingId))
+      .where(inArray(biddingParticipants.supplierId, supplierIds)) : [],
+  ]);
+
   const byPerson = new Map<string, typeof evidence[number]["document"][]>();
   const byCompany = new Map<string, typeof evidence[number]["document"][]>();
   for (const row of evidence) {
     if (row.personId) { const group = byPerson.get(row.personId) ?? []; group.push(row.document); byPerson.set(row.personId, group); }
     if (row.companyId) { const group = byCompany.get(row.companyId) ?? []; group.push(row.document); byCompany.set(row.companyId, group); }
   }
-  return rows.map(row => ({
-    id: row.id, category: row.category, businessBranch: row.businessBranch, bankData: row.bankData, certificationsValidUntil: row.certificationsValidUntil, notes: row.notes, status: row.status,
-    person: row.person ? { fullName: row.person.fullName, cpf: row.person.cpf, documents: byPerson.get(row.person.id) ?? [] } : null,
-    company: row.company ? { corporateName: row.company.corporateName, tradeName: row.company.tradeName, cnpj: row.company.cnpj, companyType: row.company.companyType, primaryCnae: row.company.primaryCnae, secondaryCnaes: row.company.secondaryCnaes, documents: byCompany.get(row.company.id) ?? [] } : null,
-  }));
-}
 
+  return rows.map(row => {
+    const rowReps = reps.filter(r => (row.company && r.representedCompanyId === row.company.id) || (row.person && r.representedPersonId === row.person.id))
+      .map(r => ({
+        id: r.id,
+        representationType: r.representationType,
+        status: r.status,
+        representative: { fullName: r.repFullName, cpf: r.repCpf },
+      }));
+
+    const rowBids = bids.filter(b => b.supplierId === row.id)
+      .map(b => ({
+        id: b.id,
+        number: b.number,
+        modality: b.modality,
+        status: b.status,
+      }));
+
+    const taxInfo = {
+      municipalInsc: row.company?.municipalInsc ?? row.personTaxpayer?.municipalInsc ?? null,
+      stateInsc: row.company?.stateInsc ?? null,
+      taxRegime: row.company?.taxRegime ?? null,
+      taxpayerType: row.personTaxpayer?.taxpayerType ?? (row.company ? "PJ" : "PF"),
+      economicActivities: row.personTaxpayer?.economicActivities ?? (row.company ? `${row.company.primaryCnae ?? ""} ${row.company.secondaryCnaes ?? ""}`.trim() || null : null),
+      fiscalNotes: row.personTaxpayer?.fiscalNotes ?? null,
+    };
+
+    return {
+      id: row.id, category: row.category, businessBranch: row.businessBranch, bankData: row.bankData, certificationsValidUntil: row.certificationsValidUntil, notes: row.notes, status: row.status,
+      person: row.person ? { fullName: row.person.fullName, cpf: row.person.cpf, documents: byPerson.get(row.person.id) ?? [] } : null,
+      company: row.company ? { corporateName: row.company.corporateName, tradeName: row.company.tradeName, cnpj: row.company.cnpj, companyType: row.company.companyType, primaryCnae: row.company.primaryCnae, secondaryCnaes: row.company.secondaryCnaes, documents: byCompany.get(row.company.id) ?? [] } : null,
+      representatives: rowReps,
+      activeBiddings: rowBids,
+      taxInfo,
+    };
+  });
+}
 
 export async function findSupplierRowById(db: DatabaseExecutor, id: string): Promise<SupplierSourceRow | null> {
   const [row] = await db.select({
     id: suppliers.id, category: suppliers.category, businessBranch: suppliers.businessBranch, bankData: suppliers.bankData,
     certificationsValidUntil: suppliers.certificationsValidUntil, notes: suppliers.notes, status: suppliers.status,
     person: { id: people.id, fullName: people.fullName, cpf: people.cpf },
-    company: { id: companies.id, corporateName: companies.corporateName, tradeName: companies.tradeName, cnpj: companies.cnpj, companyType: companies.companyType, primaryCnae: companies.primaryCnae, secondaryCnaes: companies.secondaryCnaes },
+    company: { id: companies.id, corporateName: companies.corporateName, tradeName: companies.tradeName, cnpj: companies.cnpj, companyType: companies.companyType, primaryCnae: companies.primaryCnae, secondaryCnaes: companies.secondaryCnaes, stateInsc: companies.stateInsc, taxRegime: companies.taxRegime, municipalInsc: companies.municipalInsc },
+    personTaxpayer: { municipalInsc: taxpayers.municipalInsc, taxpayerType: taxpayers.taxpayerType, economicActivities: taxpayers.economicActivities, fiscalNotes: taxpayers.fiscalNotes },
   }).from(suppliers)
     .leftJoin(people, eq(suppliers.personId, people.id))
     .leftJoin(companies, eq(suppliers.companyId, companies.id))
+    .leftJoin(taxpayers, or(eq(taxpayers.personId, suppliers.personId), eq(taxpayers.companyId, suppliers.companyId)))
     .where(eq(suppliers.id, id))
     .limit(1);
 
   if (!row) return null;
 
-  const evidence = row.person || row.company
-    ? await db.select({
-        personId: documents.personId,
-        companyId: documents.companyId,
-        document: { title: documents.title, documentType: documents.documentType, status: documents.status, validUntil: documents.validUntil },
-      })
-      .from(documents)
-      .where(
-        or(
-          row.person ? eq(documents.personId, row.person.id) : undefined,
-          row.company ? eq(documents.companyId, row.company.id) : undefined,
-        ),
-      )
-      .orderBy(asc(documents.validUntil), asc(documents.createdAt))
-    : [];
+  const [evidence, reps, bids] = await Promise.all([
+    row.person || row.company
+      ? await db.select({
+          personId: documents.personId,
+          companyId: documents.companyId,
+          document: { title: documents.title, documentType: documents.documentType, status: documents.status, validUntil: documents.validUntil },
+        })
+        .from(documents)
+        .where(
+          or(
+            row.person ? eq(documents.personId, row.person.id) : undefined,
+            row.company ? eq(documents.companyId, row.company.id) : undefined,
+          ),
+        )
+        .orderBy(asc(documents.validUntil), asc(documents.createdAt))
+      : [],
+    row.person || row.company
+      ? await db.select({
+          id: procurementLegalRepresentatives.id,
+          representationType: procurementLegalRepresentatives.representationType,
+          status: procurementLegalRepresentatives.status,
+          representedPersonId: procurementLegalRepresentatives.representedPersonId,
+          representedCompanyId: procurementLegalRepresentatives.representedCompanyId,
+          repFullName: people.fullName,
+          repCpf: people.cpf,
+        }).from(procurementLegalRepresentatives)
+          .innerJoin(people, eq(people.id, procurementLegalRepresentatives.representativeId))
+          .where(and(eq(procurementLegalRepresentatives.status, "Ativo"), or(
+            row.company ? eq(procurementLegalRepresentatives.representedCompanyId, row.company.id) : undefined,
+            row.person ? eq(procurementLegalRepresentatives.representedPersonId, row.person.id) : undefined,
+          )))
+      : [],
+    await db.select({
+      supplierId: biddingParticipants.supplierId,
+      id: biddings.id,
+      number: biddings.number,
+      modality: biddings.modality,
+      status: biddings.status,
+    }).from(biddingParticipants)
+      .innerJoin(biddings, eq(biddings.id, biddingParticipants.biddingId))
+      .where(eq(biddingParticipants.supplierId, row.id)),
+  ]);
+
+  const rowReps = reps.map(r => ({
+    id: r.id,
+    representationType: r.representationType,
+    status: r.status,
+    representative: { fullName: r.repFullName, cpf: r.repCpf },
+  }));
+
+  const rowBids = bids.map(b => ({
+    id: b.id,
+    number: b.number,
+    modality: b.modality,
+    status: b.status,
+  }));
+
+  const taxInfo = {
+    municipalInsc: row.company?.municipalInsc ?? row.personTaxpayer?.municipalInsc ?? null,
+    stateInsc: row.company?.stateInsc ?? null,
+    taxRegime: row.company?.taxRegime ?? null,
+    taxpayerType: row.personTaxpayer?.taxpayerType ?? (row.company ? "PJ" : "PF"),
+    economicActivities: row.personTaxpayer?.economicActivities ?? (row.company ? `${row.company.primaryCnae ?? ""} ${row.company.secondaryCnaes ?? ""}`.trim() || null : null),
+    fiscalNotes: row.personTaxpayer?.fiscalNotes ?? null,
+  };
 
   return {
     id: row.id,
@@ -124,5 +253,8 @@ export async function findSupplierRowById(db: DatabaseExecutor, id: string): Pro
       secondaryCnaes: row.company.secondaryCnaes,
       documents: evidence.filter((item) => item.companyId === row.company?.id).map((item) => item.document),
     } : null,
+    representatives: rowReps,
+    activeBiddings: rowBids,
+    taxInfo,
   };
 }

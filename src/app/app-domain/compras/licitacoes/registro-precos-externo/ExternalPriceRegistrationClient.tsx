@@ -193,9 +193,9 @@ export default function ExternalPriceRegistrationClient() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-            <Link href="/app-domain/compras" className="hover:underline">Compras</Link>
+            <Link href="/compras" className="hover:underline">Compras</Link>
             <span>/</span>
-            <Link href="/app-domain/compras/licitacoes" className="hover:underline">Licitações</Link>
+            <Link href="/compras/licitacoes" className="hover:underline">Licitações</Link>
             <span>/</span>
             <span className="text-slate-800 font-medium">Registro de Preços Externo</span>
           </div>
@@ -701,3 +701,4 @@ export default function ExternalPriceRegistrationClient() {
     </div>
   );
 }
+
