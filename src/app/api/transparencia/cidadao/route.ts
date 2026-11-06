@@ -12,5 +12,8 @@ export async function POST(request:Request){
   if(body.operation==="recorrer")return Response.json(await appealCitizenRequest(db,String(body.protocol||""),String(body.token||""),String(body.message||"")),{headers:{"Cache-Control":"no-store"}});
   if(body.operation==="avaliar")return Response.json(await rateCitizenService(db,String(body.protocol||""),String(body.token||""),body.rating,body.comment),{headers:{"Cache-Control":"no-store"}});
   const receipt=await createCitizenRequest(databaseConnection,body);return Response.json(receipt,{status:201,headers:{"Cache-Control":"no-store"}});
- }catch{return Response.json({error:"Não foi possível registrar. Confira os campos e tente novamente."},{status:400});}
+ }catch(err: any){
+  console.error("Erro ao registrar solicitacao de cidadao:", err);
+  return Response.json({error: err?.message || "Não foi possível registrar. Confira os campos e tente novamente."},{status:400});
+ }
 }
