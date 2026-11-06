@@ -17,7 +17,7 @@ import { loadCovenantDetail, loadInstrumentSelectors } from "@/db/repositories/p
 export default async function ConvenioDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const covenant = await loadCovenantDetail(databaseConnection.db, id);
+  const covenant = await loadCovenantDetail(databaseConnection.db, decodeURIComponent(id));
   if (!covenant) notFound();
 
   const { events, employees, suppliers, people, companies, documents } = await loadInstrumentSelectors(databaseConnection.db, { kind: "COVENANT", id: covenant.id });

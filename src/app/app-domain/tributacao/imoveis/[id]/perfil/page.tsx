@@ -9,7 +9,8 @@ import { listFiscalEntries, listPageTaxpayers } from "@/db/repositories/taxation
 
 export const dynamic = "force-dynamic";
 export default async function PropertyProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
+  const { id: routeId } = await params; const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
+  const id = decodeURIComponent(routeId);
   const property = (await listFiscalProperties(database, { ids: [id], limit: 1 }))[0]; if (!property) notFound();
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const [entry, units, policies, taxpayers, properties, processes, documents] = await Promise.all([

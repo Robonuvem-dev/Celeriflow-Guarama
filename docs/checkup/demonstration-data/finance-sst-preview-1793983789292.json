@@ -1,0 +1,17 @@
+{
+  "packageId": "CHECKUP_FINANCE_SST_2026_V1",
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-06T16:49:47.319Z",
+  "references": {
+    "budgetUnitId": "aurora-system-v1:budget-unit:000",
+    "employeeId": "THIAGO_MORCATTY_DEMO_2026_V1:employee",
+    "professionalPersonId": "aurora-system-v1:person:022",
+    "professionalName": "Renata Barbosa Ferreira",
+    "appropriation": {
+      "id": "aurora-mg-50k-v1:appropriation:001",
+      "code": "AV-2026-1-2",
+      "nature": "Material de consumo"
+    }
+  },
+  "changes": []
+}

@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModuleOperation("COMPRAS", "issueReports");
-  const { id } = await params;
+  const { id: routeId } = await params;
+  const id = decodeURIComponent(routeId);
   const database = context.database ?? db;
   const research = await loadPriceResearchDetail(database, id);
   if (!research) notFound();

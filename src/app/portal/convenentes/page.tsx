@@ -5,10 +5,13 @@ import { PortalBreadcrumb } from "@/components/portal-institucional/PortalShell"
 import { PartnerDiscountForm, PartnerInstallmentForm } from "./DiscountForms";
 import { PublicOperationalList } from "../PublicOperationalList";
 import { PublicRowAction } from "../PublicRowAction";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 
 export const dynamic = "force-dynamic";
 export default async function PartnerDiscountPortal() {
-  const context = await getCurrentTenantContext(), { grants, agreements } = await listOwnPartnerDiscounts(context);
+  const access = await getPortalPageAccess(async () => listOwnPartnerDiscounts(await getCurrentTenantContext()), "/portal/convenentes");
+  if (!access) return <PortalPageAccessDenied />;
+  const { grants, agreements } = access;
   return <main className="mx-auto max-w-5xl space-y-2 px-4 py-3"><PortalBreadcrumb current="Descontos conveniados" /><h1 className="text-xl font-bold">Descontos conveniados</h1><p className="text-sm">Operações nos contratos e rubricas expressamente habilitados pelo RH para sua conta.</p>
     {grants.map((grant) => <details key={grant.id} className="rounded border bg-white p-2"><summary className="cursor-pointer font-semibold">{grant.name} — reservar cronograma</summary><p className="whitespace-pre-wrap text-sm">{grant.policy.instructions}</p><PartnerDiscountForm grantId={grant.id} requestKey={randomUUID()} contracts={grant.contracts} /></details>)}
     {!grants.length && <p>Nenhuma autorização de convenente/departamento disponível para esta conta.</p>}

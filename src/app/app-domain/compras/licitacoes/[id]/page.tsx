@@ -35,7 +35,7 @@ function supplierName(supplier: {
 export default async function LicitacaoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const licitacao = await loadBiddingDetail(databaseConnection.db, id);
+  const licitacao = await loadBiddingDetail(databaseConnection.db, decodeURIComponent(id));
   if (!licitacao) notFound();
 
   const participantSupplierIds = licitacao.biddingParticipants.map((participant) => participant.supplierId);

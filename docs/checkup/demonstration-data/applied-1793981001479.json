@@ -1,0 +1,43 @@
+{
+  "packageId": "CHECKUP_APRESENTACAO_2026_V1",
+  "mode": "APPLIED",
+  "startedAt": "2026-11-06T16:03:16.162Z",
+  "changes": [
+    {
+      "table": "LegalText",
+      "id": "cmw55yuz50000ychykpjrkuuj",
+      "operation": "INSERT"
+    },
+    {
+      "table": "LegalText",
+      "id": "cmw55yv2k0002ychy1toxaor9",
+      "operation": "INSERT"
+    },
+    {
+      "table": "SegurancaMobilidadeRegistro",
+      "id": "cmw55yv610004ychykug6fa33",
+      "operation": "INSERT"
+    },
+    {
+      "table": "SegurancaMobilidadeRegistro",
+      "id": "cmw55yv8l0005ychygsy0x7cy",
+      "operation": "INSERT"
+    },
+    {
+      "table": "SegurancaMobilidadeRegistro",
+      "id": "cmw55yvb60006ychymtz58frw",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrPayrollRule",
+      "id": "cmw55yvib0007ychy99ogcc6i",
+      "operation": "INSERT"
+    },
+    {
+      "table": "HrPortalRequest",
+      "id": "cmw55yvs80009ychyp2usj66h",
+      "operation": "INSERT"
+    }
+  ],
+  "portalContents": []
+}

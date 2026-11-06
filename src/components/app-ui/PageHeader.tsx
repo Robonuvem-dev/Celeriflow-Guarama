@@ -13,7 +13,7 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, action, icon, className }: PageHeaderProps) {
   const operational = useOptionalOperationalWorkspace();
-  if (operational) return action ? <OperationalHeaderActions>{action}</OperationalHeaderActions> : null;
+  if (operational && operational.contentMode !== "page") return action ? <OperationalHeaderActions>{action}</OperationalHeaderActions> : null;
   return (
     <header
       data-slot="page-header"

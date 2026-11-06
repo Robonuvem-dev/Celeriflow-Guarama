@@ -1,0 +1,62 @@
+{
+  "startedAt": "2026-11-06T16:32:17.647Z",
+  "base": "http://localhost:3103",
+  "cases": [
+    {
+      "label": "Motor fiscal: tabela, busca e rascunhos das operações",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "passed": false,
+      "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Internal Next.js error: Router action dispatched before initialization.',\n+   \"Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\\n\" +\n+     '\\n' +\n+     \"- A server/client branch `if (typeof window !== 'undefined')`.\\n\" +\n+     \"- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\\n\" +\n+     \"- Date formatting in a user's locale which doesn't match the server.\\n\" +\n+     '- External changing data without sending a snapshot of it along with the HTML.\\n' +\n+     '- Invalid HTML tag nesting.\\n' +\n+     '\\n' +\n+     'It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\\n' +\n+     '\\n' +\n+     'https://react.dev/link/hydration-mismatch\\n' +\n+     '\\n' +\n+     '  ...\\n' +\n+     '    <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\\n' +\n+     '      <LoadingBoundary name=\"/\" loading={null}>\\n' +\n+     '        <HTTPAccessFallbackBoundary notFound={<SegmentViewNode>} forbidden={undefined} unauthorized={undefined}>\\n' +\n+     '          <HTTPAccessFallbackErrorBoundary pathname=\"/tributaca...\" notFound={<SegmentViewNode>} forbidden={undefined} ...>\\n' +\n+     '            <RedirectBoundary>\\n' +\n+     '              <RedirectErrorBoundary router={{...}}>\\n' +\n+     '                <InnerLayoutRouter url=\"/tributaca...\" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>\\n' +\n+     '                  <SegmentViewNode type=\"layout\" pagePath=\"app-domain...\">\\n' +\n+     '                    <SegmentTrieNode>\\n' +\n+     '                    <link>\\n' +\n+     '                    <AppDomainLayout>\\n' +\n+     '                      <ClientLayout institution={{id:\"cmvqy6...\", ...}} user={{id:\"cmvba3...\", ...}}>\\n' +\n+     '                        <OperationalWorkspace title=\"Motor fisc...\" moduleTitle=\"Tributação\" ...>\\n' +\n+     '                          <div\\n' +\n+     '+                           className=\"operational_workspace__mzyjU\"\\n' +\n+     '-                           className={null}\\n' +\n+     '+                           data-operational-workspace={true}\\n' +\n+     '-                           data-operational-workspace={null}\\n' +\n+     '+                           data-device=\"unclassified\"\\n' +\n+     '-                           data-device={null}\\n' +\n+     '-                           hidden=\"\"\\n' +\n+     '                          >\\n' +\n+     '+                           <header className=\"operational_header__bu7Sa\" data-operational-header={true}>\\n' +\n+     '-                           <Suspense>\\n' +\n+     '                            ...\\n' +\n+     '                ...\\n' +\n+     '    ...\\n'\n+ ]\n- []\n",
+      "errors": [
+        "Internal Next.js error: Router action dispatched before initialization.",
+        "Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n      <LoadingBoundary name=\"/\" loading={null}>\n        <HTTPAccessFallbackBoundary notFound={<SegmentViewNode>} forbidden={undefined} unauthorized={undefined}>\n          <HTTPAccessFallbackErrorBoundary pathname=\"/tributaca...\" notFound={<SegmentViewNode>} forbidden={undefined} ...>\n            <RedirectBoundary>\n              <RedirectErrorBoundary router={{...}}>\n                <InnerLayoutRouter url=\"/tributaca...\" tree={[...]} params={{}} renderTree={{...}} segmentPath={[...]} ...>\n                  <SegmentViewNode type=\"layout\" pagePath=\"app-domain...\">\n                    <SegmentTrieNode>\n                    <link>\n                    <AppDomainLayout>\n                      <ClientLayout institution={{id:\"cmvqy6...\", ...}} user={{id:\"cmvba3...\", ...}}>\n                        <OperationalWorkspace title=\"Motor fisc...\" moduleTitle=\"Tributação\" ...>\n                          <div\n+                           className=\"operational_workspace__mzyjU\"\n-                           className={null}\n+                           data-operational-workspace={true}\n-                           data-operational-workspace={null}\n+                           data-device=\"unclassified\"\n-                           data-device={null}\n-                           hidden=\"\"\n                          >\n+                           <header className=\"operational_header__bu7Sa\" data-operational-header={true}>\n-                           <Suspense>\n                            ...\n                ...\n    ...\n"
+      ]
+    },
+    {
+      "label": "Usuários: tabela e perfis complementares com rascunho preservado",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "passed": true
+    },
+    {
+      "label": "Frota: painel mantém campos, arquivo e payload ao reabrir",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "passed": true
+    },
+    {
+      "label": "Motor fiscal: tabela, busca e rascunhos das operações",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "passed": false,
+      "message": "page.goto: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3103/tributacao/motor-fiscal\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "label": "Usuários: tabela e perfis complementares com rascunho preservado",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "passed": true
+    },
+    {
+      "label": "Frota: painel mantém campos, arquivo e payload ao reabrir",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "passed": true
+    }
+  ],
+  "finishedAt": "2026-11-06T16:39:52.606Z"
+}

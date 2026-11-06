@@ -11,10 +11,13 @@ import { companies, realEstates } from "@/db/schema/registry";
 import { getConstructionPortalIdentity } from "@/lib/obras/construction-portal-access";
 import { definitionSchema } from "@/lib/obras/construction-rules";
 import ConstructionExternalOpening from "@/components/construction/ConstructionExternalOpening";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 
 export default async function NewConstructionExternalApplication({ searchParams }: { searchParams: Promise<{ application?: string }> }) {
-  const identity = await getConstructionPortalIdentity();
   const { application: applicationId } = await searchParams;
+  const returnTo = `/portal/construcao-civil/nova${applicationId ? `?${new URLSearchParams({ application: applicationId })}` : ""}`;
+  const identity = await getPortalPageAccess(getConstructionPortalIdentity, returnTo, "/portal/construcao-civil/entrar");
+  if (!identity) return <PortalPageAccessDenied />;
   const authorized = await db.select({ id: constructionExternalApplications.id, expiresAt: constructionExternalApplications.expiresAt }).from(constructionExternalApplications).where(and(eq(constructionExternalApplications.identityId, identity.id), isNull(constructionExternalApplications.revokedAt), gt(constructionExternalApplications.expiresAt, new Date()), isNull(constructionExternalApplications.caseId))).orderBy(desc(constructionExternalApplications.createdAt)).limit(100);
   const applicationRow = applicationId && authorized.some((item) => item.id === applicationId) ? (await db.select().from(constructionExternalApplications).where(and(eq(constructionExternalApplications.id, applicationId), eq(constructionExternalApplications.identityId, identity.id), isNull(constructionExternalApplications.revokedAt), gt(constructionExternalApplications.expiresAt, new Date()), isNull(constructionExternalApplications.caseId))).limit(1))[0] : null;
   const application = applicationRow ? { ...applicationRow, documents: await db.select().from(constructionExternalDocuments).where(eq(constructionExternalDocuments.applicationId, applicationRow.id)).orderBy(desc(constructionExternalDocuments.createdAt)) } : null;

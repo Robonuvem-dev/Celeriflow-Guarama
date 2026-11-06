@@ -1,0 +1,81 @@
+{
+  "checkedAt": "2026-11-06T19:44:47.614Z",
+  "buildId": "QFOYnJkrDcXOFYhhqbe3w",
+  "authenticatedRetest": {
+    "result": "BLOCKED",
+    "scenariosExecuted": 0,
+    "reason": "Authorized Chrome CDP endpoint 127.0.0.1:9337 disconnected; desktop browser also disconnected."
+  },
+  "health": [
+    {
+      "base": "http://localhost:3100",
+      "status": 503,
+      "body": {
+        "status": "unavailable",
+        "database": "unavailable"
+      }
+    },
+    {
+      "base": "https://guarama.celeriflow.com.br",
+      "status": 503,
+      "body": {
+        "status": "unavailable",
+        "database": "unavailable"
+      }
+    }
+  ],
+  "pages": [
+    {
+      "path": "/login",
+      "status": 200,
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "visibleText": "Acesse a plataforma de gestão integrada\n\nCPF OU E-MAIL INSTITUCIONAL\nSENHA\nEsqueceu a senha?\nEntrar no Sistema\nOUTROS ACESSOS\nMicrosoft\nEm configuração\nLDAP\nEm configuração\n\nDEVELOPED BY\n\n| v1.235\nPrivacidade e cookies\n\nCookies necessários mantêm segurança, sessão e sua escolha de privacidade. Cookies opcionais seriam usados para medição de uso, mas nenhuma integração opcional está ativa hoje.\n\nNecessários\n\nSempre ativos para funções essenciais.\n\nOpcionais\n\nSem scripts ou integrações ativas nesta etapa.\n\nConsultar política de privacidade\nManter somente necessários\nAceitar opcionais",
+      "errors": []
+    },
+    {
+      "path": "/portal/portaldatransparencia",
+      "status": 200,
+      "headings": [
+        "Não foi possível carregar esta página",
+        "Menu geral",
+        "Serviços",
+        "Privacidade e cookies"
+      ],
+      "visibleText": "Ir para o conteúdo principal\n\nPoder Executivo Municipal\n\nA+\nA-\nAa\nContraste\nAcessibilidade\nLibras\nDados Abertos\nMapa do Site\nContato\nPREFEITURA MUNICIPAL DE\nAurora das Veredas\nMG · Nossa terra. Nosso futuro.\nPortal do\nServidor\nPortal da\nTransparência\nPortal do\nContribuinte\nNFS-e: Nota\nFiscal Eletrônica\nAcesso à\nInformação\nOuvidoria\n22°C\n\nAurora das Veredas/MG · Nublado\n\nSexta-feira, 06 de novembro de 2026\n\nPesquisar no portal\nProcurar\nInício\nO município\nDepartamentos\nInformativos\nPublicações Oficiais\nTransparência\nContatos\nAutoatendimento\nTodos Serviços\nLicitações\nNão foi possível carregar esta página\n\nTente novamente. A indisponibilidade não significa ausência de registros ou recursos públicos.\n\nTentar novamente\nTodos os assuntos\nSolicitar informação pelo e-SIC\nPREFEITURA MUNICIPAL DE\nAurora das Veredas\nMG · Nossa terra. Nosso futuro.\n\nPortal oficial de Prefeitura Municipal de Aurora das Veredas. Acesso público às informações institucionais, serviços e transparência.\n\nf\n◎\n▶\n\nPraça das Veredas, 100 — Centro · Aurora das Veredas/MG\n\nMENU GERAL\nInício\nO município\nSecretarias\nServiços\nPortal da Transparência\nNotícias\nMapa do Site\nSERVIÇOS\nPortal da Transparência\nPortal do Servidor\nOuvidoria municipal\nAcesso à Informação (e-SIC)\nFale Conosco\nDados Abertos\nAcessibilidade\nPrefeitura Municipal de Aurora das Veredas — Poder Executivo Municipal. Conteúdo institucional publicado e dados públicos autorizados.\nPrivacidade e cookies\n\nCookies necessários mantêm segurança, sessão e sua escolha de privacidade. Cookies opcionais seriam usados para medição de uso, mas nenhuma integração opcional está ativa hoje.\n\nNecessários\n\nSempre ativos para funções essenciais.\n\nOpcionais\n\nSem scripts ou integrações ativas nesta etapa.\n\nConsultar política de privacidade\nManter somente necessários\nAceitar opcionais",
+      "errors": []
+    },
+    {
+      "path": "/portal/secretarias",
+      "status": 200,
+      "headings": [
+        "Estrutura Organizacional e Secretarias",
+        "Gabinete do Prefeito",
+        "Controladoria e Controle Interno",
+        "Secretaria Municipal de Administração",
+        "Secretaria Municipal de Finanças e Tributação",
+        "Secretaria Municipal de Planejamento e Gestão",
+        "Secretaria Municipal de Saúde",
+        "Secretaria Municipal de Educação",
+        "Secretaria Municipal de Assistência Social",
+        "Secretaria Municipal de Obras e Serviços Públicos",
+        "Secretaria Municipal de Agricultura e Abastecimento",
+        "Secretaria Municipal de Meio Ambiente e Recursos Hídricos",
+        "Secretaria Municipal de Cultura e Patrimônio",
+        "Secretaria Municipal de Esportes e Lazer",
+        "Secretaria Municipal de Turismo e Desenvolvimento",
+        "Menu geral",
+        "Serviços",
+        "Privacidade e cookies"
+      ],
+      "visibleText": "Ir para o conteúdo principal\n\nPoder Executivo Municipal\n\nA+\nA-\nAa\nContraste\nAcessibilidade\nLibras\nDados Abertos\nMapa do Site\nContato\nPREFEITURA MUNICIPAL DE\nAurora das Veredas\nMG · Nossa terra. Nosso futuro.\nPortal do\nServidor\nPortal da\nTransparência\nPortal do\nContribuinte\nNFS-e: Nota\nFiscal Eletrônica\nAcesso à\nInformação\nOuvidoria\n22°C\n\nAurora das Veredas/MG · Nublado\n\nSexta-feira, 06 de novembro de 2026\n\nPesquisar no portal\nProcurar\nInício\nO município\nDepartamentos\nInformativos\nPublicações Oficiais\nTransparência\nContatos\nAutoatendimento\nTodos Serviços\nLicitações\nPortal\nSecretarias e Estrutura Organizacional\nEstrutura Organizacional e Secretarias\n\nInformações completas sobre órgãos, secretarias municipais, atribuições e competências legais, endereços, horários de atendimento, telefones e canais oficiais de comunicação de Prefeitura Municipal de Aurora das Veredas.\n\nCanais de Atendimento Geral\n•\nOuvidoria Municipal\n•\nPortal da Transparência\nGAPRE\nAdministração Pública Municipal\nGabinete do Prefeito\nAtendimento Ativo\nDADOS INSTITUCIONAIS E CONTATO\nResponsável\nSecretário(a) / Dirigente Titular\n\nTitular do Órgão\n\nEndereço\nPraça das Veredas, 100 — Centro — Aurora das Veredas/MG\nTelefone\n(28) 3553-1200\nE-mail\natendimento@guarama.es.gov.br\nHorário de Atendimento\nSegunda a Sexta, das 08h00 às 12h00 e das 13h00 às 17h00\nCOMPETÊNCIAS E ATRIBUIÇÕES LEGAIS DO ÓRGÃO\nAssessorar diretamente o(a) Prefeito(a) Municipal em sua representação política, social e administrativa.\nCoordenar a agenda oficial, audiências, relações institucionais com os demais poderes e esferas governamentais.\nSupervisionar a redação e expedição de correspondências oficiais e mensagens ao Poder Legislativo.\nApoiar a comunicação social oficial e articulação comunitária.\nCGM\nAdministração Pública Municipal\nControladoria e Controle Interno\nAtendimento Ativo\nDADOS INSTITUCIONAIS E CONTATO\nResponsável\nSecretário(a) / Dirigente Titular\n\nTitular do Órgão\n\nEndereço\nPraça das Veredas, 100 — Centro — Aurora das Vereda",
+      "errors": []
+    }
+  ],
+  "databaseDiagnostic": {
+    "code": "53000",
+    "message": "Your account or project has exceeded the quota. Upgrade your plan to increase limits.",
+    "source": "Local production server query failures"
+  }
+}

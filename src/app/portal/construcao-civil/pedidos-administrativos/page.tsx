@@ -4,16 +4,21 @@ import { db } from "@/db/client";
 import { constructionCases } from "@/db/schema/construction-core";
 import { constructionServiceRequests } from "@/db/schema/construction-portal";
 import { processes } from "@/db/schema/processes";
-import { getTenantContextForModule } from "@/lib/platform/tenant-context";
+import { AccessError, getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { resolveConstructionAccess } from "@/lib/obras/construction-access";
 import { constructionRequestKinds } from "@/lib/obras/construction-request-policy";
 import ConstructionExternalRequestAttendance from "@/components/construction/ConstructionExternalRequestAttendance";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 
 export default async function ConstructionExternalRequestQueue({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const context = await getTenantContextForModule("OBRAS");
-  const access = await resolveConstructionAccess(context);
-  if (!access.administrator && !access.roles.some((role) => ["MANAGER", "ANALYST"].includes(role))) throw new Error("Atendimento reservado ao setor urbanístico.");
+  const access = await getPortalPageAccess(async () => {
+    const context = await getTenantContextForModule("OBRAS");
+    const resolved = await resolveConstructionAccess(context);
+    if (!resolved.administrator && !resolved.roles.some((role) => ["MANAGER", "ANALYST"].includes(role))) throw new AccessError("Atendimento reservado ao setor urbanístico.", 403);
+    return resolved;
+  }, "/portal/construcao-civil/pedidos-administrativos");
+  if (!access) return <PortalPageAccessDenied />;
   // Scope through central processes, never through untrusted external request IDs.
   const where = and(eq(constructionServiceRequests.status, "PENDING"), access.administrator ? undefined : !access.departmentId || !access.roles.length ? sql`false` : eq(processes.currentDepartmentId, access.departmentId));
   const [{ total }] = await db.select({ total: count() }).from(constructionServiceRequests).innerJoin(constructionCases, eq(constructionCases.id, constructionServiceRequests.caseId)).innerJoin(processes, eq(processes.id, constructionCases.processId)).where(where);

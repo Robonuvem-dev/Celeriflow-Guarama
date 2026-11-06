@@ -1,0 +1,113 @@
+{
+  "startedAt": "2026-11-06T17:44:11.300Z",
+  "base": "http://localhost:3100",
+  "scope": "Rendered tables and visible labels; no business mutations",
+  "total": 3,
+  "cases": [
+    {
+      "path": "/planejamento/ldo",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Planejamento · LDO"
+      ],
+      "tables": [
+        {
+          "caption": "Lei de Diretrizes Orçamentárias — LDO",
+          "headers": [
+            "Código",
+            "Instrumento",
+            "Entidade",
+            "Vigência",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 1,
+          "samples": [
+            "MINUTA-LDO-2026-01\n\t\nMinuta de diretrizes orçamentárias 2026\n\t\nPrefeitura Municipal de Aurora das Veredas\n\t\n2026–2026\n\t\nEm elaboração\n\tAbrir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/planejamento/loa",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Planejamento · LOA"
+      ],
+      "tables": [
+        {
+          "caption": "Lei Orçamentária Anual — LOA",
+          "headers": [
+            "Código",
+            "Instrumento",
+            "Entidade",
+            "Vigência",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 1,
+          "samples": [
+            "MINUTA-LOA-2026-01\n\t\nMinuta da programação orçamentária anual 2026\n\t\nPrefeitura Municipal de Aurora das Veredas\n\t\n2026–2026\n\t\nEm elaboração\n\tAbrir"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/planejamento/audiencias",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Audiências e participação comunitária"
+      ],
+      "tables": [
+        {
+          "caption": "Solicitações da comunidade",
+          "headers": [
+            "Solicitante",
+            "E-mail",
+            "Telefone",
+            "Bairro",
+            "Demanda",
+            "Órgão",
+            "Audiência",
+            "Situação",
+            "Parecer",
+            "Ações"
+          ],
+          "rows": 1,
+          "samples": [
+            "Daniel Ribeiro Freitas\n\t\ndaniel.ribeiro.freitas.342bde@example.com\n\t\n—\n\t\nCentro\n\t\nMelhoria da sinalização dos serviços e ampliação dos canais digitais de atendimento ao cidadão.\n\t\nGestão de Administração\n\t\nAudiência programada: prioridades de atendimento e modernização administrativa\n\t\nEm análise\n\t\n—"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    }
+  ],
+  "finishedAt": "2026-11-06T17:44:22.153Z",
+  "summary": {
+    "inspected": 3,
+    "markerScreens": 0,
+    "emptyTableScreens": 0,
+    "errors": 0,
+    "layoutBlocked": 0
+  }
+}

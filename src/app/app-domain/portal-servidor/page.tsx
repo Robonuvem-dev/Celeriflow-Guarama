@@ -19,6 +19,7 @@ import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { portalCount } from "@/db/repositories/portal-servidor/records";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +95,7 @@ export default async function PortalServidorPage() {
           <div className="min-w-0 bg-white px-3 py-2.5">
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Servidor</p>
             <p className="mt-1 truncate text-sm font-semibold text-slate-900" title={employee.name}>{employee.name}</p>
-            <p className="mt-0.5 text-[11px] text-slate-500">Matrícula {employee.registration ?? "não informada"}</p>
+            <p className="mt-0.5 text-[11px] text-slate-500">Matrícula {personnelDisplayText(employee.registration ?? "não informada")}</p>
           </div>
           <div className="min-w-0 bg-white px-3 py-2.5">
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Vínculo funcional</p>

@@ -1,0 +1,25 @@
+{
+  "startedAt": "2026-11-06T15:48:08.306Z",
+  "base": "https://guarama.celeriflow.com.br",
+  "cases": [
+    {
+      "id": "f6719992-4353-429c-aa2a-2030dc5fe8f5",
+      "title": "Guia de navegação do Portal do Servidor",
+      "status": 200,
+      "contentType": "text/plain; charset=utf-8",
+      "bytes": 618,
+      "sha256": "f86071b3e01590ca1390569a6ce7dbab66b870872469d55e40d57d3ddc7dfadb",
+      "passed": true
+    },
+    {
+      "id": "ff0cae66-f380-40e9-b17d-8da279e6688c",
+      "title": "Orientações para conferência cadastral e atendimento",
+      "status": 200,
+      "contentType": "text/plain; charset=utf-8",
+      "bytes": 564,
+      "sha256": "6a888303b933cba481292c5f45dd1a96ba90f53eacbcc6880298cb9bbccea4b7",
+      "passed": true
+    }
+  ],
+  "finishedAt": "2026-11-06T15:48:21.806Z"
+}

@@ -14,17 +14,30 @@ before(async () => {
   f = await createLocalDrizzleDatabase();
   await f.database.exec(`
     CREATE TABLE "Usuario" (id text PRIMARY KEY); INSERT INTO "Usuario" VALUES ('a'),('b');
-    CREATE TABLE "Folder" (id text PRIMARY KEY,name text);
-    CREATE TABLE "Document" (id text PRIMARY KEY,title text,"documentType" text,status text,"folderId" text,"createdAt" timestamp DEFAULT now());
+    CREATE TABLE "Folder" (id text PRIMARY KEY,name text,"parentId" text);
+    CREATE TABLE "Document" (id text PRIMARY KEY,title text,"documentType" text,status text,"folderId" text,"createdAt" timestamp DEFAULT now(),"documentClassId" text);
     CREATE TABLE "DocumentVersion" (id text PRIMARY KEY,"documentId" text NOT NULL REFERENCES "Document"(id),"versionNumber" int,"fileUrl" text,"hashSha256" text,status text,"createdAt" timestamp DEFAULT now());
     CREATE TABLE "GedEntry" ("documentId" text PRIMARY KEY,filename text,"mimeType" text,"byteLength" int,origin text,"legacyReference" text,"ownerId" text,"departmentId" text,"editorialStatus" text,archived boolean DEFAULT false);
     CREATE TABLE "GedCheckout" ("documentId" text,"ownerId" text,"closedAt" timestamp);
     CREATE TABLE "GedReview" ("documentId" text,status text,stage int,assignments jsonb);
+    CREATE TABLE "DocumentClass" (id text PRIMARY KEY);
+    CREATE TABLE "GedVersionFile" ("versionId" text PRIMARY KEY);
+    CREATE TABLE "GedMetadata" ("documentId" text PRIMARY KEY,"inheritAccess" boolean DEFAULT true);
+    CREATE TABLE "GedTypeDefinition" ("classId" text,version int);
+    CREATE TABLE "GedFolderAccess" ("folderId" text,"ownerId" text,"departmentId" text,"inheritAccess" boolean DEFAULT true);
+    CREATE TABLE "GedAcl" (kind text,"objectId" text,principal text,"principalId" text,operation text,effect text);
+    CREATE TABLE "GedGroup" (id text PRIMARY KEY,active boolean);
+    CREATE TABLE "GedGroupMember" ("groupId" text,"userId" text);
+    CREATE TABLE "GedFlowRun" ("documentId" text,"definitionId" text,status text,"nodeId" text);
+    CREATE TABLE "GedFlowDefinition" (id text PRIMARY KEY,graph jsonb);
     CREATE TABLE "AuditEvent" (id text PRIMARY KEY,"eventType" text,"targetType" text,"targetId" text,"actorUsuarioId" text REFERENCES "Usuario"(id),"createdAt" timestamp DEFAULT now());
-    INSERT INTO "Document" SELECT 'doc-'||i,'Arquivo '||i,'PDF','Válido',NULL,now() FROM generate_series(1,26) i;
+    INSERT INTO "Document" SELECT 'doc-'||i,'Arquivo '||i,'PDF','Válido',NULL,now(),NULL FROM generate_series(1,26) i;
     INSERT INTO "DocumentVersion" SELECT 'v-'||i,'doc-'||i,1,'https://storage.invalid/'||i,repeat('a',64),'FINAL',now() FROM generate_series(1,26) i;
     INSERT INTO "GedEntry" ("documentId",filename,"mimeType","byteLength",origin,"legacyReference","ownerId","editorialStatus") SELECT 'doc-'||i,'arquivo-'||i||'.pdf','application/pdf',10,'UPLOAD','','a','RASCUNHO' FROM generate_series(1,26) i;
   `);
+  // Exercise the current production access function, including the outsider check.
+  const gedMigration = await readFile("db/migrations/20261102130000_ged_poc_internal/migration.sql", "utf8");
+  await f.database.exec(gedMigration.slice(gedMigration.indexOf("CREATE FUNCTION ged_access(")));
   const historical = await readFile("prisma/migrations-ibema/20261010130000_add_master_data_foundation/migration.sql", "utf8");
   for (const name of ["LegalText", "LegalTextVersion"]) { const start = historical.indexOf(`CREATE TABLE "${name}" (`); await f.database.exec(historical.slice(start, historical.indexOf(";", start) + 1)); }
   await f.database.exec('CREATE UNIQUE INDEX ON "LegalTextVersion"("documentId");');
@@ -133,7 +146,7 @@ test("33.11: grava Word (.docx) e LibreOffice (.odt) diretamente no banco sem co
   assert.notEqual(odtId, docxId);
 
   const listed = await withDatabaseTransaction(f.connection, tx => listLegalDocuments(tx, actor, v2Id));
-  const dbRows = listed.rows.filter(r => r.storage === "DATABASE");
+  const dbRows = listed.rows.filter(r => "storage" in r && r.storage === "DATABASE");
   assert.equal(dbRows.length, 2);
   assert.ok(dbRows.some(r => r.id === docxId && r.filename === "lei-1-consolidada.docx" && r.role === "ORIGINAL"));
   assert.ok(dbRows.some(r => r.id === odtId && r.filename === "anexo-unico.odt" && r.role === "ATTACHMENT"));

@@ -6,7 +6,8 @@ import { db } from "@/db/client";
 import { findSocialPerson, listSocialFacts, listSocialFinancialEntries, listSocialCatalogs, socialPersonAttendances, socialAccessibleUnitOptions } from "@/db/repositories/social/queries";
 
 export default async function SocialPersonPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: routeId } = await params;
+  const id = decodeURIComponent(routeId);
   const context = await getTenantContextForModule("SOCIAL");
   const access = await resolveSocialAccess(context);
   if (!access.administrator && !access.links.length) notFound();

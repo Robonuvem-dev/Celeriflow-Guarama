@@ -1,0 +1,3880 @@
+{
+  "startedAt": "2026-11-06T17:09:00.037Z",
+  "base": "http://localhost:3100",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "scope": "Existing session reused only in memory in an isolated local browser context",
+  "cases": [
+    {
+      "path": "/rh/parametrizacoes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Parametrizações",
+        "Parametrizações de RH e Folha",
+        "Conjunto de regras",
+        "Cobertura configurada",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/pessoas",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pessoas e cadastro fiscal",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 20
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/economico",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Cadastro econômico",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/imoveis",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Imóveis — IPTU",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 20
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/base-territorial",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Base territorial",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/avaliacoes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Memórias de avaliação",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/motor-fiscal",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Motor fiscal e arrecadação",
+        "Reversão de compensação, transferência ou restituição",
+        "Regra fiscal versionada",
+        "Simular ou constituir crédito",
+        "Mapeamento financeiro do tributo",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/nfse",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "NFS-e",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1290,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/itbi",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "ITBI — transmissões",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/guias",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Guias e arrecadação",
+        "Estorno de arrecadação tributária",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/comparativo-anual",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Comparativo anual",
+        "Comparativo anual — IPTU, ISS e demais receitas tributárias",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        },
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        }
+      ]
+    },
+    {
+      "path": "/compras/pesquisas-precos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pesquisas de Preços",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 10
+          }
+        ]
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/compras/planejamento",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Planejamento de Compras",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 10
+          }
+        ]
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/camara/sessoes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Sessões plenárias",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 5
+          }
+        ]
+      },
+      "shell": [
+        "/camara",
+        "/camara/planejamento",
+        "/camara/legislaturas",
+        "/camara/vereadores",
+        "/camara/comissoes",
+        "/camara/sessoes",
+        "/camara/proposicoes",
+        "/camara/leis",
+        "/camara/audiencias",
+        "/camara/portal",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/configuracoes/usuarios",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Gestão de Usuários",
+        "Perfis complementares",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 1
+          }
+        ]
+      },
+      "shell": [
+        "/configuracoes",
+        "/configuracoes/integracoes",
+        "/configuracoes/instancia",
+        "/configuracoes/modulos",
+        "/configuracoes/perfis",
+        "/configuracoes/usuarios",
+        "/configuracoes/processos",
+        "/configuracoes/certificados",
+        "/configuracoes/auditoria",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/configuracoes/modulos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Módulos",
+        "Módulos",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/configuracoes",
+        "/configuracoes/integracoes",
+        "/configuracoes/instancia",
+        "/configuracoes/modulos",
+        "/configuracoes/perfis",
+        "/configuracoes/usuarios",
+        "/configuracoes/processos",
+        "/configuracoes/certificados",
+        "/configuracoes/auditoria",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/cultura/eventos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Eventos",
+        "Eventos oficiais",
+        "Circuito de Música nas Praças",
+        "Memória Oral das Veredas",
+        "Oficinas de Artesanato do Vale",
+        "Cinema Itinerante nos Bairros",
+        "Encontro de Violeiros de Aurora",
+        "Biblioteca Viva nas Comunidades",
+        "Mostra de Teatro Estudantil",
+        "Feira de Saberes e Sabores",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/cultura",
+        "/cultura/gestao-cultural",
+        "/cultura/fomento-projetos",
+        "/cultura/esporte-lazer",
+        "https://www.acessaflow.com.br",
+        "/cultura/espacos-reservas",
+        "/cultura/eventos",
+        "/cultura/conselhos-fundos",
+        "/cultura/documentos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/cultura/espacos-reservas",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Espaços e Reservas",
+        "Espaços e Reservas",
+        "Circuito de Música nas Praças",
+        "Memória Oral das Veredas",
+        "Oficinas de Artesanato do Vale",
+        "Cinema Itinerante nos Bairros",
+        "Encontro de Violeiros de Aurora",
+        "Biblioteca Viva nas Comunidades",
+        "Mostra de Teatro Estudantil",
+        "Feira de Saberes e Sabores",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/cultura",
+        "/cultura/gestao-cultural",
+        "/cultura/fomento-projetos",
+        "/cultura/esporte-lazer",
+        "https://www.acessaflow.com.br",
+        "/cultura/espacos-reservas",
+        "/cultura/eventos",
+        "/cultura/conselhos-fundos",
+        "/cultura/documentos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/economico/consulta",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Consulta econômica",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/frotas/movimentos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Movimentos e importações da frota",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/frotas?area=frota",
+        "/frotas?area=utilizacao",
+        "/frotas?area=rotas",
+        "/frotas?area=planos",
+        "/frotas?area=ordens",
+        "/frotas?area=manutencoes",
+        "/frotas?area=consumos",
+        "/frotas?area=gastos",
+        "/frotas?area=seguros",
+        "/frotas?area=obrigacoes",
+        "/frotas?area=documentos",
+        "/frotas?area=ocorrencias",
+        "/frotas?area=relatorios",
+        "/frotas/gestao",
+        "/frotas/movimentos",
+        "/frotas/cadastros",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/saude/agenda",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Agendamentos",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 20
+          }
+        ]
+      },
+      "shell": [
+        "/saude",
+        "/saude/gerencial",
+        "/saude/relatorios",
+        "/saude/territorio",
+        "/saude/territorio/atencao-primaria",
+        "/saude/farmacia",
+        "/saude/regulacao",
+        "/saude/agenda",
+        "/saude/agenda/gestao",
+        "/saude/acolhimento",
+        "/saude/pronto-atendimento",
+        "/saude/atendimentos",
+        "/saude/linhas-cuidado",
+        "/saude/pacientes",
+        "/saude/vacinacao",
+        "/saude/laboratorio",
+        "/saude/centro-especializado",
+        "/saude/prestador",
+        "/saude/tfd",
+        "/saude/producao",
+        "/saude/sisab",
+        "/saude/esus",
+        "/saude/vigilancia",
+        "/saude/integracoes",
+        "/saude/unidades",
+        "/saude/profissionais",
+        "/saude/equipes",
+        "/saude/administracao",
+        "/saude/administracao/rede",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/saude/pacientes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pacientes",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 20
+          }
+        ]
+      },
+      "shell": [
+        "/saude",
+        "/saude/gerencial",
+        "/saude/relatorios",
+        "/saude/territorio",
+        "/saude/territorio/atencao-primaria",
+        "/saude/farmacia",
+        "/saude/regulacao",
+        "/saude/agenda",
+        "/saude/agenda/gestao",
+        "/saude/acolhimento",
+        "/saude/pronto-atendimento",
+        "/saude/atendimentos",
+        "/saude/linhas-cuidado",
+        "/saude/pacientes",
+        "/saude/vacinacao",
+        "/saude/laboratorio",
+        "/saude/centro-especializado",
+        "/saude/prestador",
+        "/saude/tfd",
+        "/saude/producao",
+        "/saude/sisab",
+        "/saude/esus",
+        "/saude/vigilancia",
+        "/saude/integracoes",
+        "/saude/unidades",
+        "/saude/profissionais",
+        "/saude/equipes",
+        "/saude/administracao",
+        "/saude/administracao/rede",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/social/atendimentos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Atendimentos",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 20
+          }
+        ]
+      },
+      "shell": [
+        "/social",
+        "/social/atendimentos",
+        "/social/encaminhamentos",
+        "/social/gestao/familias",
+        "/social/gestao/membros",
+        "/social/gestao/beneficiarios",
+        "/social/pessoas",
+        "/social/prontuario",
+        "/social/gestao/prontuarios",
+        "/social/gestao/mensal",
+        "/social/gestao/visitas",
+        "/social/gestao/unidades",
+        "/social/gestao/profissionais",
+        "/social/gestao/acompanhamentos",
+        "/social/gestao/evolucoes",
+        "/social/gestao/condicionalidades",
+        "/social/gestao/formularios",
+        "/social/gestao/respostas",
+        "/social/gestao/scfv",
+        "/social/gestao/matriculas",
+        "/social/gestao/eventos",
+        "/social/gestao/presencas",
+        "/social/gestao/anexos",
+        "/social/gestao/comunicacoes",
+        "/social/configuracoes",
+        "/social/gestao/parametros",
+        "/social/gestao/documentos",
+        "/social/gestao/beneficios",
+        "/social/gestao/programas",
+        "/social/gestao/participacoes",
+        "/social/requisicoes",
+        "/social/relatorios",
+        "/social/importacoes",
+        "/social/gestao/layouts",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/social/prontuario",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Prontuário Eletrônico SUAS",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 20
+          }
+        ]
+      },
+      "shell": [
+        "/social",
+        "/social/atendimentos",
+        "/social/encaminhamentos",
+        "/social/gestao/familias",
+        "/social/gestao/membros",
+        "/social/gestao/beneficiarios",
+        "/social/pessoas",
+        "/social/prontuario",
+        "/social/gestao/prontuarios",
+        "/social/gestao/mensal",
+        "/social/gestao/visitas",
+        "/social/gestao/unidades",
+        "/social/gestao/profissionais",
+        "/social/gestao/acompanhamentos",
+        "/social/gestao/evolucoes",
+        "/social/gestao/condicionalidades",
+        "/social/gestao/formularios",
+        "/social/gestao/respostas",
+        "/social/gestao/scfv",
+        "/social/gestao/matriculas",
+        "/social/gestao/eventos",
+        "/social/gestao/presencas",
+        "/social/gestao/anexos",
+        "/social/gestao/comunicacoes",
+        "/social/configuracoes",
+        "/social/gestao/parametros",
+        "/social/gestao/documentos",
+        "/social/gestao/beneficios",
+        "/social/gestao/programas",
+        "/social/gestao/participacoes",
+        "/social/requisicoes",
+        "/social/relatorios",
+        "/social/importacoes",
+        "/social/gestao/layouts",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/assinatura-digital/pastas-inteligentes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pastas inteligentes",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 3
+          }
+        ]
+      },
+      "shell": [
+        "/assinatura-digital",
+        "/assinatura-digital/meu-painel",
+        "/assinatura-digital/calendario",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/usuarios",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/assine-agora",
+        "/assinatura-digital/validacao",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/historico",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/assinatura-digital/fluxos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Fluxos documentais",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 6
+          }
+        ]
+      },
+      "shell": [
+        "/assinatura-digital",
+        "/assinatura-digital/meu-painel",
+        "/assinatura-digital/calendario",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/usuarios",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/assine-agora",
+        "/assinatura-digital/validacao",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/historico",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/assinatura-digital/modelos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Modelos de documentos",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 6
+          }
+        ]
+      },
+      "shell": [
+        "/assinatura-digital",
+        "/assinatura-digital/meu-painel",
+        "/assinatura-digital/calendario",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/usuarios",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/assine-agora",
+        "/assinatura-digital/validacao",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/historico",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/assinatura-digital/usuarios",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Assinadores",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 5
+          }
+        ]
+      },
+      "shell": [
+        "/assinatura-digital",
+        "/assinatura-digital/meu-painel",
+        "/assinatura-digital/calendario",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/usuarios",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/assine-agora",
+        "/assinatura-digital/validacao",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/historico",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/assinatura-digital/tarefas",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Minhas tarefas",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/assinatura-digital",
+        "/assinatura-digital/meu-painel",
+        "/assinatura-digital/calendario",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/usuarios",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/assine-agora",
+        "/assinatura-digital/validacao",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/historico",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/assinatura-digital/classes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Classes e políticas documentais",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 8
+          }
+        ]
+      },
+      "shell": [
+        "/assinatura-digital",
+        "/assinatura-digital/meu-painel",
+        "/assinatura-digital/calendario",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/usuarios",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/assine-agora",
+        "/assinatura-digital/validacao",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/historico",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/assinatura-digital/thesaurus",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Thesaurus",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 4
+          }
+        ]
+      },
+      "shell": [
+        "/assinatura-digital",
+        "/assinatura-digital/meu-painel",
+        "/assinatura-digital/calendario",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/usuarios",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/assine-agora",
+        "/assinatura-digital/validacao",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/historico",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/poc",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Parametrizações",
+        "Parametrizações de RH e Folha",
+        "Conjunto de regras",
+        "Cobertura configurada",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/notificacoes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Notificações internas (24)",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 2795,
+        "workspaces": 0,
+        "sidebars": 0,
+        "tables": []
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/portal-paciente/agenda",
+      "status": 200,
+      "result": "AUTH_REQUIRED",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 0,
+        "sidebars": 0,
+        "tables": []
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/portal-paciente/saude",
+      "status": 200,
+      "result": "AUTH_REQUIRED",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 0,
+        "sidebars": 0,
+        "tables": []
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/portal-paciente/ouvidoria",
+      "status": 200,
+      "result": "AUTH_REQUIRED",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 0,
+        "sidebars": 0,
+        "tables": []
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/portal-paciente/dados",
+      "status": 200,
+      "result": "AUTH_REQUIRED",
+      "headings": [
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 0,
+        "sidebars": 0,
+        "tables": []
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/portal/construcao-civil",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "headings": [
+        "Acesso indisponível para esta conta",
+        "Menu geral",
+        "Serviços",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 845,
+        "workspaces": 0,
+        "sidebars": 0,
+        "tables": []
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/portal/construcao-civil/nova",
+      "status": 200,
+      "result": "ACCESS_UNAVAILABLE",
+      "headings": [
+        "Acesso indisponível para esta conta",
+        "Menu geral",
+        "Serviços",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 845,
+        "workspaces": 0,
+        "sidebars": 0,
+        "tables": []
+      },
+      "shell": [],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/sst/aso/branco",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Exames e ASO",
+        "ASO em branco",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/sst",
+        "/sst/atestados",
+        "/sst/configuracoes",
+        "/sst/juntas",
+        "/sst/agenda",
+        "/sst/aso",
+        "/sst/jornadas",
+        "/sst/relatorios",
+        "/sst/questionarios",
+        "/sst/profissionais",
+        "/sst/prontuarios",
+        "/sst/vacinacao",
+        "/sst/ghe",
+        "/sst/programas",
+        "/sst/vinculos",
+        "/sst/ordens-servico",
+        "/sst/equipamentos",
+        "/sst/prevencao",
+        "/sst/acidentes",
+        "/sst/restricoes",
+        "/sst/planos",
+        "/sst/ppp",
+        "/sst/consolidado",
+        "/sst/integracoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/imoveis/aurora-system-v1:property:000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Imóveis (IPTU)",
+        "Ficha do imóvel 02.01.8101.001",
+        "Histórico e espelho imobiliário",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/sst/configuracoes/aurora-system-v1:certificate-reason:000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Configurações",
+        "Editar motivo · Consulta e acompanhamento de saúde",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/sst",
+        "/sst/atestados",
+        "/sst/configuracoes",
+        "/sst/juntas",
+        "/sst/agenda",
+        "/sst/aso",
+        "/sst/jornadas",
+        "/sst/relatorios",
+        "/sst/questionarios",
+        "/sst/profissionais",
+        "/sst/prontuarios",
+        "/sst/vacinacao",
+        "/sst/ghe",
+        "/sst/programas",
+        "/sst/vinculos",
+        "/sst/ordens-servico",
+        "/sst/equipamentos",
+        "/sst/prevencao",
+        "/sst/acidentes",
+        "/sst/restricoes",
+        "/sst/planos",
+        "/sst/ppp",
+        "/sst/consolidado",
+        "/sst/integracoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/social/pessoas/aurora-system-v1:person:027",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Prontuário individual",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/social",
+        "/social/atendimentos",
+        "/social/encaminhamentos",
+        "/social/gestao/familias",
+        "/social/gestao/membros",
+        "/social/gestao/beneficiarios",
+        "/social/pessoas",
+        "/social/prontuario",
+        "/social/gestao/prontuarios",
+        "/social/gestao/mensal",
+        "/social/gestao/visitas",
+        "/social/gestao/unidades",
+        "/social/gestao/profissionais",
+        "/social/gestao/acompanhamentos",
+        "/social/gestao/evolucoes",
+        "/social/gestao/condicionalidades",
+        "/social/gestao/formularios",
+        "/social/gestao/respostas",
+        "/social/gestao/scfv",
+        "/social/gestao/matriculas",
+        "/social/gestao/eventos",
+        "/social/gestao/presencas",
+        "/social/gestao/anexos",
+        "/social/gestao/comunicacoes",
+        "/social/configuracoes",
+        "/social/gestao/parametros",
+        "/social/gestao/documentos",
+        "/social/gestao/beneficios",
+        "/social/gestao/programas",
+        "/social/gestao/participacoes",
+        "/social/requisicoes",
+        "/social/relatorios",
+        "/social/importacoes",
+        "/social/gestao/layouts",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/folha/eventos/aurora-mg-50k-v1:salary-event:000/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Folha de Pagamento",
+        "Editar Evento",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/saude/vacinacao/carteira/aurora-system-v1%3Apatient%3A000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Vacinação",
+        "Carteira vacinal · Daniel Ribeiro Freitas",
+        "Calendário individual e pendências",
+        "Aplicações realizadas",
+        "Histórico das ações da carteira",
+        "ESAVI e histórico de condutas",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/saude",
+        "/saude/gerencial",
+        "/saude/relatorios",
+        "/saude/territorio",
+        "/saude/territorio/atencao-primaria",
+        "/saude/farmacia",
+        "/saude/regulacao",
+        "/saude/agenda",
+        "/saude/agenda/gestao",
+        "/saude/acolhimento",
+        "/saude/pronto-atendimento",
+        "/saude/atendimentos",
+        "/saude/linhas-cuidado",
+        "/saude/pacientes",
+        "/saude/vacinacao",
+        "/saude/laboratorio",
+        "/saude/centro-especializado",
+        "/saude/prestador",
+        "/saude/tfd",
+        "/saude/producao",
+        "/saude/sisab",
+        "/saude/esus",
+        "/saude/vigilancia",
+        "/saude/integracoes",
+        "/saude/unidades",
+        "/saude/profissionais",
+        "/saude/equipes",
+        "/saude/administracao",
+        "/saude/administracao/rede",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/servidores/aurora-system-v1:employee:007/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Servidores",
+        "Editar Servidor",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/dependentes/RH_CENARIOS_AJUSTES_2026_V1:dependent:aurora-mg-50k-v1:employee:007/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Dependentes",
+        "Editar Dependente",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/folha/THIAGO_MORCATTY_DEMO_2026_V1:payroll/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Folha de Pagamento",
+        "Editar Folha",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/ponto/RH_HISTORICO_2025_2026_V1:PONTO:aurora-mg-50k-v1:employee:003:2026-12-31/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Registro de Ponto",
+        "Editar Ponto",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/rh/atos/RH_CENARIOS_AJUSTES_2026_V1:act:aurora-mg-50k-v1:employee:000/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Atos de Pessoal",
+        "Editar Ato de Pessoal",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/compras/solicitacoes/aurora-system-v1:purchase-request:000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Solicitações",
+        "Detalhes da Solicitação",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/compras/solicitacoes/aurora-system-v1:purchase-request:000/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Solicitações",
+        "Editar Solicitação",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/compras/pesquisas-precos/aurora-system-v1:price-research:000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pesquisas de Preços",
+        "Pesquisa de Preços",
+        "Janela e referência",
+        "Convidar fornecedor",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/compras/processos/aurora-system-v1:purchase-process:000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Processos de Compra",
+        "Detalhes do Processo",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/compras/processos/aurora-system-v1:purchase-process:000/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Processos de Compra",
+        "Editar Processo",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/compras/licitacoes/cmvv3edw9000508l5rgusxeg8",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Licitações",
+        "Detalhes da Licitação",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/compras",
+        "/compras/solicitacoes",
+        "/compras/planejamento",
+        "/compras/pesquisas-precos",
+        "/compras/processos",
+        "/compras/licitacoes",
+        "/compras/contratos",
+        "/compras/recebimentos",
+        "/compras/catalogo",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/protocolos/ouvidoria/aurora-system-v1:ombudsman:002",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Ouvidoria",
+        "OUV-2026-8103",
+        "Classificação e prioridade",
+        "Assunto",
+        "Narrativa restrita",
+        "Anexos GED",
+        "Encaminhar",
+        "Histórico e apuração",
+        "Resposta da Ouvidoria",
+        "Tramitação",
+        "Processo formal",
+        "Auditoria",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/protocolos",
+        "/assinatura-digital/origens?module=PROCESSOS",
+        "/protocolos/processos",
+        "/protocolos/acompanhamento",
+        "/protocolos/busca",
+        "/protocolos/ouvidoria",
+        "/protocolos/notificacoes",
+        "/protocolos/assinaturas",
+        "/protocolos/relatorios",
+        "/protocolos/arquivados",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/planejamento/ppa/aurora-system-v1:ppa-instrument:000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "PPA · Previsões e versões",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          },
+          {
+            "width": 0,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/planejamento",
+        "/planejamento/ppa",
+        "/planejamento/ldo",
+        "/planejamento/loa",
+        "/planejamento/regionalizacao",
+        "/planejamento/cadastros/source",
+        "/planejamento/cadastros/revenue",
+        "/planejamento/cadastros/expense",
+        "/planejamento/cadastros/versions",
+        "/planejamento/entidades",
+        "/planejamento/audiencias",
+        "/planejamento/importacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/atendimento/chamados/aurora-system-v1:ticket:015",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Atendimento Central",
+        "AT-2026-8116",
+        "Descrição",
+        "Interações e histórico",
+        "Resolver",
+        "Documentos GED",
+        "Processo relacionado",
+        "Encaminhamentos",
+        "Auditoria",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/atendimento",
+        "/atendimento/novo",
+        "/atendimento/central",
+        "/atendimento/fila",
+        "/atendimento/ouvidoria",
+        "/atendimento/configuracoes",
+        "/atendimento/relatorios",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/atendimento/ouvidoria/aurora-system-v1:ombudsman:002",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Ouvidoria",
+        "OUV-2026-8103",
+        "Classificação e prioridade",
+        "Assunto",
+        "Narrativa restrita",
+        "Anexos GED",
+        "Encaminhar",
+        "Histórico e apuração",
+        "Resposta da Ouvidoria",
+        "Tramitação",
+        "Processo formal",
+        "Auditoria",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/atendimento",
+        "/atendimento/novo",
+        "/atendimento/central",
+        "/atendimento/fila",
+        "/atendimento/ouvidoria",
+        "/atendimento/configuracoes",
+        "/atendimento/relatorios",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/patrimonio/almoxarifados/aurora-system-v1%3Awarehouse%3A000/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Almoxarifados",
+        "Editar Almoxarifado · Almoxarifado Central",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/patrimonio",
+        "/patrimonio/almoxarifados",
+        "/patrimonio/materiais",
+        "/patrimonio/valorizacao",
+        "/patrimonio/requisicoes",
+        "/patrimonio/inventarios",
+        "/patrimonio/centros-custo",
+        "/patrimonio/bens",
+        "/patrimonio/inventario-bens",
+        "/patrimonio/cadastros",
+        "/patrimonio/relatorios",
+        "/patrimonio/ciclo-vida",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/patrimonio/centros-custo/aurora-mg-50k-v1%3Acost-center%3A000/editar",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Centros de custo",
+        "Editar Centro de Custo · AV-CC-001",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/patrimonio",
+        "/patrimonio/almoxarifados",
+        "/patrimonio/materiais",
+        "/patrimonio/valorizacao",
+        "/patrimonio/requisicoes",
+        "/patrimonio/inventarios",
+        "/patrimonio/centros-custo",
+        "/patrimonio/bens",
+        "/patrimonio/inventario-bens",
+        "/patrimonio/cadastros",
+        "/patrimonio/relatorios",
+        "/patrimonio/ciclo-vida",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/patrimonio/bens/aurora-mg-50k-v1%3Afleet-asset%3A000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Bens patrimoniais",
+        "AV-FROTA-00001 · Fiat Argo Drive 1.0 — Automóvel de apoio administrativo",
+        "Transferir setor ou responsável",
+        "Iniciar manutenção patrimonial",
+        "Últimas 10 transferências aprovadas",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/patrimonio",
+        "/patrimonio/almoxarifados",
+        "/patrimonio/materiais",
+        "/patrimonio/valorizacao",
+        "/patrimonio/requisicoes",
+        "/patrimonio/inventarios",
+        "/patrimonio/centros-custo",
+        "/patrimonio/bens",
+        "/patrimonio/inventario-bens",
+        "/patrimonio/cadastros",
+        "/patrimonio/relatorios",
+        "/patrimonio/ciclo-vida",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/saude/pacientes/aurora-system-v1%3Apatient%3A000",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pacientes",
+        "Cadastro do paciente · Daniel Ribeiro Freitas",
+        "Contatos telefônicos realizados",
+        "Endereços e histórico",
+        "Contatos e relações",
+        "Pasta documental",
+        "Histórico de alterações cadastrais",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/saude",
+        "/saude/gerencial",
+        "/saude/relatorios",
+        "/saude/territorio",
+        "/saude/territorio/atencao-primaria",
+        "/saude/farmacia",
+        "/saude/regulacao",
+        "/saude/agenda",
+        "/saude/agenda/gestao",
+        "/saude/acolhimento",
+        "/saude/pronto-atendimento",
+        "/saude/atendimentos",
+        "/saude/linhas-cuidado",
+        "/saude/pacientes",
+        "/saude/vacinacao",
+        "/saude/laboratorio",
+        "/saude/centro-especializado",
+        "/saude/prestador",
+        "/saude/tfd",
+        "/saude/producao",
+        "/saude/sisab",
+        "/saude/esus",
+        "/saude/vigilancia",
+        "/saude/integracoes",
+        "/saude/unidades",
+        "/saude/profissionais",
+        "/saude/equipes",
+        "/saude/administracao",
+        "/saude/administracao/rede",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/comparativo-anual?direction=ALL&firstYear=2025&governmentEntityId=p0-current-exe&metric=NET&minimumDifference=0&minimumPercentage=0&query=&secondYear=2026&view=rows",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Comparativo anual",
+        "Comparativo anual — IPTU, ISS e demais receitas tributárias",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        },
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        }
+      ]
+    },
+    {
+      "path": "/portal-servidor/sst/agenda",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Minha agenda SST",
+        "Minha agenda SST",
+        "Meus agendamentos",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/portal-servidor",
+        "/portal-servidor/ficha-funcional",
+        "/portal-servidor/atendimento",
+        "/portal-servidor/biblioteca",
+        "/portal-servidor/emissoes",
+        "/portal-servidor/documentos-funcionais",
+        "/portal-servidor/relatorios",
+        "/portal-servidor/documentos",
+        "/portal-servidor/ponto",
+        "/portal-servidor/ferias",
+        "/portal-servidor/beneficios",
+        "/portal-servidor/folha",
+        "/portal-servidor/demonstrativos",
+        "/portal-servidor/banco-horas",
+        "/portal-servidor/licenca-premio",
+        "/portal-servidor/margem",
+        "/portal-servidor/consignacoes",
+        "/portal-servidor/servicos",
+        "/portal-servidor/ponto/registro",
+        "/portal-servidor/protocolos",
+        "/portal-servidor/solicitacoes-rh",
+        "/portal-servidor/recadastramento",
+        "/portal-servidor/credito",
+        "/portal-servidor/capacitacao",
+        "/portal-servidor/avaliacoes",
+        "/portal-servidor/aniversariantes",
+        "/portal-servidor/sst/agenda",
+        "/portal-servidor/sst/cat",
+        "/portal-servidor/sst/cipa",
+        "/portal-servidor/sst/planos",
+        "/portal-servidor/sst/relatorios",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/sst/agenda",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Agenda",
+        "Agenda ocupacional",
+        "Disponibilidades (horário de Brasília)",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/sst",
+        "/sst/atestados",
+        "/sst/configuracoes",
+        "/sst/juntas",
+        "/sst/agenda",
+        "/sst/aso",
+        "/sst/jornadas",
+        "/sst/relatorios",
+        "/sst/questionarios",
+        "/sst/profissionais",
+        "/sst/prontuarios",
+        "/sst/vacinacao",
+        "/sst/ghe",
+        "/sst/programas",
+        "/sst/vinculos",
+        "/sst/ordens-servico",
+        "/sst/equipamentos",
+        "/sst/prevencao",
+        "/sst/acidentes",
+        "/sst/restricoes",
+        "/sst/planos",
+        "/sst/ppp",
+        "/sst/consolidado",
+        "/sst/integracoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/sst/agenda/agendamentos",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Agendamentos SST",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 1
+          }
+        ]
+      },
+      "shell": [
+        "/sst",
+        "/sst/atestados",
+        "/sst/configuracoes",
+        "/sst/juntas",
+        "/sst/agenda",
+        "/sst/aso",
+        "/sst/jornadas",
+        "/sst/relatorios",
+        "/sst/questionarios",
+        "/sst/profissionais",
+        "/sst/prontuarios",
+        "/sst/vacinacao",
+        "/sst/ghe",
+        "/sst/programas",
+        "/sst/vinculos",
+        "/sst/ordens-servico",
+        "/sst/equipamentos",
+        "/sst/prevencao",
+        "/sst/acidentes",
+        "/sst/restricoes",
+        "/sst/planos",
+        "/sst/ppp",
+        "/sst/consolidado",
+        "/sst/integracoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/financeiro/orcamento",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Financeiro",
+        "Orçamento e Plano de Contas",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/financeiro",
+        "/financeiro/empenhos",
+        "/financeiro/liquidacoes",
+        "/assinatura-digital/origens?module=FINANCEIRO",
+        "/financeiro/pagamentos",
+        "/financeiro/restos-a-pagar",
+        "/financeiro/custos",
+        "/financeiro/receitas",
+        "/financeiro/receitas-constitucionais",
+        "/financeiro/contas-bancarias",
+        "/financeiro/download-extratos",
+        "/financeiro/automacoes",
+        "/financeiro/resgates-aplicacoes",
+        "/financeiro/rendimentos",
+        "/financeiro/conciliacao-bancaria",
+        "/financeiro/contabilidade",
+        "/financeiro/relatorios",
+        "/financeiro/relatorios/indices-constitucionais",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/cemiterios",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Estrutura dos cemitérios",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 1
+          }
+        ]
+      },
+      "shell": [
+        "/cemiterios/estrutura?tipo=CEMITERIO",
+        "/cemiterios/estrutura?tipo=QUADRA",
+        "/cemiterios/estrutura?tipo=CAPELA",
+        "/cemiterios/estrutura?tipo=FUNERARIA",
+        "/cemiterios/estrutura?tipo=COVEIRO",
+        "/cemiterios/estrutura?tipo=CAUSA",
+        "/cemiterios/estrutura?tipo=OSSUARIO",
+        "/cemiterios/estrutura?tipo=CAMPO",
+        "/cemiterios/ocupacao?tipo=LOTE",
+        "/cemiterios/ocupacao?tipo=SEPULTURA",
+        "/cemiterios/processos",
+        "/cemiterios/transferencias",
+        "/cemiterios/taxas",
+        "/cemiterios/consulta",
+        "/cemiterios/relatorio",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    }
+  ],
+  "shellChecks": [],
+  "finishedAt": "2026-11-06T17:13:00.476Z",
+  "summary": {
+    "OPENED": 64,
+    "AUTH_REQUIRED": 4,
+    "ACCESS_UNAVAILABLE": 2
+  }
+}

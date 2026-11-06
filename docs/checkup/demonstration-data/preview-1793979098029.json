@@ -1,0 +1,423 @@
+{
+  "packageId": "CHECKUP_APRESENTACAO_2026_V1",
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-06T15:31:27.608Z",
+  "changes": [
+    {
+      "table": "Document",
+      "id": "cmvy72vmo003jykqm5hhnqoor",
+      "operation": "UPDATE:title"
+    },
+    {
+      "table": "Document",
+      "id": "cmvy5g2h8002lccqmnw4qy9nu",
+      "operation": "UPDATE:title"
+    },
+    {
+      "table": "Document",
+      "id": "cmvy6i85d003bngqmzz6azc0j",
+      "operation": "UPDATE:title"
+    },
+    {
+      "table": "Document",
+      "id": "cmvy7o9b000035wqmvrmiz95a",
+      "operation": "UPDATE:title"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4s2kq007eqoqmomfx0som",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4s5nc0088qoqmmr4a8fkg",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4s8vc0091qoqml7jjp5za",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4sc0p009vqoqmbv4a8gz5",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4sf4g00aoqoqmgo814zdv",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4si8j00biqoqmukskm1ca",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4slh500cbqoqmlkcc3q5r",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4som600d5qoqmhxuuii8d",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4srs100dyqoqmrga997s2",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4suvc00esqoqmodlgmg3b",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4sy1k00flqoqmigyxm09v",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4t14700gfqoqm7cx4lj1y",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4t4c200h8qoqm682lbbp3",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4t7ib00i2qoqmmourxjro",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy4tao500ivqoqm5lz14n87",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Family",
+      "id": "cmvy6hvec002lngqmdbznvzqb",
+      "operation": "UPDATE:code"
+    },
+    {
+      "table": "Taxpayer",
+      "id": "THIAGO_MORCATTY_DEMO_2026_V1:taxpayer",
+      "operation": "UPDATE:municipalInsc"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:000",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:001",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:002",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:003",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:004",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:005",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:006",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:007",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:008",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:009",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:040",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:041",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:042",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:043",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:044",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:045",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:046",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:047",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:048",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "aurora-system-v1:person:049",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4r75v0012qoqm86ugg64m",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4rdxx002fqoqm12d0iy5s",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4rksn003sqoqmd635q14d",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4rrkv0055qoqmcbl28drg",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4rytp006iqoqm6fzfup9x",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4s1uj0076qoqm6dx7n8kc",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4s276007aqoqmicwkv284",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4s4ke007wqoqmg3phoa63",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4s4xf0080qoqmwuo4o28j",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4s5ad0084qoqm2dby2zj9",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4s83j008tqoqm1uew7ezy",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4s8g2008xqoqmh0gfugs6",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sat1009jqoqmkw483cl4",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sb7i009nqoqmq69vb99o",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sblc009rqoqmt01qeh0c",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4see100agqoqmyuueafbe",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sepv00akqoqm41se2n0b",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sh5l00b6qoqmllf92fk4",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4shht00baqoqmmtiwzx22",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4shuj00beqoqmoxjeef6k",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4skqs00c3qoqmxx6cusw4",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sl3100c7qoqmcgyr43vp",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sni200ctqoqm0vwcr4i4",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4snv200cxqoqmtc4c02rp",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4so7b00d1qoqmx2q2gxbk",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sr1q00dqqoqmnpahg7fj",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4srf000duqoqm4aufq2zz",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4strz00egqoqmu5rzv71o",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4su3k00ekqoqmludgt0c7",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4suhg00eoqoqmut12d7zm",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sxa900fdqoqma8eknjzl",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4sxnm00fhqoqmrdlonyhv",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t01g00g3qoqm3pdtllkv",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t0ef00g7qoqmwiaaydd8",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t0qd00gbqoqmznkyzx5l",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t3mo00h0qoqmgwmbeous",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t3z300h4qoqm9vy8tw8w",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t6db00hqqoqm0gez9woy",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t6py00huqoqmobuqj60t",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t73l00hyqoqm219th8g5",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4t9uk00inqoqmxut9jqry",
+      "operation": "UPDATE:email"
+    },
+    {
+      "table": "Person",
+      "id": "cmvy4ta8s00irqoqmvbslqjbk",
+      "operation": "UPDATE:email"
+    }
+  ],
+  "portalContents": []
+}

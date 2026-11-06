@@ -1,0 +1,77 @@
+{
+  "startedAt": "2026-11-06T17:33:26.003Z",
+  "base": "http://localhost:3100",
+  "cases": [
+    {
+      "label": "Referências fiscais: atividade, rótulos e busca no catálogo",
+      "path": "/tributacao/referencias?catalogo=atividade",
+      "passed": true,
+      "observations": {
+        "kind": "atividade",
+        "codes": [
+          "ATV-001",
+          "ATV-002"
+        ],
+        "originVerified": true,
+        "searchVerified": true
+      }
+    },
+    {
+      "label": "Referências fiscais: procedimento-fiscal, rótulos e busca no catálogo",
+      "path": "/tributacao/referencias?catalogo=procedimento-fiscal",
+      "passed": true,
+      "observations": {
+        "kind": "procedimento-fiscal",
+        "codes": [
+          "CAD-001",
+          "CAD-002"
+        ],
+        "originVerified": true,
+        "searchVerified": true
+      }
+    },
+    {
+      "label": "Referências fiscais: evento-contabil, rótulos e busca no catálogo",
+      "path": "/tributacao/referencias?catalogo=evento-contabil",
+      "passed": true,
+      "observations": {
+        "kind": "evento-contabil",
+        "codes": [
+          "EVT-001",
+          "EVT-002"
+        ],
+        "originVerified": true,
+        "searchVerified": true
+      }
+    },
+    {
+      "label": "Referências fiscais: codigo-tributacao-desif, rótulos e busca no catálogo",
+      "path": "/tributacao/referencias?catalogo=codigo-tributacao-desif",
+      "passed": true,
+      "observations": {
+        "kind": "codigo-tributacao-desif",
+        "codes": [
+          "CTD-001",
+          "CTD-002"
+        ],
+        "originVerified": true,
+        "searchVerified": true
+      }
+    },
+    {
+      "label": "Referências fiscais: codigo-tributacao-municipal, rótulos e busca no catálogo",
+      "path": "/tributacao/referencias?catalogo=codigo-tributacao-municipal",
+      "passed": true,
+      "observations": {
+        "kind": "codigo-tributacao-municipal",
+        "codes": [
+          "CTM-001",
+          "CTM-002"
+        ],
+        "originVerified": true,
+        "searchVerified": true
+      }
+    }
+  ],
+  "finishedAt": "2026-11-06T17:34:18.920Z"
+}

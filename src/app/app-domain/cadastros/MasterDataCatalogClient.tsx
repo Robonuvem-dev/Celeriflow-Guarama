@@ -20,6 +20,10 @@ function display(value: MasterDataValue | undefined) {
   if (typeof value === "boolean") return value ? "Sim" : "Não";
   return value || "—";
 }
+function catalogDisplay(catalog: MasterDataCatalog, key: string, value: MasterDataValue | undefined) {
+  if (catalog === "cities" && key === "ibgeCode" && value === "DEMO-AV-MG") return "Sem código IBGE oficial (município fictício)";
+  return String(display(value));
+}
 
 // Every catalog column is configured explicitly, independently of viewport breakpoints.
 const widths: Record<string, [number, number]> = {
@@ -107,7 +111,7 @@ export function MasterDataCatalogClient({ catalog, pathname, rows, columns, fiel
         {error && !open && <span role="alert" className="text-[13px] text-red-700">{error}</span>}</>}
       pagination={<OperationalLinkPagination page={page} total={total} pathname={pathname} values={{ q: query, ...extraQuery }} />}>
       <OperationalTable preferenceId={`cadastros-catalogo-${catalog}`} caption={`Catálogo ${catalog}`} emptyMessage="Nenhum registro encontrado." columns={tableColumns}
-        rows={rows.map(row => ({ id: row.id, label: String(display(row.values[columns[0]?.key])), values: { ...Object.fromEntries(columns.map(column => [column.key, String(display(row.values[column.key]))])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>
+        rows={rows.map(row => ({ id: row.id, label: catalogDisplay(catalog, columns[0]?.key, row.values[columns[0]?.key]), values: { ...Object.fromEntries(columns.map(column => [column.key, catalogDisplay(catalog, column.key, row.values[column.key])])), _status: row.active ? "Ativo" : "Inativo" }, actions: <div className={styles.rowActions}>
           {catalog === "legalTexts" && <>{canUpdate && <button type="button" className={styles.iconButton} aria-label="Adicionar comentário" onClick={() => { setCommentError(""); setCommentSource(row.id); }}><MessageSquare /></button>}{canUpdate && <button type="button" className={styles.iconButton} aria-label="Vincular ato" onClick={() => { setRelationError(""); setRelationSource(row.id); }}><Link2 /></button>}<Link className={styles.iconButton} aria-label="Documentos do texto jurídico" href={`/cadastros/textos-juridicos/documentos?${new URLSearchParams({ legalTextId: row.id })}`}><Paperclip /></Link>
             {Number(row.values.version) > 0 && <a className={styles.iconButton} target="_blank" rel="noopener noreferrer" href={`/api/cadastros/textos-juridicos/imprimir?${new URLSearchParams({ legalTextId: row.id, modo: "consulta" })}`}>Consultar ato</a>}
             {Number(row.values.version) > 0 && <a className={styles.iconButton} aria-label="Imprimir texto jurídico" target="_blank" rel="noopener noreferrer" href={`/api/cadastros/textos-juridicos/imprimir?${new URLSearchParams({ legalTextId: row.id, version: String(row.values.version) })}`}><Printer /></a>}</>}

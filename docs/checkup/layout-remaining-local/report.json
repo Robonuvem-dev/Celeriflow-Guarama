@@ -1,0 +1,293 @@
+{
+  "startedAt": "2026-11-06T15:23:18.887Z",
+  "base": "http://localhost:3100",
+  "scope": "Rendered tables and visible labels; no business mutations",
+  "total": 14,
+  "cases": [
+    {
+      "path": "/compras/planejamento",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Planejamento de Compras"
+      ],
+      "tables": [
+        {
+          "caption": "Planejamento de Compras",
+          "headers": [
+            "Item / serviço",
+            "Especificação",
+            "Quantidade",
+            "Unidade",
+            "Início esperado",
+            "Fim esperado",
+            "Valor estimado",
+            "Origem",
+            "Objeto de origem",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 10,
+          "samples": [
+            "Papel A4, resma de 500 folhas\n\t\nProgramação de aquisição de papel a4, resma de 500 folhas\n\t\n10\n\t\nUN\n\t\n01/01/2027\n\t\n31/03/2027\n\t\nR$ 280,00\n\t\nREQ-2026-8101\n\t\nAquisição de papel a4, resma de 500 folhas\n\t\nRascunho",
+            "Caneta esferográfica azul\n\t\nProgramação de aquisição de caneta esferográfica azul\n\t\n10\n\t\nUN\n\t\n01/01/2027\n\t\n31/03/2027\n\t\nR$ 25,00\n\t\nREQ-2026-8102\n\t\nAquisição de caneta esferográfica azul\n\t\nRascunho",
+            "Pasta arquivo com lombada\n\t\nProgramação de aquisição de pasta arquivo com lombada\n\t\n10\n\t\nUN\n\t\n01/01/2027\n\t\n31/03/2027\n\t\nR$ 180,00\n\t\nREQ-2026-8103\n\t\nAquisição de pasta arquivo com lombada\n\t\nRascunho"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/configuracoes/usuarios",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Gestão de Usuários",
+        "Perfis complementares"
+      ],
+      "tables": [
+        {
+          "caption": "Usuários",
+          "headers": [
+            "Nome",
+            "E-mail",
+            "Perfil",
+            "Unidade/Setor",
+            "Status",
+            "Ações"
+          ],
+          "rows": 0,
+          "samples": [],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [
+        "Nenhum usuário encontrado."
+      ],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false
+    },
+    {
+      "path": "/assinatura-digital/pastas-inteligentes",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Pastas inteligentes",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": true,
+      "login": false,
+      "screenshot": "39ddc3dad3ca537d.png"
+    },
+    {
+      "path": "/frotas/movimentos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Movimentos e importações da frota",
+        "Movimentos e importações",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": true,
+      "login": false,
+      "screenshot": "c84d7c213bf3cdc5.png"
+    },
+    {
+      "path": "/assinatura-digital/modelos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Modelos de documentos",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": true,
+      "login": false,
+      "screenshot": "b5b1bec302631302.png"
+    },
+    {
+      "path": "/assinatura-digital/fluxos",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Fluxos documentais",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": true,
+      "login": false,
+      "screenshot": "3196f66327a9e4f5.png"
+    },
+    {
+      "path": "/assinatura-digital/tarefas",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Minhas tarefas",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": true,
+      "login": false,
+      "screenshot": "40e2ca6c2cc2510e.png"
+    },
+    {
+      "path": "/assinatura-digital/classes",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Classes e políticas documentais",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": true,
+      "login": false,
+      "screenshot": "6dee0d976876c1ac.png"
+    },
+    {
+      "path": "/assinatura-digital/thesaurus",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Thesaurus",
+        "Esta área ainda não comporta a tabela no padrão.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": true,
+      "login": false,
+      "screenshot": "bb9121a2f83d12ff.png"
+    },
+    {
+      "path": "/tributacao/imoveis/aurora-system-v1:property:000",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Imóveis (IPTU)",
+        "Oops!",
+        "Erro Interno do Servidor",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": true,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "6bbb3b4482207b1e.png"
+    },
+    {
+      "path": "/sst/aso/branco",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Exames e ASO",
+        "Oops!",
+        "Erro Interno do Servidor",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": true,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "6a5f339f8bf1be5d.png"
+    },
+    {
+      "path": "/sst/configuracoes/aurora-system-v1:certificate-reason:000",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "404",
+        "This page could not be found.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": true,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "121ab46a15e27504.png"
+    },
+    {
+      "path": "/social/pessoas/aurora-system-v1:person:027",
+      "status": 404,
+      "errors": [],
+      "headings": [
+        "404",
+        "This page could not be found.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": true,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "e65a700328965e74.png"
+    },
+    {
+      "path": "/rh/folha/eventos/aurora-mg-50k-v1:salary-event:000/editar",
+      "status": 404,
+      "errors": [],
+      "headings": [
+        "404",
+        "This page could not be found.",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": true,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "4abf993cd3993601.png"
+    }
+  ],
+  "finishedAt": "2026-11-06T15:24:19.971Z",
+  "summary": {
+    "inspected": 14,
+    "markerScreens": 0,
+    "emptyTableScreens": 1,
+    "errors": 5,
+    "layoutBlocked": 7
+  }
+}

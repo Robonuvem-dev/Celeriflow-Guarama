@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-11-06T19:00:31.909Z",
+  "baseline": "docs/checkup/final-integrated-source-state.json",
+  "scope": "Overrides after restoring effective use server directives in three remote action modules; all signatures and return contracts preserved.",
+  "overrides": [
+    {
+      "path": "src/app/app-domain/atendimento/actions.ts",
+      "sha256": "2093ca2c10b995ad1194a98d1943df9d8ffbc022fd0c72d2b942ba6239c3ab6d"
+    },
+    {
+      "path": "src/app/app-domain/compras/licitacoes/actions.ts",
+      "sha256": "0ef9c001e885ef78a82c5173f3283e3ff072c3a1abfb9a76ea465d521b21db8c"
+    },
+    {
+      "path": "src/app/app-domain/configuracoes/usuarios/actions.ts",
+      "sha256": "94a6cdfe18fb56306f705ce5cba1d6d813098a00c9d06f1e29dc09e70569d54c"
+    }
+  ]
+}

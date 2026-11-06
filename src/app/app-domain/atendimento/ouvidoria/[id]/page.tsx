@@ -684,5 +684,5 @@ export default async function OmbudsmanDetailPage({
   const requestedReturnTo = searchParams ? await searchParams : {};
   const rawReturnTo = Array.isArray(requestedReturnTo.returnTo) ? requestedReturnTo.returnTo[0] : requestedReturnTo.returnTo;
   const returnTo = rawReturnTo?.startsWith("/atendimento/ouvidoria") ? rawReturnTo : undefined;
-  return <OmbudsmanDetailView id={id} returnTo={returnTo} />;
+  return <OmbudsmanDetailView id={decodeURIComponent(id)} returnTo={returnTo} />;
 }

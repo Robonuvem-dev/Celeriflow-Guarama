@@ -13,5 +13,5 @@ export default async function OmbudsmanProtocolosDetailPage({
   const requestedReturnTo = searchParams ? await searchParams : {};
   const rawReturnTo = Array.isArray(requestedReturnTo.returnTo) ? requestedReturnTo.returnTo[0] : requestedReturnTo.returnTo;
   const returnTo = rawReturnTo?.startsWith("/protocolos/ouvidoria") ? rawReturnTo : undefined;
-  return <OmbudsmanDetailView id={id} origin="protocolos" returnTo={returnTo} />;
+  return <OmbudsmanDetailView id={decodeURIComponent(id)} origin="protocolos" returnTo={returnTo} />;
 }

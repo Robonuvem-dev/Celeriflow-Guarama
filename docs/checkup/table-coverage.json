@@ -1,0 +1,1436 @@
+{
+  "date": "2026-11-06T13:22:39.150Z",
+  "scope": "Static coverage scanner; not visual validation",
+  "strict": {
+    "passed": false,
+    "blockers": [
+      {
+        "kind": "reconciliation"
+      },
+      {
+        "kind": "native-renderers",
+        "points": [
+          "src/app/app-domain/cemiterios/complementos/page.tsx:54:187",
+          "src/app/app-domain/cemiterios/complementos/page.tsx:55:28",
+          "src/app/app-domain/cemiterios/complementos/page.tsx:56:35",
+          "src/app/app-domain/cemiterios/complementos/page.tsx:57:234",
+          "src/app/app-domain/cemiterios/complementos/page.tsx:58:34",
+          "src/app/app-domain/cemiterios/complementos/page.tsx:59:36",
+          "src/app/app-domain/compras/cadastros/AuxiliaryCatalogClient.tsx:36:5",
+          "src/app/app-domain/compras/cadastros/crc/relatorio/page.tsx:14:646",
+          "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:355:21",
+          "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:418:21",
+          "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:25:5",
+          "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:28:5",
+          "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:36:5",
+          "src/app/app-domain/configuracoes/conta/page.tsx:50:11",
+          "src/app/app-domain/educacao/disciplinas/page.tsx:15:2",
+          "src/app/app-domain/educacao/licencas/page.tsx:13:2",
+          "src/app/app-domain/financeiro/cheques/page.tsx:28:83",
+          "src/app/app-domain/financeiro/relatorios/ensino-decendial/page.tsx:26:1135",
+          "src/app/app-domain/financeiro/relatorios/fontes/page.tsx:11:482",
+          "src/app/app-domain/meio-ambiente/residuos/estoque/StockView.tsx:29:101",
+          "src/app/app-domain/tributacao/agrupamentos/page.tsx:13:68",
+          "src/app/app-domain/tributacao/declaracao-cartoes/DeclaracaoCartoesClient.tsx:237:11",
+          "src/app/app-domain/tributacao/declaracoes-complementares/page.tsx:14:400",
+          "src/app/app-domain/tributacao/fiscalizacao/gestao/page.tsx:45:5",
+          "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:120:11",
+          "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:153:11",
+          "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:186:11",
+          "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:182:11",
+          "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:220:11",
+          "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:17:287",
+          "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:18:285",
+          "src/app/app-domain/tributacao/referencias/TaxReferenceClient.tsx:18:2",
+          "src/app/app-domain/tributacao/relatorios-cadastrais/page.tsx:33:1115",
+          "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:124:15",
+          "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:157:15",
+          "src/app/portal/tributario/declaracoes/page.tsx:30:38"
+        ]
+      },
+      {
+        "kind": "new-unreviewed-grids-or-roles",
+        "newEditingGrids": [
+          {
+            "file": "src/components/signatures/ged/GedAdministration.tsx",
+            "line": 42,
+            "column": 210,
+            "expression": "fields.map",
+            "className": "grid gap-2 rounded border p-2 sm:grid-cols-3",
+            "printOnly": false,
+            "modal": false,
+            "snippet": "<div key={index} className=\"grid gap-2 rounded border p-2 sm:grid-cols-3\"><label>Chave<input required className={inputClass} value={field.key} onChange={e => setFields(fields.map((f, i) => i === index ? { ...f, key: e.target.value } : f))} /></label><label>R??tulo<input required className={inputClass} value={field.label} onChange={e => setFields(fields.map((f, i) => i === index ? { ...f, label: e.target.value } : f))}",
+            "classification": "editing-grid",
+            "routes": [
+              "/assinatura-digital/gestao"
+            ]
+          },
+          {
+            "file": "src/components/signatures/ged/GedAdministration.tsx",
+            "line": 59,
+            "column": 1072,
+            "expression": "entries.map",
+            "className": "grid gap-2 sm:grid-cols-5",
+            "printOnly": false,
+            "modal": false,
+            "snippet": "<div key={index} className=\"grid gap-2 sm:grid-cols-5\"><select className={inputClass} value={entry.principal} onChange={e => setEntries(entries.map((v, i) => i === index ? { ...v, principal: e.target.value, principalId: \"\" } : v))}>{[\"user\", \"group\", \"profile\"].map(v => <option key={v}>{v}</option>)}</select><select required className={inputClass} value={entry.principalId} onChange={e => setEntries(entries.map((v, i)",
+            "classification": "editing-grid",
+            "routes": [
+              "/assinatura-digital/gestao"
+            ]
+          },
+          {
+            "file": "src/components/signatures/ged/GedRuleEditor.tsx",
+            "line": 11,
+            "column": 1946,
+            "expression": "actions.map",
+            "className": "grid gap-2 sm:grid-cols-4",
+            "printOnly": false,
+            "modal": false,
+            "snippet": "<div key={index} className=\"grid gap-2 sm:grid-cols-4\"><select className={input} value={action.type} onChange={e => setActions(actions.map((a, i) => i === index ? { ...a, type: e.target.value } : a))}>{[[\"tag\", \"Aplicar etiqueta\"], [\"move\", \"Mover para pasta\"], [\"classify\", \"Classificar tipo\"], [\"task\", \"Criar tarefa\"], [\"notify\", \"Notificar\"], [\"flow\", \"Iniciar fluxo\"], [\"revalidate\", \"Solicitar revalida????o\"], [\"pub",
+            "classification": "editing-grid",
+            "routes": [
+              "/assinatura-digital/gestao"
+            ]
+          }
+        ],
+        "supplementalGrids": [],
+        "supplementalRoles": []
+      },
+      {
+        "kind": "orphan-renderers",
+        "points": [
+          {
+            "id": "src/app/app-domain/documentos/assinaturas/AssinaturasClient.tsx:73:7",
+            "baselineLegacy": false
+          },
+          {
+            "id": "src/app/app-domain/documentos/ged/GEDClient.tsx:197:9",
+            "baselineLegacy": false
+          },
+          {
+            "id": "src/app/app-domain/social/modelos/SocialModelsClient.tsx:11:362",
+            "baselineLegacy": false
+          }
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "baselineRef": "0831a93",
+    "baseline": 343,
+    "baselineIndex": {
+      "indexed": 343,
+      "duplicates": [],
+      "missing": [],
+      "extra": []
+    },
+    "baselineCategories": {
+      "active": 330,
+      "legacy": 6,
+      "special": 7
+    },
+    "baselineStatus": {
+      "mapped-legacy": 6,
+      "mapped-operational": 330,
+      "special": 7
+    },
+    "workingSourceSha256": "e2756dc0883c28f310d2d79aba5a24de4070ff47f398c5eee851b47c900bed89",
+    "headLogicalPoints": 487,
+    "headDefinitionsInNewFiles": [
+      {
+        "id": "src/app/app-domain/administracao/auditoria/page.tsx:231:9",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/administracao/bi/smarttv/SmartTvEditor.tsx:105:13",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/assinatura-digital/documentos/DocumentosClient.tsx:77:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/assinatura-digital/historico/page.tsx:31:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/assinatura-digital/integracoes/IntegrationsClient.tsx:81:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/assinatura-digital/PendingSignaturesClient.tsx:63:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/assinatura-digital/registros/page.tsx:37:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/assinatura-digital/usuarios/UsuariosClient.tsx:135:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/cadastros/operational-registry.tsx:86:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/cadastros/qualidade/QualityList.tsx:12:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/cemiterios/complementos/page.tsx:54:187",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/cemiterios/complementos/page.tsx:55:28",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/cemiterios/complementos/page.tsx:56:35",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/cemiterios/complementos/page.tsx:57:234",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/cemiterios/complementos/page.tsx:58:34",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/cemiterios/complementos/page.tsx:59:36",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/cadastros/AuxiliaryCatalogClient.tsx:36:5",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/cadastros/crc/relatorio/page.tsx:14:646",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/licitacoes/BiddingDraftTables.tsx:17:10",
+        "kind": "Operational adapter:ComprasPanelTable"
+      },
+      {
+        "id": "src/app/app-domain/compras/licitacoes/BiddingDraftTables.tsx:33:10",
+        "kind": "Operational adapter:ComprasPanelTable"
+      },
+      {
+        "id": "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:355:21",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:418:21",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:25:5",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:28:5",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:36:5",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/compras/recebimentos/ReceiptForm.tsx:69:5",
+        "kind": "Operational adapter:ComprasPanelTable"
+      },
+      {
+        "id": "src/app/app-domain/compras/solicitacoes/AllocationDraftTable.tsx:17:10",
+        "kind": "Operational adapter:ComprasPanelTable"
+      },
+      {
+        "id": "src/app/app-domain/configuracoes/conta/page.tsx:50:11",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/configuracoes/processos/etapas/page.tsx:37:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/controle-interno/ChecklistGroupsEditor.tsx:15:5",
+        "kind": "Operational adapter:FinanceTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/controle-interno/consultas/rh/WorkforceTables.tsx:14:10",
+        "kind": "Operational adapter:FinanceOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/educacao/disciplinas/page.tsx:15:2",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/educacao/licencas/page.tsx:13:2",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/AnnualBudgetDraft.tsx:11:10",
+        "kind": "Operational adapter:FinanceTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/cheques/page.tsx:28:83",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/conciliacao-bancaria/ReconciliationAllocationForm.tsx:40:7",
+        "kind": "Operational adapter:FinanceTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/CostDistributionDraft.tsx:14:10",
+        "kind": "Operational adapter:FinanceTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/FiscalTermsDraft.tsx:24:10",
+        "kind": "Operational adapter:FinanceTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/orcamento/CreditRequestDialog.tsx:173:13",
+        "kind": "Operational adapter:FinanceTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/relatorios/ensino-decendial/page.tsx:26:1135",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/financeiro/relatorios/fontes/page.tsx:11:482",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/frotas/gestao/page.tsx:298:11",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/frotas/movimentos/page.tsx:131:9",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/meio-ambiente/residuos/estoque/StockView.tsx:29:101",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/obras/construcao-civil/regras/page.tsx:28:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/obras/relatorios/WorksReportsClient.tsx:21:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/patrimonio/_components/RecordHistoryPanel.tsx:22:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/patrimonio/_components/SearchReferenceField.tsx:48:9",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/patrimonio/cadastros/CatalogPage.tsx:100:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/patrimonio/inventario-bens/page.tsx:37:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/patrimonio/requisicoes/nova/MaterialRequestForm.tsx:91:13",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/portal-servidor/atendimento/page.tsx:11:10",
+        "kind": "Operational adapter:PortalOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/portal-servidor/biblioteca/page.tsx:12:10",
+        "kind": "Operational adapter:PortalOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/portal-servidor/capacitacao/[id]/avaliacao/TrainingEvaluationForm.tsx:21:55",
+        "kind": "Operational adapter:RhTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/portal-servidor/consignacoes/ConsignmentList.tsx:14:10",
+        "kind": "Operational adapter:PortalOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/rh/_components/RhSelectionTable.tsx:17:5",
+        "kind": "Operational adapter:RhTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/rh/arquivos-bancarios/page.tsx:24:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/rh/atividades-funcionais/CareerEnrollments.tsx:13:5",
+        "kind": "Operational adapter:RhTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/rh/cadastros/page.tsx:66:5",
+        "kind": "Operational adapter:RhRemoteTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/rh/operacoes/ContractCustomFieldsTable.tsx:17:5",
+        "kind": "Operational adapter:RhTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/rh/operacoes/ReferenceLookup.tsx:41:18",
+        "kind": "Operational adapter:RhTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/rh/pasta-funcional/[id]/page.tsx:59:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/rh/portal-conteudos/page.tsx:17:5",
+        "kind": "Operational adapter:RhTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/rh/processamentos-funcionais/RightsProcessingForm.tsx:18:188",
+        "kind": "Operational adapter:RhTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/rh/registros-funcionais/page.tsx:40:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/rh/relatorios/page.tsx:104:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/saneamento/unidades/UnitsListState.tsx:10:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/saude/agenda/AgendaEngineClient.tsx:47:7",
+        "kind": "Operational adapter:HealthReadTable"
+      },
+      {
+        "id": "src/app/app-domain/saude/agenda/AgendaEngineClient.tsx:57:7",
+        "kind": "Operational adapter:HealthReadTable"
+      },
+      {
+        "id": "src/app/app-domain/saude/agenda/page.tsx:59:109",
+        "kind": "Operational adapter:HealthReadTable"
+      },
+      {
+        "id": "src/app/app-domain/saude/atendimentos/[id]/complementos/AdministrationForm.tsx:76:9",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/saude/producao/laudos/TreatmentReportsTable.tsx:18:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/social/beneficios/SocialBenefitCatalogTable.tsx:8:100",
+        "kind": "Operational adapter:SocialOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/social/gestao/[area]/[id]/historico/SocialHistoryTable.tsx:6:10",
+        "kind": "Operational adapter:SocialOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/social/gestao/[area]/MunicipalFields.tsx:16:350",
+        "kind": "Operational adapter:SocialOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/social/gestao/[area]/SocialWorkflowClient.tsx:68:5",
+        "kind": "Operational adapter:SocialOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/social/importacoes/SocialImportClient.tsx:40:109",
+        "kind": "Operational adapter:SocialOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/social/modelos/SocialModelsClient.tsx:11:362",
+        "kind": "Operational adapter:SocialOperationalList"
+      },
+      {
+        "id": "src/app/app-domain/social/relatorios/SocialReportPreview.tsx:29:9",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/social/requisicoes/BenefitRequestItemsEditor.tsx:35:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/sst/_components/QuestionnaireAnswersEditor.tsx:23:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/_components/SstSelectionTable.tsx:16:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/acidentes/AccidentFields.tsx:19:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/acidentes/CatLayoutForm.tsx:26:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/aso/AsoForm.tsx:69:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/equipamentos/entregas/DeliveryEventEditor.tsx:37:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/juntas/BoardMemberFields.tsx:14:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/ordens-servico/ResponsibilitiesTable.tsx:23:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/ordens-servico/ServiceOrderEquipmentFields.tsx:14:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/prevencao/PreventionForm.tsx:58:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/profissionais/ProfessionalManagementTable.tsx:16:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/programas/ProgramForm.tsx:52:9",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/programas/ProgramForm.tsx:56:15",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/prontuarios/ClinicalRecordForm.tsx:33:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/questionarios/QuestionnaireForm.tsx:22:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/sst/restricoes/RestrictionForm.tsx:22:5",
+        "kind": "Operational adapter:SstTablePanel"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/agrupamentos/page.tsx:13:68",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/avaliacoes/simulacao/SimulationUnitsEditor.tsx:30:7",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/configuracoes-cadastrais/FiscalFieldsEditor.tsx:20:5",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/configuracoes-cadastrais/FiscalValuesEditor.tsx:39:7",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/configuracoes-cadastrais/pgv-lote/PgvBulkClient.tsx:18:286",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/configuracoes-cadastrais/ZoningActivitiesInput.tsx:13:7",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/declaracao-cartoes/DeclaracaoCartoesClient.tsx:237:11",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/declaracoes-complementares/page.tsx:14:400",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/fiscalizacao/gestao/page.tsx:45:5",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/imoveis/[id]/perfil/PropertyProfileClient.tsx:45:11",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:120:11",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:153:11",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:186:11",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:182:11",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:220:11",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:17:287",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:18:285",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/itbi/bloqueios/ItbiEntryPolicyClient.tsx:16:189",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/itbi/bloqueios/ItbiEntryPolicyClient.tsx:28:119",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/lotes-anuais/AnnualBatchesClient.tsx:33:9",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/lotes-anuais/AnnualBatchResults.tsx:6:5",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/motor-fiscal/PaymentOptionsEditor.tsx:10:5",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/motor-fiscal/PaymentOptionsEditor.tsx:21:7",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/notificacoes/DebtNoticeHistoryTable.tsx:14:5",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/referencias/TaxReferenceClient.tsx:18:2",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/relatorios-cadastrais/page.tsx:33:1115",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:124:15",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:157:15",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/TaxFormRowsEditor.tsx:50:7",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/app-domain/tributacao/TaxPartiesEditor.tsx:14:5",
+        "kind": "Operational adapter:TaxOperationalTable"
+      },
+      {
+        "id": "src/app/portal/tributario/declaracoes/page.tsx:30:38",
+        "kind": "HTML"
+      },
+      {
+        "id": "src/app/portal/tributario/itbi/novo/OnlineItbiPartyEditor.tsx:34:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/components/app-ui/planejamento/PlanningForm.tsx:126:5",
+        "kind": "Operational adapter:PlanningDraftTable"
+      },
+      {
+        "id": "src/components/app-ui/planejamento/PlanningForm.tsx:158:5",
+        "kind": "Operational adapter:PlanningDraftTable"
+      },
+      {
+        "id": "src/components/app-ui/planejamento/PlanningForm.tsx:173:5",
+        "kind": "Operational adapter:PlanningDraftTable"
+      },
+      {
+        "id": "src/components/app-ui/planejamento/PlanningForm.tsx:187:5",
+        "kind": "Operational adapter:PlanningDraftTable"
+      },
+      {
+        "id": "src/components/app-ui/planejamento/PlanningLookupField.tsx:38:9",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/components/cemeteries/CemeteryAttachments.tsx:28:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/components/signatures/ged/GedDocumentDetail.tsx:60:11",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/components/signatures/ged/GedQueuePanel.tsx:30:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/components/signatures/ged/GedSourceWorkspace.tsx:36:5",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/components/signatures/ged/GedWorkspace.tsx:150:7",
+        "kind": "OperationalTable"
+      },
+      {
+        "id": "src/components/transparencia/DiscoveryLinksTable.tsx:42:9",
+        "kind": "OperationalTable"
+      }
+    ],
+    "currentFiles": 3693,
+    "currentLogicalPoints": 487,
+    "operationalRenderDefinitions": 428,
+    "brokenRendererChains": [],
+    "currentKinds": {
+      "CSS grid": 3,
+      "ErpTableContainer": 3,
+      "HTML": 47,
+      "Operational adapter:ComprasOperationalList": 9,
+      "Operational adapter:ComprasPanelTable": 13,
+      "Operational adapter:FinanceOperationalList": 11,
+      "Operational adapter:FinanceTablePanel": 24,
+      "Operational adapter:HealthReadTable": 8,
+      "Operational adapter:PlanningDraftTable": 4,
+      "Operational adapter:PlanningList": 18,
+      "Operational adapter:PlanningLocalList": 1,
+      "Operational adapter:PortalOperationalList": 17,
+      "Operational adapter:PublicOperationalList": 10,
+      "Operational adapter:RhRemoteTablePanel": 3,
+      "Operational adapter:RhTablePanel": 18,
+      "Operational adapter:SocialOperationalList": 16,
+      "Operational adapter:SstRemoteTablePanel": 5,
+      "Operational adapter:SstTablePanel": 17,
+      "Operational adapter:TaxOperationalTable": 62,
+      "OperationalTable": 191
+    },
+    "nativeScopes": {
+      "conditional-print": 10,
+      "operational": 36,
+      "print-only": 10,
+      "query-print": 3,
+      "retained-hidden": 5,
+      "special-format": 6
+    },
+    "editingBaseline": 32,
+    "editingStatus": {
+      "replaced-review": 32
+    },
+    "editingActiveRemaining": 0,
+    "newEditingGrids": [
+      {
+        "file": "src/components/signatures/ged/GedAdministration.tsx",
+        "line": 42,
+        "column": 210,
+        "expression": "fields.map",
+        "className": "grid gap-2 rounded border p-2 sm:grid-cols-3",
+        "printOnly": false,
+        "modal": false,
+        "snippet": "<div key={index} className=\"grid gap-2 rounded border p-2 sm:grid-cols-3\"><label>Chave<input required className={inputClass} value={field.key} onChange={e => setFields(fields.map((f, i) => i === index ? { ...f, key: e.target.value } : f))} /></label><label>R??tulo<input required className={inputClass} value={field.label} onChange={e => setFields(fields.map((f, i) => i === index ? { ...f, label: e.target.value } : f))}",
+        "classification": "editing-grid",
+        "routes": [
+          "/assinatura-digital/gestao"
+        ]
+      },
+      {
+        "file": "src/components/signatures/ged/GedAdministration.tsx",
+        "line": 59,
+        "column": 1072,
+        "expression": "entries.map",
+        "className": "grid gap-2 sm:grid-cols-5",
+        "printOnly": false,
+        "modal": false,
+        "snippet": "<div key={index} className=\"grid gap-2 sm:grid-cols-5\"><select className={inputClass} value={entry.principal} onChange={e => setEntries(entries.map((v, i) => i === index ? { ...v, principal: e.target.value, principalId: \"\" } : v))}>{[\"user\", \"group\", \"profile\"].map(v => <option key={v}>{v}</option>)}</select><select required className={inputClass} value={entry.principalId} onChange={e => setEntries(entries.map((v, i)",
+        "classification": "editing-grid",
+        "routes": [
+          "/assinatura-digital/gestao"
+        ]
+      },
+      {
+        "file": "src/components/signatures/ged/GedRuleEditor.tsx",
+        "line": 11,
+        "column": 1946,
+        "expression": "actions.map",
+        "className": "grid gap-2 sm:grid-cols-4",
+        "printOnly": false,
+        "modal": false,
+        "snippet": "<div key={index} className=\"grid gap-2 sm:grid-cols-4\"><select className={input} value={action.type} onChange={e => setActions(actions.map((a, i) => i === index ? { ...a, type: e.target.value } : a))}>{[[\"tag\", \"Aplicar etiqueta\"], [\"move\", \"Mover para pasta\"], [\"classify\", \"Classificar tipo\"], [\"task\", \"Criar tarefa\"], [\"notify\", \"Notificar\"], [\"flow\", \"Iniciar fluxo\"], [\"revalidate\", \"Solicitar revalida????o\"], [\"pub",
+        "classification": "editing-grid",
+        "routes": [
+          "/assinatura-digital/gestao"
+        ]
+      }
+    ],
+    "editingClaimExports": 14,
+    "editingReviewErrors": [],
+    "editingClaimManifests": [
+      "src/components/app-ui/operational/modules/financeiro-controle.ts",
+      "src/components/app-ui/operational/modules/saude-servidor.ts",
+      "src/components/app-ui/operational/modules/social-educacao-publico.ts"
+    ],
+    "payloadContracts": [
+      {
+        "field": "employeeIds",
+        "emitter": "sst/equipamentos/entregas/page.tsx",
+        "preferenceId": "sst-entrega-recebedores-edicao",
+        "action": "saveEquipmentDelivery",
+        "target": "src/app/app-domain/sst/_components/SstSelectionTable.tsx:16:5",
+        "passed": true,
+        "emitters": [
+          {
+            "at": "src/app/app-domain/sst/equipamentos/entregas/page.tsx:34:972",
+            "tag": "SstSelectionField",
+            "preferenceId": "sst-entrega-recebedores-edicao"
+          }
+        ],
+        "reads": [
+          "src/app/app-domain/sst/equipamentos/actions.ts:18:171"
+        ],
+        "rendererChain": [
+          "src/app/app-domain/sst/_components/SstTablePanel.tsx#SstTablePanel",
+          "src/components/app-ui/operational/OperationalTable.tsx#OperationalTable"
+        ],
+        "consumers": [
+          "/sst/equipamentos/entregas"
+        ]
+      },
+      {
+        "field": "itemIds",
+        "emitter": "sst/equipamentos/entregas/DeliveryEventEditor.tsx",
+        "preferenceId": "sst-equipamentos-entregas",
+        "action": "saveEquipmentEvent",
+        "target": "src/app/app-domain/sst/equipamentos/entregas/DeliveryEventEditor.tsx:37:5",
+        "passed": true,
+        "emitters": [
+          {
+            "at": "src/app/app-domain/sst/equipamentos/entregas/DeliveryEventEditor.tsx:34:28",
+            "tag": "input"
+          }
+        ],
+        "reads": [
+          "src/app/app-domain/sst/equipamentos/actions.ts:21:164"
+        ],
+        "rendererChain": [
+          "src/app/app-domain/sst/_components/SstTablePanel.tsx#SstTablePanel",
+          "src/components/app-ui/operational/OperationalTable.tsx#OperationalTable"
+        ],
+        "consumers": [
+          "/sst/equipamentos/entregas"
+        ]
+      }
+    ],
+    "manifestRoutes": 384,
+    "activeManifestRoutes": 384,
+    "registryConnected": true,
+    "manifestErrors": [],
+    "reviewErrors": [],
+    "shadowedRegistrations": [],
+    "unintegratedManifests": [],
+    "registeredWithoutPage": [],
+    "tableRoutes": 437,
+    "tableEntries": 439,
+    "registeredTableRoutes": 307,
+    "operationalTableRoutes": 431,
+    "importOnlyRouteFalsePositives": [
+      {
+        "route": "/camara/planejamento",
+        "file": "src/app/app-domain/camara/planejamento/page.tsx"
+      },
+      {
+        "route": "/planejamento",
+        "file": "src/app/app-domain/planejamento/page.tsx"
+      }
+    ],
+    "baselineCallableRouteChanges": {
+      "removed": [
+        "/auditoria",
+        "/configuracoes/processos",
+        "/documentos/assinaturas",
+        "/documentos/ged",
+        "/documentos/modelos"
+      ],
+      "added": [
+        "/administracao/auditoria",
+        "/administracao/bi/smarttv",
+        "/administracao/servidores/novo",
+        "/assinatura-digital/acervo/[id]",
+        "/assinatura-digital/acervo",
+        "/assinatura-digital/classes",
+        "/assinatura-digital/documentos",
+        "/assinatura-digital/fluxos",
+        "/assinatura-digital/gestao",
+        "/assinatura-digital/historico",
+        "/assinatura-digital/importacoes",
+        "/assinatura-digital/integracoes",
+        "/assinatura-digital/modelos/anteriores",
+        "/assinatura-digital/modelos",
+        "/assinatura-digital/origens",
+        "/assinatura-digital/pastas-inteligentes",
+        "/assinatura-digital/pendentes",
+        "/assinatura-digital/pesquisa",
+        "/assinatura-digital/processamento",
+        "/assinatura-digital/registros",
+        "/assinatura-digital/tarefas",
+        "/assinatura-digital/thesaurus",
+        "/assinatura-digital/usuarios",
+        "/camara/planejamento/entidades",
+        "/cemiterios/complementos",
+        "/cemiterios/processos/[id]",
+        "/compras/cadastros/[catalogo]",
+        "/compras/cadastros/crc/relatorio",
+        "/compras/licitacoes/[id]",
+        "/compras/licitacoes/registro-precos-externo",
+        "/compras/pesquisas-precos/[id]/relatorio",
+        "/compras/recebimentos",
+        "/compras/solicitacoes/[id]/editar",
+        "/compras/solicitacoes/novo",
+        "/configuracoes/conta",
+        "/configuracoes/processos/etapas",
+        "/educacao/disciplinas",
+        "/educacao/licencas",
+        "/financeiro/cheques",
+        "/financeiro/relatorios/ensino-decendial",
+        "/financeiro/relatorios/fontes",
+        "/financeiro/relatorios/pessoal-fiscal",
+        "/frotas/cadastros",
+        "/frotas/gestao",
+        "/frotas/movimentos",
+        "/meio-ambiente/residuos/estoque",
+        "/patrimonio/cadastros",
+        "/patrimonio/inventario-bens",
+        "/patrimonio/requisicoes/nova",
+        "/planejamento/entidades",
+        "/portal-servidor/atendimento",
+        "/portal-servidor/biblioteca",
+        "/portal-servidor/capacitacao/[id]/avaliacao",
+        "/portal-servidor/sst/cat",
+        "/rh/adiantamentos",
+        "/rh/arquivos-bancarios",
+        "/rh/cadastros",
+        "/rh/dependentes/[id]/editar",
+        "/rh/dependentes/novo",
+        "/rh/diarias",
+        "/rh/ocorrencias",
+        "/rh/pasta-funcional/[id]",
+        "/rh/pensoes",
+        "/rh/portal-conteudos",
+        "/rh/processamentos-funcionais",
+        "/rh/recadastramento/configurar",
+        "/rh/registros-funcionais",
+        "/rh/relatorios",
+        "/rh/requerimentos-funcionais",
+        "/rh/solicitacoes",
+        "/saude/atendimentos/[id]/complementos",
+        "/social/beneficios",
+        "/social/gestao/[area]/[id]/historico",
+        "/social/gestao/[area]",
+        "/social/importacoes",
+        "/social/relatorios",
+        "/sst/acidentes/[id]",
+        "/sst/configuracoes/[id]",
+        "/sst/configuracoes",
+        "/sst/juntas",
+        "/sst/prevencao/[id]",
+        "/sst/prevencao/novo",
+        "/transparencia/apresentacao",
+        "/tributacao/agrupamentos",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/declaracao-cartoes",
+        "/tributacao/declaracoes-complementares",
+        "/tributacao/economico/[id]/perfil",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/imoveis/[id]/perfil",
+        "/tributacao/imoveis/novo",
+        "/tributacao/iss-bancario/gestao/anexos/[id]",
+        "/tributacao/iss-bancario/gestao/declaracoes/[id]",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/lotes-anuais",
+        "/tributacao/referencias",
+        "/tributacao/relatorios-cadastrais",
+        "/tributacao/simples-nacional/consulta",
+        "/portal/tributario/declaracoes",
+        "/portal/tributario/itbi/novo"
+      ]
+    },
+    "baselineRouteCoverage": {
+      "total": 340,
+      "status": {
+        "baseline-import-only": 4,
+        "relocated": 3,
+        "same-route": 331,
+        "unresolved": 2
+      }
+    },
+    "domainPanelCoverage": {
+      "declarations": 112,
+      "status": {
+        "proved": 112
+      }
+    },
+    "residualCssGrids": {
+      "total": 13,
+      "classification": {
+        "chart": 1,
+        "data-grid": 6,
+        "editing-grid": 3,
+        "informational": 1,
+        "operational-card": 2
+      }
+    },
+    "routesMissingProvider": 0,
+    "newOrUnreconciledPoints": 141,
+    "postBaselinePoints": 141,
+    "postBaselineBeyondEditingReserve": 116,
+    "baselineDestinationDefinitions": 329,
+    "baselineOperationalDestinationDefinitions": 323,
+    "editingDestinationDefinitions": 25,
+    "brokenAdditionalChains": [
+      "src/app/app-domain/cemiterios/complementos/page.tsx:54:187",
+      "src/app/app-domain/cemiterios/complementos/page.tsx:55:28",
+      "src/app/app-domain/cemiterios/complementos/page.tsx:56:35",
+      "src/app/app-domain/cemiterios/complementos/page.tsx:57:234",
+      "src/app/app-domain/cemiterios/complementos/page.tsx:58:34",
+      "src/app/app-domain/cemiterios/complementos/page.tsx:59:36",
+      "src/app/app-domain/compras/cadastros/AuxiliaryCatalogClient.tsx:36:5",
+      "src/app/app-domain/compras/cadastros/crc/relatorio/page.tsx:14:646",
+      "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:355:21",
+      "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:418:21",
+      "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:25:5",
+      "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:28:5",
+      "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:36:5",
+      "src/app/app-domain/configuracoes/conta/page.tsx:50:11",
+      "src/app/app-domain/educacao/disciplinas/page.tsx:15:2",
+      "src/app/app-domain/educacao/licencas/page.tsx:13:2",
+      "src/app/app-domain/financeiro/cheques/page.tsx:28:83",
+      "src/app/app-domain/financeiro/relatorios/ensino-decendial/page.tsx:26:1135",
+      "src/app/app-domain/financeiro/relatorios/fontes/page.tsx:11:482",
+      "src/app/app-domain/meio-ambiente/residuos/estoque/StockView.tsx:29:101",
+      "src/app/app-domain/tributacao/agrupamentos/page.tsx:13:68",
+      "src/app/app-domain/tributacao/declaracao-cartoes/DeclaracaoCartoesClient.tsx:237:11",
+      "src/app/app-domain/tributacao/declaracoes-complementares/page.tsx:14:400",
+      "src/app/app-domain/tributacao/fiscalizacao/gestao/page.tsx:45:5",
+      "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:120:11",
+      "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:153:11",
+      "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:186:11",
+      "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:182:11",
+      "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:220:11",
+      "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:17:287",
+      "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:18:285",
+      "src/app/app-domain/tributacao/referencias/TaxReferenceClient.tsx:18:2",
+      "src/app/app-domain/tributacao/relatorios-cadastrais/page.tsx:33:1115",
+      "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:124:15",
+      "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:157:15",
+      "src/app/portal/tributario/declaracoes/page.tsx:30:38"
+    ],
+    "additionalCategories": {
+      "additional-domain-view": 115,
+      "editing-grid-replacement": 25,
+      "head-loading-error-state": 1
+    },
+    "modernWithoutEntry": [
+      {
+        "id": "src/app/app-domain/administracao/demandas/DemandasClient.tsx:69:7",
+        "baselineLegacy": true
+      },
+      {
+        "id": "src/app/app-domain/atendimento/AtendimentoClient.tsx:66:7",
+        "baselineLegacy": true
+      },
+      {
+        "id": "src/app/app-domain/cemiterios/CemiteriosClient.tsx:48:9",
+        "baselineLegacy": true
+      },
+      {
+        "id": "src/app/app-domain/documentos/assinaturas/AssinaturasClient.tsx:73:7",
+        "baselineLegacy": false
+      },
+      {
+        "id": "src/app/app-domain/documentos/ged/GEDClient.tsx:197:9",
+        "baselineLegacy": false
+      },
+      {
+        "id": "src/app/app-domain/financeiro/AnnualBudgetDraft.tsx:11:10",
+        "baselineLegacy": true
+      },
+      {
+        "id": "src/app/app-domain/financeiro/orcamento/cadastros/CadastrosClient.tsx:42:5",
+        "baselineLegacy": true
+      },
+      {
+        "id": "src/app/app-domain/financeiro/orcamento/planejamento/PlanejamentoClient.tsx:335:5",
+        "baselineLegacy": true
+      },
+      {
+        "id": "src/app/app-domain/financeiro/orcamento/planejamento/PlanejamentoClient.tsx:346:5",
+        "baselineLegacy": true
+      },
+      {
+        "id": "src/app/app-domain/social/modelos/SocialModelsClient.tsx:11:362",
+        "baselineLegacy": false
+      }
+    ],
+    "coverageByModule": [
+      {
+        "module": "administracao",
+        "baseline": 8,
+        "status": {
+          "mapped-legacy": 1,
+          "mapped-operational": 7
+        }
+      },
+      {
+        "module": "atendimento",
+        "baseline": 3,
+        "status": {
+          "mapped-legacy": 1,
+          "mapped-operational": 2
+        }
+      },
+      {
+        "module": "auditoria",
+        "baseline": 1,
+        "status": {
+          "mapped-operational": 1
+        }
+      },
+      {
+        "module": "cadastros",
+        "baseline": 8,
+        "status": {
+          "mapped-operational": 8
+        }
+      },
+      {
+        "module": "camara",
+        "baseline": 8,
+        "status": {
+          "mapped-operational": 8
+        }
+      },
+      {
+        "module": "cemiterios",
+        "baseline": 7,
+        "status": {
+          "mapped-legacy": 1,
+          "mapped-operational": 4,
+          "special": 2
+        }
+      },
+      {
+        "module": "compartilhado",
+        "baseline": 20,
+        "status": {
+          "mapped-operational": 20
+        }
+      },
+      {
+        "module": "compras",
+        "baseline": 18,
+        "status": {
+          "mapped-operational": 15,
+          "special": 3
+        }
+      },
+      {
+        "module": "configuracoes",
+        "baseline": 4,
+        "status": {
+          "mapped-operational": 4
+        }
+      },
+      {
+        "module": "controle-interno",
+        "baseline": 5,
+        "status": {
+          "mapped-operational": 5
+        }
+      },
+      {
+        "module": "cultura",
+        "baseline": 3,
+        "status": {
+          "mapped-operational": 3
+        }
+      },
+      {
+        "module": "documentos",
+        "baseline": 3,
+        "status": {
+          "mapped-operational": 3
+        }
+      },
+      {
+        "module": "educacao",
+        "baseline": 3,
+        "status": {
+          "mapped-operational": 3
+        }
+      },
+      {
+        "module": "financeiro",
+        "baseline": 28,
+        "status": {
+          "mapped-legacy": 3,
+          "mapped-operational": 25
+        }
+      },
+      {
+        "module": "frotas",
+        "baseline": 1,
+        "status": {
+          "mapped-operational": 1
+        }
+      },
+      {
+        "module": "indicadores",
+        "baseline": 1,
+        "status": {
+          "mapped-operational": 1
+        }
+      },
+      {
+        "module": "meio-ambiente",
+        "baseline": 9,
+        "status": {
+          "mapped-operational": 9
+        }
+      },
+      {
+        "module": "obras",
+        "baseline": 14,
+        "status": {
+          "mapped-operational": 14
+        }
+      },
+      {
+        "module": "patrimonio",
+        "baseline": 14,
+        "status": {
+          "mapped-operational": 14
+        }
+      },
+      {
+        "module": "portal-servidor",
+        "baseline": 15,
+        "status": {
+          "mapped-operational": 15
+        }
+      },
+      {
+        "module": "protocolos",
+        "baseline": 8,
+        "status": {
+          "mapped-operational": 8
+        }
+      },
+      {
+        "module": "publico:portal",
+        "baseline": 11,
+        "status": {
+          "mapped-operational": 10,
+          "special": 1
+        }
+      },
+      {
+        "module": "rh",
+        "baseline": 24,
+        "status": {
+          "mapped-operational": 23,
+          "special": 1
+        }
+      },
+      {
+        "module": "saneamento",
+        "baseline": 7,
+        "status": {
+          "mapped-operational": 7
+        }
+      },
+      {
+        "module": "saude",
+        "baseline": 27,
+        "status": {
+          "mapped-operational": 27
+        }
+      },
+      {
+        "module": "seguranca",
+        "baseline": 1,
+        "status": {
+          "mapped-operational": 1
+        }
+      },
+      {
+        "module": "social",
+        "baseline": 12,
+        "status": {
+          "mapped-operational": 12
+        }
+      },
+      {
+        "module": "sst",
+        "baseline": 23,
+        "status": {
+          "mapped-operational": 23
+        }
+      },
+      {
+        "module": "transparencia",
+        "baseline": 8,
+        "status": {
+          "mapped-operational": 8
+        }
+      },
+      {
+        "module": "tributacao",
+        "baseline": 49,
+        "status": {
+          "mapped-operational": 49
+        }
+      }
+    ],
+    "supplementalGrids": [],
+    "supplementalRoles": [],
+    "unscannedRenderPoints": [],
+    "prismaImports": [],
+    "strict": {
+      "passed": false,
+      "blockers": [
+        {
+          "kind": "reconciliation"
+        },
+        {
+          "kind": "native-renderers",
+          "points": [
+            "src/app/app-domain/cemiterios/complementos/page.tsx:54:187",
+            "src/app/app-domain/cemiterios/complementos/page.tsx:55:28",
+            "src/app/app-domain/cemiterios/complementos/page.tsx:56:35",
+            "src/app/app-domain/cemiterios/complementos/page.tsx:57:234",
+            "src/app/app-domain/cemiterios/complementos/page.tsx:58:34",
+            "src/app/app-domain/cemiterios/complementos/page.tsx:59:36",
+            "src/app/app-domain/compras/cadastros/AuxiliaryCatalogClient.tsx:36:5",
+            "src/app/app-domain/compras/cadastros/crc/relatorio/page.tsx:14:646",
+            "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:355:21",
+            "src/app/app-domain/compras/licitacoes/registro-precos-externo/ExternalPriceRegistrationClient.tsx:418:21",
+            "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:25:5",
+            "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:28:5",
+            "src/app/app-domain/compras/pesquisas-precos/[id]/relatorio/page.tsx:36:5",
+            "src/app/app-domain/configuracoes/conta/page.tsx:50:11",
+            "src/app/app-domain/educacao/disciplinas/page.tsx:15:2",
+            "src/app/app-domain/educacao/licencas/page.tsx:13:2",
+            "src/app/app-domain/financeiro/cheques/page.tsx:28:83",
+            "src/app/app-domain/financeiro/relatorios/ensino-decendial/page.tsx:26:1135",
+            "src/app/app-domain/financeiro/relatorios/fontes/page.tsx:11:482",
+            "src/app/app-domain/meio-ambiente/residuos/estoque/StockView.tsx:29:101",
+            "src/app/app-domain/tributacao/agrupamentos/page.tsx:13:68",
+            "src/app/app-domain/tributacao/declaracao-cartoes/DeclaracaoCartoesClient.tsx:237:11",
+            "src/app/app-domain/tributacao/declaracoes-complementares/page.tsx:14:400",
+            "src/app/app-domain/tributacao/fiscalizacao/gestao/page.tsx:45:5",
+            "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:120:11",
+            "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:153:11",
+            "src/app/app-domain/tributacao/iss-bancario/gestao/anexos/[id]/page.tsx:186:11",
+            "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:182:11",
+            "src/app/app-domain/tributacao/iss-bancario/gestao/declaracoes/[id]/page.tsx:220:11",
+            "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:17:287",
+            "src/app/app-domain/tributacao/iss-bancario/gestao/page.tsx:18:285",
+            "src/app/app-domain/tributacao/referencias/TaxReferenceClient.tsx:18:2",
+            "src/app/app-domain/tributacao/relatorios-cadastrais/page.tsx:33:1115",
+            "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:124:15",
+            "src/app/app-domain/tributacao/simples-nacional/consulta/page.tsx:157:15",
+            "src/app/portal/tributario/declaracoes/page.tsx:30:38"
+          ]
+        },
+        {
+          "kind": "new-unreviewed-grids-or-roles",
+          "newEditingGrids": [
+            {
+              "file": "src/components/signatures/ged/GedAdministration.tsx",
+              "line": 42,
+              "column": 210,
+              "expression": "fields.map",
+              "className": "grid gap-2 rounded border p-2 sm:grid-cols-3",
+              "printOnly": false,
+              "modal": false,
+              "snippet": "<div key={index} className=\"grid gap-2 rounded border p-2 sm:grid-cols-3\"><label>Chave<input required className={inputClass} value={field.key} onChange={e => setFields(fields.map((f, i) => i === index ? { ...f, key: e.target.value } : f))} /></label><label>R??tulo<input required className={inputClass} value={field.label} onChange={e => setFields(fields.map((f, i) => i === index ? { ...f, label: e.target.value } : f))}",
+              "classification": "editing-grid",
+              "routes": [
+                "/assinatura-digital/gestao"
+              ]
+            },
+            {
+              "file": "src/components/signatures/ged/GedAdministration.tsx",
+              "line": 59,
+              "column": 1072,
+              "expression": "entries.map",
+              "className": "grid gap-2 sm:grid-cols-5",
+              "printOnly": false,
+              "modal": false,
+              "snippet": "<div key={index} className=\"grid gap-2 sm:grid-cols-5\"><select className={inputClass} value={entry.principal} onChange={e => setEntries(entries.map((v, i) => i === index ? { ...v, principal: e.target.value, principalId: \"\" } : v))}>{[\"user\", \"group\", \"profile\"].map(v => <option key={v}>{v}</option>)}</select><select required className={inputClass} value={entry.principalId} onChange={e => setEntries(entries.map((v, i)",
+              "classification": "editing-grid",
+              "routes": [
+                "/assinatura-digital/gestao"
+              ]
+            },
+            {
+              "file": "src/components/signatures/ged/GedRuleEditor.tsx",
+              "line": 11,
+              "column": 1946,
+              "expression": "actions.map",
+              "className": "grid gap-2 sm:grid-cols-4",
+              "printOnly": false,
+              "modal": false,
+              "snippet": "<div key={index} className=\"grid gap-2 sm:grid-cols-4\"><select className={input} value={action.type} onChange={e => setActions(actions.map((a, i) => i === index ? { ...a, type: e.target.value } : a))}>{[[\"tag\", \"Aplicar etiqueta\"], [\"move\", \"Mover para pasta\"], [\"classify\", \"Classificar tipo\"], [\"task\", \"Criar tarefa\"], [\"notify\", \"Notificar\"], [\"flow\", \"Iniciar fluxo\"], [\"revalidate\", \"Solicitar revalida????o\"], [\"pub",
+              "classification": "editing-grid",
+              "routes": [
+                "/assinatura-digital/gestao"
+              ]
+            }
+          ],
+          "supplementalGrids": [],
+          "supplementalRoles": []
+        },
+        {
+          "kind": "orphan-renderers",
+          "points": [
+            {
+              "id": "src/app/app-domain/documentos/assinaturas/AssinaturasClient.tsx:73:7",
+              "baselineLegacy": false
+            },
+            {
+              "id": "src/app/app-domain/documentos/ged/GEDClient.tsx:197:9",
+              "baselineLegacy": false
+            },
+            {
+              "id": "src/app/app-domain/social/modelos/SocialModelsClient.tsx:11:362",
+              "baselineLegacy": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "missingProvider": []
+}

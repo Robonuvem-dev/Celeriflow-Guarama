@@ -1,0 +1,152 @@
+{
+  "startedAt": "2026-11-06T14:39:03.434Z",
+  "base": "http://localhost:3101",
+  "cases": [
+    {
+      "device": "notebook-1366",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/rh/servidores\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/rh/registros-funcionais\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "passed": false,
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(await page.getByRole(\"heading\", { name: \"Thiago Morcatty\", exact: true }).isVisible())\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Tabela fiscal com 20 registros, próxima página e menu expandido/recolhido",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/tributacao/pessoas\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "notebook-1366",
+      "label": "Confirmação tributária abre painel e conserva acesso à configuração",
+      "observations": {
+        "confirmationPanelOpened": true,
+        "configurationLinkPreserved": true
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/rh/servidores\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "observations": {
+        "width": 1280,
+        "height": 720,
+        "documentWidth": 1280,
+        "documentHeight": 720,
+        "device": "desktop",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/tributacao/pessoas\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Tabela fiscal com 20 registros, próxima página e menu expandido/recolhido",
+      "passed": false,
+      "message": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "notebook-1280",
+      "label": "Confirmação tributária abre painel e conserva acesso à configuração",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/tributacao/pessoas\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "tablet",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/rh/servidores\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "tablet",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "passed": false,
+      "message": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/rh/registros-funcionais\", waiting until \"load\"\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "tablet",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "passed": false,
+      "message": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Buscar', exact: true })\u001b[22m\n\u001b[2m    - locator resolved to <button class=\"h-7 rounded border px-2 text-xs\">Buscar</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - performing click action\u001b[22m\n\u001b[2m    - click action done\u001b[22m\n\u001b[2m    - waiting for scheduled navigations to finish\u001b[22m\n",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "phone",
+      "label": "Listagem → novo servidor por link real mantém menu e shell único",
+      "passed": false,
+      "message": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/rh/servidores/novo\" until \"load\"\n============================================================",
+      "errors": [],
+      "httpErrors": []
+    },
+    {
+      "device": "phone",
+      "label": "Registros funcionais → gestão por link real mantém menu",
+      "observations": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "documentHeight": 844,
+        "device": "desktop",
+        "sidebars": 1,
+        "workspaces": 1
+      },
+      "passed": true
+    },
+    {
+      "device": "phone",
+      "label": "Busca fiscal nominal por formulário GET e ficha por link real",
+      "passed": false,
+      "message": "Expected values to be strictly equal:\n\n0 !== 1\n",
+      "errors": [],
+      "httpErrors": []
+    }
+  ],
+  "finishedAt": "2026-11-06T14:52:27.284Z",
+  "summary": {
+    "passed": 3,
+    "failed": 13
+  }
+}

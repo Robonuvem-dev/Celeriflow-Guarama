@@ -6,8 +6,11 @@ import { findConstructionCaseForPortal } from "@/db/repositories/infrastructure/
 import { constructionIssuedDocuments, constructionDocumentRequests } from "@/db/schema/construction-documents";
 import { getConstructionPortalIdentity } from "@/lib/obras/construction-portal-access";
 import ConstructionPortalDocuments from "@/components/construction/ConstructionPortalDocuments";
+import { getPortalPageAccess, PortalPageAccessDenied } from "@/components/auth/PortalPageAccess";
 export default async function ConstructionPortalDocumentsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
-  const { id } = await params; const identity = await getConstructionPortalIdentity(); const query = await searchParams;
+  const { id } = await params; const query = await searchParams;
+  const identity = await getPortalPageAccess(getConstructionPortalIdentity, `/portal/construcao-civil/${encodeURIComponent(id)}/documentos`, "/portal/construcao-civil/entrar");
+  if (!identity) return <PortalPageAccessDenied />;
   const record = await findConstructionCaseForPortal(db, id, identity.id); if (!record) notFound();
   const total = (await db.select({ value: count() }).from(constructionIssuedDocuments).where(and(eq(constructionIssuedDocuments.caseId, id), eq(constructionIssuedDocuments.status, "PUBLISHED"))))[0].value; const page = Math.min(Math.max(1, Math.ceil(total / 20)), Math.max(1, Number.parseInt(query.page || "1", 10) || 1));
   const [documents, requests] = await Promise.all([db.select().from(constructionIssuedDocuments).where(and(eq(constructionIssuedDocuments.caseId, id), eq(constructionIssuedDocuments.status, "PUBLISHED"))).orderBy(desc(constructionIssuedDocuments.createdAt)).offset((page - 1) * 20).limit(20), db.select().from(constructionDocumentRequests).where(eq(constructionDocumentRequests.caseId, id)).orderBy(desc(constructionDocumentRequests.createdAt)).limit(20)]);

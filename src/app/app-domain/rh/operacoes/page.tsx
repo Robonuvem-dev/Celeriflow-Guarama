@@ -135,7 +135,7 @@ export default async function WorkforcePage({ searchParams }: { searchParams: Pr
       if (tab === "contratos" && customCode) { args.set("customCode", customCode); args.set("customValue", customValue); args.set("customType", customType); }
       if (tab === "calculos" && /^(0[1-9]|1[0-2])\/\d{4}$/.test(q)) args.set("competence", q);
       if (tab === "calculos" && first(params.payrollId)) args.set("payrollId", first(params.payrollId));
-      return <Link key={format} href={`/api/rh/relatorios?${args}`} className="underline">{format}</Link>;
+      return <a key={format} href={`/api/rh/relatorios?${args}`} className="underline">{format}</a>;
     })}</div>}
     {tab === "contratos" && <><OperationForm key={`${selected?.id || "new"}:${selected?.version || 0}`} command="contrato" title={selected ? "Salvar revisão do contrato" : "Cadastrar contrato"} fields={contractFields} customPolicies={customPolicies} customValues={customValues} /><OperationForm command="vincular" title="Vincular servidor à pessoa física existente" fields={[field("employeeId", "ID servidor"), field("personId", "ID pessoa física")]} /></>}
     {tab === "contratos" && <OperationForm command="reajustar" title="Reajuste salarial coletivo com prévia" fields={[field("batchKey", "Chave estável do lote", randomUUID()), field("contractIds", "Contratos"), field("effectiveFrom", "Vigência", "", "date"), field("rate", "Percentual assinado (ex.: 5 ou -2)", "0"), field("reason", "Ato / fundamento", "", "textarea"), { ...field("mode", "Operação"), options: [{ value: "PREVIA", label: "Conferir prévia" }, { value: "APLICAR", label: "Aplicar lote" }] }, field("previewHash", "Hash da prévia conferida", "", "text", false)]} />}

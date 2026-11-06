@@ -57,8 +57,9 @@ type Evento = {
   }[];
 };
 
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" });
-const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" });
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeZone: "America/Sao_Paulo" });
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Sao_Paulo" });
+const timeFormatter = new Intl.DateTimeFormat("pt-BR", { timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
 function statusClassName(status: string) {
   if (status === "Realizado") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
@@ -73,14 +74,14 @@ function formatPeriod(evento: Evento) {
 
   const startsOnSameDay = dateFormatter.format(new Date(start)) === dateFormatter.format(new Date(evento.endsAt));
   return startsOnSameDay
-    ? `${dateTimeFormatter.format(new Date(start))} - ${new Intl.DateTimeFormat("pt-BR", { timeStyle: "short" }).format(new Date(evento.endsAt))}`
+    ? `${dateTimeFormatter.format(new Date(start))} - ${timeFormatter.format(new Date(evento.endsAt))}`
     : `${dateTimeFormatter.format(new Date(start))} a ${dateTimeFormatter.format(new Date(evento.endsAt))}`;
 }
 
 function formatReservationPeriod(startsAt: string, endsAt: string) {
   const startsOnSameDay = dateFormatter.format(new Date(startsAt)) === dateFormatter.format(new Date(endsAt));
   return startsOnSameDay
-    ? `${dateTimeFormatter.format(new Date(startsAt))} - ${new Intl.DateTimeFormat("pt-BR", { timeStyle: "short" }).format(new Date(endsAt))}`
+    ? `${dateTimeFormatter.format(new Date(startsAt))} - ${timeFormatter.format(new Date(endsAt))}`
     : `${dateTimeFormatter.format(new Date(startsAt))} a ${dateTimeFormatter.format(new Date(endsAt))}`;
 }
 

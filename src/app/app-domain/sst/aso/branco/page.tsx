@@ -1,4 +1,4 @@
-import { z } from "zod";
+import Link from "next/link";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { assertSstClinicalAccess } from "@/lib/sst/access";
 import { auditEventTypes } from "@/lib/platform/audit-evidence";
@@ -6,11 +6,17 @@ import { insertAuditEvent as writeAuditEvent } from "@/db/repositories/platform/
 import { findSstUnit } from "@/db/repositories/sst/scope";
 import { sstDatabase } from "@/lib/sst/database";
 import { PrintAso } from "../[id]/imprimir/PrintAso";
+import { integrationUnits } from "@/lib/sst/esocial-service";
+import styles from "@/components/app-ui/operational/operational.module.css";
 
 export default async function BlankAso({ searchParams }: { searchParams: Promise<{ budgetUnitId?: string }> }) {
   const context = await getTenantContextForModuleOperation("SST", "issueReports");
   const { budgetUnitId } = await searchParams;
-  const id = z.string().min(1).parse(budgetUnitId);
+  if (!budgetUnitId) {
+    const units = await integrationUnits(context);
+    return <section className="space-y-3 p-3"><h1 className="text-lg font-semibold">ASO em branco</h1><p>Selecione a unidade gestora para emitir o modelo.</p>{units.length ? <form action="/sst/aso/branco" className={styles.searchForm}><label>Unidade gestora<select name="budgetUnitId" required className={styles.searchInput}>{units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></label><button className={styles.filterButton}>Abrir modelo</button></form> : <p>Nenhuma unidade gestora com acesso clínico disponível.</p>}<Link href="/sst/aso">Voltar aos exames e ASO</Link></section>;
+  }
+  const id = budgetUnitId;
   await assertSstClinicalAccess(context, id);
   const unit = await findSstUnit(sstDatabase(context), id);
   if (!unit) throw new Error("Unidade gestora não encontrada.");

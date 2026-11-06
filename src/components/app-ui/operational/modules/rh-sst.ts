@@ -51,6 +51,7 @@ export const operationalModules: OperationalModuleConfig[] = [
       { pathname: "/rh/recadastramento", title: "Campanhas de recadastramento" },
       { pathname: "/rh/servicos-funcionais", title: "Serviços funcionais do Portal", excludeQuery: { view: ["manage"] } },
       { pathname: "/rh/servidores", title: "Servidores" },
+      { pathname: "/rh/pasta-funcional/[id]", title: "Pasta funcional do servidor" },
     ],
   },
   {

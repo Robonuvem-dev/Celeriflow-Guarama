@@ -1,0 +1,39 @@
+{
+  "startedAt": "2026-11-06T16:08:01.751Z",
+  "cases": [
+    {
+      "module": "iluminacao-publica",
+      "group": "IluminaFlow",
+      "label": "IluminaFlow",
+      "href": "https://app.iluminaflow.com.br/",
+      "path": null,
+      "finalUrl": "https://app.iluminaflow.com.br/login",
+      "status": 200,
+      "title": "IluminaFlow | Gestão Inteligente de Iluminação Pública",
+      "result": "OPENED_EXTERNAL"
+    },
+    {
+      "module": "iluminacao-publica",
+      "group": "IluminaFlow",
+      "label": "Site IluminaFlow",
+      "href": "https://www.iluminaflow.com.br/",
+      "path": null,
+      "finalUrl": "https://www.iluminaflow.com.br/",
+      "status": 200,
+      "title": "IluminaFlow | Gestão Inteligente de Iluminação Pública",
+      "result": "OPENED_EXTERNAL"
+    },
+    {
+      "module": "cultura",
+      "group": "Cultura e lazer",
+      "label": "AcessaFlow",
+      "href": "https://www.acessaflow.com.br",
+      "path": null,
+      "finalUrl": "https://www.acessaflow.com.br/",
+      "status": 200,
+      "title": "AcessaFlow — Gestão Esportiva",
+      "result": "OPENED_EXTERNAL"
+    }
+  ],
+  "finishedAt": "2026-11-06T16:08:57.408Z"
+}

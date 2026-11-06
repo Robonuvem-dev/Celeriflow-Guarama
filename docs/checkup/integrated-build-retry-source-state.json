@@ -1,0 +1,11 @@
+{
+  "capturedAt": "2026-11-06T18:30:45.200Z",
+  "baseline": "docs/checkup/sixth-integrated-build-source-state.json",
+  "scope": "Build retry after server directive fix in remote quick actions; override these hashes in the 3815-file baseline.",
+  "overrides": [
+    {
+      "path": "src/app/app-domain/patrimonio/requisicoes/quick-actions.ts",
+      "sha256": "797f0a1e7f7827c9122bc36749695dade7e63e108dd3669ff953e472045d5c76"
+    }
+  ]
+}

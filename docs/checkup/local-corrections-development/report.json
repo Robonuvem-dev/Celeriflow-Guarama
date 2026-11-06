@@ -1,0 +1,483 @@
+{
+  "startedAt": "2026-11-06T14:24:57.414Z",
+  "base": "http://localhost:3101",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "scope": "Existing session reused only in memory in an isolated local browser context",
+  "cases": [
+    {
+      "path": "/tributacao/pessoas/THIAGO_MORCATTY_DEMO_2026_V1:taxpayer",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pessoas e Cadastro Fiscal",
+        "Thiago Morcatty",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/nfse",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "NFS-e",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/pessoas?q=Morcatty",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Pessoas e cadastro fiscal",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 1
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": []
+    },
+    {
+      "path": "/tributacao/comparativo-anual",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Comparativo anual",
+        "Comparativo anual — IPTU, ISS e demais receitas tributárias",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 0
+          }
+        ]
+      },
+      "shell": [
+        "/tributacao",
+        "/tributacao/pessoas",
+        "/tributacao/economico",
+        "/tributacao/economico/eventos-veiculos",
+        "/tributacao/economico/novo",
+        "/tributacao/economico/contadores",
+        "/tributacao/economico/alteracao-geral",
+        "/tributacao/economico/atividades",
+        "/tributacao/alvaras/configurados",
+        "/tributacao/itbi/processos",
+        "/tributacao/itbi/comunicacao",
+        "/tributacao/itbi/online",
+        "/tributacao/itbi/modelos",
+        "/tributacao/itbi/bloqueios",
+        "/tributacao/itbi/cancelamento-automatico",
+        "/tributacao/configuracoes-cadastrais/pgv-lote",
+        "/tributacao/economico/consulta",
+        "/tributacao/imoveis",
+        "/tributacao/imoveis/alteracao-geral",
+        "/tributacao/imoveis/operacoes",
+        "/tributacao/imoveis/configuracao",
+        "/tributacao/avaliacoes",
+        "/tributacao/avaliacoes/simulacao",
+        "/tributacao/imoveis/novo",
+        "/tributacao/recadastramento",
+        "/tributacao/base-territorial",
+        "/tributacao/configuracoes-cadastrais",
+        "/tributacao/redesim",
+        "/tributacao/fontes-cadastrais",
+        "/tributacao/motor-fiscal",
+        "/tributacao/itbi",
+        "/tributacao/domicilio-tributario",
+        "/tributacao/alvaras",
+        "/tributacao/nfse",
+        "/tributacao/simples-nacional",
+        "/tributacao/simples-nacional/consulta",
+        "/tributacao/simples-nacional/arquivos",
+        "/tributacao/iss-bancario",
+        "/tributacao/iss-bancario/gestao",
+        "/tributacao/guias",
+        "/tributacao/calendarios",
+        "/tributacao/notificacoes",
+        "/tributacao/cobranca",
+        "/tributacao/divida-ativa",
+        "/tributacao/divida",
+        "/tributacao/cemiterios",
+        "/tributacao/vaf",
+        "/tributacao/bi-tributario",
+        "/tributacao/comparativo-anual",
+        "/tributacao/resumo-anual",
+        "/tributacao/certidoes",
+        "/tributacao/fiscalizacao",
+        "/tributacao/fiscalizacao/gestao",
+        "/tributacao/operacoes",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        },
+        {
+          "href": "/tributacao/comparativo-anual/exportar?governmentEntityId=p0-current-exe&firstYear=2025&secondYear=2026&query=&direction=ALL&metric=NET&minimumPercentage=0&minimumDifference=0",
+          "label": "Exportar CSV"
+        }
+      ]
+    },
+    {
+      "path": "/rh/operacoes",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "RH e Folha",
+        "Operações de RH e Folha",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": []
+      },
+      "shell": [
+        "/rh",
+        "/rh/servidores",
+        "/rh/dependentes",
+        "/rh/folha",
+        "/rh/relatorios",
+        "/rh/arquivos-bancarios",
+        "/rh/registros-funcionais",
+        "/rh/processamentos-funcionais",
+        "/rh/parametrizacoes",
+        "/rh/beneficios",
+        "/rh/ponto",
+        "/rh/ferias",
+        "/rh/licencas",
+        "/rh/atos",
+        "/assinatura-digital/origens?module=RH",
+        "/rh/servicos-funcionais",
+        "/rh/portal-funcional",
+        "/rh/portal-conteudos",
+        "/rh/requerimentos-funcionais",
+        "/rh/emissoes-funcionais",
+        "/rh/publicacao-funcional",
+        "/rh/atividades-funcionais",
+        "/rh/concursos",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/api/rh/relatorios?kind=CONTRATOS&format=CSV&q=",
+          "label": "CSV"
+        },
+        {
+          "href": "/api/rh/relatorios?kind=CONTRATOS&format=XLSX&q=",
+          "label": "XLSX"
+        },
+        {
+          "href": "/api/rh/relatorios?kind=CONTRATOS&format=PDF&q=",
+          "label": "PDF"
+        }
+      ]
+    },
+    {
+      "path": "/financeiro/contabilidade/disponibilidade",
+      "status": 200,
+      "result": "OPENED",
+      "headings": [
+        "Disponibilidade de recursos por fonte",
+        "Privacidade e cookies"
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "httpErrors": [],
+      "layout": {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "documentHeight": 768,
+        "workspaces": 1,
+        "sidebars": 1,
+        "tables": [
+          {
+            "width": 1310,
+            "rows": 4
+          }
+        ]
+      },
+      "shell": [
+        "/financeiro",
+        "/financeiro/empenhos",
+        "/financeiro/liquidacoes",
+        "/assinatura-digital/origens?module=FINANCEIRO",
+        "/financeiro/pagamentos",
+        "/financeiro/restos-a-pagar",
+        "/financeiro/custos",
+        "/financeiro/receitas",
+        "/financeiro/receitas-constitucionais",
+        "/financeiro/contas-bancarias",
+        "/financeiro/download-extratos",
+        "/financeiro/automacoes",
+        "/financeiro/resgates-aplicacoes",
+        "/financeiro/rendimentos",
+        "/financeiro/conciliacao-bancaria",
+        "/financeiro/contabilidade",
+        "/financeiro/relatorios",
+        "/financeiro/relatorios/indices-constitucionais",
+        "/dashboard"
+      ],
+      "alerts": [
+        ""
+      ],
+      "links": [
+        {
+          "href": "/api/financeiro/disponibilidade?financialYearId=aurora-mg-50k-v1%3Afinancial-year%3A000&governmentEntityId=p0-current-exe",
+          "label": "Baixar relatório CSV"
+        }
+      ]
+    }
+  ],
+  "shellChecks": [],
+  "finishedAt": "2026-11-06T14:28:16.575Z"
+}

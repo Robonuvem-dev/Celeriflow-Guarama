@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "incremental": false, "plugins": [] },
+  "include": ["../../next-env.d.ts", "../../scripts/repair-checkup-demonstration-data.ts", "../../scripts/checkup-demonstration-data.ts", "../../scripts/prepare-checkup-portal-library.ts", "../../scripts/normalize-checkup-rh-labels.ts", "../../scripts/prepare-checkup-finance-sst.ts", "../../scripts/prepare-checkup-prevention-data.ts", "../../scripts/prepare-checkup-tax-references.ts", "../../scripts/prepare-checkup-planning-drafts.ts", "../../scripts/complete-checkup-thiago-cost-center.ts"],
+  "exclude": ["../../node_modules"]
+}

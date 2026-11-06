@@ -135,7 +135,7 @@ function money(value: number) {
 
 function datePt(value: string | null | undefined) {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString("pt-BR");
+  return new Date(value).toLocaleDateString("pt-BR", { timeZone: "UTC" });
 }
 
 function makeClientKey() {

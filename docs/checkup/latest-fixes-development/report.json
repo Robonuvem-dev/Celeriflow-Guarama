@@ -1,0 +1,91 @@
+{
+  "startedAt": "2026-11-06T15:33:50.993Z",
+  "base": "http://localhost:3101",
+  "scope": "Rendered tables and visible labels; no business mutations",
+  "total": 15,
+  "cases": [
+    {
+      "path": "/camara/sessoes",
+      "navigationError": "page.goto: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/camara/sessoes\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0/editar",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0/editar\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0/editar\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0/relatorio",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0/relatorio\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/compras/contratos/CHECKUP_APRESENTACAO_2026_V1:contract:0/relatorio\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0/editar",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0/editar\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0/editar\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0/relatorio",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0/relatorio\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/compras/convenios/CHECKUP_APRESENTACAO_2026_V1:covenant:0/relatorio\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/rh/registros-funcionais",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/rh/registros-funcionais\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/rh/registros-funcionais\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/assinatura-digital/classes",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/assinatura-digital/classes\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/assinatura-digital/classes\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/frotas/movimentos",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/frotas/movimentos\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/frotas/movimentos\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/sst/aso/branco",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/sst/aso/branco\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/sst/aso/branco\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/tributacao/imoveis/aurora-system-v1:property:000",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/tributacao/imoveis/aurora-system-v1:property:000\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/tributacao/imoveis/aurora-system-v1:property:000\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/sst/configuracoes/aurora-system-v1:certificate-reason:000",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/sst/configuracoes/aurora-system-v1:certificate-reason:000\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/sst/configuracoes/aurora-system-v1:certificate-reason:000\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/social/pessoas/aurora-system-v1:person:027",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/social/pessoas/aurora-system-v1:person:027\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/social/pessoas/aurora-system-v1:person:027\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    },
+    {
+      "path": "/rh/folha/eventos/aurora-mg-50k-v1:salary-event:000/editar",
+      "navigationError": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3101/rh/folha/eventos/aurora-mg-50k-v1:salary-event:000/editar\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3101/rh/folha/eventos/aurora-mg-50k-v1:salary-event:000/editar\", waiting until \"load\"\u001b[22m\n",
+      "errors": []
+    }
+  ],
+  "finishedAt": "2026-11-06T15:37:05.589Z",
+  "summary": {
+    "inspected": 15,
+    "markerScreens": 0,
+    "emptyTableScreens": 0,
+    "errors": 15,
+    "layoutBlocked": 0
+  }
+}

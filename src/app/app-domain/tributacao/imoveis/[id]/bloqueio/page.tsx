@@ -7,7 +7,8 @@ import PropertyEditControls from "./PropertyEditControls";
 
 export const dynamic = "force-dynamic";
 export default async function PropertyEditRestrictionPage({ params }: { params: Promise<{ id: string }> }) {
-  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const { id } = await params;
+  const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const { id: routeId } = await params;
+  const id = decodeURIComponent(routeId);
   if (!isSystemAdministrator(user)) return <p className="p-4">Solicite ao supervisor administrativo a liberação pontual da edição deste imóvel.</p>;
   const controls = await readPropertyEditControlData(context.database ?? db, id); if (!controls) notFound();
   const { property, restriction, approvals, units, operators, effective } = controls;

@@ -46,7 +46,7 @@ export const operationalModules: OperationalModuleConfig[] = [
     ],
   },
   {
-    key: "controle-interno", moduleTitle: "Controle Interno", moduleCaption: "Consultas integradas", moduleIcon: "shieldCheck",
+    key: "controle-interno", moduleTitle: "Controle Interno", moduleCaption: "Consultas integradas", moduleIcon: "shieldCheck", shellPathname: "/controle-interno",
     navigation: [{ title: "Controle Interno", items: [
       { title: "Planos e diagnósticos", href: "/controle-interno", icon: "shieldCheck", exact: true },
       { title: "Relatórios circunstanciados", href: "/controle-interno/relatorios", icon: "fileText" },

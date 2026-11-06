@@ -15,7 +15,7 @@ import { comprasColumn as column } from "../../_components/columns";
 export default async function ProcessoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const processo = await loadPurchaseProcessDetail(context.database ?? db, resolvedParams.id);
+  const processo = await loadPurchaseProcessDetail(context.database ?? db, decodeURIComponent(resolvedParams.id));
 
   if (!processo) {
     notFound();

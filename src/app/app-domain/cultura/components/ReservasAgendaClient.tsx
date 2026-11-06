@@ -32,8 +32,8 @@ type Reserva = {
   documentos: { id: string; purpose: string; document: { title: string; documentType: string; status: string } }[];
 };
 
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" });
-const timeFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeZone: "America/Sao_Paulo" });
+const timeFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
 function statusClassName(status: string) {
   if (["Confirmada", "Confirmado", "Aprovada", "Aprovado"].includes(status)) return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
@@ -44,7 +44,7 @@ function statusClassName(status: string) {
 function formatSchedule(startsAt: string, endsAt: string) {
   const start = new Date(startsAt);
   const end = new Date(endsAt);
-  const sameDay = start.toDateString() === end.toDateString();
+  const sameDay = dateFormatter.format(start) === dateFormatter.format(end);
 
   return {
     date: sameDay ? dateFormatter.format(start) : `${dateFormatter.format(start)} a ${dateFormatter.format(end)}`,

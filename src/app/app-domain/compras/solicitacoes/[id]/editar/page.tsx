@@ -10,7 +10,7 @@ import { loadExternalAdhesion } from "@/db/repositories/procurement/external-adh
 export default async function EditarSolicitacaoPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const [solicitacao] = await loadPurchaseRequestsWithAllocations(context.database ?? db, [resolvedParams.id]);
+  const [solicitacao] = await loadPurchaseRequestsWithAllocations(context.database ?? db, [decodeURIComponent(resolvedParams.id)]);
 
   if (!solicitacao || !canManagePurchaseRequest(context.user, solicitacao)) {
     notFound();

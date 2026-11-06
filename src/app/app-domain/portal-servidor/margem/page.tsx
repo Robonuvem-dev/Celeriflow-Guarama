@@ -9,6 +9,7 @@ import { arePortalPayrollStatementsEnabled } from "@/lib/rh/payroll-configuratio
 import { consignmentMarginSchema } from "@/lib/rh/consignment-margin";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { ErpPagination } from "@/components/app-ui/erp/ErpPagination";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export const dynamic = "force-dynamic";
 export default async function MyConsignmentMargin({ searchParams }: { searchParams: Promise<{ competence?: string; page?: string }> }) {
@@ -33,7 +34,7 @@ export default async function MyConsignmentMargin({ searchParams }: { searchPara
     <Link href="/portal-servidor/consignacoes" className="text-xs underline">Consultar contratos e parcelas reservadas</Link>
     {rows.map(row => {
       const margin = z.object({ consignmentMargin: consignmentMarginSchema.nullable().optional() }).parse(row.statements[0].snapshot).consignmentMargin;
-      return <section key={row.id} className="rounded border bg-white p-3 text-xs"><strong>{row.payroll.competence} · {row.scope}</strong>{margin ? <><p>Remuneração selecionada R$ {margin.remuneration} · descontos obrigatórios R$ {margin.compulsoryDeductions} · base R$ {margin.base}</p><p>Limite {margin.rate}%: R$ {margin.limit} · utilizado R$ {margin.used} · disponível R$ {margin.available}</p><p>Fundamento: {margin.policy.legalReference}</p><p>{margin.contractIds.length} vínculos no cálculo agregado · versão {row.id}</p></> : <p>Esta versão não contém política e memória de margem consignável. Solicite configuração ao RH para cálculos futuros.</p>}</section>;
+      return <section key={row.id} className="rounded border bg-white p-3 text-xs"><strong>{row.payroll.competence} · {personnelDisplayText(row.scope)}</strong>{margin ? <><p>Remuneração selecionada R$ {margin.remuneration} · descontos obrigatórios R$ {margin.compulsoryDeductions} · base R$ {margin.base}</p><p>Limite {margin.rate}%: R$ {margin.limit} · utilizado R$ {margin.used} · disponível R$ {margin.available}</p><p>Fundamento: {personnelDisplayText(margin.policy.legalReference)}</p><p>{margin.contractIds.length} vínculos no cálculo agregado · versão {row.id}</p></> : <p>Esta versão não contém política e memória de margem consignável. Solicite configuração ao RH para cálculos futuros.</p>}</section>;
     })}
     {!total && <p className="text-sm">Nenhuma folha mensal liberada neste filtro.</p>}
     <ErpPagination page={page} total={total} pageSize={20} label="cálculos" previousHref={href(page - 1)} nextHref={href(page + 1)} />

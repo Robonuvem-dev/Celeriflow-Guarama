@@ -4,11 +4,13 @@ import { PppView } from "@/app/app-domain/sst/consolidado/ReportView";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { portalRows } from "@/db/repositories/portal-servidor/records";
+import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 type Search = { budgetUnitId?: string; from?: string; until?: string; page?: string };
 export default async function PortalSstReports({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await getEmployeePortalAccess();
   if (access.status !== "AVAILABLE") return <p className="p-4">Vincule seu acesso ao cadastro funcional para consultar seu histórico SST.</p>;
-  const { context, employee } = access;
+  const { context } = access;
+  const employee = { ...access.employee, registration: personnelDisplayText(access.employee.registration || "Não informada") };
   const params = await searchParams;
   const units = await portalRows<{ id: string; name: string }>(context.database ?? db, sql`SELECT DISTINCT u.id,u.name FROM "HrEmployeeFunctionalPeriod" p JOIN "BudgetUnit" u ON u.id=p."budgetUnitId" JOIN "HrBudgetUnitEntityMapping" m ON m."budgetUnitId"=p."budgetUnitId" AND m."governmentEntityId"=p."governmentEntityId" WHERE p."employeeId"=${employee.id} AND NOT p.voided AND NOT EXISTS (SELECT 1 FROM "HrEmployeeFunctionalPeriod" n WHERE n."supersedesId"=p.id) ORDER BY u.name,u.id`);
   let report: Awaited<ReturnType<typeof portalPppReport>> | null = null;

@@ -20,7 +20,7 @@ import { comprasColumn as column } from "../../_components/columns";
 export default async function ContratoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   await getTenantContextForModule("COMPRAS");
   const resolvedParams = await params;
-  const contrato = await loadContractDetail(databaseConnection.db, resolvedParams.id);
+  const contrato = await loadContractDetail(databaseConnection.db, decodeURIComponent(resolvedParams.id));
 
   if (!contrato) notFound();
 

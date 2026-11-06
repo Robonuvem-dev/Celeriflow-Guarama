@@ -1,0 +1,18 @@
+{
+  "startedAt": "2026-11-06T17:21:29.284Z",
+  "base": "http://localhost:3100",
+  "cases": [
+    {
+      "label": "SIPAT: responsáveis canônicos, atividades e horário de Brasília",
+      "path": "/sst/prevencao/7c937d9f-adf9-4f7a-bc95-efb47dab5c66",
+      "passed": true,
+      "observations": {
+        "plannedActivities": 2,
+        "cost": "0.00",
+        "organizer": "Thiago Morcatty",
+        "secondContentPageVerified": true
+      }
+    }
+  ],
+  "finishedAt": "2026-11-06T17:21:37.524Z"
+}

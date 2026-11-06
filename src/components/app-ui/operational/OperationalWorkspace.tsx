@@ -11,6 +11,7 @@ import { ModuleNavigationIcon, type ModuleIconName, type ModuleNavGroup } from "
 import { APP_VERSION } from "@/lib/version";
 import { OperationalContext, subscribeOperationalViewport, useOperationalDevice, useOperationalWorkspace, useOptionalOperationalWorkspace } from "./OperationalContext";
 import styles from "./operational.module.css";
+import { OperationalPagedContent } from "./OperationalPagedContent";
 
 export { useOperationalWorkspace, useOptionalOperationalWorkspace } from "./OperationalContext";
 
@@ -36,7 +37,7 @@ export function OperationalSurface({ title, children, actions }: { title: string
   </OperationalContext.Provider>;
 }
 
-export function OperationalWorkspace({ title, moduleTitle, moduleCaption, moduleIcon = "layoutDashboard", institutionName, userId, userName, userRole, navigation, onLogout, children }: {
+export function OperationalWorkspace({ title, moduleTitle, moduleCaption, moduleIcon = "layoutDashboard", institutionName, userId, userName, userRole, navigation, onLogout, children, contentMode = "list" }: {
   title: string;
   moduleTitle: string;
   moduleCaption?: string;
@@ -48,6 +49,7 @@ export function OperationalWorkspace({ title, moduleTitle, moduleCaption, module
   navigation: ModuleNavGroup[];
   onLogout: () => Promise<void>;
   children: ReactNode;
+  contentMode?: "list" | "page";
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -68,7 +70,7 @@ export function OperationalWorkspace({ title, moduleTitle, moduleCaption, module
     return () => window.removeEventListener("keydown", close);
   }, [menuCollapsed]);
 
-  return <OperationalContext.Provider value={{ userId, device, actionsHost }}>
+  return <OperationalContext.Provider value={{ userId, device, actionsHost, contentMode }}>
     <div className={styles.workspace} data-operational-workspace data-device={device}>
       <header className={styles.header} data-operational-header>
         <Link href="/dashboard" className={styles.brand} aria-label="CeleriFlow — painel geral" title={institutionName}><Image src="/favicon.png" alt="CeleriFlow" width={84} height={28} priority /></Link>
@@ -118,7 +120,9 @@ export function OperationalWorkspace({ title, moduleTitle, moduleCaption, module
             <div className={styles.railFooter}><Link href="/dashboard" className={styles.railLink} aria-label="Voltar ao painel geral" title="Voltar ao painel geral" onClick={() => setMenuCollapsed(true)}><ArrowLeft aria-hidden="true" /><span className={menuCollapsed ? styles.srOnly : styles.railLabel}>Voltar ao painel geral</span></Link></div>
           </aside>
         </div>
-        <main className={styles.main} data-operational-main inert={overlayOpen || undefined}>{children}</main>
+        <main className={styles.main} data-operational-main inert={overlayOpen || undefined}>
+          {contentMode === "page" ? <OperationalPagedContent device={device} label={title}>{children}</OperationalPagedContent> : children}
+        </main>
       </div>
     </div>
   </OperationalContext.Provider>;

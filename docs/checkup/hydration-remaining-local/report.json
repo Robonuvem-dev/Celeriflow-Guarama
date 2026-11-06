@@ -1,0 +1,249 @@
+{
+  "startedAt": "2026-11-06T15:32:46.876Z",
+  "base": "http://localhost:3100",
+  "scope": "Rendered tables and visible labels; no business mutations",
+  "total": 7,
+  "cases": [
+    {
+      "path": "/saude/pacientes",
+      "status": 200,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "headings": [
+        "Pacientes",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Pacientes",
+          "headers": [
+            "Nome",
+            "CPF",
+            "CNS",
+            "Data Nasc.",
+            "Status",
+            "Ações"
+          ],
+          "rows": 20,
+          "samples": [
+            "João Ramos Viana\n\t\n110.008.010-47\n\t\n-\n\t\n12/02/1978\n\t\nAtivo",
+            "Juliana Teixeira Fonseca\n\t\n110.008.011-28\n\t\n-\n\t\n12/03/1979\n\t\nAtivo",
+            "Larissa Campos Pereira\n\t\n110.008.012-09\n\t\n-\n\t\n12/04/1980\n\t\nAtivo"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "b96b9d0a84798ece.png"
+    },
+    {
+      "path": "/saude/agenda",
+      "status": 200,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "headings": [
+        "Agendamentos",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Agendamentos",
+          "headers": [
+            "Data e hora",
+            "Paciente",
+            "Unidade",
+            "Profissional",
+            "Especialidade",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 20,
+          "samples": [
+            "03/11/2026, 11:30:00\n\t\nOtávio Mendes Correia\n\t\nUnidade de Saúde da Família Vale Verde\n\t\nBeatriz Rocha Moreira\n\t\nEnfermagem\n\t\nAgendado",
+            "03/11/2026, 11:30:00\n\t\nNatália Duarte Silva\n\t\nUnidade Básica de Saúde Jardim das Acácias\n\t\nRenata Barbosa Ferreira\n\t\nEnfermagem\n\t\nAgendado",
+            "03/11/2026, 11:00:00\n\t\nMateus Barros Mendonça\n\t\nUnidade de Saúde da Família Vale Verde\n\t\nBeatriz Rocha Moreira\n\t\nEnfermagem\n\t\nAgendado"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "c44be0e4de065978.png"
+    },
+    {
+      "path": "/social/prontuario",
+      "status": 200,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "headings": [
+        "Prontuário Eletrônico SUAS",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Assistência Social — prontuario",
+          "headers": [
+            "Atualização",
+            "Unidade",
+            "Pessoa/Família",
+            "Tipo",
+            "Sigilo",
+            "Status",
+            "Ações"
+          ],
+          "rows": 20,
+          "samples": [
+            "01/11/2026, 10:00\n\t\nCRAS Jardim das Acácias\n\t\nDaniel Ribeiro Freitas\n\t\nAcolhimento\n\t\nNormal\n\t\nAtivo\n\t\nEditar\nInativar",
+            "31/10/2026, 10:00\n\t\nCREAS Aurora das Veredas\n\t\nDiego Viana Ramos\n\t\nPAIF\n\t\nNormal\n\t\nAtivo\n\t\nEditar\nInativar",
+            "30/10/2026, 10:00\n\t\nCRAS Jardim das Acácias\n\t\nElisa Carvalho Barros\n\t\nAcolhimento\n\t\nNormal\n\t\nAtivo\n\t\nEditar\nInativar"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "a8bc56e6409938dd.png"
+    },
+    {
+      "path": "/social/atendimentos",
+      "status": 200,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "headings": [
+        "Atendimentos",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Assistência Social — atendimentos",
+          "headers": [
+            "Data",
+            "Usuário/família",
+            "Tipo",
+            "Unidade",
+            "Técnico",
+            "Sigilo",
+            "Ações"
+          ],
+          "rows": 20,
+          "samples": [
+            "01/11/2026, 10:00\n\t\nDaniel Ribeiro Freitas\n\t\nAcolhimento\n\t\nCRAS Jardim das Acácias\n\t\nRodrigo Costa Paes\n\t\nNormal",
+            "31/10/2026, 10:00\n\t\nDiego Viana Ramos\n\t\nPAIF\n\t\nCREAS Aurora das Veredas\n\t\nRodrigo Costa Paes\n\t\nNormal",
+            "30/10/2026, 10:00\n\t\nElisa Carvalho Barros\n\t\nAcolhimento\n\t\nCRAS Jardim das Acácias\n\t\nRodrigo Costa Paes\n\t\nNormal"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "d6cdc561a28ad91c.png"
+    },
+    {
+      "path": "/rh/poc",
+      "status": 200,
+      "errors": [],
+      "headings": [
+        "Parametrizações",
+        "Parametrizações de RH e Folha",
+        "Conjunto de regras",
+        "Cobertura configurada",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [
+        "POC: mescla Ibema LC 025/2005 histórica, Campina do Simão Lei 21/2025 arts. 106/109, modelos PR/Paranaguá e catálogo 001–141. Estimativas autorizadas em 11/10/2026; substituir conforme RH_FOLHA_PARAMETROS_ESTIMADOS_POC.md."
+      ],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "afe435ea1fb895b4.png"
+    },
+    {
+      "path": "/assinatura-digital/usuarios",
+      "status": 200,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "headings": [
+        "Assinadores",
+        "Privacidade e cookies"
+      ],
+      "tables": [
+        {
+          "caption": "Usuários da Central de Assinaturas",
+          "headers": [
+            "Nome",
+            "Cargo",
+            "CPF/CNPJ",
+            "Telefone",
+            "Celular",
+            "E-mail",
+            "Origem",
+            "Validade",
+            "Vigência",
+            "Senha",
+            "Situação",
+            "Ações"
+          ],
+          "rows": 5,
+          "samples": [
+            "Amanda Machado Santos\n\t\nSecretário Municipal de Administração\n\t\n11000802957\n\t\n—\n\t\n—\n\t\nservidor.110@auroradasveredas.example\n\t\nServidor RH\n\t\n30/10/2027, 09:16:35\n\t\nVigente\n\t\nDefinida\n\t\nAtivo",
+            "HML-GED-ac52a13c-ef1b-431d-9d8f-a20473cf5550 FICTICIO\n\t\nSomente ensaio\n\t\n16335110300\n\t\n—\n\t\n—\n\t\n—\n\t\nCidadão\n\t\n01/11/2026, 16:29:12\n\t\nVencida\n\t\nDefinida\n\t\nAtivo",
+            "HML-GED-c85f11c1-1aa6-4cca-a472-323b67617ac3 FICTICIO\n\t\nSomente ensaio\n\t\n21445621800\n\t\n—\n\t\n—\n\t\n—\n\t\nCidadão\n\t\n01/11/2026, 16:48:19\n\t\nVencida\n\t\nDefinida\n\t\nAtivo"
+          ],
+          "markers": []
+        }
+      ],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "fd9697a883d1f8d5.png"
+    },
+    {
+      "path": "/notificacoes",
+      "status": 200,
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "headings": [
+        "Notificações internas (24)",
+        "Privacidade e cookies"
+      ],
+      "tables": [],
+      "visibleMarkers": [],
+      "emptyMessages": [],
+      "appError": false,
+      "layoutBlocked": false,
+      "login": false,
+      "screenshot": "a9c9e8d0e06087c9.png"
+    }
+  ],
+  "finishedAt": "2026-11-06T15:33:42.772Z",
+  "summary": {
+    "inspected": 7,
+    "markerScreens": 1,
+    "emptyTableScreens": 0,
+    "errors": 6,
+    "layoutBlocked": 0
+  }
+}

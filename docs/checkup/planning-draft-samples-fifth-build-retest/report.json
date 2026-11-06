@@ -1,0 +1,64 @@
+{
+  "startedAt": "2026-11-06T17:43:03.937Z",
+  "base": "http://localhost:3100",
+  "cases": [
+    {
+      "label": "Planejamento: LDO em elaboração na listagem",
+      "path": "/planejamento/ldo",
+      "passed": true,
+      "observations": {
+        "code": "MINUTA-LDO-2026-01",
+        "state": "DRAFT",
+        "id": "cmw599c0s0001gchymhv20hk1"
+      },
+      "readOnlyLookups": 3
+    },
+    {
+      "label": "Planejamento: detalhe da minuta LDO",
+      "path": "/planejamento/ldo/cmw599c0s0001gchymhv20hk1",
+      "passed": true,
+      "observations": {
+        "instrumentId": "cmw599c0s0001gchymhv20hk1",
+        "state": "DRAFT",
+        "contextVerified": true,
+        "forecastRows": 0
+      },
+      "readOnlyLookups": 6
+    },
+    {
+      "label": "Planejamento: LOA em elaboração na listagem",
+      "path": "/planejamento/loa",
+      "passed": true,
+      "observations": {
+        "code": "MINUTA-LOA-2026-01",
+        "state": "DRAFT",
+        "id": "cmw599c8i0004gchy601v86jw"
+      },
+      "readOnlyLookups": 3
+    },
+    {
+      "label": "Planejamento: detalhe da minuta LOA",
+      "path": "/planejamento/loa/cmw599c8i0004gchy601v86jw",
+      "passed": true,
+      "observations": {
+        "instrumentId": "cmw599c8i0004gchy601v86jw",
+        "state": "DRAFT",
+        "contextVerified": true,
+        "forecastRows": 0
+      },
+      "readOnlyLookups": 6
+    },
+    {
+      "label": "Planejamento: audiência programada e contribuição comunitária em análise",
+      "path": "/planejamento/audiencias?hearingId=cmw599cgo0006gchys9gxitbi",
+      "passed": true,
+      "observations": {
+        "hearingPlanned": true,
+        "demandState": "PENDING",
+        "requester": "Daniel Ribeiro Freitas"
+      },
+      "readOnlyLookups": 2
+    }
+  ],
+  "finishedAt": "2026-11-06T17:43:45.414Z"
+}

@@ -7,7 +7,7 @@ import { loadCovenantHeader } from "@/db/repositories/procurement/instruments";
 export default async function EditarConvenioPage({ params }: { params: Promise<{ id: string }> }) {
   await getTenantContextForModule("COMPRAS");
   const { id } = await params;
-  const covenant = await loadCovenantHeader(databaseConnection.db, id);
+  const covenant = await loadCovenantHeader(databaseConnection.db, decodeURIComponent(id));
   if (!covenant) notFound();
 
   return <ConvenioForm data={{

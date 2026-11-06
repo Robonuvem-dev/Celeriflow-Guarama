@@ -1,0 +1,39 @@
+{
+  "startedAt": "2026-11-06T17:17:47.292Z",
+  "base": "http://localhost:3100",
+  "cases": [
+    {
+      "label": "Prevenção: programação SIPAT e visita técnica na listagem compartilhada",
+      "path": "/sst/prevencao",
+      "passed": true,
+      "observations": {
+        "records": 2,
+        "kinds": [
+          "SIPAT",
+          "VISIT"
+        ]
+      }
+    },
+    {
+      "label": "SIPAT: responsáveis canônicos, atividades e horário de Brasília",
+      "path": "/sst/prevencao/7c937d9f-adf9-4f7a-bc95-efb47dab5c66",
+      "passed": true,
+      "observations": {
+        "plannedActivities": 2,
+        "cost": "0.00",
+        "organizer": "Thiago Morcatty"
+      }
+    },
+    {
+      "label": "Visita preventiva: detalhe com programação e responsável integrados",
+      "path": "/sst/prevencao/9b3570ce-88b4-4ff6-9ff7-b9220f720c28",
+      "passed": true,
+      "observations": {
+        "planned": true,
+        "responsible": "Thiago Morcatty",
+        "localTime": "2026-11-19T10:00"
+      }
+    }
+  ],
+  "finishedAt": "2026-11-06T17:18:08.482Z"
+}

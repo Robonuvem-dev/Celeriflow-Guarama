@@ -58,7 +58,7 @@ export function PriceResearchListClient({ researches }: { researches: PriceResea
           object: research.process.object,
           materials: matList || "Sem itens vinculados",
           suppliers: supList || "Sem fornecedores cotados",
-          deadline: new Date(research.deadlineAt).toLocaleString("pt-BR"),
+          deadline: new Date(research.deadlineAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
           quotes: String(research.submittedQuoteCount),
           estimate: research.estimatedValue === null ? "Sem proposta" : money.format(research.estimatedValue),
           status: research.status === "Em Andamento" ? "Em andamento" : research.status,

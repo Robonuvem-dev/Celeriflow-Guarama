@@ -13,7 +13,7 @@ const bodySchema = z.object({
   ]),
   targetType: z.enum(["PAGE", "CONTROL", "FORM"]),
   // Targets are restricted to route and control identifiers, never form values or query strings.
-  targetId: z.string().min(1).max(400).regex(/^\/[A-Za-z0-9_./|-]*$/),
+  targetId: z.string().min(1).max(400).regex(/^\/(?:[A-Za-z0-9_./|:-]|%[A-Fa-f0-9]{2})*$/),
 });
 
 export const runtime = "nodejs";

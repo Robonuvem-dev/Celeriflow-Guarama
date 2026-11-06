@@ -5,5 +5,5 @@ export default async function Page({ params, searchParams }: {
   searchParams: Promise<{ page?: string; asOf?: string; movementPage?: string; version?: string }>;
 }) {
   const { kind, id } = await params;
-  return <PlanningDetailPage jurisdiction="EXECUTIVE" kind={kind} id={id} {...await searchParams} />;
+  return <PlanningDetailPage jurisdiction="EXECUTIVE" kind={kind} id={decodeURIComponent(id)} {...await searchParams} />;
 }

@@ -3,6 +3,7 @@ import NfseClient from "./NfseClient";
 import { db } from "@/db/client";
 import { readNfsePage } from "@/db/repositories/taxation-pages/nfse";
 import { listFiscalRegistrations } from "@/db/repositories/taxation-pages/lookups";
+import Link from "next/link";
 export const dynamic = "force-dynamic";
 export default async function NfsePage() {
   const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
@@ -11,7 +12,7 @@ export default async function NfsePage() {
     readNfsePage(database, unrestricted ? undefined : user.allowedBudgetUnitIds),
     listFiscalRegistrations(database, { active: true, order: true }),
   ]);
-  if (!activity) throw new Error("Cadastre uma atividade de serviço ativa com alíquota de ISS antes de acessar a NFS-e.");
+  if (!activity) return <section role="status" className="p-4 text-sm"><p>Cadastre uma atividade de serviço ativa com alíquota de ISS para habilitar a NFS-e.</p><Link href="/tributacao/operacoes" className="mt-2 inline-block text-emerald-700 underline">Configurar atividades e alíquotas de ISS</Link></section>;
   const fiscalMap = new Map(fiscalRows.map((row) => [row.invoiceId, row]));
   const taxpayers = rawTaxpayers.map((row) => ({ id: row.id, name: row.company?.corporateName ?? row.person?.fullName ?? row.id, document: row.company?.cnpj ?? row.person?.cpf ?? "" }));
   const nameMap = new Map(taxpayers.map((row) => [row.id, row.name]));

@@ -135,7 +135,7 @@ export function UsuariosClient({ initialRows, initialNow, canCreate, canUpdate }
     <OperationalTable columns={columns} preferenceId="central-assinaturas-usuarios" caption="Usuários da Central de Assinaturas" rows={visible.map(row => ({
       id: row.id, label: row.name, values: { name: row.name, role: row.role, document: row.documentId,
         phone: row.phone, mobile: row.mobile, email: row.email, kind: row.kind === "SERVIDOR" ? "Servidor RH" : "Cidadão",
-        validity: new Date(row.validUntil).toLocaleString("pt-BR"), term: signerValidity(row, now) === "VALID" ? "Vigente" : "Vencida", password: row.hasPassword ? "Definida" : "Pendente", state: row.active ? "Ativo" : "Inativo" },
+        validity: new Date(row.validUntil).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }), term: signerValidity(row, now) === "VALID" ? "Vigente" : "Vencida", password: row.hasPassword ? "Definida" : "Pendente", state: row.active ? "Ativo" : "Inativo" },
       actions: <div className={styles.rowActions}><button type="button" className={styles.iconButton} disabled={!canUpdate} aria-label={`Editar ${row.name}`} title={canUpdate ? "Editar usuário" : "Somente consulta"} onClick={() => edit(row)}><Pencil /></button></div>,
     }))} />
     <Dialog open={open} onOpenChange={value => { if (!saving.current) setOpen(value); }}>

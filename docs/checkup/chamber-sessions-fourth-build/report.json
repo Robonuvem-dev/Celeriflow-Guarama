@@ -1,0 +1,39 @@
+{
+  "startedAt": "2026-11-06T16:20:02.213Z",
+  "base": "http://localhost:3102",
+  "appliesFictionalData": true,
+  "cases": [
+    {
+      "label": "Nova sessão abre e preserva rascunho ao fechar e reabrir",
+      "passed": false,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog').getByRole('button', { name: 'Fechar', exact: true })\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" class=\"KEyqTq_filterButton\">Fechar</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <section role=\"dialog\" aria-hidden=\"true\" data-base-ui-inert=\"\" aria-labelledby=\"cookie-consent-title\" aria-describedby=\"cookie-consent-description\" class=\"fixed inset-x-3 bottom-3 z-[100] mx-auto max-h-[calc(100dvh-1.5rem)] max-w-5xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl sm:inset-x-6 sm:bottom-6 sm:p-6\">…</section> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <section role=\"dialog\" aria-hidden=\"true\" data-base-ui-inert=\"\" aria-labelledby=\"cookie-consent-title\" aria-describedby=\"cookie-consent-description\" class=\"fixed inset-x-3 bottom-3 z-[100] mx-auto max-h-[calc(100dvh-1.5rem)] max-w-5xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl sm:inset-x-6 sm:bottom-6 sm:p-6\">…</section> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    47 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <section role=\"dialog\" aria-hidden=\"true\" data-base-ui-inert=\"\" aria-labelledby=\"cookie-consent-title\" aria-describedby=\"cookie-consent-description\" class=\"fixed inset-x-3 bottom-3 z-[100] mx-auto max-h-[calc(100dvh-1.5rem)] max-w-5xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl sm:inset-x-6 sm:bottom-6 sm:p-6\">…</section> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    },
+    {
+      "label": "Sessão fictícia salva pela UI e reaberta com horário de Brasília preservado",
+      "passed": false,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Nova Sessão', exact: true })\u001b[22m\n"
+    },
+    {
+      "label": "Gerenciar sessão existente preenche os campos",
+      "passed": false,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Gerenciar \\d+ª sessão/ }).first()\u001b[22m\n"
+    },
+    {
+      "label": "Visualizar ata mostra conteúdo integral somente para leitura",
+      "passed": false,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Visualizar ata / }).first()\u001b[22m\n"
+    },
+    {
+      "label": "Editar ata preserva texto ao fechar e reabrir",
+      "passed": false,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Editar ata / }).first()\u001b[22m\n"
+    },
+    {
+      "label": "Salvar ata em rascunho e rejeitar edição concorrente com versão antiga",
+      "passed": false,
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Editar ata / }).first()\u001b[22m\n"
+    }
+  ],
+  "finishedAt": "2026-11-06T16:23:23.706Z",
+  "errors": []
+}
