@@ -27,6 +27,8 @@ const columns = registryColumns([
   ["name", "Fornecedor", 190, 110, "identifier"],
   ["identity", "PF/PJ", 55, 45],
   ["document", "CPF/CNPJ", 150, 105],
+  ["representatives", "Representantes", 120, 90],
+  ["biddings", "Licitações", 90, 70],
   ["category", "Categoria", 100, 70],
   ["branch", "Ramo de atividade", 125, 80],
   ["size", "ME/EPP", 70, 55],
@@ -81,9 +83,13 @@ export default function FornecedoresClient({
   const editTrigger = useRef<HTMLButtonElement | null>(null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
   const cadastralTrigger = useRef<HTMLButtonElement | null>(null);
+  const repTrigger = useRef<HTMLButtonElement | null>(null);
+  const biddingTrigger = useRef<HTMLButtonElement | null>(null);
   const [editing, setEditing] = useState<SupplierListItem | null>(null);
   const [details, setDetails] = useState<SupplierListItem | null>(null);
   const [cadastralSupplier, setCadastralSupplier] = useState<SupplierListItem | null>(null);
+  const [repSupplier, setRepSupplier] = useState<SupplierListItem | null>(null);
+  const [biddingSupplier, setBiddingSupplier] = useState<SupplierListItem | null>(null);
   const [detailPage, setDetailPage] = useState(0);
   const [editPage, setEditPage] = useState(0);
   const [form, setForm] = useState<SupplierEditForm | null>(null);
@@ -193,6 +199,8 @@ export default function FornecedoresClient({
               name: identity.name,
               identity: identity.type,
               document: identity.document,
+              representatives: supplier.representatives.length ? `${supplier.representatives.length} representante(s)` : "Nenhum",
+              biddings: supplier.activeBiddings.length ? `${supplier.activeBiddings.length} processo(s)` : "Nenhuma",
               category: supplier.category || "—",
               branch: supplier.businessBranch || "—",
               size: supplier.company
@@ -224,6 +232,32 @@ export default function FornecedoresClient({
                   title={`Ver dados cadastrais de ${identity.name}`}
                 >
                   {identity.name}
+                </button>
+              ),
+              representatives: (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    repTrigger.current = event.currentTarget;
+                    setRepSupplier(supplier);
+                  }}
+                  className="text-left font-medium text-fuchsia-700 underline-offset-2 hover:underline"
+                  title={`Ver representantes de ${identity.name}`}
+                >
+                  {supplier.representatives.length ? `${supplier.representatives.length} rep.` : "Ver (0)"}
+                </button>
+              ),
+              biddings: (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    biddingTrigger.current = event.currentTarget;
+                    setBiddingSupplier(supplier);
+                  }}
+                  className="text-left font-medium text-blue-700 underline-offset-2 hover:underline"
+                  title={`Ver licitações atuando de ${identity.name}`}
+                >
+                  {supplier.activeBiddings.length ? `${supplier.activeBiddings.length} certame(s)` : "Nenhuma (0)"}
                 </button>
               ),
             },
@@ -361,6 +395,54 @@ export default function FornecedoresClient({
                   </span>
                 </div>
               ) : null}
+              {cadastralSupplier?.taxInfo ? (
+                <div className="rounded border border-slate-200 bg-slate-50/70 p-2 sm:col-span-2">
+                  <span className="block text-[11px] font-semibold uppercase text-slate-500">
+                    Dados Tributários
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-slate-700">
+                    <div>Inscrição Municipal: <span className="font-mono font-medium">{cadastralSupplier.taxInfo.municipalInsc || "Não informada"}</span></div>
+                    <div>Inscrição Estadual: <span className="font-mono font-medium">{cadastralSupplier.taxInfo.stateInsc || "Não informada"}</span></div>
+                    <div>Regime Tributário: <span className="font-medium">{cadastralSupplier.taxInfo.taxRegime || "Não informado"}</span></div>
+                    <div>Tipo: <span className="font-medium">{cadastralSupplier.taxInfo.taxpayerType || "Geral"}</span></div>
+                    {cadastralSupplier.taxInfo.economicActivities && (
+                      <div className="col-span-2">Atividades Tributárias: {cadastralSupplier.taxInfo.economicActivities}</div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+              {cadastralSupplier && cadastralSupplier.representatives.length > 0 ? (
+                <div className="rounded border border-slate-200 bg-white p-2 sm:col-span-2">
+                  <span className="block text-[11px] font-semibold uppercase text-slate-500">
+                    Representantes Legais ({cadastralSupplier.representatives.length})
+                  </span>
+                  <ul className="mt-1 space-y-1 text-xs">
+                    {cadastralSupplier.representatives.map(rep => (
+                      <li key={rep.id} className="flex justify-between border-b pb-0.5">
+                        <span>{rep.name} {rep.cpf ? `(${formatCpf(rep.cpf)})` : ""}</span>
+                        <span className="font-medium text-slate-600">{rep.representationType} · {rep.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {cadastralSupplier && cadastralSupplier.activeBiddings.length > 0 ? (
+                <div className="rounded border border-slate-200 bg-white p-2 sm:col-span-2">
+                  <span className="block text-[11px] font-semibold uppercase text-slate-500">
+                    Licitações Atuando ({cadastralSupplier.activeBiddings.length})
+                  </span>
+                  <ul className="mt-1 space-y-1 text-xs">
+                    {cadastralSupplier.activeBiddings.map(b => (
+                      <li key={b.id} className="flex justify-between border-b pb-0.5">
+                        <Link href={`/compras/licitacoes/${b.id}`} className="text-blue-700 underline font-medium">
+                          {b.number} ({b.modality})
+                        </Link>
+                        <span className="text-slate-600">{b.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <div className="rounded border border-slate-200 bg-white p-2 sm:col-span-2">
                 <span className="block text-[11px] font-semibold uppercase text-slate-500">
                   Dados Bancários e Observações
@@ -403,6 +485,111 @@ export default function FornecedoresClient({
               type="button"
               className={styles.dialogButton}
               onClick={() => setCadastralSupplier(null)}
+            >
+              Fechar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!repSupplier}
+        onOpenChange={(open) => {
+          if (!open) setRepSupplier(null);
+        }}
+      >
+        <DialogContent
+          className={styles.dialog}
+          data-device={device}
+          showCloseButton={false}
+          finalFocus={() => (repTrigger.current?.isConnected ? repTrigger.current : true)}
+        >
+          <DialogHeader>
+            <DialogTitle>Representantes do Fornecedor</DialogTitle>
+            <DialogDescription>
+              {repSupplier ? identityFor(repSupplier).name : "Fornecedor"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {!repSupplier?.representatives.length ? (
+              <p className="text-xs text-slate-500">Nenhum representante legal ativo cadastrado para este fornecedor.</p>
+            ) : (
+              <ul className="space-y-2 text-xs">
+                {repSupplier.representatives.map((rep) => (
+                  <li key={rep.id} className="rounded border border-slate-200 bg-slate-50/70 p-2.5">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-slate-900">{rep.name}</span>
+                      <span className="rounded bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[11px] font-semibold border border-emerald-200">{rep.status}</span>
+                    </div>
+                    <div className="mt-1 flex gap-4 text-slate-600">
+                      <span>Tipo: <strong>{rep.representationType}</strong></span>
+                      {rep.cpf && <span>CPF: <strong>{formatCpf(rep.cpf)}</strong></span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className={styles.dialogFooter}>
+            <button
+              type="button"
+              className={styles.dialogButton}
+              onClick={() => setRepSupplier(null)}
+            >
+              Fechar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!biddingSupplier}
+        onOpenChange={(open) => {
+          if (!open) setBiddingSupplier(null);
+        }}
+      >
+        <DialogContent
+          className={styles.dialog}
+          data-device={device}
+          showCloseButton={false}
+          finalFocus={() => (biddingTrigger.current?.isConnected ? biddingTrigger.current : true)}
+        >
+          <DialogHeader>
+            <DialogTitle>Licitações do Fornecedor</DialogTitle>
+            <DialogDescription>
+              Processos licitatórios em que {biddingSupplier ? identityFor(biddingSupplier).name : "o fornecedor"} está participando ou atuando.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {!biddingSupplier?.activeBiddings.length ? (
+              <p className="text-xs text-slate-500">O fornecedor não possui participações registradas em licitações.</p>
+            ) : (
+              <ul className="space-y-2 text-xs">
+                {biddingSupplier.activeBiddings.map((b) => (
+                  <li key={b.id} className="flex justify-between items-center rounded border border-slate-200 bg-slate-50/70 p-2.5">
+                    <div>
+                      <Link
+                        href={`/compras/licitacoes/${b.id}`}
+                        className="font-semibold text-blue-700 hover:underline"
+                        title="Ver certame"
+                      >
+                        {b.number}
+                      </Link>
+                      <p className="text-slate-500">{b.modality}</p>
+                    </div>
+                    <span className="rounded border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700">
+                      {b.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className={styles.dialogFooter}>
+            <button
+              type="button"
+              className={styles.dialogButton}
+              onClick={() => setBiddingSupplier(null)}
             >
               Fechar
             </button>

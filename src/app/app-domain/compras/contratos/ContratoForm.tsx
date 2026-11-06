@@ -190,23 +190,22 @@ export default function ContratoForm({
     const process = processos.find((item) => item.id === processId);
     if (!process) return;
     setSelectedSecretariatId(process.secretariatId);
-    if (
-      !unidadesGestoras.some(
-        (unit) => unit.id === selectedBudgetUnitId && unit.secretariatId === process.secretariatId,
-      )
-    ) {
-      setSelectedBudgetUnitId("");
+    // Auto-select first matching budget unit for this secretariat if current doesn't match
+    const matchingUnits = unidadesGestoras.filter(
+      (unit) => unit.secretariatId === process.secretariatId && (unit.isActive !== false || unit.id === initialData?.sourceBudgetUnitId)
+    );
+    if (!matchingUnits.some((unit) => unit.id === selectedBudgetUnitId)) {
+      setSelectedBudgetUnitId(matchingUnits[0]?.id || "");
     }
   }
 
   function handleSecretariatChange(secretariatId: string) {
     setSelectedSecretariatId(secretariatId);
-    if (
-      !unidadesGestoras.some(
-        (unit) => unit.id === selectedBudgetUnitId && unit.secretariatId === secretariatId,
-      )
-    ) {
-      setSelectedBudgetUnitId("");
+    const matchingUnits = unidadesGestoras.filter(
+      (unit) => unit.secretariatId === secretariatId && (unit.isActive !== false || unit.id === initialData?.sourceBudgetUnitId)
+    );
+    if (!matchingUnits.some((unit) => unit.id === selectedBudgetUnitId)) {
+      setSelectedBudgetUnitId(matchingUnits[0]?.id || "");
     }
   }
 

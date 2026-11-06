@@ -18,5 +18,7 @@ export default async function PriceResearchPage() {
       purchaseRequestNumber: research.process.purchaseRequest?.number ?? null,
     },
     submittedQuoteCount: research._count.quotes,
+    materials: research.materials,
+    suppliers: research.suppliers,
   }))} />;
 }

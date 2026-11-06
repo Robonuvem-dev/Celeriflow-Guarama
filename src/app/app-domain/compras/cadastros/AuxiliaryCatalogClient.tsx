@@ -12,7 +12,15 @@ export function AuxiliaryCatalogClient({ catalog, records, options = {}, readOnl
   const [query, setQuery] = useState("");
   const definition = procurementAuxiliaryCatalogs[catalog];
   return <main className="space-y-4 p-4">
-    <Link href="/compras/cadastros">Voltar aos cadastros</Link><h1 className="text-xl font-semibold">{definition.title}</h1>
+    <div className="flex items-center justify-between border-b pb-2">
+      <Link className="text-sm underline text-muted-foreground hover:text-foreground" href="/compras/cadastros">Voltar aos cadastros</Link>
+      {["alienacoes", "alienacoes-produtos", "alienacoes-atas"].includes(catalog) && (
+        <Link className="px-3 py-1 bg-amber-600 text-white rounded text-xs font-semibold hover:bg-amber-700 transition-colors" href="/compras/cadastros/alienacoes">
+          Painel Especializado de Alienações (11.20 a 11.27) &rarr;
+        </Link>
+      )}
+    </div>
+    <h1 className="text-xl font-semibold">{definition.title}</h1>
     {catalog === "crc" && <Link className="underline" href="/compras/cadastros/crc/relatorio">Relatório de totalização por período</Link>}
     {catalog === "remanejamentos" && <p>Distribua os itens entre requisitantes antes de registrar o ato. O remanejamento transfere o saldo entre distribuições do mesmo item e contrato, sem alterar a quantidade contratada. Atos registrados são imutáveis. <Link className="underline" href="/compras/cadastros/cotas-requisitantes">Consultar distribuições</Link></p>}
     {catalog === "cotas-requisitantes" && <Link className="underline" href="/compras/cadastros/remanejamentos">Registrar apostilamento de remanejamento</Link>}

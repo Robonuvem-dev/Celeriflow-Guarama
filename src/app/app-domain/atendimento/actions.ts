@@ -1,3 +1,5 @@
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
+import { transparencyCitizenRequests } from "@/db/schema/citizen-channels";
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -494,6 +496,7 @@ export async function forwardOmbudsman(formData: FormData): Promise<void> {
     await tx.insert(ombudsmanInteractions).values({ ombudsmanId: id, type: "Encaminhamento", message: `Encaminhada para ${destination.name}: ${reason}`, employeeId: context.employee.id });
     await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.employee.id, action: "FORWARDED", details: { fromDepartmentId: ombudsman.departmentId, toDepartmentId, fromAssigneeId: ombudsman.assigneeId, toAssigneeId, reason } });
   }, { timeoutMs: 5_000 });
+  notifyOmbudsmanCitizenUpdate(id, "FORWARDED");
   revalidateOmbudsman(id);
 }
 
@@ -533,6 +536,7 @@ export async function applyOmbudsmanSituation(formData: FormData): Promise<void>
     await tx.insert(ombudsmanInteractions).values({ ombudsmanId: id, type: "Situação", message: situation.name, isInternal: !settings.availableToApplicant, employeeId: context.employee.id });
     await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.employee.id, action: "SITUATION_CHANGED", details: { situationId: situation.id, status } });
   }, { timeoutMs: 5_000 });
+  notifyOmbudsmanCitizenUpdate(id, "SITUATION", situation.name);
   revalidateOmbudsman(id);
 }
 
@@ -583,6 +587,7 @@ export async function respondOmbudsman(formData: FormData): Promise<void> {
     await tx.insert(ombudsmanInteractions).values({ ombudsmanId: id, type: "Resposta", message: response, employeeId: context.employee.id, isInternal: false });
     await tx.insert(ombudsmanAuditLogs).values({ ombudsmanId: id, userId: context.user.id, employeeId: context.employee.id, action: "RESPONDED" });
   }, { timeoutMs: 5_000 });
+  notifyOmbudsmanCitizenUpdate(id, "RESPONDED", "Respondida");
   revalidateOmbudsman(id);
 }
 
@@ -692,4 +697,37 @@ export async function saveServiceSubject(formData: FormData): Promise<void> {
     else await tx.insert(serviceSubjects).values(values);
   }, { timeoutMs: 5_000 });
   revalidateAttendance();
+}
+
+async function notifyOmbudsmanCitizenUpdate(ombudsmanId: string, kind: "FORWARDED" | "SITUATION" | "RESPONDED", situationName?: string) {
+  try {
+    const [citizenReq] = await db.select({
+      name: transparencyCitizenRequests.name,
+      email: transparencyCitizenRequests.email,
+      protocol: transparencyCitizenRequests.protocol,
+    }).from(transparencyCitizenRequests).where(eq(transparencyCitizenRequests.nativeOmbudsmanId, ombudsmanId)).limit(1);
+
+    if (citizenReq?.email && citizenReq?.name) {
+      const baseUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+      const link = `${baseUrl.replace(/\/$/, "")}/portal/ouvidoria?protocolo=${citizenReq.protocol}`;
+      if (kind === "FORWARDED") {
+        await NotificationDispatcher.sendOuvidoriaManifestacaoEncaminhada({
+          to: citizenReq.email,
+          nome: citizenReq.name,
+          protocolo: citizenReq.protocol,
+          link,
+        });
+      } else {
+        await NotificationDispatcher.sendOuvidoriaSituacaoAlterada({
+          to: citizenReq.email,
+          nome: citizenReq.name,
+          protocolo: citizenReq.protocol,
+          situacao: situationName || "Atualizada",
+          link,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[Notification Error] Ouvidoria update notification failed:", err);
+  }
 }

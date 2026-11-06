@@ -12,6 +12,7 @@ import { departments as departmentTable, employees } from "@/db/schema/administr
 import { ombudsmanConfigurations } from "@/db/schema/ombudsman-reference-catalog";
 import { users as userTable } from "@/db/schema/identity";
 import { ombudsmanAuditLogs, ombudsmanAccessGrants } from "@/db/schema/attendance-portals";
+import { transparencyCitizenRequests } from "@/db/schema/citizen-channels";
 import DocumentUpload from "../../DocumentUpload";
 import {
   addOmbudsmanInteraction,
@@ -121,7 +122,7 @@ export async function OmbudsmanDetailView({
   }
 
   const canManage = context.attendanceAccess.isOmbudsman && context.attendanceAccess.canUpdate;
-  const [operators, situations] = await Promise.all([
+  const [operators, situations, [citizenRequest]] = await Promise.all([
     context.attendanceAccess.canUpdate
       ? db
           .select({ id: employees.id, name: employees.name, departmentId: employees.departmentId })
@@ -139,6 +140,12 @@ export async function OmbudsmanDetailView({
           .then((rows) => rows.filter((row) => row.kind === "STATUS"))
           .catch(() => [])
       : [],
+    db
+      .select({ protocol: transparencyCitizenRequests.protocol })
+      .from(transparencyCitizenRequests)
+      .where(eq(transparencyCitizenRequests.nativeOmbudsmanId, decodedId))
+      .limit(1)
+      .catch(() => []),
   ]);
 
   const canCreateProcess = canManage && canPerformModuleOperation(context.user, "PROCESSOS", "create");
@@ -187,6 +194,26 @@ export async function OmbudsmanDetailView({
         </div>
         <span>Abertura: {formatDateTime(ombudsman.createdAt)}</span>
       </div>
+
+      {citizenRequest && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 text-xs text-blue-900 shadow-sm">
+          <div>
+            <span className="font-bold uppercase tracking-wider text-blue-700">Canal Cidadão / Consulta Pública</span>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <span><strong>Protocolo Cidadão:</strong> <code className="rounded bg-white px-1.5 py-0.5 font-mono font-bold text-blue-800 border border-blue-200">{citizenRequest.protocol}</code></span>
+              <span>·</span>
+              <span><strong>Chave de Acompanhamento:</strong> <span className="text-slate-600">Disponibilizada ao manifestante no comprovante</span></span>
+            </div>
+          </div>
+          <Link
+            href={`/portal/ouvidoria?protocolo=${citizenRequest.protocol}`}
+            target="_blank"
+            className="inline-flex h-7 items-center rounded border border-blue-300 bg-white px-2.5 text-xs font-semibold text-blue-800 hover:bg-blue-100/50"
+          >
+            Ver no Portal do Cidadão
+          </Link>
+        </div>
+      )}
 
       {(canManage || context.attendanceAccess.canUpdate) && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

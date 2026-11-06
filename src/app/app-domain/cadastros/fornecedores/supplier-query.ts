@@ -2,7 +2,7 @@ import type { DatabaseExecutor } from "@/db/transaction";
 import type { SupplierFilters, SupplierSourceRow } from "@/lib/contracts/supplier";
 import { countSupplierRows, loadSupplierRows } from "@/db/repositories/registry/suppliers";
 export { buildSupplierWhere } from "@/db/repositories/registry/suppliers";
-export type { SupplierStatusFilter, SupplierClassificationFilter, CertificationFilter, SupplierFilters } from "@/lib/contracts/supplier";
+export type { SupplierStatusFilter, SupplierClassificationFilter, CertificationFilter, PersonTypeFilter, SupplierFilters } from "@/lib/contracts/supplier";
 import type { SupplierListItem } from "./supplier-types";
 import { dateInputValue } from "./supplier-utils";
 
@@ -11,6 +11,7 @@ export const SUPPLIER_PAGE_SIZE = 20;
 const supplierStatuses = ["ALL", "Ativo", "Inativo", "Suspenso"] as const;
 const supplierClassifications = ["ALL", "ME", "EPP", "ME_EPP"] as const;
 const certificationFilters = ["ALL", "VENCIDA", "VENCE_EM_BREVE", "VIGENTE", "SEM_VALIDADE"] as const;
+const personTypeFilters = ["ALL", "PF", "PJ"] as const;
 
 type SearchParameter = string | string[] | undefined;
 
@@ -62,13 +63,38 @@ function supplierItem(row: SupplierSourceRow): SupplierListItem {
       secondaryCnaes: row.company.secondaryCnaes,
       documents: (row.company.documents || []).map(document),
     } : null,
+    representatives: (row.representatives ?? []).map(r => ({
+      id: r.id,
+      representationType: r.representationType,
+      status: r.status,
+      name: r.representative.fullName,
+      cpf: r.representative.cpf ?? null,
+    })),
+    activeBiddings: (row.activeBiddings ?? []).map(b => ({
+      id: b.id,
+      number: b.number,
+      modality: b.modality,
+      status: b.status,
+    })),
+    taxInfo: row.taxInfo ? {
+      municipalInsc: row.taxInfo.municipalInsc,
+      stateInsc: row.taxInfo.stateInsc,
+      taxRegime: row.taxInfo.taxRegime,
+      taxpayerType: row.taxInfo.taxpayerType,
+      economicActivities: row.taxInfo.economicActivities,
+      fiscalNotes: row.taxInfo.fiscalNotes,
+    } : null,
   };
 }
 
 export function parseSupplierFilters(input: Record<string, SearchParameter>): SupplierFilters {
   const query = firstValue(input.q).slice(0, 150);
+  const document = firstValue(input.document).slice(0, 50);
+  const personType = allowedValue(firstValue(input.personType), personTypeFilters, "ALL");
   return {
     query,
+    document: document || undefined,
+    personType,
     status: allowedValue(firstValue(input.status), supplierStatuses, "ALL"),
     classification: allowedValue(firstValue(input.classification), supplierClassifications, "ALL"),
     certification: allowedValue(firstValue(input.certification), certificationFilters, "ALL"),
@@ -81,6 +107,8 @@ export function parseSupplierFilters(input: Record<string, SearchParameter>): Su
 export function supplierFilterSearchParams(filters: SupplierFilters, includePage = true) {
   const params = new URLSearchParams();
   if (filters.query) params.set("q", filters.query);
+  if (filters.document) params.set("document", filters.document);
+  if (filters.personType && filters.personType !== "ALL") params.set("personType", filters.personType);
   if (filters.status !== "ALL") params.set("status", filters.status);
   if (filters.classification !== "ALL") params.set("classification", filters.classification);
   if (filters.certification !== "ALL") params.set("certification", filters.certification);
@@ -93,6 +121,8 @@ export function supplierFilterSearchParams(filters: SupplierFilters, includePage
 export function hasActiveSupplierFilters(filters: SupplierFilters) {
   return Boolean(
     filters.query
+    || filters.document
+    || (filters.personType && filters.personType !== "ALL")
     || filters.status !== "ALL"
     || filters.classification !== "ALL"
     || filters.certification !== "ALL"

@@ -1,3 +1,4 @@
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { DatabaseConnection } from "@/db/connection";
 import { withDatabaseTransaction } from "@/db/transaction";
@@ -90,6 +91,18 @@ export async function saveAssetCatalog(connection: DatabaseConnection, user: Per
       id = created.id;
     }
     await insertAuditEvent(tx, { actorUsuarioId: user.id, eventType: "ADMINISTRATIVE_MUTATION", targetType: "AssetCatalogRecord", targetId: id });
+    if (input.kind === "garantias" && details.endsAt) {
+      const email = user.email;
+      if (email) {
+        NotificationDispatcher.sendPatrimonioGarantiaVencimento({
+          to: email,
+          responsavel: user.name || "Responsável",
+          patrimonio: input.code,
+          descricao: input.name,
+          data: String(details.endsAt),
+        }).catch(err => console.error("[Notification Error] Garantia alert failed:", err));
+      }
+    }
     return id;
   });
 }

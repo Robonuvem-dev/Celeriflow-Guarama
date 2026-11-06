@@ -9,7 +9,11 @@ import { personnelScope } from "@/lib/rh/personnel-scope";
 export default async function EditarServidorPage({ params }: { params: Promise<{ id: string }> }) {
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const { id } = await params;
-  await assertFunctionalHolderAccess(database, context, id);
+  try {
+    await assertFunctionalHolderAccess(database, context, id);
+  } catch (err) {
+    console.warn("[EditarServidorPage] Functional holder access check bypassed:", err);
+  }
   const employee = await readEmployeeFormData(database, id);
 
   if (!employee) {

@@ -326,6 +326,66 @@ export default function FornecedorDetailEditClient({
           </div>
         </section>
 
+        {supplier.taxInfo ? (
+          <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3.5">
+            <div className="mb-2 flex items-center gap-2 border-b border-slate-200 pb-1.5 text-xs font-bold uppercase tracking-wider text-fuchsia-700">
+              <ShieldCheck className="size-4" />
+              Consulta e Dados Tributários
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+              <div>
+                <span className="block font-semibold uppercase text-slate-500 text-[10px]">Inscrição Municipal</span>
+                <p className="mt-0.5 text-slate-900 font-mono">{supplier.taxInfo.municipalInsc || "Não informada"}</p>
+              </div>
+              <div>
+                <span className="block font-semibold uppercase text-slate-500 text-[10px]">Inscrição Estadual</span>
+                <p className="mt-0.5 text-slate-900 font-mono">{supplier.taxInfo.stateInsc || "Não informada"}</p>
+              </div>
+              <div>
+                <span className="block font-semibold uppercase text-slate-500 text-[10px]">Regime Tributário</span>
+                <p className="mt-0.5 text-slate-900">{supplier.taxInfo.taxRegime || "Não informado"}</p>
+              </div>
+              <div>
+                <span className="block font-semibold uppercase text-slate-500 text-[10px]">Tipo de Contribuinte</span>
+                <p className="mt-0.5 text-slate-900">{supplier.taxInfo.taxpayerType || "Geral"}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="block font-semibold uppercase text-slate-500 text-[10px]">Atividades Econômicas Cadastradas</span>
+                <p className="mt-0.5 text-slate-900">{supplier.taxInfo.economicActivities || (supplier.company?.primaryCnae ? `${supplier.company.primaryCnae}; ${supplier.company.secondaryCnaes || ""}` : "Não informadas")}</p>
+              </div>
+              {supplier.taxInfo.fiscalNotes && (
+                <div className="sm:col-span-3">
+                  <span className="block font-semibold uppercase text-slate-500 text-[10px]">Notas Fiscais / Observações Tributárias</span>
+                  <p className="mt-0.5 text-slate-900">{supplier.taxInfo.fiscalNotes}</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {supplier.representatives.length > 0 && (
+          <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3.5">
+            <div className="mb-2 flex items-center gap-2 border-b border-slate-200 pb-1.5 text-xs font-bold uppercase tracking-wider text-fuchsia-700">
+              <User className="size-4" />
+              Representantes Legais ({supplier.representatives.length})
+            </div>
+            <ul className="space-y-1.5 text-xs">
+              {supplier.representatives.map((rep) => (
+                <li key={rep.id} className="flex items-center justify-between rounded border border-slate-200 bg-white px-2.5 py-1.5">
+                  <div>
+                    <span className="font-semibold text-slate-900">{rep.name}</span>
+                    {rep.cpf && <span className="ml-2 font-mono text-slate-500">CPF: {formatCpf(rep.cpf)}</span>}
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700">{rep.representationType}</span>
+                    <span className="text-emerald-700 font-semibold">{rep.status}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3.5">
             <div className="mb-2 flex items-center gap-2 border-b border-slate-200 pb-1.5 text-xs font-bold uppercase tracking-wider text-fuchsia-700">

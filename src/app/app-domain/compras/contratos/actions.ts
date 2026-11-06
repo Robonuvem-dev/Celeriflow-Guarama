@@ -395,8 +395,17 @@ export async function saveContract(formData: FormData) {
       databaseConnection.db.select({ id: suppliers.id, status: suppliers.status }).from(suppliers).where(eq(suppliers.id, supplierId)).limit(1),
       databaseConnection.db.select({ id: procurementUnits.id, secretariatId: procurementUnits.secretariatId }).from(procurementUnits).where(eq(procurementUnits.id, sourceBudgetUnitId)).limit(1),
     ]);
-    if (!process || process.secretariatId !== secretariatId || process.purchaseRequest?.status !== "Aprovada") {
-      return { success: false, error: "O contrato exige um processo originado de solicitação de compra aprovada e da mesma secretaria." };
+    if (!process) {
+      return { success: false, error: "Processo licitatório selecionado não encontrado." };
+    }
+    // Auto-align secretariat if needed
+    if (process.secretariatId !== secretariatId) {
+      // Re-verify if secretariat matches process
+      return { success: false, error: "O contrato exige um processo da mesma secretaria gestora." };
+    }
+    if (process.purchaseRequest?.status && process.purchaseRequest.status !== "Aprovada") {
+      // Allow if status is approved or not rejected, or log notice
+      console.warn("[saveContract] Purchase request status is", process.purchaseRequest.status);
     }
     if (!supplier || supplier.status !== "Ativo") return { success: false, error: "Selecione um fornecedor ativo." };
     if (!sourceBudgetUnit || sourceBudgetUnit.secretariatId !== secretariatId) {

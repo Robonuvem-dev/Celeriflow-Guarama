@@ -6,6 +6,8 @@ export const BIDDING_MODALITIES = [
   "Convite",
   "Leilão",
   "Concurso",
+  "Dispensa de Licitação",
+  "Inexigibilidade",
 ] as const;
 
 export type BiddingModality = (typeof BIDDING_MODALITIES)[number];
@@ -196,6 +198,11 @@ export function biddingModalityPrefix(modality: string) {
       return "LE";
     case "concurso":
       return "CO";
+    case "dispensa de licitacao":
+    case "dispensa":
+      return "DISP";
+    case "inexigibilidade":
+      return "INEX";
     default:
       return "LIC";
   }

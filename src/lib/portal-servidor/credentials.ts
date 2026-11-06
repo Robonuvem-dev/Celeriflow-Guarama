@@ -1,3 +1,4 @@
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 import { createHash, randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -46,6 +47,7 @@ export async function loginEmployeeCredentials(raw: unknown, trace: RequestTrace
     } catch {
       const failures = guard && !guard.expired ? guard.failures + 1 : 1;
       await tx.execute(sql`INSERT INTO "EmployeePortalLoginGuard" ("userId",failures,"windowStartedAt","lockedUntil") VALUES (${account.id},${failures},now(),CASE WHEN ${failures}>=5 THEN now()+interval '15 minutes' ELSE NULL END) ON CONFLICT ("userId") DO UPDATE SET failures=EXCLUDED.failures,"windowStartedAt"=CASE WHEN ${Boolean(guard?.expired)} THEN now() ELSE "EmployeePortalLoginGuard"."windowStartedAt" END,"lockedUntil"=EXCLUDED."lockedUntil"`);
+      if (failures >= 5) { NotificationDispatcher.sendPortalServidorAccountLocked({ to: account.email, nome: account.email.split("@")[0] }).catch(err => console.error("[Notification Error] Lock alert failed:", err)); }
       await recordEmployeePortalActivity(tx, { action: "LOGIN_FAILURE", userId: account.id, employeeId: account.employeeId, ...trace });
       return { error: "CPF/e-mail, senha ou liberação de acesso inválidos." };
     }
@@ -67,10 +69,12 @@ export async function requestEmployeeAccessLink(raw: unknown) {
   const link = new URL("/portal-servidor/recuperar-senha", origin);
   link.searchParams.set("token", token);
   await databaseConnection.db.execute(sql`INSERT INTO "EmployeePortalAccessLink" ("tokenHash","userId",purpose,email,"expiresAt") VALUES (${tokenHash},${account.id},${input.purpose},${input.email},now()+interval '24 hours')`);
-  try {
-    const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": `employee-portal/${tokenHash}` }, body: JSON.stringify({ from, to: [account.email], subject: input.purpose === "REGISTER" ? "Criação de acesso ao Portal do Servidor" : "Recuperação de senha do Portal do Servidor", text: `Recebemos uma solicitação após conferir seus dados funcionais e documento cadastrado. Defina sua senha pelo link de uso único, válido por 24 horas a partir desta solicitação: ${link.toString()}\nSe não foi você, ignore esta mensagem.` }), redirect: "error", signal: AbortSignal.timeout(15000) });
-    if (!response.ok) throw new Error("Envio não confirmado");
-    z.object({ id: z.string().min(1) }).parse(await response.json());
+    try {
+    const nome = account.email.split("@")[0] || "Servidor";
+    const sendResult = input.purpose === "REGISTER"
+      ? await NotificationDispatcher.sendPortalServidorAccountCreated({ to: account.email, nome, link: link.toString() })
+      : await NotificationDispatcher.sendPortalServidorPasswordReset({ to: account.email, nome, link: link.toString() });
+    if (!sendResult.success) throw new Error(sendResult.error || "Falha no envio de e-mail");
     await databaseConnection.db.execute(sql`UPDATE "EmployeePortalAccessLink" SET "expiresAt"=now()+interval '24 hours' WHERE "tokenHash"=${tokenHash}`);
   } catch (error) {
     await databaseConnection.db.execute(sql`DELETE FROM "EmployeePortalAccessLink" WHERE "tokenHash"=${tokenHash}`);

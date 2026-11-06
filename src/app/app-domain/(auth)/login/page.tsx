@@ -77,6 +77,7 @@ export default function LoginPage() {
     
     try {
       await sendPasswordResetEmail(auth, email);
+    fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => {});
     } catch {
       // Keep a neutral response so the reset flow does not reveal whether the
       // submitted address belongs to a registered user.

@@ -5,7 +5,7 @@ import { MUNICIPALITY_NAME, MUNICIPALITY_INSTITUTION_NAME } from "@/lib/municipa
 import { transparencySources } from "./query-contract";
 export const transparencySettingsSchema = z.object({
   initialYear: z.number().int().min(1900).max(2200), availableYears: z.array(z.number().int().min(1900).max(2200)).min(1).max(100), defaultSource: z.enum(transparencySources),
-  countAccess: z.boolean(), nativePersonnelPublication: z.boolean().default(false), openingHours: z.string().max(500), radarUrl: z.string().url(),
+  countAccess: z.boolean(), nativePersonnelPublication: z.boolean().default(true), openingHours: z.string().max(500), radarUrl: z.string().url(),
   entities: z.array(z.object({ key: z.enum(["prefeitura", "camara"]), name: z.string().min(3).max(250), enabled: z.boolean(), nativeIds: z.array(z.string().min(1)), externalCode: z.number().int().positive().nullable() }).strict()).length(2),
   queries: z.record(z.string(), z.object({ enabled: z.boolean(), title: z.string().max(200).optional(), hint: z.string().max(4000).optional(), order: z.number().int().min(0).max(1000).optional() }).strict()),
   customQueries:z.array(z.object({slug:z.string().regex(/^doc-[a-z0-9-]{2,60}$/),title:z.string().min(3).max(200),group:z.string().min(3).max(200),description:z.string().max(4000),enabled:z.boolean()}).strict()).max(100).default([]),
@@ -18,7 +18,7 @@ export const transparencySettingsKey = "TRANSPARENCY_PUBLIC_PRESENTATION";
 export function defaultTransparencySettings(): TransparencySettings {
    // Câmara: código confirmado em camaraibema.pr.gov.br/portal-da-transparencia/,
    // link oficial "Informações a partir de 2023" aponta para ?entidade=2.
-   return transparencySettingsSchema.parse({ initialYear: 2025, availableYears: [2026, 2025], defaultSource: "NATIVO", countAccess: false, nativePersonnelPublication: false, openingHours: "", radarUrl: "https://pntp.atricon.org.br/consultar/", entities: [{ key: "prefeitura", name: MUNICIPALITY_INSTITUTION_NAME, enabled: true, nativeIds: [], externalCode: 1 }, { key: "camara", name: `Câmara Municipal de ${MUNICIPALITY_NAME}`, enabled: true, nativeIds: [], externalCode: 2 }], queries: {},customQueries:[], popup: { title: "", text: "", imageUrl: null, startsAt: null, endsAt: null, enabled: false } });
+   return transparencySettingsSchema.parse({ initialYear: 2025, availableYears: [2026, 2025], defaultSource: "NATIVO", countAccess: false, nativePersonnelPublication: true, openingHours: "", radarUrl: "https://pntp.atricon.org.br/consultar/", entities: [{ key: "prefeitura", name: MUNICIPALITY_INSTITUTION_NAME, enabled: true, nativeIds: [], externalCode: 1 }, { key: "camara", name: `Câmara Municipal de ${MUNICIPALITY_NAME}`, enabled: true, nativeIds: [], externalCode: 2 }], queries: {},customQueries:[], popup: { title: "", text: "", imageUrl: null, startsAt: null, endsAt: null, enabled: false } });
 }
 export async function getTransparencySettings(db: DatabaseExecutor) {
   const parameter = await readTransparencyParameter(db, transparencySettingsKey);

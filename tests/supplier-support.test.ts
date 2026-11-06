@@ -76,6 +76,9 @@ test("supplier certificate report derives validity without declaring regularity 
       secondaryCnaes: null,
       documents: [],
     },
+    representatives: [],
+    activeBiddings: [],
+    taxInfo: null,
   };
   const csv = buildSupplierCertificationCsv([supplier], new Date("2026-09-01T12:00:00.000Z"));
   assert.match(csv, /"'=FORNECEDOR DEMO"/);
@@ -84,7 +87,7 @@ test("supplier certificate report derives validity without declaring regularity 
 
 test("supplier report supports stable alphabetical, numeric document and bank ordering", async () => {
   const { sortSupplierReportRows } = await import("../src/app/app-domain/cadastros/fornecedores/supplier-report");
-  const row = (id: string, name: string, cpf: string, bankData: string): SupplierListItem => ({ id, category: null, businessBranch: null, bankData, certificationsValidUntil: null, notes: null, status: "Ativo", person: { fullName: name, cpf, documents: [] }, company: null });
+  const row = (id: string, name: string, cpf: string, bankData: string): SupplierListItem => ({ id, category: null, businessBranch: null, bankData, certificationsValidUntil: null, notes: null, status: "Ativo", person: { fullName: name, cpf, documents: [] }, company: null, representatives: [], activeBiddings: [], taxInfo: null });
   const rows = [row("a", "Zilda", "002", "Banco 1"), row("b", "Ana", "010", "Banco 9")];
   assert.deepEqual(sortSupplierReportRows(rows, "alfabetica").map(x => x.id), ["b", "a"]);
   assert.deepEqual(sortSupplierReportRows(rows, "numerica").map(x => x.id), ["a", "b"]);

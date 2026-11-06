@@ -1,4 +1,18 @@
-import { BadgeCheck, CalendarDays, Clock3, FileSignature, LockKeyhole, UserRoundCheck } from "lucide-react";
+import { 
+  BadgeCheck, 
+  CalendarDays, 
+  Clock3, 
+  FileSignature, 
+  LockKeyhole, 
+  UserRoundCheck,
+  FileText,
+  Building2,
+  Newspaper,
+  BellRing,
+  BookOpen,
+  ShieldCheck,
+  Coins
+} from "lucide-react";
 import { ErpPageTitle } from "@/components/app-ui/erp/ErpPageTitle";
 import { getEmployeePortalAccess } from "@/lib/portal-servidor/access";
 import Link from "next/link";
@@ -53,12 +67,29 @@ export default async function PortalServidorPage() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <ErpPageTitle
         title="Portal do Servidor"
-        description="Autosserviço, documentos e solicitações funcionais"
+        description="Autosserviço, documentos funcionais, demonstrativos e transparência institucional"
         icon={<UserRoundCheck className="size-5 text-emerald-700" />}
-        action={<Link href="/portal-servidor/solicitacoes-rh" className="inline-flex h-7 items-center rounded border border-emerald-700 bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800">Solicitar serviço ao RH</Link>}
+        action={
+          <div className="flex items-center gap-2">
+            <Link 
+              href="/validar-recibo" 
+              target="_blank"
+              className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Autenticar Contracheque
+            </Link>
+            <Link 
+              href="/portal-servidor/solicitacoes-rh" 
+              className="inline-flex h-7 items-center rounded border border-emerald-700 bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
+            >
+              Solicitar serviço ao RH
+            </Link>
+          </div>
+        }
       />
 
-      <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto p-3">
+      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-3">
+        {/* Banner do Servidor */}
         <section className="grid gap-px overflow-hidden border border-slate-300 bg-slate-200 shadow-sm md:grid-cols-3">
           <div className="min-w-0 bg-white px-3 py-2.5">
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Servidor</p>
@@ -76,34 +107,119 @@ export default async function PortalServidorPage() {
               <BadgeCheck className="size-3.5" />
               Vínculo ativo
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">Consulta restrita aos seus próprios dados.</p>
+            <p className="mt-1 text-[11px] text-slate-500">Consulta restrita e com trilha de auditoria ativa.</p>
           </div>
         </section>
 
+        {/* Atalhos Rápidos de Acesso e Transparência */}
+        <section aria-labelledby="portal-institucional-title" className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 id="portal-institucional-title" className="text-xs font-bold uppercase tracking-wide text-slate-600">
+              Canais Institucionais, Avisos e Informações
+            </h2>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <Link 
+              href="/portal/noticias" 
+              className="flex flex-col justify-between rounded border border-slate-300 bg-white p-3 shadow-sm transition-colors hover:border-emerald-600 hover:bg-slate-50"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded bg-emerald-50 text-emerald-700">
+                    <Newspaper className="size-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900">Notícias e Eventos</h3>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  Consulte os comunicados oficiais, eventos do município e informes aos servidores.
+                </p>
+              </div>
+              <span className="mt-3 text-[11px] font-semibold text-emerald-700">Ver notícias →</span>
+            </Link>
+
+            <Link 
+              href="/portal-protocolos" 
+              className="flex flex-col justify-between rounded border border-slate-300 bg-white p-3 shadow-sm transition-colors hover:border-emerald-600 hover:bg-slate-50"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded bg-blue-50 text-blue-700">
+                    <BellRing className="size-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900">Quadro de Avisos</h3>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  Avisos de interesse público, prazos, comunicados e portarias com vigência ativa.
+                </p>
+              </div>
+              <span className="mt-3 text-[11px] font-semibold text-blue-700">Consultar avisos →</span>
+            </Link>
+
+            <Link 
+              href="/portal-servidor/atendimento" 
+              className="flex flex-col justify-between rounded border border-slate-300 bg-white p-3 shadow-sm transition-colors hover:border-emerald-600 hover:bg-slate-50"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded bg-amber-50 text-amber-700">
+                    <Building2 className="size-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900">Locais de Atendimento</h3>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  Endereços, secretarias, unidades de atendimento e contatos para o servidor e cidadão.
+                </p>
+              </div>
+              <span className="mt-3 text-[11px] font-semibold text-amber-700">Ver locais e horários →</span>
+            </Link>
+
+            <Link 
+              href="/portal-servidor/biblioteca" 
+              className="flex flex-col justify-between rounded border border-slate-300 bg-white p-3 shadow-sm transition-colors hover:border-emerald-600 hover:bg-slate-50"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded bg-purple-50 text-purple-700">
+                    <BookOpen className="size-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900">Normas e Manuais</h3>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  Download de documentos, estatutos, modelos de requerimento, normas e decretos.
+                </p>
+              </div>
+              <span className="mt-3 text-[11px] font-semibold text-purple-700">Acessar biblioteca →</span>
+            </Link>
+          </div>
+        </section>
+
+        {/* Consultas Pessoais e Funcionais */}
         <section className="grid min-h-0 gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Consultas pessoais disponíveis">
-          <Link href="/portal-servidor/licenca-premio" className="border border-slate-300 bg-white p-3 shadow-sm hover:bg-slate-50"><strong className="text-sm">Licença-prêmio</strong><p className="mt-2 text-xs text-slate-500">Aquisitivos, reservas e saldo reconhecido pelo RH.</p></Link>
-          <Link href="/portal-servidor/ficha-funcional" className="border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
+          <Link href="/portal-servidor/ficha-funcional" className="rounded border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded bg-slate-100 text-slate-700"><UserRoundCheck className="size-4" /></div>
               <h2 className="text-sm font-semibold text-slate-900">Minha ficha</h2>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-600">Dados de vínculo, cargo, lotação e atos funcionais.</p>
           </Link>
-          <Link href="/portal-servidor/documentos" className="border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
+
+          <Link href="/portal-servidor/documentos" className="rounded border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded bg-slate-100 text-slate-700"><FileSignature className="size-4" /></div>
               <h2 className="text-sm font-semibold text-slate-900">Documentos</h2>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-600"><strong className="text-slate-900">{pendingSignatures}</strong> assinatura(s) pendente(s) no seu histórico.</p>
           </Link>
-          <Link href="/portal-servidor/ponto" className="border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
+
+          <Link href="/portal-servidor/ponto" className="rounded border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded bg-slate-100 text-slate-700"><Clock3 className="size-4" /></div>
               <h2 className="text-sm font-semibold text-slate-900">Meu ponto</h2>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-600"><strong className="text-slate-900">{currentMonthAttendance}</strong> registro(s) disponíveis neste mês.</p>
           </Link>
-          <Link href="/portal-servidor/ferias" className="border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
+
+          <Link href="/portal-servidor/ferias" className="rounded border border-slate-300 bg-white p-3 shadow-sm outline-none transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-600">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded bg-slate-100 text-slate-700"><CalendarDays className="size-4" /></div>
               <h2 className="text-sm font-semibold text-slate-900">Férias e afastamentos</h2>
@@ -111,19 +227,69 @@ export default async function PortalServidorPage() {
             <p className="mt-3 text-xs leading-5 text-slate-600"><strong className="text-slate-900">{plannedVacations}</strong> férias programada(s) · <strong className="text-slate-900">{activeLeaves}</strong> afastamento(s) ativo(s).</p>
           </Link>
         </section>
-        <section aria-labelledby="portal-services-title" className="space-y-2">
-          <h2 id="portal-services-title" className="text-xs font-bold uppercase tracking-wide text-slate-600">Pagamentos, direitos e serviços internos</h2>
+
+        {/* Demonstrativos e Financeiro */}
+        <section aria-labelledby="portal-financeiro-title" className="space-y-2">
+          <h2 id="portal-financeiro-title" className="text-xs font-bold uppercase tracking-wide text-slate-600">
+            Folha de Pagamento, Demonstrativos e Rendimentos
+          </h2>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { href: "/portal-servidor/demonstrativos", title: "Meus contracheques", description: "Demonstrativos completos e PDFs publicados pelo RH." },
-              { href: "/portal-servidor/banco-horas", title: "Banco de horas", description: "Créditos, débitos e saldos dos seus vínculos." },
-              { href: "/portal-servidor/margem", title: "Margem consignável", description: "Consulte os cálculos disponíveis para seu cadastro." },
-              { href: "/portal-servidor/consignacoes", title: "Minhas consignações", description: "Contratos e parcelas registrados em seu nome." },
-              { href: "/portal-servidor/solicitacoes-rh", title: "Solicitações ao RH", description: "Envie pedidos e acompanhe a decisão do responsável." },
-              { href: "/portal-servidor/recadastramento", title: "Recadastramento", description: "Responda às campanhas atribuídas ao seu cadastro." },
-              { href: "/portal-servidor/credito", title: "Crédito consignado", description: "Registre seu pedido de crédito para análise." },
-              { href: "/portal-servidor/beneficios", title: "Meus benefícios", description: "Consulte os benefícios vinculados ao seu cadastro." },
-            ].map(service => <Link key={service.href} href={service.href} className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"><h3 className="text-sm font-semibold text-slate-900">{service.title}</h3><p className="mt-2 text-xs leading-5 text-slate-600">{service.description}</p></Link>)}
+            <Link href="/portal-servidor/demonstrativos" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <div className="flex items-center gap-2">
+                <FileText className="size-4 text-emerald-700" />
+                <h3 className="text-sm font-semibold text-slate-900">Contracheques (PDF)</h3>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Demonstrativos completos e PDFs oficiais liberados pela gestão.</p>
+            </Link>
+
+            <Link href="/portal-servidor/relatorios" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <div className="flex items-center gap-2">
+                <Coins className="size-4 text-emerald-700" />
+                <h3 className="text-sm font-semibold text-slate-900">Ficha Financeira & Rendimentos</h3>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Emissão de comprovante de rendimentos do IRPF e ficha financeira anual.</p>
+            </Link>
+
+            <Link href="/portal-servidor/margem" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <h3 className="text-sm font-semibold text-slate-900">Margem consignável</h3>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Consulte os cálculos e limites disponíveis para seu cadastro.</p>
+            </Link>
+
+            <Link href="/portal-servidor/consignacoes" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <h3 className="text-sm font-semibold text-slate-900">Minhas consignações</h3>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Contratos bancários, entidades e parcelas registradas em seu nome.</p>
+            </Link>
+          </div>
+        </section>
+
+        {/* Serviços e Segurança */}
+        <section aria-labelledby="portal-services-title" className="space-y-2">
+          <h2 id="portal-services-title" className="text-xs font-bold uppercase tracking-wide text-slate-600">
+            Serviços Internos e Segurança da Conta
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <Link href="/portal-servidor/solicitacoes-rh" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <h3 className="text-sm font-semibold text-slate-900">Solicitações ao RH</h3>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Envie requerimentos administrativos e acompanhe as respostas.</p>
+            </Link>
+
+            <Link href="/portal-servidor/banco-horas" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <h3 className="text-sm font-semibold text-slate-900">Banco de horas</h3>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Créditos, débitos e saldos de compensação dos seus vínculos.</p>
+            </Link>
+
+            <Link href="/portal-servidor/seguranca" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-emerald-700" />
+                <h3 className="text-sm font-semibold text-slate-900">Segurança & Auditoria</h3>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Troca de senha, histórico de acessos, IPs e atividades registradas.</p>
+            </Link>
+
+            <Link href="/portal-servidor/recadastramento" className="rounded border border-slate-300 bg-white p-3 shadow-sm hover:border-emerald-600 hover:bg-slate-50 focus-visible:outline-none">
+              <h3 className="text-sm font-semibold text-slate-900">Recadastramento Anual</h3>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Atualização de dados cadastrais para campanhas periódicas.</p>
+            </Link>
           </div>
         </section>
       </div>

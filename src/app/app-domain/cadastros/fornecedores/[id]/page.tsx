@@ -64,6 +64,27 @@ export default async function FornecedorDetailPage({
           documents: (row.company.documents || []).map(serializeDoc),
         }
       : null,
+    representatives: (row.representatives ?? []).map(r => ({
+      id: r.id,
+      representationType: r.representationType,
+      status: r.status,
+      name: r.representative.fullName,
+      cpf: r.representative.cpf ?? null,
+    })),
+    activeBiddings: (row.activeBiddings ?? []).map(b => ({
+      id: b.id,
+      number: b.number,
+      modality: b.modality,
+      status: b.status,
+    })),
+    taxInfo: row.taxInfo ? {
+      municipalInsc: row.taxInfo.municipalInsc,
+      stateInsc: row.taxInfo.stateInsc,
+      taxRegime: row.taxInfo.taxRegime,
+      taxpayerType: row.taxInfo.taxpayerType,
+      economicActivities: row.taxInfo.economicActivities,
+      fiscalNotes: row.taxInfo.fiscalNotes,
+    } : null,
   };
 
   const supplierName = supplier.person

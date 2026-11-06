@@ -19,7 +19,12 @@ type PriceResearchSupplier = { id: string; status: string; person: Pick<Row<type
 type PriceResearchProcess = Row<typeof purchaseProcesses> & { purchaseRequest: { number: string } | null; items: (Row<typeof purchaseProcessItems> & { catalogItem: { name: string; unit: string } | null; material: { name: string; unitOfMeasure: string } | null })[] };
 type PriceInvitation = Row<typeof priceQuotes> & { research: Row<typeof priceResearches>; supplier: PriceResearchSupplier };
 type PriceResearchDetail = Row<typeof priceResearches> & { process: PriceResearchProcess; quotes: (Row<typeof priceQuotes> & { supplier: PriceResearchSupplier })[] };
-type PriceResearchListEntry = Row<typeof priceResearches> & { process: Pick<Row<typeof purchaseProcesses>, "number" | "object"> & { purchaseRequest: { number: string } | null }; _count: { quotes: number } };
+type PriceResearchListEntry = Row<typeof priceResearches> & {
+  process: Pick<Row<typeof purchaseProcesses>, "number" | "object"> & { purchaseRequest: { number: string } | null };
+  _count: { quotes: number };
+  materials: string[];
+  suppliers: string[];
+};
 type PriceResearchProcessOption = Pick<Row<typeof purchaseProcesses>, "id" | "number" | "object"> & {
   purchaseRequest: { number: string } | null; _count: { items: number };
   items: { processId: string; customName: string | null; catalogItem: Pick<Row<typeof catalogItems>, "code" | "name"> | null }[];
@@ -63,9 +68,47 @@ export async function loadPriceResearchDetail(db: DatabaseExecutor, id: string):
 }
 
 export async function listPriceResearches(db: DatabaseExecutor): Promise<PriceResearchListEntry[]> {
-  const rows = await db.select({ research: priceResearches, process: { number: purchaseProcesses.number, object: purchaseProcesses.object }, purchaseRequest: { number: purchaseRequests.number }, submittedCount: sql<number>`(SELECT count(*)::integer FROM "PriceQuote" q WHERE q."researchId" = ${priceResearches.id} AND q.status IN ('CONVITE_APRESENTADA', 'Ativa'))` })
+  const rows = await db.select({ research: priceResearches, process: { id: purchaseProcesses.id, number: purchaseProcesses.number, object: purchaseProcesses.object }, purchaseRequest: { number: purchaseRequests.number }, submittedCount: sql<number>`(SELECT count(*)::integer FROM "PriceQuote" q WHERE q."researchId" = ${priceResearches.id} AND q.status IN ('CONVITE_APRESENTADA', 'Ativa'))` })
     .from(priceResearches).innerJoin(purchaseProcesses, eq(purchaseProcesses.id, priceResearches.processId)).leftJoin(purchaseRequests, eq(purchaseRequests.id, purchaseProcesses.purchaseRequestId)).orderBy(desc(priceResearches.createdAt));
-  return rows.map(row => ({ ...row.research, process: { ...row.process, purchaseRequest: row.purchaseRequest }, _count: { quotes: row.submittedCount } }));
+
+  const processIds = [...new Set(rows.map(r => r.process.id))];
+  const researchIds = rows.map(r => r.research.id);
+
+  const [items, quotes] = await Promise.all([
+    processIds.length
+      ? db.select({
+          processId: purchaseProcessItems.purchaseProcessId,
+          name: sql<string>`COALESCE(${catalogItems.name}, ${materials.name}, ${purchaseProcessItems.customName})`,
+        })
+        .from(purchaseProcessItems)
+        .leftJoin(catalogItems, eq(catalogItems.id, purchaseProcessItems.catalogItemId))
+        .leftJoin(materials, eq(materials.id, purchaseProcessItems.materialId))
+        .where(inArray(purchaseProcessItems.purchaseProcessId, processIds))
+      : [],
+    researchIds.length
+      ? db.select({
+          researchId: priceQuotes.researchId,
+          supplierName: sql<string>`COALESCE(${companies.corporateName}, ${companies.tradeName}, ${people.fullName})`,
+        })
+        .from(priceQuotes)
+        .innerJoin(suppliers, eq(suppliers.id, priceQuotes.supplierId))
+        .leftJoin(companies, eq(companies.id, suppliers.companyId))
+        .leftJoin(people, eq(people.id, suppliers.personId))
+        .where(inArray(priceQuotes.researchId, researchIds))
+      : [],
+  ]);
+
+  return rows.map(row => {
+    const processItems = items.filter(item => item.processId === row.process.id && item.name).map(item => item.name);
+    const researchQuotes = quotes.filter(quote => quote.researchId === row.research.id && quote.supplierName).map(quote => quote.supplierName);
+    return {
+      ...row.research,
+      process: { ...row.process, purchaseRequest: row.purchaseRequest },
+      _count: { quotes: row.submittedCount },
+      materials: [...new Set(processItems)],
+      suppliers: [...new Set(researchQuotes)],
+    };
+  });
 }
 
 export async function listPriceResearchProcessOptions(db: DatabaseExecutor): Promise<PriceResearchProcessOption[]> {

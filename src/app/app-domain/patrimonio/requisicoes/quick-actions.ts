@@ -1,3 +1,5 @@
+"use server";
+
 import { db } from "@/db/client";
 import { materials, warehouses } from "@/db/schema/assets-stock";
 import { departments, employees } from "@/db/schema/administration";

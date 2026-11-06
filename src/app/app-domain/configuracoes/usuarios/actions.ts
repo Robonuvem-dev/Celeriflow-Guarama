@@ -1,3 +1,4 @@
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -84,6 +85,16 @@ export async function upsertUsuario(data: {
     });
 
     await withDatabaseTransaction(databaseConnection, tx => saveManagedUser(tx, { nome: data.nome.trim(), email, firebaseUid, perfilId: data.perfilId, employeeId, ativo: data.ativo }, context.user.id, existing?.id));
+    if (!existing && data.ativo) {
+      const baseUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+      const link = `${baseUrl.replace(/\/$/, "")}/login`;
+      NotificationDispatcher.sendBancosUserCreated({
+        to: email,
+        nome: data.nome.trim(),
+        usuario: email,
+        link
+      }).catch(err => console.error("[Notification Error] BancosUserCreated email failed:", err));
+    }
     revalidatePath("/configuracoes/usuarios");
     revalidatePath("/portal-servidor");
     return { error: null };
