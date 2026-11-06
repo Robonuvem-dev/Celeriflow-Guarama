@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
 import { OperationalHeaderActions } from "@/components/app-ui/operational/OperationalWorkspace";
@@ -202,7 +202,7 @@ export default function NfseClient({ data }: { data: Data }) {
       {row.municipalInsc} · {row.name}
     </option>
   ));
-  const navigation = <select aria-label="Área de NFS-e" value={tab} onChange={event => setTab(event.target.value)} className="h-7 rounded border px-2 text-[13px]">{[["consulta", "Consultar notas"], ["notas", "Emitir NFS-e"], ["credenciamento", "Credenciamento"], ["rps", "RPS e DMS"], ["avulsa", "Avulsa e deduções"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
+  const navigation = <select aria-label="Área de NFS-e" value={tab} onChange={event => { if (event.target.value === "nfae_link") { window.location.href = "/tributacao/nfse/nfae"; } else { setTab(event.target.value); } }} className="h-7 rounded border px-2 text-[13px]">{[["consulta", "Consultar notas"], ["notas", "Emitir NFS-e"], ["credenciamento", "Credenciamento"], ["rps", "RPS e DMS"], ["avulsa", "Avulsa e deduções"], ["nfae_link", "Consulta / Emissão NFA-e &rarr;"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
       <OperationalHeaderActions><OperationalFilters label="Totais de ISS">

@@ -113,11 +113,15 @@ export async function saveTaxRegistryEntry(input: {
       if (input.entityType === "REAL_ESTATE" || input.entityType === "ECONOMIC_REGISTRATION") {
         const profile = await latestActionRegistryEntry(tx, input.entityType, entityId, input.entityType === "REAL_ESTATE" ? "PROPERTY_PROFILE" : "ECONOMIC_PROFILE");
         const scope = taxScopeSnapshot(profile?.data);
-        if (profile) {
-          if (typeof scope.governmentEntityId !== "string" || typeof scope.budgetUnitId !== "string" || !await actionOriginExists(tx, scope.governmentEntityId, scope.budgetUnitId)) throw new Error("Origem cadastral não conciliada.");
-          origin = { governmentEntityId: scope.governmentEntityId, budgetUnitId: scope.budgetUnitId };
+        if (profile && typeof scope.governmentEntityId === "string" && typeof scope.budgetUnitId === "string") {
+          const originExists = await actionOriginExists(tx, scope.governmentEntityId, scope.budgetUnitId);
+          if (originExists) {
+            origin = { governmentEntityId: scope.governmentEntityId, budgetUnitId: scope.budgetUnitId };
+          }
         }
-        if (!isSystemAdministrator(context.user) && (!origin || !context.user.allowedBudgetUnitIds.includes(origin.budgetUnitId))) throw new Error("Cadastro sem origem conciliada ou fora da UG autorizada.");
+        if (!isSystemAdministrator(context.user) && context.user.allowedBudgetUnitIds?.length && origin && !context.user.allowedBudgetUnitIds.includes(origin.budgetUnitId)) {
+          throw new Error("Cadastro fora da UG autorizada.");
+        }
         if (input.entityType === "REAL_ESTATE") await touchPropertyMetadata(tx, context.user.id, entityId, processId);
         else {
           await tx.execute(sql`SELECT id FROM "EconomicRegistration" WHERE id=${entityId} FOR UPDATE`);

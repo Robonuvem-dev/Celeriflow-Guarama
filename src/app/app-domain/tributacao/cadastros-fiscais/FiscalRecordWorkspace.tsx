@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FilePlus2, X } from "lucide-react";
 import { reviewTaxRegistryEntry, saveTaxRegistryEntry, type FiscalEntityType } from "./actions";
+import { CadastralAttachmentsPanel } from "./CadastralAttachmentsPanel";
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import { OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import { TaxOperationalTable, TaxRowActions, TaxRowAction } from "../TaxOperationalTable";
@@ -23,7 +24,7 @@ export type FiscalRegistryEntryView = {
   createdAt: string;
 };
 
-type LinkItem = { label: string; href: string; description?: string };
+type LinkItem = { label: string; href: string; description?: string; bicHref?: string };
 type OptionItem = { id: string; label: string };
 
 const tabCategories: Record<FiscalEntityType, { key: string; label: string; categories: string[] }[]> = {
@@ -114,7 +115,21 @@ export function FiscalRecordWorkspace({ entityType, entityId, entries, links, pr
 
     {message && <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{message}</p>}
 
-    {links.length > 0 && <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{links.map((link) => <Link key={link.href + link.label} href={link.href} className="rounded-md border border-slate-200 bg-white p-2 hover:border-emerald-300"><span className="block truncate text-xs font-semibold text-slate-800">{link.label}</span>{link.description && <span className="block truncate text-[10px] text-slate-500">{link.description}</span>}</Link>)}</div>}
+    {links.length > 0 && <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{links.map((link) => <div key={link.href + link.label} className="flex flex-col justify-between rounded-md border border-slate-200 bg-white p-2 hover:border-emerald-300"><Link href={link.href} className="group"><span className="block truncate text-xs font-semibold text-slate-800 group-hover:text-emerald-700">{link.label}</span>{link.description && <span className="block truncate text-[10px] text-slate-500">{link.description}</span>}</Link>{link.bicHref && <Link href={link.bicHref} className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:underline"><span>Abrir BIC desta inscrição &rarr;</span></Link>}</div>)}</div>}
+
+    {(entityType === "REAL_ESTATE" || entityType === "ECONOMIC_REGISTRATION") && (
+      <CadastralAttachmentsPanel
+        entityType={entityType}
+        entityId={entityId}
+        entries={entries.filter(e => e.category === "DOCUMENTO").map(e => ({
+          id: e.id,
+          title: e.title,
+          createdAt: e.createdAt,
+          documentId: e.documentId,
+          data: e.data && typeof e.data === "object" && !Array.isArray(e.data) ? (e.data as any) : null,
+        }))}
+      />
+    )}
 
     <OperationalTablePanel title="Registros da ficha fiscal" triggerLabel={`Abrir registros fiscais — ${active.label}`} description="Consulta por área cadastral com todas as versões, origens, detalhes e decisões; a ficha e o formulário de inclusão permanecem montados.">
       <TaxOperationalTable id={`registros-fiscais-${entityType}`} resetKey={`${entityId}:${activeTab}`} emptyMessage="Nenhum registro nesta aba."

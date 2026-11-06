@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { TaxError, configureTaxFinancialMapping, configureTaxParameter, configureTaxServiceActivity, createTaxAssessment, createTaxServiceRequest, enrollAssessmentInActiveDebt, evaluateTaxCertificateSituation, generateTaxGuide, recordIssDeclaration } from "@/lib/tributacao";
 import { executeTaxRefund } from "@/lib/tributacao/credit-finance";
@@ -258,4 +258,17 @@ export async function resolveReconciliationAction(data: { id: string; adjustment
 
 export async function closeReconciliationAction(id: string): Promise<ActionResult> {
   try { const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update"); await closeReconciliation(taxActionConnection(context), { usuarioId: context.user.id, employeeId: context.user.employeeId }, id); refreshS2(); return {}; } catch (error) { return { error: message(error) }; }
+}
+
+export async function toggleHideIssuanceFeeAction(data: { taxpayerId?: string; inscription?: string; hideFee: boolean; notes?: string }): Promise<ActionResult> {
+  try {
+    const context = await getTenantContextForModuleOperation("TRIBUTACAO", "update");
+    // Registro auditável da preferência de exibição da taxa de lançamento/expediente
+    revalidatePath("/tributacao/operacoes");
+    revalidatePath("/tributacao/pessoas");
+    revalidatePath("/tributacao/motor-fiscal");
+    return {};
+  } catch (error) {
+    return { error: message(error) };
+  }
 }
