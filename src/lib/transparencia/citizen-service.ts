@@ -1,3 +1,4 @@
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
@@ -61,6 +62,16 @@ export async function createCitizenRequest(db:DatabaseConnection,input:unknown){
      ? data.type
      : "RECLAMACAO") as "ESIC" | "DENUNCIA" | "RECLAMACAO" | "SUGESTAO" | "ELOGIO";
    await tx.insert(transparencyCitizenRequests).values({...data,type:citizenDbType,name:data.name||null,email:data.email||null,protocol,accessHash:accessHash(token),dueAt,nativeTicketId,nativeOmbudsmanId,processId:process.id,requestKeyHash,inputHash});
+    if (data.email && data.name) {
+      const baseUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+      const link = `${baseUrl.replace(/\/$/, "")}/portal/ouvidoria?protocolo=${protocol}`;
+      NotificationDispatcher.sendOuvidoriaManifestacaoRegistrada({
+        to: data.email,
+        nome: data.name,
+        protocolo: protocol,
+        link
+      }).catch(err => console.error("[Notification Error] Ouvidoria manifestação registrada failed:", err));
+    }
    return {protocol,token,status:"RECEBIDO",centralProtocolNumber:process.protocolNumber};
   },{timeoutMs:5_000});
 }

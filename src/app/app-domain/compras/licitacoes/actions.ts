@@ -1,3 +1,4 @@
+import { notifySupplierBiddingCalling } from "@/lib/compras/bidding-notifications";
 "use server";
 
 import { randomUUID } from "crypto";
@@ -875,6 +876,12 @@ export async function decideBiddingResult(input: {
           idempotencyKey,
       }).returning();
       await tx.update(biddingLots).set({ status: BIDDING_LOT_STATUS.AWARDED }).where(eq(biddingLots.id, biddingLotId));
+      notifySupplierBiddingCalling({
+        supplierId: bid.participant.id,
+        processNumber: `Lote ${lot.number}`,
+        itemsOrLotDescription: `Lote ${lot.number} - ${lot.description || "Itens adjudicados"}`,
+        isSecondPlace: false,
+      }).catch(err => console.error("[Notification Error] Award calling notice failed:", err));
       await writeLifecycleEvent(tx, {
         eventType: "BIDDING_LOT_AWARDED",
         biddingId,

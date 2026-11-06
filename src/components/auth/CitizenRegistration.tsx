@@ -95,6 +95,7 @@ export function CitizenRegistration() {
 
           if (!credential.user.emailVerified) {
             await sendEmailVerification(credential.user);
+            fetch("/api/portal/cidadao-cadastrado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: credential.user.email, name: credential.user.displayName || "" }) }).catch(() => {});
             setMessage(
               "Enviamos a verificação do e-mail. Confirme o endereço na sua caixa de entrada e retorne selecionando “Já tenho conta” para concluir a solicitação de acesso.",
             );

@@ -1,3 +1,4 @@
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 import crypto from "crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { DatabaseConnection } from "@/db/connection";
@@ -297,6 +298,26 @@ export async function inviteSupplierToPriceResearch(db: Db, input: { researchId:
       actorUsuarioId: input.actorUsuarioId,
       idempotencyKey: `PRICE_RESEARCH:PRICE_QUOTE:${invitation.id}:INVITATION_PENDING_DELIVERY`,
     });
+    const targetEmail = supplierContactEmail(supplier);
+    if (targetEmail) {
+      const baseUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+      const link = `${baseUrl.replace(/\/$/, "")}/compras/pesquisas-precos/${research.id}`;
+      const sName = supplierName(supplier);
+      const pNumber = research.processNumber || research.id;
+      // Dispara envio do mapa de cotação (11.182) e carta-convite (11.183)
+      NotificationDispatcher.sendLicitacaoMapaCotacao({
+        to: targetEmail,
+        fornecedor: sName,
+        processo: pNumber,
+        link,
+      }).catch(err => console.error("[Notification Error] Mapa de cotação email failed:", err));
+      NotificationDispatcher.sendLicitacaoCartaConvite({
+        to: targetEmail,
+        fornecedor: sName,
+        processo: pNumber,
+        link,
+      }).catch(err => console.error("[Notification Error] Carta-convite email failed:", err));
+    }
     return { invitation, created: true, supplierName: supplierName(supplier) };
   });
 }
