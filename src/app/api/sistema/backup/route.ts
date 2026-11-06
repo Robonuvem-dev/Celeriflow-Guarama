@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApiRequest } from "@/lib/platform/api-access";
+import { loadBackupSnapshotsFromDb } from "@/lib/platform/tributacao-infra-persistence";
 import {
   listBackupSnapshots,
   triggerWebBackupExecution,
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   const tierParam = (searchParams.get("tier") ?? "ALL") as BackupTier | "ALL";
   const search = searchParams.get("q") ?? "";
 
-  const payload = listBackupSnapshots({
+  const payload = await loadBackupSnapshotsFromDb({
     tier: tierParam,
     search,
   });

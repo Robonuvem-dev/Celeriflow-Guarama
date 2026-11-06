@@ -1,5 +1,5 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { getDecredOverviewState } from "@/lib/tributacao/card-administrators-decred-service";
+import { loadDecredStateFromDb } from "@/lib/platform/tributacao-infra-persistence";
 import { DecredClient } from "./DecredClient";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function DecredPage({
       : "equipamentos";
 
   const page = Math.max(1, Number(resolved.page ?? 1) || 1);
-  const state = getDecredOverviewState();
+  const state = await loadDecredStateFromDb();
 
   return (
     <DecredClient

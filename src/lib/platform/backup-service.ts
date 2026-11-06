@@ -473,6 +473,13 @@ function ensureBackupStore(): BackupSnapshotRecord[] {
   return runtimeBackupStore.snapshots;
 }
 
+export function hydrateBackupStore(snapshots: BackupSnapshotRecord[]) {
+  if (snapshots && snapshots.length > 0) {
+    runtimeBackupStore.snapshots = [...snapshots];
+    runtimeBackupStore.initialized = true;
+  }
+}
+
 export function listBackupSnapshots(filter?: {
   tier?: BackupTier | "ALL";
   search?: string;

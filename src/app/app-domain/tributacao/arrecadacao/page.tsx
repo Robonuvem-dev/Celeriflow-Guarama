@@ -1,8 +1,6 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import {
-  getFebrabanArrecadacaoState,
-  type FebrabanDebtNature,
-} from "@/lib/tributacao/febraban-arrecadacao-service";
+import { loadFebrabanStateFromDb } from "@/lib/platform/tributacao-infra-persistence";
+import type { FebrabanDebtNature } from "@/lib/tributacao/febraban-arrecadacao-service";
 import { ArrecadacaoOnlineClient } from "./ArrecadacaoOnlineClient";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +25,7 @@ export default async function ArrecadacaoOnlinePage({
       : "ALL";
 
   const page = Math.max(1, Number(resolved.page ?? 1) || 1);
-  const state = getFebrabanArrecadacaoState();
+  const state = await loadFebrabanStateFromDb();
 
   return (
     <ArrecadacaoOnlineClient

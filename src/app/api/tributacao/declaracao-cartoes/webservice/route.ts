@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApiRequest } from "@/lib/platform/api-access";
+import { loadDecredStateFromDb } from "@/lib/platform/tributacao-infra-persistence";
 import {
   DECRED_WEBSERVICE_STANDARD_LAYOUT_SPEC,
   getDecredOverviewState,
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO", mutate: true, tokenEnv: "DECRED_WS_TOKEN" });
   if (denied) return denied;
+  await loadDecredStateFromDb();
   try {
     const body = (await request.json().catch(() => ({}))) as {
       competencia?: string;

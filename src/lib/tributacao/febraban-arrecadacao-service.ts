@@ -304,6 +304,19 @@ function ensureFebrabanStore() {
   return runtimeFebrabanState;
 }
 
+export function hydrateFebrabanState(data: {
+  debts?: FebrabanOnlineDebtItem[];
+  auditLogs?: FebrabanWebServiceAuditLog[];
+}) {
+  const store = ensureFebrabanStore();
+  if (data.debts && data.debts.length > 0) {
+    store.debts = [...data.debts];
+  }
+  if (data.auditLogs && data.auditLogs.length > 0) {
+    store.auditLogs = [...data.auditLogs];
+  }
+}
+
 function recordAudit(entry: Omit<FebrabanWebServiceAuditLog, "id" | "timestamp">) {
   const store = ensureFebrabanStore();
   const log: FebrabanWebServiceAuditLog = {

@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import { createHash } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { createDatabaseConnection } from "../src/db/connection";
 import { withDatabaseTransaction } from "../src/db/transaction";
 import { systemInstances, instanceParameters } from "../src/db/schema/instance-configuration";
@@ -16,7 +17,8 @@ import {
   type CardAdministratorDam,
 } from "../src/lib/tributacao/card-administrators-decred-service";
 import {
-  type BackupExecutionRecord,
+  buildInitialBackupCatalog,
+  type BackupSnapshotRecord,
 } from "../src/lib/platform/backup-service";
 
 config({ path: ".env.production.local", quiet: true });
@@ -302,6 +304,43 @@ export const cf29Terms: ResponsibilityTermAcceptance[] = [
   },
 ];
 
+export const cf29Dams: CardAdministratorDam[] = [
+  {
+    damNumber: "DAM-CARTAO-202609-0001",
+    declarationId: "cf29-decl-cielo-092026",
+    competencia: "09/2026",
+    administradoraNome: "Cielo S.A.",
+    administradoraCnpj: "01.027.058/0001-91",
+    codigoReceitaMunicipal: "1114-51-ISS-CARTAO-1501",
+    dataEmissao: "2026-10-08",
+    dataVencimento: "2026-10-25",
+    valorBaseServico: 12130.0,
+    aliquotaPercent: 5.0,
+    valorPrincipalIss: 606.5,
+    valorTotalDam: 606.5,
+    codigoBarras44: "816600000060650041920261025002026002900010",
+    linhaDigitavel48: "81660000006-0 06500419202-6 61025002026-0 002900010-0",
+    status: "PAGO",
+  },
+  {
+    damNumber: "DAM-CARTAO-202609-0002",
+    declarationId: "cf29-decl-rede-092026",
+    competencia: "09/2026",
+    administradoraNome: "Redecard Instituição de Pagamento S.A.",
+    administradoraCnpj: "01.425.787/0001-04",
+    codigoReceitaMunicipal: "1114-51-ISS-CARTAO-1501",
+    dataEmissao: "2026-10-09",
+    dataVencimento: "2026-10-25",
+    valorBaseServico: 5100.0,
+    aliquotaPercent: 5.0,
+    valorPrincipalIss: 255.0,
+    valorTotalDam: 255.0,
+    codigoBarras44: "816600000025500041920261025002026002900028",
+    linhaDigitavel48: "81660000002-5 55000419202-6 61025002026-0 002900028-0",
+    status: "PAGO",
+  },
+];
+
 export const cf29Declarations: CardAdministratorDeclaration[] = [
   {
     id: "cf29-decl-cielo-092026",
@@ -311,17 +350,22 @@ export const cf29Declarations: CardAdministratorDeclaration[] = [
     responsavelCpf: "098.765.432-10",
     responsavelCargo: "Diretor de Relações Tributárias e Regulatórias",
     responsavelEmail: "decred.municipal@cielo.com.br",
+    administradoraNome: "Cielo S.A.",
+    administradoraCnpj: "01.027.058/0001-91",
     naturezaOperacao: "CREDITO_A_VISTA",
+    naturezaOperacaoLabel: "Operações com Cartão de Crédito à Vista",
     descricaoServicos: "Intermediação de pagamentos com cartão de crédito à vista no comércio do Município.",
+    terminalNumber: "TERM-POS-00142",
+    quantidadeOperacoesAutorizadas: 1,
     valorTotalOperacoes: 485200.0,
-    valorPrestacaoServico: 12130.0, // Taxa de administração de 2.5%
-    aliquotaIssAplicavel: 5.0,
-    issDevido: 606.5,
-    status: "PROCESSADA_VALIDADA",
-    numeroProtocolo: "DECRED-2026-09-CIELO-008129",
-    deliveredAt: "2026-10-08T16:00:00Z",
-    damGeradoId: "cf29-dam-cielo-092026",
-    details: [
+    valorPrestacaoServico: 12130.0,
+    aliquotaIssPercent: 5.0,
+    valorIssDevido: 606.5,
+    origemRecepcao: "PORTAL_WEB",
+    protocoloRecepcao: "DECRED-2026-09-CIELO-008129",
+    createdAt: "2026-10-08T16:00:00Z",
+    damGerado: cf29Dams[0],
+    operacoesAutorizadasDetalhe: [
       {
         authorizationCode: "AUTH-889102",
         nsuHost: "NSU-CIELO-41029",
@@ -331,8 +375,8 @@ export const cf29Declarations: CardAdministratorDeclaration[] = [
         estabelecimentoInscricaoMunicipal: "IM-10294-1",
         naturezaOperacao: "CREDITO_A_VISTA",
         installments: 1,
-        grossTransactionAmount: 320.0,
-        serviceFeeAmount: 8.0,
+        grossTransactionAmount: 485200.0,
+        serviceFeeAmount: 12130.0,
       },
     ],
   },
@@ -344,126 +388,42 @@ export const cf29Declarations: CardAdministratorDeclaration[] = [
     responsavelCpf: "876.543.210-99",
     responsavelCargo: "Gerente de Compliance Fiscal",
     responsavelEmail: "decred@rede.com.br",
+    administradoraNome: "Redecard Instituição de Pagamento S.A.",
+    administradoraCnpj: "01.425.787/0001-04",
     naturezaOperacao: "DEBITO",
+    naturezaOperacaoLabel: "Operações com Cartão de Débito",
     descricaoServicos: "Operações de débito eletrônico com captura via TEF multiponto.",
+    terminalNumber: "TERM-TEF-00388",
+    quantidadeOperacoesAutorizadas: 1,
     valorTotalOperacoes: 340000.0,
-    valorPrestacaoServico: 5100.0, // Taxa de 1.5%
-    aliquotaIssAplicavel: 5.0,
-    issDevido: 255.0,
-    status: "PROCESSADA_VALIDADA",
-    numeroProtocolo: "DECRED-2026-09-REDE-004192",
-    deliveredAt: "2026-10-09T11:20:00Z",
-    damGeradoId: "cf29-dam-rede-092026",
-    details: [],
-  },
-];
-
-export const cf29Dams: CardAdministratorDam[] = [
-  {
-    damId: "cf29-dam-cielo-092026",
-    declarationId: "cf29-decl-cielo-092026",
-    nossoNumeroDam: "202600290001",
-    competencia: "09/2026",
-    vencimento: "2026-10-25",
-    contribuinteNome: "Cielo S.A.",
-    contribuinteCnpj: "01.027.058/0001-91",
-    codigoReceita: "1113-08-ISS-CARTAO",
-    valorTaxaServico: 12130.0,
-    aliquota: 5.0,
-    valorTotalDam: 606.5,
-    codigoBarras44: "816600000060650041920261025002026002900010",
-    linhaDigitavel48: "81660000006-0 06500419202-6 61025002026-0 002900010-0",
-    status: "PAGO",
-    paidAt: "2026-10-24T14:10:00Z",
-  },
-  {
-    damId: "cf29-dam-rede-092026",
-    declarationId: "cf29-decl-rede-092026",
-    nossoNumeroDam: "202600290002",
-    competencia: "09/2026",
-    vencimento: "2026-10-25",
-    contribuinteNome: "Redecard Instituição de Pagamento S.A.",
-    contribuinteCnpj: "01.425.787/0001-04",
-    codigoReceita: "1113-08-ISS-CARTAO",
-    valorTaxaServico: 5100.0,
-    aliquota: 5.0,
-    valorTotalDam: 255.0,
-    codigoBarras44: "816600000025500041920261025002026002900028",
-    linhaDigitavel48: "81660000002-5 55000419202-6 61025002026-0 002900028-0",
-    status: "PAGO",
-    paidAt: "2026-10-25T11:05:00Z",
+    valorPrestacaoServico: 5100.0,
+    aliquotaIssPercent: 5.0,
+    valorIssDevido: 255.0,
+    origemRecepcao: "WEBSERVICE_PADRAO_29_7",
+    protocoloRecepcao: "DECRED-2026-09-REDE-004192",
+    createdAt: "2026-10-09T11:20:00Z",
+    damGerado: cf29Dams[1],
+    operacoesAutorizadasDetalhe: [
+      {
+        authorizationCode: "AUTH-771922",
+        nsuHost: "NSU-REDE-88192",
+        transactionDateTime: "2026-09-20T11:20:00Z",
+        terminalNumber: "TERM-TEF-00388",
+        estabelecimentoCpfCnpj: "18.452.901/0001-33",
+        estabelecimentoInscricaoMunicipal: "IM-10294-1",
+        naturezaOperacao: "DEBITO",
+        installments: 1,
+        grossTransactionAmount: 340000.0,
+        serviceFeeAmount: 5100.0,
+      },
+    ],
   },
 ];
 
 // ============================================================================
 // CF31 — LOGS DE ROTINA DE BACKUP EM NUVEM E RETENÇÃO
 // ============================================================================
-export const cf31BackupLogs: BackupExecutionRecord[] = [
-  {
-    id: "cf31-bkp-20261031-full-month",
-    backupType: "FULL_MONTHLY",
-    startedAt: "2026-11-01T01:00:00Z",
-    completedAt: "2026-11-01T01:42:15Z",
-    sizeBytes: 18452091024, // ~18.45 GB
-    artifactName: "celeriflow_campoflorido_full_monthly_20261101_010000.enc.tar.gz",
-    sha256Hex: createHash("sha256").update("BKP-MONTHLY-20261101").digest("hex"),
-    encryptionAlgorithm: "AES-256-GCM (Padrão Militar FIPS 197 / NIST SP 800-38D - 256 bits)",
-    cloudTarget: "S3_COMPATIBLE (Data Center Certificado ISO 27001 / ISO 20000-1)",
-    retentionPolicy: "12_MESES_RETENCAO",
-    retentionUntil: "2027-11-01T01:00:00Z",
-    coveredModules: 33,
-    status: "SUCESSO_CONCLUIDO",
-    notes: "Backup FULL mensal executado automaticamente pelo agendador Cron no primeiro dia do mês.",
-  },
-  {
-    id: "cf31-bkp-20261104-full-daily",
-    backupType: "FULL_DAILY",
-    startedAt: "2026-11-04T02:00:00Z",
-    completedAt: "2026-11-04T02:35:10Z",
-    sizeBytes: 18620441920, // ~18.62 GB
-    artifactName: "celeriflow_campoflorido_full_daily_20261104_020000.enc.tar.gz",
-    sha256Hex: createHash("sha256").update("BKP-DAILY-20261104").digest("hex"),
-    encryptionAlgorithm: "AES-256-GCM (Padrão Militar FIPS 197 / NIST SP 800-38D - 256 bits)",
-    cloudTarget: "S3_COMPATIBLE (Data Center Certificado ISO 27001 / ISO 20000-1)",
-    retentionPolicy: "7_DIAS_ROTATIVO",
-    retentionUntil: "2026-11-11T02:00:00Z",
-    coveredModules: 33,
-    status: "SUCESSO_CONCLUIDO",
-    notes: "Backup FULL diário automático com retenção rotativa dos últimos 7 dias.",
-  },
-  {
-    id: "cf31-bkp-20261105-full-daily",
-    backupType: "FULL_DAILY",
-    startedAt: "2026-11-05T02:00:00Z",
-    completedAt: "2026-11-05T02:37:45Z",
-    sizeBytes: 18745102840, // ~18.74 GB
-    artifactName: "celeriflow_campoflorido_full_daily_20261105_020000.enc.tar.gz",
-    sha256Hex: createHash("sha256").update("BKP-DAILY-20261105").digest("hex"),
-    encryptionAlgorithm: "AES-256-GCM (Padrão Militar FIPS 197 / NIST SP 800-38D - 256 bits)",
-    cloudTarget: "S3_COMPATIBLE (Data Center Certificado ISO 27001 / ISO 20000-1)",
-    retentionPolicy: "7_DIAS_ROTATIVO",
-    retentionUntil: "2026-11-12T02:00:00Z",
-    coveredModules: 33,
-    status: "SUCESSO_CONCLUIDO",
-    notes: "Backup FULL diário automático com retenção rotativa dos últimos 7 dias.",
-  },
-  {
-    id: "cf31-bkp-20261105-diff-hourly-10",
-    backupType: "DIFFERENTIAL_HOURLY",
-    startedAt: "2026-11-05T10:00:00Z",
-    completedAt: "2026-11-05T10:01:20Z",
-    sizeBytes: 142091024, // ~142 MB
-    artifactName: "celeriflow_campoflorido_diff_wal_20261105_100000.enc.wal.gz",
-    sha256Hex: createHash("sha256").update("BKP-DIFF-20261105-10").digest("hex"),
-    encryptionAlgorithm: "AES-256-GCM (Padrão Militar FIPS 197 / NIST SP 800-38D - 256 bits)",
-    cloudTarget: "S3_COMPATIBLE (Data Center Certificado ISO 27001 / ISO 20000-1)",
-    retentionPolicy: "24_HORAS_LOGS",
-    retentionUntil: "2026-11-06T10:00:00Z",
-    coveredModules: 33,
-    status: "SUCESSO_CONCLUIDO",
-    notes: "Backup diferencial horário dos arquivos de log/WAL de 1 em 1 hora.",
-  },
-];
+export const cf31BackupLogs: BackupSnapshotRecord[] = buildInitialBackupCatalog();
 
 async function main() {
   const isApply = process.argv.includes("--apply");

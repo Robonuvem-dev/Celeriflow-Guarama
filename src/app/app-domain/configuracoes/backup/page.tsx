@@ -1,5 +1,6 @@
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { listBackupSnapshots, type BackupTier } from "@/lib/platform/backup-service";
+import { loadBackupSnapshotsFromDb } from "@/lib/platform/tributacao-infra-persistence";
+import type { BackupTier } from "@/lib/platform/backup-service";
 import { BackupClient } from "./BackupClient";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function BackupConfigPage({
       : "ALL";
 
   const page = Math.max(1, Number(resolved.page ?? 1) || 1);
-  const data = listBackupSnapshots();
+  const data = await loadBackupSnapshotsFromDb();
 
   return (
     <BackupClient

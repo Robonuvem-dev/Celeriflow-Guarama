@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeApiRequest } from "@/lib/platform/api-access";
+import { loadDecredStateFromDb } from "@/lib/platform/tributacao-infra-persistence";
 import {
   acceptCredenciadoResponsibilityTerm,
   generateCardAdministratorDam,
@@ -16,16 +17,18 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO" });
   if (denied) return denied;
+  const state = await loadDecredStateFromDb();
   return NextResponse.json({
     ok: true,
     module: "CF29 — Declaração das Informações das Administradoras de Cartões (DECRED)",
-    ...getDecredOverviewState(),
+    ...state,
   });
 }
 
 export async function POST(request: Request) {
   const denied = await authorizeApiRequest(request, { moduleCode: "TRIBUTACAO", mutate: true });
   if (denied) return denied;
+  await loadDecredStateFromDb();
   try {
     const body = (await request.json().catch(() => ({}))) as {
       action?: "UPSERT_EQUIPMENT" | "ACCEPT_TERM" | "SUBMIT_DECLARATION" | "GENERATE_DAM";

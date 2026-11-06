@@ -396,6 +396,27 @@ function ensureDecredStore() {
   return runtimeDecredStore;
 }
 
+export function hydrateDecredStore(data: {
+  equipments?: CardEquipmentRecord[];
+  terms?: ResponsibilityTermAcceptance[];
+  declarations?: CardAdministratorDeclaration[];
+  dams?: CardAdministratorDam[];
+}) {
+  const store = ensureDecredStore();
+  if (data.equipments && data.equipments.length > 0) {
+    store.equipments = [...data.equipments];
+  }
+  if (data.terms && data.terms.length > 0) {
+    store.terms = [...data.terms];
+  }
+  if (data.declarations && data.declarations.length > 0) {
+    store.declarations = [...data.declarations];
+  }
+  if (data.dams && data.dams.length > 0) {
+    store.dams = [...data.dams];
+  }
+}
+
 /**
  * Requisito 29.3 — Registra o aceite obrigatório do Termo de Responsabilidade pelo usuário credenciado.
  */
