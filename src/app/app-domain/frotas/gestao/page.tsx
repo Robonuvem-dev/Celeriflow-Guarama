@@ -11,7 +11,7 @@ import { OperationalTablePanel } from "@/components/app-ui/operational/Operation
 import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
 import type { OperationalColumn } from "@/lib/operational-tables";
-import { fleetControlReports } from "@/lib/frotas/control-report";
+import { fleetControlReports, fleetControlReportLabels } from "@/lib/frotas/control-report";
 
 export const dynamic = "force-dynamic";
 const areas = [
@@ -120,6 +120,7 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link href="/frotas/cadastros?kind=solicitacoes" className="cf-portal-btn-secondary">Solicitações Comunitárias</Link>
             <Link href="/frotas/cadastros" className="cf-portal-btn-secondary">Cadastros da Frota</Link>
             <Link href="/frotas/movimentos" className="cf-portal-btn-secondary">Movimentos e Importações</Link>
             <Link href="/frotas" className="cf-portal-btn-secondary">← Painel da Frota</Link>
@@ -285,7 +286,18 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
         <FleetControlForm
           key={`${operation}:${selected?.id || "new"}`}
           operation={operation}
-          initial={selected?.data || { unitId: result.query.unitId }}
+          initial={{
+            unitId: result.query.unitId,
+            ...(typeof raw.tripId === "string" ? { tripId: raw.tripId } : {}),
+            ...(typeof raw.bookingId === "string" ? { bookingId: raw.bookingId } : {}),
+            ...(typeof raw.authorizationId === "string" ? { authorizationId: raw.authorizationId } : {}),
+            ...(typeof raw.installationId === "string" ? { installationId: raw.installationId } : {}),
+            ...(typeof raw.fineId === "string" ? { fineId: raw.fineId } : {}),
+            ...(typeof raw.paymentId === "string" ? { paymentId: raw.paymentId } : {}),
+            ...(typeof raw.occurrenceId === "string" ? { occurrenceId: raw.occurrenceId } : {}),
+            ...(typeof raw.claimId === "string" ? { claimId: raw.claimId } : {}),
+            ...(selected?.data || {}),
+          }}
           departmentId={scope.departmentId || ""}
         />
       )}
@@ -335,24 +347,93 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
                     </Link>
                   )}
                   {canEdit && row.type === "BOOKING" && row.status === "AGENDADO" && (
-                    <Link href={`/frotas/gestao?area=agenda&operation=booking&edit=${row.id}&unitId=${row.unitId}`} className="font-semibold text-blue-700 underline">
-                      Reprogramar com histórico
+                    <>
+                      <Link href={`/frotas/gestao?area=agenda&operation=booking&edit=${row.id}&unitId=${row.unitId}`} className="font-semibold text-blue-700 underline">
+                        Reprogramar com histórico
+                      </Link>
+                      <Link href={`/frotas/gestao?area=agenda&operation=cancelBooking&bookingId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-amber-700 underline">
+                        Cancelar agenda
+                      </Link>
+                    </>
+                  )}
+                  {canEdit && row.type === "TRIP" && row.status === "ABERTO" && (
+                    <Link href={`/frotas/gestao?area=guarita&operation=arrive&tripId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-emerald-700 underline">
+                      Registrar chegada
                     </Link>
                   )}
                   {row.type === "AUTHORIZATION" && (
-                    <a href={`/api/frotas/controle/relatorios?documentType=authorization&documentId=${row.id}&format=pdf`} className="font-semibold text-blue-700 underline">
-                      Imprimir autorização
-                    </a>
+                    <>
+                      <a href={`/api/frotas/controle/relatorios?documentType=authorization&documentId=${row.id}&format=pdf`} className="font-semibold text-blue-700 underline">
+                        Imprimir autorização
+                      </a>
+                      {canEdit && row.status === "EMITIDA" && (
+                        <>
+                          {result.query.area === "abastecimento" && (
+                            <Link href={`/frotas/gestao?area=abastecimento&operation=confirmFuel&authorizationId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-emerald-700 underline">
+                              Confirmar abastecimento
+                            </Link>
+                          )}
+                          {result.query.area === "autorizacoes" && (
+                            <Link href={`/frotas/gestao?area=autorizacoes&operation=executeService&authorizationId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-emerald-700 underline">
+                              Conferir execução
+                            </Link>
+                          )}
+                          <Link href={`/frotas/gestao?area=${result.query.area}&operation=renewCredential&authorizationId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-slate-700 underline">
+                            Reemitir token
+                          </Link>
+                          <Link href={`/frotas/gestao?area=${result.query.area}&operation=cancelAuthorization&authorizationId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-amber-700 underline">
+                            Cancelar autorização
+                          </Link>
+                        </>
+                      )}
+                      {canEdit && row.status === "EXECUTADA" && typeof row.data.consumptionId === "string" && row.data.consumptionId && (
+                        <Link href={`/frotas/movimentos?operation=reverseFuel&recordId=${encodeURIComponent(row.data.consumptionId)}&unitId=${row.unitId || ""}`} className="font-semibold text-rose-700 underline">
+                          Estornar abastecimento
+                        </Link>
+                      )}
+                      {canEdit && row.status === "EXECUTADA" && typeof row.data.workOrderId === "string" && row.data.workOrderId && (
+                        <Link href={`/frotas/movimentos?operation=reverseMaintenance&recordId=${encodeURIComponent(row.data.workOrderId)}&unitId=${row.unitId || ""}`} className="font-semibold text-rose-700 underline">
+                          Estornar manutenção
+                        </Link>
+                      )}
+                    </>
                   )}
-                  {row.type === "TRIP" && (
-                    <a href={`/api/frotas/controle/relatorios?documentType=trip&documentId=${row.id}&format=pdf`} className="font-semibold text-blue-700 underline">
-                      Planilha de acompanhamento
-                    </a>
+                  {canEdit && row.type === "INSTALLATION" && row.status === "EM_USO" && (
+                    <Link href={`/frotas/gestao?area=componentes&operation=removeComponent&installationId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-amber-700 underline">
+                      Retirar / baixar componente
+                    </Link>
                   )}
                   {row.type === "FINE" && (
-                    <a href={`/api/frotas/controle/relatorios?documentType=fineTerm&documentId=${row.id}&format=pdf`} className="font-semibold text-blue-700 underline">
-                      Termo de desconto da multa
-                    </a>
+                    <>
+                      <a href={`/api/frotas/controle/relatorios?documentType=fineTerm&documentId=${row.id}&format=pdf`} className="font-semibold text-blue-700 underline">
+                        Termo de desconto da multa
+                      </a>
+                      {canEdit && row.status !== "PAGA" && row.status !== "CANCELADA" && (
+                        <>
+                          <Link href={`/frotas/gestao?area=multas&operation=payFine&fineId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-emerald-700 underline">
+                            Registrar parcela paga
+                          </Link>
+                          <Link href={`/frotas/gestao?area=multas&operation=fineStatus&fineId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-amber-700 underline">
+                            Situação / recurso / correção
+                          </Link>
+                        </>
+                      )}
+                      {canEdit && (row.status === "PAGA" || row.status === "PAGA_PARCIAL") && (
+                        <Link href={`/frotas/gestao?area=multas&operation=reverseFinePayment&unitId=${row.unitId}`} className="font-semibold text-rose-700 underline">
+                          Estornar parcela
+                        </Link>
+                      )}
+                    </>
+                  )}
+                  {canEdit && row.type === "OCCURRENCE" && row.status === "SEM_SINISTRO" && (
+                    <Link href={`/frotas/gestao?area=sinistros&operation=claim&occurrenceId=${row.id}&unitId=${row.unitId}`} className="font-semibold text-blue-700 underline">
+                      Abrir sinistro
+                    </Link>
+                  )}
+                  {canEdit && row.type === "OCCURRENCE" && typeof row.data.claimId === "string" && row.data.claimId && (
+                    <Link href={`/frotas/gestao?area=sinistros&operation=claimStatus&claimId=${row.data.claimId}&unitId=${row.unitId}`} className="font-semibold text-slate-700 underline">
+                      Atualizar sinistro
+                    </Link>
                   )}
                   {row.type === "ATTACHMENT" && (
                     <a href={`/api/frotas/controle/anexos/${row.id}`} className="font-semibold text-blue-700 underline">
@@ -385,20 +466,7 @@ export default async function FleetManagementPage({ searchParams }: { searchPara
               href={`/api/frotas/controle/relatorios?${new URLSearchParams({ ...filters, report, format: "pdf" })}`}
               className="cf-portal-btn-secondary"
             >
-              {{
-                quilometragem: "Quilometragem",
-                custoKm: "Gastos por km",
-                consumo: "Planilha de consumo",
-                cnh: "Vencimentos de CNH",
-                pontuacao: "Pontuação de CNH",
-                incorporacoes: "Incorporações / desincorporações",
-                pneusBaixados: "Pneus baixados",
-                combustivel: "Combustível / empenhos",
-                escolar: "Combustível escolar",
-                hospitalar: "Combustível hospitalar",
-                requisicoesEncerradas: "Requisições finalizadas / canceladas",
-                comunidade: "Solicitações da comunidade",
-              }[report]}
+              {fleetControlReportLabels[report] || report}
             </a>
           ))}
         </section>

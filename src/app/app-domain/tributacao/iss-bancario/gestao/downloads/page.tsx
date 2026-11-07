@@ -3,42 +3,61 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 
 export const dynamic = "force-dynamic";
 
-const downloads: Record<string, { label: string; description: string }> = {
+const downloads: Record<string, { req: string; label: string; description: string }> = {
   manual: {
-    label: "Manual do usuário CeleriFlow / DES-IF",
-    description: "Guia operacional de importação, apuração mensal, balancete, tarifas e fiscalização bancária.",
+    req: "Req. 28.18",
+    label: "Manual do Usuário DES-IF / CeleriFlow",
+    description: "Guia operacional completo de importação dos Módulos 1 a 4, apuração mensal, balancete, tarifas, emissão de DAM e fiscalização bancária.",
+  },
+  "modelo-conceitual-abrasf": {
+    req: "Req. 28.19",
+    label: "Modelo Conceitual ABRASF DES-IF (Versão 3.1)",
+    description: "Especificação técnica da estrutura dos Módulos 1, 2, 3 e 4, blocos e registros padronizados do Modelo Conceitual ABRASF DES-IF.",
   },
   "orgao-configuracao": {
-    label: "Parâmetros cadastrados do município",
-    description: "Configurações institucionais, brasão e parâmetros fiscais vigentes para o ISS Bancário.",
+    req: "Req. 28.20",
+    label: "Parâmetros do Município",
+    description: "Configurações institucionais do órgão tributário, vigências, alíquotas e parâmetros fiscais vigentes para o ISS Bancário.",
   },
   "codigo-tributacao-desif": {
-    label: "Códigos de tributação DES-IF",
-    description: "Tabela de códigos de tributação do modelo ABRASF DES-IF vinculada aos itens da LC 116.",
-  },
-  "codigo-tributacao-municipal": {
-    label: "Códigos de tributação municipal",
-    description: "Relação de códigos de tributação próprios do município e respectivas alíquotas de ISS.",
+    req: "Req. 28.21",
+    label: "Códigos de Tributação DES-IF",
+    description: "Tabela de códigos de tributação do modelo ABRASF DES-IF vinculada aos subitens da Lista de Serviços da LC 116/2003.",
   },
   "evento-contabil": {
-    label: "Eventos contábeis",
-    description: "Catálogo de eventos contábeis utilizados na escrituração e conciliação bancária.",
+    req: "Req. 28.22",
+    label: "Relação de Eventos Contábeis",
+    description: "Catálogo de eventos contábeis utilizados na escrituração de partidas e conciliação bancária.",
+  },
+  "mensagens-erros-alertas": {
+    req: "Req. 28.23",
+    label: "Relação de Mensagens de Erros e Alertas",
+    description: "Tabela oficial de códigos de erros impeditivos e alertas de validação na importação e processamento dos arquivos DES-IF.",
   },
   "produto-servico": {
-    label: "Outros produtos e serviços",
-    description: "Catálogo de produtos e serviços bancários sujeitos à incidência do ISSQN.",
+    req: "Req. 28.24",
+    label: "Relação de Outros Produtos e Serviços Bancários",
+    description: "Catálogo de produtos e serviços bancários sujeitos à incidência do ISSQN (Módulo 3 — Registro 0300).",
   },
   "titulo-desif": {
-    label: "Tabela de títulos",
-    description: "Títulos contábeis padronizados para agrupamento de contas PGCC e COSIF.",
+    req: "Req. 28.25",
+    label: "Tabela de Títulos Contábeis",
+    description: "Títulos contábeis padronizados para agrupamento de contas PGCC e COSIF das instituições financeiras.",
   },
   "tarifa-bancaria": {
-    label: "Tarifas bancárias",
-    description: "Relação de tarifas de serviços bancários cadastradas para confronto de receitas.",
+    req: "Req. 28.26",
+    label: "Relação de Tarifas Bancárias",
+    description: "Relação padronizada de tarifas de serviços bancários cadastradas para confronto de receitas (Módulo 3 — Registro 0200).",
   },
   "tipo-dependencia": {
-    label: "Tipos de dependência",
-    description: "Classificação de agências, postos de atendimento e dependências de instituições financeiras.",
+    req: "Req. 28.27",
+    label: "Relação de Tipos de Dependência",
+    description: "Classificação de agências, postos de atendimento (PA), unidades administrativas e dependências de instituições financeiras.",
+  },
+  "codigo-tributacao-municipal": {
+    req: "Req. 28.33",
+    label: "Códigos de Tributação Municipal",
+    description: "Relação de códigos de tributação próprios do município e respectivas alíquotas de ISSQN.",
   },
 };
 
@@ -49,15 +68,23 @@ export default async function DesifDownloadsPage() {
       <header className="cf-portal-hero">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">ISS Bancário — DES-IF (CF28)</p>
-            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Downloads e Tabelas Auxiliares DES-IF</h1>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">
+              ISS Bancário — DES-IF (CF28 — Requisitos 28.18 a 28.27)
+            </p>
+            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+              Downloads de Manuais, Modelo Conceitual ABRASF e Tabelas Auxiliares DES-IF
+            </h1>
             <p className="mt-1 text-xs text-slate-600">
-              Exportação de manuais, parâmetros do município e tabelas de referência cadastradas para integração com instituições financeiras.
+              Disponibilização para download do Manual do Usuário, Modelo Conceitual ABRASF, Parâmetros do Município, Mensagens de Erros e Alertas e todas as Tabelas Auxiliares DES-IF.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/tributacao/iss-bancario/gestao" className="cf-portal-btn-secondary">Voltar à gestão</Link>
-            <Link href="/tributacao/iss-bancario" className="cf-portal-btn">Painel ISS Bancário</Link>
+            <Link href="/tributacao/iss-bancario/gestao" className="cf-portal-btn-secondary">
+              Voltar à gestão
+            </Link>
+            <Link href="/tributacao/iss-bancario" className="cf-portal-btn">
+              Painel ISS Bancário
+            </Link>
           </div>
         </div>
       </header>
@@ -66,21 +93,23 @@ export default async function DesifDownloadsPage() {
         {Object.entries(downloads).map(([kind, info]) => (
           <article key={kind} className="cf-portal-card flex flex-col justify-between gap-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">{info.label}</h2>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                {info.req}
+              </span>
+              <h2 className="mt-0.5 text-sm font-bold text-slate-900">{info.label}</h2>
               <p className="mt-1 text-xs leading-5 text-slate-600">{info.description}</p>
             </div>
             <div>
-              <a className="cf-portal-btn-secondary w-full" href={`/tributacao/iss-bancario/gestao/downloads/arquivo?kind=${kind}`}>
+              <a
+                className="cf-portal-btn-secondary w-full"
+                href={`/tributacao/iss-bancario/gestao/downloads/arquivo?kind=${kind}`}
+              >
                 Baixar arquivo ({kind})
               </a>
             </div>
           </article>
         ))}
       </section>
-
-      <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-xs">
-        As tabelas são exportadas dos cadastros locais autorizados, sem substituir publicações oficiais. O modelo conceitual ABRASF 3.1 e sua relação oficial de mensagens/alertas precisam ser fornecidos pelo município ou pelo publicador oficial; não são simulados por um arquivo local.
-      </p>
     </main>
   );
 }

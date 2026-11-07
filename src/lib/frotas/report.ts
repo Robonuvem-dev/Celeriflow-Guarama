@@ -13,11 +13,46 @@ import type { FleetContext as AppContext } from "@/lib/contracts/fleet";
 import { areaTitles, money, queryFleet } from "./queries";
 import { FleetError, fleetScope } from "./service";
 import { labels, type FleetQuery } from "./contract";
+import { buildFleetControlReport } from "./control-report";
 
-type Input = { query: FleetQuery; documentType?: "plan" | "order"; documentId?: string };
-const titles = { frota: "Listagem geral da frota", vencimentos: "Vencimentos de documentos", abastecimentos: "Abastecimentos por período e veículo", gastos: "Gastos realizados da frota", manutencoes: "Manutenções efetuadas" };
+type FleetReportDocumentType = "plan" | "order" | "authorization" | "trip" | "blankFuel" | "blankTrip" | "fineTerm";
+type Input = { query: FleetQuery; documentType?: FleetReportDocumentType; documentId?: string };
+const titles: Record<string, string> = {
+  frota: "Cadastro de Veículos no período",
+  vencimentos: "Vencimentos de documentos",
+  abastecimentos: "Abastecimentos por período e veículo",
+  gastos: "Gastos realizados da frota",
+  manutencoes: "Relação das manutenções de peças, acessórios e serviços",
+  agendamentos: "Agendamentos dos veículos",
+  multas: "Relação de multas dos veículos",
+  movimentacaoPneus: "Movimentação de pneus por veículo",
+  pneusBaixados: "Relação dos pneus baixados",
+  trocaOleo: "Movimentação de troca de óleo",
+  combustivel: "Controle de abastecimentos e saldo por empenho",
+  escolar: "Abastecimentos de veículos de transporte escolar",
+  hospitalar: "Abastecimentos de veículos de transporte hospitalar",
+  gastosGerais: "Gastos gerais com combustíveis, peças e pneus no período",
+  consumo: "Controle de consumo de combustíveis e planilha de consumo",
+  relacaoRequisicoes: "Relação das Requisições de Abastecimento",
+  saidaViagem: "Relatório de Saída de Viagem com roteiro",
+  quilometragem: "Controle de Quilometragem",
+  comunidade: "Relação de solicitações da comunidade no período",
+  acompanhamento: "Acompanhamento de veículos e máquinas",
+  incorporacoes: "Veículos Incorporados e Desincorporados para o TCE-MG",
+  cnh: "Relação de CNH próximas a vencer",
+  pontuacao: "Controle de pontuação das CNH dos motoristas",
+  custoKm: "Gastos dos veículos por km rodado no período",
+  movimentacoes: "Controle e monitoramento de movimentações dos veículos",
+  requisicoesEncerradas: "Relação de requisições finalizadas e/ou canceladas",
+};
 export async function createFleetReportDataset(context: AppContext, input: Input): Promise<InternalReportDataset> {
   const q = input.query, scope = fleetScope(context), db = fleetDatabase(context);
+  if (input.documentType && ["authorization", "trip", "blankFuel", "blankTrip", "fineTerm"].includes(input.documentType)) {
+    return buildFleetControlReport(context, { query: q, documentType: input.documentType as any, documentId: input.documentId });
+  }
+  if (q.area === "relatorios" && !["frota", "vencimentos", "abastecimentos", "gastos", "manutencoes"].includes(q.report)) {
+    return buildFleetControlReport(context, { query: q, report: q.report as any, unitIds: q.unitIds ? q.unitIds.split(",") : q.unitId ? [q.unitId] : undefined });
+  }
   let title: string, sections: InternalReportDataset["sections"];
   const warnings: string[] = [];
   if (input.documentType) {

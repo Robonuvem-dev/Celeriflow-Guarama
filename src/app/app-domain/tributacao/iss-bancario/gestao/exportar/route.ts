@@ -13,6 +13,17 @@ const esc = (value: unknown) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 
+const validReports = [
+  "declaracoes",
+  "autos",
+  "iss",
+  "contas",
+  "omissos",
+  "debitos",
+  "estban",
+  "comparativo-estban",
+] as const;
+
 export async function GET(request: Request) {
   const context = await getTenantContextForModule("TRIBUTACAO"),
     database = context.database ?? db;
@@ -25,11 +36,9 @@ export async function GET(request: Request) {
     return new Response("Formato indisponível.", { status: 400 });
   }
   const rawType = params.get("report") ?? "declaracoes";
-  const type = ["declaracoes", "autos", "iss", "contas", "omissos", "debitos"].includes(rawType)
-    ? rawType
-    : "declaracoes";
+  const type = (validReports as readonly string[]).includes(rawType) ? rawType : "declaracoes";
   const filter: DesifReportFilter = Object.fromEntries(
-    ["institution", "module", "start", "end", "status", "number", "year"].map((key) => [
+    ["institution", "module", "declarationType", "start", "end", "status", "number", "year"].map((key) => [
       key,
       params.get(key) ?? "",
     ]),
@@ -70,6 +79,72 @@ export async function GET(request: Request) {
       row.status,
       row.amount,
       row.guideNumber,
+    ]);
+  } else if (type === "estban") {
+    const result = await database.execute<{
+      institution: string;
+      cnpj: string;
+      agency: string;
+      competence: string;
+      account: string;
+      opening: string;
+      credits: string;
+      debits: string;
+      declared: string;
+    }>(
+      sql`SELECT i.name AS institution,i."baseCnpj" AS cnpj,g.name AS agency,b.competence,p.code || ' — ' || p.name AS account,t."openingBalanceDecimal"::text AS opening,t."creditsDecimal"::text AS credits,t."debitsDecimal"::text AS debits,t."declaredCloseDecimal"::text AS declared FROM "DesifTrialBalance" t JOIN "DesifImportBatch" b ON b.id=t."importBatchId" JOIN "DesifAgency" g ON g.id=t."agencyId" JOIN "DesifFinancialInstitution" i ON i.id=g."institutionId" JOIN "DesifPgccAccount" p ON p.id=t."pgccAccountId" WHERE (${filter.institution || ""}='' OR i.id=${filter.institution || ""}) AND (${filter.year || ""}='' OR left(b.competence,4)=${filter.year || ""}) ORDER BY i.name,b.competence,p.code`,
+    );
+    columns = [
+      "Instituição Financeira",
+      "CNPJ Base",
+      "Agência / Dependência",
+      "Competência (Mês/Ano)",
+      "Rubrica / Conta COSIF-ESTBAN",
+      "Saldo Inicial (R$)",
+      "Créditos ESTBAN (R$)",
+      "Débitos ESTBAN (R$)",
+      "Saldo Final Declarado (R$)",
+    ];
+    rows = result.rows.map((row) => [
+      row.institution,
+      row.cnpj,
+      row.agency,
+      row.competence,
+      row.account,
+      row.opening,
+      row.credits,
+      row.debits,
+      row.declared,
+    ]);
+  } else if (type === "comparativo-estban") {
+    const result = await database.execute<{
+      institution: string;
+      competence: string;
+      account: string;
+      estbanRevenue: string;
+      desifRevenue: string;
+      difference: string;
+      status: string;
+    }>(
+      sql`SELECT i.name AS institution,b.competence,p.code || ' — ' || p.name AS account,t."creditsDecimal"::text AS "estbanRevenue",COALESCE((SELECT sum(a."revenueDecimal") FROM "DesifAssessment" a JOIN "DesifSubtitle" s ON s.id=a."subtitleId" WHERE s."pgccAccountId"=p.id AND a.competence=b.competence AND a."agencyId"=t."agencyId"),0)::text AS "desifRevenue",t."differenceDecimal"::text AS difference,CASE WHEN abs(t."differenceDecimal") > 0 THEN 'DIVERGENTE — INDICADO P/ FISCALIZAÇÃO' ELSE 'CONCILIADO' END AS status FROM "DesifTrialBalance" t JOIN "DesifImportBatch" b ON b.id=t."importBatchId" JOIN "DesifAgency" g ON g.id=t."agencyId" JOIN "DesifFinancialInstitution" i ON i.id=g."institutionId" JOIN "DesifPgccAccount" p ON p.id=t."pgccAccountId" WHERE (${filter.institution || ""}='' OR i.id=${filter.institution || ""}) AND (${filter.year || ""}='' OR left(b.competence,4)=${filter.year || ""}) ORDER BY i.name,b.competence,p.code`,
+    );
+    columns = [
+      "Instituição Financeira",
+      "Competência (Mês/Ano)",
+      "Conta COSIF / Rubrica",
+      "Movimento ESTBAN / Balancete (R$)",
+      "Receita Declarada DES-IF (R$)",
+      "Diferença Apurada (R$)",
+      "Situação do Confronto",
+    ];
+    rows = result.rows.map((row) => [
+      row.institution,
+      row.competence,
+      row.account,
+      row.estbanRevenue,
+      row.desifRevenue,
+      row.difference,
+      row.status,
     ]);
   } else if (type === "iss" || type === "contas") {
     const start = filter.start && /^\d{4}-\d{2}-\d{2}$/.test(filter.start) ? filter.start : "";
@@ -134,6 +209,7 @@ export async function GET(request: Request) {
         "Instituição",
         "Competência",
         "Módulo",
+        "Tipo de Declaração",
         "Versão informada",
         "Importação",
         "Processamento",
@@ -144,6 +220,7 @@ export async function GET(request: Request) {
         row.institution,
         row.competence,
         row.moduleType,
+        row.declarationType,
         row.version,
         String(row.receivedAt),
         row.processedAt ? String(row.processedAt) : null,
@@ -154,19 +231,21 @@ export async function GET(request: Request) {
   }
 
   const reportTitles: Record<string, string> = {
-    iss: "Relatório de Valores do ISS",
-    declaracoes: "Relatório de Declarações Importadas",
-    omissos: "Relatório de Omissos na Declaração Mensal",
-    debitos: "Relatório de Débitos dos Contribuintes (Bancos)",
-    contas: "Relatório de Contas declaradas com movimento tributável",
-    autos: "Relatório de Autos de Infração do ISS Bancário",
+    iss: "Relatório de Valores do ISS (Req. 28.69)",
+    declaracoes: "Relatório Gerencial das Declarações Recebidas (Req. 28.70)",
+    omissos: "Relatório Gerencial de Omissos na Declaração Mensal (Req. 28.71)",
+    debitos: "Relatório de Lançamento de Débito dos Contribuintes Bancos (Req. 28.72)",
+    contas: "Relatório de Contas Tributáveis Declaradas (Req. 28.73)",
+    autos: "Relatório de Autos de Infração do ISS Bancário (Req. 28.3)",
+    estban: "Relatório de Informações do ESTBAN por Instituição e Competência (Req. 28.55 / 28.68)",
+    "comparativo-estban": "Relatório Comparativo Declarações DES-IF x ESTBAN (Req. 28.67)",
   };
 
   const wantsHtml = !hasExplicitFormat && (request.headers.get("accept") ?? "").includes("text/html");
   if (wantsHtml) {
     const baseQuery = new URLSearchParams(params);
     baseQuery.set("report", type);
-    const formatLinks = (["pdf", "xlsx", "xls", "docx", "doc", "txt", "csv"] as const)
+    const formatLinks = (["pdf", "xls", "xlsx", "doc", "docx", "txt", "csv"] as const)
       .map((fmt) => {
         const q = new URLSearchParams(baseQuery);
         q.set("format", fmt);
@@ -174,7 +253,7 @@ export async function GET(request: Request) {
       })
       .join("");
 
-    const reportTabs = (["iss", "declaracoes", "omissos", "debitos", "contas", "autos"] as const)
+    const reportTabs = validReports
       .map(
         (rep) =>
           `<a class="tab ${rep === type ? "active" : ""}" href="/tributacao/iss-bancario/gestao/exportar?report=${rep}">${esc(reportTitles[rep])}</a>`,
@@ -211,9 +290,9 @@ export async function GET(request: Request) {
   <div class="container">
     <header class="hero">
       <div>
-        <p class="kicker">ISS Bancário — Relatórios e Exportações DES-IF (CF28)</p>
+        <p class="kicker">ISS Bancário — Relatórios Gerenciais e Exportações DES-IF (CF28)</p>
         <h1>${esc(reportTitles[type])}</h1>
-        <p class="sub">Total de registros localizados: <strong>${rows.length}</strong>. Selecione os filtros ou exporte nos formatos PDF, XLSX, XLS, DOCX, DOC, TXT e CSV.</p>
+        <p class="sub">Total de registros localizados: <strong>${rows.length}</strong>. Selecione os filtros ou exporte nos formatos PDF, XLS, XLSX, DOC, DOCX, TXT e CSV.</p>
       </div>
       <div class="tabs no-print">
         <button class="btn" type="button" onclick="window.print()">Imprimir</button>

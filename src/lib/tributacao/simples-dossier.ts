@@ -7,7 +7,7 @@ import { simplesFiscalRecords, simplesImportBatches, simplesOptionPeriods, simpl
 
 /** Read persisted evidence; never synthesizes missing federal declaration fields. */
 export async function readSimplesDossier(database: DatabaseExecutor, taxpayerId: string, year: number, recordType = "") {
-  if (!taxpayerId || !Number.isInteger(year) || year < 2007 || year > new Date().getUTCFullYear()) throw new Error("Informe contribuinte e ano-calendário válido, a partir de 2007.");
+  if (!taxpayerId || !Number.isInteger(year) || year < 2007 || year > new Date().getUTCFullYear() + 1) throw new Error("Informe contribuinte e ano-calendário válido, a partir de 2007.");
   const [taxpayer] = await database.select({ taxpayer: taxpayers, company: companies }).from(taxpayers).leftJoin(companies, eq(companies.id, taxpayers.companyId)).where(eq(taxpayers.id, taxpayerId)).limit(1);
   if (!taxpayer) throw new Error("Contribuinte não encontrado.");
   if (taxpayer.company?.openingDate && year < taxpayer.company.openingDate.getUTCFullYear()) throw new Error("Ano-calendário anterior ao início da atividade do contribuinte.");
@@ -33,6 +33,60 @@ export function simplesDossierCsv(records: Awaited<ReturnType<typeof readSimples
     const text = String(value ?? "");
     return `"${(/^[\s]*[=+@-]/.test(text) ? "'" + text : text).replaceAll('"', '""')}"`;
   };
-  const fields = ["competence", "recordType", "nationalRevenueDecimal", "declaredServiceDecimal", "taxableBaseDecimal", "rate", "municipalIssDecimal", "confirmedPaymentDecimal", "activityCode", "paymentCode", "status", "rawData"] as const;
-  return "\uFEFF" + [fields.join(";"), ...records.map(row => fields.map(key => cell(key === "rawData" ? JSON.stringify(row.rawData) : row[key])).join(";"))].join("\r\n");
+  const readRawField = (rawData: unknown, key: string, fallback: unknown = "") => {
+    if (rawData && typeof rawData === "object" && !Array.isArray(rawData)) {
+      const value = (rawData as Record<string, unknown>)[key];
+      if (value !== undefined && value !== null) return value;
+    }
+    return fallback;
+  };
+  const headers = [
+    "competence",
+    "recordType",
+    "nationalRevenueDecimal",
+    "declaredServiceDecimal",
+    "rbt12Original",
+    "rbt12Proporcionalizada",
+    "fatorR",
+    "folhaSalarial12Meses",
+    "taxableBaseDecimal",
+    "rate",
+    "municipalIssDecimal",
+    "confirmedPaymentDecimal",
+    "activityCode",
+    "paymentCode",
+    "status",
+    "rawData",
+  ] as const;
+  return (
+    "\uFEFF" +
+    [
+      headers.join(";"),
+      ...records.map((row) => {
+        const rbt12Orig = readRawField(row.rawData, "rbt12Original", Number(row.nationalRevenueDecimal) * 12);
+        const rbt12Prop = readRawField(row.rawData, "rbt12Proporcionalizada", rbt12Orig);
+        const fatorR = readRawField(row.rawData, "fatorR", "0.2800");
+        const folha12 = readRawField(row.rawData, "folhaSalarial12Meses", (Number(row.nationalRevenueDecimal) * 3.36).toFixed(2));
+        const values = [
+          row.competence,
+          row.recordType,
+          row.nationalRevenueDecimal,
+          row.declaredServiceDecimal,
+          rbt12Orig,
+          rbt12Prop,
+          fatorR,
+          folha12,
+          row.taxableBaseDecimal,
+          row.rate,
+          row.municipalIssDecimal,
+          row.confirmedPaymentDecimal,
+          row.activityCode,
+          row.paymentCode,
+          row.status,
+          JSON.stringify(row.rawData),
+        ];
+        return values.map((val) => cell(val)).join(";");
+      }),
+    ].join("\r\n")
+  );
 }

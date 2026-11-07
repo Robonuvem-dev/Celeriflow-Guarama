@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const params = new URL(request.url).searchParams;
     const format = z.enum(["pdf", "xlsx", "csv", "txt", "print"]).parse(params.get("format") || "pdf");
     const query = fleetQuerySchema.parse(Object.fromEntries(params.entries()));
-    const documentType = z.enum(["plan", "order"]).optional().parse(params.get("documentType") || undefined);
+    const documentType = z.enum(["plan", "order", "authorization", "trip", "blankFuel", "blankTrip", "fineTerm"]).optional().parse(params.get("documentType") || undefined);
     const result = await issueFleetReport({ query, documentType, documentId: params.get("documentId") || undefined }, format);
     const filename = `celeriflow-frotas-${documentType || (query.area === "relatorios" ? query.report : query.area)}.${format === "print" ? "html" : format}`;
     return new Response(typeof result.body === "string" ? result.body : new Blob([result.body as Uint8Array<ArrayBuffer>]), { headers: { "Content-Type": result.contentType, "Content-Disposition": `${format === "print" ? "inline" : "attachment"}; filename="${filename}"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });

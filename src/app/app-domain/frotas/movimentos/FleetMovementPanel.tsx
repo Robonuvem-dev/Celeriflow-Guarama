@@ -4,12 +4,20 @@ import { useState } from "react";
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import { fleetMovementAction } from "./actions";
 
-export function FleetMovementPanel({ units, labels, requestId }: {
+export function FleetMovementPanel({ units, labels, requestId, initialValues }: {
   units: { id: string; code: string; plate: string | null; name: string }[];
   labels: Record<string, string>;
   requestId: string;
+  initialValues?: { operation?: string; unitId?: string; externalPlate?: string; reading?: string; recordId?: string; reason?: string };
 }) {
-  const [draft, setDraft] = useState({ operation: "plate", unitId: "", externalPlate: "", reading: "", recordId: "", reason: "" });
+  const [draft, setDraft] = useState({
+    operation: initialValues?.operation || "plate",
+    unitId: initialValues?.unitId || "",
+    externalPlate: initialValues?.externalPlate || "",
+    reading: initialValues?.reading || "",
+    recordId: initialValues?.recordId || "",
+    reason: initialValues?.reason || "",
+  });
   const [file, setFile] = useState<File | null>(null);
   const field = (name: keyof typeof draft, value: string) => setDraft(previous => ({ ...previous, [name]: value }));
   return <OperationalTablePanel title="Registrar movimento" triggerLabel="Registrar movimento ou importar arquivo">

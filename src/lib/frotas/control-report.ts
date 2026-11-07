@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { Decimal } from "@/db/decimal";
 import * as f from "@/db/schema/fleet";
 import { departments as departmentTable } from "@/db/schema/administration";
@@ -14,8 +14,9 @@ import { fleetScope } from "./service";
 import { fleetControlUnitWhere, queryFleetControl } from "./control-queries";
 import { controlQuerySchema, consumptionAverage, type FleetMeter } from "./control-policy";
 import { FleetControlError, scopedFleetUnit } from "./control-access";
+import { fleetControlReportLabels, fleetControlReports } from "./contract";
 
-export const fleetControlReports = ["quilometragem", "custoKm", "consumo", "cnh", "pontuacao", "incorporacoes", "pneusBaixados", "combustivel", "escolar", "hospitalar", "requisicoesEncerradas", "comunidade"] as const;
+export { fleetControlReportLabels, fleetControlReports };
 export type FleetControlReportInput = { query: unknown; documentType?: "authorization" | "trip" | "blankFuel" | "blankTrip" | "fineTerm"; documentId?: string; unitIds?: string[]; report?: typeof fleetControlReports[number] };
 const date = (value: Date | null | undefined) => value?.toISOString() || "Não informado";
 const amount = (value: Decimal | null | undefined, scale = 2) => value === null || value === undefined ? "Não informado" : value.toFixed(scale);
@@ -57,13 +58,500 @@ export async function buildFleetControlReport(context: AppContext, input: FleetC
     const reportQuery = { ...query, area: "relatorios" as const, unitIds: input.unitIds?.length ? input.unitIds.join(",") : query.unitIds };
     const units = await readFleetUnits(db, fleetControlUnitWhere(context, reportQuery));
     const ids = units.map(unit => unit.id), names = new Map(units.map(unit => [unit.id, `${unit.code} · ${unit.plate || unit.name}`]));
-    title = `Frota — ${input.report}`;
+    title = (input.report && fleetControlReportLabels[input.report]) || (input.report ? `Frota — ${input.report}` : "Frota — relatório operacional");
     if (input.report === "comunidade") {
       const records = await db.select().from(assetCatalogRecords).where(and(eq(assetCatalogRecords.kind, "solicitacoes"), eq(assetCatalogRecords.active, true), scope.administrator ? undefined : eq(assetCatalogRecords.departmentId, scope.departmentId!), query.departmentId ? eq(assetCatalogRecords.departmentId, query.departmentId) : undefined, fleetDates(assetCatalogRecords.createdAt, query.from, query.to, true))).orderBy(asc(assetCatalogRecords.createdAt), asc(assetCatalogRecords.code));
       const requestedIds = query.unitId ? [query.unitId] : reportQuery.unitIds ? reportQuery.unitIds.split(",") : [];
       const selected = records.filter(record => (!requestedIds.length || requestedIds.includes(record.details.unitId)) && (!query.status || record.details.status === query.status) && (!query.q || [record.code, record.name, ...Object.values(record.details)].join(" ").toLocaleLowerCase("pt-BR").includes(query.q.toLocaleLowerCase("pt-BR"))));
       title = "Solicitações da comunidade — Frota";
       sections = [{ title: "Solicitações cadastradas no período", rows: selected.map(record => ({ Código: record.code, Nome: record.name, Cadastro: date(record.createdAt), Setor: record.departmentId, Solicitante: record.details.requester, Contato: record.details.contact, Solicitação: record.details.description, Situação: record.details.status, Veículo: names.get(record.details.unitId) || record.details.unitId || "Não vinculado", Agendamento: record.details.bookingId || "Não vinculado", Início: record.details.startsAt || "Não informado", Fim: record.details.endsAt || "Não informado", Motivo: record.details.reason || "Não informado" })) }, { title: "Total do recorte", rows: [{ Solicitações: selected.length }] }];
+    } else if (input.report === "agendamentos") {
+      const where = and(inArray(f.fleetBookings.unitId, ids), fleetDates(f.fleetBookings.startsAt, query.from, query.to, true), query.driverId ? eq(f.fleetBookings.driverId, query.driverId) : undefined, query.status ? eq(f.fleetBookings.status, query.status) : undefined);
+      const bookings = await db.select().from(f.fleetBookings).where(where).orderBy(asc(f.fleetBookings.startsAt));
+      const driverRows = await db.select({ id: f.fleetDrivers.id, personId: f.fleetDrivers.personId }).from(f.fleetDrivers).where(inArray(f.fleetDrivers.id, bookings.flatMap(b => b.driverId ? [b.driverId] : [])));
+      const persons = await db.select({ id: people.id, fullName: people.fullName }).from(people).where(inArray(people.id, driverRows.map(d => d.personId)));
+      const driverMap = new Map(driverRows.map(d => [d.id, persons.find(p => p.id === d.personId)?.fullName || "Condutor"]));
+      const routeRows = await db.select({ id: f.fleetRoutes.id, name: f.fleetRoutes.name }).from(f.fleetRoutes).where(inArray(f.fleetRoutes.id, bookings.flatMap(b => b.routeId ? [b.routeId] : [])));
+      const routeMap = new Map(routeRows.map(r => [r.id, r.name]));
+      title = "Agendamentos dos veículos";
+      sections = [
+        {
+          title: "Agendamentos programados no período",
+          rows: bookings.map(b => ({
+            Veículo: names.get(b.unitId) || b.unitId,
+            Início: date(b.startsAt),
+            Fim: date(b.endsAt),
+            Tipo: b.kind,
+            Finalidade: b.purpose,
+            Motorista: driverMap.get(b.driverId || "") || "Não informado",
+            Rota: routeMap.get(b.routeId || "") || "Livre / não vinculada",
+            Situação: b.status,
+            Origem: b.previousId ? `Reprogramação (${b.previousId})` : "Original",
+          })),
+        },
+        {
+          title: "Total do período",
+          rows: [{ "Total de agendamentos": bookings.length, "Agendados": bookings.filter(b => b.status === "AGENDADO").length, "Cancelados": bookings.filter(b => b.status === "CANCELADO").length, "Concluídos": bookings.filter(b => b.status === "CONCLUIDO").length }],
+        },
+      ];
+    } else if (input.report === "multas") {
+      const where = and(inArray(f.fleetFines.unitId, ids), fleetDates(f.fleetFines.occurredAt, query.from, query.to, false, true), query.driverId ? eq(f.fleetFines.driverId, query.driverId) : undefined, query.status ? eq(f.fleetFines.status, query.status) : undefined);
+      const fines = await db.select().from(f.fleetFines).where(where).orderBy(desc(f.fleetFines.occurredAt));
+      const driverRows = await db.select({ id: f.fleetDrivers.id, personId: f.fleetDrivers.personId, cnhNumber: f.fleetDrivers.cnhNumber }).from(f.fleetDrivers).where(inArray(f.fleetDrivers.id, fines.flatMap(fine => fine.driverId ? [fine.driverId] : [])));
+      const persons = await db.select({ id: people.id, fullName: people.fullName }).from(people).where(inArray(people.id, driverRows.map(d => d.personId)));
+      const driverMap = new Map(driverRows.map(d => [d.id, { name: persons.find(p => p.id === d.personId)?.fullName || "Não identificado", cnh: d.cnhNumber }]));
+      const payments = await db.select().from(f.fleetFinePayments).where(inArray(f.fleetFinePayments.fineId, fines.map(f => f.id)));
+      title = "Relação de multas dos veículos";
+      sections = [
+        {
+          title: "Multas e infrações registradas no período",
+          rows: fines.map(fine => {
+            const driverInfo = driverMap.get(fine.driverId || "");
+            const finePayments = payments.filter(p => p.fineId === fine.id && !p.reversedAt);
+            const paid = finePayments.reduce((sum, p) => sum.add(p.amount), new Decimal(0));
+            return {
+              Veículo: names.get(fine.unitId) || fine.unitId,
+              "Auto de Infração (AIT)": fine.aitNumber,
+              "Data do Fato": date(fine.occurredAt),
+              Vencimento: date(fine.dueAt),
+              Município: fine.city,
+              Motorista: driverInfo?.name || "Não informado",
+              CNH: driverInfo?.cnh || "Não informada",
+              Pontos: fine.points,
+              "Valor Notificado": amount(fine.amount),
+              "Total Pago": paid.toFixed(2),
+              Saldo: fine.amount.sub(paid).toFixed(2),
+              Situação: fine.status,
+              "Termo de Desconto": fine.driverId ? "Disponível para emissão individual" : "Sem condutor vinculado",
+            };
+          }),
+        },
+        {
+          title: "Totais das multas do período",
+          rows: [{
+            "Quantidade de infrações": fines.length,
+            "Total em pontos": fines.reduce((sum, f) => sum + f.points, 0),
+            "Valor total das multas": fines.reduce((sum, f) => sum.add(f.amount || 0), new Decimal(0)).toFixed(2),
+            "Multas pendentes": fines.filter(f => f.status === "PENDENTE" || f.status === "NOTIFICADA").length,
+          }],
+        },
+      ];
+      warnings.push("O Termo de Autorização para desconto em folha do motorista pode ser emitido individualmente via documentType=fineTerm com o identificador do auto.");
+    } else if (input.report === "manutencoes") {
+      const orders = await db.select().from(f.fleetWorkOrders).where(and(inArray(f.fleetWorkOrders.unitId, ids), fleetDates(f.fleetWorkOrders.scheduledAt, query.from, query.to, false, true), query.status ? eq(f.fleetWorkOrders.status, query.status) : undefined)).orderBy(desc(f.fleetWorkOrders.scheduledAt));
+      const expenses = await db.select().from(f.fleetExpenses).where(and(inArray(f.fleetExpenses.unitId, ids), eq(f.fleetExpenses.nature, "MANUTENCAO"), fleetDates(f.fleetExpenses.occurredAt, query.from, query.to, false, true))).orderBy(desc(f.fleetExpenses.occurredAt));
+      const compInstalls = await db.select({ installation: f.fleetComponentInstallations, component: f.fleetComponents }).from(f.fleetComponentInstallations).innerJoin(f.fleetComponents, eq(f.fleetComponents.id, f.fleetComponentInstallations.componentId)).where(and(inArray(f.fleetComponentInstallations.unitId, ids), fleetDates(f.fleetComponentInstallations.installedAt, query.from, query.to, true))).orderBy(desc(f.fleetComponentInstallations.installedAt));
+      title = "Relação das manutenções de peças, acessórios e serviços";
+      sections = [
+        {
+          title: "Ordens de serviço de manutenção",
+          rows: orders.map(o => ({
+            Veículo: names.get(o.unitId) || o.unitId,
+            OS: o.id,
+            Tipo: o.type,
+            Programação: date(o.scheduledAt),
+            Conclusão: date(o.completedAt),
+            Serviços: o.services,
+            "Serviços executados": o.performed || "—",
+            Resultado: o.result || "—",
+            "Custo previsto": amount(o.estimatedCost),
+            "Custo realizado": amount(o.actualCost),
+            Situação: o.status,
+          })),
+        },
+        {
+          title: "Substituição de peças e acessórios instalados",
+          rows: compInstalls.map(({ installation, component }) => ({
+            Veículo: names.get(installation.unitId) || installation.unitId,
+            Item: `${component.kind} · ${component.identifier}`,
+            Marca: component.brand,
+            Especificação: component.specification,
+            Posição: installation.position,
+            Instalação: date(installation.installedAt),
+            Motivo: installation.reason,
+            Custo: amount(installation.cost),
+          })),
+        },
+        {
+          title: "Despesas de manutenção apropriadas",
+          rows: expenses.map(e => ({
+            Veículo: names.get(e.unitId) || e.unitId,
+            Data: date(e.occurredAt),
+            Descrição: e.description,
+            Fornecedor: e.supplierName || "Não informado",
+            Valor: amount(e.amount),
+            Referência: e.reference || "—",
+          })),
+        },
+        {
+          title: "Totais das manutenções",
+          rows: [{
+            "Ordens de serviço": orders.length,
+            "Peças/acessórios instalados": compInstalls.length,
+            "Total realizado em OS": orders.reduce((sum, o) => sum.add(o.actualCost || 0), new Decimal(0)).toFixed(2),
+            "Total despesas de manutenção": expenses.reduce((sum, e) => sum.add(e.amount || 0), new Decimal(0)).toFixed(2),
+          }],
+        },
+      ];
+    } else if (input.report === "movimentacaoPneus") {
+      const items = await db.select({ installation: f.fleetComponentInstallations, component: f.fleetComponents }).from(f.fleetComponentInstallations).innerJoin(f.fleetComponents, eq(f.fleetComponents.id, f.fleetComponentInstallations.componentId)).where(and(inArray(f.fleetComponentInstallations.unitId, ids), eq(f.fleetComponents.kind, "PNEU"), or(fleetDates(f.fleetComponentInstallations.installedAt, query.from, query.to, true), fleetDates(f.fleetComponentInstallations.removedAt, query.from, query.to, true)))).orderBy(desc(f.fleetComponentInstallations.installedAt));
+      title = "Movimentação de pneus por veículo";
+      sections = [
+        {
+          title: "Instalações e retiradas de pneus",
+          rows: items.map(({ installation, component }) => ({
+            Veículo: names.get(installation.unitId) || installation.unitId,
+            "Identificador do Pneu": component.identifier,
+            Marca: component.brand,
+            Dimensões: component.specification,
+            Posição: installation.position,
+            "Data de Instalação": date(installation.installedAt),
+            "Data de Retirada": date(installation.removedAt),
+            "Situação Atual": component.status,
+            Motivo: installation.reason,
+            Custo: amount(installation.cost),
+          })),
+        },
+        {
+          title: "Resumo da movimentação",
+          rows: [{
+            "Total de movimentações": items.length,
+            "Pneus atualmente em uso": items.filter(i => !i.installation.removedAt).length,
+            "Pneus retirados": items.filter(i => !!i.installation.removedAt).length,
+          }],
+        },
+      ];
+    } else if (input.report === "trocaOleo") {
+      const consumptions = await db.select().from(f.fleetConsumptions).where(and(inArray(f.fleetConsumptions.unitId, ids), eq(f.fleetConsumptions.type, "LUBRIFICANTE"), fleetDates(f.fleetConsumptions.occurredAt, query.from, query.to, false, true))).orderBy(desc(f.fleetConsumptions.occurredAt));
+      const workOrders = await db.select().from(f.fleetWorkOrders).where(and(inArray(f.fleetWorkOrders.unitId, ids), fleetDates(f.fleetWorkOrders.scheduledAt, query.from, query.to, false, true), sql`lower(${f.fleetWorkOrders.services}) like '%oleo%' or lower(${f.fleetWorkOrders.services}) like '%óleo%' or lower(${f.fleetWorkOrders.services}) like '%lubrific%'`)).orderBy(desc(f.fleetWorkOrders.scheduledAt));
+      title = "Movimentação de troca de óleo dos veículos";
+      sections = [
+        {
+          title: "Trocas e reposições de óleo / lubrificantes registradas",
+          rows: consumptions.map(c => ({
+            Veículo: names.get(c.unitId) || c.unitId,
+            Data: date(c.occurredAt),
+            Material: c.material,
+            "Quantidade (L)": `${c.quantity} ${c.measurementUnit}`,
+            Origem: c.origin === "PROPRIO" ? "Próprio (Almoxarifado)" : "Terceiro",
+            Fornecedor: c.supplierName || "Não informado",
+            Custo: amount(c.cost),
+            Referência: c.reference || "—",
+          })),
+        },
+        {
+          title: "Ordens de serviço com serviços de troca de óleo",
+          rows: workOrders.map(o => ({
+            Veículo: names.get(o.unitId) || o.unitId,
+            OS: o.id,
+            Data: date(o.completedAt || o.scheduledAt),
+            Serviços: o.services,
+            Execução: o.performed || "—",
+            Custo: amount(o.actualCost || o.estimatedCost),
+            Situação: o.status,
+          })),
+        },
+        {
+          title: "Totais de lubrificantes do período",
+          rows: [{
+            "Registros de consumo": consumptions.length,
+            "Litros consumidos": consumptions.reduce((sum, c) => sum.add(c.quantity || 0), new Decimal(0)).toFixed(2),
+            "Custo conhecido": consumptions.reduce((sum, c) => sum.add(c.cost || 0), new Decimal(0)).toFixed(2),
+          }],
+        },
+      ];
+    } else if (input.report === "gastosGerais") {
+      const expenses = await db.select().from(f.fleetExpenses).where(and(inArray(f.fleetExpenses.unitId, ids), fleetDates(f.fleetExpenses.occurredAt, query.from, query.to, false, true))).orderBy(desc(f.fleetExpenses.occurredAt));
+      const groupsByNature = new Map<string, { total: Decimal; count: number }>();
+      const groupsByUnit = new Map<string, { total: Decimal; count: number }>();
+      for (const exp of expenses) {
+        const nat = exp.nature || "OUTROS";
+        const natGroup = groupsByNature.get(nat) || { total: new Decimal(0), count: 0 };
+        natGroup.count++;
+        if (exp.amount) natGroup.total = natGroup.total.add(exp.amount);
+        groupsByNature.set(nat, natGroup);
+
+        const unitGroup = groupsByUnit.get(exp.unitId) || { total: new Decimal(0), count: 0 };
+        unitGroup.count++;
+        if (exp.amount) unitGroup.total = unitGroup.total.add(exp.amount);
+        groupsByUnit.set(exp.unitId, unitGroup);
+      }
+      title = "Gastos gerais com combustíveis, peças, pneus e manutenções no período";
+      sections = [
+        {
+          title: "Resumo consolidado por natureza de despesa",
+          rows: [...groupsByNature.entries()].map(([natureza, grp]) => ({
+            Natureza: natureza,
+            "Quantidade de registros": grp.count,
+            "Total conhecido (R$)": grp.total.toFixed(2),
+          })),
+        },
+        {
+          title: "Resumo consolidado por veículo / máquina",
+          rows: [...groupsByUnit.entries()].map(([unitId, grp]) => ({
+            Veículo: names.get(unitId) || unitId,
+            "Registros de gastos": grp.count,
+            "Total conhecido (R$)": grp.total.toFixed(2),
+          })),
+        },
+        {
+          title: "Demonstrativo analítico de despesas",
+          rows: expenses.map(e => ({
+            Veículo: names.get(e.unitId) || e.unitId,
+            Data: date(e.occurredAt),
+            Natureza: e.nature,
+            Descrição: e.description,
+            Fornecedor: e.supplierName || "Não informado",
+            Valor: amount(e.amount),
+            Referência: e.reference || "—",
+          })),
+        },
+        {
+          title: "Total geral do período",
+          rows: [{
+            "Total de despesas": expenses.length,
+            "Valor global conhecido (R$)": expenses.reduce((sum, e) => sum.add(e.amount || 0), new Decimal(0)).toFixed(2),
+            "Despesas sem valor": expenses.filter(e => e.amount === null).length,
+          }],
+        },
+      ];
+    } else if (input.report === "relacaoRequisicoes") {
+      const auths = await db.select().from(f.fleetAuthorizations).where(and(inArray(f.fleetAuthorizations.unitId, ids), eq(f.fleetAuthorizations.kind, "ABASTECIMENTO"), fleetDates(f.fleetAuthorizations.issuedAt, query.from, query.to, true), query.status ? eq(f.fleetAuthorizations.status, query.status) : undefined)).orderBy(desc(f.fleetAuthorizations.issuedAt));
+      const providers = await db.select().from(f.fleetProviders).where(inArray(f.fleetProviders.id, auths.flatMap(a => a.providerId ? [a.providerId] : [])));
+      const suppliersMap = new Map();
+      for (const p of providers) {
+        const s = await readFleetSupplier(db, p.supplierId, false);
+        if (s?.company?.corporateName) suppliersMap.set(p.id, s.company.corporateName);
+      }
+      title = "Relação das Requisições de Abastecimento";
+      sections = [
+        {
+          title: "Requisições de abastecimento emitidas no período",
+          rows: auths.map(a => ({
+            "Número / Código": a.code,
+            Veículo: names.get(a.unitId) || a.unitId,
+            Emissão: date(a.issuedAt),
+            Validade: date(a.validUntil),
+            "Posto / Fornecedor": suppliersMap.get(a.providerId || "") || "Próprio",
+            Descrição: a.description,
+            "Litros Autorizados": amount(a.authorizedQuantity, 3),
+            "Litros Executados": amount(a.actualQuantity, 3),
+            "Valor Limite (R$)": amount(a.authorizedAmount),
+            "Valor Executado (R$)": amount(a.actualAmount),
+            "Executado em": date(a.executedAt),
+            Situação: a.status,
+          })),
+        },
+        {
+          title: "Totais das requisições",
+          rows: [{
+            "Total de requisições": auths.length,
+            "Volume autorizado (L)": auths.reduce((sum, a) => sum.add(a.authorizedQuantity || 0), new Decimal(0)).toFixed(2),
+            "Volume executado (L)": auths.reduce((sum, a) => sum.add(a.actualQuantity || 0), new Decimal(0)).toFixed(2),
+            "Valor total executado (R$)": auths.reduce((sum, a) => sum.add(a.actualAmount || 0), new Decimal(0)).toFixed(2),
+            "Pendentes / Emitidas": auths.filter(a => a.status === "EMITIDA").length,
+            "Executadas": auths.filter(a => a.status === "EXECUTADA").length,
+            "Canceladas": auths.filter(a => a.status === "CANCELADA").length,
+          }],
+        },
+      ];
+    } else if (input.report === "saidaViagem") {
+      const trips = await db.select().from(f.fleetTrips).where(and(inArray(f.fleetTrips.unitId, ids), fleetDates(f.fleetTrips.departedAt, query.from, query.to, true), query.driverId ? eq(f.fleetTrips.driverId, query.driverId) : undefined)).orderBy(desc(f.fleetTrips.departedAt));
+      title = "Relatório de Saída de Viagem com Roteiro";
+      sections = [
+        {
+          title: "Deslocamentos e saídas de viagem no período",
+          rows: trips.map(t => ({
+            Veículo: names.get(t.unitId) || t.unitId,
+            Motorista: (t.driverSnapshot as { name: string })?.name || "Não informado",
+            Destino: t.destination,
+            Finalidade: t.purpose,
+            Roteiro: t.routeSnapshot || "Itinerário padrão",
+            Saída: date(t.departedAt),
+            Retorno: date(t.returnedAt),
+            Marcador: t.meterType,
+            "Km/Hor Inicial": amount(t.startReading, 3),
+            "Km/Hor Final": amount(t.endReading, 3),
+            Percorrido: t.startReading !== null && t.endReading !== null ? t.endReading.sub(t.startReading).toFixed(3) : "Em trânsito",
+          })),
+        },
+        {
+          title: "Campos para anotações do motorista na viagem",
+          rows: [
+            { "Campo": "Abastecimento no trajeto (Posto, Litros, R$, Odômetro)", "Anotações do motorista": "________________________________________________" },
+            { "Campo": "Troca de óleo / Lubrificante (Tipo, Litros, Valor)", "Anotações do motorista": "________________________________________________" },
+            { "Campo": "Manutenção emergencial / Serviços / Pneus", "Anotações do motorista": "________________________________________________" },
+            { "Campo": "Pedágios / Despesas acessórias", "Anotações do motorista": "________________________________________________" },
+            { "Campo": "Ocorrências / Intercorrências no trajeto", "Anotações do motorista": "________________________________________________" },
+            { "Campo": "Assinatura do motorista e data", "Anotações do motorista": "________________________________________________" },
+          ],
+        },
+      ];
+    } else if (input.report === "acompanhamento") {
+      const controls = await db.select().from(f.fleetUnitControls).where(inArray(f.fleetUnitControls.unitId, ids));
+      const docs = await db.select().from(f.fleetDocuments).where(and(inArray(f.fleetDocuments.unitId, ids), eq(f.fleetDocuments.status, "PENDENTE")));
+      const orders = await db.select().from(f.fleetWorkOrders).where(and(inArray(f.fleetWorkOrders.unitId, ids), inArray(f.fleetWorkOrders.status, ["EMITIDA", "EM_EXECUCAO"])));
+      const expenses = await db.select().from(f.fleetExpenses).where(and(inArray(f.fleetExpenses.unitId, ids), fleetDates(f.fleetExpenses.occurredAt, query.from, query.to, false, true)));
+      title = "Relatório de acompanhamento de veículos e máquinas";
+      sections = [
+        {
+          title: "Situação operacional e acompanhamento da frota",
+          rows: units.map(u => {
+            const ctrl = controls.find(c => c.unitId === u.id);
+            const pendDocs = docs.filter(d => d.unitId === u.id);
+            const openOrders = orders.filter(o => o.unitId === u.id);
+            const unitExp = expenses.filter(e => e.unitId === u.id);
+            const expTotal = unitExp.reduce((sum, e) => sum.add(e.amount || 0), new Decimal(0));
+            return {
+              Veículo: names.get(u.id)!,
+              Categoria: u.category,
+              Situação: u.status,
+              "Disponibilidade Operacional": u.operationalStatus,
+              "Placa / RENAVAM": `${u.plate || "S/P"} / ${u.renavam || "—"}`,
+              Marca: u.brand || "—",
+              Modelo: u.model || "—",
+              Ano: String(u.year || "—"),
+              "Marcador / Leitura Atual": `${ctrl?.meterType || "HODOMETRO"}: ${amount(ctrl?.currentReading, 3)}`,
+              "OS em Aberto": openOrders.length,
+              "Documentos / Seguros Pendentes": pendDocs.length,
+              "Gastos Conhecidos no Período": expTotal.toFixed(2),
+            };
+          }),
+        },
+        {
+          title: "Resumo da frota",
+          rows: [{
+            "Total de veículos/máquinas": units.length,
+            "Operacionais / Ativos": units.filter(u => u.status === "ATIVO").length,
+            "Em manutenção": units.filter(u => u.status === "EM_MANUTENCAO").length,
+            "Inativos": units.filter(u => u.status === "INATIVO").length,
+          }],
+        },
+      ];
+    } else if (input.report === "movimentacoes") {
+      const gates = await db.select({ gate: f.fleetGateEvents, trip: f.fleetTrips }).from(f.fleetGateEvents).innerJoin(f.fleetTrips, eq(f.fleetTrips.id, f.fleetGateEvents.tripId)).where(and(inArray(f.fleetTrips.unitId, ids), fleetDates(f.fleetGateEvents.occurredAt, query.from, query.to, true))).orderBy(desc(f.fleetGateEvents.occurredAt));
+      title = "Relatório de controle e monitoramento de movimentações dos veículos";
+      sections = [
+        {
+          title: "Eventos de entrada e saída na guarita",
+          rows: gates.map(({ gate, trip }) => ({
+            Veículo: names.get(trip.unitId) || trip.unitId,
+            Movimento: gate.kind === "SAIDA" ? "Saída da garagem" : "Retorno / Entrada",
+            "Data / Horário": date(gate.occurredAt),
+            Leitura: amount(gate.reading, 3),
+            Motorista: (trip.driverSnapshot as { name: string })?.name || "Não informado",
+            Destino: trip.destination,
+            Finalidade: trip.purpose,
+          })),
+        },
+        {
+          title: "Totais das movimentações",
+          rows: [{
+            "Total de passagens na guarita": gates.length,
+            "Saídas registradas": gates.filter(g => g.gate.kind === "SAIDA").length,
+            "Entradas / Retornos": gates.filter(g => g.gate.kind === "RETORNO").length,
+          }],
+        },
+      ];
+    } else if (input.report === "frota") {
+      title = "Cadastro de Veículos no período";
+      sections = [
+        {
+          title: "Veículos e máquinas cadastrados",
+          rows: units.map(u => ({
+            Código: u.code,
+            Descrição: u.name,
+            Categoria: u.category,
+            Situação: u.status,
+            "Disponibilidade Operacional": u.operationalStatus,
+            Placa: u.plate || "Não aplicável",
+            RENAVAM: u.renavam || "—",
+            "Marca / Modelo / Ano": `${u.brand || "—"} / ${u.model || "—"} / ${u.year || "—"}`,
+            "Setor": u.departmentId || "Sem setor",
+            "Patrimônio": u.assetId || "Sem vínculo",
+          })),
+        },
+        {
+          title: "Totais",
+          rows: [{
+            "Total cadastrado": units.length,
+            "Veículos": units.filter(u => u.category === "VEICULO").length,
+            "Máquinas": units.filter(u => u.category === "MAQUINA").length,
+            "Equipamentos": units.filter(u => u.category === "EQUIPAMENTO").length,
+            "Agregados": units.filter(u => u.category === "AGREGADO").length,
+          }],
+        },
+      ];
+    } else if (input.report === "vencimentos") {
+      const docs = await db.select().from(f.fleetDocuments).where(and(inArray(f.fleetDocuments.unitId, ids), fleetDates(f.fleetDocuments.dueAt, query.from, query.to, false, true), query.status ? eq(f.fleetDocuments.status, query.status) : undefined)).orderBy(asc(f.fleetDocuments.dueAt));
+      title = "Vencimentos de documentos e seguros";
+      sections = [{
+        title: "Documentos e seguros com vencimento no período",
+        rows: docs.map(d => ({
+          Veículo: names.get(d.unitId) || d.unitId,
+          Documento: `${d.title} / ${d.reference}`,
+          Tipo: `${d.kind} · ${d.type}`,
+          Seguradora: d.insurerName || "—",
+          "Início Vigência": date(d.startsAt),
+          Agendamento: date(d.scheduledAt),
+          Vencimento: date(d.dueAt),
+          Situação: d.status,
+          Valor: amount(d.value),
+        })),
+      }, {
+        title: "Totais",
+        rows: [{
+          "Total de documentos": docs.length,
+          "Pendentes": docs.filter(d => d.status === "PENDENTE").length,
+          "Cumpridos": docs.filter(d => d.status === "CUMPRIDA").length,
+        }],
+      }];
+    } else if (input.report === "abastecimentos") {
+      const consumptions = await db.select().from(f.fleetConsumptions).where(and(inArray(f.fleetConsumptions.unitId, ids), eq(f.fleetConsumptions.type, "COMBUSTIVEL"), fleetDates(f.fleetConsumptions.occurredAt, query.from, query.to, false, true))).orderBy(desc(f.fleetConsumptions.occurredAt));
+      title = "Abastecimentos por período e veículo";
+      sections = [{
+        title: "Abastecimentos realizados",
+        rows: consumptions.map(c => ({
+          Veículo: names.get(c.unitId) || c.unitId,
+          Data: date(c.occurredAt),
+          Material: c.material,
+          Quantidade: `${c.quantity} ${c.measurementUnit}`,
+          Origem: c.origin === "PROPRIO" ? "Próprio (Almoxarifado)" : "Posto Terceirizado",
+          Fornecedor: c.supplierName || "Não informado",
+          Custo: amount(c.cost),
+          Referência: c.reference || "—",
+        })),
+      }, {
+        title: "Totais de abastecimento",
+        rows: [{
+          "Registros de abastecimento": consumptions.length,
+          "Litros totais": consumptions.reduce((sum, c) => sum.add(c.quantity || 0), new Decimal(0)).toFixed(2),
+          "Gasto total realizado": consumptions.reduce((sum, c) => sum.add(c.cost || 0), new Decimal(0)).toFixed(2),
+        }],
+      }];
+    } else if (input.report === "gastos") {
+      const expenses = await db.select().from(f.fleetExpenses).where(and(inArray(f.fleetExpenses.unitId, ids), fleetDates(f.fleetExpenses.occurredAt, query.from, query.to, false, true), query.nature ? eq(f.fleetExpenses.nature, query.nature) : undefined)).orderBy(desc(f.fleetExpenses.occurredAt));
+      title = "Gastos realizados da frota";
+      sections = [{
+        title: "Gastos registrados no período",
+        rows: expenses.map(e => ({
+          Veículo: names.get(e.unitId) || e.unitId,
+          Data: date(e.occurredAt),
+          Descrição: e.description,
+          Natureza: e.nature,
+          Fornecedor: e.supplierName || "Não informado",
+          Valor: amount(e.amount),
+          Referência: e.reference || "—",
+          Origem: `${e.sourceType}:${e.sourceId}`,
+        })),
+      }, {
+        title: "Totais",
+        rows: [{
+          "Registros": expenses.length,
+          "Total conhecido (R$)": expenses.reduce((sum, e) => sum.add(e.amount || 0), new Decimal(0)).toFixed(2),
+          "Despesas sem valor": expenses.filter(e => e.amount === null).length,
+        }],
+      }];
     } else if (input.report === "requisicoesEncerradas") {
       const rows = [];
       for (const area of ["abastecimento", "autorizacoes"] as const) {

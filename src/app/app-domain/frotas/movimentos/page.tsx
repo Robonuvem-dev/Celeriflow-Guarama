@@ -17,6 +17,7 @@ const columns: OperationalColumn[] = [
   { key: "date", label: "Registro", type: "text", initialWidth: 160, minWidth: 110, resizable: true, sortable: false, details: "overflow" },
   { key: "target", label: "Referência", type: "identifier", initialWidth: 220, minWidth: 110, resizable: true, sortable: false, details: "overflow" },
   { key: "details", label: "Dados e histórico", type: "text", initialWidth: 350, minWidth: 150, resizable: true, sortable: false, details: "overflow" },
+  { key: "actions", label: "Ações", type: "actions", initialWidth: 180, minWidth: 120, resizable: false, sortable: false, details: "none" },
 ];
 const labels: Record<string, string> = {
   plate: "Placa externa / Vale Card",
@@ -52,11 +53,20 @@ export default async function FleetMovementsPage({ searchParams }: { searchParam
     .limit(OPERATIONAL_PAGE_SIZE)
     .offset((page - 1) * OPERATIONAL_PAGE_SIZE);
 
+  const initialOp = typeof query.operation === "string" ? query.operation : undefined;
+  const initialRecord = typeof query.recordId === "string" ? query.recordId : undefined;
+  const initialUnit = typeof query.unitId === "string" ? query.unitId : undefined;
+
   const actions = <>
       <Link href="/frotas/gestao" className={styles.filterButton}>Gestão operacional</Link>
       <Link href="/frotas" className={styles.filterButton}>Painel de Frotas</Link>
       {canPerformModuleOperation(context.user, "FROTAS", "update") && (
-        <FleetMovementPanel units={units} labels={labels} requestId={randomUUID()} />
+        <FleetMovementPanel
+          units={units}
+          labels={labels}
+          requestId={randomUUID()}
+          initialValues={{ operation: initialOp, recordId: initialRecord, unitId: initialUnit }}
+        />
       )}
     </>;
   return (
@@ -69,16 +79,33 @@ export default async function FleetMovementsPage({ searchParams }: { searchParam
           preferenceId="frotas-movimentos"
           caption="Histórico dos movimentos de Frotas"
           columns={columns}
-          rows={events.map((event) => ({
-            id: event.id,
-            label: event.targetId,
-            values: {
-              operation: labels[event.operation.replace("MOVEMENT_", "")] || event.operation,
-              date: event.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-              target: event.targetId,
-              details: JSON.stringify(event.snapshot, null, 2),
-            },
-          }))}
+          rows={events.map((event) => {
+            const opType = event.operation.replace("MOVEMENT_", "");
+            return {
+              id: event.id,
+              label: event.targetId,
+              values: {
+                operation: labels[opType] || event.operation,
+                date: event.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+                target: event.targetId,
+                details: JSON.stringify(event.snapshot, null, 2),
+              },
+              actions: (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {event.unitId && (
+                    <Link href={`/frotas?unitId=${event.unitId}`} className="font-semibold text-blue-700 underline">
+                      Ficha da unidade
+                    </Link>
+                  )}
+                  {event.unitId && (
+                    <Link href={`/frotas/gestao?unitId=${event.unitId}`} className="font-semibold text-blue-700 underline">
+                      Gestão
+                    </Link>
+                  )}
+                </div>
+              ),
+            };
+          })}
         />
       </OperationalListFrame>
   );

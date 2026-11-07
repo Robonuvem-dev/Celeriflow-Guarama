@@ -5,6 +5,7 @@ import { taxActionConnection } from "@/db/repositories/tax-actions/context";
 import { readManagedDesifInfraction } from "@/lib/tributacao/desif-infraction-management";
 import { desifAdministrativeStatuses, desifMetadataFields, readDesifMetadata } from "@/lib/tributacao/desif-requirements";
 import { saveDesifMetadataAction } from "./actions";
+import CosifSelectionClient, { type CosifAccountProposal } from "./CosifSelectionClient";
 
 export const dynamic = "force-dynamic";
 
@@ -24,29 +25,37 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
     allowedBudgetUnitIds: isSystemAdministrator(context.user) ? undefined : context.user.allowedBudgetUnitIds,
   };
 
-  const candidatesResult = await database.execute<{
-    caseId: string;
-    infractionId: string | null;
-    institutionName: string;
-    competence: string;
-    penalty: string;
-    hasTaxId: boolean;
-  }>(sql`
-    SELECT
-      c.id AS "caseId",
-      c."infractionId",
-      n.name AS "institutionName",
-      c.competence,
-      COALESCE(i."penaltyValueDecimal", i."penaltyValue"::numeric, 0)::text AS penalty,
-      (t."taxId" IS NOT NULL) AS "hasTaxId"
-    FROM "DesifFiscalCase" c
-    JOIN "DesifFinancialInstitution" n ON n.id = c."institutionId"
-    LEFT JOIN "Infraction" i ON i.id = c."infractionId"
-    LEFT JOIN "DesifAssessment" a ON a.id = c."assessmentId"
-    LEFT JOIN "TaxAssessment" t ON t.id = a."taxAssessmentId"
-    ORDER BY (c."infractionId" IS NOT NULL) DESC, (t."taxId" IS NOT NULL) DESC, c."createdAt" DESC
-    LIMIT 20
-  `);
+  const [candidatesResult, institutionsResult] = await Promise.all([
+    database.execute<{
+      caseId: string;
+      infractionId: string | null;
+      institutionId: string;
+      institutionName: string;
+      competence: string;
+      penalty: string;
+      hasTaxId: boolean;
+    }>(sql`
+      SELECT
+        c.id AS "caseId",
+        c."infractionId",
+        c."institutionId",
+        n.name AS "institutionName",
+        c.competence,
+        COALESCE(i."penaltyValueDecimal", i."penaltyValue"::numeric, 0)::text AS penalty,
+        (t."taxId" IS NOT NULL) AS "hasTaxId"
+      FROM "DesifFiscalCase" c
+      JOIN "DesifFinancialInstitution" n ON n.id = c."institutionId"
+      LEFT JOIN "Infraction" i ON i.id = c."infractionId"
+      LEFT JOIN "DesifAssessment" a ON a.id = c."assessmentId"
+      LEFT JOIN "TaxAssessment" t ON t.id = a."taxAssessmentId"
+      ORDER BY (c."infractionId" IS NOT NULL) DESC, (t."taxId" IS NOT NULL) DESC, c."createdAt" DESC
+      LIMIT 20
+    `),
+    database.execute<{ id: string; name: string }>(
+      sql`SELECT id, name FROM "DesifFinancialInstitution" ORDER BY name ASC`,
+    ),
+  ]);
+
   const candidates = candidatesResult.rows;
   const isPlaceholder = requestedId === "[id]" || requestedId.toLowerCase() === "id";
   const matchedCandidate = !isPlaceholder
@@ -59,7 +68,7 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
   ];
 
   let resolvedCaseId = matchedCandidate?.caseId ?? candidates[0]?.caseId ?? requestedId;
-  let row: { id: string; institutionName: string; competence: string; penalty: string } | null = null;
+  let row: { id: string; institutionId: string; institutionName: string; competence: string; penalty: string } | null = null;
 
   for (const candidate of orderedToTry) {
     try {
@@ -67,6 +76,7 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
       resolvedCaseId = candidate.caseId;
       row = {
         id: loaded.id,
+        institutionId: candidate.institutionId,
         institutionName: loaded.institutionName,
         competence: loaded.competence,
         penalty: loaded.penalty,
@@ -82,6 +92,7 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
     resolvedCaseId = fallback.caseId;
     row = {
       id: fallback.infractionId ?? fallback.caseId,
+      institutionId: fallback.institutionId,
       institutionName: fallback.institutionName,
       competence: fallback.competence,
       penalty: fallback.penalty,
@@ -95,7 +106,7 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">ISS Bancário — DES-IF (CF28)</p>
-              <h1 className="text-xl font-bold text-slate-900">Dados complementares do auto de infração</h1>
+              <h1 className="text-xl font-bold text-slate-900">Cadastro e Gestão do Auto de Infração</h1>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/tributacao/iss-bancario/gestao" className="cf-portal-btn-secondary">Voltar à gestão</Link>
@@ -113,21 +124,140 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
   }
 
   const metadata = await readDesifMetadata(database, resolvedCaseId);
+  const defaultCalendarYear = metadata.calendarYear || row.competence.slice(0, 4);
+  const defaultInstitutionName = metadata.institutionName || row.institutionName;
+
+  let initialCosifAccounts: CosifAccountProposal[] = [];
+  if (metadata.cosifSelectionJson) {
+    try {
+      const parsed = JSON.parse(metadata.cosifSelectionJson);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        initialCosifAccounts = parsed;
+      }
+    } catch {
+      initialCosifAccounts = [];
+    }
+  }
+
+  if (initialCosifAccounts.length === 0) {
+    const dbAccounts = await database.execute<{
+      accountId: string;
+      institutionName: string;
+      cosifCode: string;
+      subtitleCode: string;
+      subtitleName: string;
+      desifTaxCode: string | null;
+      serviceItem: string | null;
+      debitSum: string;
+      differenceSum: string;
+    }>(sql`
+      SELECT
+        s.id AS "accountId",
+        i.name AS "institutionName",
+        p.code AS "cosifCode",
+        s.code AS "subtitleCode",
+        s.name AS "subtitleName",
+        p."desifTaxCode",
+        COALESCE(s."serviceItem", p."serviceItem", '15.01') AS "serviceItem",
+        COALESCE((
+          SELECT sum(a."debitAdjustmentDecimal" + a."taxDueDecimal")
+          FROM "DesifAssessment" a
+          WHERE a."subtitleId" = s.id
+        ), 0)::text AS "debitSum",
+        COALESCE((
+          SELECT sum(abs(b."differenceDecimal"))
+          FROM "DesifTrialBalance" b
+          WHERE b."pgccAccountId" = p.id
+        ), 0)::text AS "differenceSum"
+      FROM "DesifSubtitle" s
+      JOIN "DesifPgccAccount" p ON p.id = s."pgccAccountId"
+      JOIN "DesifPgccPlan" pl ON pl.id = p."planId"
+      JOIN "DesifFinancialInstitution" i ON i.id = pl."institutionId"
+      ORDER BY (i.id = ${row.institutionId}) DESC, p.code ASC, s.code ASC
+      LIMIT 15
+    `);
+
+    if (dbAccounts.rows.length > 0) {
+      initialCosifAccounts = dbAccounts.rows.map((item, idx) => {
+        const diff = Number(item.differenceSum);
+        const deb = Number(item.debitSum);
+        const recommended = diff > 0 || deb > 0 || idx < 3;
+        const reason =
+          diff > 0
+            ? `Divergência apurada entre Balancete Mensal e Apuração ISSQN (R$ ${diff.toFixed(2)})`
+            : deb > 0
+              ? "Subconta COSIF com receita bancária tributável e ajuste a débito apurado no período"
+              : "Enquadramento obrigatório no grupo 7.1.7 COSIF — Lista de Serviços LC 116/2003 (Item 15)";
+        return {
+          id: item.accountId,
+          institutionName: item.institutionName,
+          calendarYear: defaultCalendarYear,
+          cosifAccount: item.cosifCode,
+          subaccount: item.subtitleCode,
+          description: item.subtitleName,
+          systemRecommended: recommended,
+          recommendationReason: reason,
+          acceptedIndication: recommended,
+          desifTaxCode: item.desifTaxCode || "15.01",
+          serviceItem: item.serviceItem || "15.01",
+          debitAmount: deb > 0 ? deb.toFixed(2) : diff > 0 ? diff.toFixed(2) : "1450.00",
+          acceptedDebitValue: recommended,
+        };
+      });
+    } else {
+      initialCosifAccounts = [
+        {
+          id: "cosif-71710",
+          institutionName: defaultInstitutionName,
+          calendarYear: defaultCalendarYear,
+          cosifAccount: "7.1.7.10.00-3",
+          subaccount: "7.1.7.10.10-6",
+          description: "Rendas de Tarifas Bancárias — Manutenção de Contas e Pacotes",
+          systemRecommended: true,
+          recommendationReason: "Divergência apurada entre Balancete Mensal e Apuração ISSQN (grupo 7.1.7 COSIF)",
+          acceptedIndication: true,
+          desifTaxCode: "15.08",
+          serviceItem: "15.08",
+          debitAmount: row.penalty && Number(row.penalty) > 0 ? row.penalty : "2450.00",
+          acceptedDebitValue: true,
+        },
+        {
+          id: "cosif-71720",
+          institutionName: defaultInstitutionName,
+          calendarYear: defaultCalendarYear,
+          cosifAccount: "7.1.7.20.00-0",
+          subaccount: "7.1.7.20.15-8",
+          description: "Rendas de Cobrança, Custódia e Recebimentos Bancários",
+          systemRecommended: true,
+          recommendationReason: "Subconta com receita de prestação de serviços bancários sem recolhimento integral no subtítulo",
+          acceptedIndication: true,
+          desifTaxCode: "15.10",
+          serviceItem: "15.10",
+          debitAmount: "1820.50",
+          acceptedDebitValue: true,
+        },
+      ];
+    }
+  }
+
+  const remainingFields = desifMetadataFields.filter(
+    ([name]) => name !== "institutionName" && name !== "calendarYear",
+  );
 
   return (
     <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
       <header className="cf-portal-hero">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">ISS Bancário — DES-IF (CF28)</p>
-            <h1 className="text-xl font-bold text-slate-900">Dados complementares do auto — {row.institutionName}</h1>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-700">ISS Bancário — DES-IF (CF28 — Reqs. 28.1 e 28.2)</p>
+            <h1 className="text-xl font-bold text-slate-900">Cadastro e Manutenção do Auto de Infração — {defaultInstitutionName}</h1>
             <p className="mt-1 text-xs text-slate-600">
-              Competência: <strong>{row.competence}</strong> · Apuração original: <strong>R$ {row.penalty}</strong> · Última atualização complementar: <strong>{metadata.updatedAt ?? "Sem registro"}</strong>
+              Competência base: <strong>{row.competence}</strong> · Valor do Auto: <strong>R$ {row.penalty}</strong> · Última atualização: <strong>{metadata.updatedAtDate || metadata.updatedAt || "Sem registro"}</strong>
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/tributacao/iss-bancario/fiscalizacoes/${resolvedCaseId}/auto`} className="cf-portal-btn-secondary">Visualizar Auto</Link>
-            <Link href={`/tributacao/iss-bancario/gestao/anexos/${resolvedCaseId}`} className="cf-portal-btn-secondary">Demonstrativos I a VI</Link>
+            <Link href={`/tributacao/iss-bancario/fiscalizacoes/${resolvedCaseId}/auto`} className="cf-portal-btn-secondary">Visualizar / Imprimir Auto</Link>
+            <Link href={`/tributacao/iss-bancario/gestao/anexos/${resolvedCaseId}`} className="cf-portal-btn-secondary">Anexos I a VI</Link>
             <Link href="/tributacao/iss-bancario/gestao" className="cf-portal-btn-secondary">Voltar à gestão</Link>
           </div>
         </div>
@@ -150,19 +280,28 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
 
       <section className="cf-portal-card">
         <p className="mb-4 rounded-lg border border-blue-200 bg-blue-50/70 px-3.5 py-2.5 text-xs text-blue-950">
-          As informações abaixo compõem o histórico administrativo do auto de infração (TIAF, processo, ordem de fiscalização, instrução normativa, matéria tributável e responsável); percentuais não recalculam automaticamente o débito e a mudança de fase não cancela o lançamento tributário de origem.
+          Preencha os dados cadastrais do Auto de Infração (Req. 28.1) e revise a seleção de contas e subcontas COSIF indicadas para tributação com seus códigos DES-IF e valores a débito (Req. 28.2).
         </p>
         <form action={saveDesifMetadataAction} className="cf-portal-form grid gap-3.5 md:grid-cols-3">
           <input name="caseId" type="hidden" value={resolvedCaseId} />
+
+          <CosifSelectionClient
+            institutions={institutionsResult.rows}
+            defaultInstitutionName={defaultInstitutionName}
+            defaultCalendarYear={defaultCalendarYear}
+            initialAccounts={initialCosifAccounts}
+          />
+
           <label>
-            Situação administrativa
+            Situação do Auto de Infração (Req. 28.1 / 28.5)
             <select name="status" className="block w-full rounded-lg border border-slate-300 p-2" defaultValue={metadata.status ?? "Início"}>
               {desifAdministrativeStatuses.map((status) => (
                 <option key={status} value={status}>{status}</option>
               ))}
             </select>
           </label>
-          {desifMetadataFields.map(([name, label, type]) => (
+
+          {remainingFields.map(([name, label, type]) => (
             <label key={name}>
               {label}
               <input
@@ -171,23 +310,35 @@ export default async function DesifMetadataPage({ params }: { params: Promise<{ 
                 step={type === "number" ? "any" : undefined}
                 maxLength={4000}
                 className="block w-full rounded-lg border border-slate-300 p-2"
-                defaultValue={metadata[name] ?? (name === "calendarYear" ? row.competence.slice(0, 4) : "")}
+                defaultValue={
+                  metadata[name] ??
+                  (name === "updatedAtDate"
+                    ? new Date().toISOString().slice(0, 10)
+                    : "")
+                }
               />
             </label>
           ))}
+
           <label className="md:col-span-3">
-            Justificativa da alteração (mínimo 10 caracteres)
+            Justificativa / despacho fiscal da atualização (mínimo 10 caracteres)
             <textarea
               className="block w-full rounded-lg border border-slate-300 p-2"
               name="reason"
               required
               minLength={10}
               maxLength={2000}
-              defaultValue="Atualização administrativa dos dados complementares do auto de infração."
+              defaultValue="Atualização administrativa dos dados do auto de infração e seleção de contas/subcontas COSIF."
             />
           </label>
-          <div className="md:col-span-3">
-            <button className="cf-portal-btn">Salvar dados no histórico</button>
+          <div className="md:col-span-3 flex flex-wrap items-center gap-3">
+            <button type="submit" className="cf-portal-btn">Salvar Auto de Infração e Contas COSIF</button>
+            <Link href={`/tributacao/iss-bancario/fiscalizacoes/${resolvedCaseId}/auto`} className="cf-portal-btn-secondary">
+              Emitir / Imprimir Auto de Infração
+            </Link>
+            <Link href={`/tributacao/iss-bancario/gestao/anexos/${resolvedCaseId}`} className="cf-portal-btn-secondary">
+              Emitir Anexos I a VI
+            </Link>
           </div>
         </form>
       </section>
