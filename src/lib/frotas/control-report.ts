@@ -14,64 +14,9 @@ import { fleetScope } from "./service";
 import { fleetControlUnitWhere, queryFleetControl } from "./control-queries";
 import { controlQuerySchema, consumptionAverage, type FleetMeter } from "./control-policy";
 import { FleetControlError, scopedFleetUnit } from "./control-access";
+import { fleetControlReportLabels, fleetControlReports } from "./contract";
 
-export const fleetControlReports = [
-  "frota",
-  "vencimentos",
-  "abastecimentos",
-  "gastos",
-  "manutencoes",
-  "agendamentos",
-  "multas",
-  "movimentacaoPneus",
-  "pneusBaixados",
-  "trocaOleo",
-  "combustivel",
-  "escolar",
-  "hospitalar",
-  "gastosGerais",
-  "consumo",
-  "relacaoRequisicoes",
-  "saidaViagem",
-  "quilometragem",
-  "comunidade",
-  "acompanhamento",
-  "incorporacoes",
-  "cnh",
-  "pontuacao",
-  "custoKm",
-  "movimentacoes",
-  "requisicoesEncerradas",
-] as const;
-
-export const fleetControlReportLabels: Record<(typeof fleetControlReports)[number], string> = {
-  frota: "Cadastro de veículos no período",
-  agendamentos: "Agendamentos dos veículos",
-  multas: "Relação de multas dos veículos",
-  manutencoes: "Manutenções de peças e serviços",
-  movimentacaoPneus: "Movimentação de pneus",
-  pneusBaixados: "Pneus baixados",
-  trocaOleo: "Troca de óleo",
-  combustivel: "Combustível / empenhos",
-  escolar: "Combustível transporte escolar",
-  hospitalar: "Combustível transporte hospitalar",
-  gastosGerais: "Gastos gerais (combustível, peças, pneus)",
-  consumo: "Planilha de consumo de combustível",
-  relacaoRequisicoes: "Relação de requisições de abastecimento",
-  saidaViagem: "Saída de viagem com roteiro",
-  quilometragem: "Controle de quilometragem",
-  comunidade: "Solicitações da comunidade",
-  acompanhamento: "Acompanhamento de veículos e máquinas",
-  incorporacoes: "Incorporações / desincorporações TCE-MG",
-  cnh: "Vencimentos de CNH",
-  pontuacao: "Controle de pontuação de CNH",
-  custoKm: "Gastos por km rodado",
-  movimentacoes: "Monitoramento de movimentações",
-  requisicoesEncerradas: "Requisições finalizadas / canceladas",
-  vencimentos: "Vencimentos de documentos",
-  gastos: "Gastos realizados",
-  abastecimentos: "Abastecimentos por veículo",
-};
+export { fleetControlReportLabels, fleetControlReports };
 export type FleetControlReportInput = { query: unknown; documentType?: "authorization" | "trip" | "blankFuel" | "blankTrip" | "fineTerm"; documentId?: string; unitIds?: string[]; report?: typeof fleetControlReports[number] };
 const date = (value: Date | null | undefined) => value?.toISOString() || "Não informado";
 const amount = (value: Decimal | null | undefined, scale = 2) => value === null || value === undefined ? "Não informado" : value.toFixed(scale);

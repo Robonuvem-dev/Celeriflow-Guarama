@@ -7,8 +7,7 @@ import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/op
 import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
 import { operationalColumns } from "../patrimonio/_components/operational-columns";
 import styles from "@/components/app-ui/operational/operational.module.css";
-import { categories, labels, type FleetArea, type FleetQuery } from "@/lib/frotas/contract";
-import { fleetControlReportLabels, fleetControlReports } from "@/lib/frotas/control-report";
+import { categories, fleetControlReportLabels, fleetControlReports, labels, type FleetArea, type FleetQuery } from "@/lib/frotas/contract";
 import type { FleetList, FleetRow } from "@/lib/frotas/queries";
 import { FleetEditor, type Editor } from "./FleetEditor";
 import { fieldClass, ReferencePicker } from "./ReferencePicker";
