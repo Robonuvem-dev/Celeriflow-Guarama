@@ -34,6 +34,23 @@ const cf27QuickCatalogs: { kind: TaxReferenceKind; shortLabel: string; ref: stri
   { kind: "tipo-arquivo", shortLabel: "Tipos de Arquivos", ref: "27.30" },
 ];
 
+const cf28QuickCatalogs: { kind: TaxReferenceKind; shortLabel: string; ref: string }[] = [
+  { kind: "municipio", shortLabel: "Municípios (28.28)", ref: "28.28" },
+  { kind: "lista-servico", shortLabel: "Lista de Serviços LC 116 (28.29)", ref: "28.29" },
+  { kind: "codigo-tributacao-desif", shortLabel: "Cód. Tributação DES-IF (28.30)", ref: "28.30" },
+  { kind: "codigo-tributacao-municipal", shortLabel: "Cód. Tributação Municipal (28.31)", ref: "28.31" },
+  { kind: "cosif", shortLabel: "Plano COSIF / BACEN (28.32)", ref: "28.32" },
+  { kind: "titulo-desif", shortLabel: "Títulos DES-IF (28.33)", ref: "28.33" },
+  { kind: "tarifa-bancaria", shortLabel: "Tarifas Bancárias (28.34)", ref: "28.34" },
+  { kind: "produto-servico", shortLabel: "Produtos e Serviços (28.35)", ref: "28.35" },
+  { kind: "evento-contabil", shortLabel: "Eventos Contábeis Resultado (28.36)", ref: "28.36" },
+  { kind: "tipo-dependencia", shortLabel: "Tipos de Dependências (28.37)", ref: "28.37" },
+  { kind: "orgao-municipio", shortLabel: "Órgãos Municipais (28.38)", ref: "28.38" },
+  { kind: "usuario-municipal", shortLabel: "Usuários do Município (28.39/41)", ref: "28.39-41" },
+  { kind: "instituicao-financeira", shortLabel: "Instituições Financeiras (28.40)", ref: "28.40" },
+  { kind: "orgao-configuracao", shortLabel: "Parâmetros Órgão / Webservice / Tags Auto (28.74-76)", ref: "28.74-76" },
+];
+
 export default function TaxReferenceClient({
   rows,
   units,
@@ -90,6 +107,18 @@ export default function TaxReferenceClient({
               Painel Simples Nacional
             </Link>
             <Link
+              href="/tributacao/iss-bancario"
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-100"
+            >
+              Painel DES-IF / ISS Bancário (CF28)
+            </Link>
+            <Link
+              href="/tributacao/iss-bancario/gestao"
+              className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-50"
+            >
+              Gestão DES-IF, Autos e Relatórios
+            </Link>
+            <Link
               href="/tributacao/simples-nacional/consulta"
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
             >
@@ -110,24 +139,51 @@ export default function TaxReferenceClient({
           </nav>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 print:hidden">
-          {cf27QuickCatalogs.map((item) => {
-            const active = kind === item.kind;
-            return (
-              <button
-                key={item.kind}
-                type="button"
-                onClick={() => selectCatalog(item.kind)}
-                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  active
-                    ? "border-sky-800 bg-sky-800 text-white"
-                    : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100"
-                }`}
-              >
-                {item.shortLabel}
-              </button>
-            );
-          })}
+        <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 print:hidden">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[11px] font-bold uppercase tracking-wide text-sky-800">
+              CF27 · Simples Nacional:
+            </span>
+            {cf27QuickCatalogs.map((item) => {
+              const active = kind === item.kind;
+              return (
+                <button
+                  key={`cf27-${item.kind}`}
+                  type="button"
+                  onClick={() => selectCatalog(item.kind)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-sky-800 bg-sky-800 text-white"
+                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100"
+                  }`}
+                >
+                  {item.shortLabel}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2">
+            <span className="mr-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">
+              CF28 · ISS Bancário / DES-IF:
+            </span>
+            {cf28QuickCatalogs.map((item) => {
+              const active = kind === item.kind;
+              return (
+                <button
+                  key={`cf28-${item.kind}`}
+                  type="button"
+                  onClick={() => selectCatalog(item.kind)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-amber-700 bg-amber-700 text-white"
+                      : "border-amber-200 bg-amber-50/60 text-amber-950 hover:border-amber-300 hover:bg-amber-100"
+                  }`}
+                >
+                  {item.shortLabel}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </header>
 
@@ -601,13 +657,40 @@ export default function TaxReferenceClient({
 
           {kind === "orgao-configuracao" && (
             <>
+              <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-slate-800 space-y-1.5">
+                <p className="font-bold text-amber-950">
+                  Parâmetros do Órgão Municipal · Brasão, Integração Webservice e Tags do Auto de Infração (28.74, 28.75, 28.76)
+                </p>
+                <p>
+                  • <b>28.74 Brasão Oficial:</b> Informe um endereço HTTPS válido para impressão nos relatórios, autos de infração, notificações e recibos de entrega DES-IF.
+                </p>
+                <p>
+                  • <b>28.75 Integração Portal / Webservice Administração Tributária:</b> O protocolo DES-IF ABRASF 3.1 e a apuração automática de deduções/imposto pago operam sincronizados via Webservice com a Administração Tributária Municipal (informe o endpoint/observações no campo Detalhes ou Código Relacionado).
+                </p>
+                <p>
+                  • <b>28.76 Tags Dinâmicas na Conclusão do Auto de Infração:</b> Utilize as marcações{" "}
+                  <code className="rounded bg-white px-1 py-0.5 font-mono font-bold text-amber-900">{"{{codigo}}"}</code> e{" "}
+                  <code className="rounded bg-white px-1 py-0.5 font-mono font-bold text-amber-900">{"{{nome}}"}</code> no modelo de conclusão abaixo para substituição automática pelos dados do órgão/autuado na lavratura do Auto de Infração.
+                </p>
+              </div>
               <label className="text-xs font-semibold text-slate-700">
-                URL HTTPS do brasão
-                <input type="url" name="coatUrl" className={input} defaultValue={editing?.data.coatUrl} />
+                URL HTTPS do brasão (28.74)
+                <input
+                  type="url"
+                  name="coatUrl"
+                  placeholder="https://municipio.gov.br/brasao.png"
+                  className={input}
+                  defaultValue={editing?.data.coatUrl}
+                />
               </label>
               <label className="text-xs font-semibold text-slate-700">
-                Conclusão do auto (tags: código e nome)
-                <textarea name="conclusionTemplate" className={input} defaultValue={editing?.data.conclusionTemplate} />
+                Conclusão do auto (tags dinâmicas: {"{{codigo}}"} e {"{{nome}}"} — 28.76)
+                <textarea
+                  name="conclusionTemplate"
+                  placeholder="Ex.: Lavrado pelo órgão {{codigo}} - {{nome}} mediante apuração eletrônica DES-IF / Webservice Tributário."
+                  className={input}
+                  defaultValue={editing?.data.conclusionTemplate}
+                />
               </label>
             </>
           )}
