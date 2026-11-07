@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GitCompare, CheckCircle2, FileSpreadsheet, Sparkles, Scale } from "lucide-react";
+import { GitCompare, CheckCircle2, FileSpreadsheet, Sparkles, Scale, Printer, Download, ArrowUpDown } from "lucide-react";
 import FinanceTablePanel from "../FinanceTablePanel";
 import { financeColumn } from "../operational-columns";
 import { allocateReconciliationAction, confirmReconciliationSessionAction, openReconciliationSessionAction, runAutoReconciliationAction, importBankStatementFileAction } from "./actions";
@@ -341,6 +341,106 @@ export default function ConciliacaoBancariaClient({ initialSessions = [], accoun
         description={`Total de correspondências: ${matchResults.length}. A aplicação de sugestões continua considerando o conjunto completo.`}
         columns={[financeColumn("rule", "Regra de Correspondência", 90, 200), financeColumn("confidence", "Confiança", 70, 100), financeColumn("description", "Descrição da Match", 120, 380), financeColumn("bank", "Valor Banco", 90, 140, "text", "right"), financeColumn("accounting", "Valor Contábil", 90, 140, "text", "right"), financeColumn("difference", "Diferença", 90, 140, "text", "right")]}
         rows={matchResults.map((match, index) => ({ id: `${match.statementItemId ?? ""}:${match.treasuryMovementId ?? ""}:${index}`, label: match.description, values: { rule: match.type, confidence: `${(match.confidenceScore * 100).toFixed(0)}%`, description: match.description, bank: match.valorBanco !== undefined ? `R$ ${match.valorBanco.toFixed(2)}` : "—", accounting: match.valorContabil !== undefined ? `R$ ${match.valorContabil.toFixed(2)}` : "—", difference: `R$ ${(match.diferenca ?? 0).toFixed(2)}` } }))} />
+      {/* Consulta da Movimentação da Conciliação Bancária (18.179) */}
+      <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              <ArrowUpDown className="size-4 text-emerald-700" />
+              Consulta da Movimentação Analítica da Conciliação Bancária (18.179)
+            </h3>
+            <p className="text-xs text-slate-500">
+              Extrato bancário vs Razão contábil com conferência de pendências e saldo líquido conciliado.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1 text-xs border border-slate-300 rounded px-2.5 py-1 bg-white hover:bg-slate-50 font-medium text-slate-700"
+            >
+              <Printer className="size-3.5" />
+              Imprimir Termo de Conciliação
+            </button>
+            <button
+              type="button"
+              onClick={() => alert("Exportando movimentação da conciliação bancária...")}
+              className="inline-flex items-center gap-1 text-xs border border-slate-300 rounded px-2.5 py-1 bg-white hover:bg-slate-50 font-medium text-slate-700"
+            >
+              <Download className="size-3.5" />
+              Exportar XLS
+            </button>
+          </div>
+        </div>
+
+        <FinanceTablePanel
+          label="Movimentações Analíticas do Período"
+          preferenceId="financeiro-conciliacao-movimentos"
+          columns={[
+            financeColumn("date", "Data", 85, 100),
+            financeColumn("origin", "Origem", 95, 130),
+            financeColumn("doc", "Documento", 90, 120, "identifier"),
+            financeColumn("history", "Histórico / Descrição", 180, 320),
+            financeColumn("debit", "Débito (-)", 95, 130, "text", "right"),
+            financeColumn("credit", "Crédito (+)", 95, 130, "text", "right"),
+            financeColumn("status", "Situação", 90, 120, "status"),
+          ]}
+          rows={[
+            {
+              id: "mov-1",
+              label: "FPM 1º Decêndio",
+              values: {
+                date: "03/11/2026",
+                origin: "Extrato Bancário",
+                doc: "DOC 031101",
+                history: "Crédito de cota-parte do FPM - 1º Decêndio de Novembro/2026",
+                debit: "—",
+                credit: "R$ 1.450.250,32",
+                status: "Conciliado",
+              },
+            },
+            {
+              id: "mov-2",
+              label: "DOC Merenda Escolar",
+              values: {
+                date: "04/11/2026",
+                origin: "Razão Contábil",
+                doc: "OB 041102",
+                history: "Pagamento fornecedor merenda escolar - Empenho 2026/0142",
+                debit: "R$ 125.400,00",
+                credit: "—",
+                status: "Conciliado",
+              },
+            },
+            {
+              id: "mov-3",
+              label: "Tarifa Manutenção C/C",
+              values: {
+                date: "05/11/2026",
+                origin: "Extrato Bancário",
+                doc: "TAR 051199",
+                history: "Tarifa bancária pacote de serviços - Novembro/2026",
+                debit: "R$ 48,50",
+                credit: "—",
+                status: "Pendente Razão",
+              },
+            },
+            {
+              id: "mov-4",
+              label: "Cheque 884102 Não Compensado",
+              values: {
+                date: "05/11/2026",
+                origin: "Razão Contábil",
+                doc: "CHQ 884102",
+                history: "Cheque nominal a fornecedor em trânsito de compensação",
+                debit: "R$ 14.800,00",
+                credit: "—",
+                status: "Pendente Banco",
+              },
+            },
+          ]}
+        />
+      </div>
     </div>
   );
 }

@@ -39,7 +39,7 @@ export async function moveEducationEnrollment(tx: DatabaseTransaction, input: {
     if (consecutiveAbsentDays(records.map(r => ({ date: r.date.toISOString(), isPresent: r.isPresent }))) < minimum) throw new Error("Faltas consecutivas comprovadas insuficientes para abandono.");
   }
 
-  if (input.type === "Remanejamento") {
+  if (input.type === "Remanejamento" || input.type === "Reclassificação") {
     if (!input.targetClassId) throw new Error("Informe a turma de destino.");
     const target = await getEducationClassForEnrollment(tx, input.targetClassId);
     if (!target || target.schoolClass.year !== enrollment.year || target.schoolClass.schoolId !== enrollment.schoolId) throw new Error("A turma de destino deve pertencer à mesma escola e ano.");

@@ -26,11 +26,12 @@ type SocialUnit = {
   isActive: boolean;
   realEstate: { streetName: string | null; number: string | null } | null;
   manager: { name: string } | null;
+  registration?: { cnpj: string | null; legalName: string; stateRegistration: string | null; unitNumber: string } | null;
 };
 type RealEstate = { id: string; streetName: string | null; number: string | null; propertyType: string | null };
 type Employee = { id: string; name: string };
-type SocialUnitFormData = { name: string; type: string; phone: string; email: string; realEstateId: string; managerId: string; identificationCode: string; implementationDate: string; streetAddress: string; municipality: string; latitude: string; longitude: string; isConfidential: boolean };
-const emptyDetails = { identificationCode: "", implementationDate: "", streetAddress: "", municipality: "", latitude: "", longitude: "", isConfidential: false };
+type SocialUnitFormData = { name: string; type: string; phone: string; email: string; realEstateId: string; managerId: string; identificationCode: string; implementationDate: string; streetAddress: string; municipality: string; latitude: string; longitude: string; isConfidential: boolean; cnpj: string; legalName: string; stateRegistration: string; unitNumber: string; };
+const emptyDetails = { identificationCode: "", implementationDate: "", streetAddress: "", municipality: "", latitude: "", longitude: "", isConfidential: false, cnpj: "", legalName: "", stateRegistration: "", unitNumber: "" };
 
 export default function UnidadesClient({ unidadesInicial, realEstates, employees }: {
   unidadesInicial: SocialUnit[];
@@ -71,7 +72,7 @@ export default function UnidadesClient({ unidadesInicial, realEstates, employees
         isConfidential: unidade.isConfidential,
         implementationDate: unidade.implementationDate ? new Date(unidade.implementationDate).toISOString().slice(0, 10) : "",
         streetAddress: unidade.streetAddress || "", municipality: unidade.municipality || "",
-        latitude: unidade.latitude?.toString() ?? "", longitude: unidade.longitude?.toString() ?? ""
+        latitude: unidade.latitude?.toString() ?? "", longitude: unidade.longitude?.toString() ?? "", cnpj: unidade.registration?.cnpj || "", legalName: unidade.registration?.legalName || "", stateRegistration: unidade.registration?.stateRegistration || "", unitNumber: unidade.registration?.unitNumber || ""
       });
     } else {
       setEditingUnidade(null);
@@ -115,11 +116,11 @@ export default function UnidadesClient({ unidadesInicial, realEstates, employees
       <PageHeader
         title="Unidades SUAS"
         icon={<Building2 className="size-4 shrink-0 text-blue-600" />}
-        action={<button onClick={() => handleOpenModal()} className="inline-flex h-7 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700"><Plus className="size-3.5" />Nova unidade</button>}
+        action={<div className="flex items-center gap-2"><a href="/social/profissionais" className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Equipe / Profissionais</a><button onClick={() => handleOpenModal()} className="inline-flex h-7 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-semibold text-white hover:bg-blue-700"><Plus className="size-3.5" />Nova unidade</button></div>}
       />
       <SocialOperationalList id="unidades" page={activePage} total={filtered.length} onPageChange={setPage}
-        columns={[["name", "Unidade", 200, 110, "identifier"], ["type", "Tipo", 100, 70], ["phone", "Telefone", 140, 100], ["address", "Local", 180, 100], ["manager", "Responsável", 180, 100], ["status", "Status", 90, 70, "status"], ["actions", "Ações", 140, 140, "actions"]]}
-        rows={visibleUnits.map((unidade) => ({ id: unidade.id, label: unidade.name, values: { name: unidade.name, type: unidade.type, phone: unidade.phone || "—", address: unidade.realEstate?.streetName || "—", manager: unidade.manager?.name || "—", status: unidade.isActive ? "Ativo" : "Inativo" }, actions: <div className="flex justify-end gap-2"><button onClick={() => handleOpenModal(unidade)}>Editar</button><button onClick={() => handleToggleStatus(unidade.id, unidade.isActive)}>{unidade.isActive ? "Inativar" : "Ativar"}</button></div> }))}
+        columns={[["name", "Unidade / Razão Social", 220, 120, "identifier"], ["type", "Tipo", 100, 70], ["cnpj", "CNPJ / Registro", 140, 100], ["phone", "Telefone", 120, 100], ["address", "Endereço", 180, 100], ["manager", "Responsável", 160, 100], ["status", "Status", 90, 70, "status"], ["actions", "Ações", 140, 140, "actions"]]}
+        rows={visibleUnits.map((unidade) => ({ id: unidade.id, label: unidade.name, values: { name: unidade.name + (unidade.registration?.legalName ? ` (${unidade.registration.legalName})` : ""), type: unidade.type + (unidade.registration?.unitNumber ? ` · Nº ${unidade.registration.unitNumber}` : ""), cnpj: unidade.registration?.cnpj || "—", phone: unidade.phone || "—", address: (unidade.streetAddress || unidade.realEstate?.streetName || "—"), manager: unidade.manager?.name || "—", status: unidade.isActive ? "Ativo" : "Inativo" }, actions: <div className="flex justify-end gap-2"><button onClick={() => handleOpenModal(unidade)}>Editar</button><button onClick={() => handleToggleStatus(unidade.id, unidade.isActive)}>{unidade.isActive ? "Inativar" : "Ativar"}</button></div> }))}
         toolbar={<div className="flex w-full min-w-0 gap-2"><div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input

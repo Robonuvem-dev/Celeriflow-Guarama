@@ -83,7 +83,21 @@ export default function BeneficiosClient({ beneficiosInicial, programasInicial, 
 
   return (
     <PageFrame className="space-y-2">
-      <PageHeader title="Programas e benefícios" icon={<Gift className="size-4 shrink-0 text-blue-600" />} />
+      <PageHeader
+        title="Programas e benefícios"
+        icon={<Gift className="size-4 shrink-0 text-blue-600" />}
+        action={
+          <div className="flex items-center gap-2">
+            <a
+              href="/social/requisicoes"
+              className="inline-flex h-7 items-center gap-1.5 rounded-md bg-indigo-600 px-3 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600/50"
+            >
+              <Package className="size-3.5" />
+              Entregas e Histórico de Benefícios por Família
+            </a>
+          </div>
+        }
+      />
       <p className="px-1 text-sm text-slate-500">Gestão de auxílios eventuais, cestas básicas e programas sociais.</p>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

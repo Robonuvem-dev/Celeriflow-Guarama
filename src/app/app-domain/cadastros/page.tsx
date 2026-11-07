@@ -96,6 +96,7 @@ export default async function CadastrosDashboardPage() {
       <section className="rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
           <span className="font-bold text-slate-700">Cadastro único</span>
+          <Link href="/cadastros/enderecos" className="text-slate-600 hover:text-emerald-700">Endereços (Logradouro/Bairro/Cidade)</Link>
           <Link href="/cadastros/familias" className="text-slate-600 hover:text-emerald-700">Geral <strong className="ml-1 text-slate-800">{masterCounts.geral}</strong></Link>
           <Link href="/cadastros/centros-custo" className="text-slate-600 hover:text-emerald-700">Estrutura <strong className="ml-1 text-slate-800">{masterCounts.estrutura}</strong></Link>
           <Link href="/cadastros/textos-juridicos" className="text-slate-600 hover:text-emerald-700">Referências <strong className="ml-1 text-slate-800">{masterCounts.referencias}</strong></Link>

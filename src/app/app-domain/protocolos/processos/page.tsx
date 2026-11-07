@@ -10,6 +10,8 @@ type SearchParams = {
   q?: string | string[];
   status?: string | string[];
   page?: string | string[];
+  origin?: string | string[];
+  period?: string | string[];
 };
 
 export default async function ProcessosPage({ searchParams }: { searchParams: Promise<SearchParams> }) {

@@ -5,6 +5,7 @@ import { employees, institutions, secretariats } from "../../schema/administrati
 import { people } from "../../schema/people";
 import { realEstates, addresses } from "../../schema/registry";
 import { socialAttendances, socialBenefits, socialBenefitQuotas, socialBenefitRequests, socialBenefitRequestItems, socialBenefitStocks, socialCatalogEntries, socialFamilies, socialFamilyMembers, socialFinancialEntries, socialMinimumWages, socialNetworkOrganizations, socialPersonFacts, socialPersonProfiles, socialProfessionalLinks, socialPrograms, socialReferrals, socialUnits, socialVisits } from "../../schema/social";
+import { socialUnitRegistrations } from "../../schema/social-workflows";
 import { socialAttendanceWhere, socialHistoryWhere, type SocialAccess } from "@/lib/social/access-policy";
 import type { SocialAttendanceDetails, SocialBenefitQuotaRecord, SocialBenefitRecord, SocialBenefitRequestDetails, SocialBenefitStockRecord, SocialCatalogRecord, SocialFamilyDetails, SocialFinancialEntryRecord, SocialNetworkOrganizationRecord, SocialPersonFactRecord, SocialPersonProfileRecord, SocialProfessionalLinkRecord, SocialProgramRecord, SocialReferralDetails, SocialUnitDetails } from "@/lib/contracts/social";
 import type { PersonRecord, RealEstateRecord } from "@/lib/contracts/registry";
@@ -21,7 +22,7 @@ export async function findSocialInstitution(database: DatabaseExecutor): Promise
 }
 
 export async function listSocialUnits(database: DatabaseExecutor): Promise<SocialUnitDetails[]> {
-  const rows = await database.select({ unit: socialUnits, realEstate: realEstates, manager: employees }).from(socialUnits).leftJoin(realEstates, eq(realEstates.id, socialUnits.realEstateId)).leftJoin(employees, eq(employees.id, socialUnits.managerId)).orderBy(asc(socialUnits.name));
+  const rows = await database.select({ unit: socialUnits, realEstate: realEstates, manager: employees, registration: socialUnitRegistrations }).from(socialUnits).leftJoin(realEstates, eq(realEstates.id, socialUnits.realEstateId)).leftJoin(employees, eq(employees.id, socialUnits.managerId)).leftJoin(socialUnitRegistrations, eq(socialUnitRegistrations.unitId, socialUnits.id)).orderBy(asc(socialUnits.name));
   return rows.map(({ unit, ...relations }) => ({ ...unit, ...relations }));
 }
 

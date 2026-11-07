@@ -37,6 +37,40 @@ export async function PlanningDashboard({ jurisdiction }: { jurisdiction: Planni
     <PageHeader title="Planejamento e Orçamento" icon={<Landmark className="size-4 text-indigo-700" />} />
     <p className="text-sm text-muted-foreground">{jurisdiction === "LEGISLATIVE" ? "Câmara Municipal" : "Prefeitura Municipal"} · Elaboração dos instrumentos e acompanhamento orçamentário</p>
     <div className="grid gap-3 md:grid-cols-3">{Object.entries(labels).map(([key, label]) => <Link href={`${base}/${key}`} key={key} className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent"><h2 className="font-semibold">{label}</h2><p className="mt-2 text-xs text-muted-foreground">Consultar peças, previsões, programas e metas</p></Link>)}</div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Link href="/planejamento/unidades-gestoras" className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-slate-800">Unidades Gestoras</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Órgão, Unidade Orçamentária e Sub-Unidade (18.73)</p>
+      </Link>
+      <Link href="/planejamento/produtos-acoes" className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-slate-800">Produtos das Ações</h3>
+        <p className="mt-1 text-xs text-muted-foreground">1 Ação = 1 Produto Único Resultante (18.71)</p>
+      </Link>
+      <Link href="/planejamento/unidades-medida" className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-slate-800">Unidades de Medidas</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Índices de apuração física e precisão (18.72)</p>
+      </Link>
+      <Link href="/planejamento/metas-comparativo" className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-slate-800">Comparativo de Metas</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Metas previstas vs executadas físico/financeiro (18.63)</p>
+      </Link>
+      <Link href="/planejamento/exercicios" className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-slate-800">Outros Exercícios</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Consultar elaboração em anos anteriores (18.39)</p>
+      </Link>
+      <Link href="/planejamento/rollover" className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-slate-800">Próximo Exercício</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Geração automática de cadastros e descrições (18.64)</p>
+      </Link>
+      <Link href="/planejamento/saude-15" className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-rose-700">Gastos com Saúde 15%</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Demonstrativo LC 141/2012 e CF/88 (18.7)</p>
+      </Link>
+      <Link href={`${base}/entidades`} className="rounded-lg border bg-card p-3 transition-colors hover:bg-accent block">
+        <h3 className="text-xs font-bold text-slate-800">Entidades Governamentais</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Vínculos de entidades e UGs autorizadas</p>
+      </Link>
+    </div>
     <Card><CardHeader><CardTitle>Instrumentos cadastrados</CardTitle></CardHeader><CardContent><p className="text-2xl font-semibold">{data.total}</p><Link href={`${base}/entidades`} className="text-sm text-indigo-700 underline">Entidades e unidades orçamentárias</Link></CardContent></Card>
   </PageFrame>;
 }

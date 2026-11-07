@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Building2, Download, FileSpreadsheet, Printer, Users } from "lucide-react";
+import { BarChart3, Building2, Download, FileSpreadsheet, Printer, Users, Building } from "lucide-react";
+import Link from "next/link";
 import { summarizeAdministrationData, type AdministrationBiData } from "@/lib/administration/bi-model";
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
@@ -106,6 +107,7 @@ export default function AdministrationDashboard({ data }: { data: Administration
       <div className={styles.controls}>
         <label className={styles.scope}><span>Visão dos indicadores</span><select aria-label="Selecionar secretaria ou prefeitura inteira" value={data.selection} disabled={pending} onChange={event => selectSecretariat(event.target.value)}><option value="">Prefeitura inteira</option>{data.options.map(s => <option key={s.id} value={s.id}>{s.name}{!s.active ? " (inativa)" : ""}</option>)}</select></label>
         <div className={styles.exportControls}>
+          <Link href="/administracao/entidades" className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-sm"><Building size={14} /><span>Entidades e Parâmetros</span></Link>
           <select aria-label="Formato de exportação" value={exportFormat} onChange={event => setExportFormat(event.target.value)}><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV (.csv)</option><option value="powerbi">Power BI (.zip)</option></select>
           <a aria-label={`Exportar indicadores selecionados para ${exportFormat === "xlsx" ? "Excel" : exportFormat === "csv" ? "CSV" : "Power BI"}`} title={exportFormat === "powerbi" ? "Pacote CSV + consulta Power Query para importar no Power BI" : "Exportar dados da seleção atual"} href={exportUrl(exportFormat)}><Download size={15} /><span>Exportar</span></a>
           <button type="button" onClick={() => window.print()} title="Imprimir esta tela ou salvar como PDF" aria-label="Imprimir ou salvar a tela selecionada em PDF"><Printer size={15} /><span>PDF</span></button>
