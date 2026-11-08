@@ -329,13 +329,13 @@ export default function PortalDeclaracoesClient({
   const totalRows = declarations.length;
 
   const operationalColumns: OperationalColumn[] = [
-    { key: "protocol", label: "Protocolo", width: 180, minWidth: 140, type: "identifier" },
-    { key: "competence", label: "Competência", width: 110, minWidth: 90 },
-    { key: "kind", label: "Módulo / Tipo", width: 140, minWidth: 110 },
-    { key: "declarationType", label: "Enquadramento", width: 140, minWidth: 100 },
-    { key: "status", label: "Situação", width: 160, minWidth: 120, type: "status" },
-    { key: "serviceValue", label: "Total Movimento", width: 140, minWidth: 110, align: "right" },
-    { key: "issPayable", label: "ISS a Recolher", width: 140, minWidth: 110, align: "right" },
+    { key: "protocol", label: "Protocolo", initialWidth: 180, minWidth: 140, type: "identifier", sortable: false, details: "none", resizable: true },
+    { key: "competence", label: "Competência", initialWidth: 110, minWidth: 90, type: "text", sortable: false, details: "none", resizable: true },
+    { key: "kind", label: "Módulo / Tipo", initialWidth: 140, minWidth: 110, type: "text", sortable: false, details: "none", resizable: true },
+    { key: "declarationType", label: "Enquadramento", initialWidth: 140, minWidth: 100, type: "text", sortable: false, details: "none", resizable: true },
+    { key: "status", label: "Situação", initialWidth: 160, minWidth: 120, type: "status", sortable: false, details: "none", resizable: true },
+    { key: "serviceValue", label: "Total Movimento", initialWidth: 140, minWidth: 110, type: "text", align: "right", sortable: false, details: "none", resizable: true },
+    { key: "issPayable", label: "ISS a Recolher", initialWidth: 140, minWidth: 110, type: "text", align: "right", sortable: false, details: "none", resizable: true },
   ];
 
   const operationalRows: OperationalRow[] = declarations.map((d) => ({

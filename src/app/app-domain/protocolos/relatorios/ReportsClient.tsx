@@ -209,13 +209,13 @@ export default function ReportsClient({
 
   // Colunas da Tabela Geral / Entrada
   const reportColumns: OperationalColumn[] = [
-    { key: "protocol", label: "Protocolo", initialWidth: 150, minWidth: 120, maxWidth: 220, type: "text", resizable: true },
-    { key: "type", label: "Tipo de Processo", initialWidth: 170, minWidth: 130, maxWidth: 250, type: "text", resizable: true },
-    { key: "subject", label: "Assunto", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true },
-    { key: "interessado", label: "Requerente / Interessado", initialWidth: 220, minWidth: 160, maxWidth: 350, type: "text", resizable: true },
-    { key: "department", label: "Setor Atual", initialWidth: 180, minWidth: 140, maxWidth: 260, type: "text", resizable: true },
-    { key: "status", label: "Status", initialWidth: 140, minWidth: 110, maxWidth: 200, type: "status", resizable: true },
-    { key: "date", label: "Data Abertura", initialWidth: 130, minWidth: 100, maxWidth: 160, type: "text", resizable: true },
+    { key: "protocol", label: "Protocolo", initialWidth: 150, minWidth: 120, maxWidth: 220, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "type", label: "Tipo de Processo", initialWidth: 170, minWidth: 130, maxWidth: 250, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "subject", label: "Assunto", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "interessado", label: "Requerente / Interessado", initialWidth: 220, minWidth: 160, maxWidth: 350, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "department", label: "Setor Atual", initialWidth: 180, minWidth: 140, maxWidth: 260, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "status", label: "Status", initialWidth: 140, minWidth: 110, maxWidth: 200, type: "status", resizable: true, sortable: false, details: "none" },
+    { key: "date", label: "Data Abertura", initialWidth: 130, minWidth: 100, maxWidth: 160, type: "text", resizable: true, sortable: false, details: "none" },
   ];
 
   return (
@@ -415,6 +415,7 @@ export default function ReportsClient({
       {/* CASO 1: RELATÓRIO GERAL (19.82) & CONSULTA DE ENTRADA (19.27) */}
       {(selectedReport === "geral" || selectedReport === "entrada") && (
         <OperationalListFrame
+          pagination={null}
           label={
             selectedReport === "geral"
               ? "Relatório Geral de Processos (19.82)"

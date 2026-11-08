@@ -279,23 +279,23 @@ export default function RemessasClient({
 
   // Colunas da Tabela de Remessas (19.61)
   const remessaColumns: OperationalColumn[] = [
-    { key: "remessaNumber", label: "Remessa", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true },
-    { key: "fromDepartment", label: "Setor Origem", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true },
-    { key: "toDepartment", label: "Setor Destino", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true },
-    { key: "count", label: "Qtd Processos", initialWidth: 110, minWidth: 90, maxWidth: 140, type: "number", resizable: true },
-    { key: "status", label: "Situação", initialWidth: 180, minWidth: 130, maxWidth: 220, type: "status", resizable: true },
-    { key: "date", label: "Data Envio", initialWidth: 140, minWidth: 110, maxWidth: 180, type: "text", resizable: true },
-    { key: "actions", label: "Ações", initialWidth: 180, minWidth: 140, maxWidth: 240, type: "actions", resizable: false },
+    { key: "remessaNumber", label: "Remessa", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "fromDepartment", label: "Setor Origem", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "toDepartment", label: "Setor Destino", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "count", label: "Qtd Processos", initialWidth: 110, minWidth: 90, maxWidth: 140, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "status", label: "Situação", initialWidth: 180, minWidth: 130, maxWidth: 220, type: "status", resizable: true, sortable: false, details: "none" },
+    { key: "date", label: "Data Envio", initialWidth: 140, minWidth: 110, maxWidth: 180, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "actions", label: "Ações", initialWidth: 180, minWidth: 140, maxWidth: 240, type: "actions", resizable: false, sortable: false, details: "none" },
   ];
 
   // Colunas da Tabela de Processos na Remessa (19.62)
   const processColumns: OperationalColumn[] = [
-    { key: "protocol", label: "Protocolo", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true },
-    { key: "remessa", label: "Remessa", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "text", resizable: true },
-    { key: "interessado", label: "Interessado", initialWidth: 220, minWidth: 160, maxWidth: 350, type: "text", resizable: true },
-    { key: "route", label: "Encaminhamento", initialWidth: 240, minWidth: 180, maxWidth: 400, type: "text", resizable: true },
-    { key: "status", label: "Situação", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "status", resizable: true },
-    { key: "date", label: "Data Tramitação", initialWidth: 140, minWidth: 110, maxWidth: 180, type: "text", resizable: true },
+    { key: "protocol", label: "Protocolo", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "remessa", label: "Remessa", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "text", resizable: true, sortable: false, details: "none" },
+    { key: "interessado", label: "Interessado", initialWidth: 220, minWidth: 160, maxWidth: 350, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "route", label: "Encaminhamento", initialWidth: 240, minWidth: 180, maxWidth: 400, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "status", label: "Situação", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "status", resizable: true, sortable: false, details: "none" },
+    { key: "date", label: "Data Tramitação", initialWidth: 140, minWidth: 110, maxWidth: 180, type: "text", resizable: true, sortable: false, details: "none" },
   ];
 
   return (
@@ -376,6 +376,7 @@ export default function RemessasClient({
       {/* ABA 1: CONSULTA DE REMESSAS (19.61) */}
       {activeTab === "remessas" && (
         <OperationalListFrame
+          pagination={null}
           label="Consulta e Gestão de Remessas"
           actions={
             <div className="flex items-center gap-2">
@@ -456,7 +457,7 @@ export default function RemessasClient({
                   remessaNumber: rem.remessaNumber,
                   fromDepartment: rem.fromDepartmentName,
                   toDepartment: rem.toDepartmentName,
-                  count: rem.processCount,
+                  count: String(rem.processCount),
                   status: rem.status,
                   date: rem.createdAt,
                 },
@@ -495,6 +496,7 @@ export default function RemessasClient({
       {/* ABA 2: PROCESSOS NAS REMESSAS (19.62) */}
       {activeTab === "processos" && (
         <OperationalListFrame
+          pagination={null}
           label="Processos Contidos nas Remessas"
           actions={
             <div className="flex items-center gap-2">

@@ -20,13 +20,13 @@ interface TypeItem {
 interface PersonItem {
   id: string;
   fullName: string;
-  cpf: string;
+  cpf: string | null;
 }
 
 interface CompanyItem {
   id: string;
   corporateName: string;
-  cnpj: string;
+  cnpj: string | null;
 }
 
 interface DepartmentItem {

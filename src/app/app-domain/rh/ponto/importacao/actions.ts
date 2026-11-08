@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { eq, and, sql } from "drizzle-orm";
@@ -88,7 +89,7 @@ export async function processClockImport(formData: FormData) {
       }
     } else if (format === "CUSTOM" && customLayoutId) {
       // Layout Customizado (Requisito 20.10)
-      const [layoutRec] = await databaseConnection
+      const [layoutRec] = await databaseConnection.db
         .select()
         .from(hrReferenceRecords)
         .where(
@@ -144,7 +145,7 @@ export async function processClockImport(formData: FormData) {
     }
 
     // Resolve employees in database by CPF, registration or PIS
-    const allEmployees = await databaseConnection
+    const allEmployees = await databaseConnection.db
       .select({ id: employees.id, name: employees.name, cpf: employees.cpf, registration: employees.registration })
       .from(employees)
       .where(eq(employees.isActive, true));
@@ -176,7 +177,7 @@ export async function processClockImport(formData: FormData) {
       }
 
       const key = `${employeeId}_${p.dateStr}`;
-      const entry = grouped.get(key) || { employeeId, date: p.dateStr, times: [], clock: p.clockDevice || defaultClock };
+      const entry = grouped.get(key) || { employeeId, date: p.dateStr, times: [] as string[], clock: p.clockDevice || defaultClock };
       entry.times.push(p.timeStr);
       grouped.set(key, entry);
     }
@@ -239,20 +240,22 @@ export async function processClockImport(formData: FormData) {
       }
 
       // Record batch integration event
+      const eventPayload = {
+        format,
+        totalPunches: punches.length,
+        importedDays: importedCount,
+        unmatchedCount,
+        defaultClock,
+        importedBy: context.user.name || context.user.id,
+      };
       await tx.insert(hrIntegrationEvents).values({
         sourceKey: `PONTO:IMPORTACAO:${Date.now()}`,
         domain: "AUDITORIA",
         environment: "PORTAL_RH",
         eventType: "IMPORTACAO_RELOGIO_PONTO",
         status: "PROCESSADO",
-        payload: {
-          format,
-          totalPunches: punches.length,
-          importedDays: importedCount,
-          unmatchedCount,
-          defaultClock,
-          importedBy: context.user.name || context.user.id,
-        },
+        payload: eventPayload,
+        payloadHash: createHash("sha256").update(JSON.stringify(eventPayload)).digest("hex"),
       });
     });
 

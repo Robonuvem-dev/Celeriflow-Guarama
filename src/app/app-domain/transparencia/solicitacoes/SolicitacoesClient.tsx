@@ -69,14 +69,14 @@ export type CitizenRequestItem = {
 };
 
 const columns: OperationalColumn[] = [
-  { key: "protocol", label: "Protocolo", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "identifier", resizable: true },
-  { key: "type", label: "Tipo", initialWidth: 100, minWidth: 80, maxWidth: 130, type: "text", resizable: true },
-  { key: "subject", label: "Descrição / Assunto", initialWidth: 280, minWidth: 180, maxWidth: 500, type: "text", resizable: true, details: "overflow" },
-  { key: "applicant", label: "Solicitante", initialWidth: 180, minWidth: 120, maxWidth: 260, type: "text", resizable: true },
-  { key: "createdAt", label: "Criação", initialWidth: 105, minWidth: 95, maxWidth: 130, type: "text", resizable: true },
-  { key: "ageDays", label: "Tempo Decorrido", initialWidth: 130, minWidth: 110, maxWidth: 160, type: "text", resizable: true },
-  { key: "timeStatus", label: "Status por Tempo", initialWidth: 170, minWidth: 140, maxWidth: 220, type: "status", resizable: true },
-  { key: "status", label: "Situação", initialWidth: 120, minWidth: 100, maxWidth: 150, type: "status", resizable: true },
+  { key: "protocol", label: "Protocolo", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "identifier", resizable: true, sortable: false, details: "none" },
+  { key: "type", label: "Tipo", initialWidth: 100, minWidth: 80, maxWidth: 130, type: "text", resizable: true, sortable: false, details: "none" },
+  { key: "subject", label: "Descrição / Assunto", initialWidth: 280, minWidth: 180, maxWidth: 500, type: "text", resizable: true, sortable: false, details: "overflow" },
+  { key: "applicant", label: "Solicitante", initialWidth: 180, minWidth: 120, maxWidth: 260, type: "text", resizable: true, sortable: false, details: "overflow" },
+  { key: "createdAt", label: "Criação", initialWidth: 105, minWidth: 95, maxWidth: 130, type: "text", resizable: true, sortable: false, details: "none" },
+  { key: "ageDays", label: "Tempo Decorrido", initialWidth: 130, minWidth: 110, maxWidth: 160, type: "text", resizable: true, sortable: false, details: "none" },
+  { key: "timeStatus", label: "Status por Tempo", initialWidth: 170, minWidth: 140, maxWidth: 220, type: "status", resizable: true, sortable: false, details: "none" },
+  { key: "status", label: "Situação", initialWidth: 120, minWidth: 100, maxWidth: 150, type: "status", resizable: true, sortable: false, details: "none" },
   { key: "actions", label: "Ações", initialWidth: 90, minWidth: 80, maxWidth: 110, type: "actions", resizable: false, sortable: false, details: "none", align: "right" },
 ];
 
@@ -273,7 +273,20 @@ export function SolicitacoesClient({
                     <FileText className="size-5 text-sky-700" />
                     Solicitação {selectedRequest.protocol}
                   </DialogTitle>
-                  <Badge variant={selectedRequest.timeStatus.variant}>
+                  <Badge
+                    variant={
+                      selectedRequest.timeStatus.variant === "destructive"
+                        ? "destructive"
+                        : "secondary"
+                    }
+                    className={
+                      selectedRequest.timeStatus.variant === "success"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                        : selectedRequest.timeStatus.variant === "warning"
+                        ? "bg-amber-100 text-amber-800 border-amber-200"
+                        : undefined
+                    }
+                  >
                     {selectedRequest.timeStatus.label}
                   </Badge>
                 </div>
