@@ -59,6 +59,8 @@ const DASHBOARD_EDIT_PATHS: Record<string, { label: string; href: string }> = {
   medicamentos: { label: "Almoxarifado e Medicamentos", href: "/patrimonio/materiais" },
   "fila-saude": { label: "Atendimento e Regulação", href: "/atendimento" },
   "fila-creches": { label: "Atendimento e Matrículas", href: "/atendimento" },
+  "pessoal-funcao": { label: "Gestão de Pessoal e Folha", href: "/rh/folha" },
+  covid: { label: "Execução Financeira da Saúde", href: "/financeiro/empenhos" },
 };
 
 export default async function PublicTransparencyPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

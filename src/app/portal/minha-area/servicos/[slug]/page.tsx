@@ -10,6 +10,7 @@ import { readPortalRegistryIdentity } from "@/db/repositories/portal-content/ser
 import { readDigitalService } from "@/lib/portal-cidadao/catalog";
 import { getCitizenAccount } from "@/lib/portal-cidadao/access";
 import { ServiceRequestForm } from "@/components/portal-institucional/ServiceRequestForm";
+import { processReferenceCatalog } from "@/db/schema/process-reference-catalog";
 
 export const dynamic = "force-dynamic";
 export default async function RequestServicePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -23,9 +24,75 @@ export default async function RequestServicePage({ params }: { params: Promise<{
   const assessments = service.definition.executor === "GUIA" ? await db.select({ id: portalTaxAssessments.id, taxpayerId: portalTaxAssessments.taxpayerId, assessmentNumber: portalTaxAssessments.assessmentNumber, year: portalTaxAssessments.year, tax: { name: portalTaxes.name } }).from(portalTaxAssessments).innerJoin(portalTaxes, eq(portalTaxes.id, portalTaxAssessments.taxId)).where(and(inArray(portalTaxAssessments.taxpayerId, taxpayers.map(item => item.id)), notInArray(portalTaxAssessments.status, ["Pago", "Extinto", "Cancelado", "Suspenso"]))) : [];
   const properties = service.definition.executor === "ITBI" ? await db.select({ id: realEstates.id, taxpayerId: realEstates.taxpayerId, municipalInsc: realEstates.municipalInsc, streetName: realEstates.streetName }).from(realEstates).where(inArray(realEstates.taxpayerId, taxpayers.map(item => item.id))) : [];
   const registryIdentity = await readPortalRegistryIdentity(db, account.id, true);
+
+  // 19.2, 19.4, 19.83, 19.84, 19.85: Documentos pertinentes, subassuntos com temas e justificativas
+  const catalogRecords = service.definition.subjectId
+    ? await db
+        .select()
+        .from(processReferenceCatalog)
+        .where(
+          and(
+            eq(processReferenceCatalog.subjectId, service.definition.subjectId),
+            eq(processReferenceCatalog.isActive, true)
+          )
+        )
+    : [];
+
+  const catalogDocuments = catalogRecords
+    .filter((r) => r.kind === "REQUIRED_DOCUMENT")
+    .map((r) => {
+      let linkUrl: string | null = null;
+      try {
+        const meta = r.description ? JSON.parse(r.description) : {};
+        linkUrl = meta.linkUrl || null;
+      } catch {
+        // text description
+      }
+      return { id: r.id, name: r.name, linkUrl, description: r.description || undefined };
+    });
+
+  const subassuntos = catalogRecords
+    .filter((r) => r.kind === "SUBASSUNTO")
+    .map((r) => {
+      let theme: string | undefined;
+      try {
+        const meta = r.description ? JSON.parse(r.description) : {};
+        theme = meta.theme;
+      } catch {
+        // text
+      }
+      return { id: r.id, name: r.name, theme };
+    });
+
+  const justifications = catalogRecords
+    .filter((r) => {
+      if (r.kind !== "JUSTIFICATION") return false;
+      try {
+        const meta = r.description ? JSON.parse(r.description) : {};
+        return meta.portalVisible !== false;
+      } catch {
+        return true;
+      }
+    })
+    .map((r) => ({ id: r.id, name: r.name }));
+
   return <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
     <Link href={`/portal/servicos/${slug}`} className="text-sm font-semibold text-emerald-800 hover:underline">← Requisitos do serviço</Link>
     <header><h1 className="text-3xl font-bold text-slate-950">{service.publicService.name}</h1><p className="mt-3 text-sm leading-6 text-slate-600">A solicitação gera um protocolo central e é encaminhada ao setor responsável. Formulário versão {service.version}.</p></header>
-    <ServiceRequestForm serviceId={service.id} version={service.version} provider={service.provider} definition={service.definition} allowsRegistryIdentity={Boolean(registryIdentity)} taxpayers={taxpayers.map((item) => ({ id: item.id, label: item.person?.fullName || item.company?.corporateName || "Contribuinte autorizado" }))} resources={{ assessments: assessments.map((item) => ({ id: item.id, taxpayerId: item.taxpayerId, label: `${item.assessmentNumber || item.tax.name} — ${item.year}` })), properties: properties.map((item) => ({ id: item.id, taxpayerId: item.taxpayerId, label: `${item.municipalInsc || "Imóvel"} — ${item.streetName || "Endereço não informado"}` })) }} />
+    <ServiceRequestForm
+      serviceId={service.id}
+      version={service.version}
+      provider={service.provider}
+      definition={service.definition}
+      allowsRegistryIdentity={Boolean(registryIdentity)}
+      taxpayers={taxpayers.map((item) => ({ id: item.id, label: item.person?.fullName || item.company?.corporateName || "Contribuinte autorizado" }))}
+      resources={{
+        assessments: assessments.map((item) => ({ id: item.id, taxpayerId: item.taxpayerId, label: `${item.assessmentNumber || item.tax.name} — ${item.year}` })),
+        properties: properties.map((item) => ({ id: item.id, taxpayerId: item.taxpayerId, label: `${item.municipalInsc || "Imóvel"} — ${item.streetName || "Endereço não informado"}` }))
+      }}
+      catalogDocuments={catalogDocuments}
+      subassuntos={subassuntos}
+      justifications={justifications}
+    />
   </main>;
 }

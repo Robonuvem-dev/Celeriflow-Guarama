@@ -21,6 +21,7 @@ import { getTenantContextForModule, getTenantContextForSystemAdministration } fr
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { saveProcessStructure } from "./actions";
+import { SectorResponsiblesView, type SectorResponsibleRow } from "./SectorResponsiblesView";
 
 export const dynamic = "force-dynamic";
 
@@ -210,6 +211,20 @@ export default async function StructurePage({
 
   const showUnits = tab === "all" || tab === "unit";
   const showDepartments = tab === "all" || tab === "department";
+  const showResponsibles = tab === "responsaveis";
+
+  const responsibleRows: SectorResponsibleRow[] = departmentRows.map((row) => ({
+    departmentId: row.record.id,
+    departmentName: row.record.name,
+    acronym: row.metadata?.acronym ?? null,
+    secretariatId: row.record.secretariatId,
+    secretariatName: orgMap.get(row.record.secretariatId) || "Órgão não identificado",
+    unitId: row.metadata?.unitId ?? null,
+    unitName: row.metadata?.unitId ? unitMap.get(row.metadata.unitId) || "—" : "—",
+    responsibleEmployeeId: row.metadata?.responsibleEmployeeId ?? null,
+    responsibleName: row.metadata?.responsibleEmployeeId ? staffMap.get(row.metadata.responsibleEmployeeId) || null : null,
+    isResponsibleActive: Boolean(row.metadata?.responsibleEmployeeId && row.record.isActive),
+  }));
 
   return (
     <PageFrame className="space-y-5 pb-6">
@@ -282,6 +297,7 @@ export default async function StructurePage({
             { id: "all", label: "Visão Completa", count: unitRows.length + departmentRows.length },
             { id: "unit", label: "Unidades Administrativas", count: unitRows.length },
             { id: "department", label: "Setores e Responsáveis", count: departmentRows.length },
+            { id: "responsaveis", label: "Consulta de Responsáveis (19.40)", count: departmentRows.filter(d => d.metadata?.responsibleEmployeeId).length },
           ].map((item) => {
             const active = tab === item.id;
             const href = `/protocolos/estrutura?tab=${item.id}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
@@ -532,6 +548,17 @@ export default async function StructurePage({
             )}
           </div>
         </section>
+      )}
+
+      {/* Seção 3: Consulta de Responsáveis com Filtros e Exportação (19.40, 19.8, 19.39) */}
+      {(showResponsibles || tab === "all") && (
+        <SectorResponsiblesView
+          rows={responsibleRows}
+          orgs={orgs}
+          units={units}
+          staff={staff}
+          canUpdate={context.user.profileCode === "ADMIN" || Boolean(context.user.permissions?.includes("ALL"))}
+        />
       )}
     </PageFrame>
   );

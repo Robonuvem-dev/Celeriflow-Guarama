@@ -8,7 +8,7 @@ import { Decimal } from "@/db/decimal";
 import { supplementaryDefinitions, supplementaryKinds, parseSupplementaryDetails, type SupplementaryKind } from "./supplementary-records";
 const text = z.string().trim().min(1).max(500);
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
-export const referenceKindSchema = z.enum(["FERIADO", "EQUIPE", "FAIXA", "ESCALA", "PLANO_SAUDE", "AMBIENTE_RISCO", "PROCESSO", "LICENCA_EDUCACAO", "PREVIDENCIA_OPTATIVA", "MODELO_DOCUMENTO", "LOTACAO_ORCAMENTARIA", ...supplementaryKinds]);
+export const referenceKindSchema = z.enum(["FERIADO", "EQUIPE", "FAIXA", "ESCALA", "PLANO_SAUDE", "AMBIENTE_RISCO", "PROCESSO", "LICENCA_EDUCACAO", "PREVIDENCIA_OPTATIVA", "MODELO_DOCUMENTO", "LOTACAO_ORCAMENTARIA", "LAYOUT_IMPORTACAO_PONTO", "RELOGIO_PONTO", ...supplementaryKinds]);
 export type ReferenceKind = z.infer<typeof referenceKindSchema>;
 export const referenceDefinitions: Record<ReferenceKind, { title: string; fields: { name: string; label: string; type?: "date" | "time" | "textarea"; options?: string[] }[] }> = {
   ...supplementaryDefinitions,
@@ -23,6 +23,8 @@ export const referenceDefinitions: Record<ReferenceKind, { title: string; fields
   PLANO_SAUDE: { title: "Administradoras de planos de saúde", fields: [{ name: "registration", label: "Registro ANS / identificação" }, { name: "contact", label: "Contato" }] },
   AMBIENTE_RISCO: { title: "Ambientes de trabalho e fatores de risco", fields: [{ name: "location", label: "Local de trabalho" }, { name: "riskFactor", label: "Fator de risco" }, { name: "protection", label: "Medidas de proteção" }] },
   PROCESSO: { title: "Processos administrativos e judiciais", fields: [{ name: "type", label: "Tipo", options: ["Administrativo", "Judicial"] }, { name: "employeeId", label: "Funcionário" }, { name: "court", label: "Órgão / juízo" }, { name: "subject", label: "Objeto" }] },
+  LAYOUT_IMPORTACAO_PONTO: { title: "Layouts customizados de importação de ponto", fields: [{ name: "delimiter", label: "Delimitador", options: [";", ",", "TAB", "FIXO"] }, { name: "employeeIdCol", label: "Coluna do servidor (PIS/CPF/Matrícula)" }, { name: "dateCol", label: "Coluna da data" }, { name: "dateFormat", label: "Formato da data", options: ["DD/MM/AAAA", "AAAA-MM-DD", "DDMMAAAA", "DD-MM-AAAA"] }, { name: "timeCol", label: "Coluna da hora" }, { name: "timeFormat", label: "Formato da hora", options: ["HH:MM", "HH:MM:SS", "HHMM"] }, { name: "eventCol", label: "Coluna de evento (opcional)" }, { name: "clockCol", label: "Coluna do relógio (opcional)" }, { name: "skipHeaderRows", label: "Linhas de cabeçalho a ignorar (0, 1...)" }] },
+  RELOGIO_PONTO: { title: "Relógios de ponto (REP) e locais", fields: [{ name: "serialNumber", label: "Número de série / Registro MTE" }, { name: "model", label: "Marca e modelo do REP" }, { name: "location", label: "Local de instalação" }, { name: "ipAddress", label: "Endereço IP (opcional)" }, { name: "departmentId", label: "Lotação / Secretaria" }] },
 };
 const detailSchemas = {
   LOTACAO_ORCAMENTARIA: z.object({ employeeId: text, appropriationId: text }).strict(),
@@ -40,6 +42,8 @@ const detailSchemas = {
   PLANO_SAUDE: z.object({ registration: text, contact: text }).strict(),
   AMBIENTE_RISCO: z.object({ location: text, riskFactor: text, protection: text }).strict(),
   PROCESSO: z.object({ type: z.enum(["Administrativo", "Judicial"]), employeeId: text, court: text, subject: text }).strict(),
+  LAYOUT_IMPORTACAO_PONTO: z.object({ delimiter: text, employeeIdCol: text, dateCol: text, dateFormat: text, timeCol: text, timeFormat: text, eventCol: z.string().optional().default(""), clockCol: z.string().optional().default(""), skipHeaderRows: z.string().default("0") }).passthrough(),
+  RELOGIO_PONTO: z.object({ serialNumber: text, model: text, location: text, ipAddress: z.string().optional().default(""), departmentId: z.string().optional().default("") }).passthrough(),
 };
 export function parseReferenceRecord(raw: { kind: unknown; code: unknown; name: unknown; details: unknown }) {
   const kind = referenceKindSchema.parse(raw.kind);

@@ -7,7 +7,8 @@ import {
   ClipboardList, 
   Scale,
   Gavel,
-  Clock
+  Clock,
+  BarChart3
 } from "lucide-react"
 import Link from "next/link"
 import { PageFrame } from "@/components/app-ui/PageFrame"
@@ -33,6 +34,7 @@ export default async function ComprasDashboard() {
         icon={<ShoppingCart className="size-4 shrink-0 text-emerald-600" />}
         action={(
           <>
+            <Link href="/compras/relatorios" className={buttonVariants({ variant: "outline", size: "sm" })}>Relatórios (CF12)</Link>
             <Link href="/compras/cadastros" className={buttonVariants({ variant: "outline", size: "sm" })}>Cadastros</Link>
             <Link href="/compras/solicitacoes/novo" aria-label="Nova Solicitação" className={buttonVariants({ variant: "outline", size: "sm" })}>
               <ShoppingCart className="size-3.5" />
@@ -143,6 +145,13 @@ export default async function ComprasDashboard() {
                 <div>
                   <div className="font-semibold">Catálogo de Itens</div>
                   <div className="text-xs text-muted-foreground">Cadastro de materiais e serviços</div>
+                </div>
+              </Link>
+              <Link href="/compras/relatorios" className="flex items-center rounded-md border p-3 hover:bg-muted transition-colors">
+                <BarChart3 className="mr-3 size-5 text-indigo-600" />
+                <div>
+                  <div className="font-semibold">Relatórios Especializados</div>
+                  <div className="text-xs text-muted-foreground">35 relatórios CF12 (SD, ACS, apurações)</div>
                 </div>
               </Link>
             </div>

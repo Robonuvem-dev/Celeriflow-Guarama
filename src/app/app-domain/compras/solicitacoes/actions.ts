@@ -209,3 +209,170 @@ export async function approvePurchaseRequest(id: string) {
     return { success: false, error: error instanceof ProcurementLifecycleError ? error.message : "Falha ao aprovar a solicitação." };
   }
 }
+
+/**
+ * 12.33 / 12.119: Cancelamento de SDs cadastradas indevidamente.
+ */
+export async function cancelPurchaseRequest(id: string, reason?: string) {
+  try {
+    const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = await tx.select().from(purchaseRequests).where(eq(purchaseRequests.id, id)).limit(1);
+      if (!existing) return { error: "Solicitação não encontrada." };
+      if (existing.status === "Cancelada") return { error: "A solicitação já se encontra cancelada." };
+      if (!canManagePurchaseRequest(context.user, existing) && !isSystemAdministrator(context.user)) {
+        return { error: "Sem permissão para cancelar esta solicitação." };
+      }
+      await tx.update(purchaseRequests).set({
+        status: "Cancelada",
+        justification: reason ? `${existing.justification}\n[Cancelamento em ${new Date().toLocaleDateString("pt-BR")}]: ${reason}` : existing.justification,
+        updatedAt: new Date(),
+      }).where(eq(purchaseRequests.id, id));
+      return { success: true };
+    });
+    if ("error" in result) return { success: false, error: result.error };
+    revalidatePath("/compras/solicitacoes");
+    revalidatePath(`/compras/solicitacoes/${id}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error cancelling purchase request:", error);
+    return { success: false, error: "Falha ao cancelar a solicitação." };
+  }
+}
+
+/**
+ * 12.34 / 12.120: Estorno de cancelamento de SDs canceladas indevidamente.
+ */
+export async function restorePurchaseRequest(id: string) {
+  try {
+    const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = await tx.select().from(purchaseRequests).where(eq(purchaseRequests.id, id)).limit(1);
+      if (!existing) return { error: "Solicitação não encontrada." };
+      if (existing.status !== "Cancelada") return { error: "Somente solicitações canceladas podem ser estornadas." };
+      if (!canManagePurchaseRequest(context.user, existing) && !isSystemAdministrator(context.user)) {
+        return { error: "Sem permissão para estornar o cancelamento desta solicitação." };
+      }
+      await tx.update(purchaseRequests).set({
+        status: "Rascunho",
+        updatedAt: new Date(),
+      }).where(eq(purchaseRequests.id, id));
+      return { success: true };
+    });
+    if ("error" in result) return { success: false, error: result.error };
+    revalidatePath("/compras/solicitacoes");
+    revalidatePath(`/compras/solicitacoes/${id}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error restoring purchase request:", error);
+    return { success: false, error: "Falha ao estornar cancelamento da solicitação." };
+  }
+}
+
+/**
+ * 12.42: Alteração do requisitante da SD (novo órgão, unidade, subunidade e requisitante final).
+ */
+export async function changePurchaseRequestRequester(input: {
+  id: string;
+  secretariatId: string;
+  departmentId: string;
+  requesterId: string;
+}) {
+  try {
+    const context = await getTenantContextForModuleOperation("COMPRAS", "update");
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = await tx.select().from(purchaseRequests).where(eq(purchaseRequests.id, input.id)).limit(1);
+      if (!existing) return { error: "Solicitação não encontrada." };
+      if (existing.status === "Cancelada") return { error: "Não é possível alterar requisitante de SD cancelada." };
+
+      const [sec] = await tx.select().from(secretariats).where(eq(secretariats.id, input.secretariatId)).limit(1);
+      const [dept] = await tx.select().from(departments).where(eq(departments.id, input.departmentId)).limit(1);
+      const [emp] = await tx.select().from(employees).where(eq(employees.id, input.requesterId)).limit(1);
+
+      if (!sec || !dept || dept.secretariatId !== sec.id || !emp || !emp.isActive) {
+        return { error: "Nova secretaria, departamento ou requisitante inválido." };
+      }
+
+      await tx.update(purchaseRequests).set({
+        secretariatId: sec.id,
+        departmentId: dept.id,
+        requesterId: emp.id,
+        updatedAt: new Date(),
+      }).where(eq(purchaseRequests.id, input.id));
+
+      return { success: true };
+    });
+
+    if ("error" in result) return { success: false, error: result.error };
+    revalidatePath("/compras/solicitacoes");
+    revalidatePath(`/compras/solicitacoes/${input.id}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error changing requester:", error);
+    return { success: false, error: "Falha ao alterar requisitante da solicitação." };
+  }
+}
+
+/**
+ * 12.122: Clonagem de requisições de compras entre administrações / novos registros.
+ */
+export async function clonePurchaseRequest(id: string) {
+  try {
+    const context = await getTenantContextForModuleOperation("COMPRAS", "create");
+    const result = await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [existing] = await loadPurchaseRequestsWithAllocations(tx, [id]);
+      if (!existing) return { error: "Solicitação original não encontrada." };
+
+      const requests = await tx.select({ number: purchaseRequests.number }).from(purchaseRequests);
+      const finalNumber = await nextYearlyCodeDrizzle({
+        db: tx,
+        key: "compras-solicitacao",
+        prefix: "REQ",
+        existingCodes: requests.map(({ number }) => ({ code: number })),
+      });
+
+      const [newRequest] = await tx.insert(purchaseRequests).values({
+        number: finalNumber,
+        object: `[CLONE] ${existing.object}`,
+        justification: `Clonado a partir da SD ${existing.number}: ${existing.justification}`,
+        priority: existing.priority,
+        estimatedValue: existing.estimatedValue,
+        secretariatId: existing.secretariatId,
+        departmentId: existing.departmentId,
+        requesterId: context.user.employeeId ?? existing.requesterId,
+        status: "Rascunho",
+      }).returning();
+
+      for (const item of existing.items) {
+        const [newItem] = await tx.insert(purchaseRequestItems).values({
+          purchaseRequestId: newRequest.id,
+          catalogItemId: item.catalogItemId,
+          materialId: item.materialId,
+          customName: item.customName,
+          quantity: item.quantity,
+          estimatedUnitValue: item.estimatedUnitValue,
+        }).returning({ id: purchaseRequestItems.id });
+
+        if (item.budgetAllocations.length) {
+          await tx.insert(purchaseRequestBudgetAllocations).values(
+            item.budgetAllocations.map(alloc => ({
+              purchaseRequestItemId: newItem.id,
+              budgetAppropriationId: alloc.budgetAppropriationId,
+              quantity: alloc.quantity,
+              valueDecimal: alloc.valueDecimal,
+            }))
+          );
+        }
+      }
+
+      return { id: newRequest.id };
+    });
+
+    if ("error" in result) return { success: false, error: result.error };
+    revalidatePath("/compras/solicitacoes");
+    return { success: true, id: result.id };
+  } catch (error) {
+    console.error("Error cloning purchase request:", error);
+    return { success: false, error: "Falha ao clonar solicitação." };
+  }
+}

@@ -13,7 +13,20 @@ function RequestTreatmentForm({ requestId, revision, status, serviceId, definiti
   return <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold text-slate-900">{internal ? "Tratar solicitação" : "Ações do pedido"}</h2>{error && <p role="alert" className="mt-3 rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}{!closed || internal ? <form className="mt-4 space-y-4" onSubmit={async (event) => {
     event.preventDefault(); setPending(true); setError(""); const data = new FormData(event.currentTarget);
     try { const response = await fetch("/api/portal/solicitacoes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "operar", input: { requestId, revision, requestKey: key, operation, text: String(data.get("text") || ""), uploadIds: operation === "COMPLEMENTAR" ? uploadIds : [], requiredCodes: operation === "EXIGENCIA" ? data.getAll("requiredCodes").map(String) : [], documentVersionId: String(data.get("documentVersionId") || "") } }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error); setUploadIds([]); setKey(crypto.randomUUID()); router.refresh(); } catch (issue) { setError(issue instanceof Error ? issue.message : "Falha na operação."); } finally { setPending(false); }
-  }}><label className="block text-sm font-semibold">Operação<select value={operation} onChange={(event) => setOperation(event.target.value)} className="mt-2 w-full rounded border p-3">{(internal ? closed ? ["REABRIR"] : ["EXIGENCIA", "RESPONDER", "CONCLUIR", "NOTA"] : status === "AGUARDANDO_COMPLEMENTO" ? ["COMPLEMENTAR", "CANCELAR"] : ["CANCELAR"]).map((value) => <option key={value}>{value}</option>)}</select></label>
+  }}><label className="block text-sm font-semibold">Operação (19.115)<select value={operation} onChange={(event) => setOperation(event.target.value)} className="mt-2 w-full rounded border p-3">{(internal ? closed ? ["REABRIR"] : ["CONCLUIDO", "EXIGENCIA", "CANCELAR", "RESPONDER", "NOTA"] : status === "AGUARDANDO_COMPLEMENTO" ? ["COMPLEMENTAR", "CANCELAR"] : ["CANCELAR"]).map((value) => {
+    const labels: Record<string, string> = {
+      CONCLUIDO: "Aprovar Solicitação (Concluir)",
+      CONCLUIR: "Aprovar Solicitação (Concluir)",
+      EXIGENCIA: "Retornar com Pendência (Solicitar Complementação)",
+      CANCELAR: "Reprovar / Indeferir Solicitação",
+      RESPONDER: "Responder ao Cidadão",
+      NOTA: "Anotação Interna",
+      COMPLEMENTAR: "Enviar Complementação de Pendência",
+      REABRIR: "Reabrir Solicitação",
+    };
+    const mappedValue = value === "CONCLUIDO" ? "CONCLUIR" : value;
+    return <option key={value} value={mappedValue}>{labels[value] || value}</option>;
+  })}</select></label>
   {internal && operation === "EXIGENCIA" && definition.documents.length > 0 && <fieldset className="space-y-2 rounded border p-3"><legend className="px-2 text-sm font-semibold">Documentos exigidos nesta pendência</legend>{definition.documents.map((item) => <label key={item.code} className="block text-sm"><input type="checkbox" name="requiredCodes" value={item.code} className="mr-2" />{item.label}</label>)}</fieldset>}
   <label className="block text-sm font-semibold">{operation === "NOTA" ? "Nota interna (não exibida ao requerente)" : "Mensagem / fundamentação"}<textarea name="text" required minLength={5} maxLength={12000} rows={4} className="mt-2 w-full rounded border p-3 font-normal" /></label>{internal && ["RESPONDER", "CONCLUIR"].includes(operation) && <label className="block text-sm">Documento de resultado (opcional)<select name="documentVersionId" className="mt-2 w-full rounded border p-3"><option value="">Sem documento</option>{documents.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}{!internal && operation === "COMPLEMENTAR" && definition.documents.map((item) => <label key={item.code} className="block text-sm">{item.label}<input type="file" accept="application/pdf,image/png,image/jpeg" disabled={pending || uploading} className="mt-2 block w-full" onChange={async (event) => {
     const file = event.target.files?.[0]; if (!file) return; setUploading(true); setError("");

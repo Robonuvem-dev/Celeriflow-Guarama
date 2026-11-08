@@ -5,10 +5,13 @@ import { processes, processMovements, processEvents, processWorkflowStages, proc
 import { employees, departments } from "@/db/schema/administration";
 import { users } from "@/db/schema/identity";
 import { people } from "@/db/schema/people";
+import { companies } from "@/db/schema/registry";
+import { processCitizenAccesses } from "@/db/schema/citizen-access";
 import { processRegistrationDetails } from "@/db/schema/process-reference-catalog";
 import { processRegistrationDetailSchema } from "@/lib/protocols/registration-details";
 import { getProtocolContext, getProtocolContextForOperation, protocolScopeCondition } from "@/lib/protocols/access";
 import { notifyProtocolDepartment, notifyProtocolUsers } from "@/lib/protocols/notifications";
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 import { createValidatedProcess } from "@/lib/protocols/service";
 import { approveGenericWorkflowProcess, concludeGenericWorkflowProcess, isGenericWorkflowProcess, recordGenericWorkflowReceipt, rejectGenericWorkflowProcess, returnGenericWorkflowProcess } from "@/lib/protocols/generic-workflow-runtime";
 import { markInternalNotificationRead } from "@/lib/notifications/internal-notifications";
@@ -74,6 +77,30 @@ export async function createProtocol(formData: FormData): Promise<void> {
   const requestedPriority = String(formData.get("priority") || "");
   const description = String(formData.get("description") || "").trim() || null;
 
+  // 19.12: Tipo de atendimento (Presencial, Telefone, Via Web, etc.)
+  const attendanceType = String(formData.get("attendanceType") || "Presencial").trim();
+  // 19.29: Preenchimento manual do número do processo
+  const manualProtocolNumber = String(formData.get("manualProtocolNumber") || "").trim() || null;
+  // 19.32: Número de processo externo
+  const externalProcessNumber = String(formData.get("externalProcessNumber") || "").trim() || null;
+  // 19.33: Número de processo anterior
+  const previousProcessNumber = String(formData.get("previousProcessNumber") || "").trim() || null;
+  // 19.65: Validação de endereço através do CEP
+  const cep = String(formData.get("cep") || "").trim() || null;
+  const logradouro = String(formData.get("logradouro") || "").trim() || null;
+  const bairro = String(formData.get("bairro") || "").trim() || null;
+  const cidade = String(formData.get("cidade") || "").trim() || null;
+
+  const metadataObj: Record<string, string> = {};
+  if (externalProcessNumber) metadataObj.externalProcessNumber = externalProcessNumber;
+  if (previousProcessNumber) metadataObj.previousProcessNumber = previousProcessNumber;
+  if (cep) metadataObj.cep = cep;
+  if (logradouro) metadataObj.logradouro = logradouro;
+  if (bairro) metadataObj.bairro = bairro;
+  if (cidade) metadataObj.cidade = cidade;
+  if (attendanceType) metadataObj.attendanceType = attendanceType;
+  const portalPurpose = Object.keys(metadataObj).length ? JSON.stringify(metadataObj) : null;
+
   if (!processTypeId || !subjectId) throw new Error("Selecione o Tipo e o Assunto do processo.");
   if ([personId,companyId,otherApplicantId].filter(Boolean).length > 1) throw new Error("Selecione apenas um interessado: pessoa, empresa ou outro requerente.");
 
@@ -85,7 +112,17 @@ export async function createProtocol(formData: FormData): Promise<void> {
       if (!personId && !companyId && !otherApplicantId) throw new Error("Informe o requerente representado.");
     }
     const created = await createValidatedProcess(tx, employee, user.id, {
-      processTypeId, subjectId, personId, companyId, otherApplicantId, initialDepartmentId: selectedDepartmentId, priority: requestedPriority, description,
+      processTypeId,
+      subjectId,
+      personId,
+      companyId,
+      otherApplicantId,
+      initialDepartmentId: selectedDepartmentId,
+      priority: requestedPriority,
+      description,
+      portalOrigin: attendanceType || "BALCAO",
+      portalPurpose,
+      manualProtocolNumber,
     });
     if (details.representativePersonId || details.declaredValue !== null || otherApplicantId) await tx.insert(processRegistrationDetails).values({ processId: created.id, otherApplicantId, ...details });
     return created;
@@ -260,6 +297,38 @@ export async function forwardProcess(data: {
           dedupeDiscriminator: `DEADLINE:${effectiveDueAt.toISOString()}`,
         });
       }
+
+      // 19.114: Notificar requerente por e-mail a cada tramitação efetuada
+      try {
+        let applicantEmail: string | null = null;
+        let applicantName: string = "Requerente";
+        if (process.personId) {
+          const [p] = await tx.select({ email: people.email, name: people.fullName }).from(people).where(eq(people.id, process.personId)).limit(1);
+          if (p?.email) { applicantEmail = p.email; applicantName = p.name; }
+        } else if (process.companyId) {
+          const [c] = await tx.select({ email: companies.emailPrimary, name: companies.corporateName }).from(companies).where(eq(companies.id, process.companyId)).limit(1);
+          if (c?.email) { applicantEmail = c.email; applicantName = c.name; }
+        }
+        if (!applicantEmail) {
+          const [acc] = await tx.select({ email: users.email, name: users.nome }).from(processCitizenAccesses).innerJoin(users, eq(users.id, processCitizenAccesses.usuarioId)).where(eq(processCitizenAccesses.processId, process.id)).limit(1);
+          if (acc?.email) { applicantEmail = acc.email; applicantName = acc.name; }
+        }
+        if (applicantEmail) {
+          const siteUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+          await NotificationDispatcher.sendProtocoloTramitacao({
+            to: applicantEmail,
+            nome: applicantName,
+            protocolo: process.protocolNumber,
+            setorOrigem: employee.department?.name || undefined,
+            setorDestino: destinationDepartment.name,
+            motivo: reason || undefined,
+            dataHora: new Date().toLocaleString("pt-BR"),
+            link: `${siteUrl}/portal/minha-area/processos/${process.id}`,
+          });
+        }
+      } catch (err) {
+        console.warn("Falha ao enviar e-mail de tramitação:", err);
+      }
     }, { timeoutMs: 5_000 });
 
     revalidateProtocolPages();
@@ -267,6 +336,144 @@ export async function forwardProcess(data: {
   } catch (error) {
     console.error(error);
     return { error: error instanceof Error ? error.message : "Erro ao tramitar o processo." };
+  }
+}
+
+// 19.7: Permitir editar a rota dos processos que não iniciaram a tramitação
+export async function editProcessInitialRoute(
+  processId: string,
+  destinationDepartmentId: string,
+  reason?: string,
+): Promise<{ error: string | null }> {
+  try {
+    const { employee, departmentId, user } = await getOperationalContext("update");
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [process] = await tx.select().from(processes).where(eq(processes.id, processId)).limit(1);
+      if (!process) throw new Error("Processo não encontrado.");
+      if (process.currentDepartmentId !== departmentId) throw new Error("Apenas o setor atual pode alterar a rota inicial.");
+
+      const movements = await tx.select().from(processMovements).where(eq(processMovements.processId, processId));
+      if (movements.length > 1 || movements.some(m => m.status === "RECEIVED" || m.status === "FORWARDED")) {
+        throw new Error("A rota só pode ser alterada em processos que ainda não iniciaram a tramitação.");
+      }
+
+      const [destDept] = await tx.select().from(departments).where(and(eq(departments.id, destinationDepartmentId), eq(departments.isActive, true))).limit(1);
+      if (!destDept) throw new Error("Setor de destino não encontrado ou inativo.");
+
+      await tx.update(processes).set({
+        currentDepartmentId: destDept.id,
+      }).where(eq(processes.id, processId));
+
+      if (movements.length === 1) {
+        await tx.update(processMovements).set({
+          toDepartmentId: destDept.id,
+          reason: reason ? `Rota inicial alterada: ${reason}` : "Rota inicial alterada pelo setor",
+        }).where(eq(processMovements.id, movements[0].id));
+      }
+
+      await tx.insert(processEvents).values({
+        processId,
+        eventType: "ROUTE_EDITED",
+        description: `Rota inicial alterada para ${destDept.name}${reason ? `: ${reason}` : ""}`,
+        departmentId,
+        employeeId: employee.id,
+      });
+
+      await notifyProtocolDepartment(tx, user.id, destDept.id, {
+        processId,
+        type: "ROUTE_EDITED",
+        title: `Processo redirecionado: ${process.protocolNumber}`,
+        message: `A rota inicial do processo foi alterada para o seu setor.`,
+        priority: "NORMAL",
+        dedupeDiscriminator: `ROUTE_EDITED:${destDept.id}`,
+      });
+    }, { timeoutMs: 5_000 });
+
+    revalidateProtocolPages();
+    return { error: null };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Erro ao alterar rota do processo." };
+  }
+}
+
+// 19.18: Permitir cancelamento do processo
+export async function cancelProcess(processId: string, reason: string): Promise<{ error: string | null }> {
+  try {
+    const { employee, departmentId, user } = await getOperationalContext("update");
+    const cleanReason = reason.trim();
+    if (!cleanReason) throw new Error("Informe a justificativa do cancelamento.");
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [process] = await tx.select().from(processes).where(eq(processes.id, processId)).limit(1);
+      if (!process) throw new Error("Processo não encontrado.");
+      if (process.currentDepartmentId !== departmentId) throw new Error("Somente o setor atual pode cancelar o processo.");
+      if (["Concluido", "Arquivado", "Cancelado"].includes(process.status)) throw new Error("Este processo já se encontra finalizado.");
+
+      await tx.update(processes).set({
+        status: "Cancelado",
+        completedAt: new Date(),
+        archiveReason: cleanReason,
+        archivedByEmployeeId: employee.id,
+      }).where(eq(processes.id, processId));
+
+      await tx.insert(processEvents).values({
+        processId,
+        eventType: "CANCELLED",
+        description: cleanReason,
+        previousStatus: process.status,
+        newStatus: "Cancelado",
+        departmentId,
+        employeeId: employee.id,
+      });
+
+      await insertAuditEvent(tx, {
+        actorUsuarioId: user.id,
+        eventType: auditEventTypes.processUpdated,
+        targetType: "PROCESS",
+        targetId: process.id,
+      });
+    }, { timeoutMs: 5_000 });
+
+    revalidateProtocolPages();
+    return { error: null };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Erro ao cancelar o processo." };
+  }
+}
+
+// 19.31: Permitir a clonagem de processos quando se tratar do mesmo assunto
+export async function cloneProcessAction(sourceProcessId: string): Promise<{ error: string | null; newProcessId?: string }> {
+  try {
+    const { employee, user } = await getOperationalContext("create");
+    let createdId = "";
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [source] = await tx.select().from(processes).where(eq(processes.id, sourceProcessId)).limit(1);
+      if (!source) throw new Error("Processo de origem não encontrado.");
+
+      const created = await createValidatedProcess(tx, employee, user.id, {
+        processTypeId: source.processTypeId,
+        subjectId: source.subjectId,
+        personId: source.personId,
+        companyId: source.companyId,
+        initialDepartmentId: source.currentDepartmentId,
+        priority: source.priority,
+        description: source.description ? `[Clonado de ${source.protocolNumber}] ${source.description}` : `Clonado do processo ${source.protocolNumber}`,
+      });
+
+      createdId = created.id;
+      await tx.insert(processEvents).values({
+        processId: created.id,
+        eventType: "CLONED",
+        description: `Processo clonado a partir de ${source.protocolNumber} (mesmo assunto).`,
+        departmentId: source.currentDepartmentId,
+        employeeId: employee.id,
+      });
+    }, { timeoutMs: 5_000 });
+
+    revalidateProtocolPages();
+    return { error: null, newProcessId: createdId };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Erro ao clonar o processo." };
   }
 }
 

@@ -18,6 +18,8 @@ import { getVersionSignatureStatus } from "@/lib/documents/document-flow-policy"
 import { digitalServiceSchema, openingSchema, requestOperationSchema, ratingSchema } from "./services-policy";
 import { validateMunicipalLocation, validateServiceValues } from "./services-policy";
 import { openExternalServiceProcess } from "./external-opening";
+import { users } from "@/db/schema/identity";
+import { NotificationDispatcher } from "@/lib/notifications/notification-dispatcher";
 import { executePortalTaxOpening } from "./tax-executors";
 import { createScopedSpaceReservation } from "./space-reservations";
 
@@ -213,6 +215,53 @@ export async function operatePortalRequest(connection: DatabaseConnection, actor
       await tx.update(processes).set({ status: processStatus, completedAt: status === "CONCLUIDO" ? new Date() : null }).where(eq(processes.id, request.processId));
     }
     await insertAuditEvent(tx, { actorUsuarioId: actorId, eventType: auditEventTypes.processUpdated, targetType: "PORTAL_SERVICE_REQUEST", targetId: request.id });
+
+    // Notificações por e-mail (19.113 & 19.117)
+    const [applicantUser] = await tx.select({ nome: users.nome, email: users.email }).from(users).where(eq(users.id, request.actorId)).limit(1);
+    const serviceName = (request.snapshot as { name?: string })?.name || "Serviço Municipal";
+    const publicUrl = process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+    const portalLink = `${publicUrl}/portal/minha-area/solicitacoes/${request.id}`;
+    const internalLink = `${publicUrl}/protocolos/servicos/solicitacoes/${request.id}`;
+
+    if (input.operation === "EXIGENCIA" && applicantUser?.email) {
+      void NotificationDispatcher.sendProtocoloPendencia({
+        to: applicantUser.email,
+        nome: applicantUser.nome,
+        protocolo: request.process.protocolNumber,
+        servico: serviceName,
+        motivo: input.text,
+        link: portalLink,
+        exigencias: input.requiredCodes,
+      }).catch((e) => console.error("Falha ao enviar notificação de pendência:", e));
+    } else if (input.operation === "CONCLUIR" && applicantUser?.email) {
+      void NotificationDispatcher.sendProtocoloAprovado({
+        to: applicantUser.email,
+        nome: applicantUser.nome,
+        protocolo: request.process.protocolNumber,
+        servico: serviceName,
+        despacho: input.text || "Sua solicitação foi aprovada.",
+        link: portalLink,
+      }).catch((e) => console.error("Falha ao enviar notificação de aprovação:", e));
+    } else if (input.operation === "CANCELAR" && applicantUser?.email) {
+      void NotificationDispatcher.sendProtocoloReprovado({
+        to: applicantUser.email,
+        nome: applicantUser.nome,
+        protocolo: request.process.protocolNumber,
+        servico: serviceName,
+        motivo: input.text || "Solicitação cancelada/indeferida.",
+        link: portalLink,
+      }).catch((e) => console.error("Falha ao enviar notificação de reprovação:", e));
+    } else if (input.operation === "COMPLEMENTAR") {
+      void NotificationDispatcher.sendProtocoloPendenciaAtualizada({
+        to: "protocolo@celeriflow.com.br",
+        responsavel: "Gestão do Setor",
+        protocolo: request.process.protocolNumber,
+        solicitante: applicantUser?.nome || "Cidadão Requerente",
+        servico: serviceName,
+        link: internalLink,
+      }).catch((e) => console.error("Falha ao notificar gestão de atualização de pendência:", e));
+    }
+
     return result;
   }, { timeoutMs: 30_000 });
 }

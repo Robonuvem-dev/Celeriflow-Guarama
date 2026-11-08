@@ -7,6 +7,7 @@ import { databaseConnection } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { attendanceRecords } from "@/db/schema/personnel-records";
 import { hrIntegrationEvents } from "@/db/schema/personnel-workforce";
+import { hrFunctionalRecords } from "@/db/schema/personnel-functional-management";
 import { assertFunctionalHolderAccess } from "@/lib/rh/functional-record-service";
 import { auditPersonnelMutation } from "@/lib/rh/personnel-mutation-audit";
 import { assertPersonnelPeriodOpen } from "@/lib/rh/personnel-period-access";
@@ -24,9 +25,29 @@ export async function savePonto(formData: FormData) {
     const status = formData.get("status") as string;
     const extraHours = Number(formData.get("extraHours") || 0);
     const bankHours = Number(formData.get("bankHours") || 0);
+    const punchType = (formData.get("punchType") as string) || "ELETRONICO";
+    const occurrenceType = (formData.get("occurrenceType") as string)?.trim() || "";
+    const clockLocation = (formData.get("clockLocation") as string)?.trim() || "";
+    const justification = (formData.get("justification") as string)?.trim() || "";
+    const documentRef = (formData.get("documentRef") as string)?.trim() || "";
 
     if (!employeeId || !dateStr) {
       return { success: false, error: "Servidor e Data são obrigatórios." };
+    }
+
+    // Requisito 20.14: Digitação do histórico da justificativa obrigatório para lançamento manual ou ocorrência
+    const isManualOrOccurrence =
+      punchType === "MANUAL" ||
+      Boolean(occurrenceType) ||
+      status === "Falta" ||
+      status === "Atraso" ||
+      Boolean(id);
+
+    if (isManualOrOccurrence && (!justification || justification.length < 5)) {
+      return {
+        success: false,
+        error: "A digitação do histórico da justificativa é obrigatória para lançamento manual do ponto ou cadastro de ocorrência (Requisito 20.14).",
+      };
     }
 
     const date = new Date(dateStr);
@@ -78,6 +99,7 @@ export async function savePonto(formData: FormData) {
       await assertFunctionalHolderAccess(tx, context, employeeId);
       await assertPersonnelPeriodOpen(tx, employeeId, date, date);
       await tx.execute(sql`SELECT set_config('celeriflow.actor_id',${context.user.id},true)`);
+      let targetId = id;
       if (id) {
         const [previous] = await tx.select().from(attendanceRecords).where(eq(attendanceRecords.id, id)).for("update");
         if (!previous) throw new Error("Ponto não encontrado.");
@@ -89,11 +111,56 @@ export async function savePonto(formData: FormData) {
         await auditPersonnelMutation(tx, context.user.id, { employeeId, entity: "AttendanceRecord", id, operation: "ALTERAR", before: previous, after: { id, ...data } });
       } else {
         const [created] = await tx.insert(attendanceRecords).values(data).returning();
+        targetId = created.id;
         await auditPersonnelMutation(tx, context.user.id, { employeeId, entity: "AttendanceRecord", id: created.id, operation: "INCLUIR", before: null, after: created });
+      }
+
+      if (targetId && (justification || occurrenceType || punchType === "MANUAL")) {
+        const occKey = `PONTO:OCORRENCIA:${targetId}`;
+        await tx
+          .insert(hrFunctionalRecords)
+          .values({
+            kind: "OCORRENCIA_PONTO",
+            employeeId,
+            key: occKey,
+            name: occurrenceType || (punchType === "MANUAL" ? "Lançamento Manual de Ponto" : "Ajuste de Ponto"),
+            startsAt: date,
+            endsAt: date,
+            status: "ATIVO",
+            version: 1,
+            data: {
+              attendanceId: targetId,
+              occurrenceType: occurrenceType || "AJUSTE_MANUAL",
+              justification: justification?.trim() || "",
+              punchType: punchType || "MANUAL",
+              clockLocation: clockLocation || "Não informado",
+              documentRef: documentRef || "",
+              recordedBy: context.user.name || context.user.id,
+            },
+            actorId: context.user.id,
+          })
+          .onConflictDoUpdate({
+            target: [hrFunctionalRecords.key],
+            set: {
+              name: occurrenceType || (punchType === "MANUAL" ? "Lançamento Manual de Ponto" : "Ajuste de Ponto"),
+              data: {
+                attendanceId: targetId,
+                occurrenceType: occurrenceType || "AJUSTE_MANUAL",
+                justification: justification?.trim() || "",
+                punchType: punchType || "MANUAL",
+                clockLocation: clockLocation || "Não informado",
+                documentRef: documentRef || "",
+                recordedBy: context.user.name || context.user.id,
+              },
+              updatedAt: new Date(),
+            },
+          });
       }
     });
 
     revalidatePath("/rh/ponto");
+    revalidatePath("/rh/ponto/ocorrencias");
+    revalidatePath("/rh/ponto/relatorios");
     return { success: true };
   } catch (error) {
     console.error("Erro ao salvar registro de ponto:", error);

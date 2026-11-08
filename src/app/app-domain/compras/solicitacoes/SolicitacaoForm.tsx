@@ -9,13 +9,21 @@ import { savePurchaseRequest } from "./actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, FileSpreadsheet, Upload, Wrench, Package, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { CatalogItemPicker } from "../_components/CatalogItemPicker";
 import { AllocationDraftTable } from "./AllocationDraftTable";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type RequestItem = {
   id?: string;
@@ -85,14 +93,54 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
   const [secretariatId, setSecretariatId] = useState(data?.secretariatId || initialOrigin?.secretariatId || "");
   const [departmentId, setDepartmentId] = useState(data?.departmentId || initialOrigin?.departmentId || "");
   const [priority, setPriority] = useState(data?.priority || "Normal");
+  const [tipoSD, setTipoSD] = useState<string>("1 - Compras/Serviços");
   const [externalAdhesion, setExternalAdhesion] = useState(Boolean(data?.externalAdhesion));
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [csvContent, setCsvContent] = useState("");
   const availableBudgetAppropriations = budgetAppropriations.filter((appropriation) => appropriation.secretariatId === secretariatId);
   const estimatedTotal = items.length > 0
     ? items.reduce((acc, curr) => acc + (curr.quantity * (curr.estimatedUnitValue ?? 0)), 0)
     : data?.estimatedValue ?? 0;
 
-  const handleAddItem = () => {
-    setItems([...items, { catalogItemId: "", customName: "", quantity: 1, estimatedUnitValue: 0, allocations: [] }]);
+  const handleAddItem = (customDesc = "", defaultPrice = 0) => {
+    setItems([...items, { catalogItemId: customDesc ? "custom" : "", customName: customDesc, quantity: 1, estimatedUnitValue: defaultPrice, allocations: [] }]);
+  };
+
+  const handleImportCsv = () => {
+    if (!csvContent.trim()) {
+      alert("Cole o conteúdo CSV para importar.");
+      return;
+    }
+    const lines = csvContent.split(/\r?\n/).filter(line => line.trim().length > 0);
+    const newParsedItems: RequestItem[] = [];
+
+    for (const line of lines) {
+      // Allow comma, semicolon or tab delimiter
+      const parts = line.includes(";") ? line.split(";") : line.includes("\t") ? line.split("\t") : line.split(",");
+      if (parts.length >= 1) {
+        const name = parts[0]?.trim() || "Item Importado";
+        // Ignore header line if present
+        if (name.toLowerCase() === "descricao" || name.toLowerCase() === "descrição" || name.toLowerCase() === "item") continue;
+        const qty = parseFloat(parts[1]?.replace(",", ".") || "1") || 1;
+        const unitVal = parseFloat(parts[2]?.replace(",", ".") || "0") || 0;
+        newParsedItems.push({
+          catalogItemId: "custom",
+          customName: name,
+          quantity: qty,
+          estimatedUnitValue: unitVal,
+          allocations: [],
+        });
+      }
+    }
+
+    if (newParsedItems.length > 0) {
+      setItems([...items, ...newParsedItems]);
+      setIsCsvModalOpen(false);
+      setCsvContent("");
+      alert(`${newParsedItems.length} itens importados com sucesso!`);
+    } else {
+      alert("Não foi possível identificar itens válidos no texto informado.");
+    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -240,6 +288,17 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="tipoSD">Tipo da SD (Requisito 12.14)</Label>
+                <Select value={tipoSD} onValueChange={(value) => setTipoSD(value ?? "1 - Compras/Serviços")}>
+                  <SelectTrigger id="tipoSD"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1 - Compras/Serviços">1 - Compras / Serviços</SelectItem>
+                    <SelectItem value="2 - Obras/Engenharia">2 - Obras / Engenharia</SelectItem>
+                    <SelectItem value="3 - Registro de Preços">3 - Registro de Preços</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {originLocked ? <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">A origem da solicitacao esta vinculada ao seu setor e secretaria autorizados.</p> : null}
             <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Etapa de planejamento: registre a necessidade, os itens, as quantidades, a estimativa e a prioridade. Reserva orçamentária e empenho são realizados nas etapas próprias da contratação.</p>
@@ -264,11 +323,60 @@ export function SolicitacaoForm({ data, catalogItems = [], secretarias = [], dep
 
             <div className="border-t border-slate-200 pt-3">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">Itens da Solicitação</h3>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                  <Plus className="mr-2 h-4 w-4" /> Adicionar Item
-                </Button>
+                <div>
+                  <h3 className="text-sm font-semibold">Itens da Solicitação</h3>
+                  <p className="text-xs text-muted-foreground">Adicione manualmente, utilize os atalhos ou importe via planilha (Requisito 12.14).</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleAddItem("Material de Consumo em Geral", 0)} title="Atalho para inserir material">
+                    <Package className="mr-1 size-3.5 text-blue-600" /> + Material
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleAddItem("Serviço Especializado de Terceiros", 0)} title="Atalho para inserir serviço">
+                    <Wrench className="mr-1 size-3.5 text-emerald-600" /> + Serviço
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setIsCsvModalOpen(true)} title="Importar lista de itens via CSV">
+                    <FileSpreadsheet className="mr-1 size-3.5 text-amber-600" /> Importar Planilha
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleAddItem()}>
+                    <Plus className="mr-1 size-3.5" /> Adicionar Item
+                  </Button>
+                </div>
               </div>
+
+              {/* Modal 12.14: Importação de planilha de itens */}
+              <Dialog open={isCsvModalOpen} onOpenChange={setIsCsvModalOpen}>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <FileSpreadsheet className="size-5 text-emerald-600" />
+                      Importação de Planilha de Itens (12.14)
+                    </DialogTitle>
+                    <DialogDescription>
+                      Cole abaixo os dados da planilha no formato: <code>Descrição; Quantidade; Valor Unitário</code> (um item por linha).
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <Textarea
+                      rows={8}
+                      placeholder={`Papel Sulfite A4 75g; 50; 28.50\nCaneta Esferográfica Azul; 200; 1.80\nServiço de Manutenção Elétrica; 1; 1200.00`}
+                      value={csvContent}
+                      onChange={(e) => setCsvContent(e.target.value)}
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Formatos aceitos: separados por ponto e vírgula (;), vírgula (,) ou tabulação.
+                    </p>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsCsvModalOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="button" onClick={handleImportCsv}>
+                      <Upload className="mr-2 size-4" /> Importar Itens
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {items.length === 0 ? (
                 <div className="text-center py-6 text-slate-500 border rounded-lg bg-slate-50">

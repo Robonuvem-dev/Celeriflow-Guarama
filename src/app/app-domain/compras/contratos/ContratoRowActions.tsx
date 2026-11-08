@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { deleteContract } from "./actions";
-import { Trash2, Edit, Eye, Loader2, Users } from "lucide-react";
+import { Trash2, Edit, Eye, Loader2, Users, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "@/components/app-ui/operational/operational.module.css";
@@ -51,6 +51,14 @@ export default function ContratoRowActions({
           Edição rápida
         </button>
       ) : null}
+      <Link
+        href={`/compras/contratos/${encodeURIComponent(id)}/relatorio`}
+        className={styles.iconButton}
+        title="Relatório Completo do Contrato"
+        aria-label={`Relatório do contrato ${number}`}
+      >
+        <FileText />
+      </Link>
       <Link
         href={`/compras/contratos/${encodeURIComponent(id)}`}
         className={styles.iconButton}

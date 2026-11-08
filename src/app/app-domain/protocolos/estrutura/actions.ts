@@ -49,3 +49,23 @@ export async function saveProcessStructure(form: FormData): Promise<void> {
   });
   revalidatePath("/protocolos/estrutura"); revalidatePath("/administracao/departamentos"); revalidatePath("/administracao/unidades");
 }
+
+// 19.8 / 19.39: Permitir ativar/inativar o responsável pelo setor
+export async function toggleSectorResponsibleStatus(departmentId: string, active: boolean, newResponsibleId?: string): Promise<void> {
+  const context = await getTenantContextForSystemAdministration().catch(() => getTenantContextForModuleOperation("PROCESSOS", "update"));
+  await withDatabaseTransaction(databaseConnection, async tx => {
+    const [meta] = await tx.select().from(processDepartmentMetadata).where(eq(processDepartmentMetadata.departmentId, departmentId)).limit(1);
+    if (!meta) throw new Error("Setor não configurado na estrutura de processos.");
+    
+    const responsibleEmployeeId = active ? (newResponsibleId || meta.responsibleEmployeeId) : null;
+    await tx.update(processDepartmentMetadata).set({ responsibleEmployeeId }).where(eq(processDepartmentMetadata.departmentId, departmentId));
+    
+    await insertAuditEvent(tx, {
+      actorUsuarioId: context.user.id,
+      eventType: auditEventTypes.administrativeMutation,
+      targetType: active ? "DEPARTMENT_RESPONSIBLE_ACTIVATED" : "DEPARTMENT_RESPONSIBLE_INACTIVATED",
+      targetId: departmentId,
+    });
+  });
+  revalidatePath("/protocolos/estrutura");
+}

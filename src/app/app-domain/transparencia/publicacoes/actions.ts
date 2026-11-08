@@ -40,7 +40,14 @@ export async function saveTransparencySettings(form: FormData): Promise<void> {
   const settings = transparencySettingsSchema.parse({ ...current,
     initialYear: Number(form.get("initialYear")), availableYears: String(form.get("availableYears")).split(",").map(value => Number(value.trim())),
     defaultSource: form.get("defaultSource"), openingHours: String(form.get("openingHours") || ""),countAccess:form.has("countAccess"),nativePersonnelPublication:form.has("nativePersonnelPublication"),radarUrl:String(form.get("radarUrl")||current.radarUrl),
-    citizenService:{...current.citizenService,...Object.fromEntries(["unit","address","phone","email","openingHours","responsibleAuthority","appealAuthority","localLaiNormUrl"].map(key=>[key,String(form.get(`citizen.${key}`)||"")])),ticketChannelId:form.get("citizen.ticketChannelId")?String(form.get("citizen.ticketChannelId")):null,ombudsmanChannelId:form.get("citizen.ombudsmanChannelId")?String(form.get("citizen.ombudsmanChannelId")):null,departmentId:form.get("citizen.departmentId")?String(form.get("citizen.departmentId")):null},
+    initialDatesByModule: {
+      despesas: String(form.get("initialDates.despesas") || current.initialDatesByModule?.despesas || ""),
+      receitas: String(form.get("initialDates.receitas") || current.initialDatesByModule?.receitas || ""),
+      licitacoes: String(form.get("initialDates.licitacoes") || current.initialDatesByModule?.licitacoes || ""),
+      contratos: String(form.get("initialDates.contratos") || current.initialDatesByModule?.contratos || ""),
+      pessoal: String(form.get("initialDates.pessoal") || current.initialDatesByModule?.pessoal || ""),
+    },
+    citizenService:{...current.citizenService,...Object.fromEntries(["unit","address","phone","email","openingHours","responsibleAuthority","appealAuthority","localLaiNormUrl","responsibleName","responsibleRole","responsibleEmail","responsiblePhone"].map(key=>[key,String(form.get(`citizen.${key}`)||"")])),ticketChannelId:form.get("citizen.ticketChannelId")?String(form.get("citizen.ticketChannelId")):null,ombudsmanChannelId:form.get("citizen.ombudsmanChannelId")?String(form.get("citizen.ombudsmanChannelId")):null,departmentId:form.get("citizen.departmentId")?String(form.get("citizen.departmentId")):null},
     entities: current.entities.map(entity => ({ ...entity, name: String(form.get(`${entity.key}.name`)), enabled: form.has(`${entity.key}.enabled`), nativeIds: String(form.get(`${entity.key}.nativeIds`) || "").split(",").map(value => value.trim()).filter(Boolean), externalCode: form.get(`${entity.key}.externalCode`) ? Number(form.get(`${entity.key}.externalCode`)) : null })),
     queries: Object.fromEntries(transparencyCatalog.map(collection => [collection.slug, { enabled: form.has(`query.${collection.slug}`),title:String(form.get(`title.${collection.slug}`)||collection.title),hint:String(form.get(`hint.${collection.slug}`)||collection.description),order:Number(form.get(`order.${collection.slug}`)||0) }])),
     popup:{enabled:form.has("popup.enabled"),title:String(form.get("popup.title")||""),text:String(form.get("popup.text")||""),imageUrl:form.get("popup.imageUrl")?String(form.get("popup.imageUrl")):null,startsAt:form.get("popup.startsAt")?new Date(String(form.get("popup.startsAt"))).toISOString():null,endsAt:form.get("popup.endsAt")?new Date(String(form.get("popup.endsAt"))).toISOString():null,entities:form.getAll("popup.entities"),frequency:String(form.get("popup.frequency")||current.popup.frequency)},
@@ -130,7 +137,63 @@ export async function archivePublicConsultationReport(form:FormData):Promise<voi
  revalidatePath("/transparencia/publicacoes");
 }
 export async function classifyPublicDocument(form:FormData):Promise<void>{
- const context=await getTenantContextForModuleOperation("TRANSPARENCIA","update"),id=String(form.get("id")||""),classification=publicationMetadataSchema.pick({documentKind:true,legalStage:true}).parse({documentKind:form.get("documentKind"),legalStage:form.get("legalStage")});
+  const context=await getTenantContextForModuleOperation("TRANSPARENCIA","update"),id=String(form.get("id")||""),classification=publicationMetadataSchema.pick({documentKind:true,legalStage:true}).parse({documentKind:form.get("documentKind"),legalStage:form.get("legalStage")});
   const reference=z.string().trim().min(10).max(2000).parse(form.get("reference"));const row=await publication(id);if(row.status==="WITHDRAWN")throw new Error("Documento retirado é preservado.");if(classification.legalStage==="JULGADO"&&(row.values as Record<string,unknown>).artifactKind==="CONSULTATION_REPORT")throw new Error("Consulta gerada não é decisão de julgamento de contas.");
   await withDatabaseTransaction(databaseConnection,async tx=>{if(!(await tx.update(transparencyPublications).set(classification).where(eq(transparencyPublications.id,id)).returning({id:transparencyPublications.id})).length)throw new Error("Publicação não encontrada.");await tx.insert(financialAuditLogs).values({action:"CLASSIFY_PUBLIC_DOCUMENT_STAGE",entityType:"TransparencyPublication",entityId:id,authorUsuarioId:context.user.id,payload:{...classification,reference}});},{timeoutMs:5_000});revalidatePath("/transparencia/publicacoes");revalidatePath(publicTransparencyPath);
+}
+
+// CF17 — 17.4: Configuração de publicações específicas e períodos padronizados
+export async function configureStandardPublication(form: FormData): Promise<void> {
+  const context = await getTenantContextForModuleOperation("TRANSPARENCIA", "update");
+  const settings = await getTransparencySettings(db);
+  const id = String(form.get("id") || `pub-cfg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
+  const tipoPublicacao = z.string().trim().min(2).max(100).parse(form.get("tipoPublicacao"));
+  const descricao = String(form.get("descricao") || "").trim().slice(0, 500);
+  const periodicidade = z.enum(["DIARIA", "SEMANAL", "QUINZENAL", "MENSAL", "BIMESTRAL", "TRIMESTRAL", "QUADRIMESTRAL", "SEMESTRAL", "ANUAL"]).parse(form.get("periodicidade"));
+  const diasLimiteAposPeriodo = Number(form.get("diasLimiteAposPeriodo") || 30);
+  const obrigatorio = form.has("obrigatorio");
+  const veiculoPadrao = String(form.get("veiculoPadrao") || "Portal da Transparência").trim().slice(0, 100);
+
+  const existing = settings.standardPublicationConfigs || [];
+  const updated = [
+    ...existing.filter(item => item.id !== id),
+    { id, tipoPublicacao, descricao, periodicidade, diasLimiteAposPeriodo, obrigatorio, veiculoPadrao },
+  ];
+
+  const next = transparencySettingsSchema.parse({
+    ...settings,
+    standardPublicationConfigs: updated,
+  });
+
+  await saveSettingsParameter(next);
+  await db.insert(financialAuditLogs).values({
+    action: "CONFIGURE_STANDARD_PUBLICATION",
+    entityType: "StandardPublicationConfig",
+    entityId: id,
+    authorUsuarioId: context.user.id,
+    payload: { tipoPublicacao, periodicidade, diasLimiteAposPeriodo },
+  });
+  revalidatePath("/transparencia/publicacoes");
+}
+
+export async function deleteStandardPublication(form: FormData): Promise<void> {
+  const context = await getTenantContextForModuleOperation("TRANSPARENCIA", "update");
+  const settings = await getTransparencySettings(db);
+  const id = String(form.get("id") || "");
+  if (!id) throw new Error("ID da configuração não informado.");
+
+  const next = transparencySettingsSchema.parse({
+    ...settings,
+    standardPublicationConfigs: (settings.standardPublicationConfigs || []).filter(item => item.id !== id),
+  });
+
+  await saveSettingsParameter(next);
+  await db.insert(financialAuditLogs).values({
+    action: "DELETE_STANDARD_PUBLICATION",
+    entityType: "StandardPublicationConfig",
+    entityId: id,
+    authorUsuarioId: context.user.id,
+    payload: { id },
+  });
+  revalidatePath("/transparencia/publicacoes");
 }

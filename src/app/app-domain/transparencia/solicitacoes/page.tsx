@@ -1,22 +1,101 @@
-import Link from "next/link";
 import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
-import { respondCitizenRequest, extendCitizenDeadline, respondCitizenAppeal } from "./actions";
 import { db } from "@/db/client";
-import { asc, count, desc, eq, inArray } from "drizzle-orm";
+import { asc, desc, inArray } from "drizzle-orm";
 import { transparencyCitizenRequests, transparencyCitizenAppeals } from "@/db/schema/citizen-channels";
+import { SolicitacoesClient, type CitizenRequestItem } from "./SolicitacoesClient";
+
 export const dynamic = "force-dynamic";
-export default async function CitizenManagementPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const context = await getTenantContextForModule("TRANSPARENCIA"), raw = await searchParams;
-  const page = Math.min(100000, Math.max(1, Number.parseInt(raw.page || "1") || 1)), where = raw.status && ["RECEBIDO", "EM_ANALISE", "RESPONDIDO"].includes(raw.status) ? eq(transparencyCitizenRequests.status,raw.status) : undefined;
-  const [requests, [{ total }]] = await Promise.all([db.select().from(transparencyCitizenRequests).where(where).orderBy(desc(transparencyCitizenRequests.createdAt),asc(transparencyCitizenRequests.id)).limit(20).offset((page-1)*20),db.select({total:count()}).from(transparencyCitizenRequests).where(where)]);
-  const appeals=requests.length?await db.select().from(transparencyCitizenAppeals).where(inArray(transparencyCitizenAppeals.requestId,requests.map(row=>row.id))).orderBy(asc(transparencyCitizenAppeals.level)):[];
-  const entries=requests.map(row=>({...row,appeals:appeals.filter(appeal=>appeal.requestId===row.id)}));
+
+export default async function CitizenManagementPage() {
+  const context = await getTenantContextForModule("TRANSPARENCIA");
   const canUpdate = canPerformModuleOperation(context.user, "TRANSPARENCIA", "update");
-  return <main className="mx-auto max-w-5xl space-y-4 p-5"><Link href="/transparencia" className="underline">← Portal e Transparência</Link><h1 className="text-2xl font-bold">Pedidos, prazos e recursos do cidadão</h1><p className="text-sm">Área restrita. Acompanhamento por protocolo e chave privada; casos integrados são respondidos no módulo de Atendimento/Ouvidoria.</p><form className="flex gap-3"><select name="status" defaultValue={raw.status} className="rounded border p-2"><option value="">Todas as situações</option><option>RECEBIDO</option><option>EM_ANALISE</option><option>RESPONDIDO</option></select><button className="rounded border p-2">Filtrar</button></form>
-    {entries.map(entry => <article key={entry.id} className="space-y-3 rounded border bg-white p-4"><h2 className="font-bold">{entry.protocol} · {entry.entity} · {entry.type} · {entry.status}</h2><p>{entry.subject}</p><p className="text-sm">{entry.name || "Não identificado"} · {entry.email || "Sem e-mail"} · recebido {entry.createdAt.toISOString().slice(0, 10)} · prazo {entry.dueAt.toISOString().slice(0, 10)}</p><p className="whitespace-pre-wrap text-sm">{entry.message}</p>
-      {entry.nativeTicketId || entry.nativeOmbudsmanId ? <Link className="underline" href={entry.nativeTicketId ? `/atendimento/chamados/${entry.nativeTicketId}` : `/atendimento/ouvidoria/${entry.nativeOmbudsmanId}`}>Responder no módulo integrado</Link> : <form action={respondCitizenRequest}><fieldset disabled={!canUpdate} className="space-y-2"><input type="hidden" name="id" value={entry.id}/><label className="block">Situação<select name="status" defaultValue={entry.status === "RECEBIDO" ? "EM_ANALISE" : entry.status} className="ml-2 rounded border p-2"><option>EM_ANALISE</option><option>RESPONDIDO</option></select></label><label>Resultado<select name="outcome" defaultValue={entry.outcome || "CONCEDIDO"} className="ml-2 rounded border p-2"><option>CONCEDIDO</option><option>PARCIAL</option><option>INDEFERIDO</option></select></label><label className="block">Resposta<textarea name="response" maxLength={12000} defaultValue={entry.response || ""} rows={4} className="block w-full rounded border p-2"/></label><button className="rounded bg-sky-900 px-4 py-2 text-white">Salvar resposta</button></fieldset></form>}
-      {!entry.extendedAt && entry.status !== "RESPONDIDO" && <details><summary className="cursor-pointer underline">Prorrogar prazo uma vez, com justificativa</summary><form action={extendCitizenDeadline} className="mt-2"><input type="hidden" name="id" value={entry.id}/><label>Justificativa<textarea name="reason" required minLength={20} maxLength={4000} className="block w-full rounded border p-2"/></label><button disabled={!canUpdate} className="mt-2 rounded border p-2">Prorrogar {entry.type === "ESIC" ? "10" : "30"} dias</button></form></details>}
-      {entry.appeals.map(appeal => <section key={appeal.id} className="rounded border p-3"><h3 className="font-bold">Recurso {appeal.level} · {appeal.status} · prazo {appeal.dueAt.toISOString().slice(0, 10)}</h3><p className="whitespace-pre-wrap">{appeal.message}</p><form action={respondCitizenAppeal}><input type="hidden" name="id" value={appeal.id}/><label>Decisão recursal<textarea name="response" required minLength={10} defaultValue={appeal.response || ""} className="block w-full rounded border p-2"/></label><button disabled={!canUpdate} className="mt-2 rounded border p-2">Registrar decisão</button></form></section>)}
-    </article>)}{!entries.length && <p>Nenhuma solicitação encontrada.</p>}<nav className="flex gap-4">{page > 1 && <Link href={`?page=${page - 1}&status=${raw.status || ""}`}>Anterior</Link>}<span>{total} solicitações · página {page}</span>{page * 20 < total && <Link href={`?page=${page + 1}&status=${raw.status || ""}`}>Próxima</Link>}</nav>
-  </main>;
+
+  const [rawRequests, rawAppeals] = await Promise.all([
+    db
+      .select()
+      .from(transparencyCitizenRequests)
+      .orderBy(desc(transparencyCitizenRequests.createdAt), asc(transparencyCitizenRequests.id))
+      .limit(1000),
+    db
+      .select()
+      .from(transparencyCitizenAppeals)
+      .orderBy(asc(transparencyCitizenAppeals.level)),
+  ]);
+
+  const now = Date.now();
+
+  const requests: CitizenRequestItem[] = rawRequests.map((row) => {
+    const appeals = rawAppeals.filter((appeal) => appeal.requestId === row.id);
+    const createdTime = new Date(row.createdAt).getTime();
+    const ageDays = Math.max(0, Math.floor((now - createdTime) / (1000 * 60 * 60 * 24)));
+
+    // Status baseado no tempo em dias da criação (CF17 — 17.19)
+    let timeStatus: CitizenRequestItem["timeStatus"];
+    if (row.status === "RESPONDIDO") {
+      timeStatus = {
+        label: "Respondido",
+        variant: "success",
+        urgency: "concluida",
+      };
+    } else if (ageDays <= 5) {
+      timeStatus = {
+        label: `No Prazo (${ageDays}d)`,
+        variant: "secondary",
+        urgency: "baixa",
+      };
+    } else if (ageDays <= 15) {
+      timeStatus = {
+        label: `Em Andamento (${ageDays}d)`,
+        variant: "default",
+        urgency: "media",
+      };
+    } else if (ageDays <= 20) {
+      timeStatus = {
+        label: `Alerta Prazo (${ageDays}d)`,
+        variant: "warning",
+        urgency: "alta",
+      };
+    } else {
+      timeStatus = {
+        label: `Crítico / Vencido (${ageDays}d)`,
+        variant: "destructive",
+        urgency: "critica",
+      };
+    }
+
+    return {
+      id: row.id,
+      protocol: row.protocol,
+      type: row.type,
+      entity: row.entity,
+      name: row.name,
+      email: row.email,
+      subject: row.subject,
+      message: row.message,
+      status: row.status,
+      response: row.response,
+      respondedAt: row.respondedAt ? row.respondedAt.toISOString() : null,
+      dueAt: row.dueAt.toISOString(),
+      outcome: row.outcome,
+      extendedAt: row.extendedAt ? row.extendedAt.toISOString() : null,
+      extensionReason: row.extensionReason,
+      nativeTicketId: row.nativeTicketId,
+      nativeOmbudsmanId: row.nativeOmbudsmanId,
+      createdAt: row.createdAt.toISOString(),
+      ageDays,
+      timeStatus,
+      appeals: appeals.map((a) => ({
+        id: a.id,
+        level: a.level,
+        message: a.message,
+        status: a.status,
+        response: a.response,
+        dueAt: a.dueAt.toISOString(),
+        respondedAt: a.respondedAt ? a.respondedAt.toISOString() : null,
+        createdAt: a.createdAt.toISOString(),
+      })),
+    };
+  });
+
+  return <SolicitacoesClient requests={requests} canUpdate={canUpdate} />;
 }

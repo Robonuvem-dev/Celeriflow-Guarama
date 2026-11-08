@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, FileText, User, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Clock, FileText, User, CheckCircle2, AlertCircle, ShieldAlert, Gavel, Printer, Barcode } from "lucide-react";
 import Link from "next/link";
 import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
 import { db } from "@/db/client";
@@ -6,7 +6,8 @@ import { and, asc, eq } from "drizzle-orm";
 import { departments } from "@/db/schema/administration";
 import { documentClasses as classTable } from "@/db/schema/document-workflow";
 import { processes } from "@/db/schema/processes";
-import { processRegistrationDetails, processPrintSettings, processReferenceCatalog } from "@/db/schema/process-reference-catalog";
+import { processRegistrationDetails, processPrintSettings, processReferenceCatalog, processDepartmentMetadata } from "@/db/schema/process-reference-catalog";
+import { biddings } from "@/db/schema/procurement-core";
 import { saveProcessPrintSetting } from "./print-actions";
 import { people } from "@/db/schema/people";
 import { readOperationalProcess, listProtocolSigners, listProcessCitizenAccesses, citizenTrackingEligibleCondition } from "@/db/repositories/processes/details";
@@ -42,14 +43,34 @@ export default async function ProcessoDetalhesPage({
   const [registrationDetail] = await db.select({ declaredValue: processRegistrationDetails.declaredValue, representative: people.fullName, otherApplicant: processReferenceCatalog.name }).from(processRegistrationDetails).leftJoin(people, eq(people.id, processRegistrationDetails.representativePersonId)).leftJoin(processReferenceCatalog,eq(processReferenceCatalog.id,processRegistrationDetails.otherApplicantId)).where(eq(processRegistrationDetails.processId, id)).limit(1);
   const [printSettings] = await db.select().from(processPrintSettings).where(eq(processPrintSettings.processTypeId, processo.processTypeId)).limit(1);
 
-  const [departamentos, documentClasses, signers] = await Promise.all([
+  const [departamentos, documentClasses, signers, situations, [deptMeta], linkedBiddings] = await Promise.all([
     db.select({ id: departments.id, name: departments.name }).from(departments).where(eq(departments.isActive, true)).orderBy(asc(departments.name)),
     db.select({ id: classTable.id, label: classTable.label }).from(classTable).where(and(eq(classTable.isActive, true), eq(classTable.signaturePolicy, "INTERNAL_ALLOWED"))).orderBy(asc(classTable.label)),
     listProtocolSigners(db),
+    db.select({ id: processReferenceCatalog.id, name: processReferenceCatalog.name }).from(processReferenceCatalog).where(and(eq(processReferenceCatalog.kind, "PROCESS_SITUATION"), eq(processReferenceCatalog.isActive, true))).orderBy(asc(processReferenceCatalog.name)),
+    processo.currentDepartmentId ? db.select().from(processDepartmentMetadata).where(eq(processDepartmentMetadata.departmentId, processo.currentDepartmentId)).limit(1) : Promise.resolve([null]),
+    db.select({ id: biddings.id, number: biddings.number, modality: biddings.modality, status: biddings.status, publicationDate: biddings.publicationDate, sessionDate: biddings.sessionDate }).from(biddings).where(eq(biddings.processId, id)).limit(5),
   ]);
-  const canOperate = context.protocolAccess.canUpdate && Boolean(
+
+  // 19.91: Restringir solicitações originárias do portal aos responsáveis pelo setor vinculado
+  const isSectorResponsible = Boolean(
+    context.protocolAccess.isAdmin || (user.employeeId && deptMeta?.responsibleEmployeeId === user.employeeId)
+  );
+  const baseCanOperate = context.protocolAccess.canUpdate && Boolean(
     user.employeeId && user.departmentId && user.departmentId === processo.currentDepartmentId,
   );
+  const canOperate = processo.portalOrigin ? (baseCanOperate && isSectorResponsible) : baseCanOperate;
+  const isPortalRestricted = Boolean(processo.portalOrigin && baseCanOperate && !isSectorResponsible);
+
+  // 19.7: Permitir editar a rota dos processos que não iniciaram a tramitação
+  const canEditRoute = canOperate && (processo.movements.length <= 1 && (processo.status === "Aguardando Recebimento" || processo.status === "Aberto"));
+
+  // 19.34: Tempo total de tramitação
+  const totalElapsedMs = Math.max(0, requestTime.getTime() - processo.createdAt.getTime());
+  const totalElapsedDays = Math.floor(totalElapsedMs / (1000 * 60 * 60 * 24));
+  const totalElapsedHours = Math.floor((totalElapsedMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const totalElapsedMinutes = Math.floor((totalElapsedMs % (1000 * 60 * 60)) / (1000 * 60));
+  const tramitacaoTempoFormatado = `${totalElapsedDays}d ${totalElapsedHours}h ${totalElapsedMinutes}m`;
   const pendingMovement = processo.movements.find((movement) => movement.status === "AWAITING_RECEIPT" && !movement.receivedAt) || null;
   const canCancelPending = context.protocolAccess.canUpdate && Boolean(
     user.departmentId && pendingMovement?.fromDepartmentId === user.departmentId && processo.status === "Aguardando Recebimento",
@@ -114,8 +135,19 @@ export default async function ProcessoDetalhesPage({
             stageLabel: genericStage.label,
             status: processo.genericWorkflowInstance.status,
           } : null}
+          canEditRoute={canEditRoute}
+          situations={situations}
         />
       </div>
+
+      {isPortalRestricted && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 text-sm">
+          <ShieldAlert className="w-5 h-5 shrink-0 text-amber-600" />
+          <p>
+            <strong>Acesso restrito (19.91):</strong> Este processo é originário do Portal de Serviços Online. De acordo com a parametrização do setor, apenas o responsável vinculado ou administradores podem despachar ou tramitar.
+          </p>
+        </div>
+      )}
 
       {canManageCitizenAccess && <CitizenAccessPanel processId={processo.id} accesses={citizenAccesses.map((access) => ({ id: access.id, name: access.usuario.nome, email: access.usuario.email, expiresAt: access.expiresAt?.toLocaleDateString("pt-BR") || null, state: access.revokedAt ? "Revogado" : access.expiresAt && access.expiresAt <= requestTime ? "Expirado" : "Ativo" }))} />}
 
@@ -242,6 +274,69 @@ export default async function ProcessoDetalhesPage({
                 <p className="text-sm font-semibold text-slate-800">{processo.priority}</p>
               </div>
             </div>
+
+            {/* 19.34: Apresentar o tempo de tramitação total do processo */}
+            <div className="border-t border-slate-100 pt-3">
+              <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                Tempo Total de Tramitação (19.34)
+              </p>
+              <p className="text-base font-bold text-slate-900 mt-1">{tramitacaoTempoFormatado}</p>
+              <p className="text-[11px] text-slate-500">Desde a abertura até o momento atual</p>
+            </div>
+
+            {/* 19.70 / 19.71 / 19.56: Código de Barras e Emissão de Capa / Recibo / Etiquetas */}
+            <div className="border-t border-slate-100 pt-3">
+              <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                <Barcode className="w-3.5 h-3.5 text-slate-500" />
+                Código de Barras & Documentos (19.71)
+              </p>
+              <div className="mt-2 rounded bg-slate-50 p-2.5 text-center border border-slate-200">
+                <div className="inline-block font-mono text-xs tracking-widest bg-white px-3 py-1.5 rounded border border-slate-300">
+                  ||| | | || ||| | ||| || {processo.protocolNumber}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-2">
+                <Link
+                  href={`/protocolos/processos/${id}/impressao`}
+                  className="flex items-center justify-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Capa de Processo e Recibo Unificado (19.70)
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* 19.20: Integração com sistema de licitação (Lei 14.133/2021) */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-3">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Gavel className="w-4 h-4 text-emerald-700" />
+              <h3 className="text-sm font-semibold text-slate-800">Licitação Vinculada (19.20)</h3>
+            </div>
+            <p className="text-xs text-slate-500">
+              Em atendimento à Lei 14.133/2021, os autos podem vincular procedimentos licitatórios ou de contratação direta.
+            </p>
+            {linkedBiddings.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center">
+                <p className="text-xs text-slate-500">Nenhum procedimento de licitação vinculado a este processo.</p>
+                <Link href="/compras/licitacoes" className="mt-2 inline-block text-xs font-semibold text-emerald-700 hover:underline">
+                  Consultar Módulo de Licitações
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {linkedBiddings.map((b) => (
+                  <div key={b.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs">
+                    <p className="font-semibold text-slate-800">Licitação nº {b.number}</p>
+                    <p className="text-slate-600 mt-0.5">Modalidade: {b.modality} · Situação: {b.status}</p>
+                    {b.sessionDate && (
+                      <p className="text-slate-500 mt-0.5">Sessão: {new Date(b.sessionDate).toLocaleDateString('pt-BR')}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">

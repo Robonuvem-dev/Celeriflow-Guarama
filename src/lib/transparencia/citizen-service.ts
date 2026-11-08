@@ -72,6 +72,24 @@ export async function createCitizenRequest(db:DatabaseConnection,input:unknown){
         link
       }).catch(err => console.error("[Notification Error] Ouvidoria manifestação registrada failed:", err));
     }
+    // CF17 — 17.18: Notificar por e-mail o responsável pelo e-SIC quando novas solicitações são registradas
+    if (data.type === "ESIC") {
+      const responsibleEmail = routing.responsibleEmail || routing.email;
+      if (responsibleEmail) {
+        const baseUrl = globalThis.process?.env?.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+        const link = `${baseUrl.replace(/\/$/, "")}/transparencia/solicitacoes`;
+        NotificationDispatcher.sendEsicNovaSolicitacaoResponsavel({
+          to: responsibleEmail,
+          nomeResponsavel: routing.responsibleName || routing.responsibleAuthority || "Responsável pelo e-SIC",
+          cargoResponsavel: routing.responsibleRole || "Autoridade e-SIC",
+          protocolo: protocol,
+          solicitante: data.name || "Cidadão",
+          assunto: data.subject,
+          prazoDias: 20,
+          link,
+        }).catch(err => console.error("[Notification Error] Notificação ao responsável e-SIC falhou:", err));
+      }
+    }
    return {protocol,token,status:"RECEBIDO",centralProtocolNumber:process.protocolNumber};
   },{timeoutMs:5_000});
 }

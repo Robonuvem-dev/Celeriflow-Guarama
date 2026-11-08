@@ -35,6 +35,17 @@ export interface SystemNotificationPayloads {
     protocolo: string;
     link: string;
   };
+  // CF17 — 17.18: Notificação ao responsável pelo e-SIC
+  esicNovaSolicitacaoResponsavel: {
+    to: string;
+    nomeResponsavel: string;
+    cargoResponsavel?: string;
+    protocolo: string;
+    solicitante: string;
+    assunto: string;
+    prazoDias: number;
+    link: string;
+  };
   ouvidoriaManifestacaoEncaminhada: {
     to: string;
     nome: string;
@@ -132,6 +143,51 @@ export interface SystemNotificationPayloads {
   simplesComunicacaoFiscal: {
     to: string;
     cnpj: string;
+    link: string;
+  };
+
+  // CF19 — 19.113, 19.114, 19.117: Protocolo e Controle de Processos
+  protocoloPendencia: {
+    to: string;
+    nome: string;
+    protocolo: string;
+    servico: string;
+    motivo: string;
+    exigencias?: string[];
+    link: string;
+  };
+  protocoloAprovado: {
+    to: string;
+    nome: string;
+    protocolo: string;
+    servico: string;
+    despacho?: string;
+    link: string;
+  };
+  protocoloReprovado: {
+    to: string;
+    nome: string;
+    protocolo: string;
+    servico: string;
+    motivo: string;
+    link: string;
+  };
+  protocoloTramitacao: {
+    to: string;
+    nome: string;
+    protocolo: string;
+    setorOrigem?: string;
+    setorDestino: string;
+    motivo?: string;
+    dataHora: string;
+    link: string;
+  };
+  protocoloPendenciaAtualizada: {
+    to: string;
+    responsavel: string;
+    protocolo: string;
+    solicitante: string;
+    servico: string;
     link: string;
   };
 }
@@ -239,6 +295,32 @@ export const NotificationDispatcher = {
         <p style="font-size: 13px; color: #64748b;">Consulte em: <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a></p>
       `,
       textContent: `Olá, ${data.nome}. Sua manifestação foi registrada com sucesso sob o protocolo ${data.protocolo}. Você pode acompanhar o andamento pelo endereço ${data.link}.`,
+    });
+  },
+
+  // CF17 — 17.18: Notificação por e-mail ao responsável pelo e-SIC quando nova solicitação for registrada
+  async sendEsicNovaSolicitacaoResponsavel(data: SystemNotificationPayloads["esicNovaSolicitacaoResponsavel"]) {
+    return sendEmailNotification({
+      to: data.to,
+      fromName: "Portal da Transparência — e-SIC",
+      fromEmail: "esic@celeriflow.com.br",
+      subject: `[e-SIC] Nova Solicitação de Informação — Protocolo ${data.protocolo}`,
+      htmlContent: `
+        <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">Nova Solicitação e-SIC Registrada</h2>
+        <p>Prezado(a) <strong>${data.nomeResponsavel}</strong>${data.cargoResponsavel ? ` (${data.cargoResponsavel})` : ""},</p>
+        <p>Uma nova solicitação de acesso à informação foi registrada no e-SIC e requer providências.</p>
+        <ul style="line-height: 1.8; color: #334155;">
+          <li><strong>Protocolo:</strong> ${data.protocolo}</li>
+          <li><strong>Solicitante:</strong> ${data.solicitante}</li>
+          <li><strong>Assunto:</strong> ${data.assunto}</li>
+          <li><strong>Prazo regulamentar:</strong> ${data.prazoDias} dias corridos</li>
+        </ul>
+        <p style="margin: 24px 0;">
+          <a href="${data.link}" style="background-color: #0e4c7e; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Atender Solicitação no Painel</a>
+        </p>
+        <p style="font-size: 13px; color: #64748b;">Acesse diretamente: <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a></p>
+      `,
+      textContent: `Prezado(a) ${data.nomeResponsavel}, uma nova solicitação de acesso à informação (Protocolo ${data.protocolo}) foi registrada no e-SIC pelo solicitante ${data.solicitante}. Assunto: ${data.assunto}. Prazo regulamentar: ${data.prazoDias} dias. Acesse o painel de atendimento em ${data.link}.`,
     });
   },
 
@@ -555,6 +637,132 @@ export const NotificationDispatcher = {
         <p style="font-size: 13px; color: #64748b;">Acesse o canal oficial <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a> para consultar o documento e os prazos eventualmente aplicáveis.</p>
       `,
       textContent: `Prezado(a) contribuinte, existe uma comunicação fiscal vinculada ao CNPJ ${data.cnpj}. Acesse o canal oficial ${data.link} para consultar o documento e os prazos eventualmente aplicáveis.`,
+    });
+  },
+
+  // CF19 — 19.113: Notificar requerente por e-mail quando gestão inserir pendência
+  async sendProtocoloPendencia(data: SystemNotificationPayloads["protocoloPendencia"]) {
+    const exigenciasHtml = data.exigencias && data.exigencias.length > 0
+      ? `<div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 16px 0;">
+          <strong style="color: #92400e;">Documentos/itens exigidos:</strong>
+          <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #78350f;">
+            ${data.exigencias.map(ex => `<li>${ex}</li>`).join("")}
+          </ul>
+        </div>`
+      : "";
+
+    return sendEmailNotification({
+      to: data.to,
+      fromName: "Protocolo e Processos Digitais",
+      fromEmail: "protocolo@celeriflow.com.br",
+      subject: `Pendência cadastrada - Protocolo ${data.protocolo}`,
+      htmlContent: `
+        <h2 style="font-size: 18px; color: #b45309; margin-top: 0;">Pendência na sua Solicitação</h2>
+        <p>Olá, <strong>${data.nome}</strong>.</p>
+        <p>Foi registrada uma exigência/pendência no atendimento do seu processo <strong>${data.protocolo}</strong> (${data.servico}).</p>
+        <p><strong>Motivo/Fundamentação:</strong></p>
+        <blockquote style="margin: 12px 0; padding: 10px 16px; background-color: #f8fafc; border-left: 3px solid #cbd5e1; color: #334155; font-style: italic;">
+          ${data.motivo}
+        </blockquote>
+        ${exigenciasHtml}
+        <p style="margin: 24px 0;">
+          <a href="${data.link}" style="background-color: #f59e0b; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Responder à Pendência / Anexar Documentos</a>
+        </p>
+        <p style="font-size: 13px; color: #64748b;">Acesse sua área do cidadão para atender à solicitação: <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a></p>
+      `,
+      textContent: `Olá, ${data.nome}. Foi registrada uma pendência no processo ${data.protocolo} (${data.servico}): ${data.motivo}. Acesse ${data.link} para responder e regularizar seu pedido.`,
+    });
+  },
+
+  // CF19 — 19.113: Notificar requerente por e-mail quando gestão aprovar solicitação
+  async sendProtocoloAprovado(data: SystemNotificationPayloads["protocoloAprovado"]) {
+    return sendEmailNotification({
+      to: data.to,
+      fromName: "Protocolo e Processos Digitais",
+      fromEmail: "protocolo@celeriflow.com.br",
+      subject: `Solicitação Aprovada - Protocolo ${data.protocolo}`,
+      htmlContent: `
+        <h2 style="font-size: 18px; color: #047857; margin-top: 0;">Solicitação Concluída e Deferida</h2>
+        <p>Olá, <strong>${data.nome}</strong>.</p>
+        <p>Temos a satisfação de informar que seu processo <strong>${data.protocolo}</strong> (${data.servico}) foi <strong>aprovado e concluído com sucesso</strong> pela administração municipal.</p>
+        ${data.despacho ? `<blockquote style="margin: 12px 0; padding: 10px 16px; background-color: #ecfdf5; border-left: 3px solid #10b981; color: #065f46;">${data.despacho}</blockquote>` : ""}
+        <p style="margin: 24px 0;">
+          <a href="${data.link}" style="background-color: #10b981; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Ver Detalhes e Documentos Emitidos</a>
+        </p>
+        <p style="font-size: 13px; color: #64748b;">Acompanhe ou baixe o resultado oficial em: <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a></p>
+      `,
+      textContent: `Olá, ${data.nome}. Sua solicitação de processo ${data.protocolo} (${data.servico}) foi aprovada e concluída com sucesso. Acesse ${data.link} para conferir os detalhes e documentos emitidos.`,
+    });
+  },
+
+  // CF19 — 19.113: Notificar requerente por e-mail quando gestão reprovar solicitação
+  async sendProtocoloReprovado(data: SystemNotificationPayloads["protocoloReprovado"]) {
+    return sendEmailNotification({
+      to: data.to,
+      fromName: "Protocolo e Processos Digitais",
+      fromEmail: "protocolo@celeriflow.com.br",
+      subject: `Solicitação Indeferida - Protocolo ${data.protocolo}`,
+      htmlContent: `
+        <h2 style="font-size: 18px; color: #b91c1c; margin-top: 0;">Solicitação Não Aprovada / Indeferida</h2>
+        <p>Olá, <strong>${data.nome}</strong>.</p>
+        <p>Comunicamos que seu processo <strong>${data.protocolo}</strong> (${data.servico}) foi indeferido/cancelado pelo setor competente.</p>
+        <p><strong>Justificativa da Decisão:</strong></p>
+        <blockquote style="margin: 12px 0; padding: 10px 16px; background-color: #fef2f2; border-left: 3px solid #ef4444; color: #991b1b;">
+          ${data.motivo}
+        </blockquote>
+        <p style="margin: 24px 0;">
+          <a href="${data.link}" style="background-color: #64748b; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Consultar Histórico do Processo</a>
+        </p>
+        <p style="font-size: 13px; color: #64748b;">Consulte o teor completo da decisão em: <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a></p>
+      `,
+      textContent: `Olá, ${data.nome}. Seu processo ${data.protocolo} (${data.servico}) foi indeferido. Motivo: ${data.motivo}. Consulte mais detalhes em ${data.link}.`,
+    });
+  },
+
+  // CF19 — 19.114: Notificar requerente por e-mail a cada tramitação efetuada
+  async sendProtocoloTramitacao(data: SystemNotificationPayloads["protocoloTramitacao"]) {
+    return sendEmailNotification({
+      to: data.to,
+      fromName: "Protocolo e Processos Digitais",
+      fromEmail: "protocolo@celeriflow.com.br",
+      subject: `Tramitação de Processo - Protocolo ${data.protocolo}`,
+      htmlContent: `
+        <h2 style="font-size: 18px; color: #0e4c7e; margin-top: 0;">Movimentação de Processo</h2>
+        <p>Olá, <strong>${data.nome}</strong>.</p>
+        <p>Informamos que houve uma nova movimentação no processo <strong>${data.protocolo}</strong>.</p>
+        <div style="background-color: #f0f9ff; border-left: 4px solid #0284c7; padding: 12px; margin: 16px 0; color: #0369a1;">
+          <p style="margin: 0 0 6px 0;"><strong>Destino:</strong> ${data.setorDestino}</p>
+          ${data.setorOrigem ? `<p style="margin: 0 0 6px 0;"><strong>Origem:</strong> ${data.setorOrigem}</p>` : ""}
+          <p style="margin: 0 0 6px 0;"><strong>Data/Hora:</strong> ${data.dataHora}</p>
+          ${data.motivo ? `<p style="margin: 0;"><strong>Motivo do Encaminhamento:</strong> ${data.motivo}</p>` : ""}
+        </div>
+        <p style="margin: 24px 0;">
+          <a href="${data.link}" style="background-color: #0e4c7e; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Acompanhar Roteiro do Processo</a>
+        </p>
+        <p style="font-size: 13px; color: #64748b;">Acesse seu processo online pelo endereço: <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a></p>
+      `,
+      textContent: `Olá, ${data.nome}. O processo ${data.protocolo} foi tramitado para ${data.setorDestino} em ${data.dataHora}. Acompanhe em ${data.link}.`,
+    });
+  },
+
+  // CF19 — 19.117: Informar a gestão caso o solicitante atualize pendência solicitada
+  async sendProtocoloPendenciaAtualizada(data: SystemNotificationPayloads["protocoloPendenciaAtualizada"]) {
+    return sendEmailNotification({
+      to: data.to,
+      fromName: "Portal de Serviços — Gestão",
+      fromEmail: "protocolo@celeriflow.com.br",
+      subject: `Pendência Atendida - Protocolo ${data.protocolo}`,
+      htmlContent: `
+        <h2 style="font-size: 18px; color: #0e4c7e; margin-top: 0;">Pendência Atendida pelo Solicitante</h2>
+        <p>Prezado(a) <strong>${data.responsavel}</strong>,</p>
+        <p>O solicitante <strong>${data.solicitante}</strong> atualizou e atendeu à pendência solicitada para o processo <strong>${data.protocolo}</strong> (${data.servico}).</p>
+        <p>O processo retornou à fila de análise do setor para continuidade da tramitação.</p>
+        <p style="margin: 24px 0;">
+          <a href="${data.link}" style="background-color: #0e4c7e; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Analisar Solicitação Atualizada</a>
+        </p>
+        <p style="font-size: 13px; color: #64748b;">Acesse diretamente: <a href="${data.link}" style="color: #0e4c7e; word-break: break-all;">${data.link}</a></p>
+      `,
+      textContent: `Prezado(a) ${data.responsavel}, o solicitante ${data.solicitante} atendeu à pendência do processo ${data.protocolo}. Acesse ${data.link} para analisar.`,
     });
   },
 };

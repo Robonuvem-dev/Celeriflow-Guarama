@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileCheck2, FilePenLine, Printer, Save, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useRef, useState } from "react";
-import { generateContractProcurementAuthorizations, saveContractAmendment, updateContractResponsibles } from "./actions";
+import { generateContractProcurementAuthorizations, saveContractAmendment, updateContractResponsibles, changeContractLifecycleStatus, saveContractPublicationData, addContractBudgetAllocation, publishContractDocumentToTransparency } from "./actions";
 import type { ContractAmendmentType } from "@/lib/compras/contract-lifecycle";
 
 type Amendment = {
@@ -105,6 +105,14 @@ function eventLabel(eventType: string) {
     PROCUREMENT_COMMITMENT_CANCELLED: "Empenho financeiro anulado",
     PROCUREMENT_SETTLEMENT_CREATED: "Liquidação financeira confirmada",
     PROCUREMENT_SETTLEMENT_CANCELLED: "Liquidação financeira anulada",
+    CONTRACT_ENCERRADO_REGISTERED: "Contrato encerrado",
+    CONTRACT_ANULADO_REGISTERED: "Contrato anulado",
+    CONTRACT_CANCELADO_REGISTERED: "Contrato cancelado",
+    CONTRACT_STATUS_REVERTED: "Estorno de situação contratual (Reversão)",
+    CONTRACT_MANAGING_BODY_UPDATED: "Órgão gestor atualizado",
+    CONTRACT_BUDGET_ALLOCATION_ADDED: "Nova dotação orçamentária vinculada",
+    CONTRACT_PUBLICATION_DATA_SAVED: "Dados de publicação registrados",
+    CONTRACT_DOCUMENT_PUBLISHED_TRANSPARENCY: "Documento publicado no Portal da Transparência",
   };
   return labels[eventType] ?? eventType.replaceAll("_", " ");
 }
@@ -306,6 +314,176 @@ export function ContratoLifecyclePanel({ contract, employees, representatives, a
             {amendment.newEndDate && <p><span className="font-medium">Novo término:</span> {formatDate(amendment.newEndDate)}</p>}
           </div>
         </details>)}</div> : <p className="text-sm text-muted-foreground">Nenhum aditivo, suspensão ou rescisão registrado.</p>}
+      </section>
+
+      {/* CF16 — 16.15: Alteração da situação e Estorno */}
+      <section className="space-y-3 border-t pt-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-rose-700">Alteração de Situação Contratual e Estorno (CF16 — 16.15)</h2>
+          <p className="text-xs text-muted-foreground">Permite alterar para Encerrado, Anulado, Cancelado, Suspenso ou Rescindido, ou realizar o estorno de qualquer alteração indevida de situação.</p>
+        </div>
+        <form
+          action={async (formData) => {
+            const res = await changeContractLifecycleStatus(formData);
+            if (!res.success) alert(res.error);
+            else router.refresh();
+          }}
+          className="grid gap-3 rounded-md border border-rose-200 bg-rose-50/30 p-3 md:grid-cols-2"
+        >
+          <input type="hidden" name="contractId" value={contract.id} />
+          <div className="space-y-1">
+            <Label htmlFor="statusAction" className="text-xs font-semibold">Nova Situação / Ato</Label>
+            <select id="statusAction" name="status" defaultValue="Encerrado" className="flex h-9 w-full rounded border bg-white px-3 text-xs">
+              <option value="Encerrado">Encerrado</option>
+              <option value="Anulado">Anulado</option>
+              <option value="Cancelado">Cancelado</option>
+              <option value="Suspenso">Suspenso</option>
+              <option value="Rescindido">Rescindido</option>
+              <option value="Vigente">Estorno (Reverter para Vigente)</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="isReversal" className="text-xs font-semibold">Tipo do Ato</Label>
+            <select id="isReversal" name="isReversal" defaultValue="false" className="flex h-9 w-full rounded border bg-white px-3 text-xs">
+              <option value="false">Alteração Regular de Situação</option>
+              <option value="true">Estorno / Anulação de Lançamento Indevido</option>
+            </select>
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="justificationStatus" className="text-xs font-semibold">Justificativa / Motivação Legal do Ato</Label>
+            <Textarea id="justificationStatus" name="justification" required rows={2} placeholder="Descreva a fundamentação legal ou o motivo do estorno..." className="bg-white text-xs" />
+          </div>
+          <div className="md:col-span-2 flex justify-end">
+            <Button type="submit" size="sm" variant="destructive" className="text-xs">Aplicar Alteração / Estorno de Situação</Button>
+          </div>
+        </form>
+      </section>
+
+      {/* CF16 — 16.16: Manutenção dos dados de publicação */}
+      <section className="space-y-3 border-t pt-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-sky-800">Manutenção dos Dados de Publicação (CF16 — 16.16)</h2>
+          <p className="text-xs text-muted-foreground">Registre os veículos, edições e datas de publicação oficial do contrato inicial, aditivos ou rescisões.</p>
+        </div>
+        <form
+          action={async (formData) => {
+            const res = await saveContractPublicationData(formData);
+            if (!res.success) alert(res.error);
+            else {
+              alert("Dados de publicação registrados com sucesso.");
+              router.refresh();
+            }
+          }}
+          className="grid gap-3 rounded-md border p-3 md:grid-cols-3 text-xs"
+        >
+          <input type="hidden" name="contractId" value={contract.id} />
+          <div>
+            <Label className="text-xs font-semibold">Documento Publicado</Label>
+            <select name="documentType" defaultValue="Contrato Inicial" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs">
+              <option value="Contrato Inicial">Contrato Inicial</option>
+              <option value="Termo Aditivo">Termo Aditivo</option>
+              <option value="Termo de Rescisão">Termo de Rescisão</option>
+              <option value="Apostilamento">Apostilamento</option>
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Veículo de Publicação</Label>
+            <input name="veiculo" defaultValue="Diário Oficial do Município" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Data da Publicação*</Label>
+            <input required type="date" name="dataPublicacao" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Número da Edição / Página</Label>
+            <input name="numeroEdicao" placeholder="Ex.: Edição 1420, pág. 12" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs font-semibold">Link Público / URL do Diário</Label>
+            <input name="urlPublicacao" placeholder="https://..." className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div className="md:col-span-3 flex justify-end">
+            <Button type="submit" size="sm" className="bg-sky-900 text-white hover:bg-sky-800 text-xs">Salvar Dados de Publicação</Button>
+          </div>
+        </form>
+      </section>
+
+      {/* CF16 — 16.10: Inserção de novas dotações em contratos vigentes */}
+      <section className="space-y-3 border-t pt-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-emerald-700">Inserção de Novas Dotações no Contrato Vigente (CF16 — 16.10)</h2>
+          <p className="text-xs text-muted-foreground">Vincule novas dotações orçamentárias complementares a este contrato vigente para reforço financeiro.</p>
+        </div>
+        <form
+          action={async (formData) => {
+            const res = await addContractBudgetAllocation(formData);
+            if (!res.success) alert(res.error);
+            else {
+              alert("Nova dotação vinculada ao contrato com sucesso.");
+              router.refresh();
+            }
+          }}
+          className="grid gap-3 rounded-md border p-3 md:grid-cols-3 text-xs"
+        >
+          <input type="hidden" name="contractId" value={contract.id} />
+          <div>
+            <Label className="text-xs font-semibold">Unidade / Dotação de Destino</Label>
+            <input required name="budgetUnitId" placeholder="ID ou Código da Unidade Gestora" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Percentual (%) Alocado</Label>
+            <input type="number" step="0.01" min="0" max="100" name="percentage" defaultValue={100} className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Justificativa Contábil</Label>
+            <input required name="justification" placeholder="Ex.: Reforço orçamentário para exercício corrente" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div className="md:col-span-3 flex justify-end">
+            <Button type="submit" size="sm" disabled={contract.status !== "Vigente"} className="bg-emerald-700 text-white hover:bg-emerald-800 text-xs">Vincular Nova Dotação</Button>
+          </div>
+        </form>
+      </section>
+
+      {/* CF16 — 16.35: Conversão de .DOC/.DOCX para PDF e Publicação na Transparência */}
+      <section className="space-y-3 border-t pt-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-indigo-700">Documento em PDF e Publicação no Portal da Transparência (CF16 — 16.35)</h2>
+          <p className="text-xs text-muted-foreground">Cadastro de documentos contratuais em PDF e conversão automática de arquivos .DOC / .DOCX para publicação oficial no Portal da Transparência.</p>
+        </div>
+        <form
+          action={async (formData) => {
+            const res = await publishContractDocumentToTransparency(formData);
+            if (!res.success) alert(res.error);
+            else {
+              alert("Documento publicado com sucesso no Portal da Transparência!");
+              router.refresh();
+            }
+          }}
+          className="grid gap-3 rounded-md border p-3 md:grid-cols-3 text-xs"
+        >
+          <input type="hidden" name="contractId" value={contract.id} />
+          <div>
+            <Label className="text-xs font-semibold">Título do Documento</Label>
+            <input required name="title" defaultValue={`Contrato ${contract.id.slice(-6)}`} placeholder="Ex.: Contrato Integral Assinado" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Tipo de Documento</Label>
+            <select name="documentKind" defaultValue="OUTRO" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs">
+              <option value="OUTRO">Contrato Principal</option>
+              <option value="ADITIVO">Termo Aditivo</option>
+              <option value="RESCISAO">Termo de Rescisão</option>
+              <option value="ATA">Ata de Registro de Preços</option>
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">Nome do Arquivo (PDF, DOC ou DOCX)</Label>
+            <input required name="filename" defaultValue={`contrato_${contract.id.slice(-6)}.docx`} placeholder="exemplo.docx ou contrato.pdf" className="mt-1 flex h-8 w-full rounded border bg-white px-2 text-xs" />
+          </div>
+          <div className="md:col-span-3 flex items-center justify-between">
+            <span className="text-[11px] text-slate-500">Arquivos .DOC e .DOCX são convertidos para PDF padronizado para atendimento da LAI e PNTP.</span>
+            <Button type="submit" size="sm" className="bg-indigo-700 text-white hover:bg-indigo-800 text-xs">Converter e Publicar na Transparência ↗</Button>
+          </div>
+        </form>
       </section>
 
       <section className="space-y-3 border-t pt-4">

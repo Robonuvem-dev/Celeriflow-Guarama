@@ -20,6 +20,9 @@ export type ProcessOpeningInput = {
   initialDepartmentId?: string | null;
   priority?: string | null;
   description?: string | null;
+  portalOrigin?: string | null;
+  portalPurpose?: string | null;
+  manualProtocolNumber?: string | null;
 };
 
 type OperationalEmployee = { id: string };
@@ -64,9 +67,18 @@ export async function createValidatedProcess(tx: DatabaseTransaction, employee: 
   const [department] = await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.id, initialDepartmentId), eq(departments.isActive, true))).limit(1);
   if (!department) throw new Error("O setor inicial selecionado nao esta ativo.");
 
-  const year = new Date().getFullYear();
-  const [sequence] = await tx.insert(processSequences).values({ year, nextNumber: 2 }).onConflictDoUpdate({ target: processSequences.year, set: { nextNumber: sql`${processSequences.nextNumber} + 1`, updatedAt: new Date() } }).returning({ nextNumber: processSequences.nextNumber });
-  const protocolNumber = `PROC-${year}-${String(sequence.nextNumber - 1).padStart(6, "0")}`;
+  let protocolNumber: string;
+  const manual = input.manualProtocolNumber?.trim();
+  if (manual) {
+    const [existing] = await tx.select({ id: processes.id }).from(processes).where(eq(processes.protocolNumber, manual)).limit(1);
+    if (existing) throw new Error(`O número de protocolo "${manual}" já está cadastrado no sistema (19.29).`);
+    protocolNumber = manual;
+  } else {
+    const year = new Date().getFullYear();
+    const [sequence] = await tx.insert(processSequences).values({ year, nextNumber: 2 }).onConflictDoUpdate({ target: processSequences.year, set: { nextNumber: sql`${processSequences.nextNumber} + 1`, updatedAt: new Date() } }).returning({ nextNumber: processSequences.nextNumber });
+    protocolNumber = `PROC-${year}-${String(sequence.nextNumber - 1).padStart(6, "0")}`;
+  }
+
   const instanceTimeZone = genericDefinition ? await getGenericWorkflowInstanceTimeZone(tx) : null;
   const slaDays = initialStage?.slaDays ?? subject.slaDays ?? subject.processType.defaultSlaDays;
   const expectedCompletionAt = initialGenericStage && instanceTimeZone
@@ -76,6 +88,8 @@ export async function createValidatedProcess(tx: DatabaseTransaction, employee: 
   const [process] = await tx.insert(processes).values({
       protocolNumber, personId, companyId, processTypeId, subjectId, priority, description,
       status: AWAITING_RECEIPT, currentDepartmentId: department.id, currentWorkflowStageId: initialStage?.id || null, expectedCompletionAt,
+      portalOrigin: input.portalOrigin || "BALCAO",
+      portalPurpose: input.portalPurpose || null,
   }).returning({ id: processes.id, protocolNumber: processes.protocolNumber, expectedCompletionAt: processes.expectedCompletionAt });
   await tx.insert(processMovements).values({ processId: process.id, toDepartmentId: department.id, employeeId: employee.id, reason: "Distribuicao inicial", status: "AWAITING_RECEIPT", dueAt: expectedCompletionAt });
   await tx.insert(processEvents).values({ processId: process.id, eventType: "OPENED", description: "Processo protocolado e encaminhado ao setor inicial.", newStatus: AWAITING_RECEIPT, departmentId: department.id, employeeId: employee.id });

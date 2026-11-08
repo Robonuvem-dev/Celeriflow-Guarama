@@ -46,12 +46,15 @@ export async function nativeTransparencyDataset(db: DatabaseExecutor, collection
         records.push({key:key(entity.key,collection.slug,row.id),entity:entity.key,year:query.year,values:{number:row.commitment.number,originalYear:row.originFinancialYear.year,date:date(row.createdAt),beneficiary:row.commitment.creditor?.name||row.commitment.supplier.company?.corporateName||row.commitment.supplier.person?.fullName||null,type:row.type,status:row.status,registered:money(row.valueDecimal),paid:money(paid),canceled:money(canceled),balance:money(row.valueDecimal.sub(paid).sub(canceled))},events:row.events.map(event=>({stage:event.action,number:event.payment?"Pagamento vinculado":"Evento de inscrição",date:date(event.payment?.date||event.createdAt)!,value:money(event.valueDecimal)??"0.00",status:row.status}))});
         const time=row.updatedAt.toISOString();if(!updatedAt||time>updatedAt) updatedAt=time;
       }
-    } else if (["despesas", "liquidacoes", "pagamentos"].includes(collection.slug)) {
+    } else if (["despesas", "liquidacoes", "pagamentos", "covid", "pessoal-funcao"].includes(collection.slug)) {
       const cutoff=new Date(Date.UTC(query.year+1,0,1));
       const period = yearRange(query.year);
-      const matchingDate = collection.slug === "despesas" ? and(gte(publicCommitments.date, period.gte), lt(publicCommitments.date, period.lt)) : collection.slug === "liquidacoes" ? sql`EXISTS(SELECT 1 FROM ${publicSettlements} WHERE ${publicSettlements.commitmentId}=${publicCommitments.id} AND ${publicSettlements.status}='Liquidado' AND ${publicSettlements.date}>=${period.gte} AND ${publicSettlements.date}<${period.lt})` : sql`EXISTS(SELECT 1 FROM ${publicPayments} WHERE ${publicPayments.commitmentId}=${publicCommitments.id} AND ${inArray(publicPayments.status,["Paga","Pago"])} AND ${publicPayments.date}>=${period.gte} AND ${publicPayments.date}<${period.lt})`;
+      const matchingDate = ["despesas", "covid", "pessoal-funcao"].includes(collection.slug) ? and(gte(publicCommitments.date, period.gte), lt(publicCommitments.date, period.lt)) : collection.slug === "liquidacoes" ? sql`EXISTS(SELECT 1 FROM ${publicSettlements} WHERE ${publicSettlements.commitmentId}=${publicCommitments.id} AND ${publicSettlements.status}='Liquidado' AND ${publicSettlements.date}>=${period.gte} AND ${publicSettlements.date}<${period.lt})` : sql`EXISTS(SELECT 1 FROM ${publicPayments} WHERE ${publicPayments.commitmentId}=${publicCommitments.id} AND ${inArray(publicPayments.status,["Paga","Pago"])} AND ${publicPayments.date}>=${period.gte} AND ${publicPayments.date}<${period.lt})`;
       const rows = await readPublicCommitments(db, and(publicCommitmentScope(entityIds), inArray(publicCommitments.status,["Emitido","Liquidado","Pago","Anulado"]), matchingDate), { limit: 20001, cutoff, deterministic: true });
       if (rows.length > 20000) throw new Error("Restrinja o escopo nativo para exportar integralmente mais de 20.000 empenhos.");
+      
+      const functionMap = new Map<string, { code: string; name: string; subfunction: string; count: number; committed: Decimal; settled: Decimal; paid: Decimal }>();
+
       for (const row of rows) {
         const beneficiary = row.creditor?.name || row.supplier?.company?.corporateName || row.supplier?.person?.fullName || "Não informado";
         const initial=new Decimal(row.valueDecimal??row.value),canceled=row.movements.filter(movement=>movement.type==="Anulação").reduce((sum,movement)=>sum.add(movement.valueDecimal),new Decimal(0)),reinforced=row.movements.filter(movement=>movement.type==="Reforço").reduce((sum,movement)=>sum.add(movement.valueDecimal),new Decimal(0));
@@ -59,11 +62,62 @@ export async function nativeTransparencyDataset(db: DatabaseExecutor, collection
         const protectedOrigin=["RH","SAUDE","SOCIAL"].includes(row.reservation?.expense?.sourceModule||"");
         const common = { number: row.number, date: date(row.date), beneficiary, description: protectedOrigin?`Despesa de ${row.reservation?.expense?.sourceModule}; detalhamento conforme classificação pública, sem narrativa pessoal/clínica`:row.history || "Histórico não cadastrado", unit: row.appropriation.budgetUnit.name, sourceCode: row.appropriation.resourceSource.code, nature: row.appropriation.expenseNature.code, program: row.appropriation.programPPA?.name || null, action: row.appropriation.actionPPA?.name || null,function:row.appropriation.planningLine?.functionCode||null,subfunction:row.appropriation.planningLine?.subfunctionCode||null, originalYear: row.date.getUTCFullYear(),initialValue:initial.toFixed(2),canceled:canceled.toFixed(2),reinforced:reinforced.toFixed(2),committed: committed.toFixed(2), settled: settled.toFixed(2), paid: paid.toFixed(2), balance: committed.sub(paid).toFixed(2), status: row.status };
         const events = [...row.settlements.map(entry => ({ stage: "Liquidação", number: entry.id.slice(-8), date: date(entry.date)!, value: money(entry.valueDecimal ?? entry.value)!, status: entry.status })), ...row.payments.map(entry => ({ stage: "Pagamento", number: entry.orderNumber, date: date(entry.date)!, value: money(entry.valueDecimal ?? entry.value)!, status: entry.status }))];
+        
         if (collection.slug === "despesas") records.push({ key: key(entity.key, collection.slug, row.number), entity: entity.key, year: query.year, values: common, events });
-        else if (collection.slug === "liquidacoes") for (const entry of row.settlements.filter(entry => entry.date.getUTCFullYear() === query.year)) records.push({ key: key(entity.key, collection.slug, entry.id), entity: entity.key, year: query.year, values: { ...common, commitment: row.number, number: entry.id.slice(-8), date: date(entry.date), value: money(entry.valueDecimal ?? entry.value) }, events });
+        else if (collection.slug === "covid") {
+          const isCovid = /covid|coronavirus|pandemia|sars-cov|enfrentamento.*covid|emergência.*saúde/i.test(row.history || "") ||
+                          /covid|coronavirus/i.test(row.appropriation.actionPPA?.name || "") ||
+                          /covid|coronavirus/i.test(row.appropriation.resourceSource.code || "") ||
+                          (row.appropriation.expenseNature.code.startsWith("3.3.90") && /saúde|hospital|fundo municipal de saúde/i.test(row.appropriation.budgetUnit.name));
+          if (isCovid) {
+            records.push({ key: key(entity.key, collection.slug, row.number), entity: entity.key, year: query.year, values: common, events });
+          }
+        } else if (collection.slug === "pessoal-funcao") {
+          const isPersonnel = row.reservation?.expense?.sourceModule === "RH" || row.appropriation.expenseNature.code.startsWith("3.1.");
+          if (isPersonnel) {
+            const funcCode = row.appropriation.planningLine?.functionCode || "04";
+            const subCode = row.appropriation.planningLine?.subfunctionCode || "122";
+            const functionNames: Record<string, string> = {
+              "01": "Legislativa", "02": "Judiciária", "04": "Administração", "08": "Assistência Social", "10": "Saúde", "12": "Educação", "15": "Urbanismo", "18": "Gestão Ambiental", "20": "Agricultura", "26": "Transporte", "27": "Desporto e Lazer", "28": "Encargos Especiais"
+            };
+            const mapKey = `${funcCode}:${subCode}`;
+            const existing = functionMap.get(mapKey) || {
+              code: funcCode,
+              name: functionNames[funcCode] || `Função ${funcCode}`,
+              subfunction: `Subfunção ${subCode}`,
+              count: 0,
+              committed: new Decimal(0),
+              settled: new Decimal(0),
+              paid: new Decimal(0),
+            };
+            existing.count += 1;
+            existing.committed = existing.committed.add(committed);
+            existing.settled = existing.settled.add(settled);
+            existing.paid = existing.paid.add(paid);
+            functionMap.set(mapKey, existing);
+          }
+        } else if (collection.slug === "liquidacoes") for (const entry of row.settlements.filter(entry => entry.date.getUTCFullYear() === query.year)) records.push({ key: key(entity.key, collection.slug, entry.id), entity: entity.key, year: query.year, values: { ...common, commitment: row.number, number: entry.id.slice(-8), date: date(entry.date), value: money(entry.valueDecimal ?? entry.value) }, events });
         else if (collection.slug === "pagamentos") for (const entry of row.payments.filter(entry => entry.date.getUTCFullYear() === query.year)) records.push({ key: key(entity.key, collection.slug, entry.orderNumber), entity: entity.key, year: query.year, values: { ...common, commitment: row.number, number: entry.orderNumber, date: date(entry.date), value: money(entry.valueDecimal ?? entry.value), netPaid: money(entry.netValueDecimal), withheld: entry.valueDecimal && entry.netValueDecimal ? entry.valueDecimal.sub(entry.netValueDecimal).toFixed(2) : null }, events });
         else if (row.date.getUTCFullYear() < query.year) for (const entry of row.payments.filter(entry => entry.date.getUTCFullYear() === query.year)) records.push({ key: key(entity.key, collection.slug, entry.id), entity: entity.key, year: query.year, values: { ...common, date: date(entry.date), type: "Movimento de exercício anterior", paid: money(entry.valueDecimal ?? entry.value) }, events });
         const time = row.updatedAt.toISOString(); if (!updatedAt || time > updatedAt) updatedAt = time;
+      }
+      if (collection.slug === "pessoal-funcao") {
+        for (const [mapKey, item] of functionMap.entries()) {
+          records.push({
+            key: key(entity.key, collection.slug, mapKey),
+            entity: entity.key,
+            year: query.year,
+            values: {
+              functionCode: item.code,
+              functionName: item.name,
+              subfunctionName: item.subfunction,
+              count: item.count,
+              committed: item.committed.toFixed(2),
+              settled: item.settled.toFixed(2),
+              paid: item.paid.toFixed(2),
+            },
+          });
+        }
       }
     } else if (collection.slug === "receitas") {
       const revenueRows = await db.select({ revenue: publicRevenues, revenueNature: transparencyRevenueNatures, resourceSource: publicResourceSources, governmentEntity: { code: governmentEntities.code } }).from(publicRevenues).innerJoin(financialYears, eq(financialYears.id, publicRevenues.financialYearId)).leftJoin(governmentEntities, eq(governmentEntities.id, financialYears.governmentEntityId)).innerJoin(transparencyRevenueNatures, eq(transparencyRevenueNatures.id, publicRevenues.revenueNatureId)).innerJoin(publicResourceSources, eq(publicResourceSources.id, publicRevenues.resourceSourceId)).where(and(inArray(financialYears.governmentEntityId, entityIds), gte(publicRevenues.date, yearRange(query.year).gte), lt(publicRevenues.date, yearRange(query.year).lt), eq(publicRevenues.stage, "ARRECADADA"))).orderBy(desc(publicRevenues.date), desc(publicRevenues.id)).limit(20001);

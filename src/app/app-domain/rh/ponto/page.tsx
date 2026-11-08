@@ -2,7 +2,6 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { PontoRowActions } from "./PontoRowActions";
-import { UploadCSVButton } from "./UploadCSVButton";
 import { PrintReportButton } from "./PrintReportButton";
 import { db } from "@/db/client";
 import { readAttendancePage, readEmployeeOptions } from "@/db/repositories/personnel-pages/records";
@@ -11,7 +10,8 @@ import { OperationalFilters, OperationalLinkPagination, OperationalListFrame } f
 import styles from "@/components/app-ui/operational/operational.module.css";
 import { rhColumn } from "../_components/operational-columns";
 import { RhNewLink } from "../_components/RhNewLink";
-import { AlertTriangle, Clock, UserCheck, Search } from "lucide-react";
+import { AlertTriangle, Clock, UserCheck, Search, FileBarChart2, Upload } from "lucide-react";
+import { PontoNav } from "./PontoNav";
 
 const columns = [
   rhColumn("date", "Data", 110, 95),
@@ -61,52 +61,82 @@ export default async function PontoPage({
   const selectedEmployee = employeeId ? employeesList.find((e) => e.id === employeeId) : null;
 
   return (
-    <OperationalListFrame
-      label={
-        isInconsistenciesTab
-          ? "Consulta de Inconsistências do Ponto para Ajuste (20.7)"
-          : selectedEmployee
-          ? `Marcações de Ponto: ${selectedEmployee.name} (20.6)`
-          : "Registro e Espelho de Ponto Eletrônico"
-      }
-      actions={
-        <>
-          <PrintReportButton
-            label={isInconsistenciesTab ? "Emitir Relatório de Inconsistências" : "Emitir Espelho de Ponto"}
-            inconsistenciesOnly={isInconsistenciesTab}
-          />
-          <UploadCSVButton />
-          <RhNewLink href="/rh/ponto/novo">Apontamento manual</RhNewLink>
-        </>
-      }
-      toolbar={
-        <div className="flex flex-col gap-2 w-full">
-          {/* Abas e Filtros Rápidos (Requisitos 20.6 e 20.7) */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
-            <span className="text-slate-500 font-medium mr-1">Visão operacional:</span>
+    <div className="flex flex-col h-full w-full">
+      <PontoNav />
+      <OperationalListFrame
+        label={
+          isInconsistenciesTab
+            ? "Consulta de Inconsistências do Ponto para Ajuste (20.2 / 20.7)"
+            : selectedEmployee
+            ? `Marcações de Ponto: ${selectedEmployee.name} (20.6)`
+            : "Registro e Espelho de Ponto Eletrônico"
+        }
+        actions={
+          <>
+            <PrintReportButton
+              label={isInconsistenciesTab ? "Emitir Relatório de Inconsistências (20.2)" : "Emitir Espelho de Ponto"}
+              inconsistenciesOnly={isInconsistenciesTab}
+            />
             <Link
-              href="/rh/ponto"
-              className={`px-2 py-0.5 rounded text-[11px] font-medium border transition ${
-                !isInconsistenciesTab && !employeeId
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-700 hover:bg-slate-50 border-slate-300"
-              }`}
+              href="/rh/ponto/importacao"
+              className={styles.dialogButton}
+              title="Importar AFD/AFDT/ACJEF ou Layout Customizado (Requisito 20.15)"
             >
-              Todas as Marcações
+              <Upload className="w-3.5 h-3.5 inline mr-1 text-slate-700" />
+              Importar Relógio AFD/671 (20.15)
             </Link>
-            <Link
-              href={`/rh/ponto?aba=inconsistencias${month ? `&month=${month}` : ""}`}
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium border transition ${
-                isInconsistenciesTab
-                  ? "bg-amber-600 text-white border-amber-600 font-bold"
-                  : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-300"
-              }`}
-              title="Filtrar registros com divergências de batida, horas nulas ou faltas para ajuste (20.7)"
-            >
-              <AlertTriangle className="w-3 h-3 text-amber-500" />
-              Inconsistências para Ajuste (20.7)
-            </Link>
-          </div>
+            <RhNewLink href="/rh/ponto/novo">Apontamento manual (20.14)</RhNewLink>
+          </>
+        }
+        toolbar={
+          <div className="flex flex-col gap-2 w-full">
+            {/* Abas e Filtros Rápidos (Requisitos 20.2, 20.6, 20.7, 20.24) */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <span className="text-slate-500 font-medium mr-1">Visão operacional:</span>
+              <Link
+                href="/rh/ponto"
+                className={`px-2 py-0.5 rounded text-[11px] font-medium border transition ${
+                  !isInconsistenciesTab && !employeeId
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-white text-slate-700 hover:bg-slate-50 border-slate-300"
+                }`}
+              >
+                Todas as Marcações
+              </Link>
+              <Link
+                href={`/rh/ponto?aba=inconsistencias${month ? `&month=${month}` : ""}`}
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium border transition ${
+                  isInconsistenciesTab
+                    ? "bg-amber-600 text-white border-amber-600 font-bold"
+                    : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-300"
+                }`}
+                title="Filtrar registros com divergências de batida, horas nulas ou faltas para ajuste (20.2 / 20.7)"
+              >
+                <AlertTriangle className="w-3 h-3 text-amber-500" />
+                Inconsistências para Ajuste (20.2 / 20.7)
+              </Link>
+              <Link
+                href="/rh/ponto/relatorios?kind=AUSENCIA_MARCACAO"
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 transition"
+                title="Emitir relatório de ausência de marcação de ponto (20.24)"
+              >
+                Ausência de Marcação (20.24)
+              </Link>
+              <Link
+                href="/rh/ponto/relatorios?kind=JUSTIFICATIVA_HORAS_EXTRAS"
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium border border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 transition"
+                title="Emitir relatório de justificativa de horas extras (20.5)"
+              >
+                Justificativas de Horas Extras (20.5)
+              </Link>
+              <Link
+                href="/rh/ponto/relatorios"
+                className="ml-auto inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition"
+              >
+                <FileBarChart2 className="w-3 h-3 text-violet-600" />
+                Central de Relatórios CF20
+              </Link>
+            </div>
 
           <form action="/rh/ponto" method="GET" className={styles.searchForm}>
             {isInconsistenciesTab && <input type="hidden" name="aba" value="inconsistencias" />}
@@ -196,5 +226,6 @@ export default async function PontoPage({
         })}
       />
     </OperationalListFrame>
+    </div>
   );
 }
