@@ -1,0 +1,436 @@
+{
+  "mode": "APPLY",
+  "startedAt": "2026-11-08T16:20:41.041Z",
+  "cases": [
+    {
+      "patientId": "aurora-system-v1:patient:000",
+      "personId": "aurora-system-v1:person:000",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81gyp4001di8hyy4ywc52x",
+      "appointmentId": "cmw81gz0d001ei8hyqcodxlw4",
+      "medicalRecordId": "cmw81gzxe001ji8hypv9lvzf2",
+      "outcome": "Observação"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:001",
+      "personId": "aurora-system-v1:person:001",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81h3vw001xi8hylu3l5jf9",
+      "appointmentId": "cmw81h475001yi8hyblfo8akk",
+      "medicalRecordId": "cmw81h53b0023i8hy0xb2eqoz",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:002",
+      "personId": "aurora-system-v1:person:002",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81h7s9002ci8hyzv4ushll",
+      "appointmentId": "cmw81h83o002di8hyyxmhhm3o",
+      "medicalRecordId": "cmw81h907002ii8hy3374gptz",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:003",
+      "personId": "aurora-system-v1:person:003",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81hbpb002ri8hyfsnk5zb5",
+      "appointmentId": "cmw81hc0o002si8hyrjsn74oq",
+      "medicalRecordId": "cmw81hcvx002xi8hylufhnqmi",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:004",
+      "personId": "aurora-system-v1:person:004",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81hflw0036i8hyw8g27els",
+      "appointmentId": "cmw81hfxl0037i8hy0fw27ipy",
+      "medicalRecordId": "cmw81hgu4003ci8hyntf4pzk2",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:005",
+      "personId": "aurora-system-v1:person:005",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81hj5k003ji8hyu5r9k19r",
+      "appointmentId": "cmw81hjh1003ki8hynuskpqvk",
+      "medicalRecordId": "cmw81hkcx003pi8hyp99drlox",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:006",
+      "personId": "aurora-system-v1:person:006",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81hmp3003wi8hycuf3pcz1",
+      "appointmentId": "cmw81hn1b003xi8hyhc5265nz",
+      "medicalRecordId": "cmw81hnxv0042i8hy8z98mgg9",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:007",
+      "personId": "aurora-system-v1:person:007",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81hq9d0049i8hyh1ym3rn5",
+      "appointmentId": "cmw81hqmv004ai8hyzza88rj2",
+      "medicalRecordId": "cmw81hrkh004fi8hyhmewhi8e",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:008",
+      "personId": "aurora-system-v1:person:008",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81htvr004mi8hyfzdmli9l",
+      "appointmentId": "cmw81hu7f004ni8hyzw79e0wz",
+      "medicalRecordId": "cmw81hv5m004si8hywpmqft6u",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:009",
+      "personId": "aurora-system-v1:person:009",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81hxgq004zi8hyueqal1xw",
+      "appointmentId": "cmw81hxsl0050i8hy9t88xsr2",
+      "medicalRecordId": "cmw81hyr80055i8hy3dre7jgi",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:010",
+      "personId": "aurora-system-v1:person:010",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81i13l005ci8hyda5fdccr",
+      "appointmentId": "cmw81i1es005di8hyrvh7jw8g",
+      "medicalRecordId": "cmw81i2cl005ii8hymao14d3s",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:011",
+      "personId": "aurora-system-v1:person:011",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81i4nz005pi8hy6z7hhx38",
+      "appointmentId": "cmw81i4zt005qi8hyyd5mlnmt",
+      "medicalRecordId": "cmw81i5x7005vi8hyj7hrnj5r",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:012",
+      "personId": "aurora-system-v1:person:012",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81i88h0062i8hyrquf5ftw",
+      "appointmentId": "cmw81i8k90063i8hy1zrx2hb9",
+      "medicalRecordId": "cmw81i9gf0068i8hykdr69fox",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:013",
+      "personId": "aurora-system-v1:person:013",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81ibw4006fi8hy4y6x8cys",
+      "appointmentId": "cmw81ic7z006gi8hyuobwafn2",
+      "medicalRecordId": "cmw81id48006li8hy9bqsu3iy",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:014",
+      "personId": "aurora-system-v1:person:014",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81ifim006si8hy1iftu2ql",
+      "appointmentId": "cmw81ifuf006ti8hyig3iio8x",
+      "medicalRecordId": "cmw81igrh006yi8hybmavnwlj",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:015",
+      "personId": "aurora-system-v1:person:015",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81ij6c0075i8hylpxfu4pz",
+      "appointmentId": "cmw81ijhl0076i8hynl06wuzp",
+      "medicalRecordId": "cmw81ikdy007bi8hyjk47g7y6",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:016",
+      "personId": "aurora-system-v1:person:016",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81imrm007ii8hy65t0e9p4",
+      "appointmentId": "cmw81in2x007ji8hy0mvfa9p4",
+      "medicalRecordId": "cmw81inzo007oi8hy07q5fmpn",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:017",
+      "personId": "aurora-system-v1:person:017",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81iqcb007vi8hyv833r1x2",
+      "appointmentId": "cmw81iqo3007wi8hyktaxuq4l",
+      "medicalRecordId": "cmw81irkt0081i8hyht8q5ilz",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:018",
+      "personId": "aurora-system-v1:person:018",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81itwv0088i8hydv39wxkh",
+      "appointmentId": "cmw81iu8y0089i8hyii6igt6e",
+      "medicalRecordId": "cmw81iv56008ei8hy1vm294lr",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "aurora-system-v1:patient:019",
+      "personId": "aurora-system-v1:person:019",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81ixib008li8hylw5i3kav",
+      "appointmentId": "cmw81ixtp008mi8hybajzolc0",
+      "medicalRecordId": "cmw81iyq8008ri8hyyv4zfy0d",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gw420000i8hyxel7duhr",
+      "personId": "THIAGO_MORCATTY_DEMO_2026_V1:person",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81j11t008yi8hymul00db7",
+      "appointmentId": "cmw81j1e2008zi8hyhnkvwgf6",
+      "medicalRecordId": "cmw81j2a60094i8hyibsuww5q",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gw6j0002i8hymqw4wiga",
+      "personId": "aurora-mg-50k-v1:person:000",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81j4lv009bi8hyy2h99rnd",
+      "appointmentId": "cmw81j4y0009ci8hya58w8k4q",
+      "medicalRecordId": "cmw81j5u6009hi8hydt7rmdnx",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gw950004i8hyyu4mzgmp",
+      "personId": "aurora-mg-50k-v1:person:001",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81j863009oi8hy41v56dfl",
+      "appointmentId": "cmw81j8hq009pi8hy32jxj53p",
+      "medicalRecordId": "cmw81j9gl009ui8hy68ykpr4d",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwbs0006i8hy7czrd41i",
+      "personId": "aurora-mg-50k-v1:person:002",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81jbsw00a1i8hywz6kcer9",
+      "appointmentId": "cmw81jc5j00a2i8hy47zk2xbf",
+      "medicalRecordId": "cmw81jd2d00a7i8hy13qjcaw8",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwed0008i8hylf4qs0i5",
+      "personId": "aurora-mg-50k-v1:person:003",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81jfe100aei8hyuf3ddkh7",
+      "appointmentId": "cmw81jfpt00afi8hyd5cckb72",
+      "medicalRecordId": "cmw81jgnj00aki8hy4cp6mnjq",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwh6000ai8hyfa4mbgmh",
+      "personId": "aurora-mg-50k-v1:person:004",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81jj1g00ari8hyn5d7uypl",
+      "appointmentId": "cmw81jjd600asi8hyrnvfuds3",
+      "medicalRecordId": "cmw81jkb800axi8hyrs2ll5x7",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwjl000ci8hyw9ui555a",
+      "personId": "aurora-mg-50k-v1:person:005",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81jmnb00b4i8hy8789lco3",
+      "appointmentId": "cmw81jmyk00b5i8hyqfggtoyq",
+      "medicalRecordId": "cmw81jnvt00bai8hylncxkynd",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwma000ei8hy2wygokc7",
+      "personId": "aurora-mg-50k-v1:person:006",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81jq7y00bhi8hylq0rl7o7",
+      "appointmentId": "cmw81jqjz00bii8hyudgqbfpc",
+      "medicalRecordId": "cmw81jrhn00bni8hy37tkx60e",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwor000gi8hybzwcaa37",
+      "personId": "aurora-mg-50k-v1:person:007",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81jtu400bui8hyb9n5x4i5",
+      "appointmentId": "cmw81ju6c00bvi8hyx28hbt6m",
+      "medicalRecordId": "cmw81jv3100c0i8hynj64ot3a",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwrj000ii8hyvqwmudr7",
+      "personId": "aurora-mg-50k-v1:person:008",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81jxey00c7i8hyf8ykzccp",
+      "appointmentId": "cmw81jxqp00c8i8hyeqagi4bw",
+      "medicalRecordId": "cmw81jynv00cdi8hysn7kb3j9",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwu2000ki8hy86y3uvgy",
+      "personId": "aurora-mg-50k-v1:person:009",
+      "professionalId": "aurora-system-v1:health-professional:000",
+      "unitId": "aurora-system-v1:health-unit:000",
+      "receptionId": "cmw81k10p00cki8hyuljzog4m",
+      "appointmentId": "cmw81k1c100cli8hyvt1rx096",
+      "medicalRecordId": "cmw81k28g00cqi8hy5ufjwj97",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gwzk000mi8hyyte90m8i",
+      "personId": "aurora-mg-50k-v1:person:010",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81k4n400cxi8hyx78qsqcw",
+      "appointmentId": "cmw81k4yi00cyi8hygaeine70",
+      "medicalRecordId": "cmw81k5ux00d3i8hylrov91rz",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gx1x000oi8hyiac4ruib",
+      "personId": "aurora-mg-50k-v1:person:011",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81k87x00dai8hyfrb2ypbf",
+      "appointmentId": "cmw81k8je00dbi8hy1d4tj16t",
+      "medicalRecordId": "cmw81k9g600dgi8hya61xuk6j",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gx4g000qi8hym8gl41zj",
+      "personId": "aurora-mg-50k-v1:person:012",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81kbs300dni8hy655r26jx",
+      "appointmentId": "cmw81kc4000doi8hy16m8ivwj",
+      "medicalRecordId": "cmw81kd0h00dti8hy6nrzlt3t",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gx74000si8hyo2wv2ju7",
+      "personId": "aurora-mg-50k-v1:person:013",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81kfdj00e0i8hy1gg0x9ne",
+      "appointmentId": "cmw81kfpo00e1i8hywx9c0fxo",
+      "medicalRecordId": "cmw81kgmh00e6i8hy9ocfenpe",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gx9p000ui8hy998zjsk9",
+      "personId": "aurora-mg-50k-v1:person:014",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81kixz00edi8hyjsqkpuiz",
+      "appointmentId": "cmw81kja000eei8hycn1vha6h",
+      "medicalRecordId": "cmw81kk6z00eji8hygpork1kn",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gxcc000wi8hy09hqyhm1",
+      "personId": "aurora-mg-50k-v1:person:015",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81kmib00eqi8hy6whfzsut",
+      "appointmentId": "cmw81kmub00eri8hymtqgtydd",
+      "medicalRecordId": "cmw81kns600ewi8hyrbmkwt9b",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gxew000yi8hyy1qoky5u",
+      "personId": "aurora-mg-50k-v1:person:016",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81kq2q00f3i8hylnrycwng",
+      "appointmentId": "cmw81kqe500f4i8hyh7l91xg1",
+      "medicalRecordId": "cmw81kre500f9i8hyds4v9h39",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gxhs0010i8hy4k7ggeyn",
+      "personId": "aurora-mg-50k-v1:person:017",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81ktpi00fgi8hyeffv7i2t",
+      "appointmentId": "cmw81ku1700fhi8hynrdhsw4o",
+      "medicalRecordId": "cmw81kuya00fmi8hyeqm1d42d",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gxk90012i8hyunuh9o49",
+      "personId": "aurora-mg-50k-v1:person:018",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81kxar00fti8hywhicivyc",
+      "appointmentId": "cmw81kxme00fui8hyvf312wx7",
+      "medicalRecordId": "cmw81kyim00fzi8hyx5ca48st",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gxmu0014i8hywxw5os9l",
+      "personId": "aurora-mg-50k-v1:person:019",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81l0tl00g6i8hy8cc03rfs",
+      "appointmentId": "cmw81l15e00g7i8hyae41doel",
+      "medicalRecordId": "cmw81l22i00gci8hy4tcqwe61",
+      "outcome": "Alta"
+    },
+    {
+      "patientId": "cmw81gxph0016i8hy1f95z95r",
+      "personId": "aurora-mg-50k-v1:person:020",
+      "professionalId": "aurora-system-v1:health-professional:001",
+      "unitId": "aurora-system-v1:health-unit:001",
+      "receptionId": "cmw81l4gw00gji8hy6yziiewg",
+      "appointmentId": "cmw81l4sn00gki8hyedra5mw1",
+      "medicalRecordId": "cmw81l5ot00gpi8hy0zwodw3m",
+      "outcome": "Alta"
+    }
+  ],
+  "checks": [
+    "Identidades canônicas preservadas; atualização cadastral pelos serviços",
+    "Recepção, chamada, triagem, prontuário, evolução e conclusão encadeados",
+    "Pedidos de exame com ordens laboratoriais geradas pelo serviço",
+    "Observação, ocupação e alta de leito vinculadas ao primeiro caso",
+    "Auditoria identifica o administrador executor e os profissionais existentes"
+  ],
+  "reused": false,
+  "status": "PASS",
+  "error": ""
+}

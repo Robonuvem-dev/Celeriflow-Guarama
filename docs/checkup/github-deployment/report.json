@@ -1,0 +1,122 @@
+{
+  "startedAt": "2026-11-06T19:46:22.063Z",
+  "repository": "Robonuvem-dev/Celeriflow-Guarama",
+  "sha": "49c7d3cf2c230a7b837f909114dfc040bc0581f4",
+  "authenticatedLogin": "Robonuvem-dev",
+  "observations": [
+    {
+      "observedAt": "2026-11-06T19:46:22.508Z",
+      "overallState": "pending",
+      "statuses": [
+        {
+          "context": "Vercel",
+          "state": "pending",
+          "description": "Vercel is deploying your app",
+          "targetUrl": "https://vercel.com/celeriflow-dev/celeriflow-guarama/43tEWLqhbSvaM2AFSdow5fTJSq3x",
+          "updatedAt": "2026-11-06T19:46:22Z"
+        }
+      ],
+      "checks": [
+        {
+          "name": "Frotas isolado",
+          "status": "queued",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995693"
+        },
+        {
+          "name": "verify",
+          "status": "queued",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995396"
+        }
+      ],
+      "deployments": []
+    },
+    {
+      "observedAt": "2026-11-06T19:46:42.971Z",
+      "overallState": "pending",
+      "statuses": [
+        {
+          "context": "Vercel",
+          "state": "pending",
+          "description": "Vercel is deploying your app",
+          "targetUrl": "https://vercel.com/celeriflow-dev/celeriflow-guarama/43tEWLqhbSvaM2AFSdow5fTJSq3x",
+          "updatedAt": "2026-11-06T19:46:22Z"
+        }
+      ],
+      "checks": [
+        {
+          "name": "Frotas isolado",
+          "status": "in_progress",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995693"
+        },
+        {
+          "name": "verify",
+          "status": "in_progress",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995396"
+        }
+      ],
+      "deployments": []
+    },
+    {
+      "observedAt": "2026-11-06T19:47:03.585Z",
+      "overallState": "pending",
+      "statuses": [
+        {
+          "context": "Vercel",
+          "state": "pending",
+          "description": "Vercel is deploying your app",
+          "targetUrl": "https://vercel.com/celeriflow-dev/celeriflow-guarama/43tEWLqhbSvaM2AFSdow5fTJSq3x",
+          "updatedAt": "2026-11-06T19:46:22Z"
+        }
+      ],
+      "checks": [
+        {
+          "name": "Frotas isolado",
+          "status": "in_progress",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995693"
+        },
+        {
+          "name": "verify",
+          "status": "in_progress",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995396"
+        }
+      ],
+      "deployments": []
+    },
+    {
+      "observedAt": "2026-11-06T19:47:24.013Z",
+      "overallState": "failure",
+      "statuses": [
+        {
+          "context": "Vercel",
+          "state": "failure",
+          "description": "Deployment has failed — run this Vercel CLI command: npx vercel inspect dpl_43tEWLqhbSvaM2AFSdow5fTJSq3x --logs",
+          "targetUrl": "https://vercel.com/celeriflow-dev/celeriflow-guarama/43tEWLqhbSvaM2AFSdow5fTJSq3x",
+          "updatedAt": "2026-11-06T19:47:08Z"
+        }
+      ],
+      "checks": [
+        {
+          "name": "Frotas isolado",
+          "status": "in_progress",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995693"
+        },
+        {
+          "name": "verify",
+          "status": "in_progress",
+          "conclusion": null,
+          "detailsUrl": "https://github.com/Robonuvem-dev/Celeriflow-Guarama/actions/runs/42282554194/job/128114995396"
+        }
+      ],
+      "deployments": []
+    }
+  ],
+  "result": "VERCEL_FAILED",
+  "finishedAt": "2026-11-06T19:47:24.014Z"
+}
