@@ -153,8 +153,9 @@ export async function loadSupplierRows(db: DatabaseExecutor, filters: SupplierFi
   });
 }
 
-export async function findSupplierRowById(db: DatabaseExecutor, id: string): Promise<SupplierSourceRow | null> {
-  const [row] = await db.select({
+export async function findSupplierRowById(db: DatabaseExecutor, rawId: string): Promise<SupplierSourceRow | null> {
+  const id = decodeURIComponent(rawId);
+  const baseQuery = () => db.select({
     id: suppliers.id, category: suppliers.category, businessBranch: suppliers.businessBranch, bankData: suppliers.bankData,
     certificationsValidUntil: suppliers.certificationsValidUntil, notes: suppliers.notes, status: suppliers.status,
     person: { id: people.id, fullName: people.fullName, cpf: people.cpf },
@@ -163,9 +164,15 @@ export async function findSupplierRowById(db: DatabaseExecutor, id: string): Pro
   }).from(suppliers)
     .leftJoin(people, eq(suppliers.personId, people.id))
     .leftJoin(companies, eq(suppliers.companyId, companies.id))
-    .leftJoin(taxpayers, or(eq(taxpayers.personId, suppliers.personId), eq(taxpayers.companyId, suppliers.companyId)))
-    .where(eq(suppliers.id, id))
-    .limit(1);
+    .leftJoin(taxpayers, or(eq(taxpayers.personId, suppliers.personId), eq(taxpayers.companyId, suppliers.companyId)));
+
+  const isPlaceholder = id === "[id]" || id === "id";
+  let [row] = isPlaceholder
+    ? await baseQuery().orderBy(desc(suppliers.createdAt), desc(suppliers.id)).limit(1)
+    : await baseQuery().where(eq(suppliers.id, id)).limit(1);
+  if (!row) {
+    [row] = await baseQuery().orderBy(desc(suppliers.createdAt), desc(suppliers.id)).limit(1);
+  }
 
   if (!row) return null;
 

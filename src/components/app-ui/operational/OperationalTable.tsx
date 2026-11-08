@@ -3,7 +3,7 @@
 import { useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Copy, FileText, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { fitOperationalWidths, operationalWidthPreferences, OPERATIONAL_PAGE_SIZE, OPERATIONAL_ROW_HEIGHT, paginateFullValue, resizeOperationalWidths, type OperationalColumn } from "@/lib/operational-tables";
+import { fitOperationalWidths, operationalWidthPreferences, OPERATIONAL_PAGE_SIZE, OPERATIONAL_ROW_HEIGHT, resizeOperationalWidths, type OperationalColumn } from "@/lib/operational-tables";
 import { useOperationalWorkspace } from "./OperationalWorkspace";
 import { OperationalListReset } from "./OperationalContext";
 import styles from "./operational.module.css";
@@ -37,33 +37,8 @@ function FullValueCell({ column, row, onDetails }: { column: OperationalColumn; 
 }
 
 function DetailValue({ selection, onClose, closeRef }: { selection: DetailSelection; onClose: () => void; closeRef: RefObject<HTMLButtonElement | null> }) {
-  const body = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
-  const [pages, setPages] = useState<string[]>([]);
-  const [page, setPage] = useState(0);
   const [copyStatus, setCopyStatus] = useState("");
-  useEffect(() => {
-    const element = body.current;
-    if (!element) return;
-    let frame = 0;
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const probe = document.createElement("div");
-        const computed = getComputedStyle(element);
-        Object.assign(probe.style, { position: "fixed", top: "0", left: "0", visibility: "hidden", pointerEvents: "none", width: `${element.clientWidth}px`, font: computed.font, lineHeight: computed.lineHeight, whiteSpace: "pre-wrap", overflowWrap: "anywhere", padding: "0", border: "0" });
-        document.body.appendChild(probe);
-        try {
-          const next = paginateFullValue(selection.value, (text) => { probe.textContent = text; return probe.scrollHeight <= element.clientHeight && probe.scrollWidth <= element.clientWidth + 1; });
-          setPages(next); setPage(0);
-        } finally { probe.remove(); }
-      });
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    document.fonts.addEventListener("loadingdone", measure);
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); document.fonts.removeEventListener("loadingdone", measure); };
-  }, [selection.value]);
 
   async function copyFullValue() {
     try {
@@ -77,19 +52,14 @@ function DetailValue({ selection, onClose, closeRef }: { selection: DetailSelect
         finally { input.remove(); closeRef.current?.focus(); }
       }
       setCopyStatus("Conteúdo integral copiado.");
-    } catch { setCopyStatus("Não foi possível copiar automaticamente. O conteúdo integral permanece disponível nas páginas de leitura."); }
+    } catch { setCopyStatus("Não foi possível copiar automaticamente. O conteúdo integral permanece disponível para leitura."); }
   }
 
   return <div ref={dialog} className="contents">
     <DialogHeader><DialogTitle>{selection.field}</DialogTitle><DialogDescription>{selection.record} · Conteúdo integral</DialogDescription></DialogHeader>
-    <div ref={body} className={styles.detailBody} data-full-value-body aria-label={`Conteúdo de ${selection.field}`}>{pages.length ? pages[page] : "Preparando leitura…"}</div>
+    <div className={styles.detailBody} data-full-value-body aria-label={`Conteúdo de ${selection.field}`}>{selection.value}</div>
     <div className={styles.dialogFooter}>
       <div>
-        <div className={styles.dialogButtons}>
-          <button type="button" className={styles.iconButton} disabled={page <= 0} onClick={() => setPage((current) => current - 1)} aria-label="Trecho anterior"><ChevronLeft /></button>
-          <span aria-live="polite">Trecho {page + 1} de {Math.max(1, pages.length)}</span>
-          <button type="button" className={styles.iconButton} disabled={page >= pages.length - 1} onClick={() => setPage((current) => current + 1)} aria-label="Próximo trecho"><ChevronRight /></button>
-        </div>
         <span role="status" className="text-xs">{copyStatus}</span>
       </div>
       <div className={styles.dialogButtons}>
@@ -157,11 +127,9 @@ export function OperationalTable({ columns, rows, preferenceId, resetVersion = 0
 
   const scaledColumns = useMemo(() => columns.map((column) => ({ ...column, initialWidth: Math.round(column.initialWidth * dimensions.scale), minWidth: Math.ceil(column.minWidth * dimensions.scale), maxWidth: column.maxWidth === undefined ? undefined : Math.max(Math.ceil(column.minWidth * dimensions.scale), Math.floor(column.maxWidth * dimensions.scale)) })), [columns, dimensions.scale]);
   const minimum = scaledColumns.reduce((sum, column) => sum + column.minWidth, 0);
-  const canScroll = device === "phone" || device === "tablet";
-  const available = canScroll ? Math.max(dimensions.width, minimum) : dimensions.width;
+  const available = Math.max(dimensions.width, minimum);
   const layout = useMemo(() => fitOperationalWidths(scaledColumns, available, preferences), [scaledColumns, available, preferences]);
   const requiredHeight = (OPERATIONAL_PAGE_SIZE + 1) * OPERATIONAL_ROW_HEIGHT * dimensions.scale;
-  const conflict = dimensions.width > 0 && !canScroll && (!layout.fits || dimensions.height + .5 < requiredHeight);
 
   function applyWidths(widths: number[]) {
     const next = operationalWidthPreferences(scaledColumns, widths);
@@ -175,36 +143,30 @@ export function OperationalTable({ columns, rows, preferenceId, resetVersion = 0
   }
 
   return <>
-    <div ref={viewport} className={styles.viewport} data-operational-table data-fit={conflict ? "conflict" : "ready"} data-required-width={minimum} data-required-height={requiredHeight}>
-      {conflict ? <section className={styles.fitConflict} role="status" data-layout-conflict>
-        <h2>Esta área ainda não comporta a tabela no padrão.</h2>
-        <p>Para manter 20 registros, todas as colunas e a fonte legível, o corpo da tabela precisa de pelo menos <strong>{minimum} × {Math.ceil(requiredHeight)} px</strong>. A área disponível agora é <strong>{dimensions.width} × {dimensions.height} px</strong>.</p>
-        <p>Amplie a área útil para consultar todos os registros sem reduzir a fonte ou recortar campos. Em tablets e celulares, a rolagem da tabela está disponível.</p>
-      </section> : <>
-        <table className={styles.table} style={{ width: dimensions.width ? layout.widths.reduce((sum, width) => sum + width, 0) : "100%" }}>
-          <caption>{caption}</caption>
-          <colgroup>{layout.widths.map((width, index) => <col key={columns[index].key} style={{ width: dimensions.width ? width : `${columns[index].initialWidth / columns.reduce((sum, item) => sum + item.initialWidth, 0) * 100}%` }} />)}</colgroup>
-          <thead><tr>{scaledColumns.map((column, index) => <th key={column.key} scope="col" aria-label={column.label} style={{ textAlign: column.align ?? "left" }}>
-            <FullValueCell column={{ ...column, type: "text", details: "overflow" }} row={{ id: `header:${column.key}`, label: caption, values: { [column.key]: column.label } }} onDetails={next => { setSelection(next); setDetailsOpen(true); }} />
-            {column.resizable && <button type="button" className={styles.resize} aria-label={`Ajustar largura de ${column.label}`} title="Arraste ou use as setas. Duplo clique ou Home restaura as larguras."
-              onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); drag.current = { index, x: event.clientX, widths: [...layout.widths] }; }}
-              onPointerMove={(event) => { if (drag.current?.index === index) applyWidths(resizeOperationalWidths(scaledColumns, drag.current.widths, index, event.clientX - drag.current.x)); }}
-              onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
-              onDoubleClick={restoreWidths}
-              onKeyDown={(event) => {
-                if (["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); applyWidths(resizeOperationalWidths(scaledColumns, layout.widths, index, event.key === "ArrowRight" ? 8 : -8)); }
-                if (event.key === "Home") { event.preventDefault(); restoreWidths(); }
-              }} />}
-          </th>)}</tr></thead>
-          <tbody>{state === "ready" && rows.map((row) => <tr key={row.id} data-operational-row>
-            {columns.map((column) => <td key={column.key} style={{ textAlign: column.align ?? "left" }}>{column.type === "actions" ? row.cells?.[column.key] ?? row.actions : <FullValueCell column={column} row={row} onDetails={(next) => { setSelection(next); setDetailsOpen(true); }} />}</td>)}
-          </tr>)}</tbody>
-        </table>
-        {(state !== "ready" || !rows.length) && <div className={styles.state} role={state === "error" ? "alert" : "status"}>
-          <p>{state === "error" ? errorMessage : state === "loading" ? loadingMessage : emptyMessage}</p>
-          {state === "error" && <button type="button" className={styles.dialogButton} onClick={onRetry}>Tentar novamente</button>}
-        </div>}
-      </>}
+    <div ref={viewport} className={styles.viewport} data-operational-table data-fit="ready" data-required-width={minimum} data-required-height={requiredHeight}>
+      <table className={styles.table} style={{ width: dimensions.width ? layout.widths.reduce((sum, width) => sum + width, 0) : "100%", minWidth: minimum }}>
+        <caption>{caption}</caption>
+        <colgroup>{layout.widths.map((width, index) => <col key={columns[index].key} style={{ width: dimensions.width ? width : `${columns[index].initialWidth / columns.reduce((sum, item) => sum + item.initialWidth, 0) * 100}%` }} />)}</colgroup>
+        <thead><tr>{scaledColumns.map((column, index) => <th key={column.key} scope="col" aria-label={column.label} style={{ textAlign: column.align ?? "left" }}>
+          <FullValueCell column={{ ...column, type: "text", details: "overflow" }} row={{ id: `header:${column.key}`, label: caption, values: { [column.key]: column.label } }} onDetails={next => { setSelection(next); setDetailsOpen(true); }} />
+          {column.resizable && <button type="button" className={styles.resize} aria-label={`Ajustar largura de ${column.label}`} title="Arraste ou use as setas. Duplo clique ou Home restaura as larguras."
+            onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); drag.current = { index, x: event.clientX, widths: [...layout.widths] }; }}
+            onPointerMove={(event) => { if (drag.current?.index === index) applyWidths(resizeOperationalWidths(scaledColumns, drag.current.widths, index, event.clientX - drag.current.x)); }}
+            onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
+            onDoubleClick={restoreWidths}
+            onKeyDown={(event) => {
+              if (["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); applyWidths(resizeOperationalWidths(scaledColumns, layout.widths, index, event.key === "ArrowRight" ? 8 : -8)); }
+              if (event.key === "Home") { event.preventDefault(); restoreWidths(); }
+            }} />}
+        </th>)}</tr></thead>
+        <tbody>{state === "ready" && rows.map((row) => <tr key={row.id} data-operational-row>
+          {columns.map((column) => <td key={column.key} style={{ textAlign: column.align ?? "left" }}>{column.type === "actions" ? row.cells?.[column.key] ?? row.actions : <FullValueCell column={column} row={row} onDetails={(next) => { setSelection(next); setDetailsOpen(true); }} />}</td>)}
+        </tr>)}</tbody>
+      </table>
+      {(state !== "ready" || !rows.length) && <div className={styles.state} role={state === "error" ? "alert" : "status"}>
+        <p>{state === "error" ? errorMessage : state === "loading" ? loadingMessage : emptyMessage}</p>
+        {state === "error" && <button type="button" className={styles.dialogButton} onClick={onRetry}>Tentar novamente</button>}
+      </div>}
     </div>
     <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
       <DialogContent className={`${styles.dialog} ${styles.detailsDialog}`} data-device={device} showCloseButton={false} initialFocus={closeRef} finalFocus={() => selection?.trigger.isConnected ? selection.trigger : true}>

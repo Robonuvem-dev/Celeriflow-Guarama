@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { canPerformModuleOperation, getTenantContextForModule } from "@/lib/platform/tenant-context";
-import { structureConfig, structureFilters } from "@/lib/cemeteries/structure-config";
+import { structureConfig, structureFilters, structureKinds } from "@/lib/cemeteries/structure-config";
 import { getStructure, listStructure, type StructureRecord } from "@/lib/cemeteries/structure-service";
 import { OperationalListFrame, OperationalLinkPagination, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
@@ -22,7 +22,7 @@ const column = (key: string, label: string, minWidth: number, initialWidth: numb
 export async function StructureListPage({ search, occupancy = false }: { search: StructureSearch; occupancy?: boolean }) {
   const c = await getTenantContextForModule("CEMITERIOS");
   const input = scalar(search);
-  if (!input.tipo) input.tipo = occupancy ? "LOTE" : "CEMITERIO";
+  if (!input.tipo || !(structureKinds as readonly string[]).includes(input.tipo)) input.tipo = occupancy ? "LOTE" : "CEMITERIO";
   const { filters, rows, total } = await listStructure(databaseConnection, input);
   const config = structureConfig[filters.tipo];
   const path = occupancy ? "/cemiterios/ocupacao" : "/cemiterios/estrutura";
@@ -53,7 +53,8 @@ export async function StructureListPage({ search, occupancy = false }: { search:
 export async function StructureDetailPage({ id, search, occupancy = false, contextContent }: { id: string; search: StructureSearch; occupancy?: boolean; contextContent?: ReactNode }) {
   const c = await getTenantContextForModule("CEMITERIOS");
   const input = scalar(search);
-  const filters = structureFilters.parse({ ...input, tipo: input.tipo ?? (occupancy ? "LOTE" : "CEMITERIO") });
+  const safeTipo = input.tipo && (structureKinds as readonly string[]).includes(input.tipo) ? input.tipo : (occupancy ? "LOTE" : "CEMITERIO");
+  const filters = structureFilters.parse({ ...input, tipo: safeTipo });
   const database = c.database ?? db;
   const record: StructureRecord = id === "novo" ? { id: "" } : await getStructure(database, filters.tipo, id) ?? notFound();
   const path = occupancy ? "/cemiterios/ocupacao" : "/cemiterios/estrutura";
