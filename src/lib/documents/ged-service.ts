@@ -123,10 +123,11 @@ export async function confirmGedUpload(context: AppContext, id: string, url: str
   if (!upload) throw new Error("Upload não encontrado.");
   authorize(context, upload.checkinDocumentId ? "edit" : "import");
   if (upload.documentId) return { documentId: upload.documentId };
+  // GET can retain percent encoding in the pathname. HEAD returns the canonical storage key.
+  const { head } = await import("@vercel/blob");
+  const stored = await head(url);
+  if (stored.pathname !== upload.pathname) throw new Error("Arquivo não pertence ao upload registrado.");
   const bytes = await readGedBytes(url);
-  const { getFile } = await import("@/lib/platform/blob");
-  const stored = await getFile(url);
-  if (!stored || stored.blob.pathname !== upload.pathname) throw new Error("Arquivo não pertence ao upload registrado.");
   const inspected = await inspectGedBytes(upload.filename, bytes);
   await checkFolder(context, upload.folderId);
   const confirmed = await transact(context, async tx => {
