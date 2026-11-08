@@ -37,6 +37,7 @@ const listColumns: OperationalColumn[] = [
   { key: "detail", label: "Detalhes", type: "text", initialWidth: 250, minWidth: 120, resizable: true, sortable: false, details: "overflow" },
   { key: "actions", label: "Ações", type: "actions", initialWidth: 80, minWidth: 65, maxWidth: 90, resizable: false, sortable: false, details: "none" },
 ];
+const filterFieldClass = "h-9 w-full min-w-0 rounded border bg-background px-2 font-normal";
 type UploadItem = { id: string; file: File; title: string; status: string; url?: string; error?: string };
 type Template = { id: string; name: string; content: string; markers: string[]; templateKey: string; version: number };
 type Panel = "import" | "folder" | "smart" | "template" | "term" | "tree" | "generate" | "move-folder" | null;
@@ -129,20 +130,38 @@ export function GedWorkspace({ section, bootstrap, initial, initialSmartId = "" 
       </form>
       {isCollection && <><button className={styles.iconButton} onClick={() => void openTree()} aria-label="Explorar árvore de pastas"><FolderTree /></button>
         <OperationalFilters label="Filtros" activeCount={Number(Boolean(query.status)) + Number(Boolean(query.folderId)) + Number(query.mode !== "words") + Number(query.thesaurus)}>
-          <label className={styles.filterFields}>Modo<select value={query.mode} onChange={event => setQuery({ ...query, mode: event.target.value as GedQuery["mode"] })}><option value="words">Todas as palavras</option><option value="phrase">Frase exata</option><option value="fragment">Fragmento literal</option><option value="proximity">Proximidade (duas palavras)</option><option value="boolean">Booleanos / campos (AND OR NOT)</option><option value="wildcard">Curingas (* e ?)</option><option value="fuzzy">Grafia semelhante</option><option value="semantic">Semântica por significado</option></select></label>
-          <p className="text-xs">Campos: titulo:, arquivo:, tipo:, conteudo: e meta.chave:. Exemplo: titulo:contrato AND NOT meta.situacao:cancelado.</p>
-          <label className={styles.filterFields}>Tipo<select value={query.classCode} onChange={e => setQuery({ ...query, classCode: e.target.value })}><option value="">Todos</option>{bootstrap.classes.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label>
-          <label className={styles.filterFields}><input type="checkbox" checked={query.descendants} onChange={e => setQuery({ ...query, descendants: e.target.checked })} />Incluir subpastas</label>
-          <label className={styles.filterFields}><input type="checkbox" checked={query.favorites} onChange={e => setQuery({ ...query, favorites: e.target.checked })} />Favoritos</label>
-          <label className={styles.filterFields}><input type="checkbox" checked={query.history} onChange={e => setQuery({ ...query, history: e.target.checked })} />Pesquisar versões históricas</label>
-          {bootstrap.capabilities.delete && <label className={styles.filterFields}><input type="checkbox" checked={query.deleted} onChange={e => setQuery({ ...query, deleted: e.target.checked })} />Lixeira</label>}
-          <label className={styles.filterFields}>De<input type="date" value={query.from} onChange={e => setQuery({ ...query, from: e.target.value })} /></label><label className={styles.filterFields}>Até<input type="date" value={query.to} onChange={e => setQuery({ ...query, to: e.target.value })} /></label>
-          <label className={styles.filterFields}>Máximo de palavras entre termos<input type="number" min={0} max={50} value={query.distance} onChange={event => setQuery({ ...query, distance: Number(event.target.value) })} /></label>
-          <label className={styles.filterFields}><input type="checkbox" checked={query.thesaurus} onChange={event => setQuery({ ...query, thesaurus: event.target.checked })} />Expandir equivalentes do thesaurus</label>
-          <label className={styles.filterFields}>Situação<select value={query.status} onChange={event => setQuery({ ...query, status: event.target.value })}><option value="">Todas</option>{["RASCUNHO", "ELABORACAO", "CONSENSO", "APROVACAO", "HOMOLOGACAO", "HOMOLOGADO", "DEVOLVIDO", "Pendente Assinatura", "Assinado"].map(status => <option key={status}>{status}</option>)}</select></label>
-          <button className={styles.dialogButton} onClick={() => { setSmartId(""); void load(1, query, ""); }}>Aplicar</button>
-          <GedSearchFields bootstrap={bootstrap} query={query} onChange={setQuery} />
-          <button className={styles.dialogButton} onClick={() => { const clean = gedQuerySchema.parse({}); setQuery(clean); setSelected({}); setSmartId(""); void load(1, clean, ""); }}>Limpar filtros</button>
+          <div className="grid min-w-0 gap-4">
+            <fieldset className="grid min-w-0 gap-3">
+              <legend className="mb-2 font-semibold">Pesquisa textual</legend>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                <label className="grid min-w-0 gap-1">Modo<select className={filterFieldClass} value={query.mode} onChange={event => setQuery({ ...query, mode: event.target.value as GedQuery["mode"] })}><option value="words">Todas as palavras</option><option value="phrase">Frase exata</option><option value="fragment">Fragmento literal</option><option value="proximity">Proximidade (duas palavras)</option><option value="boolean">Booleanos / campos (AND OR NOT)</option><option value="wildcard">Curingas (* e ?)</option><option value="fuzzy">Grafia semelhante</option><option value="semantic">Semântica por significado</option></select></label>
+                <label className="grid min-w-0 gap-1">Máximo de palavras entre termos<input className={filterFieldClass} type="number" min={0} max={50} value={query.distance} onChange={event => setQuery({ ...query, distance: Number(event.target.value) })} /></label>
+              </div>
+              <p className="text-xs">Campos: titulo:, arquivo:, tipo:, conteudo: e meta.chave:. Exemplo: titulo:contrato AND NOT meta.situacao:cancelado.</p>
+            </fieldset>
+            <fieldset className="grid min-w-0 gap-3">
+              <legend className="mb-2 font-semibold">Documentos e período</legend>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                <label className="grid min-w-0 gap-1">Tipo<select className={filterFieldClass} value={query.classCode} onChange={e => setQuery({ ...query, classCode: e.target.value })}><option value="">Todos</option>{bootstrap.classes.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label>
+                <label className="grid min-w-0 gap-1">Situação<select className={filterFieldClass} value={query.status} onChange={event => setQuery({ ...query, status: event.target.value })}><option value="">Todas</option>{["RASCUNHO", "ELABORACAO", "CONSENSO", "APROVACAO", "HOMOLOGACAO", "HOMOLOGADO", "DEVOLVIDO", "Pendente Assinatura", "Assinado"].map(status => <option key={status}>{status}</option>)}</select></label>
+                <label className="grid min-w-0 gap-1">De<input className={filterFieldClass} type="date" value={query.from} onChange={e => setQuery({ ...query, from: e.target.value })} /></label>
+                <label className="grid min-w-0 gap-1">Até<input className={filterFieldClass} type="date" value={query.to} onChange={e => setQuery({ ...query, to: e.target.value })} /></label>
+              </div>
+            </fieldset>
+            <fieldset className="grid min-w-0 gap-2 sm:grid-cols-2">
+              <legend className="mb-2 font-semibold">Opções da consulta</legend>
+              <label className="flex items-start gap-2"><input className="mt-0.5 size-4 shrink-0" type="checkbox" checked={query.descendants} onChange={e => setQuery({ ...query, descendants: e.target.checked })} />Incluir subpastas</label>
+              <label className="flex items-start gap-2"><input className="mt-0.5 size-4 shrink-0" type="checkbox" checked={query.favorites} onChange={e => setQuery({ ...query, favorites: e.target.checked })} />Favoritos</label>
+              <label className="flex items-start gap-2"><input className="mt-0.5 size-4 shrink-0" type="checkbox" checked={query.history} onChange={e => setQuery({ ...query, history: e.target.checked })} />Pesquisar versões históricas</label>
+              {bootstrap.capabilities.delete && <label className="flex items-start gap-2"><input className="mt-0.5 size-4 shrink-0" type="checkbox" checked={query.deleted} onChange={e => setQuery({ ...query, deleted: e.target.checked })} />Lixeira</label>}
+              <label className="flex items-start gap-2 sm:col-span-2"><input className="mt-0.5 size-4 shrink-0" type="checkbox" checked={query.thesaurus} onChange={event => setQuery({ ...query, thesaurus: event.target.checked })} />Expandir equivalentes do thesaurus</label>
+            </fieldset>
+            <GedSearchFields bootstrap={bootstrap} query={query} onChange={setQuery} />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={`${styles.dialogButton} ${styles.primaryButton}`} disabled={busy} onClick={() => { setSmartId(""); void load(1, query, ""); }}>Aplicar</button>
+              <button type="button" className={styles.dialogButton} disabled={busy} onClick={() => { const clean = gedQuerySchema.parse({}); setQuery(clean); setSelected({}); setSmartId(""); void load(1, clean, ""); }}>Limpar filtros</button>
+            </div>
+          </div>
         </OperationalFilters></>}
       <button className={styles.iconButton} onClick={() => void load(result.page, result.query)} aria-label="Atualizar consulta" disabled={busy}><RefreshCw /></button>
       {message && <span role="status" className="max-w-52 truncate text-xs" title={message}>{message}</span>}
