@@ -1,7 +1,8 @@
 import { getTenantContextForModule, canPerformModuleOperation } from "@/lib/platform/tenant-context";
 import { databaseConnection } from "@/db/client";
 import { listProcurementAuxiliaryRecords } from "@/db/repositories/procurement/auxiliary-catalogs";
-import { suppliers as supplierTable, companies, people } from "@/db/schema/registry";
+import { suppliers as supplierTable, companies } from "@/db/schema/registry";
+import { people } from "@/db/schema/people";
 import { eq, desc } from "drizzle-orm";
 import { formatCnpj, formatCpf } from "@/app/app-domain/cadastros/fornecedores/supplier-utils";
 import { ConsorciosClient, type ConsorcioItem, type SupplierChoice } from "./ConsorciosClient";

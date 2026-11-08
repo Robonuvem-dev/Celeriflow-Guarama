@@ -44,13 +44,13 @@ export type ConsorcioItem = {
 };
 
 const columns: OperationalColumn[] = [
-  { key: "code", label: "Número/Código", initialWidth: 140, minWidth: 100, maxWidth: 180, type: "identifier", resizable: true },
-  { key: "name", label: "Consórcio", initialWidth: 240, minWidth: 160, maxWidth: 360, type: "text", resizable: true, details: "overflow" },
-  { key: "exercicio", label: "Exercício", initialWidth: 90, minWidth: 80, maxWidth: 110, type: "text", resizable: true },
-  { key: "ramo", label: "Ramo de Atividade", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true },
-  { key: "lider", label: "Empresa Líder", initialWidth: 200, minWidth: 140, maxWidth: 280, type: "text", resizable: true },
-  { key: "membersCount", label: "Integrantes", initialWidth: 100, minWidth: 85, maxWidth: 120, type: "text", resizable: true },
-  { key: "vigencia", label: "Cadastro / Encerramento", initialWidth: 180, minWidth: 140, maxWidth: 220, type: "text", resizable: true },
+  { key: "code", label: "Número/Código", initialWidth: 140, minWidth: 100, maxWidth: 180, type: "identifier", resizable: true, sortable: false, details: "none" },
+  { key: "name", label: "Consórcio", initialWidth: 240, minWidth: 160, maxWidth: 360, type: "text", resizable: true, sortable: false, details: "overflow" },
+  { key: "exercicio", label: "Exercício", initialWidth: 90, minWidth: 80, maxWidth: 110, type: "text", resizable: true, sortable: false, details: "none" },
+  { key: "ramo", label: "Ramo de Atividade", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true, sortable: false, details: "none" },
+  { key: "lider", label: "Empresa Líder", initialWidth: 200, minWidth: 140, maxWidth: 280, type: "text", resizable: true, sortable: false, details: "overflow" },
+  { key: "membersCount", label: "Integrantes", initialWidth: 100, minWidth: 85, maxWidth: 120, type: "text", resizable: true, sortable: false, details: "none" },
+  { key: "vigencia", label: "Cadastro / Encerramento", initialWidth: 180, minWidth: 140, maxWidth: 220, type: "text", resizable: true, sortable: false, details: "overflow" },
   { key: "actions", label: "Ações", initialWidth: 100, minWidth: 90, maxWidth: 120, type: "actions", resizable: false, sortable: false, details: "none", align: "right" },
 ];
 
@@ -138,7 +138,7 @@ export function ConsorciosClient({
     const res = await saveConsorcio(formData);
     setBusy(false);
     if (!res.success) {
-      setErrorMsg(res.error);
+      setErrorMsg(res.error || "Erro ao salvar consórcio");
       return;
     }
     setModalOpen(false);
@@ -151,7 +151,7 @@ export function ConsorciosClient({
     const res = await deleteConsorcio(id);
     setBusy(false);
     if (!res.success) {
-      alert(res.error);
+      alert(res.error || "Erro ao excluir consórcio");
       return;
     }
     router.refresh();
@@ -220,14 +220,9 @@ export function ConsorciosClient({
               name: row.name,
               exercicio: row.exercicio,
               ramo: row.ramo || "Geral",
-              lider: row.liderNome ? (
-                <span className="flex items-center gap-1 font-semibold text-amber-800">
-                  <Crown className="size-3.5 text-amber-600 shrink-0" />
-                  {row.liderNome} {row.percentualLider ? `(${row.percentualLider}%)` : ""}
-                </span>
-              ) : (
-                "Não definido"
-              ),
+              lider: row.liderNome
+                ? `${row.liderNome}${row.percentualLider ? ` (${row.percentualLider}%)` : ""}`
+                : "Não definido",
               membersCount: `${row.fornecedoresIds.length} empresa(s)`,
               vigencia: `${row.dataCadastro || "—"} a ${row.dataEncerramento || "Vigente"}`,
             },
