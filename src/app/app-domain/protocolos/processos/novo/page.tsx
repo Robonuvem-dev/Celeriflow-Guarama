@@ -1,4 +1,4 @@
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Search, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { getProtocolContext } from "@/lib/protocols/access";
 import { createProtocol } from "../../actions";
@@ -14,7 +14,13 @@ import { processReferenceCatalog } from "@/db/schema/process-reference-catalog";
 
 export const dynamic = "force-dynamic";
 
-export default async function NovoProtocoloPage() {
+export default async function NovoProtocoloPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ returnTo?: string; q?: string; status?: string; origin?: string; period?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const returnTo = params.returnTo || "/protocolos/processos";
   await getProtocolContext("edit");
   // Buscar os tipos de processo e pessoas para o formulário
   const types = await db.select({ id: processTypes.id, name: processTypes.name }).from(processTypes).where(eq(processTypes.isActive, true));
@@ -28,7 +34,30 @@ export default async function NovoProtocoloPage() {
 
   return (
     <PageFrame className="max-w-5xl space-y-2">
-      <PageHeader title="Novo Protocolo" action={<Link href="/protocolos/processos" aria-label="Voltar" className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"><ArrowLeft className="size-3.5" /><span className="hidden sm:inline">Voltar</span></Link>} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+        <div>
+          <PageHeader title="Novo Protocolo" />
+          
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href={returnTo}
+            title="Voltar à pesquisa e manter filtros utilizados (19.106)"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition"
+          >
+            <RotateCcw className="size-3.5 text-slate-500" />
+            <span>Retornar aos Filtros</span>
+          </Link>
+          <Link
+            href="/protocolos/processos"
+            title="Pesquisar processos cadastrados"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800 shadow-sm transition"
+          >
+            <Search className="size-3.5" />
+            <span>Pesquisar Processos (19.106)</span>
+          </Link>
+        </div>
+      </div>
       <p className="text-xs text-slate-500">Abra um novo processo digital e encaminhe para o setor responsável.</p>
 
       <form action={createProtocol} className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">

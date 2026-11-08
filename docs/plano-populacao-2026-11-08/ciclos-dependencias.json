@@ -1,0 +1,275 @@
+[
+  {
+    "grupo": "C0018",
+    "tabelas": [
+      "public.Address"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0020",
+    "tabelas": [
+      "public.AdministrativeUnit",
+      "public.Department",
+      "public.Employee",
+      "public.Secretariat"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0029",
+    "tabelas": [
+      "public.GovernmentEntity"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0031",
+    "tabelas": [
+      "public.AccountingTransaction"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0037",
+    "tabelas": [
+      "public.Folder"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0062",
+    "tabelas": [
+      "public.CostCenter"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0064",
+    "tabelas": [
+      "public.HealthUnit"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0074",
+    "tabelas": [
+      "public.BankAccount"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0088",
+    "tabelas": [
+      "public.PayableCarryForward"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0091",
+    "tabelas": [
+      "public.Asset",
+      "public.MaterialMovement",
+      "public.ObrasServico",
+      "public.PurchaseReceiptItem"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0120",
+    "tabelas": [
+      "public.BiDisplayChannel",
+      "public.BiDisplayChannelVersion"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0175",
+    "tabelas": [
+      "public.TaxCemeterySector"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0209",
+    "tabelas": [
+      "public.ConstructionIssuedDocument"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0213",
+    "tabelas": [
+      "public.ConstructionEnforcementAct"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0220",
+    "tabelas": [
+      "public.ConstructionFederalExport"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0225",
+    "tabelas": [
+      "public.ConstructionInspection"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0305",
+    "tabelas": [
+      "public.FleetUnit"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0373",
+    "tabelas": [
+      "public.FleetBooking"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0499",
+    "tabelas": [
+      "public.HealthPharmacyJudicialCase"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0523",
+    "tabelas": [
+      "public.HealthFollowupBatch"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0622",
+    "tabelas": [
+      "public.HealthTreatmentReport"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0664",
+    "tabelas": [
+      "public.HrEmployeeFunctionalPeriod"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0687",
+    "tabelas": [
+      "public.HrRoleLegalHistory"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0740",
+    "tabelas": [
+      "public.MunicipalCostMovement"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0741",
+    "tabelas": [
+      "public.MunicipalCostObject"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0743",
+    "tabelas": [
+      "public.MunicipalCostObjectItem"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0782",
+    "tabelas": [
+      "public.OmbudsmanReferenceCatalog"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0796",
+    "tabelas": [
+      "public.PlanningInstrument"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0822",
+    "tabelas": [
+      "public.PlanningQuotaEvent"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0828",
+    "tabelas": [
+      "public.PortalMenu"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0867",
+    "tabelas": [
+      "public.PurchasePlanningDocumentVersion"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0943",
+    "tabelas": [
+      "public.SocialQuestionnaire"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0977",
+    "tabelas": [
+      "public.SstBenefitEntry"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C0986",
+    "tabelas": [
+      "public.SstCatLedger"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C1018",
+    "tabelas": [
+      "public.SstLeavePayrollOrigin"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C1108",
+    "tabelas": [
+      "public.VafEfdImport"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C1110",
+    "tabelas": [
+      "public.VafGiaImport"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  },
+  {
+    "grupo": "C1115",
+    "tabelas": [
+      "public.VafRepasse"
+    ],
+    "tratamento": "Inspecionar nulabilidade, defaults e serviço de criação; não desabilitar constraints nem adiar FK não deferrable"
+  }
+]

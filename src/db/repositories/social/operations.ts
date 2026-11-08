@@ -5,6 +5,7 @@ import { people } from "../../schema/people";
 import { employees } from "../../schema/administration";
 import { realEstates } from "../../schema/registry";
 import { socialAttendances, socialFamilies, socialFamilyMembers, socialUnits } from "../../schema/social";
+import { socialUnitRegistrations } from "../../schema/social-workflows";
 import type { SocialAttendanceRecord, SocialFamilyDetails, SocialFamilyRecord, SocialUnitDetails, SocialUnitRecord } from "@/lib/contracts/social";
 import type { PersonRecord } from "@/lib/contracts/registry";
 import type { EmployeeRecord } from "@/lib/contracts/administration";
@@ -13,9 +14,9 @@ import { socialAttendanceWhere, type SocialAccess } from "@/lib/social/access-po
 export type SocialFamilyInput = { representativeId: string; nis?: string; familyCode?: string; income?: number; perCapitaIncome?: number; vulnerabilities?: string };
 
 export async function findSocialUnitDetails(database: DatabaseExecutor, id: string): Promise<SocialUnitDetails> {
-  const [row] = await database.select({ unit: socialUnits, manager: employees, realEstate: realEstates }).from(socialUnits).leftJoin(employees, eq(employees.id, socialUnits.managerId)).leftJoin(realEstates, eq(realEstates.id, socialUnits.realEstateId)).where(eq(socialUnits.id, id));
+  const [row] = await database.select({ unit: socialUnits, manager: employees, realEstate: realEstates, registration: socialUnitRegistrations }).from(socialUnits).leftJoin(employees, eq(employees.id, socialUnits.managerId)).leftJoin(realEstates, eq(realEstates.id, socialUnits.realEstateId)).leftJoin(socialUnitRegistrations, eq(socialUnitRegistrations.unitId, socialUnits.id)).where(eq(socialUnits.id, id));
   if (!row) throw new Error("Equipamento inexistente.");
-  return { ...row.unit, manager: row.manager, realEstate: row.realEstate };
+  return { ...row.unit, manager: row.manager, realEstate: row.realEstate, registration: row.registration };
 }
 
 export async function findSocialFamilyDetails(database: DatabaseExecutor, id: string): Promise<SocialFamilyDetails> {

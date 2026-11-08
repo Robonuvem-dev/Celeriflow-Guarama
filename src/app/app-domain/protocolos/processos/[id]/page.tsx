@@ -13,6 +13,7 @@ import { readOperationalProcess, listProtocolSigners, listProcessCitizenAccesses
 import { canViewModule } from "@/lib/platform/tenant-context";
 import { notFound } from "next/navigation";
 import ProcessControls from "./ProcessControls";
+import ProcessRouteTree from "./ProcessRouteTree";
 import CitizenAccessPanel from "./CitizenAccessPanel";
 import { JunctionPanel } from "./JunctionPanel";
 import { PageFrame } from "@/components/app-ui/PageFrame";
@@ -131,6 +132,20 @@ export default async function ProcessoDetalhesPage({
             {registrationDetail && <dl className="mt-3 space-y-2">{registrationDetail.otherApplicant&&<><dt className="font-semibold">Outro requerente</dt><dd>{registrationDetail.otherApplicant}</dd></>}<dt className="font-semibold">Representante</dt><dd>{registrationDetail.representative || "Não informado"}</dd><dt className="font-semibold">Valor informado do processo</dt><dd>{registrationDetail.declaredValue === null ? "Não informado" : `R$ ${registrationDetail.declaredValue.replace(".", ",")}`}</dd></dl>}
           </div>
 
+          <ProcessRouteTree
+            protocolNumber={processo.protocolNumber}
+            status={processo.status}
+            createdAt={processo.createdAt}
+            portalOrigin={processo.portalOrigin}
+            processTypeName={processo.processType.name}
+            subjectName={processo.subject.name}
+            currentDepartmentName={processo.currentDepartment?.name}
+            interessado={interessadoNome}
+            genericStages={processo.genericWorkflowInstance?.definition.stages}
+            currentPosition={processo.genericWorkflowInstance?.currentPosition}
+            movements={processo.movements}
+            dispatches={processo.dispatches}
+          />
           <JunctionPanel processId={id} context={context} canOperate={canOperate} />
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-slate-50/50">

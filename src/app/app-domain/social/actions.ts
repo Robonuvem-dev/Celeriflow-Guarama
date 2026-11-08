@@ -11,6 +11,7 @@ import { withDatabaseTransaction } from "@/db/transaction";
 import { and, eq } from "drizzle-orm";
 import { employees } from "@/db/schema/administration";
 import { socialAttendances, socialBenefits, socialPrograms, socialUnits } from "@/db/schema/social";
+import { socialUnitRegistrations } from "@/db/schema/social-workflows";
 import { createLegacyExpenseInTransaction } from "@/lib/financeiro/legacy-expense";
 import { findAccessibleSocialAttendance, findSocialAttendanceMutationResult, findSocialUnitDetails, saveSocialFamilyInTransaction, setSocialFamilyStatusInTransaction } from "@/db/repositories/social/operations";
 
@@ -19,13 +20,31 @@ export async function createSocialUnit(data: SocialUnitInput) {
     const context = await getTenantContextForModuleOperation("SOCIAL", "create");
     const database = context.database ?? db;
     const values = parseSocialUnitInput(data);
+    const { cnpj, legalName, stateRegistration, unitNumber, ...unitValues } = values;
     if (values.isConfidential && context.user.profileCode !== SYSTEM_ADMIN_PROFILE_CODE) throw new Error("Somente o administrador configura sigilo de equipamento.");
     const [created] = await database.insert(socialUnits).values({
-        ...values,
+        ...unitValues,
         addressId: data.addressId,
         realEstateId: data.realEstateId || null,
         managerId: data.managerId || null,
     }).returning({ id: socialUnits.id });
+    if (cnpj || legalName || stateRegistration || unitNumber) {
+      await database.insert(socialUnitRegistrations).values({
+        unitId: created.id,
+        cnpj: cnpj || null,
+        legalName: legalName || values.name,
+        stateRegistration: stateRegistration || null,
+        unitNumber: unitNumber || values.identificationCode || 'S/N',
+      }).onConflictDoUpdate({
+        target: socialUnitRegistrations.unitId,
+        set: {
+          cnpj: cnpj || null,
+          legalName: legalName || values.name,
+          stateRegistration: stateRegistration || null,
+          unitNumber: unitNumber || values.identificationCode || 'S/N',
+        },
+      });
+    }
     const unit = await findSocialUnitDetails(database, created.id);
     revalidatePath("/social/unidades");
     return { success: true, data: unit };
@@ -41,16 +60,34 @@ export async function updateSocialUnit(id: string, data: SocialUnitInput) {
     const context = await getTenantContextForModuleOperation("SOCIAL", "update");
     const database = context.database ?? db;
     const values = parseSocialUnitInput(data);
+    const { cnpj, legalName, stateRegistration, unitNumber, ...unitValues } = values;
     if (values.isConfidential !== undefined && context.user.profileCode !== SYSTEM_ADMIN_PROFILE_CODE) {
       const [current] = await database.select({ isConfidential: socialUnits.isConfidential }).from(socialUnits).where(eq(socialUnits.id, id));
       if (!current || current.isConfidential !== values.isConfidential) throw new Error("Somente o administrador configura sigilo de equipamento.");
     }
     const updated = await database.update(socialUnits).set({
-        ...values,
+        ...unitValues,
         realEstateId: data.realEstateId || null,
         managerId: data.managerId || null,
     }).where(eq(socialUnits.id, id)).returning({ id: socialUnits.id });
     if (!updated.length) throw new Error("Equipamento inexistente.");
+    if (cnpj || legalName || stateRegistration || unitNumber) {
+      await database.insert(socialUnitRegistrations).values({
+        unitId: id,
+        cnpj: cnpj || null,
+        legalName: legalName || values.name,
+        stateRegistration: stateRegistration || null,
+        unitNumber: unitNumber || values.identificationCode || 'S/N',
+      }).onConflictDoUpdate({
+        target: socialUnitRegistrations.unitId,
+        set: {
+          cnpj: cnpj || null,
+          legalName: legalName || values.name,
+          stateRegistration: stateRegistration || null,
+          unitNumber: unitNumber || values.identificationCode || 'S/N',
+        },
+      });
+    }
     const unit = await findSocialUnitDetails(database, id);
     revalidatePath("/social/unidades");
     return { success: true, data: unit };

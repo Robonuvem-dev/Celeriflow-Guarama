@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-11-08T15:22:26.333Z",
+  "mode": "PLANNING_ARTIFACTS_ONLY",
+  "censusSnapshot": "2026-11-08T14:41:03.275Z",
+  "metadataSnapshot": "2026-11-08T15:08:31.878Z",
+  "sourceCommit": "8b4bad3b42708661fd5c8da3ca08650e0fbc6de6",
+  "tables": 1130,
+  "emptyTables": 777,
+  "packages": 38,
+  "foreignKeys": 2253,
+  "columns": 11893,
+  "cycles": 38,
+  "pages": 810,
+  "handlers": 248,
+  "checks": {
+    "allTablesHaveExactlyOnePlanRow": true,
+    "allEmptyTablesCovered": true,
+    "allTablesHavePackageFlowAndStrategy": true,
+    "allTablesHaveLiveCatalogColumns": true,
+    "allRoutesHaveLocalSource": true
+  },
+  "databaseWrites": 0,
+  "flowExecution": "NOT_EXECUTED",
+  "visualValidation": "NOT_EXECUTED"
+}

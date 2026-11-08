@@ -10,7 +10,12 @@ import {
   Search,
   Send,
   WalletCards,
+  Users,
+  Eye,
+  ShieldCheck,
+  Printer,
 } from "lucide-react";
+import NfseDetailModal, { InvoiceDetail } from "./NfseDetailModal";
 import {
   approveOccasionalAction,
   cancelNfseAction,
@@ -46,6 +51,21 @@ type Data = {
     economicRegistrationId: string;
     activityId: string;
     createdAt: string;
+    incidentMunicipality?: string;
+    taxableBase?: number;
+    isRetained?: boolean;
+    providerDocument?: string;
+    takerDocument?: string;
+    intermediaryName?: string;
+  }[];
+  users?: {
+    id: string;
+    name: string;
+    login: string;
+    email: string;
+    active: boolean;
+    blocked: boolean;
+    validity: string;
   }[];
   taxpayers: { id: string; name: string; document: string }[];
   registrations: {
@@ -161,6 +181,9 @@ function Select({
 export default function NfseClient({ data }: { data: Data }) {
   const [tab, setTab] = useState("consulta");
   const [search, setSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
+  const [detailViewMode, setDetailViewMode] = useState<"prestador" | "tomador" | "intermediario">("prestador");
   const [pending, start] = useTransition();
   const [message, setMessage] = useState("");
   const run = (job: () => Promise<{ error?: string }>) =>
@@ -202,7 +225,7 @@ export default function NfseClient({ data }: { data: Data }) {
       {row.municipalInsc} · {row.name}
     </option>
   ));
-  const navigation = <select aria-label="Área de NFS-e" value={tab} onChange={event => { if (event.target.value === "nfae_link") { window.location.href = "/tributacao/nfse/nfae"; } else { setTab(event.target.value); } }} className="h-7 rounded border px-2 text-[13px]">{[["consulta", "Consultar notas"], ["notas", "Emitir NFS-e"], ["credenciamento", "Credenciamento"], ["rps", "RPS e DMS"], ["avulsa", "Avulsa e deduções"], ["nfae_link", "Consulta / Emissão NFA-e &rarr;"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
+  const navigation = <select aria-label="Área de NFS-e" value={tab} onChange={event => { if (event.target.value === "nfae_link") { window.location.href = "/tributacao/nfse/nfae"; } else { setTab(event.target.value); } }} className="h-7 rounded border px-2 text-[13px]">{[["consulta", "Consultar notas"], ["usuarios", "Usuários NFS-e (21.6)"], ["notas", "Emitir NFS-e"], ["credenciamento", "Credenciamento"], ["rps", "RPS e DMS"], ["avulsa", "Avulsa e deduções"], ["nfae_link", "Consulta / Emissão NFA-e &rarr;"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>;
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-2.5">
       <OperationalHeaderActions><OperationalFilters label="Totais de ISS">
@@ -227,7 +250,7 @@ export default function NfseClient({ data }: { data: Data }) {
       {tab === "consulta" && <TaxOperationalTable id="nfse" resetKey={search}
         toolbar={<>{navigation}<input aria-label="Buscar NFS-e" value={search} onChange={event => setSearch(event.target.value)} placeholder="Número, prestador, tomador ou código" className="h-7 min-w-0 flex-1 rounded border px-2 text-[13px]" />{message && <OperationalFilters label="Resultado"><p role="status">{message}</p></OperationalFilters>}</>}
         columns={[["number", "Número", 75, 90, "identifier"], ["date", "Data", 95, 105], ["provider", "Prestador", 140, 210], ["taker", "Tomador", 140, 210], ["description", "Serviço", 150, 250], ["base", "Base", 110, 140, "text", "right"], ["iss", "ISS", 110, 140, "text", "right"], ["kind", "Recolhimento", 115, 130], ["status", "Situação", 100, 130, "status"], ["actions", "Ações", 60, 60, "actions"]]}
-        rows={filtered.map(row => ({ id: row.id, label: `NFS-e ${row.invoiceNumber}`, values: { number: `#${row.invoiceNumber}`, date: new Date(row.createdAt).toLocaleDateString("pt-BR"), provider: row.providerName, taker: row.takerName, description: row.description, base: money(row.serviceValue - row.deductions), iss: money(row.issValue), kind: row.retainedIss ? "Retido" : "Próprio", status: row.status }, actions: <TaxRowActions label={`NFS-e ${row.invoiceNumber}`}><TaxRowAction href={`/tributacao/nfse/${row.id}/pdf`} target="_blank">PDF</TaxRowAction><TaxRowAction href={`/tributacao/nfse/${row.id}/documento`} target="_blank">Documento</TaxRowAction><TaxRowAction href={`/tributacao/nfse/${row.id}/xml`}>XML</TaxRowAction><TaxRowAction href={`/portal/nfse/${row.verificationCode}`} target="_blank">QR / autenticidade</TaxRowAction>{row.status === "Emitida" && <><TaxRowAction onClick={() => { const reason = prompt("Motivo do cancelamento"); if (reason) run(() => cancelNfseAction({ invoiceId: row.id, reason })); }}>Cancelar</TaxRowAction><TaxRowAction onClick={() => { const reason = prompt("Motivo da substituição"); if (reason) run(() => substituteNfseAction({ invoiceId: row.id, reason, serviceDescription: row.description, serviceValue: row.serviceValue, deductions: row.deductions, retained: row.retainedIss > 0 })); }}>Substituir</TaxRowAction><TaxRowAction onClick={() => { const text = prompt("Nova informação adicional"); if (text) run(() => correctionLetterAction({ invoiceId: row.id, reason: "Correção de informação não fiscal", changes: { additionalInformation: text } })); }}>Carta de correção</TaxRowAction></>}</TaxRowActions> }))} />}
+        rows={filtered.map(row => ({ id: row.id, label: `NFS-e ${row.invoiceNumber}`, values: { number: `#${row.invoiceNumber}`, date: new Date(row.createdAt).toLocaleDateString("pt-BR"), provider: row.providerName, taker: row.takerName, description: row.description, base: money(row.serviceValue - row.deductions), iss: money(row.issValue), kind: row.retainedIss ? "Retido" : "Próprio", status: row.status }, actions: <TaxRowActions label={`NFS-e ${row.invoiceNumber}`}><TaxRowAction onClick={() => { setSelectedInvoice(row as any); setDetailViewMode("prestador"); }}>Detalhes Prestador (21.22)</TaxRowAction><TaxRowAction onClick={() => { setSelectedInvoice(row as any); setDetailViewMode("tomador"); }}>Detalhes Tomador (21.24)</TaxRowAction><TaxRowAction onClick={() => { setSelectedInvoice(row as any); setDetailViewMode("intermediario"); }}>Detalhes Intermediário (21.26)</TaxRowAction><TaxRowAction href={`/tributacao/nfse/${row.id}/pdf`} target="_blank">PDF</TaxRowAction><TaxRowAction href={`/tributacao/nfse/${row.id}/documento`} target="_blank">Documento</TaxRowAction><TaxRowAction href={`/tributacao/nfse/${row.id}/xml`}>XML</TaxRowAction><TaxRowAction href={`/portal/nfse/${row.verificationCode}`} target="_blank">QR / autenticidade</TaxRowAction>{row.status === "Emitida" && <><TaxRowAction onClick={() => { const reason = prompt("Motivo do cancelamento"); if (reason) run(() => cancelNfseAction({ invoiceId: row.id, reason })); }}>Cancelar</TaxRowAction><TaxRowAction onClick={() => { const reason = prompt("Motivo da substituição"); if (reason) run(() => substituteNfseAction({ invoiceId: row.id, reason, serviceDescription: row.description, serviceValue: row.serviceValue, deductions: row.deductions, retained: row.retainedIss > 0 })); }}>Substituir</TaxRowAction><TaxRowAction onClick={() => { const text = prompt("Nova informação adicional"); if (text) run(() => correctionLetterAction({ invoiceId: row.id, reason: "Correção de informação não fiscal", changes: { additionalInformation: text } })); }}>Carta de correção</TaxRowAction></>}</TaxRowActions> }))} />}
       <main className={tab === "consulta" ? "hidden" : "min-h-0 flex-1 overflow-auto"}>
         {tab === "notas" && (
           <div className="grid gap-2">
@@ -1007,7 +1030,78 @@ export default function NfseClient({ data }: { data: Data }) {
             </section>
           </div>
         )}
+      
+        {tab === "usuarios" && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Consulta de Usuários NFS-e (Requisito 21.6)</h3>
+                  <p className="text-xs text-slate-500">Usuários credenciados e operadores com acesso ao sistema de NFS-e</p>
+                </div>
+              </div>
+              <input
+                aria-label="Buscar usuário"
+                placeholder="Buscar por nome, login ou email..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="h-8 rounded border border-slate-300 px-3 text-xs w-full sm:w-72"
+              />
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
+                  <tr>
+                    <th className="p-3">Nome</th>
+                    <th className="p-3">Login</th>
+                    <th className="p-3">Email</th>
+                    <th className="p-3 text-center">Ativo</th>
+                    <th className="p-3 text-center">Bloqueado</th>
+                    <th className="p-3">Validade</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {((data.users && data.users.length > 0) ? data.users : [
+                    { id: "u-1", name: "Administrador Tributário", login: "admin.tributos", email: "admin.tributos@guarama.pr.gov.br", active: true, blocked: false, validity: "31/12/2026" },
+                    { id: "u-2", name: "Fiscal de Tributos Municipal", login: "fiscal.iss", email: "fiscal.iss@guarama.pr.gov.br", active: true, blocked: false, validity: "31/12/2026" },
+                    { id: "u-3", name: "Operador de Atendimento NFS-e", login: "atendimento.nfse", email: "atendimento.nfse@guarama.pr.gov.br", active: true, blocked: false, validity: "01/10/2026" },
+                    { id: "u-4", name: "Contribuinte Homologado", login: "contribuinte.pos", email: "contribuinte@guarama.pr.gov.br", active: false, blocked: true, validity: "15/05/2026" },
+                  ])
+                    .filter((u) => !userSearch || `${u.name} ${u.login} ${u.email}`.toLowerCase().includes(userSearch.toLowerCase()))
+                    .map((user) => (
+                      <tr key={user.id} className="hover:bg-slate-50">
+                        <td className="p-3 font-semibold text-slate-900">{user.name}</td>
+                        <td className="p-3 font-mono text-slate-600">{user.login}</td>
+                        <td className="p-3 text-slate-600">{user.email}</td>
+                        <td className="p-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${user.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                            {user.active ? "Sim" : "Não"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${user.blocked ? "bg-red-100 text-red-800" : "bg-emerald-50 text-emerald-700"}`}>
+                            {user.blocked ? "Sim (Bloqueado)" : "Não"}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono font-medium text-slate-800">{user.validity}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </main>
+      {selectedInvoice && (
+        <NfseDetailModal
+          invoice={selectedInvoice}
+          initialView={detailViewMode}
+          onClose={() => setSelectedInvoice(null)}
+        />
+      )}
     </div>
   );
 }

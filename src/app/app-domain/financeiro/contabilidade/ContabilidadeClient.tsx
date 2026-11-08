@@ -72,6 +72,9 @@ export default function ContabilidadeClient({ units, years, accounts, transactio
     <Link href="/financeiro/contabilidade/eventos" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Eventos: matriz contábil e pares complementares</Link>
     <Link href="/financeiro/contabilidade/disponibilidade" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Disponibilidade por fonte: caixa, empenhos, RAP e extras</Link>
     <Link href="/financeiro/contabilidade/etapas-anuais" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Etapas anuais: abertura, reedição e apuração do resultado</Link>
+    <Link href="/financeiro/contabilidade/divida-fundada" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Dívidas Fundadas e Operações de Crédito LRF (18.144)</Link>
+    <Link href="/financeiro/contabilidade/pcasp-movimentacao" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">PCASP: Movimentação por Conta Corrente (18.167)</Link>
+    <Link href="/financeiro/contabilidade/saldos-fontes-despesa" className="inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">Saldos da Despesa por Fonte de Recurso (18.174)</Link>
     <div className="grid gap-2 lg:grid-cols-2">
       <form onSubmit={submitPosting} className="space-y-3 rounded-md border border-slate-200 bg-white p-3">
         <h2 className="font-bold text-slate-800">Nova partida manual</h2>

@@ -1,0 +1,20 @@
+[
+  {
+    "file": "PCASPM_PR_2026_v1.0d.xlsx",
+    "url": "https://www.tce.pr.gov.br/data/files/CE/34/27/C1/9622D91078C712D9026B6394/PCASPM-PR_2026%20-%20Estendido%20-%20Versao%201.0d%20-%20Publicada%20em%2024-03-2026.xlsx",
+    "hash": "824d3dc03ad3f2d40abdbb10b2e2c5a30b590854af974be0a403fb12349d851a",
+    "bytes": 5680796
+  },
+  {
+    "file": "PC_RECEITA_PR_2026_v1.0e.xlsx",
+    "url": "https://www.tce.pr.gov.br/data/files/01/92/CF/84/AB121A1070DFB01A026B6394/PC%20-%20RECEITA%20-%20PR%20-%202026%20-%20Versao%201.0e%20-%20publicada_em_09_10_2026.xlsx",
+    "hash": "2ee071dfb6ecf33462ff4ea047445dd1122786c735bb46ac0b8008952b501e97",
+    "bytes": 1090828
+  },
+  {
+    "file": "PC_DESPESA_PR_2026_v1.0h.xlsx",
+    "url": "https://www.tce.pr.gov.br/data/files/FB/51/77/E4/6C3DF910CC75DCF9026B6394/PC%20-%20DESPESA%20-%20PR%20-%202026%20-%20Versao%201.0h%20-%20publicada_em_05_08_2026.xlsx",
+    "hash": "e98bff8e02c48e92c762ab425d64d219849754e4dab34f4be491dfa7f3ef4ecb",
+    "bytes": 1529867
+  }
+]

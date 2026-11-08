@@ -6,6 +6,7 @@ export type SocialUnitInput = {
   identificationCode?: string; implementationDate?: string;
   streetAddress?: string; municipality?: string; latitude?: string; longitude?: string;
   isConfidential?: boolean;
+  cnpj?: string; legalName?: string; stateRegistration?: string; unitNumber?: string;
 };
 
 const optionalText = z.string().trim().max(250).optional();
@@ -26,6 +27,7 @@ export const socialUnitInputSchema = z.object({
   streetAddress: optionalText, municipality: optionalText,
   latitude: coordinate(-90, 90), longitude: coordinate(-180, 180),
   isConfidential: z.boolean().optional(),
+  cnpj: optionalText, legalName: optionalText, stateRegistration: optionalText, unitNumber: optionalText,
 }).refine((value) => (value.latitude === null) === (value.longitude === null), "Informe latitude e longitude juntas.");
 
 export function parseSocialUnitInput(input: SocialUnitInput) {
@@ -39,5 +41,9 @@ export function parseSocialUnitInput(input: SocialUnitInput) {
     municipality: data.municipality === undefined ? undefined : data.municipality || null,
     latitude: input.latitude === undefined ? undefined : data.latitude,
     longitude: input.longitude === undefined ? undefined : data.longitude,
+    cnpj: data.cnpj === undefined ? undefined : data.cnpj || null,
+    legalName: data.legalName === undefined ? undefined : data.legalName || null,
+    stateRegistration: data.stateRegistration === undefined ? undefined : data.stateRegistration || null,
+    unitNumber: data.unitNumber === undefined ? undefined : data.unitNumber || null,
   };
 }

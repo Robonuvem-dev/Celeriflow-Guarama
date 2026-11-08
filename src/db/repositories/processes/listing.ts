@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { DatabaseExecutor } from "../../transaction";
 import { processes, processTypes, processSubjects, processMovements } from "../../schema/processes";
@@ -16,8 +16,28 @@ export function processSearchCondition(query: string, identifiers = false) {
     sql`EXISTS(SELECT 1 FROM ${companies} WHERE ${companies.id}=${processes.companyId} AND ${or(ilike(companies.corporateName, pattern), identifiers ? ilike(companies.cnpj, pattern) : undefined)})`);
 }
 
-export function processListCondition(scope: SQL, filters: { status?: string; q: string }) {
-  return and(scope, filters.status === "ATIVOS" ? ne(processes.status, "Arquivado") : filters.status ? eq(processes.status, filters.status) : undefined, processSearchCondition(filters.q));
+export function processListCondition(scope: SQL, filters: { status?: string; q: string; origin?: string; period?: string }) {
+  let originCondition: SQL | undefined = undefined;
+  if (filters.origin === "PORTAL") {
+    originCondition = and(isNotNull(processes.portalOrigin), ne(processes.portalOrigin, ""), ne(processes.portalOrigin, "BALCAO"));
+  } else if (filters.origin === "BALCAO") {
+    originCondition = or(isNull(processes.portalOrigin), eq(processes.portalOrigin, ""), eq(processes.portalOrigin, "BALCAO"));
+  }
+
+  let periodCondition: SQL | undefined = undefined;
+  if (filters.period === "HOJE") {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    periodCondition = gte(processes.createdAt, todayStart);
+  }
+
+  return and(
+    scope,
+    filters.status === "ATIVOS" ? ne(processes.status, "Arquivado") : filters.status ? eq(processes.status, filters.status) : undefined,
+    processSearchCondition(filters.q),
+    originCondition,
+    periodCondition
+  );
 }
 
 export async function countProcesses(db: DatabaseExecutor, condition: SQL | undefined) {

@@ -1,0 +1,35 @@
+{
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-08T16:11:20.290Z",
+  "references": {
+    "documentIds": [
+      "cmw814y9t000h04hy06r1mr2h",
+      "cmw814yk5000k04hyh9iwgjoe",
+      "cmw814yt5000n04hybuldntpg",
+      "cmw81521g001d04hy9xugs5cj",
+      "cmw8152bi001g04hyx2t38tpe",
+      "cmw8152kr001j04hypuyyw8yy"
+    ],
+    "visitIds": [
+      "cmw814xtj000d04hyufxdm3z9",
+      "cmw8151lg001904hyg4mq0zo9"
+    ],
+    "importBatchIds": [
+      "cmw814vpo000004hyk4527oer",
+      "cmw814z5s000r04hyokf43hyy"
+    ],
+    "rmaIds": [
+      "cmw814yx2000q04hyv8nuin0p",
+      "cmw8152ps001m04hybn24xlau"
+    ]
+  },
+  "checks": [
+    "Importação aplicada com composição integral das famílias existentes",
+    "Consulta CadÚnico devolve os snapshots importados",
+    "Visitas realizadas geraram atendimentos vinculados pelo serviço",
+    "Seis documentos emitidos com pessoa, CPF, NIS, unidade, profissional e data"
+  ],
+  "reused": false,
+  "status": "PASS",
+  "error": ""
+}

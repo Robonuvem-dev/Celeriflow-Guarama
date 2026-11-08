@@ -4,7 +4,7 @@ import type { PersonRecord, RealEstateRecord } from "./registry";
 
 type Timestamps = { id: string; createdAt: Date; updatedAt: Date };
 export type SocialUnitRecord = Timestamps & { identificationCode: string | null; implementationDate: Date | null; streetAddress: string | null; municipality: string | null; latitude: number | null; longitude: number | null; name: string; type: string; phone: string | null; email: string | null; isActive: boolean; isConfidential: boolean; addressId: string | null; realEstateId: string | null; managerId: string | null };
-export type SocialUnitDetails = SocialUnitRecord & { realEstate: RealEstateRecord | null; manager: EmployeeRecord | null };
+export type SocialUnitDetails = SocialUnitRecord & { realEstate: RealEstateRecord | null; manager: EmployeeRecord | null; registration?: { cnpj: string | null; legalName: string; stateRegistration: string | null; unitNumber: string } | null };
 export type SocialFamilyRecord = Timestamps & { familyCode: string | null; nis: string | null; income: number | null; perCapitaIncome: number | null; vulnerabilities: string | null; status: string; masterFamilyId: string | null; representativeId: string; addressId: string | null };
 export type SocialFamilyMemberRecord = Timestamps & { kinship: string; isDependent: boolean; familyId: string; personId: string };
 export type SocialFamilyDetails = SocialFamilyRecord & { representative: PersonRecord; members: SocialFamilyMemberRecord[] };

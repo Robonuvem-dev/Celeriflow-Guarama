@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, getTableColumns, gte, ilike, like, lte, or, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, getTableColumns, gte, ilike, isNotNull, isNull, like, lte, or, type SQL } from 'drizzle-orm';
 import type { DatabaseExecutor } from '../../transaction';
 import { employees, roles, departments, secretariats } from '../../schema/administration';
 import { companies, suppliers } from '../../schema/registry';
@@ -82,7 +82,7 @@ export async function readDependentsPage(db: DatabaseExecutor, input: Search): P
   const rows = await db.select({ ...getTableColumns(dependents), employee: getTableColumns(employees) }).from(dependents).innerJoin(employees, eq(employees.id, dependents.employeeId)).where(where).orderBy(desc(dependents.createdAt), asc(dependents.id)).limit(pagination.take).offset(pagination.skip);
   return { total, pagination, dependents: rows };
 }
-export async function readAttendancePage(db: DatabaseExecutor, input: Search & { month?: string }): Promise<{ total: number; pagination: Paging; records: Array<AttendanceRecord & { employee: Employee }> }> {
+export async function readAttendancePage(db: DatabaseExecutor, input: Search & { month?: string; employeeId?: string; inconsistenciesOnly?: boolean }): Promise<{ total: number; pagination: Paging; records: Array<AttendanceRecord & { employee: Employee }> }> {
   let range: SQL | undefined;
   if (input.month) {
     const [year, m] = input.month.split('-');
@@ -90,7 +90,25 @@ export async function readAttendancePage(db: DatabaseExecutor, input: Search & {
     const endDate = new Date(parseInt(year), parseInt(m), 0);
     range = and(gte(attendanceRecords.date, startDate), lte(attendanceRecords.date, endDate));
   }
-  const where = and(input.user ? personnelEmployeeWhere(input.user, employees.departmentId, employees.id) : undefined, input.q ? ilike(employees.name, `%${input.q}%`) : undefined, range);
+
+  let inconsistencyCondition: SQL | undefined;
+  if (input.inconsistenciesOnly) {
+    inconsistencyCondition = or(
+      and(isNotNull(attendanceRecords.entryTime), isNull(attendanceRecords.exitTime)),
+      and(isNull(attendanceRecords.entryTime), isNotNull(attendanceRecords.exitTime)),
+      and(eq(attendanceRecords.status, 'Presente'), eq(attendanceRecords.hoursWorked, 0)),
+      eq(attendanceRecords.status, 'Falta'),
+      eq(attendanceRecords.status, 'Atraso')
+    );
+  }
+
+  const where = and(
+    input.user ? personnelEmployeeWhere(input.user, employees.departmentId, employees.id) : undefined,
+    input.employeeId ? eq(attendanceRecords.employeeId, input.employeeId) : undefined,
+    input.q ? ilike(employees.name, `%${input.q}%`) : undefined,
+    range,
+    inconsistencyCondition
+  );
   const [{ total }] = await db.select({ total: count() }).from(attendanceRecords).innerJoin(employees, eq(employees.id, attendanceRecords.employeeId)).where(where);
   const pagination = rhPagination(input.page, total);
   const records = await db.select({ ...getTableColumns(attendanceRecords), employee: getTableColumns(employees) }).from(attendanceRecords).innerJoin(employees, eq(employees.id, attendanceRecords.employeeId)).where(where).orderBy(desc(attendanceRecords.date), asc(attendanceRecords.id)).limit(pagination.take).offset(pagination.skip);

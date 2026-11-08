@@ -1,0 +1,21 @@
+{
+  "mode": "APPLY",
+  "startedAt": "2026-11-08T15:59:37.772Z",
+  "reused": false,
+  "references": {
+    "financialYearId": "aurora-mg-50k-v1:financial-year:000",
+    "budgetUnitId": "aurora-system-v1:budget-unit:008",
+    "governmentEntityId": "p0-current-exe",
+    "bankAccountId": "municipal-financial-foundation-20261108:bank",
+    "resourceSourceId": "aurora-mg-50k-v1:source-1.500.000:000",
+    "accountVersion": "municipal-financial-foundation-20261108:accounts",
+    "accounts": 11,
+    "taxIds": [
+      "tax_iptu",
+      "tax_itbi",
+      "tax_issqn"
+    ]
+  },
+  "status": "PASS",
+  "error": ""
+}

@@ -1,0 +1,118 @@
+{
+  "mode": "PREVIEW_ROLLED_BACK",
+  "startedAt": "2026-11-08T16:07:27.392Z",
+  "receipts": [
+    {
+      "assessmentId": "cmw80q5qy0001p4hyyvc4t662",
+      "guideId": "cmw80q7i40009p4hy1y4t02ea",
+      "amount": "400.00",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80q85o000dp4hy78a8qda4",
+      "guideId": "cmw80q9tm000lp4hyks6s8lzr",
+      "amount": "417.50",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qai1000pp4hyfkt14pig",
+      "guideId": "cmw80qc58000xp4hyh2kuzn3y",
+      "amount": "435.00",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qcrv0011p4hyej82yoe1",
+      "guideId": "cmw80qeeu0019p4hyktokqisg",
+      "amount": "452.50",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qf3o001dp4hy69bbsix3",
+      "guideId": "cmw80qgsv001lp4hy3lhp07l3",
+      "amount": "470.00",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qhh7001pp4hy1i761mf9",
+      "guideId": "cmw80qj7o001xp4hyz6ijubtg",
+      "amount": "487.50",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qjv50021p4hyjpqzkpzs",
+      "guideId": "cmw80qlhh0029p4hybpml1r8o",
+      "amount": "505.00",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qm62002dp4hybt27iklj",
+      "guideId": "cmw80qnu9002lp4hyme4lsz7u",
+      "amount": "522.50",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qoia002pp4hywi4bv83p",
+      "guideId": "cmw80qq5w002xp4hyhtgvfh94",
+      "amount": "540.00",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qqu70031p4hyeqje5g0p",
+      "guideId": "cmw80qsgx0039p4hy151fk0ax",
+      "amount": "557.50",
+      "status": "Paga",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qt4o003dp4hy06mv2s0o",
+      "guideId": "cmw80qurq003lp4hyusslmtke",
+      "amount": "287.50",
+      "status": "Parcial",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qvf5003pp4hyxain96qg",
+      "guideId": "cmw80qx2c003xp4hyojlvcw8j",
+      "amount": "296.25",
+      "status": "Parcial",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80qxqq0041p4hy7fdn4hqy",
+      "guideId": "cmw80qze40049p4hy7ks467h7",
+      "amount": "305.00",
+      "status": "Parcial",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80r018004dp4hynx7g9i5l",
+      "guideId": "cmw80r1p9004lp4hym837tj5o",
+      "amount": "313.75",
+      "status": "Parcial",
+      "reused": false
+    },
+    {
+      "assessmentId": "cmw80r2dy004pp4hy0t9zte3b",
+      "guideId": "cmw80r40l004xp4hyae7d77qy",
+      "amount": "322.50",
+      "status": "Parcial",
+      "reused": false
+    }
+  ],
+  "checks": [
+    "Pagamentos = receitas = entradas de tesouraria: R$ 6312.50",
+    "Partidas postadas: débitos menos créditos = 0",
+    "Dez guias pagas, cinco parciais; demais casos preservados para operação"
+  ],
+  "status": "PASS",
+  "error": ""
+}

@@ -1,0 +1,352 @@
+{
+  "startedAt": "2026-11-08T15:36:08.378Z",
+  "mode": "APPLY",
+  "templates": [
+    {
+      "id": "cmw7zvls80000oghys1r6zcjz",
+      "name": "Despacho de encaminhamento",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvm5n0003oghyejxvwqk1",
+      "name": "Termo de recebimento de materiais",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvmka0006oghyszhttkg0",
+      "name": "Declaração de matrícula",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvmzy0009oghyy5lefee6",
+      "name": "Ofício de solicitação de documentos",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvncy000coghylcvynsj6",
+      "name": "Relatório de vistoria de imóvel",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvnqc000foghyn46l6ui9",
+      "name": "Termo de responsabilidade patrimonial",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvo3r000ioghymho9823z",
+      "name": "Solicitação de manutenção de veículo",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvogp000loghywzczod35",
+      "name": "Relatório de visita domiciliar",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvoud000ooghyyhbw55u7",
+      "name": "Declaração de comparecimento",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvp7t000roghylhb92j3g",
+      "name": "Ofício de convocação para reunião",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvpks000uoghyp2ruk5i3",
+      "name": "Ata de reunião de equipe",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvpxr000xoghyjk41121t",
+      "name": "Relatório de execução de serviço",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvqb80010oghye7d47cd9",
+      "name": "Requerimento de atualização cadastral",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvqoi0013oghy08h5nvr8",
+      "name": "Termo de entrega de equipamentos",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvr1x0016oghyfg0gsg0y",
+      "name": "Parecer de análise administrativa",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvrf10019oghy9j1osl4m",
+      "name": "Solicitação de reserva de espaço cultural",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvrs4001coghyj2jfhf8b",
+      "name": "Relatório de acompanhamento de obra",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvs58001foghy4888a8x4",
+      "name": "Comunicado de atendimento ao cidadão",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvsic001ioghybmj8g6jl",
+      "name": "Autorização de deslocamento da equipe",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvsvk001loghybdyk1zqo",
+      "name": "Relatório de inventário de materiais",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvt8j001ooghy127dki34",
+      "name": "Termo de encerramento de processo",
+      "reused": false
+    }
+  ],
+  "folders": [
+    {
+      "id": "cmw7zvlyt0002oghyqkfvv7eg",
+      "name": "Encaminhamentos administrativos",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvmcx0005oghyitvdwi13",
+      "name": "Recebimento de materiais",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvmrp0008oghysvzb7ee6",
+      "name": "Declarações escolares",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvn6c000boghyf6w5jsz5",
+      "name": "Solicitações de documentos",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvnjf000eoghyylokx80c",
+      "name": "Vistorias de imóveis",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvnx9000hoghyxdlbi6ac",
+      "name": "Responsabilidade patrimonial",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvoaa000koghys89l1odt",
+      "name": "Manutenção de veículos",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvong000noghy8v0wcbw7",
+      "name": "Visitas domiciliares",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvp17000qoghy34sze700",
+      "name": "Declarações de comparecimento",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvpe3000toghy439h2t46",
+      "name": "Convocações para reunião",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvpr9000woghyncw1yq6l",
+      "name": "Atas de reuniões",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvq4p000zoghymens7l0c",
+      "name": "Execução de serviços",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvqi40012oghyfqmt1lru",
+      "name": "Atualizações cadastrais",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvqvj0015oghy3a9du7ik",
+      "name": "Entrega de equipamentos",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvr8i0018oghyo7hfsnmg",
+      "name": "Pareceres administrativos",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvrlk001boghyu2tnl0e6",
+      "name": "Reservas de espaços culturais",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvryq001eoghyfj0e0aga",
+      "name": "Acompanhamento de obras",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvsbq001hoghyc8bvbc73",
+      "name": "Atendimentos ao cidadão",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvsoq001koghywpgdkzw9",
+      "name": "Deslocamentos de equipes",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvt29001noghyr9q7f74p",
+      "name": "Inventários de materiais",
+      "reused": false
+    },
+    {
+      "id": "cmw7zvtf7001qoghyx81wrng0",
+      "name": "Encerramentos de processos",
+      "reused": false
+    }
+  ],
+  "documents": [
+    {
+      "id": "cmw7zvvkv001roghyroob2eej",
+      "templateId": "cmw7zvls80000oghys1r6zcjz",
+      "reused": false,
+      "bytes": 8685
+    },
+    {
+      "id": "cmw7zvxgr001voghy4vg9j617",
+      "templateId": "cmw7zvm5n0003oghyejxvwqk1",
+      "reused": false,
+      "bytes": 8704
+    },
+    {
+      "id": "cmw7zvz8e001zoghyeae2t6en",
+      "templateId": "cmw7zvmka0006oghyszhttkg0",
+      "reused": false,
+      "bytes": 8655
+    },
+    {
+      "id": "cmw7zw0pu0023oghy3z966m6j",
+      "templateId": "cmw7zvmzy0009oghyy5lefee6",
+      "reused": false,
+      "bytes": 8687
+    },
+    {
+      "id": "cmw7zw2gq0027oghyvdmmcten",
+      "templateId": "cmw7zvncy000coghylcvynsj6",
+      "reused": false,
+      "bytes": 8703
+    },
+    {
+      "id": "cmw7zw46v002boghy6i9h9el5",
+      "templateId": "cmw7zvnqc000foghyn46l6ui9",
+      "reused": false,
+      "bytes": 8696
+    },
+    {
+      "id": "cmw7zw5wd002foghyb32kylsh",
+      "templateId": "cmw7zvo3r000ioghymho9823z",
+      "reused": false,
+      "bytes": 8728
+    },
+    {
+      "id": "cmw7zw7np002joghyik0gfqzm",
+      "templateId": "cmw7zvogp000loghywzczod35",
+      "reused": false,
+      "bytes": 8721
+    },
+    {
+      "id": "cmw7zw9de002noghyn8qr6g5t",
+      "templateId": "cmw7zvoud000ooghyyhbw55u7",
+      "reused": false,
+      "bytes": 8674
+    },
+    {
+      "id": "cmw7zwaya002roghy55erdrx6",
+      "templateId": "cmw7zvp7t000roghylhb92j3g",
+      "reused": false,
+      "bytes": 8684
+    },
+    {
+      "id": "cmw7zwcv8002voghy0d4hpnn2",
+      "templateId": "cmw7zvpks000uoghyp2ruk5i3",
+      "reused": false,
+      "bytes": 8677
+    },
+    {
+      "id": "cmw7zwefz002zoghyqgefkydt",
+      "templateId": "cmw7zvpxr000xoghyjk41121t",
+      "reused": false,
+      "bytes": 8706
+    },
+    {
+      "id": "cmw7zwfzj0033oghy2wx18ep9",
+      "templateId": "cmw7zvqb80010oghye7d47cd9",
+      "reused": false,
+      "bytes": 8700
+    },
+    {
+      "id": "cmw7zwhif0037oghyo39d6o3v",
+      "templateId": "cmw7zvqoi0013oghy08h5nvr8",
+      "reused": false,
+      "bytes": 8692
+    },
+    {
+      "id": "cmw7zwjg4003boghylbti024v",
+      "templateId": "cmw7zvr1x0016oghyfg0gsg0y",
+      "reused": false,
+      "bytes": 8715
+    },
+    {
+      "id": "cmw7zwl08003foghyf9eooy82",
+      "templateId": "cmw7zvrf10019oghy9j1osl4m",
+      "reused": false,
+      "bytes": 8706
+    },
+    {
+      "id": "cmw7zwmqx003joghygj24eud0",
+      "templateId": "cmw7zvrs4001coghyj2jfhf8b",
+      "reused": false,
+      "bytes": 8702
+    },
+    {
+      "id": "cmw7zwogv003noghynizcq1i9",
+      "templateId": "cmw7zvs58001foghy4888a8x4",
+      "reused": false,
+      "bytes": 8713
+    },
+    {
+      "id": "cmw7zwq0o003roghyqi6v0y7l",
+      "templateId": "cmw7zvsic001ioghybmj8g6jl",
+      "reused": false,
+      "bytes": 8698
+    },
+    {
+      "id": "cmw7zwrpj003voghyqsgt53s4",
+      "templateId": "cmw7zvsvk001loghybdyk1zqo",
+      "reused": false,
+      "bytes": 8713
+    },
+    {
+      "id": "cmw7zwthj003zoghy390h5ec2",
+      "templateId": "cmw7zvt8j001ooghy127dki34",
+      "reused": false,
+      "bytes": 8719
+    }
+  ],
+  "checks": [
+    "pastas-inteligentes: 20 registros na primeira página e segunda página sem repetição",
+    "modelos: 20 registros na primeira página e segunda página sem repetição"
+  ],
+  "status": "PASS",
+  "error": ""
+}

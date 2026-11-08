@@ -1,0 +1,27 @@
+{
+  "mode": "APPLY",
+  "startedAt": "2026-11-08T15:47:47.431Z",
+  "references": {
+    "schoolId": "aurora-system-v1:school:000",
+    "classId": "aurora-system-v1:class:000",
+    "periodId": "cmw7zxjn4000dlshydo0fskix",
+    "teacherId": "aurora-system-v1:teacher:000",
+    "subjectId": "cmw7zxj3u0000lshydukbnqay",
+    "students": [
+      "aurora-system-v1:student:000",
+      "aurora-system-v1:student:006",
+      "aurora-system-v1:student:012",
+      "aurora-system-v1:student:018"
+    ]
+  },
+  "checks": [
+    "Saldo escolar: 12.000,00 - 1.800,00 = 10.200,00",
+    "Estoque alimentar: entrada 50 kg - consumo 8 kg = 42 kg",
+    "Biblioteca: um empréstimo aberto, outro devolvido e reserva vinculada",
+    "Declaração usa aluno, matrícula, turma e escola existentes",
+    "Horário, diário, frequência e plano pedagógico da mesma turma"
+  ],
+  "reused": false,
+  "status": "PASS",
+  "error": ""
+}

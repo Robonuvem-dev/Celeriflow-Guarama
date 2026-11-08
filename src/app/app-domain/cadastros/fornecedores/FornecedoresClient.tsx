@@ -34,6 +34,7 @@ const columns = registryColumns([
   ["size", "ME/EPP", 70, 55],
   ["cnae", "CNAE principal", 105, 75],
   ["secondaryCnaes", "CNAEs secundários", 115, 80],
+  ["bankData", "Dados Bancários", 140, 95],
   ["status", "Situação", 80, 65, "status"],
   ["certification", "Certidões", 110, 80],
   ["evidence", "Evidências", 125, 80],
@@ -86,6 +87,7 @@ export default function FornecedoresClient({
   const repTrigger = useRef<HTMLButtonElement | null>(null);
   const biddingTrigger = useRef<HTMLButtonElement | null>(null);
   const [editing, setEditing] = useState<SupplierListItem | null>(null);
+  const [sortBy, setSortBy] = useState<"name" | "numeric" | "bank" | "none">("none");
   const [details, setDetails] = useState<SupplierListItem | null>(null);
   const [cadastralSupplier, setCadastralSupplier] = useState<SupplierListItem | null>(null);
   const [repSupplier, setRepSupplier] = useState<SupplierListItem | null>(null);
@@ -172,6 +174,20 @@ export default function FornecedoresClient({
   const queryPages = Math.max(1, Math.ceil(queryLinks.length / 4));
   const detailPages = 1 + queryPages;
 
+  const sortedSuppliers = [...suppliers].sort((a, b) => {
+    if (sortBy === "name") {
+      return identityFor(a).name.localeCompare(identityFor(b).name);
+    }
+    if (sortBy === "numeric") {
+      const docA = (a.company?.cnpj || a.person?.cpf || "").replace(/\D/g, "");
+      const docB = (b.company?.cnpj || b.person?.cpf || "").replace(/\D/g, "");
+      return docA.localeCompare(docB, undefined, { numeric: true });
+    }
+    if (sortBy === "bank") {
+      return (a.bankData || "").localeCompare(b.bankData || "");
+    }
+    return 0;
+  });
   const cadastralIdentity = cadastralSupplier ? identityFor(cadastralSupplier) : null;
 
   return (
@@ -181,6 +197,37 @@ export default function FornecedoresClient({
           {error}
         </p>
       )}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-md text-xs mb-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-semibold text-slate-700">Ordenar listagem:</span>
+          <button
+            type="button"
+            onClick={() => setSortBy(sortBy === "name" ? "none" : "name")}
+            className={`px-2 py-0.5 rounded border transition-colors ${sortBy === "name" ? "bg-indigo-600 text-white border-indigo-600 font-bold" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"}`}
+          >
+            Alfabética (A-Z)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortBy(sortBy === "numeric" ? "none" : "numeric")}
+            className={`px-2 py-0.5 rounded border transition-colors ${sortBy === "numeric" ? "bg-indigo-600 text-white border-indigo-600 font-bold" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"}`}
+          >
+            Numérica (CPF/CNPJ)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortBy(sortBy === "bank" ? "none" : "bank")}
+            className={`px-2 py-0.5 rounded border transition-colors ${sortBy === "bank" ? "bg-indigo-600 text-white border-indigo-600 font-bold" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"}`}
+          >
+            Dados Bancários
+          </button>
+        </div>
+        {sortBy !== "none" && (
+          <button type="button" onClick={() => setSortBy("none")} className="text-slate-500 hover:text-slate-800 underline">
+            Limpar ordenação
+          </button>
+        )}
+      </div>
       <OperationalTable
         columns={columns}
         preferenceId="cadastros-fornecedores"
@@ -190,7 +237,7 @@ export default function FornecedoresClient({
             ? "Nenhum fornecedor atende aos filtros informados."
             : "Nenhum fornecedor cadastrado."
         }
-        rows={suppliers.map((supplier) => {
+        rows={sortedSuppliers.map((supplier) => {
           const identity = identityFor(supplier);
           return {
             id: supplier.id,
@@ -208,6 +255,7 @@ export default function FornecedoresClient({
                 : "Não se aplica a PF",
               cnae: supplier.company?.primaryCnae || "Não informado",
               secondaryCnaes: supplier.company?.secondaryCnaes || "Não informados",
+              bankData: supplier.bankData || "Não informado",
               status: supplier.status,
               certification: certificationStatus(supplier.certificationsValidUntil, referenceDate)
                 .label,

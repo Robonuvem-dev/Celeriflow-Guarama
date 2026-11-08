@@ -1,0 +1,28 @@
+{
+  "checkpoint": "MERGE_EDUARDO_07112026_E_POPULACAO_PARCIAL",
+  "productionBuild": {
+    "command": "npm run build",
+    "status": "PASS",
+    "exitCode": 0,
+    "buildId": "PeLF5vogK8hv4q_Hnfvo1",
+    "typecheckPartitions": 17,
+    "nextBuildSeconds": 901,
+    "sourceBranch": "origin/eduardo-07112026",
+    "sourceCommit": "29e7b1aa04e36e8d52442c89c0755ca7615dd4c8",
+    "integrationFix": "Diretiva use client antes dos imports em Saude15Client.tsx"
+  },
+  "auxiliaryTypecheck": {
+    "partition2": "PASS",
+    "partition3": "PASS",
+    "scope": "Carregadores novos e seeds alterados; não equivale à execução de todos os scripts históricos"
+  },
+  "gedVisual": {
+    "production": "PASS_6_CASES",
+    "localProductionBuild": "PASS_6_CASES",
+    "viewports": ["1366x768", "1920x1080", "1280x720"],
+    "userReportedWarningReproduced": false,
+    "gedApplicationLayoutChanged": false
+  },
+  "completePopulationAccepted": false,
+  "databaseSchemaChanged": false
+}

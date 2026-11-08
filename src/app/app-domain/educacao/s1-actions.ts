@@ -1,7 +1,8 @@
 "use server";
 
 import { createHash } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
+import { streets, neighborhoods } from "@/db/schema/localities";
 import { db, databaseConnection } from "@/db/client";
 import { withDatabaseTransaction } from "@/db/transaction";
 import { people } from "@/db/schema/people";
@@ -215,4 +216,115 @@ export async function generateEducacensoExportAction(data: FormData): Promise<Ed
     refreshEducation();
     return { error: null, message: `${lines.length} registros preparados para conferência.`, download: { fileName, content } };
   } catch (error) { return { error: messageFor(error) }; }
+}
+
+export type AddressLookupResult = {
+  zipCode: string;
+  streetName: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  source: "local" | "viacep";
+};
+
+export async function searchEducationAddressAction(input: {
+  cep?: string;
+  street?: string;
+}): Promise<{ error?: string; results?: AddressLookupResult[] }> {
+  try {
+    const rawCep = (input.cep || "").replace(/\D/g, "");
+    const street = (input.street || "").trim();
+
+    if (!rawCep && !street) {
+      return { error: "Informe um CEP ou logradouro para pesquisar." };
+    }
+
+    const results: AddressLookupResult[] = [];
+
+    if (street) {
+      const localMatches = await db
+        .select({
+          name: streets.name,
+          type: streets.type,
+          zipCode: streets.zipCode,
+          city: streets.city,
+          state: streets.state,
+          neighborhoodName: neighborhoods.name,
+        })
+        .from(streets)
+        .leftJoin(neighborhoods, eq(neighborhoods.id, streets.neighborhoodId))
+        .where(ilike(streets.name, `%${street}%`))
+        .limit(10);
+
+      for (const m of localMatches) {
+        results.push({
+          zipCode: m.zipCode || "",
+          streetName: `${m.type} ${m.name}`.trim(),
+          neighborhood: m.neighborhoodName || "",
+          city: m.city,
+          state: m.state,
+          source: "local",
+        });
+      }
+    }
+
+    if (rawCep && rawCep.length === 8) {
+      const localByCep = await db
+        .select({
+          name: streets.name,
+          type: streets.type,
+          zipCode: streets.zipCode,
+          city: streets.city,
+          state: streets.state,
+          neighborhoodName: neighborhoods.name,
+        })
+        .from(streets)
+        .leftJoin(neighborhoods, eq(neighborhoods.id, streets.neighborhoodId))
+        .where(eq(streets.zipCode, rawCep))
+        .limit(5);
+
+      for (const m of localByCep) {
+        results.push({
+          zipCode: m.zipCode || rawCep,
+          streetName: `${m.type} ${m.name}`.trim(),
+          neighborhood: m.neighborhoodName || "",
+          city: m.city,
+          state: m.state,
+          source: "local",
+        });
+      }
+
+      if (results.length === 0) {
+        try {
+          const res = await fetch(`https://viacep.com.br/ws/${rawCep}/json/`, {
+            headers: { Accept: "application/json" },
+            next: { revalidate: 3600 },
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string; cep?: string };
+            if (!data.erro && (data.logradouro || data.localidade)) {
+              results.push({
+                zipCode: data.cep || rawCep,
+                streetName: data.logradouro || "Logradouro",
+                neighborhood: data.bairro || "Centro",
+                city: data.localidade || "Ibema",
+                state: data.uf || "PR",
+                source: "viacep",
+              });
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    if (results.length === 0) {
+      return { error: "Nenhum endereço encontrado para os dados informados." };
+    }
+
+    return { results };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Falha ao buscar endereço." };
+  }
 }

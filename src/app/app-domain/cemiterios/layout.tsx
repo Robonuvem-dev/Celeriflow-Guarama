@@ -3,6 +3,7 @@ import { ModuleShell, type ModuleNavGroup } from "@/components/app-ui/erp/Module
 import { structureConfig, structureKinds } from "@/lib/cemeteries/structure-config";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useOptionalOperationalWorkspace } from "@/components/app-ui/operational/OperationalWorkspace";
+import { CemeteryContextSwitcher } from "@/components/cemeteries/CemeteryContextSwitcher";
 
 const navigation: ModuleNavGroup[] = [
   { title: "Estrutura", items: structureKinds.filter(k => !["LOTE", "SEPULTURA"].includes(k)).map(k => ({ title: structureConfig[k].title, href: `/cemiterios/estrutura?tipo=${k}`, icon: "building2", query: { key: "tipo", values: [k] } })) },
@@ -18,5 +19,5 @@ export default function CemeteryLayout({ children }: { children: React.ReactNode
   const scopedNavigation = navigation.map(group => ({ ...group, items: group.items.map(item => ({ ...item, href: cemeteryId ? `${item.href}${item.href.includes("?") ? "&" : "?"}cemeteryId=${encodeURIComponent(cemeteryId)}` : item.href })) }));
   if (workspace) return children;
   if (path.startsWith("/cemiterios/comprovante/") || path === "/cemiterios/relatorio" || path.startsWith("/cemiterios/taxas/guias/")) return <div className="min-h-0 flex-1 overflow-y-auto print:overflow-visible">{children}</div>;
-  return <ModuleShell moduleTitle="Cemitérios" moduleCaption="Gestão funerária municipal" moduleIcon="building2" navigation={scopedNavigation}><div className="min-h-0 flex-1 overflow-y-auto">{children}</div></ModuleShell>;
+  return <ModuleShell moduleTitle="Cemitérios" moduleCaption="Gestão funerária municipal" moduleIcon="building2" navigation={scopedNavigation}><div className="flex flex-col h-full min-h-0"><CemeteryContextSwitcher /><div className="min-h-0 flex-1 overflow-y-auto">{children}</div></div></ModuleShell>;
 }
