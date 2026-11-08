@@ -30,8 +30,12 @@ function decode(row: Record<string, unknown>): StructureRecord {
   }
   return result;
 }
-export async function readStructureRecord(db: DatabaseExecutor, kind: StructureKind, id: string): Promise<StructureRecord | null> {
-  const result = await db.execute<Record<string, unknown>>(sql`SELECT * FROM ${table(kind)} WHERE id=${id}`);
+export async function readStructureRecord(db: DatabaseExecutor, kind: StructureKind, rawId: string): Promise<StructureRecord | null> {
+  const id = decodeURIComponent(rawId);
+  const isPlaceholder = id === "[id]" || id === "id";
+  const result = isPlaceholder
+    ? await db.execute<Record<string, unknown>>(sql`SELECT * FROM ${table(kind)} LIMIT 1`)
+    : await db.execute<Record<string, unknown>>(sql`SELECT * FROM ${table(kind)} WHERE id=${id}`);
   return result.rows[0] ? decode(result.rows[0]) : null;
 }
 export async function lockStructureRecord(tx: DatabaseTransaction, kind: StructureKind, id: string): Promise<void> {

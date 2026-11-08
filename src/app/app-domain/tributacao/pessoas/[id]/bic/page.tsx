@@ -15,13 +15,14 @@ export default async function BicPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ type?: string; targetId?: string }>;
 }) {
-  const { id } = await params;
-  const { type, targetId } = await searchParams;
+  const { id: rawId } = await params;
+  const { type, targetId: rawTargetId } = await searchParams;
+  const targetId = rawTargetId ? decodeURIComponent(rawTargetId) : undefined;
   const context = await getTenantContextForModule("TRIBUTACAO");
   const database = context.database ?? db;
 
   const [taxpayer, instList] = await Promise.all([
-    readFiscalTaxpayerCard(database, id),
+    readFiscalTaxpayerCard(database, rawId),
     database
       .select({
         name: institutions.name,
@@ -37,6 +38,7 @@ export default async function BicPage({
   ]);
 
   if (!taxpayer) notFound();
+  const id = encodeURIComponent(taxpayer.id);
 
   const institution = instList[0];
   const name = taxpayer.company?.corporateName ?? taxpayer.person?.fullName ?? "Contribuinte";

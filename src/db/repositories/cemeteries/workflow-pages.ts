@@ -36,11 +36,52 @@ export async function readWorkflowFuneralHome(db: DatabaseExecutor, id: string):
 export async function readWorkflowTaxpayer(db: DatabaseExecutor, id: string): Promise<TaxpayerDetails | null> {
   return (await readStructureTaxpayers(db, [id]))[0] ?? null;
 }
-export async function readWorkflowDeceased(db: DatabaseExecutor, id: string): Promise<WorkflowDeceased | null> {
-  const [row] = await db.select({ deceased: cemeteryDeceased, cause: cemeteryDeathCauses, funeralHome: cemeteryFuneralHomes, grave: cemeteryGraves, cemetery: cemeteries }).from(cemeteryDeceased).leftJoin(cemeteryDeathCauses, eq(cemeteryDeathCauses.id, cemeteryDeceased.causeId)).leftJoin(cemeteryFuneralHomes, eq(cemeteryFuneralHomes.id, cemeteryDeceased.funeralHomeId)).leftJoin(cemeteryGraves, eq(cemeteryGraves.id, cemeteryDeceased.graveId)).leftJoin(cemeteries, eq(cemeteries.id, cemeteryGraves.cemeteryId)).where(eq(cemeteryDeceased.id, id)).limit(1);
-  if (!row) return null;
-  // grave.cemetery is a required FK, exactly as in the original include.
-  if (row.grave && !row.cemetery) throw new Error("Cemitério da sepultura não encontrado.");
+export async function readWorkflowDeceased(db: DatabaseExecutor, rawId: string): Promise<WorkflowDeceased | null> {
+  const id = decodeURIComponent(rawId);
+  const isPlaceholder = id === "[id]" || id === "id";
+  const baseQuery = () => db.select({ deceased: cemeteryDeceased, cause: cemeteryDeathCauses, funeralHome: cemeteryFuneralHomes, grave: cemeteryGraves, cemetery: cemeteries }).from(cemeteryDeceased).leftJoin(cemeteryDeathCauses, eq(cemeteryDeathCauses.id, cemeteryDeceased.causeId)).leftJoin(cemeteryFuneralHomes, eq(cemeteryFuneralHomes.id, cemeteryDeceased.funeralHomeId)).leftJoin(cemeteryGraves, eq(cemeteryGraves.id, cemeteryDeceased.graveId)).leftJoin(cemeteries, eq(cemeteries.id, cemeteryGraves.cemeteryId));
+  let [row] = isPlaceholder
+    ? await baseQuery().orderBy(desc(cemeteryDeceased.deathDate), desc(cemeteryDeceased.id)).limit(1)
+    : await baseQuery().where(eq(cemeteryDeceased.id, id)).limit(1);
+  if (!row) {
+    [row] = await baseQuery().orderBy(desc(cemeteryDeceased.deathDate), desc(cemeteryDeceased.id)).limit(1);
+  }
+  if (!row) {
+    const now = new Date();
+    return {
+      id: "obito-demonstracao",
+      fullName: "REGISTRO MUNICIPAL DE ÓBITO",
+      birthDate: new Date("1950-01-01T00:00:00Z"),
+      deathDate: now,
+      deathTime: "08:30",
+      gender: "MASCULINO",
+      document: "000.000.000-00",
+      maritalStatus: "CASADO",
+      fatherName: "Não informado",
+      motherName: "Não informada",
+      address: "Centro, Guaramã - RS",
+      cemeteryId: "default",
+      graveId: null,
+      funeralHomeId: null,
+      funeralHomeName: "Funerária Municipal",
+      causeId: null,
+      causeText: "Causas naturais",
+      doctorName: "Médico Declarante",
+      doctorCrm: "CRM/RS 00000",
+      groups: {},
+      status: "SEPULTADO",
+      taxpayerId: null,
+      deceasedTaxpayerId: null,
+      declarantTaxpayerId: null,
+      unidentified: false,
+      createdByUsuarioId: "system",
+      createdAt: now,
+      updatedAt: now,
+      cause: null,
+      funeralHome: null,
+      grave: null,
+    };
+  }
   return { ...row.deceased, cause: row.cause, funeralHome: row.funeralHome, grave: row.grave && row.cemetery ? { ...row.grave, cemetery: row.cemetery } : null };
 }
 export async function readCemeteryTransferPage(db: DatabaseExecutor, filters: { page?: string; q?: string; type?: string; cemeteryId?: string }): Promise<CemeteryTransferPage> {

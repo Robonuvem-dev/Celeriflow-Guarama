@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, Eye, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { OperationalListFrame, OperationalFilters } from "@/components/app-ui/operational/OperationalListFrame";
 import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
-import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, paginateFullValue, type OperationalColumn } from "@/lib/operational-tables";
+import { OPERATIONAL_PAGE_SIZE as PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
 import styles from "@/components/app-ui/operational/operational.module.css";
 import { createSegMobItem, toggleSegMobItemStatus, updateSegMobItem } from "../actions";
 import type { SegMobFormData, SegMobItem, SegMobPageConfig } from "../types";
@@ -49,26 +49,7 @@ function formatDate(value?: Date | string | null) {
 }
 
 function RecordText({ text }: { text: string }) {
-  const body = useRef<HTMLDivElement>(null);
-  const [pages, setPages] = useState<string[]>([]);
-  const [page, setPage] = useState(0);
-  useEffect(() => {
-    const element = body.current;
-    if (!element) return;
-    const measure = () => {
-      const probe = document.createElement("div");
-      const computed = getComputedStyle(element);
-      Object.assign(probe.style, { position: "fixed", visibility: "hidden", width: `${element.clientWidth}px`, font: computed.font, lineHeight: computed.lineHeight, whiteSpace: "pre-wrap", overflowWrap: "anywhere" });
-      document.body.appendChild(probe);
-      try { setPages(paginateFullValue(text, value => { probe.textContent = value; return probe.scrollHeight <= element.clientHeight && probe.scrollWidth <= element.clientWidth + 1; })); setPage(0); }
-      finally { probe.remove(); }
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    document.fonts.addEventListener("loadingdone", measure);
-    return () => { observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
-  }, [text]);
-  return <><div ref={body} style={{ height: "min(30dvh, 240px)", fontSize: ".8125rem", lineHeight: "1.4", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{pages[page] || "Preparando leitura…"}</div><div className={styles.dialogButtons}><button type="button" className={styles.dialogButton} disabled={page === 0} onClick={() => setPage(current => current - 1)}>Anterior</button><span aria-live="polite">Trecho {page + 1} de {Math.max(1, pages.length)}</span><button type="button" className={styles.dialogButton} disabled={page >= pages.length - 1} onClick={() => setPage(current => current + 1)}>Próximo</button></div></>;
+  return <div style={{ maxHeight: "min(40dvh, 320px)", overflowY: "auto", fontSize: ".8125rem", lineHeight: "1.4", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{text}</div>;
 }
 
 
