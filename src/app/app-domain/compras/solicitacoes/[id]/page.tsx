@@ -6,6 +6,7 @@ import { ArrowLeft, Edit, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ApprovePurchaseRequestButton } from "../ApprovePurchaseRequestButton";
+import { PurchaseRequestDetailActions } from "../PurchaseRequestDetailActions";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
 import { canManagePurchaseRequest } from "@/lib/compras/purchase-request-policy";
@@ -36,7 +37,20 @@ export default async function SolicitacaoDetalhesPage({ params }: { params: Prom
       <PageHeader
         title="Detalhes da Solicitação"
         icon={<ShoppingCart className="size-4 shrink-0 text-emerald-600" />}
-        action={<><Link className="text-sm underline" href={`/compras/solicitacoes/${solicitacao.id}/dfd`}>Prévia do DFD</Link><Link href="/compras/solicitacoes" aria-label="Voltar"><Button variant="outline" size="icon"><ArrowLeft className="size-4" /></Button></Link>{canManagePurchaseRequest(user, solicitacao) ? <Link href={`/compras/solicitacoes/${solicitacao.id}/editar`}><Button variant="outline" size="sm"><Edit className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button></Link> : null}{solicitacao.status === "Rascunho" && <ApprovePurchaseRequestButton id={solicitacao.id} />}</>}
+        action={<>
+          <Link className="text-sm underline" href={`/compras/solicitacoes/${solicitacao.id}/dfd`}>Prévia do DFD</Link>
+          <Link href="/compras/solicitacoes" aria-label="Voltar"><Button variant="outline" size="icon"><ArrowLeft className="size-4" /></Button></Link>
+          {canManagePurchaseRequest(user, solicitacao) && solicitacao.status !== "Cancelada" ? <Link href={`/compras/solicitacoes/${solicitacao.id}/editar`}><Button variant="outline" size="sm"><Edit className="size-3.5" /><span className="hidden sm:inline">Editar</span></Button></Link> : null}
+          {solicitacao.status === "Rascunho" && <ApprovePurchaseRequestButton id={solicitacao.id} />}
+          <PurchaseRequestDetailActions
+            id={solicitacao.id}
+            status={solicitacao.status}
+            canManage={canManagePurchaseRequest(user, solicitacao)}
+            secretariatId={solicitacao.secretariatId}
+            departmentId={solicitacao.departmentId}
+            requesterId={solicitacao.requesterId}
+          />
+        </>}
       />
 
       <Card className="rounded-md">

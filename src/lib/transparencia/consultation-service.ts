@@ -28,6 +28,23 @@ export async function runTransparencyConsultation(db: DatabaseExecutor, slug: st
   else dataset = await nativeTransparencyDataset(db, collection, query, configuration);
    dataset.records = dataset.records.filter(record => configuration.entities.some(entity => entity.key === record.entity && entity.enabled)&&(!record.values.collectionSlug||isTransparencyCollectionEnabled(String(record.values.collectionSlug),configuration)));
    if (query.entity === "consolidado" && slug === "repasses") dataset.records = dataset.records.filter(record => record.values.internalTransfer !== true);
+   const moduleInitialDate = (() => {
+     const dates = configuration.initialDatesByModule;
+     if (!dates) return "";
+     if (["despesas", "liquidacoes", "pagamentos", "restos-a-pagar"].includes(slug)) return dates.despesas;
+     if (slug === "receitas") return dates.receitas;
+     if (slug === "licitacoes") return dates.licitacoes;
+     if (slug === "contratos") return dates.contratos;
+     if (["servidores", "estagiarios", "autonomos", "inativos", "cessoes", "quantitativo-pessoal"].includes(slug)) return dates.pessoal;
+     return "";
+   })();
+   if (moduleInitialDate) {
+     dataset.records = dataset.records.filter(record => {
+       const rowDate = record.values.date ? String(record.values.date).slice(0, 10) : "";
+       if (!rowDate) return true;
+       return rowDate >= moduleInitialDate;
+     });
+   }
    const presentation=query.source==="DOCUMENTOS"?{...getTransparencyCollection("publicacoes")!,slug:collection.slug,title:collection.title}:collection;
    return { collection:presentation, query, ...filterPublicDataset(presentation, dataset, query) };
 }

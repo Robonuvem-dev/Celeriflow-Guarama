@@ -327,7 +327,26 @@ export function ContratosListClient({
         label="Gestão de Contratos"
         preferenceId="compras-contratos"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/compras/contratos/consorcios"
+              className="inline-flex h-8 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Consórcios
+            </Link>
+            <Link
+              href="/compras/contratos/relatorios"
+              className="inline-flex h-8 items-center gap-1 rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <FileText className="size-3.5 text-sky-700" />
+              Central de Relatórios
+            </Link>
+            <Link
+              href="/compras/contratos/relatorios?aba=monitoramento"
+              className="inline-flex h-8 items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+            >
+              Monitoramento
+            </Link>
             <Link
               href="/compras/convenios"
               className="inline-flex h-8 items-center rounded border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"

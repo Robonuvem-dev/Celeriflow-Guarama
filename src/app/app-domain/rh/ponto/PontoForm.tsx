@@ -21,11 +21,27 @@ export function PontoForm({ data, employees = [] }: { data?: AttendanceRecord, e
   const [exitTime, setExitTime] = useState(data?.exitTime ? new Date(data.exitTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : "");
   const [employeeId, setEmployeeId] = useState<string>(data?.employeeId || "");
   const [status, setStatus] = useState<string>(data?.status || "Presente");
+  const [punchType, setPunchType] = useState<string>("MANUAL");
+  const [occurrenceType, setOccurrenceType] = useState<string>("");
+  const [clockLocation, setClockLocation] = useState<string>("Sede Administrativa / Apontamento Manual");
+  const [justification, setJustification] = useState<string>("");
+  const [documentRef, setDocumentRef] = useState<string>("");
 
   async function handleSubmit(formData: FormData) {
+    if ((punchType === "MANUAL" || occurrenceType || status === "Falta" || status === "Atraso" || data) && justification.trim().length < 5) {
+      alert("A digitação do histórico da justificativa é obrigatória para lançamento manual do ponto ou cadastro de ocorrência (Requisito 20.14).");
+      return;
+    }
+
     setIsSaving(true);
     formData.set("entryTime", entryTime);
     formData.set("exitTime", exitTime);
+    formData.set("punchType", punchType);
+    formData.set("occurrenceType", occurrenceType);
+    formData.set("clockLocation", clockLocation);
+    formData.set("justification", justification);
+    formData.set("documentRef", documentRef);
+
     const result = await savePonto(formData);
     setIsSaving(false);
     
@@ -137,6 +153,90 @@ export function PontoForm({ data, employees = [] }: { data?: AttendanceRecord, e
                   <SelectItem value="Licença">Licença</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Requisito 20.14 & 20.20 & 20.23: Tipo de Ponto, Ocorrência, Local/Relógio e Justificativa Obrigatória */}
+            <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50/50 p-3">
+              <div className="font-semibold text-xs text-amber-900">
+                Informações Complementares e Ocorrência de Ponto (Requisitos 20.14, 20.20, 20.23)
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="punchType">Tipo de Ponto do Servidor (20.23)</Label>
+                  <select
+                    id="punchType"
+                    value={punchType}
+                    onChange={(e) => setPunchType(e.target.value)}
+                    className="w-full h-9 rounded border border-slate-300 px-2 bg-white text-xs"
+                  >
+                    <option value="MANUAL">Ponto Manual (Folha de Frequência / Livro Ponto)</option>
+                    <option value="ELETRONICO">Ponto Eletrônico (REP Biométrico / Digital)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="occurrenceType">Tipo de Ocorrência de Ponto</Label>
+                  <select
+                    id="occurrenceType"
+                    value={occurrenceType}
+                    onChange={(e) => setOccurrenceType(e.target.value)}
+                    className="w-full h-9 rounded border border-slate-300 px-2 bg-white text-xs"
+                  >
+                    <option value="">Sem ocorrência excepcional (Marcação normal)</option>
+                    <option value="Falta Justificada">Falta Justificada</option>
+                    <option value="Atraso Justificado">Atraso Justificado</option>
+                    <option value="Saída Antecipada Justificada">Saída Antecipada Justificada</option>
+                    <option value="Esquecimento de Crachá/Biometria">Esquecimento de Crachá / Biometria</option>
+                    <option value="Declaração Médica / Consulta">Declaração Médica / Consulta</option>
+                    <option value="Serviço Externo / Diligência">Serviço Externo / Diligência</option>
+                    <option value="Convocação Judicial / Eleitoral">Convocação Judicial / Eleitoral</option>
+                    <option value="Ajuste de Batida Manual">Ajuste de Batida Manual</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="clockLocation">Relógio / Local de Batida (20.20)</Label>
+                  <Input
+                    id="clockLocation"
+                    value={clockLocation}
+                    onChange={(e) => setClockLocation(e.target.value)}
+                    placeholder="Ex: REP 01 Sede Administrativa / Apontamento Manual"
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="documentRef">Comprovante / Atestado / Doc. GED</Label>
+                  <Input
+                    id="documentRef"
+                    value={documentRef}
+                    onChange={(e) => setDocumentRef(e.target.value)}
+                    placeholder="Ex: Atestado Médico nº 1092 / Memorando RH"
+                    className="h-9 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="justification" className="text-amber-950 font-semibold">
+                  Histórico da Justificativa * (Digitação Obrigatória - Requisito 20.14)
+                </Label>
+                <textarea
+                  id="justification"
+                  value={justification}
+                  onChange={(e) => setJustification(e.target.value)}
+                  placeholder="Digite detalhadamente a justificativa e histórico do apontamento manual ou da ocorrência..."
+                  rows={3}
+                  className="w-full rounded border border-amber-300 bg-white p-2 text-xs focus:ring-1 focus:ring-amber-500"
+                  required
+                />
+                <p className="text-[10px] text-amber-700">
+                  * A digitação do histórico da justificativa é exigência legal e obrigatória para lançamento manual do ponto e ocorrências.
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 border-t pt-3">

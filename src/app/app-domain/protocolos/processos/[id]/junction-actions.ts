@@ -10,9 +10,13 @@ export async function joinProcessAction(form:FormData):Promise<void>{
  const context=await getProtocolContextForOperation("update"),database=context.database??db;
  if(!context.user.departmentId)throw new Error("Seu usuário precisa estar vinculado a um setor.");
  const parentId=String(form.get("parentId")||""),protocol=String(form.get("childProtocol")||"").trim();
+ const junctionType=String(form.get("junctionType")||"ANEXACAO");
+ const rawReason=String(form.get("reason")||"").trim();
+ const typeLabel=junctionType==="APENSACAO"?"Apensação":"Anexação";
+ const reason=`[${typeLabel}] ${rawReason}`;
  const [child]=await database.select({id:processes.id}).from(processes).where(and(eq(processes.protocolNumber,protocol),protocolScopeCondition(context))).limit(1);
  if(!child)throw new Error("Processo a juntar não encontrado no seu escopo.");
- await withDatabaseTransaction(databaseConnection,tx=>joinProcesses(tx,{parentId,childId:child.id,departmentId:context.user.departmentId!,actorId:context.user.id,reason:String(form.get("reason")||"")}));
+ await withDatabaseTransaction(databaseConnection,tx=>joinProcesses(tx,{parentId,childId:child.id,departmentId:context.user.departmentId!,actorId:context.user.id,reason}));
  revalidatePath(`/protocolos/processos/${parentId}`);revalidatePath(`/protocolos/processos/${child.id}`);
 }
 export async function undoProcessJunctionAction(form:FormData):Promise<void>{

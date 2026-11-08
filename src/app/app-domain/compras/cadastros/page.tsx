@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { procurementAuxiliaryCatalogs } from "@/lib/compras/auxiliary-catalogs";
-import { Gavel } from "lucide-react";
+import { Gavel, BarChart3 } from "lucide-react";
 
 export default async function Page() {
   await getTenantContextForModule("COMPRAS");
@@ -9,7 +9,10 @@ export default async function Page() {
     <main className="space-y-4 p-4">
       <div className="flex items-center justify-between border-b pb-2">
         <h1 className="text-xl font-semibold">Cadastros de Compras e Licitação</h1>
-        <Link className="text-sm underline text-muted-foreground hover:text-foreground" href="/compras">Voltar para Compras</Link>
+        <div className="flex items-center gap-3">
+          <Link className="text-xs font-semibold px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded hover:bg-indigo-100" href="/compras/relatorios">Relatórios Especializados (CF12)</Link>
+          <Link className="text-sm underline text-muted-foreground hover:text-foreground" href="/compras">Voltar para Compras</Link>
+        </div>
       </div>
 
       <div className="rounded-md border p-4 bg-amber-50/50 border-amber-200">

@@ -103,4 +103,13 @@ export const hrReportCatalog: HrReportCatalogItem[] = [
   { id: 129, name: "Planejamento de férias e licença-prêmio", kind: "PLANEJAMENTO_FERIAS_LICENCAS", phase: 4 },
   { id: 130, name: "Memórias de concessão de aposentadoria emitidas", kind: "MEMORIAS_CONCESSAO_EMITIDAS", phase: 4 },
   { id: 131, name: "Contribuição sindical — NT/SRT/MTE 202/2009", kind: "CONTRIBUICAO_SINDICAL_NT202", phase: 5 },
+  { id: 132, name: "Inconsistências do ponto no período", kind: "INCONSISTENCIAS_PONTO", phase: 2 },
+  { id: 133, name: "Justificativa de horas extras", kind: "JUSTIFICATIVA_HORAS_EXTRAS", phase: 2 },
+  { id: 134, name: "Controle de frequência e servidores sem ponto digital", kind: "CONTROLE_FREQUENCIA", phase: 2 },
+  { id: 135, name: "Informações complementares do ponto", kind: "INFORMACOES_COMPLEMENTARES", phase: 2 },
+  { id: 136, name: "Ocorrências de ponto e justificativas", kind: "OCORRENCIAS_PONTO", phase: 2 },
+  { id: 137, name: "Controle de ponto por local e relógio", kind: "PONTO_LOCAL_RELOGIO", phase: 2 },
+  { id: 138, name: "Relação de funcionários por equipe", kind: "FUNCIONARIOS_EQUIPE", phase: 2 },
+  { id: 139, name: "Tipo de ponto do servidor: manual / eletrônico", kind: "TIPO_PONTO_SERVIDOR", phase: 2 },
+  { id: 140, name: "Ausência de marcação do ponto", kind: "AUSENCIA_MARCACAO", phase: 2 },
 ];

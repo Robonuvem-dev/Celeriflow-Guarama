@@ -57,6 +57,7 @@ export default function ProcessosClient({
   currentDepartmentId,
   canCreate,
   returnTo,
+  portalNotifications = [],
 }: {
   processos: Processo[];
   filters: ProcessListFilters;
@@ -67,6 +68,7 @@ export default function ProcessosClient({
   currentDepartmentId: string | null;
   canCreate: boolean;
   returnTo: string;
+  portalNotifications?: { protocolNumber: string; subjectName: string; createdAt: string }[];
 }) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -122,7 +124,33 @@ export default function ProcessosClient({
   const isBalcaoActive = filters.origin === "BALCAO";
 
   return (
-    <OperationalListFrame
+    <div className="space-y-4">
+      {/* 19.86: Notificar usuário na tela inicial do assunto e subassunto ao qual a nova solicitação pertence */}
+      {portalNotifications.length > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-blue-900 shadow-sm">
+          <Globe className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+          <div className="flex-1 text-xs space-y-1">
+            <p className="font-bold text-sm text-blue-950">
+              Novas Solicitações Recebidas do Portal Online (19.86)
+            </p>
+            <p className="text-blue-800">
+              Existem {portalNotifications.length} nova(s) solicitação(ões) originadas no portal de serviços vinculadas aos assuntos do seu setor aguardando análise:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {portalNotifications.map((n, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-blue-200 text-slate-800 font-medium shadow-xs"
+                >
+                  <strong className="text-emerald-700">{n.protocolNumber}</strong> · {n.subjectName}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <OperationalListFrame
       label="Protocolos e Processos"
       actions={
         <>
@@ -334,5 +362,6 @@ export default function ProcessosClient({
         })}
       />
     </OperationalListFrame>
+    </div>
   );
 }

@@ -36,6 +36,6 @@ export function SolicitacoesListClient({ requests }: { requests: PurchaseRequest
       filters: { status: request.status, priority: request.priority },
       values: { number: request.number, object: request.object, itemCount: String(request.itemCount), secretariat: request.secretariatName, department: request.departmentName, requester: request.requesterName, estimate: request.estimatedValue === null ? "-" : money.format(request.estimatedValue), status: request.status, priority: request.priority },
       cells: { number: <Link href={`/compras/solicitacoes/${request.id}`}>{request.number}</Link> },
-      actions: <SolicitacaoRowActions id={request.id} canManage={request.canManage} />,
+      actions: <SolicitacaoRowActions id={request.id} status={request.status} canManage={request.canManage} />,
     }))} />;
 }

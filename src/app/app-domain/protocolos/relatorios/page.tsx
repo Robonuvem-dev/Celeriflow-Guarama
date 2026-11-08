@@ -1,24 +1,134 @@
 import { BarChart3 } from "lucide-react";
 import { getProtocolContext, protocolScopeCondition } from "@/lib/protocols/access";
 import { db } from "@/db/client";
-import { listOperationalProcesses } from "@/db/repositories/processes/listing";
+import { and, asc, desc, eq } from "drizzle-orm";
+import {
+  processes,
+  processTypes,
+  processSubjects,
+  processMovements,
+} from "@/db/schema/processes";
+import { departments } from "@/db/schema/administration";
+import { people } from "@/db/schema/people";
+import { companies } from "@/db/schema/registry";
+import { processReferenceCatalog } from "@/db/schema/process-reference-catalog";
 import { PageFrame } from "@/components/app-ui/PageFrame";
 import { PageHeader } from "@/components/app-ui/PageHeader";
+import ReportsClient, {
+  type ProcessReportItem,
+  type ProcessTypeOption,
+  type SubjectOption,
+  type SituationOption,
+} from "./ReportsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProtocolReportsPage() {
   const context = await getProtocolContext();
-  const processes = await listOperationalProcesses(db, protocolScopeCondition(context), { limit: 1000, order: "unspecified" });
-  const group = (values: string[]) => Object.entries(values.reduce<Record<string, number>>((result, value) => ({ ...result, [value]: (result[value] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]);
-  const status = group(processes.map(process => process.status));
-  const types = group(processes.map(process => process.processType.name));
-  const departments = group(processes.map(process => process.currentDepartment?.name || "Sem setor"));
-  const withDeadline = processes.filter(process => process.expectedCompletionAt);
-  const onTime = withDeadline.filter(process => process.completedAt && process.completedAt <= process.expectedCompletionAt!).length;
-  const overdue = withDeadline.filter(process => !process.completedAt && process.expectedCompletionAt! < new Date()).length;
-  const compliance = withDeadline.length ? Math.round((onTime / withDeadline.length) * 100) : 0;
-  const table = (title: string, rows: [string, number][]) => <section className="rounded-xl border border-slate-200 bg-white"><h2 className="border-b border-slate-100 px-5 py-4 font-semibold text-slate-800">{title}</h2><div className="divide-y divide-slate-100">{rows.length ? rows.map(([label, value]) => <div key={label} className="flex items-center justify-between px-5 py-3 text-sm"><span className="text-slate-600">{label}</span><span className="font-semibold text-slate-900">{value}</span></div>) : <p className="px-5 py-6 text-sm text-slate-500">Sem dados.</p>}</div></section>;
 
-  return <PageFrame className="max-w-6xl space-y-2"><PageHeader title="Relatórios de Protocolos" icon={<BarChart3 className="size-4 shrink-0 text-emerald-600" />} /><p className="text-xs text-slate-500">Resumo operacional do escopo que você pode visualizar.</p><div className="grid gap-2 sm:grid-cols-3"><div className="rounded-md border border-slate-200 bg-white p-3"><p className="text-xs text-slate-500">Processos analisados</p><p className="mt-1 text-2xl font-bold text-slate-900">{processes.length}</p></div><div className="rounded-md border border-slate-200 bg-white p-3"><p className="text-xs text-slate-500">Concluídos no prazo</p><p className="mt-1 text-2xl font-bold text-emerald-700">{compliance}%</p></div><div className="rounded-md border border-slate-200 bg-white p-3"><p className="text-xs text-slate-500">Atrasados em aberto</p><p className="mt-1 text-2xl font-bold text-red-700">{overdue}</p></div></div><div className="grid gap-2 lg:grid-cols-3">{table("Por status", status)}{table("Por tipo", types)}{table("Por setor atual", departments)}</div></PageFrame>;
+  // Buscar tipos de processo, assuntos e situações
+  const [typesRows, subjectRows, situationRows] = await Promise.all([
+    db.select({ id: processTypes.id, name: processTypes.name }).from(processTypes).where(eq(processTypes.isActive, true)).orderBy(asc(processTypes.name)),
+    db.select({ id: processSubjects.id, name: processSubjects.name, processTypeId: processSubjects.processTypeId }).from(processSubjects).where(eq(processSubjects.isActive, true)).orderBy(asc(processSubjects.name)),
+    db.select({ id: processReferenceCatalog.id, name: processReferenceCatalog.name }).from(processReferenceCatalog).where(and(eq(processReferenceCatalog.kind, "PROCESS_SITUATION"), eq(processReferenceCatalog.isActive, true))).orderBy(asc(processReferenceCatalog.name)),
+  ]);
+
+  // Buscar processos no escopo
+  const processRows = await db
+    .select({
+      id: processes.id,
+      protocolNumber: processes.protocolNumber,
+      status: processes.status,
+      priority: processes.priority,
+      description: processes.description,
+      createdAt: processes.createdAt,
+      typeName: processTypes.name,
+      subjectName: processSubjects.name,
+      departmentName: departments.name,
+      personName: people.fullName,
+      personCpf: people.cpf,
+      companyName: companies.corporateName,
+      companyCnpj: companies.cnpj,
+    })
+    .from(processes)
+    .innerJoin(processTypes, eq(processTypes.id, processes.processTypeId))
+    .innerJoin(processSubjects, eq(processSubjects.id, processes.subjectId))
+    .leftJoin(departments, eq(departments.id, processes.currentDepartmentId))
+    .leftJoin(people, eq(people.id, processes.personId))
+    .leftJoin(companies, eq(companies.id, processes.companyId))
+    .where(protocolScopeCondition(context))
+    .orderBy(desc(processes.createdAt))
+    .limit(1000);
+
+  // Buscar últimas movimentações para enriquecer comprovantes e histórico
+  const processIds = processRows.map((p) => p.id);
+  const movementRows = processIds.length > 0
+    ? await db
+        .select({
+          processId: processMovements.processId,
+          reason: processMovements.reason,
+          movedAt: processMovements.movedAt,
+          fromDepartmentId: processMovements.fromDepartmentId,
+          toDepartmentId: processMovements.toDepartmentId,
+        })
+        .from(processMovements)
+        .orderBy(desc(processMovements.movedAt))
+        .limit(2000)
+    : [];
+
+  const departmentRows = await db
+    .select({ id: departments.id, name: departments.name })
+    .from(departments);
+  const deptMap = new Map(departmentRows.map((d) => [d.id, d.name]));
+
+  const movementsByProcess = new Map<string, typeof movementRows>();
+  for (const mov of movementRows) {
+    if (!movementsByProcess.has(mov.processId)) {
+      movementsByProcess.set(mov.processId, []);
+    }
+    movementsByProcess.get(mov.processId)!.push(mov);
+  }
+
+  const reportItems: ProcessReportItem[] = processRows.map((p) => {
+    const movs = movementsByProcess.get(p.id) || [];
+    const lastMov = movs[0];
+    const createdDate = new Date(p.createdAt);
+
+    return {
+      id: p.id,
+      protocolNumber: p.protocolNumber,
+      processTypeName: p.typeName,
+      subjectName: p.subjectName,
+      status: p.status,
+      interessado: p.personName || p.companyName || "Não informado",
+      interessadoDoc: p.personCpf || p.companyCnpj || undefined,
+      currentDepartmentName: p.departmentName || "Protocolo Geral",
+      createdAt: createdDate.toLocaleString("pt-BR"),
+      rawDate: createdDate.toISOString().slice(0, 10),
+      year: createdDate.getFullYear(),
+      priority: p.priority,
+      description: p.description || undefined,
+      movementsCount: movs.length,
+      lastMovementReason: lastMov?.reason || undefined,
+      lastMovementDate: lastMov ? new Date(lastMov.movedAt).toLocaleString("pt-BR") : undefined,
+      lastFromDepartment: lastMov?.fromDepartmentId ? deptMap.get(lastMov.fromDepartmentId) : undefined,
+      lastToDepartment: lastMov?.toDepartmentId ? deptMap.get(lastMov.toDepartmentId) : undefined,
+    };
+  });
+
+  return (
+    <PageFrame className="max-w-7xl space-y-4">
+      <PageHeader
+        title="Central Unificada de Relatórios do Protocolo (19.67)"
+        icon={<BarChart3 className="size-5 shrink-0 text-emerald-600" />}
+      />
+
+      <ReportsClient
+        processes={reportItems}
+        processTypes={typesRows}
+        subjects={subjectRows}
+        situations={situationRows}
+      />
+    </PageFrame>
+  );
 }

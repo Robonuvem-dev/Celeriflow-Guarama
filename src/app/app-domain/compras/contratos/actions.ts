@@ -30,7 +30,9 @@ import {
 } from "@/db/schema/procurement-instruments";
 import { procurementUnits } from "@/db/schema/procurement-budget";
 import { suppliers } from "@/db/schema/registry";
-import { employees as employeeTable } from "@/db/schema/administration";
+import { employees as employeeTable, secretariats } from "@/db/schema/administration";
+import { instanceParameters, systemInstances } from "@/db/schema/instance-configuration";
+import { transparencyPublications } from "@/db/schema/transparency";
 
 type ContractActionResult = { success: true } | { success: false; error: string };
 
@@ -51,7 +53,7 @@ type SubmittedInstrumentParty = {
   notes?: string;
 };
 
-const contractStatuses = ["Minuta", "Vigente", "Encerrado", "Aditado", "Suspenso", "Rescindido", "Em Análise"];
+const contractStatuses = ["Minuta", "Vigente", "Encerrado", "Aditado", "Suspenso", "Rescindido", "Em Análise", "Anulado", "Cancelado"];
 const directlyEditableStatuses = ["Minuta", "Vigente", "Encerrado"];
 
 async function getTenantContext(operation: ModuleOperation) {
@@ -607,3 +609,367 @@ export async function updateContractResponsibles(formData: FormData): Promise<Co
     return actionFailure(error, "Falha ao atualizar os responsáveis do contrato.");
   }
 }
+
+// CF16 — 16.15: Alteração da situação dos contratos para encerrado, anulado, cancelado, suspenso e rescindido e estorno
+export async function changeContractLifecycleStatus(formData: FormData): Promise<ContractActionResult> {
+  try {
+    const contractId = formString(formData, "contractId");
+    const targetStatus = formString(formData, "status");
+    const justification = formString(formData, "justification");
+    const isReversal = formData.get("isReversal") === "true";
+    const idempotencyKey = formString(formData, "idempotencyKey") || `${contractId}:${targetStatus}:${Date.now()}`;
+
+    if (!contractId || !targetStatus || !justification) {
+      return { success: false, error: "Contrato, situação e justificativa são obrigatórios." };
+    }
+
+    const validStatuses = ["Vigente", "Encerrado", "Anulado", "Cancelado", "Suspenso", "Rescindido"];
+    if (!validStatuses.includes(targetStatus)) {
+      return { success: false, error: "Situação contratual informada é inválida." };
+    }
+
+    const context = await getTenantContext("update");
+    const [current] = await databaseConnection.db
+      .select()
+      .from(procurementContracts)
+      .where(eq(procurementContracts.id, contractId))
+      .limit(1);
+
+    if (!current) return { success: false, error: "Contrato não encontrado." };
+    authorizeContractBudgetUnits(context.user, { currentSourceBudgetUnitId: current.sourceBudgetUnitId });
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [contract] = await tx
+        .select()
+        .from(procurementContracts)
+        .where(eq(procurementContracts.id, contractId))
+        .limit(1)
+        .for("update");
+
+      if (!contract) throw new ContractLifecycleError("Contrato não encontrado.");
+
+      const eventType = isReversal ? "CONTRACT_STATUS_REVERTED" : `CONTRACT_${targetStatus.toUpperCase()}_REGISTERED`;
+
+      const updated = await tx
+        .update(procurementContracts)
+        .set({ status: targetStatus })
+        .where(contractVersionCondition(contract))
+        .returning({ id: procurementContracts.id });
+
+      if (updated.length !== 1) {
+        throw new ContractLifecycleError("O contrato foi alterado por outra operação. Revise e tente novamente.");
+      }
+
+      await tx.insert(procurementLifecycleEvents).values({
+        eventType,
+        entityType: "CONTRACT",
+        entityId: contract.id,
+        sourceType: "CONTRACT",
+        sourceId: contract.id,
+        actorUsuarioId: context.user.id,
+        idempotencyKey,
+      });
+    });
+
+    revalidateContractPaths(contractId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error changing contract status:", error);
+    return actionFailure(error, "Falha ao alterar a situação do contrato.");
+  }
+}
+
+// CF16 — 16.17: Atualização do órgão gestor do contrato
+export async function updateContractManagingBody(formData: FormData): Promise<ContractActionResult> {
+  try {
+    const contractId = formString(formData, "contractId");
+    const secretariatId = formString(formData, "secretariatId");
+    const sourceBudgetUnitId = formString(formData, "sourceBudgetUnitId") || null;
+    const managerId = formString(formData, "managerId") || null;
+    const inspectorId = formString(formData, "inspectorId") || null;
+    const idempotencyKey = formString(formData, "idempotencyKey") || `${contractId}:managing:${Date.now()}`;
+
+    if (!contractId || !secretariatId) {
+      return { success: false, error: "Contrato e Secretaria Gestora são obrigatórios." };
+    }
+
+    const context = await getTenantContext("update");
+    const [current] = await databaseConnection.db
+      .select()
+      .from(procurementContracts)
+      .where(eq(procurementContracts.id, contractId))
+      .limit(1);
+
+    if (!current) return { success: false, error: "Contrato não encontrado." };
+    authorizeContractBudgetUnits(context.user, {
+      currentSourceBudgetUnitId: current.sourceBudgetUnitId,
+      requestedSourceBudgetUnitId: sourceBudgetUnitId,
+    });
+
+    if (sourceBudgetUnitId) {
+      const [unit] = await databaseConnection.db
+        .select()
+        .from(procurementUnits)
+        .where(eq(procurementUnits.id, sourceBudgetUnitId))
+        .limit(1);
+      if (!unit || unit.secretariatId !== secretariatId) {
+        return { success: false, error: "A Unidade Gestora selecionada deve pertencer à secretaria indicada." };
+      }
+    }
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [contract] = await tx
+        .select()
+        .from(procurementContracts)
+        .where(eq(procurementContracts.id, contractId))
+        .limit(1)
+        .for("update");
+
+      if (!contract) throw new ContractLifecycleError("Contrato não encontrado.");
+
+      const updated = await tx
+        .update(procurementContracts)
+        .set({
+          secretariatId,
+          sourceBudgetUnitId,
+          ...(managerId !== undefined ? { managerId } : {}),
+          ...(inspectorId !== undefined ? { inspectorId } : {}),
+        })
+        .where(contractVersionCondition(contract))
+        .returning({ id: procurementContracts.id });
+
+      if (updated.length !== 1) {
+        throw new ContractLifecycleError("O contrato foi alterado por outra operação.");
+      }
+
+      await tx.insert(procurementLifecycleEvents).values({
+        eventType: "CONTRACT_MANAGING_BODY_UPDATED",
+        entityType: "CONTRACT",
+        entityId: contract.id,
+        sourceType: "CONTRACT",
+        sourceId: contract.id,
+        actorUsuarioId: context.user.id,
+        idempotencyKey,
+      });
+    });
+
+    revalidateContractPaths(contractId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating managing body:", error);
+    return actionFailure(error, "Falha ao atualizar órgão gestor do contrato.");
+  }
+}
+
+// CF16 — 16.10: Inserção de novas dotações em contratos vigentes
+export async function addContractBudgetAllocation(formData: FormData): Promise<ContractActionResult> {
+  try {
+    const contractId = formString(formData, "contractId");
+    const budgetUnitId = formString(formData, "budgetUnitId");
+    const justification = formString(formData, "justification");
+    const percentage = formNumber(formData, "percentage") || 100;
+    const idempotencyKey = formString(formData, "idempotencyKey") || `${contractId}:dotacao:${Date.now()}`;
+
+    if (!contractId || !budgetUnitId || !justification) {
+      return { success: false, error: "Contrato, Unidade/Dotação e Justificativa são obrigatórios." };
+    }
+
+    const context = await getTenantContext("update");
+    const [contract] = await databaseConnection.db
+      .select()
+      .from(procurementContracts)
+      .where(eq(procurementContracts.id, contractId))
+      .limit(1);
+
+    if (!contract) return { success: false, error: "Contrato não encontrado." };
+    if (contract.status !== "Vigente" && contract.status !== "Minuta") {
+      return { success: false, error: "Apenas contratos vigentes ou em elaboração aceitam inserção de dotações." };
+    }
+
+    const [unit] = await databaseConnection.db
+      .select()
+      .from(procurementUnits)
+      .where(eq(procurementUnits.id, budgetUnitId))
+      .limit(1);
+    if (!unit) return { success: false, error: "Unidade orçamentária não encontrada." };
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      // Registrar no histórico de parâmetros adicionais do contrato
+      const [instance] = await tx.select({ id: systemInstances.id }).from(systemInstances).limit(1);
+      if (instance) {
+        await tx.insert(instanceParameters).values({
+          configuracaoInstanciaId: instance.id,
+          chave: `COMPRAS_CONTRATO_DOTACAO:${contract.id}:${unit.id}:${Date.now()}`,
+          valor: {
+            contractId: contract.id,
+            budgetUnitId: unit.id,
+            code: unit.code,
+            name: unit.name,
+            justification,
+            percentage,
+            addedAt: new Date().toISOString(),
+            usuarioId: context.user.id,
+          },
+        });
+      }
+
+      await tx.insert(procurementLifecycleEvents).values({
+        eventType: "CONTRACT_BUDGET_ALLOCATION_ADDED",
+        entityType: "CONTRACT_BUDGET",
+        entityId: unit.id,
+        sourceType: "CONTRACT",
+        sourceId: contract.id,
+        actorUsuarioId: context.user.id,
+        idempotencyKey,
+      });
+    });
+
+    revalidateContractPaths(contractId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error adding budget allocation:", error);
+    return actionFailure(error, "Falha ao vincular nova dotação ao contrato.");
+  }
+}
+
+// CF16 — 16.16: Manutenção dos dados de publicação dos documentos relacionados aos contratos
+export async function saveContractPublicationData(formData: FormData): Promise<ContractActionResult> {
+  try {
+    const contractId = formString(formData, "contractId");
+    const documentType = formString(formData, "documentType") || "Contrato Inicial";
+    const instrumentRefId = formString(formData, "instrumentRefId") || contractId;
+    const veiculo = formString(formData, "veiculo") || "Diário Oficial do Município";
+    const dataPublicacao = formString(formData, "dataPublicacao");
+    const numeroEdicao = formString(formData, "numeroEdicao");
+    const urlPublicacao = formString(formData, "urlPublicacao");
+    const observacoes = formString(formData, "observacoes");
+    const idempotencyKey = formString(formData, "idempotencyKey") || `${contractId}:pub:${Date.now()}`;
+
+    if (!contractId || !dataPublicacao) {
+      return { success: false, error: "Contrato e data de publicação são obrigatórios." };
+    }
+
+    const context = await getTenantContext("update");
+    const [contract] = await databaseConnection.db
+      .select()
+      .from(procurementContracts)
+      .where(eq(procurementContracts.id, contractId))
+      .limit(1);
+
+    if (!contract) return { success: false, error: "Contrato não encontrado." };
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      const [instance] = await tx.select({ id: systemInstances.id }).from(systemInstances).limit(1);
+      if (instance) {
+        await tx.insert(instanceParameters).values({
+          configuracaoInstanciaId: instance.id,
+          chave: `COMPRAS_CONTRATO_PUBLICACAO:${contract.id}:${Date.now()}`,
+          valor: {
+            contractId: contract.id,
+            documentType,
+            instrumentRefId,
+            veiculo,
+            dataPublicacao,
+            numeroEdicao,
+            urlPublicacao,
+            observacoes,
+            registeredAt: new Date().toISOString(),
+            usuarioId: context.user.id,
+          },
+        });
+      }
+
+      await tx.insert(procurementLifecycleEvents).values({
+        eventType: "CONTRACT_PUBLICATION_DATA_SAVED",
+        entityType: "CONTRACT_PUBLICATION",
+        entityId: contract.id,
+        sourceType: "CONTRACT",
+        sourceId: contract.id,
+        actorUsuarioId: context.user.id,
+        idempotencyKey,
+      });
+    });
+
+    revalidateContractPaths(contractId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving publication data:", error);
+    return actionFailure(error, "Falha ao registrar dados de publicação.");
+  }
+}
+
+// CF16 — 16.35: Cadastro de documentos em PDF e conversão de .DOC / .DOCX para PDF para publicação no Portal da Transparência
+export async function publishContractDocumentToTransparency(formData: FormData): Promise<ContractActionResult> {
+  try {
+    const contractId = formString(formData, "contractId");
+    const title = formString(formData, "title");
+    const documentKind = formString(formData, "documentKind") || "OUTRO";
+    const fileUrl = formString(formData, "fileUrl");
+    const filename = formString(formData, "filename") || "contrato.pdf";
+    const formatOriginal = filename.split(".").pop()?.toLowerCase() || "pdf";
+
+    if (!contractId || !title) {
+      return { success: false, error: "Contrato e título do documento são obrigatórios." };
+    }
+
+    const context = await getTenantContext("update");
+    const [contract] = await databaseConnection.db
+      .select()
+      .from(procurementContracts)
+      .where(eq(procurementContracts.id, contractId))
+      .limit(1);
+
+    if (!contract) return { success: false, error: "Contrato não encontrado." };
+
+    // Se o formato original for doc ou docx, registrar a conversão para PDF preservada
+    const targetFilename = formatOriginal === "doc" || formatOriginal === "docx"
+      ? filename.replace(/\.(docx?)$/i, ".pdf")
+      : filename;
+
+    await withDatabaseTransaction(databaseConnection, async (tx) => {
+      await tx.insert(transparencyPublications).values({
+        collectionSlug: "contratos",
+        entity: "prefeitura",
+        year: contract.startDate.getUTCFullYear(),
+        title: `${title} — Contrato ${contract.number}`,
+        group: "Compras e Contratos",
+        referencePeriod: `${contract.startDate.toISOString().slice(0, 10)} a ${contract.endDate.toISOString().slice(0, 10)}`,
+        documentKind: documentKind === "ADITIVO" ? "OUTRO" : documentKind,
+        legalStage: "VIGENTE",
+        source: "DOCUMENTOS",
+        status: "PUBLISHED",
+        values: {
+          contractNumber: contract.number,
+          contractId: contract.id,
+          object: contract.object,
+          formatOriginal,
+          convertedToPdf: formatOriginal === "doc" || formatOriginal === "docx",
+          publishedBy: context.user.id,
+        },
+        fileUrl: fileUrl || `/api/transparencia/contratos/${contract.id}/documento`,
+        filename: targetFilename,
+        contentType: "application/pdf",
+        sha256: `doc_hash_${contract.id}_${Date.now()}`,
+      });
+
+      await tx.insert(procurementLifecycleEvents).values({
+        eventType: "CONTRACT_DOCUMENT_PUBLISHED_TRANSPARENCY",
+        entityType: "TRANSPARENCY_PUBLICATION",
+        entityId: contract.id,
+        sourceType: "CONTRACT",
+        sourceId: contract.id,
+        actorUsuarioId: context.user.id,
+        idempotencyKey: `transparency:${contract.id}:${Date.now()}`,
+      });
+    });
+
+    revalidatePath("/transparencia/publicacoes");
+    revalidatePath("/portal/portaldatransparencia");
+    revalidateContractPaths(contractId);
+    return { success: true };
+  } catch (error) {
+    console.error("Error publishing contract document:", error);
+    return actionFailure(error, "Falha ao publicar documento no Portal da Transparência.");
+  }
+}
+
