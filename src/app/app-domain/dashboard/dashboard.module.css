@@ -12,21 +12,13 @@
   }
 
   .grid {
-    flex: 1;
-    min-height: 0;
-    grid-auto-rows: minmax(0, 1fr);
-  }
-
-  @media (max-width: 767px) {
-    .grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+    width: 100%;
   }
 
   .card {
-    min-height: 0;
-    padding: 8px;
-    container: dashboard-card / size;
+    min-height: 120px;
+    padding: 10px 8px;
+    container: dashboard-card / inline-size;
   }
 
   .content {
@@ -34,8 +26,8 @@
     min-width: 0;
   }
 
-  /* Adapt the card contents to the row height left by the header and footer. */
-  @container dashboard-card (max-height: 112px) {
+  /* Adapt the card contents gracefully */
+  @container dashboard-card (max-width: 120px) {
     .content {
       gap: 4px;
     }
@@ -46,7 +38,7 @@
     }
 
     .title {
-      font-size: 12px;
+      font-size: 11px;
     }
 
     .description {
@@ -54,44 +46,9 @@
     }
   }
 
-  @container dashboard-card (max-height: 80px) {
-    .icon {
-      width: 24px;
-      height: 24px;
-    }
-
-    .icon svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .access,
-    .status {
-      display: none;
-    }
-  }
-
-  @container dashboard-card (max-height: 56px) {
-    .content {
-      flex-direction: row;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .title {
-      font-size: 11px;
-      line-height: 1.15;
-    }
-
-    .lockBadge {
-      top: 3px;
-      right: 3px;
-      padding: 2px;
-    }
-
-    .lockBadge svg {
-      width: 10px;
-      height: 10px;
-    }
+  .lockBadge {
+    top: 6px;
+    right: 6px;
+    padding: 3px;
   }
 }

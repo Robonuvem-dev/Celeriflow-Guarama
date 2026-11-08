@@ -12,7 +12,8 @@ import {
   procurementPayments,
 } from "@/db/schema/procurement-finance";
 import { purchaseReceipts, purchaseReceiptItems } from "@/db/schema/procurement-requests";
-import { suppliers, companies, people } from "@/db/schema/registry";
+import { suppliers, companies } from "@/db/schema/registry";
+import { people } from "@/db/schema/people";
 import { secretariats, employees } from "@/db/schema/administration";
 import { procurementUnits } from "@/db/schema/procurement-budget";
 import { catalogItems } from "@/db/schema/master-data";
@@ -249,7 +250,7 @@ export default async function ContratosRelatoriosPage({
       // Soma das quantidades já recebidas para este material
       const receivedQty = contractReceiptItemsList
         .filter((ri) => ri.materialId === pItem.item.materialId)
-        .reduce((sum, ri) => sum + (ri.quantityReceived || 0), 0);
+        .reduce((sum, ri) => sum + (ri.quantity || 0), 0);
 
       const quantityRemaining = Math.max(0, quantityContracted - receivedQty);
       const totalContracted = quantityContracted * unitPrice;
