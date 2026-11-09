@@ -12,7 +12,6 @@ import { hrReferenceRecords } from "@/db/schema/personnel-reference-records";
 import { hrIntegrationEvents } from "@/db/schema/personnel-workforce";
 import { lockPersonnel } from "@/db/repositories/personnel/integration";
 import { auditPersonnelMutation } from "@/lib/rh/personnel-mutation-audit";
-import { createHash } from "node:crypto";
 
 export async function generateAutomaticScale(formData: FormData) {
   const context = await getTenantContextForModuleOperation("RH", "create");
