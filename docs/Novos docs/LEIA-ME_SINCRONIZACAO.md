@@ -1,8 +1,22 @@
 # Documentos adicionais — sincronização entre notebooks
 
-Os anexos recebidos estão em `docs/Novos docs/Novos docs/`. Essa organização foi mantida conforme a pasta fornecida.
+## Situação após a limpeza de 09/11/2026
 
-O GitHub limita arquivos individuais a 100 MiB. O arquivo original `LEI Nº 687-2025 - PPA 2026-2029.zip` tem 144.417.700 bytes e, por isso, está preservado localmente e ignorado pelo Git. Para sincronizar todo o seu conteúdo sem modificar o documento, o arquivo foi dividido nestas partes binárias:
+O acervo volumoso foi retirado da pasta de trabalho na limpeza autorizada de `docs`. Os 137 arquivos estavam idênticos à versão do commit `aeaf772b646b31ee0f1644b68d8ce9eac1eb47a4` (considerando os filtros de fim de linha do Git). A relação de caminhos, tamanhos e hashes está em [limpeza-2026-11-09-manifesto.json](../limpeza-2026-11-09-manifesto.json).
+
+Para recuperar o acervo antes de consultar os originais ou executar `scripts/import-transparency-archive.ts`:
+
+```powershell
+git restore --source=aeaf772b646b31ee0f1644b68d8ce9eac1eb47a4 --worktree -- "docs/Novos docs/Novos docs"
+```
+
+Esse importador também referencia `docs/CATALOGO_NOVOS_DOCUMENTOS_IBEMA.md`, que já estava ausente antes desta limpeza; a recuperação dos anexos, sozinha, não recompõe esse pré-requisito. A aplicação em produção não lê o acervo local: `docs` já é excluído do tracing de runtime em `next.config.ts`.
+
+## Registro histórico de sincronização e reconstrução
+
+Os anexos recebidos foram organizados em `docs/Novos docs/Novos docs/`, conforme a pasta fornecida. As instruções seguintes aplicam-se depois de recuperar os arquivos.
+
+O GitHub limita arquivos individuais a 100 MiB. O arquivo original `LEI Nº 687-2025 - PPA 2026-2029.zip` tem 144.417.700 bytes e foi ignorado pelo Git. Para sincronizar todo o seu conteúdo sem modificar o documento, o arquivo foi dividido nestas partes binárias:
 
 | Arquivo | Bytes | SHA-256 |
 |---|---:|---|

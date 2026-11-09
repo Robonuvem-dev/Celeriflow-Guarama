@@ -55,5 +55,8 @@ npm run build
 
 - **8 testes aprovados**: backfill, virada do dia no fuso municipal, sequência, inserts concorrentes pelo driver, reserva após exclusão, rollback, limite diário, preservação dos vínculos/snapshots, aliases/ambiguidade, serialização dos cartões e padrões operacionais.
 - **Verificação de dados aplicada: PASS.**
-- Build e navegação pós-correção: em andamento.
+- **Build completo: PASS** (verificação TypeScript em 18 partições e build Next.js, código de saída 0).
+- **Publicação confirmada:** commit `aeaf772b646b31ee0f1644b68d8ce9eac1eb47a4` no `origin/main`, autor e committer `Robonuvem-dev`. Deployment de produção `dpl_7N2pKrVQkyF3CPc1aBppzaoPrjgQ` em estado `READY`; a API Vercel confirmou o mesmo SHA e o autor GitHub `Robonuvem-dev`, com alias `https://guarama.celeriflow.com.br`.
+- **Saúde de produção:** `/api/health` respondeu HTTP 200 com `status: ok` e `database: ready` em 09/11/2026.
+- **Navegação autenticada pós-correção ainda não validada:** o verificador foi iniciado, mas encerrou antes do login porque `PROVISION_ACCOUNT_PASSWORD` não estava disponível no ambiente desta retomada. Esse resultado não é aprovação nem falha funcional do dashboard. A reprodução anterior do erro e os testes de serialização continuam registrados separadamente.
 - Reprodução visual inicial: navegador Chromium/Playwright, 1366×768, escala padrão (100%); evidências locais em `C:/Users/trici/AppData/Local/Temp/opencode/dashboard-registration-before/`. O navegador integrado estava desconectado; a verificação foi feita pelo navegador automatizado local.
