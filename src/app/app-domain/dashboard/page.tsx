@@ -11,7 +11,8 @@ import styles from "./dashboard.module.css";
 import { compareDashboardCards } from "@/lib/platform/dashboard-order";
 import { canUseGed } from "@/lib/documents/ged-access";
 import { allDashboardModules } from "./dashboard-modules";
-import { DashboardClient, type DashboardCardData } from "./DashboardClient";
+import { DashboardClient } from "./DashboardClient";
+import { dashboardCardData, type DashboardCardData } from "./dashboard-card-data";
 
 export const dynamic = "force-dynamic";
 
@@ -54,10 +55,7 @@ export default async function PainelPage() {
           isModuleBlockedForUser(context.user, accessCode) ||
           !canViewModule(context.user, accessCode));
 
-      return {
-        ...item,
-        isBlocked,
-      };
+      return dashboardCardData(item, Boolean(isBlocked));
     })
     .sort(compareDashboardCards);
 

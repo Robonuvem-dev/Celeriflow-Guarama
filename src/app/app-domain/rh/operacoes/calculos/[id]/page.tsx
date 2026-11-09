@@ -12,7 +12,7 @@ import { personnelDisplayText } from "@/lib/rh/personnel-presentation";
 
 export const dynamic = "force-dynamic";
 function statementRows(statements: Awaited<ReturnType<typeof readRunStatementsPage>>["statements"]) {
-  return statements.map(statement => ({ id: statement.id, label: statement.contract.employee.name, values: { employee: statement.contract.employee.name, registration: personnelDisplayText(statement.contract.registration), net: `R$ ${statement.net.toFixed(2)}` }, links: [{ href: `/rh/operacoes/demonstrativos/${statement.id}`, label: "Conferência detalhada" }] }));
+  return statements.map(statement => ({ id: statement.id, label: statement.contract.employee.name, values: { employee: statement.contract.employee.name, registration: statement.contract.employee.registration || "—", net: `R$ ${statement.net.toFixed(2)}` }, links: [{ href: `/rh/operacoes/demonstrativos/${statement.id}`, label: "Conferência detalhada" }] }));
 }
 export default async function PayrollRunPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
   const context = await getTenantContextForModule("RH");

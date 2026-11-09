@@ -38,8 +38,8 @@ export type ContractRegimeOption = EmploymentRegime & { ruleSet: PayrollRuleSet 
 export type WorkforceOperationsPage = {
   total: number; page: number; selected: EmploymentContract | null;
   contracts: Array<EmploymentContract & { employee: EmployeeRecord }>;
-  movements: Array<Movement & { contract: EmploymentContract }>;
-  rights: Array<RightEntry & { contract: EmploymentContract }>;
+  movements: Array<Movement & { contract: EmploymentContract; employeeRegistration: string | null }>;
+  rights: Array<RightEntry & { contract: EmploymentContract; employeeRegistration: string | null }>;
   runs: Array<PayrollRun & { payroll: Payroll }>; events: IntegrationEvent[];
   regimes: ContractRegimeOption[]; roles: RoleRecord[];
 };
