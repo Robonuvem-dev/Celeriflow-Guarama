@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { eq, and, sql } from "drizzle-orm";
@@ -230,15 +231,22 @@ export async function processClockImport(formData: FormData) {
       }
 
       // Record batch integration event
-      const payload = { format, totalPunches: punches.length, importedDays: importedCount, unmatchedCount, defaultClock, importedBy: context.user.name || context.user.id };
+      const eventPayload = {
+        format,
+        totalPunches: punches.length,
+        importedDays: importedCount,
+        unmatchedCount,
+        defaultClock,
+        importedBy: context.user.name || context.user.id,
+      };
       await tx.insert(hrIntegrationEvents).values({
         sourceKey: `PONTO:IMPORTACAO:${Date.now()}`,
         domain: "AUDITORIA",
         environment: "PORTAL_RH",
         eventType: "IMPORTACAO_RELOGIO_PONTO",
         status: "PROCESSADO",
-        payload,
-        payloadHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"),
+        payload: eventPayload,
+        payloadHash: createHash("sha256").update(JSON.stringify(eventPayload)).digest("hex"),
       });
     });
 

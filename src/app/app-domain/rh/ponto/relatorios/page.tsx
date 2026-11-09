@@ -63,7 +63,7 @@ export default async function PontoRelatoriosPage({
       header,
       idx === 0 ? 220 : idx === 1 ? 110 : 160,
       idx === 0 ? 140 : 100,
-      idx === 0 ? "identifier" : "text"
+      "text"
     )
   );
 
@@ -78,7 +78,7 @@ export default async function PontoRelatoriosPage({
     <div className="flex flex-col h-full w-full">
       <PontoNav />
       <OperationalListFrame
-        pagination={<OperationalLinkPagination page={page} total={rows.length} pathname="/rh/ponto/relatorios" values={{ kind: selectedKind, from: params.from, until: params.until, month: params.month, employeeId: params.employeeId, q: params.q }} />}
+        pagination={null}
         label={reportData.title}
         actions={
           <div className="flex items-center gap-2">

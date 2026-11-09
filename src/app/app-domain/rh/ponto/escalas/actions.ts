@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { getTenantContextForModuleOperation } from "@/lib/platform/tenant-context";
 import { revalidatePath } from "next/cache";
 import { eq, and, sql, inArray } from "drizzle-orm";
@@ -206,15 +207,21 @@ export async function generateAutomaticScale(formData: FormData) {
         }
       }
 
-      const payload = { scaleType, month, employeesCount: targetEmployees.length, totalDaysGenerated, generatedBy: context.user.name || context.user.id };
+      const eventPayload = {
+        scaleType,
+        month,
+        employeesCount: targetEmployees.length,
+        totalDaysGenerated,
+        generatedBy: context.user.name || context.user.id,
+      };
       await tx.insert(hrIntegrationEvents).values({
         sourceKey: `PONTO:ESCALA_AUTOMATICA:${Date.now()}`,
         domain: "AUDITORIA",
         environment: "PORTAL_RH",
         eventType: "GERACAO_ESCALA_AUTOMATICA",
         status: "PROCESSADO",
-        payload,
-        payloadHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"),
+        payload: eventPayload,
+        payloadHash: createHash("sha256").update(JSON.stringify(eventPayload)).digest("hex"),
       });
     });
 

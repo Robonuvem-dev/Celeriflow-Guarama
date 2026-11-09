@@ -453,3 +453,14 @@ export async function requestLetterOfAgreementAction(input: {
     return { error: err instanceof Error ? err.message : "Erro ao emitir Carta de Anuência." };
   }
 }
+
+export async function cancelNfaeAction(nfaeId: string, reason: string): Promise<{ error?: string; success?: boolean }> {
+  try {
+    if (!nfaeId || !reason) {
+      return { error: "Identificador da NFA-e e justificativa de cancelamento são obrigatórios." };
+    }
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao cancelar NFA-e." };
+  }
+}

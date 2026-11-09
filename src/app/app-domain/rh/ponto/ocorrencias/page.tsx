@@ -65,7 +65,7 @@ export default async function PontoOcorrenciasPage() {
     <div className="flex flex-col h-full w-full">
       <PontoNav />
       <OperationalListFrame
-        pagination={null /* A tabela e sua paginação são controladas no client. */}
+        pagination={null}
         label="Cadastro e Histórico de Ocorrências de Ponto (Requisitos 20.14 e 20.19)"
         actions={
           <div className="flex items-center gap-2">

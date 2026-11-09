@@ -31,7 +31,7 @@ export default async function PontoImportacaoPage() {
     <div className="flex flex-col h-full w-full">
       <PontoNav />
       <OperationalListFrame
-        pagination={null /* Formulário de importação; não há listagem nesta tela. */}
+        pagination={null}
         label="Importação de Dados do Relógio de Ponto (AFD, AFDT, ACJEF e Layouts Customizados) — Requisito 20.15"
         actions={
           <div className="flex items-center gap-2">

@@ -26,7 +26,7 @@ interface PersonItem {
 interface CompanyItem {
   id: string;
   corporateName: string;
-  cnpj: string;
+  cnpj: string | null;
 }
 
 interface DepartmentItem {

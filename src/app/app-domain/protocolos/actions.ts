@@ -228,7 +228,11 @@ export async function forwardProcess(data: {
       if (process.status === AWAITING_RECEIPT) throw new Error("Receba o processo antes de tramita-lo.");
       if (process.status === AWAITING_ACCOUNTING) throw new Error("Aguarde a emissão do empenho para tramitar o processo.");
 
-      const [destinationDepartment] = await tx.select({ id: departments.id, name: departments.name }).from(departments).where(and(eq(departments.id, data.destinationDepartmentId), eq(departments.isActive, true))).limit(1);
+      const [destinationDepartment] = await tx
+        .select({ id: departments.id, name: departments.name })
+        .from(departments)
+        .where(and(eq(departments.id, data.destinationDepartmentId), eq(departments.isActive, true)))
+        .limit(1);
       if (!destinationDepartment) throw new Error("O setor de destino nao esta ativo.");
 
       if (destinationEmployeeId) {
@@ -314,7 +318,7 @@ export async function forwardProcess(data: {
           if (acc?.email) { applicantEmail = acc.email; applicantName = acc.name; }
         }
         if (applicantEmail) {
-          const siteUrl = globalThis.process.env.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
+          const siteUrl = globalThis.process?.env?.CELERIFLOW_PUBLIC_BASE_URL || "https://guarama.celeriflow.com.br";
           await NotificationDispatcher.sendProtocoloTramitacao({
             to: applicantEmail,
             nome: applicantName,

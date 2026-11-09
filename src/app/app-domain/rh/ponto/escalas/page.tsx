@@ -69,7 +69,7 @@ export default async function PontoEscalasPage() {
     <div className="flex flex-col h-full w-full">
       <PontoNav />
       <OperationalListFrame
-        pagination={null /* A tabela e sua paginação são controladas no client. */}
+        pagination={null}
         label="Gestão e Geração de Escala Automática de Trabalho (Requisito 20.9)"
         actions={
           <div className="flex items-center gap-2">
