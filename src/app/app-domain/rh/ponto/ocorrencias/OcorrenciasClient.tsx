@@ -5,7 +5,8 @@ import { savePonto } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { rhColumn } from "../../_components/operational-columns";
 import { FileText, Plus, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -38,6 +39,8 @@ export function OcorrenciasClient({
   employees: EmployeeOption[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(occurrences.length / OPERATIONAL_PAGE_SIZE)));
   const [isSaving, setIsSaving] = useState(false);
 
   // Form states
@@ -128,8 +131,9 @@ export function OcorrenciasClient({
         columns={columns}
         caption="Histórico de Ocorrências e Justificativas de Ponto (Requisitos 20.14 e 20.19)"
         emptyMessage="Nenhuma ocorrência de ponto registrada ainda. Clique no botão acima para registrar."
-        rows={rows}
+        rows={rows.slice((currentPage - 1) * OPERATIONAL_PAGE_SIZE, currentPage * OPERATIONAL_PAGE_SIZE)}
       />
+      <OperationalPagination page={currentPage} total={rows.length} onPageChange={setPage} />
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

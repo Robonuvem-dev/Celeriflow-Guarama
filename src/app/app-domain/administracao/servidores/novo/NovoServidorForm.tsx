@@ -49,8 +49,9 @@ export default function NovoServidorForm({ roles, secretariats, departments, uni
             <h2 className="mb-2 border-b border-slate-200 pb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-600">Vínculo e Alocação</h2>
             <div className="grid gap-2 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Matrícula</label>
-                <input type="text" name="registration" className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm" />
+                <label htmlFor="registration" className="text-sm font-semibold text-slate-700">Matrícula</label>
+                <input id="registration" type="text" readOnly placeholder="Gerada ao salvar" aria-describedby="registration-help" className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm" />
+                <p id="registration-help" className="text-xs text-slate-600">AAAAMMDD + sequência de 5 dígitos, pela data de cadastro.</p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Cargo / Função</label>

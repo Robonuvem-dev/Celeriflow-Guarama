@@ -10,17 +10,27 @@ import { RhNewLink } from "../_components/RhNewLink";
 import { EsocialConfigurationForm } from "./ConfigurationForm";
 import { db } from "@/db/client";
 import { readEsocialEventsPage } from "@/db/repositories/personnel-pages/requests";
+import { EsocialDemoConsole } from "./DemoConsole";
+import { readEsocialPermissions } from "@/lib/rh/esocial/access";
+import { demoEmployers, readDemoConsole } from "@/lib/rh/esocial/service";
 
 export const dynamic = "force-dynamic";
-export default async function RhEsocialPage({ searchParams }: { searchParams: Promise<{ page?: string; view?: string }> }) {
+export default async function RhEsocialPage({ searchParams }: { searchParams: Promise<{ page?: string; view?: string; competencia?: string; tab?: string; employerId?: string; error?: string; notice?: string }> }) {
+  const params = await searchParams;
+  if (!params.view) {
+    const context = await getTenantContextForModule('RH'), employers = await demoEmployers(context);
+    const employerId = params.employerId || employers[0]?.id;
+    if (!employerId) return <section className="p-4"><h1 className="font-semibold">eSocial — demonstração</h1><p>Nenhuma unidade habilitada para este usuário. Solicite a configuração e as permissões eSocial ao administrador.</p><Link href="/rh/esocial?view=origins">Consultar preparação RH</Link></section>;
+    const state = await readDemoConsole(context, employerId, params.competencia ?? '2026-10');
+    return <EsocialDemoConsole key={`${employerId}:${state.period}:${params.error||params.notice||''}`} initialState={state} permissions={await readEsocialPermissions(context, employerId)} actorId={context.user.id} employers={employers} initialTab={params.tab} initialMessage={params.error||params.notice} />;
+  }
   const context = await getTenantContextForModule("RH"), database = context.database ?? db;
   const readiness = await readPersonnelExternalReadiness(database);
-  const params = await searchParams;
   const { total, page, events } = await readEsocialEventsPage(database, context.user, params.page);
   if (params.view !== "manage") {
     const columns = [rhColumn("type", "Evento", 230, 140), rhColumn("source", "Origem", 260, 150, "identifier"), rhColumn("environment", "Ambiente", 160, 110), rhColumn("status", "Estado", 150, 100, "status"), rhColumn("actions", "Conferência", 230, 210, "actions")];
-    return <OperationalListFrame label="eSocial · preparação de RH/Folha" actions={<><Link href="/rh/operacoes" className={styles.filterButton}>Operações</Link><RhNewLink href="?view=manage">Configuração e exportações</RhNewLink></>}
-      pagination={<OperationalLinkPagination page={page} total={total} pathname="/rh/esocial" />}>
+    return <OperationalListFrame label="eSocial · preparação de RH/Folha" actions={<><Link href="/rh/esocial/demonstracao" className={styles.filterButton}>eSocial — demonstração funcional</Link><Link href="/rh/operacoes" className={styles.filterButton}>Operações</Link><RhNewLink href="?view=manage">Configuração e exportações</RhNewLink></>}
+      pagination={<OperationalLinkPagination page={page} total={total} pathname="/rh/esocial" values={{ view: "origins" }} />}>
       <OperationalTable columns={columns} preferenceId="rh-esocial" caption="Origens de preparação eSocial RH/Folha — transmissão não ativa" emptyMessage="Nenhuma origem encontrada." rows={events.map(event => ({ id: event.id, label: event.sourceKey, values: { type: event.eventType, source: event.sourceKey, environment: event.environment, status: event.status }, actions: <Link href={event.eventType === "OBRIGACAO_ARQUIVO_GERADO" ? `/api/rh/obrigacoes/arquivos/${event.id}` : `/api/rh/integracoes/${event.id}`}>{event.eventType === "OBRIGACAO_ARQUIVO_GERADO" ? "Baixar bytes preservados" : "Baixar origem JSON"}</Link> }))} />
     </OperationalListFrame>;
   }

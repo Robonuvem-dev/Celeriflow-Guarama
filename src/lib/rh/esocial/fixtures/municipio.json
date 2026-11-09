@@ -1,0 +1,58 @@
+{
+  "tenantId": "aurora-das-veredas",
+  "municipio": "Aurora das Veredas",
+  "uf": "MG",
+  "declarante": "Prefeitura Municipal de Aurora das Veredas",
+  "cnpj": "00000000000000",
+  "cnpjStatus": "FICTICIO_INVALIDO_NAO_USAR_PRODUCAO",
+  "mode": "DEMO",
+  "tpAmb": 2,
+  "competencia": "2026-10",
+  "layoutReference": "S-1.3 (atualizar na implantação)",
+  "servidores": [
+    {
+      "id": "VA-0001",
+      "nome": "Ana Martins",
+      "cpfMascarado": "***.***.***-**",
+      "regime": "RPPS",
+      "vinculo": "Estatutario",
+      "eventoRemuneracao": "S-1202",
+      "baseIlustrativa": 5400
+    },
+    {
+      "id": "VA-0002",
+      "nome": "Carlos Lima",
+      "cpfMascarado": "***.***.***-**",
+      "regime": "RGPS",
+      "vinculo": "Empregado publico",
+      "eventoRemuneracao": "S-1200",
+      "baseIlustrativa": 7200
+    },
+    {
+      "id": "VA-0003",
+      "nome": "Bruno Souza",
+      "cpfMascarado": "***.***.***-**",
+      "regime": "RGPS",
+      "vinculo": "Temporario",
+      "eventoRemuneracao": "S-1200",
+      "baseIlustrativa": 3200
+    },
+    {
+      "id": "VA-0004",
+      "nome": "Elisa Oliveira",
+      "cpfMascarado": "***.***.***-**",
+      "regime": "RPPS",
+      "vinculo": "Estatutario",
+      "eventoRemuneracao": "S-2230",
+      "baseIlustrativa": null
+    }
+  ],
+  "displayName": "Aurora das Veredas",
+  "tenantAliasesForMigration": [
+    "vereda-das-auroras"
+  ],
+  "tpAmbNote": "Valor representativo da Producao Restrita dentro da SIMULACAO; o transporte sempre e local, sem conexao ao governo.",
+  "realEndpointsDisabled": true,
+  "xmlSchemaValidated": false,
+  "mockSource": "SIMULATED"
+}

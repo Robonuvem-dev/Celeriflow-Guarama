@@ -1,0 +1,92 @@
+{
+  "source": "SIMULATED",
+  "tenantId": "aurora-das-veredas",
+  "competencia": "2026-10",
+  "currency": "BRL",
+  "notice": "Valores apenas didaticos; nao representam calculo tributario oficial.",
+  "individual": [
+    {
+      "type": "S-5001",
+      "originEventId": "DEMO-EVT-1200-002",
+      "matricula": "VA-0002",
+      "base": 7200,
+      "contribuicaoSegurado": 815
+    },
+    {
+      "type": "S-5001",
+      "originEventId": "DEMO-EVT-1200-003",
+      "matricula": "VA-0003",
+      "base": 3200,
+      "contribuicaoSegurado": 260
+    },
+    {
+      "type": "S-5003",
+      "originEventId": "DEMO-EVT-1200-002",
+      "matricula": "VA-0002",
+      "baseFGTS": 7200,
+      "valorFGTS": 576
+    },
+    {
+      "type": "S-5003",
+      "originEventId": "DEMO-EVT-1200-003",
+      "matricula": "VA-0003",
+      "baseFGTS": 3200,
+      "valorFGTS": 256
+    },
+    {
+      "type": "S-5002",
+      "originEventId": "DEMO-EVT-1210-002",
+      "matricula": "VA-0002",
+      "valorIRRF": 470
+    },
+    {
+      "type": "S-5002",
+      "originEventId": "DEMO-EVT-1210-003",
+      "matricula": "VA-0003",
+      "valorIRRF": 0
+    }
+  ],
+  "consolidated": [
+    {
+      "type": "S-5011",
+      "originEventId": "DEMO-EVT-1299-001",
+      "metric": "contribuicaoSeguradoRGPS",
+      "value": 1075
+    },
+    {
+      "type": "S-5012",
+      "originEventId": "DEMO-EVT-1299-001",
+      "metric": "irrf",
+      "value": 470
+    },
+    {
+      "type": "S-5013",
+      "originEventId": "DEMO-EVT-1299-001",
+      "metric": "fgts",
+      "value": 832
+    }
+  ],
+  "reconciliation": [
+    {
+      "metric": "contribuicaoSeguradoRGPS",
+      "systemValue": 1080,
+      "esocialReturnValue": 1075,
+      "difference": -5,
+      "status": "DIVERGENT"
+    },
+    {
+      "metric": "irrf",
+      "systemValue": 470,
+      "esocialReturnValue": 470,
+      "difference": 0,
+      "status": "CONCILIATED"
+    },
+    {
+      "metric": "fgts",
+      "systemValue": 832,
+      "esocialReturnValue": 832,
+      "difference": 0,
+      "status": "CONCILIATED"
+    }
+  ]
+}

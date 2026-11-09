@@ -81,7 +81,7 @@ export const employees = pgTable("Employee", {
   personId: text("personId"),
   createdAt: timestamp("createdAt", { precision: 3 }).notNull().defaultNow(),
   updatedAt: timestamp("updatedAt", { precision: 3 }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
-}, table => [uniqueIndex("Employee_cpf_key").on(table.cpf), uniqueIndex("Employee_personId_key").on(table.personId)]);
+}, table => [uniqueIndex("Employee_cpf_key").on(table.cpf), uniqueIndex("Employee_personId_key").on(table.personId), uniqueIndex("Employee_registration_key").on(table.registration)]);
 
 export const internalDemands = pgTable("InternalDemand", {
   id: text("id").primaryKey().$defaultFn(createId),

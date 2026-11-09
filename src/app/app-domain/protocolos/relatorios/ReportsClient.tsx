@@ -17,8 +17,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
-import type { OperationalColumn } from "@/lib/operational-tables";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
 
 export type ProcessReportItem = {
   id: string;
@@ -72,6 +72,7 @@ export default function ReportsClient({
 }) {
   // 19.67: Menu único com escolha do relatório
   const [selectedReport, setSelectedReport] = useState<ReportType>("geral");
+  const [pagination, setPagination] = useState({ key: "", page: 1 });
 
   // Filtros Gerais e Específicos
   const [filterQuery, setFilterQuery] = useState("");
@@ -161,6 +162,9 @@ export default function ReportsClient({
     filterSubject,
     filterSubassunto,
   ]);
+
+  const paginationKey = JSON.stringify([selectedReport, filterQuery, filterRequerente, filterNotaFiscal, filterProcInicio, filterProcFim, filterAnoInicio, filterAnoFim, filterDataInicio, filterDataFim, filterStatus, filterProcessType, filterSubject, filterSubassunto]);
+  const page = pagination.key === paginationKey ? Math.min(pagination.page, Math.max(1, Math.ceil(filteredData.length / OPERATIONAL_PAGE_SIZE))) : 1;
 
   // Processo para notificação / comprovante individual
   const activeProcess = useMemo(() => {
@@ -427,7 +431,7 @@ export default function ReportsClient({
             preferenceId="protocolos.relatorios.geral"
             caption="Listagem de processos protocolados"
             emptyMessage="Nenhum processo encontrado para os critérios de pesquisa informados."
-            rows={filteredData.map((p) => ({
+            rows={filteredData.slice((page - 1) * OPERATIONAL_PAGE_SIZE, page * OPERATIONAL_PAGE_SIZE).map((p) => ({
               id: p.id,
               label: p.protocolNumber,
               values: {

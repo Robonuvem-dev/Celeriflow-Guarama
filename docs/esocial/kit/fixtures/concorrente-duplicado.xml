@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- DEMO: formato nao validado por XSD oficial -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:evtAdmissao">
+  <evtAdmissao Id="DEMO-EVT-2200-002">
+    <ideEvento>
+      <tpAmb>2</tpAmb>
+      <verProc>SOFTWARE-CONCORRENTE-DEMO</verProc>
+    </ideEvento>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>00000000000000</nrInsc>
+    </ideEmpregador>
+    <trabalhador>
+      <identificadorFicticio>VA-0002</identificadorFicticio>
+    </trabalhador>
+    <vinculo>
+      <matricula>VA-0002</matricula>
+      <reciboDemonstrativo>DEMO-REC-000005</reciboDemonstrativo>
+    </vinculo>
+  </evtAdmissao>
+</eSocial>

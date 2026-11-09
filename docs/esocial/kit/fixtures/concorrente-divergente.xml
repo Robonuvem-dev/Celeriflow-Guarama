@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- DEMO: formato nao validado por XSD oficial -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:evtAdmissao">
+  <evtAdmissao Id="DEMO-EXTERNO-DIVERG-001">
+    <ideEvento>
+      <tpAmb>2</tpAmb>
+      <verProc>SOFTWARE-CONCORRENTE-DEMO</verProc>
+    </ideEvento>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>00000000000000</nrInsc>
+    </ideEmpregador>
+    <trabalhador>
+      <identificadorFicticio>VA-0001</identificadorFicticio>
+    </trabalhador>
+    <vinculo>
+      <matricula>VA-0001</matricula>
+      <reciboDemonstrativo>DEMO-EXTERNAL-999</reciboDemonstrativo>
+    </vinculo>
+  </evtAdmissao>
+</eSocial>

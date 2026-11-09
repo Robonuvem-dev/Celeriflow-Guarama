@@ -70,6 +70,9 @@ export const operationalModules: OperationalModuleConfig[] = [{
     ] },
     { title: "Documentos e Arrecadação", items: [
       { title: "Motor Fiscal e Arrecadação", href: "/tributacao/motor-fiscal", icon: "calculator" },
+      { title: "Arrecadação Online FEBRABAN (CF26)", href: "/tributacao/arrecadacao", icon: "banknote" },
+      { title: "Administradoras de Cartões / DECRED (CF29)", href: "/tributacao/decred", icon: "walletCards" },
+      { title: "Conta Corrente Cartões (CF29)", href: "/tributacao/declaracao-cartoes", icon: "walletCards" },
       { title: "ITBI — Transmissões", href: "/tributacao/itbi", icon: "landmark" },
       { title: "Domicílio Tributário", href: "/tributacao/domicilio-tributario", icon: "mailOpen" },
       { title: "Alvarás e Licenças", href: "/tributacao/alvaras", icon: "fileCheck" },
@@ -104,6 +107,9 @@ export const operationalModules: OperationalModuleConfig[] = [{
   ],
   routes: [
     { pathname: "/tributacao/alvaras", title: "Alvarás e licenças" },
+    { pathname: "/tributacao/arrecadacao", title: "Arrecadação Online Service — Padrão FEBRABAN (CF26)" },
+    { pathname: "/tributacao/arrecadacao-online", title: "Arrecadação Online Service — Padrão FEBRABAN (CF26)" },
+    { pathname: "/tributacao/decred", title: "Declaração das Informações das Administradoras de Cartões (CF29)" },
     { pathname: "/tributacao/avaliacoes", title: "Memórias de avaliação" },
     { pathname: "/tributacao/base-territorial", title: "Base territorial" },
     { pathname: "/tributacao/calendarios", title: "Calendário de cotas e parcelas" },

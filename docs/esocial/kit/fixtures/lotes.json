@@ -1,0 +1,85 @@
+{
+  "source": "SIMULATED",
+  "tenantId": "aurora-das-veredas",
+  "mainBatchId": "DEMO-LOTE-202610-0001",
+  "mainProtocol": "DEMO-PROT-202610-0001",
+  "receiptFirstCall": {
+    "cdResposta": 201,
+    "descResposta": "Lote recebido com sucesso."
+  },
+  "firstConsultation": {
+    "cdResposta": 101,
+    "descResposta": "Lote Aguardando Processamento.",
+    "estimatedCompletionSeconds": 10
+  },
+  "batches": [
+    {
+      "batchId": "DEMO-LOTE-TABELAS-0001",
+      "protocolNumber": "DEMO-PROT-TABELAS-0001",
+      "category": "TABELAS",
+      "codes": [
+        "S-1000",
+        "S-1005",
+        "S-1010",
+        "S-1020"
+      ],
+      "status": 201
+    },
+    {
+      "batchId": "DEMO-LOTE-VINCULOS-0001",
+      "protocolNumber": "DEMO-PROT-VINCULOS-0001",
+      "category": "NAO_PERIODICOS",
+      "codes": [
+        "S-2200"
+      ],
+      "status": 201
+    },
+    {
+      "batchId": "DEMO-LOTE-VINCULOS-AVISO",
+      "protocolNumber": "DEMO-PROT-VINCULOS-AVISO",
+      "category": "NAO_PERIODICOS",
+      "codes": [
+        "S-2200"
+      ],
+      "status": 202
+    },
+    {
+      "batchId": "DEMO-LOTE-202610-0001",
+      "protocolNumber": "DEMO-PROT-202610-0001",
+      "category": "PERIODICOS_REMUNERACAO",
+      "codes": [
+        "S-1200",
+        "S-1202"
+      ],
+      "status": 201
+    },
+    {
+      "batchId": "DEMO-LOTE-PAGAMENTOS-0001",
+      "protocolNumber": "DEMO-PROT-PAGAMENTOS-0001",
+      "category": "PERIODICOS_PAGAMENTOS",
+      "codes": [
+        "S-1210"
+      ],
+      "status": 201
+    },
+    {
+      "batchId": "DEMO-LOTE-ERRO-0001",
+      "protocolNumber": "DEMO-PROT-ERRO-0001",
+      "category": "PERIODICOS_ERRO_ALTERNATIVO",
+      "codes": [
+        "S-1200"
+      ],
+      "status": 201
+    },
+    {
+      "batchId": "DEMO-LOTE-202610-FECHO",
+      "protocolNumber": "DEMO-PROT-202610-FECHO",
+      "category": "FECHAMENTO",
+      "codes": [
+        "S-1299"
+      ],
+      "status": 201
+    }
+  ],
+  "rule": "Lotes separados por categoria e etapa de precedencia. O fechamento S-1299 so acontece apos tratamento das pendencias."
+}

@@ -1,0 +1,24 @@
+{
+  "result": "PASS",
+  "method": "Integridade documental; não é teste funcional do aplicativo.",
+  "date": "2026-11-09",
+  "commit": "aeaf772b646b31ee0f1644b68d8ce9eac1eb47a4",
+  "modules": 33,
+  "requirements": 2661,
+  "atende": 1151,
+  "nao_atende": 1510,
+  "modules_at_least_95_percent": [
+    4,
+    10,
+    14
+  ],
+  "evidence_records": 930,
+  "verified_code_file_citations": 1979,
+  "csv_matches_evidence_and_source": true,
+  "source_pdf_sha256_verified": true,
+  "removed_files_verified": 1852,
+  "removed_bytes": 989883601,
+  "code_unchanged": true,
+  "docs_files_at_validation": 497,
+  "docs_bytes_at_validation": 65951177
+}

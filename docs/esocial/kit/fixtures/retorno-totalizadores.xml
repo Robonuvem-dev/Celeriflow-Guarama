@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- AMBIENTE DEMO: XML DE EXEMPLO, SEM TRANSMISSAO OU ASSINATURA OFICIAL -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:retorno-processamento">
+  <retornoProcessamentoLoteEventos>
+    <status>
+      <cdResposta>201</cdResposta>
+      <descResposta>Lote Processado com Sucesso.</descResposta>
+    </status>
+    <dadosRecepcaoLote>
+      <protocoloEnvio>DEMO-PROT-202610-FECHO</protocoloEnvio>
+    </dadosRecepcaoLote>
+    <retornoEventos>
+      <evento Id="DEMO-EVT-1299-001">
+        <retornoEvento>
+          <eSocial xmlns="urn:celeriflow:esocial:demo:retorno-evento">
+            <retornoEvento Id="DEMO-EVT-1299-001">
+              <processamento>
+                <cdResposta>201</cdResposta>
+                <descResposta>Sucesso.</descResposta>
+              </processamento>
+              <recibo>
+                <nrRecibo>DEMO-REC-000013</nrRecibo>
+                <hash>HASH-DEMO-SEM-ASSINATURA</hash>
+              </recibo>
+            </retornoEvento>
+          </eSocial>
+        </retornoEvento>
+        <tot tipo="S-5011">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizadores">
+            <totalizadorDemonstrativo tipo="S-5011" id="DEMO-TOT-5011-GERAL">
+              <contribuicaoSeguradoRGPS>1075.00</contribuicaoSeguradoRGPS>
+            </totalizadorDemonstrativo>
+          </eSocial>
+        </tot>
+        <tot tipo="S-5012">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizadores">
+            <totalizadorDemonstrativo tipo="S-5012" id="DEMO-TOT-5012-GERAL">
+              <irrf>470.00</irrf>
+            </totalizadorDemonstrativo>
+          </eSocial>
+        </tot>
+        <tot tipo="S-5013">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizadores">
+            <totalizadorDemonstrativo tipo="S-5013" id="DEMO-TOT-5013-GERAL">
+              <fgts>832.00</fgts>
+            </totalizadorDemonstrativo>
+          </eSocial>
+        </tot>
+      </evento>
+    </retornoEventos>
+  </retornoProcessamentoLoteEventos>
+</eSocial>

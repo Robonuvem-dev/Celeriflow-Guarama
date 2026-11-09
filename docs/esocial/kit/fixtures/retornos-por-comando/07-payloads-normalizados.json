@@ -1,0 +1,257 @@
+{
+  "meta": {
+    "scenario": "AURORA-ESOCIAL-DEMO-2026-10",
+    "source": "SIMULATED",
+    "warning": "Conteudo demonstrativo; nao enviado pelo Governo Federal",
+    "competencia": "2026-10"
+  },
+  "results": [
+    {
+      "batchId": "DEMO-LOTE-202610-0001",
+      "protocolNumber": "DEMO-PROT-202610-0001",
+      "consultaInicial": {
+        "cdResposta": 101,
+        "eventos": []
+      },
+      "consultaFinal": {
+        "cdResposta": 201,
+        "eventos": [
+          {
+            "originEventId": "DEMO-EVT-1200-002",
+            "originType": "S-1200",
+            "matricula": "VA-0002",
+            "eventResult": {
+              "cdResposta": 201,
+              "descResposta": "Sucesso.",
+              "nrRecibo": "DEMO-REC-000010",
+              "occurrences": []
+            },
+            "totalizers": [
+              {
+                "type": "S-5001",
+                "recordId": "DEMO-TOT-S5001-VA-0002",
+                "originEventId": "DEMO-EVT-1200-002",
+                "originReceipt": "DEMO-REC-000010",
+                "matricula": "VA-0002",
+                "values": {
+                  "base": 7200.0,
+                  "contribuicaoSegurado": 815.0
+                }
+              },
+              {
+                "type": "S-5003",
+                "recordId": "DEMO-TOT-S5003-VA-0002",
+                "originEventId": "DEMO-EVT-1200-002",
+                "originReceipt": "DEMO-REC-000010",
+                "matricula": "VA-0002",
+                "values": {
+                  "baseFGTS": 7200.0,
+                  "valorFGTS": 576.0
+                }
+              }
+            ]
+          },
+          {
+            "originEventId": "DEMO-EVT-1200-003",
+            "originType": "S-1200",
+            "matricula": "VA-0003",
+            "eventResult": {
+              "cdResposta": 201,
+              "descResposta": "Sucesso.",
+              "nrRecibo": "DEMO-REC-000014",
+              "occurrences": []
+            },
+            "totalizers": [
+              {
+                "type": "S-5001",
+                "recordId": "DEMO-TOT-S5001-VA-0003",
+                "originEventId": "DEMO-EVT-1200-003",
+                "originReceipt": "DEMO-REC-000014",
+                "matricula": "VA-0003",
+                "values": {
+                  "base": 3200.0,
+                  "contribuicaoSegurado": 260.0
+                }
+              },
+              {
+                "type": "S-5003",
+                "recordId": "DEMO-TOT-S5003-VA-0003",
+                "originEventId": "DEMO-EVT-1200-003",
+                "originReceipt": "DEMO-REC-000014",
+                "matricula": "VA-0003",
+                "values": {
+                  "baseFGTS": 3200.0,
+                  "valorFGTS": 256.0
+                }
+              }
+            ]
+          },
+          {
+            "originEventId": "DEMO-EVT-1202-001",
+            "originType": "S-1202",
+            "matricula": "VA-0001",
+            "eventResult": {
+              "cdResposta": 201,
+              "descResposta": "Sucesso.",
+              "nrRecibo": "DEMO-REC-000015",
+              "occurrences": []
+            },
+            "totalizers": []
+          }
+        ]
+      },
+      "xmlFile": "03-retorno-remuneracoes.xml"
+    },
+    {
+      "batchId": "DEMO-LOTE-PAGAMENTOS-0001",
+      "protocolNumber": "DEMO-PROT-PAGAMENTOS-0001",
+      "consultaInicial": {
+        "cdResposta": 101,
+        "eventos": []
+      },
+      "consultaFinal": {
+        "cdResposta": 201,
+        "eventos": [
+          {
+            "originEventId": "DEMO-EVT-1210-002",
+            "originType": "S-1210",
+            "matricula": "VA-0002",
+            "eventResult": {
+              "cdResposta": 201,
+              "descResposta": "Sucesso.",
+              "nrRecibo": "DEMO-REC-000011",
+              "occurrences": []
+            },
+            "totalizers": [
+              {
+                "type": "S-5002",
+                "recordId": "DEMO-TOT-S5002-VA-0002",
+                "originEventId": "DEMO-EVT-1210-002",
+                "originReceipt": "DEMO-REC-000011",
+                "matricula": "VA-0002",
+                "values": {
+                  "valorIRRF": 470.0
+                }
+              }
+            ]
+          },
+          {
+            "originEventId": "DEMO-EVT-1210-003",
+            "originType": "S-1210",
+            "matricula": "VA-0003",
+            "eventResult": {
+              "cdResposta": 201,
+              "descResposta": "Sucesso.",
+              "nrRecibo": "DEMO-REC-000016",
+              "occurrences": []
+            },
+            "totalizers": [
+              {
+                "type": "S-5002",
+                "recordId": "DEMO-TOT-S5002-VA-0003",
+                "originEventId": "DEMO-EVT-1210-003",
+                "originReceipt": "DEMO-REC-000016",
+                "matricula": "VA-0003",
+                "values": {
+                  "valorIRRF": 0.0
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "xmlFile": "04-retorno-pagamentos.xml"
+    },
+    {
+      "batchId": "DEMO-LOTE-202610-FECHO",
+      "protocolNumber": "DEMO-PROT-202610-FECHO",
+      "consultaInicial": {
+        "cdResposta": 101,
+        "eventos": []
+      },
+      "consultaFinal": {
+        "cdResposta": 201,
+        "eventos": [
+          {
+            "originEventId": "DEMO-EVT-1299-001",
+            "originType": "S-1299",
+            "matricula": null,
+            "eventResult": {
+              "cdResposta": 201,
+              "descResposta": "Sucesso.",
+              "nrRecibo": "DEMO-REC-000013",
+              "occurrences": []
+            },
+            "totalizers": [
+              {
+                "type": "S-5011",
+                "recordId": "DEMO-TOT-S5011-GERAL",
+                "originEventId": "DEMO-EVT-1299-001",
+                "originReceipt": "DEMO-REC-000013",
+                "matricula": null,
+                "values": {
+                  "contribuicaoSeguradoRGPS": 1075.0
+                }
+              },
+              {
+                "type": "S-5012",
+                "recordId": "DEMO-TOT-S5012-GERAL",
+                "originEventId": "DEMO-EVT-1299-001",
+                "originReceipt": "DEMO-REC-000013",
+                "matricula": null,
+                "values": {
+                  "irrf": 470.0
+                }
+              },
+              {
+                "type": "S-5013",
+                "recordId": "DEMO-TOT-S5013-GERAL",
+                "originEventId": "DEMO-EVT-1299-001",
+                "originReceipt": "DEMO-REC-000013",
+                "matricula": null,
+                "values": {
+                  "fgts": 832.0
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "xmlFile": "05-retorno-fechamento.xml"
+    },
+    {
+      "batchId": "DEMO-LOTE-ERRO-0001",
+      "protocolNumber": "DEMO-PROT-ERRO-0001",
+      "consultaInicial": {
+        "cdResposta": 101,
+        "eventos": []
+      },
+      "consultaFinal": {
+        "cdResposta": 201,
+        "eventos": [
+          {
+            "originEventId": "DEMO-EVT-1200-ERR-003",
+            "originType": "S-1200",
+            "matricula": "VA-0003",
+            "eventResult": {
+              "cdResposta": 401,
+              "descResposta": "Erro no conteudo do evento.",
+              "nrRecibo": null,
+              "occurrences": [
+                {
+                  "tipo": 1,
+                  "codigo": "DEMO-RUB-001",
+                  "descricao": "Rubrica RUB-999 nao encontrada na tabela S-1010 vigente para competencia 2026-10.",
+                  "localizacao": "/eSocial/evtRemun/dmDev/infoPerApur/ideEstabLot/remunPerApur/itensRemun/codRubr",
+                  "correctionUrl": "/rh/folha/rubricas?codigo=RUB-999"
+                }
+              ]
+            },
+            "totalizers": []
+          }
+        ]
+      },
+      "xmlFile": "06-retorno-rejeicao.xml"
+    }
+  ]
+}

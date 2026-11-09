@@ -130,7 +130,8 @@ export function ServidorForm({
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="registration">Matrícula</Label>
-                  <Input id="registration" name="registration" defaultValue={data?.registration || ""} placeholder="Ex: 12345" />
+                  <Input id="registration" value={data?.registration || ""} placeholder="Gerada ao salvar" readOnly aria-describedby="registration-help" />
+                  <p id="registration-help" className="text-xs text-muted-foreground">AAAAMMDD + sequência de 5 dígitos. Gerada automaticamente pela data de cadastro.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>

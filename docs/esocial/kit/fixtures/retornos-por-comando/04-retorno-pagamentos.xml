@@ -1,0 +1,114 @@
+<?xml version='1.0' encoding='utf-8'?>
+<eSocial xmlns="urn:celeriflow:esocial:demo:retorno-processamento">
+  <!-- DEMONSTRATIVO. NAO CORRESPONDE AO XSD OFICIAL; NAO FOI EMITIDO PELO GOVERNO. -->
+  <retornoProcessamentoLoteEventos>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>00000000000000</nrInsc>
+    </ideEmpregador>
+    <status>
+      <cdResposta>201</cdResposta>
+      <descResposta>Lote Processado (SIMULACAO).</descResposta>
+    </status>
+    <dadosRecepcaoLote>
+      <dhRecepcao>2026-11-08T19:37:00-03:00</dhRecepcao>
+      <versaoAplicativoRecepcao>DEMO-CELERIFLOW-1</versaoAplicativoRecepcao>
+      <protocoloEnvio>DEMO-PROT-PAGAMENTOS-0001</protocoloEnvio>
+    </dadosRecepcaoLote>
+    <dadosProcessamentoLote>
+      <versaoAplicativoProcessamentoLote>DEMO-CELERIFLOW-1</versaoAplicativoProcessamentoLote>
+    </dadosProcessamentoLote>
+    <retornoEventos>
+      <evento Id="DEMO-EVT-1210-002" evtDupl="false">
+        <retornoEvento>
+          <eSocial xmlns="urn:celeriflow:esocial:demo:retorno-evento">
+            <retornoEvento Id="DEMO-EVT-1210-002">
+              <recepcao>
+                <tpAmb>2</tpAmb>
+                <protocoloEnvioLote>DEMO-PROT-PAGAMENTOS-0001</protocoloEnvioLote>
+              </recepcao>
+              <processamento>
+                <cdResposta>201</cdResposta>
+                <descResposta>Sucesso.</descResposta>
+                <dhProcessamento>2026-11-08T19:37:15-03:00</dhProcessamento>
+              </processamento>
+              <recibo>
+                <nrRecibo>DEMO-REC-000011</nrRecibo>
+              </recibo>
+            </retornoEvento>
+          </eSocial>
+        </retornoEvento>
+        <tot tipo="S-5002">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizador">
+            <evtIrrfBenef tipo="S-5002" Id="DEMO-TOT-S5002-VA-0002">
+              <ideEvento>
+                <nrRecArqBase>DEMO-REC-000011</nrRecArqBase>
+                <perApur>2026-10</perApur>
+              </ideEvento>
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <ideTrabalhador>
+                <matricula>VA-0002</matricula>
+              </ideTrabalhador>
+              <resumoDemonstrativo>
+                <valorIRRF>470.00</valorIRRF>
+              </resumoDemonstrativo>
+              <referenciaSimulacao>
+                <eventoOrigem>DEMO-EVT-1210-002</eventoOrigem>
+                <tipo>RETORNO_NAO_TRANSMITIDO</tipo>
+                <fonte>SIMULATED</fonte>
+              </referenciaSimulacao>
+            </evtIrrfBenef>
+          </eSocial>
+        </tot>
+      </evento>
+      <evento Id="DEMO-EVT-1210-003" evtDupl="false">
+        <retornoEvento>
+          <eSocial xmlns="urn:celeriflow:esocial:demo:retorno-evento">
+            <retornoEvento Id="DEMO-EVT-1210-003">
+              <recepcao>
+                <tpAmb>2</tpAmb>
+                <protocoloEnvioLote>DEMO-PROT-PAGAMENTOS-0001</protocoloEnvioLote>
+              </recepcao>
+              <processamento>
+                <cdResposta>201</cdResposta>
+                <descResposta>Sucesso.</descResposta>
+                <dhProcessamento>2026-11-08T19:37:15-03:00</dhProcessamento>
+              </processamento>
+              <recibo>
+                <nrRecibo>DEMO-REC-000016</nrRecibo>
+              </recibo>
+            </retornoEvento>
+          </eSocial>
+        </retornoEvento>
+        <tot tipo="S-5002">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizador">
+            <evtIrrfBenef tipo="S-5002" Id="DEMO-TOT-S5002-VA-0003">
+              <ideEvento>
+                <nrRecArqBase>DEMO-REC-000016</nrRecArqBase>
+                <perApur>2026-10</perApur>
+              </ideEvento>
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <ideTrabalhador>
+                <matricula>VA-0003</matricula>
+              </ideTrabalhador>
+              <resumoDemonstrativo>
+                <valorIRRF>0.00</valorIRRF>
+              </resumoDemonstrativo>
+              <referenciaSimulacao>
+                <eventoOrigem>DEMO-EVT-1210-003</eventoOrigem>
+                <tipo>RETORNO_NAO_TRANSMITIDO</tipo>
+                <fonte>SIMULATED</fonte>
+              </referenciaSimulacao>
+            </evtIrrfBenef>
+          </eSocial>
+        </tot>
+      </evento>
+    </retornoEventos>
+  </retornoProcessamentoLoteEventos>
+</eSocial>

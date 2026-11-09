@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { OperationalTablePanel } from "@/components/app-ui/operational/OperationalTablePanel";
 import { rhColumn } from "../../_components/operational-columns";
 import { Plus, Edit2, Trash2, CheckCircle2, AlertCircle, FileCode } from "lucide-react";
@@ -32,6 +33,8 @@ type LayoutRecord = {
 
 export function LayoutsClient({ initialLayouts }: { initialLayouts: LayoutRecord[] }) {
   const [layouts, setLayouts] = useState<LayoutRecord[]>(initialLayouts);
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(layouts.length / OPERATIONAL_PAGE_SIZE)));
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingLayout, setEditingLayout] = useState<LayoutRecord | null>(null);
@@ -214,8 +217,9 @@ export function LayoutsClient({ initialLayouts }: { initialLayouts: LayoutRecord
         columns={columns}
         caption="Layouts Customizados de Importação de Ponto (Requisito 20.10)"
         emptyMessage="Nenhum layout customizado cadastrado ainda. Clique em 'Novo Layout Customizado' acima para cadastrar."
-        rows={rows}
+        rows={rows.slice((currentPage - 1) * OPERATIONAL_PAGE_SIZE, currentPage * OPERATIONAL_PAGE_SIZE)}
       />
+      <OperationalPagination page={currentPage} total={rows.length} onPageChange={setPage} />
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

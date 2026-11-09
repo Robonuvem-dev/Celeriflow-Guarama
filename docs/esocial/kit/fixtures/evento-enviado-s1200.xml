@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- AMBIENTE DEMO: XML DE EXEMPLO, SEM TRANSMISSAO OU ASSINATURA OFICIAL -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:envio">
+  <evtRemun Id="DEMO-EVT-1200-002">
+    <ideEvento>
+      <indRetif>1</indRetif>
+      <perApur>2026-10</perApur>
+      <tpAmb>2</tpAmb>
+      <procEmi>1</procEmi>
+      <verProc>CeleriFlow-POC</verProc>
+    </ideEvento>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>00000000000000</nrInsc>
+    </ideEmpregador>
+    <ideTrabalhador>
+      <identificadorFicticio>VA-0002</identificadorFicticio>
+    </ideTrabalhador>
+    <remuneracaoIlustrativa>7200.00</remuneracaoIlustrativa>
+  </evtRemun>
+</eSocial>

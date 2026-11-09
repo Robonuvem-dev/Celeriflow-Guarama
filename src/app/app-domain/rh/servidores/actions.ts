@@ -26,7 +26,6 @@ export async function saveServidor(formData: FormData) {
     const name = formData.get("name") as string;
     const cpf = formData.get("cpf") as string;
     const personId = String(formData.get("personId") || "");
-    const registration = formData.get("registration") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
     const roleId = formData.get("roleId") as string;
@@ -44,7 +43,6 @@ export async function saveServidor(formData: FormData) {
     const data = {
       name,
       cpf: cpf || null,
-      registration: registration || null,
       email: email || null,
       phone: phone || null,
       roleId: roleId || null,

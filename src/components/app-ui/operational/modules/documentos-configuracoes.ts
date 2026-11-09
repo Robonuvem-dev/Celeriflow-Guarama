@@ -16,12 +16,16 @@ export const operationalModules: OperationalModuleConfig[] = [
       { title: "Workflows e Processos", href: "/configuracoes/processos", icon: "workflow" },
       { title: "Certificados A1", href: "/configuracoes/certificados", icon: "shieldCheck" },
       { title: "Auditoria", href: "/configuracoes/auditoria", icon: "history" },
+      { title: "Backup em Nuvem (CF31)", href: "/configuracoes/backup", icon: "databaseZap" },
+      { title: "Data Center (CF32)", href: "/configuracoes/datacenter", icon: "server" },
     ] }],
     routes: [
       { pathname: "/configuracoes/auditoria", title: "Auditoria de Uso" },
       { pathname: "/configuracoes/perfis", title: "Gestão de Perfis e Permissões" },
       { pathname: "/configuracoes/usuarios", title: "Gestão de Usuários" },
       { pathname: "/configuracoes/processos/etapas", title: "Fluxo Legado por Tipo e Assunto" },
+      { pathname: "/configuracoes/backup", title: "Serviço de Backup em Nuvem Criptografado (CF31)" },
+      { pathname: "/configuracoes/datacenter", title: "Serviço Data Center Certificado (CF32)" },
     ],
   },
   {

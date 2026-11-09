@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "name": "eSocial - Aurora das Veredas - recebimento de retornos",
+  "tenantId": "aurora-das-veredas",
+  "legacyTenantAlias": "vereda-das-auroras",
+  "competencia": "2026-10",
+  "dateReference": "2026-11-08T19:37:00-03:00",
+  "source": "SIMULATED",
+  "transport": "DemoEsocialTransport",
+  "neverCallExternalHost": true,
+  "demoEnvironmentRepresented": "PRODUCAO_RESTRITA",
+  "internalDemoOnly": true,
+  "mockXmlValidity": "EXEMPLIFICATIVO, NAO VALIDADO XSD OFICIAL",
+  "label": "AMBIENTE DE DEMONSTRAÇÃO — RESPOSTAS SIMULADAS, SEM TRANSMISSÃO AO eSOCIAL",
+  "modeButtons": [
+    {
+      "command": "SIMULAR_RECEBIMENTO_COMPLETO",
+      "label": "Simular recebimento do eSocial",
+      "meaning": "Faz o fluxo de recepcao, consulta pendente e processamento final com XMLs de retorno persistidos; retorna os seis tipos de totalizador quando as condicoes sao atendidas."
+    },
+    {
+      "command": "CONSULTAR_RETORNO_PASSO_A_PASSO",
+      "label": "Consultar retorno (proxima etapa)",
+      "meaning": "Cada comando avanca o estado persistido do lote: protocolo recebido -> aguardando (101) -> processado (201), sem recriar retornos."
+    },
+    {
+      "command": "REINICIAR_CENARIO_DEMO",
+      "label": "Reiniciar demonstracao",
+      "meaning": "Somente admin e somente dados DEMO; nao altera RH principal nem apaga auditoria."
+    }
+  ],
+  "batches": [
+    {
+      "batchId": "DEMO-LOTE-202610-0001",
+      "protocol": "DEMO-PROT-202610-0001",
+      "category": "PERIODICOS_REMUNERACAO",
+      "events": [
+        "DEMO-EVT-1200-002",
+        "DEMO-EVT-1200-003",
+        "DEMO-EVT-1202-001"
+      ],
+      "querySequence": [
+        101,
+        201
+      ],
+      "xmlFile": "03-retorno-remuneracoes.xml"
+    },
+    {
+      "batchId": "DEMO-LOTE-PAGAMENTOS-0001",
+      "protocol": "DEMO-PROT-PAGAMENTOS-0001",
+      "category": "PERIODICOS_PAGAMENTOS",
+      "events": [
+        "DEMO-EVT-1210-002",
+        "DEMO-EVT-1210-003"
+      ],
+      "querySequence": [
+        101,
+        201
+      ],
+      "xmlFile": "04-retorno-pagamentos.xml"
+    },
+    {
+      "batchId": "DEMO-LOTE-202610-FECHO",
+      "protocol": "DEMO-PROT-202610-FECHO",
+      "category": "FECHAMENTO",
+      "events": [
+        "DEMO-EVT-1299-001"
+      ],
+      "querySequence": [
+        101,
+        201
+      ],
+      "xmlFile": "05-retorno-fechamento.xml"
+    },
+    {
+      "batchId": "DEMO-LOTE-ERRO-0001",
+      "protocol": "DEMO-PROT-ERRO-0001",
+      "category": "CENARIO_ALTERNATIVO_ERRO",
+      "events": [
+        "DEMO-EVT-1200-ERR-003"
+      ],
+      "querySequence": [
+        101,
+        201
+      ],
+      "xmlFile": "06-retorno-rejeicao.xml"
+    }
+  ],
+  "totalizerRules": [
+    {
+      "origin": "S-1200",
+      "ifAccepted": [
+        "S-5001",
+        "S-5003"
+      ],
+      "notes": "RGPS, respeitar elegibilidade de bases e valores; zeros podem ser apresentados sem supor obrigacao de recolhimento."
+    },
+    {
+      "origin": "S-1202",
+      "ifAccepted": [
+        "S-5001"
+      ],
+      "condition": "somente quando aplicavel a informacao infoPisPasep",
+      "notes": "Nao gerar S-5003 de FGTS para servidor RPPS apenas por ser cadastrado."
+    },
+    {
+      "origin": "S-1210",
+      "ifAccepted": [
+        "S-5002"
+      ]
+    },
+    {
+      "origin": "S-1299",
+      "ifAccepted": [
+        "S-5011",
+        "S-5012",
+        "S-5013"
+      ],
+      "condition": "fechamento aceito; consolidados sao da competencia, nao do servidor"
+    }
+  ],
+  "scenarioNames": [
+    "NORMAL",
+    "PENDENTE",
+    "ERRO_RUBRICA",
+    "ADVERTENCIA",
+    "DUPLICIDADE",
+    "RETIFICACAO",
+    "FALHA_CONEXAO",
+    "FECHAMENTO",
+    "13_SALARIO"
+  ],
+  "expectedSummary": {
+    "S-5001": {
+      "VA-0002": 815.0,
+      "VA-0003": 260.0
+    },
+    "S-5002": {
+      "VA-0002": 470.0,
+      "VA-0003": 0.0
+    },
+    "S-5003": {
+      "VA-0002": 576.0,
+      "VA-0003": 256.0
+    },
+    "S-5011": 1075.0,
+    "S-5012": 470.0,
+    "S-5013": 832.0,
+    "folhaExpectedCP": 1080.0,
+    "demoReturnCP": 1075.0,
+    "differenceCP": -5.0
+  },
+  "notes": [
+    "Os recibos DEMO-REC pertencem aos eventos S-1200/S-1210/S-1299 ACEITOS, nao aos totalizadores enviados; os totalizadores carregam referencia ao recibo de origem.",
+    "No ambiente real, totalizadores sao recebidos na resposta da consulta ao processamento, no interior de tot tipo=S-5xxx; nao sao objetos que a prefeitura transmite nem notificacoes push.",
+    "Valores didaticos ilustrativos, nao calculo fiscal oficial ou prova de contribuicao paga.",
+    "Em repeticao com mesmo protocolo e evento, retornar o mesmo processamento sem inserir totalizadores duplicados.",
+    "S-1299 nao deve liberar fechamento quando houver pendencias impeditivas efetivamente presentes na competencia."
+  ]
+}

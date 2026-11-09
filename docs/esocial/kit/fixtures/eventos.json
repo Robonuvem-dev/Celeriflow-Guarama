@@ -1,0 +1,362 @@
+{
+  "scenarioId": "AURORA-ESOCIAL-DEMO-2026-10",
+  "source": "SIMULATED",
+  "events": [
+    {
+      "eventId": "DEMO-EVT-1000-001",
+      "eventType": "S-1000",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": null,
+      "batchId": "DEMO-LOTE-TABELAS-0001",
+      "protocolNumber": "DEMO-PROT-TABELAS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000001",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1005-001",
+      "eventType": "S-1005",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": null,
+      "batchId": "DEMO-LOTE-TABELAS-0001",
+      "protocolNumber": "DEMO-PROT-TABELAS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000002",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1010-001",
+      "eventType": "S-1010",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": null,
+      "batchId": "DEMO-LOTE-TABELAS-0001",
+      "protocolNumber": "DEMO-PROT-TABELAS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000003",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1020-001",
+      "eventType": "S-1020",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": null,
+      "batchId": "DEMO-LOTE-TABELAS-0001",
+      "protocolNumber": "DEMO-PROT-TABELAS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000004",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-2200-002",
+      "eventType": "S-2200",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0002",
+      "batchId": "DEMO-LOTE-VINCULOS-0001",
+      "protocolNumber": "DEMO-PROT-VINCULOS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000005",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-2200-003",
+      "eventType": "S-2200",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0003",
+      "batchId": "DEMO-LOTE-VINCULOS-0001",
+      "protocolNumber": "DEMO-PROT-VINCULOS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000006",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-2200-001",
+      "eventType": "S-2200",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0001",
+      "batchId": "DEMO-LOTE-VINCULOS-0001",
+      "protocolNumber": "DEMO-PROT-VINCULOS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000007",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1200-002",
+      "eventType": "S-1200",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0002",
+      "batchId": "DEMO-LOTE-202610-0001",
+      "protocolNumber": "DEMO-PROT-202610-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000010",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [
+        {
+          "type": "S-5001",
+          "id": "DEMO-TOT-5001-VA-0002"
+        },
+        {
+          "type": "S-5003",
+          "id": "DEMO-TOT-5003-VA-0002"
+        }
+      ],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1200-003",
+      "eventType": "S-1200",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0003",
+      "batchId": "DEMO-LOTE-202610-0001",
+      "protocolNumber": "DEMO-PROT-202610-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000014",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [
+        {
+          "type": "S-5001",
+          "id": "DEMO-TOT-5001-VA-0003"
+        },
+        {
+          "type": "S-5003",
+          "id": "DEMO-TOT-5003-VA-0003"
+        }
+      ],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1202-001",
+      "eventType": "S-1202",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0001",
+      "batchId": "DEMO-LOTE-202610-0001",
+      "protocolNumber": "DEMO-PROT-202610-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000015",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1210-002",
+      "eventType": "S-1210",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0002",
+      "batchId": "DEMO-LOTE-PAGAMENTOS-0001",
+      "protocolNumber": "DEMO-PROT-PAGAMENTOS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000011",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [
+        {
+          "type": "S-5002",
+          "id": "DEMO-TOT-5002-VA-0002"
+        }
+      ],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1210-003",
+      "eventType": "S-1210",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0003",
+      "batchId": "DEMO-LOTE-PAGAMENTOS-0001",
+      "protocolNumber": "DEMO-PROT-PAGAMENTOS-0001",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000016",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [
+        {
+          "type": "S-5002",
+          "id": "DEMO-TOT-5002-VA-0003"
+        }
+      ],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-2200-004",
+      "eventType": "S-2200",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0004",
+      "batchId": "DEMO-LOTE-VINCULOS-AVISO",
+      "protocolNumber": "DEMO-PROT-VINCULOS-AVISO",
+      "eventStatusCode": 202,
+      "eventStatusDescription": "Sucesso com advertencia.",
+      "outcome": "ACCEPTED_WITH_WARNING",
+      "receiptNumber": "DEMO-REC-000012",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [
+        {
+          "tipo": 2,
+          "codigo": "DEMO-AVISO-001",
+          "descricao": "Advertencia demonstrativa cadastral sem impedir a recepcao do evento.",
+          "localizacao": "/eSocial/evtAdmissao/trabalhador"
+        }
+      ],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "NORMAL"
+    },
+    {
+      "eventId": "DEMO-EVT-1200-ERR-003",
+      "eventType": "S-1200",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": "VA-0003",
+      "batchId": "DEMO-LOTE-ERRO-0001",
+      "protocolNumber": "DEMO-PROT-ERRO-0001",
+      "eventStatusCode": 401,
+      "eventStatusDescription": "Erro no conteudo do evento.",
+      "outcome": "REJECTED",
+      "receiptNumber": null,
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [
+        {
+          "tipo": 1,
+          "codigo": "DEMO-RUB-001",
+          "descricao": "Rubrica RUB-999 nao encontrada na tabela S-1010 vigente para competencia 2026-10.",
+          "localizacao": "/eSocial/evtRemun/dmDev/infoPerApur/ideEstabLot/remunPerApur/itensRemun/codRubr",
+          "correctionUrl": "/rh/folha/rubricas?codigo=RUB-999"
+        }
+      ],
+      "totalizers": [],
+      "source": "SIMULATED",
+      "scenario": "ERRO_ALTERNATIVO_NAO_CONTA_PARA_FECHAMENTO"
+    },
+    {
+      "eventId": "DEMO-EVT-1299-001",
+      "eventType": "S-1299",
+      "tenantId": "aurora-das-veredas",
+      "competencia": "2026-10",
+      "matricula": null,
+      "batchId": "DEMO-LOTE-202610-FECHO",
+      "protocolNumber": "DEMO-PROT-202610-FECHO",
+      "eventStatusCode": 201,
+      "eventStatusDescription": "Sucesso.",
+      "outcome": "ACCEPTED",
+      "receiptNumber": "DEMO-REC-000013",
+      "receptionAt": "2026-11-08T14:00:00-03:00",
+      "processedAt": "2026-11-08T14:00:12-03:00",
+      "duplicated": false,
+      "occurrences": [],
+      "totalizers": [
+        {
+          "type": "S-5011",
+          "id": "DEMO-TOT-5011-G"
+        },
+        {
+          "type": "S-5012",
+          "id": "DEMO-TOT-5012-G"
+        },
+        {
+          "type": "S-5013",
+          "id": "DEMO-TOT-5013-G"
+        }
+      ],
+      "source": "SIMULATED",
+      "scenario": "FECHAMENTO_DEPOIS_DA_CORRECAO_OU_EXCLUSAO_DA_PENDENCIA"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, type ElementType } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -12,22 +12,10 @@ import {
   Layers,
 } from "lucide-react";
 import styles from "./dashboard.module.css";
-import { categories, type ModuleCategory } from "./dashboard-modules";
+import { allDashboardModules, categories, type ModuleCategory } from "./dashboard-modules";
+import type { DashboardCardData } from "./dashboard-card-data";
 
-export type DashboardCardData = {
-  code: string;
-  name: string;
-  description: string;
-  href: string;
-  icon: ElementType;
-  color: string;
-  bg: string;
-  solid: string;
-  category: ModuleCategory;
-  isBlocked: boolean;
-  features: string[];
-  keywords: string[];
-};
+const moduleIcons = new Map(allDashboardModules.map(item => [item.code, item.icon]));
 
 type HoverState = {
   item: DashboardCardData;
@@ -109,6 +97,7 @@ export function DashboardClient({
   }, [modules, selectedCategory, normalizedQuery]);
 
   const userFirstName = userName ? userName.trim().split(" ")[0] : null;
+  const HoverIcon = moduleIcons.get(hovered?.item.code || "") || Layers;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-2.5 overflow-hidden">
@@ -225,7 +214,7 @@ export function DashboardClient({
         ) : (
           <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
             {filteredModules.map((item) => {
-              const IconComponent = item.icon;
+              const IconComponent = moduleIcons.get(item.code) || Layers;
 
               if (item.isBlocked) {
                 return (
@@ -347,7 +336,7 @@ export function DashboardClient({
                 <div
                   className={`flex size-7 shrink-0 items-center justify-center rounded-md ${hovered.item.bg}`}
                 >
-                  <hovered.item.icon
+                  <HoverIcon
                     className={`size-4 ${hovered.item.color}`}
                     strokeWidth={2.5}
                   />

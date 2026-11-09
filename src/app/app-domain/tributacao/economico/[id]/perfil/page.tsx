@@ -4,14 +4,16 @@ import { economicProfileSchema } from "@/lib/tributacao/economic-profile";
 import EconomicProfileClient from "./EconomicProfileClient";
 import { taxScopeSnapshot } from "@/lib/tributacao/scope";
 import { db } from "@/db/client";
-import { listFiscalRegistrations, listFiscalPlanningUnits, listFiscalProperties, listFiscalDocumentOptions, listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
+import { listFiscalPlanningUnits, listFiscalProperties, listFiscalDocumentOptions, listFiscalProcessOptions } from "@/db/repositories/taxation-pages/lookups";
 import { listPageTaxpayers, listFiscalEntries } from "@/db/repositories/taxation-pages/registry";
+import { readFiscalEconomicCard } from "@/db/repositories/taxation-pages/cadastral-details";
 
 export const dynamic = "force-dynamic";
 
 export default async function EconomicProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
-  const row = (await listFiscalRegistrations(database, { ids: [id], limit: 1 }))[0]; if (!row) notFound();
+  const { id: rawId } = await params; const context = await getTenantContextForModule("TRIBUTACAO"); const { user } = context; const database = context.database ?? db;
+  const row = await readFiscalEconomicCard(database, rawId); if (!row) notFound();
+  const id = row.id;
   const allowed = isSystemAdministrator(user) ? undefined : user.allowedBudgetUnitIds;
   const [profile, units, taxpayers, properties, documents, processes, catalogs] = await Promise.all([
     listFiscalEntries(database, { entityType: "ECONOMIC_REGISTRATION", entityIds: [id], categories: ["ECONOMIC_PROFILE"], limit: 1 }).then(rows => rows[0]),

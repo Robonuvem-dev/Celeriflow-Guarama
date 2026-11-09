@@ -2,7 +2,8 @@ import { getTenantContextForModule } from "@/lib/platform/tenant-context";
 import { db } from "@/db/client";
 import { generatePontoReport, type PontoReportFilter } from "@/lib/rh/ponto-reports";
 import { readEmployeeOptions } from "@/db/repositories/personnel-pages/records";
-import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
+import { OperationalListFrame, OperationalLinkPagination } from "@/components/app-ui/operational/OperationalListFrame";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
 import { rhColumn } from "../../_components/operational-columns";
 import { PontoNav } from "../PontoNav";
@@ -35,6 +36,7 @@ export default async function PontoRelatoriosPage({
     month?: string;
     employeeId?: string;
     q?: string;
+    page?: string;
   }>;
 }) {
   const context = await getTenantContextForModule("RH");
@@ -70,6 +72,7 @@ export default async function PontoRelatoriosPage({
     label: row[0] || `Registro ${rowIdx + 1}`,
     values: Object.fromEntries(row.map((val, colIdx) => [`col_${colIdx}`, val])),
   }));
+  const page = Math.min(Math.max(1, Number.parseInt(params.page || "1") || 1), Math.max(1, Math.ceil(rows.length / OPERATIONAL_PAGE_SIZE)));
 
   return (
     <div className="flex flex-col h-full w-full">
@@ -178,7 +181,7 @@ export default async function PontoRelatoriosPage({
           columns={columns}
           caption={reportData.title}
           emptyMessage="Nenhum dado encontrado para os critérios e período selecionados."
-          rows={rows}
+          rows={rows.slice((page - 1) * OPERATIONAL_PAGE_SIZE, page * OPERATIONAL_PAGE_SIZE)}
         />
       </OperationalListFrame>
     </div>

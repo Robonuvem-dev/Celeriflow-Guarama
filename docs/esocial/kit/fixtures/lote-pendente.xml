@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- AMBIENTE DEMO: XML DE EXEMPLO, SEM TRANSMISSAO OU ASSINATURA OFICIAL -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:retorno-processamento">
+  <retornoProcessamentoLoteEventos>
+    <status>
+      <cdResposta>101</cdResposta>
+      <descResposta>Lote Aguardando Processamento.</descResposta>
+      <tempoEstimadoConclusao>10</tempoEstimadoConclusao>
+    </status>
+    <dadosRecepcaoLote>
+      <protocoloEnvio>DEMO-PROT-202610-0001</protocoloEnvio>
+    </dadosRecepcaoLote>
+  </retornoProcessamentoLoteEventos>
+</eSocial>

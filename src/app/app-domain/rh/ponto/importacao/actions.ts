@@ -12,6 +12,8 @@ import { hrReferenceRecords } from "@/db/schema/personnel-reference-records";
 import { hrIntegrationEvents } from "@/db/schema/personnel-workforce";
 import { lockPersonnel } from "@/db/repositories/personnel/integration";
 import { auditPersonnelMutation } from "@/lib/rh/personnel-mutation-audit";
+import { createHash } from "node:crypto";
+import { employeeIdentifierIndex } from "@/lib/rh/employee-identifiers";
 
 type ParsedPunch = {
   employeeIdentifier: string; // PIS, CPF or Matrícula
@@ -150,26 +152,15 @@ export async function processClockImport(formData: FormData) {
       .from(employees)
       .where(eq(employees.isActive, true));
 
-    const empMap = new Map<string, string>();
-    for (const emp of allEmployees) {
-      if (emp.registration) empMap.set(emp.registration.trim().toLowerCase(), emp.id);
-      if (emp.cpf) {
-        empMap.set(emp.cpf.trim().toLowerCase(), emp.id);
-        empMap.set(emp.cpf.replace(/\D/g, ""), emp.id);
-      }
-      empMap.set(emp.id.toLowerCase(), emp.id);
-    }
+    const aliases = (await databaseConnection.db.execute<{employeeId:string;registration:string|null}>(sql`SELECT "employeeId","previousRegistration" AS registration FROM "EmployeeRegistrationAllocation"`)).rows;
+    const resolveEmployee = employeeIdentifierIndex(allEmployees, aliases);
 
     // Group punches by (employeeId + date)
     const grouped = new Map<string, { employeeId: string; date: string; times: string[]; clock: string }>();
     let unmatchedCount = 0;
 
     for (const p of punches) {
-      const cleanIdent = p.employeeIdentifier.trim().toLowerCase().replace(/\D/g, "");
-      const employeeId =
-        empMap.get(cleanIdent) ||
-        empMap.get(p.employeeIdentifier.trim().toLowerCase()) ||
-        allEmployees[0]?.id; // Fallback to first active employee if sandbox mock
+      const employeeId = resolveEmployee(p.employeeIdentifier);
 
       if (!employeeId) {
         unmatchedCount++;

@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
 import { type OperationalColumn, OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import {
   dispatchRemessaAction,
@@ -91,6 +91,8 @@ export default function RemessasClient({
   // Filtros Processos nas Remessas (19.62)
   const [filterProcessQuery, setFilterProcessQuery] = useState("");
   const [filterProcessRemessa, setFilterProcessRemessa] = useState("");
+  const [remessaPagination, setRemessaPagination] = useState({ key: "", page: 1 });
+  const [processPagination, setProcessPagination] = useState({ key: "", page: 1 });
 
   // Filtro Relatório Remessas por Processo (19.78)
   const [reportProtocolQuery, setReportProtocolQuery] = useState("");
@@ -133,6 +135,11 @@ export default function RemessasClient({
       return matchQuery && matchRemessa;
     });
   }, [remessaProcesses, filterProcessQuery, filterProcessRemessa]);
+
+  const remessaPageKey = JSON.stringify([filterRemessaNumber, filterDestDepartment, filterStatus]);
+  const processPageKey = JSON.stringify([filterProcessQuery, filterProcessRemessa]);
+  const remessaPage = remessaPagination.key === remessaPageKey ? Math.min(remessaPagination.page, Math.max(1, Math.ceil(filteredRemessas.length / OPERATIONAL_PAGE_SIZE))) : 1;
+  const processPage = processPagination.key === processPageKey ? Math.min(processPagination.page, Math.max(1, Math.ceil(filteredRemessaProcesses.length / OPERATIONAL_PAGE_SIZE))) : 1;
 
   // Filtragem do Relatório de Remessas por Processo (19.78)
   const reportRemessasByProcess = useMemo(() => {
@@ -378,6 +385,7 @@ export default function RemessasClient({
         <OperationalListFrame
           pagination={null}
           label="Consulta e Gestão de Remessas"
+          pagination={<OperationalPagination page={remessaPage} total={filteredRemessas.length} onPageChange={page => setRemessaPagination({ key: remessaPageKey, page })} />}
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -446,7 +454,7 @@ export default function RemessasClient({
             preferenceId="protocolos.remessas.lista"
             caption="Lista de Remessas de Processos"
             emptyMessage="Nenhuma remessa encontrada para os filtros selecionados."
-            rows={filteredRemessas.map((rem) => {
+            rows={filteredRemessas.slice((remessaPage - 1) * OPERATIONAL_PAGE_SIZE, remessaPage * OPERATIONAL_PAGE_SIZE).map((rem) => {
               const isDestCurrent = currentDepartmentId && rem.toDepartmentId === currentDepartmentId;
               const isPendingReceipt = rem.status === "Aguardando Recebimento";
 
@@ -498,6 +506,7 @@ export default function RemessasClient({
         <OperationalListFrame
           pagination={null}
           label="Processos Contidos nas Remessas"
+          pagination={<OperationalPagination page={processPage} total={filteredRemessaProcesses.length} onPageChange={page => setProcessPagination({ key: processPageKey, page })} />}
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -550,7 +559,7 @@ export default function RemessasClient({
             preferenceId="protocolos.remessas.processos"
             caption="Processos em Remessas"
             emptyMessage="Nenhum processo em remessa encontrado."
-            rows={filteredRemessaProcesses.map((item) => ({
+            rows={filteredRemessaProcesses.slice((processPage - 1) * OPERATIONAL_PAGE_SIZE, processPage * OPERATIONAL_PAGE_SIZE).map((item) => ({
               id: `${item.remessaNumber}-${item.processId}`,
               label: item.protocolNumber,
               values: {

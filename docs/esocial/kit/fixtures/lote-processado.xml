@@ -1,0 +1,128 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- DEMO: SEM TRANSMISSAO NEM ASSINATURA OFICIAL, CAMPOS EXEMPLIFICATIVOS -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:retorno-processamento">
+  <retornoProcessamentoLoteEventos>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>00000000000000</nrInsc>
+    </ideEmpregador>
+    <status>
+      <cdResposta>201</cdResposta>
+      <descResposta>Lote Processado com Sucesso.</descResposta>
+    </status>
+    <dadosRecepcaoLote>
+      <dhRecepcao>2026-11-08T14:00:00-03:00</dhRecepcao>
+      <versaoAplicativoRecepcao>DEMO-1.0</versaoAplicativoRecepcao>
+      <protocoloEnvio>DEMO-PROT-202610-0001</protocoloEnvio>
+    </dadosRecepcaoLote>
+    <dadosProcessamentoLote>
+      <versaoAplicativoProcessamentoLote>DEMO-1.0</versaoAplicativoProcessamentoLote>
+    </dadosProcessamentoLote>
+    <retornoEventos>
+      <evento Id="DEMO-EVT-1200-002">
+        <retornoEvento>
+          <eSocial xmlns="urn:celeriflow:esocial:demo:retorno-evento">
+            <retornoEvento Id="DEMO-EVT-1200-002">
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <recepcao>
+                <tpAmb>2</tpAmb>
+                <dhRecepcao>2026-11-08T14:00:00-03:00</dhRecepcao>
+                <versaoAppRecepcao>DEMO-1.0</versaoAppRecepcao>
+                <protocoloEnvioLote>DEMO-PROT-202610-0001</protocoloEnvioLote>
+              </recepcao>
+              <processamento>
+                <cdResposta>201</cdResposta>
+                <descResposta>Sucesso.</descResposta>
+                <versaoAppProcessamento>DEMO-1.0</versaoAppProcessamento>
+                <dhProcessamento>2026-11-08T14:00:12-03:00</dhProcessamento>
+              </processamento>
+              <recibo>
+                <nrRecibo>DEMO-REC-000010</nrRecibo>
+                <hash>HASH-DEMO-SEM-ASSINATURA</hash>
+              </recibo>
+            </retornoEvento>
+          </eSocial>
+        </retornoEvento>
+        <tot tipo="S-5001">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizadores">
+            <totalizadorDemonstrativo tipo="S-5001" id="DEMO-TOT-5001-VA-0002" />
+          </eSocial>
+        </tot>
+        <tot tipo="S-5003">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizadores">
+            <totalizadorDemonstrativo tipo="S-5003" id="DEMO-TOT-5003-VA-0002" />
+          </eSocial>
+        </tot>
+      </evento>
+      <evento Id="DEMO-EVT-1200-003">
+        <retornoEvento>
+          <eSocial xmlns="urn:celeriflow:esocial:demo:retorno-evento">
+            <retornoEvento Id="DEMO-EVT-1200-003">
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <recepcao>
+                <tpAmb>2</tpAmb>
+                <dhRecepcao>2026-11-08T14:00:00-03:00</dhRecepcao>
+                <versaoAppRecepcao>DEMO-1.0</versaoAppRecepcao>
+                <protocoloEnvioLote>DEMO-PROT-202610-0001</protocoloEnvioLote>
+              </recepcao>
+              <processamento>
+                <cdResposta>201</cdResposta>
+                <descResposta>Sucesso.</descResposta>
+                <versaoAppProcessamento>DEMO-1.0</versaoAppProcessamento>
+                <dhProcessamento>2026-11-08T14:00:12-03:00</dhProcessamento>
+              </processamento>
+              <recibo>
+                <nrRecibo>DEMO-REC-000014</nrRecibo>
+                <hash>HASH-DEMO-SEM-ASSINATURA</hash>
+              </recibo>
+            </retornoEvento>
+          </eSocial>
+        </retornoEvento>
+        <tot tipo="S-5001">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizadores">
+            <totalizadorDemonstrativo tipo="S-5001" id="DEMO-TOT-5001-VA-0003" />
+          </eSocial>
+        </tot>
+        <tot tipo="S-5003">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizadores">
+            <totalizadorDemonstrativo tipo="S-5003" id="DEMO-TOT-5003-VA-0003" />
+          </eSocial>
+        </tot>
+      </evento>
+      <evento Id="DEMO-EVT-1202-001">
+        <retornoEvento>
+          <eSocial xmlns="urn:celeriflow:esocial:demo:retorno-evento">
+            <retornoEvento Id="DEMO-EVT-1202-001">
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <recepcao>
+                <tpAmb>2</tpAmb>
+                <dhRecepcao>2026-11-08T14:00:00-03:00</dhRecepcao>
+                <versaoAppRecepcao>DEMO-1.0</versaoAppRecepcao>
+                <protocoloEnvioLote>DEMO-PROT-202610-0001</protocoloEnvioLote>
+              </recepcao>
+              <processamento>
+                <cdResposta>201</cdResposta>
+                <descResposta>Sucesso.</descResposta>
+                <versaoAppProcessamento>DEMO-1.0</versaoAppProcessamento>
+                <dhProcessamento>2026-11-08T14:00:12-03:00</dhProcessamento>
+              </processamento>
+              <recibo>
+                <nrRecibo>DEMO-REC-000015</nrRecibo>
+                <hash>HASH-DEMO-SEM-ASSINATURA</hash>
+              </recibo>
+            </retornoEvento>
+          </eSocial>
+        </retornoEvento>
+      </evento>
+    </retornoEventos>
+  </retornoProcessamentoLoteEventos>
+</eSocial>

@@ -28,6 +28,7 @@ const sidebarNavItems = [
   { title: "Processamentos funcionais", href: "/rh/processamentos-funcionais", icon: SlidersHorizontal },
   { title: "Dependentes", href: "/rh/dependentes", icon: UserPlus },
   { title: "Folha de Pagamento", href: "/rh/folha", icon: Wallet },
+  { title: "eSocial", href: "/rh/esocial", icon: FileSignature },
   { title: "Parametrizações", href: "/rh/parametrizacoes", icon: SlidersHorizontal },
   { title: "Benefícios", href: "/rh/beneficios", icon: Gift },
   { title: "Registro de Ponto", href: "/rh/ponto", icon: Clock },

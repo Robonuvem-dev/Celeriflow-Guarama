@@ -12,7 +12,6 @@ import { withDatabaseTransaction } from "@/db/transaction";
 export async function createEmployee(formData: FormData) {
   const cpf = formData.get("cpf") as string;
   const personId = String(formData.get("personId") || "");
-  const registration = formData.get("registration") as string;
   
   const roleId = formData.get("roleId") as string || null;
   const secretariatId = formData.get("secretariatId") as string || null;
@@ -26,7 +25,7 @@ export async function createEmployee(formData: FormData) {
     const hierarchy = await validateEmployeeRelations(context.database ?? db, { secretariatId, departmentId, unitId });
     await withDatabaseTransaction(databaseConnection, async tx => {
       const canonical = await resolveEmployeePerson(tx, { personId, cpf });
-      const id = await insertEmployee(tx, canonical, { registration, roleId, secretariatId: hierarchy.secretariatId, departmentId, unitId });
+      const id = await insertEmployee(tx, canonical, { registration: null, roleId, secretariatId: hierarchy.secretariatId, departmentId, unitId });
       await insertAuditEvent(tx, { actorUsuarioId: context.user.id, eventType: auditEventTypes.administrativeMutation, targetType: "EMPLOYEE", targetId: id });
     });
   } catch (error: unknown) {
