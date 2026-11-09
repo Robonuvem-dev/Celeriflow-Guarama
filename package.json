@@ -54,6 +54,8 @@
     "seed:social:poc": "node --conditions=react-server --import tsx scripts/seed-social-poc.ts",
     "seed:social:history": "node --conditions=react-server --import tsx scripts/complete-social-poc-history.ts",
     "seed:saneamento": "node --import tsx scripts/seed-sanitation-city.ts",
+    "seed:mateus": "npx tsx scripts/seed-cf10-cf30-cf33.ts",
+    "seed:tributacao-infra": "npx tsx scripts/seed-cf26-cf29-cf31.ts",
     "test:education-s1": "node --import tsx --test tests/education-s1.test.ts"
   },
   "dependencies": {

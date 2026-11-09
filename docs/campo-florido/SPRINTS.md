@@ -114,3 +114,76 @@ Implementação/evidências: [SPRINT-06.md](SPRINT-06.md).
 - [x] Executar build integral (`next build` Turbopack), typegen, tipos e verificação de migrações (`verify-database-migration.mjs` e `database-migrate.mjs verify-files`).
 - [x] Registrar evidência funcional por item e commit: CF10 13/13, CF30 14/14 e CF33 15/15 (14 Mateus + 33.6 Eduardo).
 - [x] Atualizar planilha por células verificadas, preservando estrutura, fórmulas, responsáveis, 33.6 e mantendo checkboxes desmarcados (`FALSE`) até validação final do responsável.
+
+
+---
+
+## Sprint 08 — CF31 — Backup (31.1 a 31.11)
+
+Branch exclusiva: `feat/cf26-cf29-cf31-cf32-mateus`. Responsável: Mateus (11/11 requisitos, P0 - Impeditivo).
+
+- [x] 31.1: Fazer o backup de todos os sistemas descritos no edital (CeleriFlow / módulos integrados).
+- [x] 31.2: Automatização e armazenamento de Backup em Nuvem.
+- [x] 31.3: Backups automáticos sem necessidade de intervenção humana.
+- [x] 31.4: Executar dentro da Tecnologia Web (`/configuracoes/backup`).
+- [x] 31.5: Backup full diário, armazenando os 7 últimos dias.
+- [x] 31.6: Armazenar 1 Backup full no primeiro dia de cada mês durante 12 meses.
+- [x] 31.7: Backup diferencial dos arquivos de log de 1 em 1 hora.
+- [x] 31.8: Armazenamento dos arquivos em Data Center CERTIFICADO.
+- [x] 31.9: Transferência e armazenamento em criptografia Padrão Militar AES 256 bits (`aes-256-gcm` via `node:crypto`).
+- [x] 31.10: Aplicação de backup instalável no servidor de banco de dados como serviço do Windows (`RunAsService` / script e manifesto de serviço).
+- [x] 31.11: Espaço disponibilizado limitado a 3 Terabytes (controle de cota de 3 TB = 3.298.534.883.328 bytes).
+- [x] Implementar painel operacional em `/configuracoes/backup` com `OperationalListFrame` e `OperationalTable`, API `/api/sistema/backup` e suíte de testes automatizados.
+
+## Sprint 09 — CF32 — Serviço Data Center (32.1 a 32.21)
+
+Branch exclusiva: `feat/cf26-cf29-cf31-cf32-mateus`. Responsável: Mateus (21/21 requisitos, P0 - Impeditivo).
+
+- [x] 32.1: Serviço de Data Center em nuvem para hospedagem, disponibilização e backup dos sistemas.
+- [x] 32.2: Certificações obrigatórias ABNT NBR ISO/IEC 27001:2022 e ABNT NBR ISO/IEC 20000-1:2018 com alta disponibilidade, redundância e recuperação de desastres.
+- [x] 32.3: Acessibilidade via Internet com disponibilidade mínima de 99,6% (24x7x365).
+- [x] 32.4: Backup Seguro integrado às funcionalidades do Serviço de Backup (CF31).
+- [x] 32.5: Hosting (hospedagem em nuvem e conexão à Internet).
+- [x] 32.6: Redundância de hardware, ativos, serviços e replicação de infraestrutura.
+- [x] 32.7: DNS hierárquico para resolução por nomes amigáveis.
+- [x] 32.8: Elasticidade dinâmica sem interrupções em picos de demanda.
+- [x] 32.9: Firewall (filtro de pacotes, proxy de aplicações, appliance software/hardware).
+- [x] 32.10: Segurança Física do Data Center (controle de acesso, câmeras, biometria).
+- [x] 32.11: Segurança Virtual (detecção/bloqueio de intrusão, antivírus e backups na nuvem).
+- [x] 32.12: Licenciamento incluso (Sistemas Operacionais, SGBD e antivírus).
+- [x] 32.13: Monitoramento contínuo de sistemas, serviços e recursos de TI.
+- [x] 32.14: Gestão e administração de sistemas, SO e Bancos de Dados.
+- [x] 32.15: Acessibilidade via navegadores web (computação em nuvem).
+- [x] 32.16: Migração simples e assistida para a nuvem.
+- [x] 32.17: Redução de custos de infraestrutura de TI.
+- [x] 32.18: Suporte à plataforma de hospedagem 24x7x365.
+- [x] 32.19: Plataforma integrada permitindo visualização de módulos/sistemas via navegador com login unificado.
+- [x] 32.20: Certificado WildCard SSL cobrindo domínio principal e subdomínios.
+- [x] 32.21: Domínio de aplicações web associado a subdomínio com SSL e sem uso de portas após a URL (`https://guarama.celeriflow.com.br`).
+- [x] Implementar painel operacional de governança e telemetria em `/configuracoes/datacenter` com `OperationalListFrame` e `OperationalTable`, API `/api/sistema/datacenter/health` e testes automatizados.
+
+## Sprint 10 — CF26 — Arrecadação Online Service (26.1 a 26.7)
+
+Branch exclusiva: `feat/cf26-cf29-cf31-cf32-mateus`. Responsável: Mateus (7/7 requisitos, P0 - Impeditivo).
+
+- [x] 26.1: Padrão FEBRABAN de arrecadação online via webservice com comunicação em tempo real entre sistema tributário e instituição bancária.
+- [x] 26.2: `consultarDebitoIPTUOp` — consulta por inscrição imobiliária e exercício, retornando parcelas em aberto com linha digitável e código de barras FEBRABAN Segmento 6.
+- [x] 26.3: `consultarDebitoISSOp` — consulta por inscrição municipal e competência (MM/AAAA), retornando débitos de ISS em aberto.
+- [x] 26.4: `consultarDebitoDividaAtivaOp` — consulta por número da CDA ou CPF/CNPJ, retornando débitos inscritos em dívida ativa.
+- [x] 26.5: `consultarDebitoParcelamentoOp` — consulta por número do acordo/parcelamento, retornando parcelas vincendas/vencidas.
+- [x] 26.6: `cancelamentoOp` — estorno/cancelamento de autenticação bancária com reversão de status da guia e trilha de auditoria.
+- [x] 26.7: `confirmacaoOp` — confirmação de arrecadação online em tempo real com baixa imediata do débito e comprovante de autenticação.
+- [x] Implementar WebService SOAP/REST em `/api/tributacao/arrecadacao-online`, console/simulador bancário ao vivo em `/tributacao/arrecadacao` e `/tributacao/arrecadacao-online` e testes automatizados.
+
+## Sprint 11 — CF29 — Declaração das Informações das Administradoras de Cartões (29.1, 29.3–29.5, 29.7–29.9)
+
+Branch exclusiva: `feat/cf26-cf29-cf31-cf32-mateus`. Responsável: Mateus (7 requisitos livres; preservar 29.2 e 29.6 de Eduardo).
+
+- [x] 29.1: Identificar equipamentos utilizados (POS/TEF/Ecommerce), número identificador e se o equipamento é próprio ou compartilhado.
+- [x] 29.3: Termo de responsabilidade sobre o envio das informações pelo credenciado.
+- [x] 29.4: Declaração da movimentação dos contribuintes (Débito, Crédito à vista, Crédito parcelado, taxas e ISS apurado).
+- [x] 29.5: Geração do Documento de Arrecadação Municipal (DAM) para recolhimento do ISS apurado.
+- [x] 29.7: Recepção dos arquivos enviados pela operadora de cartão por meio de Web Service (`/api/tributacao/declaracao-cartoes/webservice`).
+- [x] 29.8: Relatório com informações declaradas pelas operadoras categorizadas por natureza de operação.
+- [x] 29.9: Identificação do número identificador do equipamento utilizado nas operações declaradas.
+- [x] Preservar integralmente os requisitos `29.2` e `29.6` atribuídos ao Eduardo.

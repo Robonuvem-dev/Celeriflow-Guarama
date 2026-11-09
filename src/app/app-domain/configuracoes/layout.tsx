@@ -12,6 +12,8 @@ const navigation: ModuleNavGroup[] = [{
     { title: "Workflows e Processos", href: "/configuracoes/processos", icon: "workflow" },
     { title: "Certificados A1", href: "/configuracoes/certificados", icon: "shieldCheck" },
     { title: "Auditoria", href: "/configuracoes/auditoria", icon: "history" },
+    { title: "Backup em Nuvem (CF31)", href: "/configuracoes/backup", icon: "databaseZap" },
+    { title: "Data Center (CF32)", href: "/configuracoes/datacenter", icon: "server" },
   ],
 }];
 
