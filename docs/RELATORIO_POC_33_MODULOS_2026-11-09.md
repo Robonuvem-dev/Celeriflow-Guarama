@@ -4,6 +4,8 @@
 
 **Resultado interno:** 1151 de 2661 requisitos atendidos (43,25%); **3 de 33 módulos** alcançam pelo menos 95% na inspeção de código.
 
+**Atualização pós-merge:** a [reavaliação de CF26, CF29, CF31 e CF32](RELATORIO_POC_POS_MERGE_2026-11-09.md), no merge `094782ae`, manteve os percentuais. As justificativas atualizadas para os 48 itens estão nesse complemento; as evidências abaixo registram o corte original.
+
 ## Critério e alcance
 
 - Fonte exclusiva dos denominadores: `Campo Florido POC (1).pdf`, 113 páginas, seção 11; 2.661 itens numerados em 33 módulos. Requisitos gerais anteriores à seção 11 não foram acrescentados aos denominadores.
@@ -393,5 +395,6 @@
 
 ## Limpeza e publicação
 
+- [Comparação posterior com branches e previews](ANALISE_PREVIEWS_FORA_MAIN_2026-11-09.md): foi localizado código exclusivo de CF26/CF29/CF31/CF32 em preview. A inspeção encontrou bloqueios funcionais que impedem aumentar as notas apenas pelo merge; os percentuais deste relatório continuam referidos ao código da main auditado.
 - Limpeza autorizada concluída após a geração e entrega deste relatório: 1.852 arquivos removidos, 989,9 MB retirados; `docs` passou de aproximadamente 1,05 GB para 66 MB. [Detalhes e recuperação](LIMPEZA_DOCUMENTACAO_2026-11-09.md).
 - O deployment do código auditado está em produção e `/api/health` respondeu HTTP 200, com banco disponível. A navegação autenticada pós-correção do dashboard permanece pendente: a credencial de teste não estava disponível nesta retomada. [Registro das matrículas e publicação](rh-matriculas-padrao.md).

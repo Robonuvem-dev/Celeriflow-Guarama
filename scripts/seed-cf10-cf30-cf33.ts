@@ -695,15 +695,15 @@ async function main() {
       // ==========================================
       // 1. CF10 - CATÁLOGOS E PARÂMETROS
       // ==========================================
-      const allCatalogEntries: [RecyclingEntry["kind"], RecyclingEntry][] = [
-        ...cf10CatalogData.types.map(t => ["types" as const, { ...t, kind: "types" as const }]),
-        ...cf10CatalogData.units.map(u => ["units" as const, { ...u, kind: "units" as const }]),
-        ...cf10CatalogData.materials.map(m => ["materials" as const, { ...m, kind: "materials" as const }]),
-        ...cf10CatalogData.depots.map(d => ["depots" as const, { ...d, kind: "depots" as const }]),
-        ...cf10CatalogData.centers.map(c => ["centers" as const, { ...c, kind: "centers" as const }]),
+      const allCatalogEntries: RecyclingEntry[] = [
+        ...cf10CatalogData.types.map<RecyclingEntry>(t => ({ ...t, address: "", kind: "types" })),
+        ...cf10CatalogData.units.map<RecyclingEntry>(u => ({ ...u, address: "", kind: "units" })),
+        ...cf10CatalogData.materials.map<RecyclingEntry>(m => ({ ...m, address: "", kind: "materials" })),
+        ...cf10CatalogData.depots.map<RecyclingEntry>(d => ({ ...d, description: "", kind: "depots" })),
+        ...cf10CatalogData.centers.map<RecyclingEntry>(c => ({ ...c, description: "", kind: "centers" })),
       ];
 
-      for (const [, entry] of allCatalogEntries) {
+      for (const entry of allCatalogEntries) {
         const chave = recyclingEntryKey(entry);
         await tx.insert(instanceParameters).values({
           configuracaoInstanciaId: instanceId,
@@ -802,7 +802,7 @@ async function main() {
           quantity: plan.quantity,
           expectedPeriodStart: plan.expectedPeriodStart,
           expectedPeriodEnd: plan.expectedPeriodEnd,
-          estimatedValueDecimal: plan.estimatedValueDecimal,
+          estimatedValueDecimal: new Decimal(plan.estimatedValueDecimal),
           status: plan.status,
           updatedAt: new Date(),
         }).onConflictDoUpdate({
@@ -811,7 +811,7 @@ async function main() {
             description: plan.description,
             unit: plan.unit,
             quantity: plan.quantity,
-            estimatedValueDecimal: plan.estimatedValueDecimal,
+            estimatedValueDecimal: new Decimal(plan.estimatedValueDecimal),
             status: plan.status,
             updatedAt: new Date(),
           },
