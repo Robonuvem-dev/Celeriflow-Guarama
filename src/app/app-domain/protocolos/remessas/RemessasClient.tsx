@@ -383,7 +383,6 @@ export default function RemessasClient({
       {/* ABA 1: CONSULTA DE REMESSAS (19.61) */}
       {activeTab === "remessas" && (
         <OperationalListFrame
-          pagination={null}
           label="Consulta e Gestão de Remessas"
           pagination={<OperationalPagination page={remessaPage} total={filteredRemessas.length} onPageChange={page => setRemessaPagination({ key: remessaPageKey, page })} />}
           actions={
@@ -504,7 +503,6 @@ export default function RemessasClient({
       {/* ABA 2: PROCESSOS NAS REMESSAS (19.62) */}
       {activeTab === "processos" && (
         <OperationalListFrame
-          pagination={null}
           label="Processos Contidos nas Remessas"
           pagination={<OperationalPagination page={processPage} total={filteredRemessaProcesses.length} onPageChange={page => setProcessPagination({ key: processPageKey, page })} />}
           actions={
