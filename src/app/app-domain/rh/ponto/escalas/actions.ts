@@ -11,6 +11,7 @@ import { hrReferenceRecords } from "@/db/schema/personnel-reference-records";
 import { hrIntegrationEvents } from "@/db/schema/personnel-workforce";
 import { lockPersonnel } from "@/db/repositories/personnel/integration";
 import { auditPersonnelMutation } from "@/lib/rh/personnel-mutation-audit";
+import { createHash } from "node:crypto";
 
 export async function generateAutomaticScale(formData: FormData) {
   const context = await getTenantContextForModuleOperation("RH", "create");
@@ -29,18 +30,18 @@ export async function generateAutomaticScale(formData: FormData) {
     const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
 
     // Determine target employees
-    let employeeQuery = databaseConnection
+    let employeeQuery = databaseConnection.db
       .select({ id: employees.id, name: employees.name, registration: employees.registration })
       .from(employees)
       .where(eq(employees.isActive, true));
 
     if (scope === "SERVIDOR" && targetId) {
-      employeeQuery = databaseConnection
+      employeeQuery = databaseConnection.db
         .select({ id: employees.id, name: employees.name, registration: employees.registration })
         .from(employees)
         .where(and(eq(employees.isActive, true), eq(employees.id, targetId)));
     } else if (scope === "DEPARTAMENTO" && targetId) {
-      employeeQuery = databaseConnection
+      employeeQuery = databaseConnection.db
         .select({ id: employees.id, name: employees.name, registration: employees.registration })
         .from(employees)
         .where(and(eq(employees.isActive, true), eq(employees.departmentId, targetId)));
@@ -54,7 +55,7 @@ export async function generateAutomaticScale(formData: FormData) {
     // Load holidays if requested
     const holidaysSet = new Set<string>();
     if (skipHolidays) {
-      const holidays = await databaseConnection
+      const holidays = await databaseConnection.db
         .select()
         .from(hrReferenceRecords)
         .where(eq(hrReferenceRecords.kind, "FERIADO"));
@@ -79,7 +80,7 @@ export async function generateAutomaticScale(formData: FormData) {
       dailyContracted = 6.75;
       weekdaysPattern = [1, 2, 3, 4, 5, 6];
     } else if (scaleType === "FAIXA_EXISTENTE" && rangeId) {
-      const [faixa] = await databaseConnection
+      const [faixa] = await databaseConnection.db
         .select()
         .from(hrReferenceRecords)
         .where(and(eq(hrReferenceRecords.id, rangeId), eq(hrReferenceRecords.kind, "FAIXA")))
@@ -205,19 +206,15 @@ export async function generateAutomaticScale(formData: FormData) {
         }
       }
 
+      const payload = { scaleType, month, employeesCount: targetEmployees.length, totalDaysGenerated, generatedBy: context.user.name || context.user.id };
       await tx.insert(hrIntegrationEvents).values({
         sourceKey: `PONTO:ESCALA_AUTOMATICA:${Date.now()}`,
         domain: "AUDITORIA",
         environment: "PORTAL_RH",
         eventType: "GERACAO_ESCALA_AUTOMATICA",
         status: "PROCESSADO",
-        payload: {
-          scaleType,
-          month,
-          employeesCount: targetEmployees.length,
-          totalDaysGenerated,
-          generatedBy: context.user.name || context.user.id,
-        },
+        payload,
+        payloadHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"),
       });
     });
 

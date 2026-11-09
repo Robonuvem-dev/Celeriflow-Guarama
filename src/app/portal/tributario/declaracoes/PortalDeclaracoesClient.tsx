@@ -50,7 +50,6 @@ import {
   requestAidfAction,
   sendNfseEmailAction,
   issueNfaeAction,
-  cancelNfaeAction,
   requestLetterOfAgreementAction,
 } from "./actions";
 
@@ -329,13 +328,14 @@ export default function PortalDeclaracoesClient({
   const totalRows = declarations.length;
 
   const operationalColumns: OperationalColumn[] = [
-    { key: "protocol", label: "Protocolo", width: 180, minWidth: 140, type: "identifier" },
-    { key: "competence", label: "Competência", width: 110, minWidth: 90 },
-    { key: "kind", label: "Módulo / Tipo", width: 140, minWidth: 110 },
-    { key: "declarationType", label: "Enquadramento", width: 140, minWidth: 100 },
-    { key: "status", label: "Situação", width: 160, minWidth: 120, type: "status" },
-    { key: "serviceValue", label: "Total Movimento", width: 140, minWidth: 110, align: "right" },
-    { key: "issPayable", label: "ISS a Recolher", width: 140, minWidth: 110, align: "right" },
+    { key: "protocol", label: "Protocolo", initialWidth: 180, minWidth: 140, type: "identifier", resizable: true, sortable: false, details: "overflow" },
+    { key: "competence", label: "Competência", initialWidth: 110, minWidth: 90, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "kind", label: "Módulo / Tipo", initialWidth: 140, minWidth: 110, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "declarationType", label: "Enquadramento", initialWidth: 140, minWidth: 100, type: "text", resizable: true, sortable: false, details: "overflow" },
+    { key: "status", label: "Situação", initialWidth: 160, minWidth: 120, type: "status", resizable: true, sortable: false, details: "overflow" },
+    { key: "serviceValue", label: "Total Movimento", initialWidth: 140, minWidth: 110, type: "text", align: "right", resizable: true, sortable: false, details: "overflow" },
+    { key: "issPayable", label: "ISS a Recolher", initialWidth: 140, minWidth: 110, type: "text", align: "right", resizable: true, sortable: false, details: "overflow" },
+    { key: "actions", label: "Ações", initialWidth: 190, minWidth: 160, type: "actions", resizable: true, sortable: false, details: "none" },
   ];
 
   const operationalRows: OperationalRow[] = declarations.map((d) => ({

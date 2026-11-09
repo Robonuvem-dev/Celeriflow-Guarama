@@ -20,7 +20,7 @@ interface TypeItem {
 interface PersonItem {
   id: string;
   fullName: string;
-  cpf: string;
+  cpf: string | null;
 }
 
 interface CompanyItem {
@@ -201,7 +201,7 @@ export default function NewProtocolForm({
               >
                 <option value="">Selecione um interessado cadastrado</option>
                 {pessoas.map(p => (
-                  <option key={p.id} value={p.id}>{p.fullName} (CPF: {p.cpf})</option>
+                  <option key={p.id} value={p.id}>{p.fullName} (CPF: {p.cpf || "não informado"})</option>
                 ))}
               </select>
               <p className="text-[10px] text-slate-500">Pessoa física titular do requerimento.</p>
@@ -251,7 +251,7 @@ export default function NewProtocolForm({
               >
                 <option value="">Sem procurador/representante</option>
                 {pessoas.map(p => (
-                  <option key={p.id} value={p.id}>{p.fullName} (CPF: {p.cpf})</option>
+                  <option key={p.id} value={p.id}>{p.fullName} (CPF: {p.cpf || "não informado"})</option>
                 ))}
               </select>
             </div>

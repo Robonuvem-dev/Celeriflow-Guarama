@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<eSocial xmlns="urn:celeriflow:esocial:demo:comunicacao">
+  <!-- RESPOSTA LOCAL SIMULADA. NAO ORIGINADA DO ESOCIAL. -->
+  <retornoProcessamentoLoteEventos>
+    <status>
+      <cdResposta>101</cdResposta>
+      <descResposta>Lote aguardando processamento (simulado).</descResposta>
+    </status>
+    <dadosRecepcaoLote>
+      <protocoloEnvio>DEMO-PROT-202610-0001</protocoloEnvio>
+      <dhRecepcao>2026-11-08T19:37:00-03:00</dhRecepcao>
+    </dadosRecepcaoLote>
+  </retornoProcessamentoLoteEventos>
+</eSocial>

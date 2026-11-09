@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EXCLUSIVAMENTE DEMO. Estrutura APROXIMADA, nao validada pelo XSD oficial. -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:s5012-fechamento">
+  <evtIrrf Id="DEMO-S5012-FECHAMENTO">
+    <ideEvento><nrRecArqBase>DEMO-REC-000013</nrRecArqBase><perApur>2026-10</perApur></ideEvento>
+    <ideEmpregador><tpInsc>1</tpInsc><nrInsc>00000000000000</nrInsc></ideEmpregador>
+    <infoIRRF><infoCRMen><CRMen>056107</CRMen><vrCRMen>470.00</vrCRMen></infoCRMen></infoIRRF>
+    <referenciaSimulacao><tipo>S-5012</tipo><eventoOrigem>DEMO-EVT-1299-001</eventoOrigem><fonte>SIMULATED</fonte></referenciaSimulacao>
+  </evtIrrf>
+</eSocial>

@@ -61,6 +61,7 @@ export default async function PontoFrequenciaPage() {
     <div className="flex flex-col h-full w-full">
       <PontoNav />
       <OperationalListFrame
+        pagination={null /* A tabela e sua paginação são controladas no client. */}
         label="Controle de Frequência de Servidores e Lançamento de Ponto Manual (Requisito 20.17 e 20.23)"
         actions={
           <div className="flex items-center gap-2">

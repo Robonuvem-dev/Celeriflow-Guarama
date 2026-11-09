@@ -31,6 +31,7 @@ export default async function PontoLayoutsPage() {
     <div className="flex flex-col h-full w-full">
       <PontoNav />
       <OperationalListFrame
+        pagination={null /* A tabela e sua paginação são controladas no client. */}
         label="Mapeamento e Criação de Layouts Customizados de Ponto (Requisito 20.10)"
         actions={
           <div className="flex items-center gap-2">

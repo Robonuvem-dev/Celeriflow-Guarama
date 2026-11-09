@@ -5,7 +5,8 @@ import { generateAutomaticScale } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { rhColumn } from "../../_components/operational-columns";
 import { CalendarCheck, Plus, CheckCircle, RefreshCw, Users, Clock } from "lucide-react";
 import Link from "next/link";
@@ -40,6 +41,8 @@ export function EscalaAutomaticaClient({
   ranges: OptionItem[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(scales.length / OPERATIONAL_PAGE_SIZE)));
   const [isGenerating, setIsGenerating] = useState(false);
   const [scope, setScope] = useState<"TODOS" | "DEPARTAMENTO" | "SERVIDOR">("TODOS");
   const [targetId, setTargetId] = useState("");
@@ -128,8 +131,9 @@ export function EscalaAutomaticaClient({
         columns={columns}
         caption="Escalas e Horários de Trabalho Cadastrados (Requisito 20.9)"
         emptyMessage="Nenhuma escala cadastrada no momento. Clique no botão acima para gerar a escala automática."
-        rows={rows}
+        rows={rows.slice((currentPage - 1) * OPERATIONAL_PAGE_SIZE, currentPage * OPERATIONAL_PAGE_SIZE)}
       />
+      <OperationalPagination page={currentPage} total={rows.length} onPageChange={setPage} />
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

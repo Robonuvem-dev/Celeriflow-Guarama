@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='utf-8'?>
+<eSocial xmlns="urn:celeriflow:esocial:demo:retorno-processamento">
+  <!-- DEMONSTRATIVO. NAO CORRESPONDE AO XSD OFICIAL; NAO FOI EMITIDO PELO GOVERNO. -->
+  <retornoProcessamentoLoteEventos>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>00000000000000</nrInsc>
+    </ideEmpregador>
+    <status>
+      <cdResposta>201</cdResposta>
+      <descResposta>Lote Processado (SIMULACAO).</descResposta>
+    </status>
+    <dadosRecepcaoLote>
+      <dhRecepcao>2026-11-08T19:37:00-03:00</dhRecepcao>
+      <versaoAplicativoRecepcao>DEMO-CELERIFLOW-1</versaoAplicativoRecepcao>
+      <protocoloEnvio>DEMO-PROT-202610-FECHO</protocoloEnvio>
+    </dadosRecepcaoLote>
+    <dadosProcessamentoLote>
+      <versaoAplicativoProcessamentoLote>DEMO-CELERIFLOW-1</versaoAplicativoProcessamentoLote>
+    </dadosProcessamentoLote>
+    <retornoEventos>
+      <evento Id="DEMO-EVT-1299-001" evtDupl="false">
+        <retornoEvento>
+          <eSocial xmlns="urn:celeriflow:esocial:demo:retorno-evento">
+            <retornoEvento Id="DEMO-EVT-1299-001">
+              <recepcao>
+                <tpAmb>2</tpAmb>
+                <protocoloEnvioLote>DEMO-PROT-202610-FECHO</protocoloEnvioLote>
+              </recepcao>
+              <processamento>
+                <cdResposta>201</cdResposta>
+                <descResposta>Sucesso.</descResposta>
+                <dhProcessamento>2026-11-08T19:37:15-03:00</dhProcessamento>
+              </processamento>
+              <recibo>
+                <nrRecibo>DEMO-REC-000013</nrRecibo>
+              </recibo>
+            </retornoEvento>
+          </eSocial>
+        </retornoEvento>
+        <tot tipo="S-5011">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizador">
+            <evtCS tipo="S-5011" Id="DEMO-TOT-S5011-GERAL">
+              <ideEvento>
+                <nrRecArqBase>DEMO-REC-000013</nrRecArqBase>
+                <perApur>2026-10</perApur>
+              </ideEvento>
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <resumoDemonstrativo>
+                <contribuicaoSeguradoRGPS>1075.00</contribuicaoSeguradoRGPS>
+              </resumoDemonstrativo>
+              <referenciaSimulacao>
+                <eventoOrigem>DEMO-EVT-1299-001</eventoOrigem>
+                <tipo>RETORNO_NAO_TRANSMITIDO</tipo>
+                <fonte>SIMULATED</fonte>
+              </referenciaSimulacao>
+            </evtCS>
+          </eSocial>
+        </tot>
+        <tot tipo="S-5012">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizador">
+            <evtIrrf tipo="S-5012" Id="DEMO-TOT-S5012-GERAL">
+              <ideEvento>
+                <nrRecArqBase>DEMO-REC-000013</nrRecArqBase>
+                <perApur>2026-10</perApur>
+              </ideEvento>
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <resumoDemonstrativo>
+                <irrf>470.00</irrf>
+              </resumoDemonstrativo>
+              <referenciaSimulacao>
+                <eventoOrigem>DEMO-EVT-1299-001</eventoOrigem>
+                <tipo>RETORNO_NAO_TRANSMITIDO</tipo>
+                <fonte>SIMULATED</fonte>
+              </referenciaSimulacao>
+            </evtIrrf>
+          </eSocial>
+        </tot>
+        <tot tipo="S-5013">
+          <eSocial xmlns="urn:celeriflow:esocial:demo:totalizador">
+            <evtFGTS tipo="S-5013" Id="DEMO-TOT-S5013-GERAL">
+              <ideEvento>
+                <nrRecArqBase>DEMO-REC-000013</nrRecArqBase>
+                <perApur>2026-10</perApur>
+              </ideEvento>
+              <ideEmpregador>
+                <tpInsc>1</tpInsc>
+                <nrInsc>00000000000000</nrInsc>
+              </ideEmpregador>
+              <resumoDemonstrativo>
+                <fgts>832.00</fgts>
+              </resumoDemonstrativo>
+              <referenciaSimulacao>
+                <eventoOrigem>DEMO-EVT-1299-001</eventoOrigem>
+                <tipo>RETORNO_NAO_TRANSMITIDO</tipo>
+                <fonte>SIMULATED</fonte>
+              </referenciaSimulacao>
+            </evtFGTS>
+          </eSocial>
+        </tot>
+      </evento>
+    </retornoEventos>
+  </retornoProcessamentoLoteEventos>
+</eSocial>

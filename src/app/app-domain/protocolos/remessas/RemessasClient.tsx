@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
 import { type OperationalColumn, OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import {
   dispatchRemessaAction,
@@ -91,6 +91,8 @@ export default function RemessasClient({
   // Filtros Processos nas Remessas (19.62)
   const [filterProcessQuery, setFilterProcessQuery] = useState("");
   const [filterProcessRemessa, setFilterProcessRemessa] = useState("");
+  const [remessaPagination, setRemessaPagination] = useState({ key: "", page: 1 });
+  const [processPagination, setProcessPagination] = useState({ key: "", page: 1 });
 
   // Filtro Relatório Remessas por Processo (19.78)
   const [reportProtocolQuery, setReportProtocolQuery] = useState("");
@@ -133,6 +135,11 @@ export default function RemessasClient({
       return matchQuery && matchRemessa;
     });
   }, [remessaProcesses, filterProcessQuery, filterProcessRemessa]);
+
+  const remessaPageKey = JSON.stringify([filterRemessaNumber, filterDestDepartment, filterStatus]);
+  const processPageKey = JSON.stringify([filterProcessQuery, filterProcessRemessa]);
+  const remessaPage = remessaPagination.key === remessaPageKey ? Math.min(remessaPagination.page, Math.max(1, Math.ceil(filteredRemessas.length / OPERATIONAL_PAGE_SIZE))) : 1;
+  const processPage = processPagination.key === processPageKey ? Math.min(processPagination.page, Math.max(1, Math.ceil(filteredRemessaProcesses.length / OPERATIONAL_PAGE_SIZE))) : 1;
 
   // Filtragem do Relatório de Remessas por Processo (19.78)
   const reportRemessasByProcess = useMemo(() => {
@@ -278,25 +285,25 @@ export default function RemessasClient({
   };
 
   // Colunas da Tabela de Remessas (19.61)
-  const remessaColumns: OperationalColumn[] = [
+  const remessaColumns: OperationalColumn[] = ([
     { key: "remessaNumber", label: "Remessa", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true },
     { key: "fromDepartment", label: "Setor Origem", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true },
     { key: "toDepartment", label: "Setor Destino", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true },
-    { key: "count", label: "Qtd Processos", initialWidth: 110, minWidth: 90, maxWidth: 140, type: "number", resizable: true },
+    { key: "count", label: "Qtd Processos", initialWidth: 110, minWidth: 90, maxWidth: 140, type: "text", align: "right", resizable: true },
     { key: "status", label: "Situação", initialWidth: 180, minWidth: 130, maxWidth: 220, type: "status", resizable: true },
     { key: "date", label: "Data Envio", initialWidth: 140, minWidth: 110, maxWidth: 180, type: "text", resizable: true },
     { key: "actions", label: "Ações", initialWidth: 180, minWidth: 140, maxWidth: 240, type: "actions", resizable: false },
-  ];
+  ] satisfies Omit<OperationalColumn, "sortable" | "details">[]).map(column => ({ ...column, sortable: false, details: column.type === "actions" ? "none" : "overflow" }));
 
   // Colunas da Tabela de Processos na Remessa (19.62)
-  const processColumns: OperationalColumn[] = [
+  const processColumns: OperationalColumn[] = ([
     { key: "protocol", label: "Protocolo", initialWidth: 160, minWidth: 120, maxWidth: 220, type: "text", resizable: true },
     { key: "remessa", label: "Remessa", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "text", resizable: true },
     { key: "interessado", label: "Interessado", initialWidth: 220, minWidth: 160, maxWidth: 350, type: "text", resizable: true },
     { key: "route", label: "Encaminhamento", initialWidth: 240, minWidth: 180, maxWidth: 400, type: "text", resizable: true },
     { key: "status", label: "Situação", initialWidth: 150, minWidth: 120, maxWidth: 200, type: "status", resizable: true },
     { key: "date", label: "Data Tramitação", initialWidth: 140, minWidth: 110, maxWidth: 180, type: "text", resizable: true },
-  ];
+  ] satisfies Omit<OperationalColumn, "sortable" | "details">[]).map(column => ({ ...column, sortable: false, details: "overflow" }));
 
   return (
     <div className="space-y-4">
@@ -377,6 +384,7 @@ export default function RemessasClient({
       {activeTab === "remessas" && (
         <OperationalListFrame
           label="Consulta e Gestão de Remessas"
+          pagination={<OperationalPagination page={remessaPage} total={filteredRemessas.length} onPageChange={page => setRemessaPagination({ key: remessaPageKey, page })} />}
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -445,7 +453,7 @@ export default function RemessasClient({
             preferenceId="protocolos.remessas.lista"
             caption="Lista de Remessas de Processos"
             emptyMessage="Nenhuma remessa encontrada para os filtros selecionados."
-            rows={filteredRemessas.map((rem) => {
+            rows={filteredRemessas.slice((remessaPage - 1) * OPERATIONAL_PAGE_SIZE, remessaPage * OPERATIONAL_PAGE_SIZE).map((rem) => {
               const isDestCurrent = currentDepartmentId && rem.toDepartmentId === currentDepartmentId;
               const isPendingReceipt = rem.status === "Aguardando Recebimento";
 
@@ -456,7 +464,7 @@ export default function RemessasClient({
                   remessaNumber: rem.remessaNumber,
                   fromDepartment: rem.fromDepartmentName,
                   toDepartment: rem.toDepartmentName,
-                  count: rem.processCount,
+                  count: String(rem.processCount),
                   status: rem.status,
                   date: rem.createdAt,
                 },
@@ -496,6 +504,7 @@ export default function RemessasClient({
       {activeTab === "processos" && (
         <OperationalListFrame
           label="Processos Contidos nas Remessas"
+          pagination={<OperationalPagination page={processPage} total={filteredRemessaProcesses.length} onPageChange={page => setProcessPagination({ key: processPageKey, page })} />}
           actions={
             <div className="flex items-center gap-2">
               <button
@@ -548,7 +557,7 @@ export default function RemessasClient({
             preferenceId="protocolos.remessas.processos"
             caption="Processos em Remessas"
             emptyMessage="Nenhum processo em remessa encontrado."
-            rows={filteredRemessaProcesses.map((item) => ({
+            rows={filteredRemessaProcesses.slice((processPage - 1) * OPERATIONAL_PAGE_SIZE, processPage * OPERATIONAL_PAGE_SIZE).map((item) => ({
               id: `${item.remessaNumber}-${item.processId}`,
               label: item.protocolNumber,
               values: {

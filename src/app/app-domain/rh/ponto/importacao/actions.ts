@@ -11,6 +11,7 @@ import { hrReferenceRecords } from "@/db/schema/personnel-reference-records";
 import { hrIntegrationEvents } from "@/db/schema/personnel-workforce";
 import { lockPersonnel } from "@/db/repositories/personnel/integration";
 import { auditPersonnelMutation } from "@/lib/rh/personnel-mutation-audit";
+import { createHash } from "node:crypto";
 
 type ParsedPunch = {
   employeeIdentifier: string; // PIS, CPF or Matrícula
@@ -88,7 +89,7 @@ export async function processClockImport(formData: FormData) {
       }
     } else if (format === "CUSTOM" && customLayoutId) {
       // Layout Customizado (Requisito 20.10)
-      const [layoutRec] = await databaseConnection
+      const [layoutRec] = await databaseConnection.db
         .select()
         .from(hrReferenceRecords)
         .where(
@@ -144,7 +145,7 @@ export async function processClockImport(formData: FormData) {
     }
 
     // Resolve employees in database by CPF, registration or PIS
-    const allEmployees = await databaseConnection
+    const allEmployees = await databaseConnection.db
       .select({ id: employees.id, name: employees.name, cpf: employees.cpf, registration: employees.registration })
       .from(employees)
       .where(eq(employees.isActive, true));
@@ -167,8 +168,7 @@ export async function processClockImport(formData: FormData) {
       const cleanIdent = p.employeeIdentifier.trim().toLowerCase().replace(/\D/g, "");
       const employeeId =
         empMap.get(cleanIdent) ||
-        empMap.get(p.employeeIdentifier.trim().toLowerCase()) ||
-        allEmployees[0]?.id; // Fallback to first active employee if sandbox mock
+        empMap.get(p.employeeIdentifier.trim().toLowerCase());
 
       if (!employeeId) {
         unmatchedCount++;
@@ -176,7 +176,7 @@ export async function processClockImport(formData: FormData) {
       }
 
       const key = `${employeeId}_${p.dateStr}`;
-      const entry = grouped.get(key) || { employeeId, date: p.dateStr, times: [], clock: p.clockDevice || defaultClock };
+      const entry = grouped.get(key) || { employeeId, date: p.dateStr, times: [] as string[], clock: p.clockDevice || defaultClock };
       entry.times.push(p.timeStr);
       grouped.set(key, entry);
     }
@@ -239,20 +239,15 @@ export async function processClockImport(formData: FormData) {
       }
 
       // Record batch integration event
+      const payload = { format, totalPunches: punches.length, importedDays: importedCount, unmatchedCount, defaultClock, importedBy: context.user.name || context.user.id };
       await tx.insert(hrIntegrationEvents).values({
         sourceKey: `PONTO:IMPORTACAO:${Date.now()}`,
         domain: "AUDITORIA",
         environment: "PORTAL_RH",
         eventType: "IMPORTACAO_RELOGIO_PONTO",
         status: "PROCESSADO",
-        payload: {
-          format,
-          totalPunches: punches.length,
-          importedDays: importedCount,
-          unmatchedCount,
-          defaultClock,
-          importedBy: context.user.name || context.user.id,
-        },
+        payload,
+        payloadHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"),
       });
     });
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EXCLUSIVAMENTE DEMO. Estrutura APROXIMADA, nao validada pelo XSD oficial. -->
+<eSocial xmlns="urn:celeriflow:esocial:demo:s5001-carlos">
+  <evtBasesTrab Id="DEMO-S5001-CARLOS">
+    <ideEvento><nrRecArqBase>DEMO-REC-000010</nrRecArqBase><perApur>2026-10</perApur></ideEvento>
+    <ideEmpregador><tpInsc>1</tpInsc><nrInsc>00000000000000</nrInsc></ideEmpregador>
+    <ideTrabalhador><cpfTrab>00000000000</cpfTrab><matricula>VA-0002</matricula></ideTrabalhador><infoCpCalc><tpCR>108201</tpCR><vrCpSeg>815.00</vrCpSeg></infoCpCalc><demonstrativoBase>7200.00</demonstrativoBase>
+    <referenciaSimulacao><tipo>S-5001</tipo><eventoOrigem>DEMO-EVT-1200-002</eventoOrigem><fonte>SIMULATED</fonte></referenciaSimulacao>
+  </evtBasesTrab>
+</eSocial>

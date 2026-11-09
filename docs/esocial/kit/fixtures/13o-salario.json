@@ -1,0 +1,33 @@
+{
+  "source": "SIMULATED",
+  "year": 2026,
+  "periodType": "ANNUAL_13",
+  "rule": "S-1200/S-1299 anual=2026; S-1210 perApur mensal=2026-12 e perRef anual=2026",
+  "events": [
+    {
+      "type": "S-1200",
+      "perApur": "2026",
+      "matricula": "VA-0002",
+      "status": "READY_FOR_DEMO"
+    },
+    {
+      "type": "S-1202",
+      "perApur": "2026",
+      "matricula": "VA-0001",
+      "status": "READY_FOR_DEMO",
+      "note": "Conferir regras RPPS antes de transmissao oficial"
+    },
+    {
+      "type": "S-1299",
+      "perApur": "2026",
+      "status": "READY_FOR_DEMO"
+    },
+    {
+      "type": "S-1210",
+      "perApur": "2026-12",
+      "perRef": "2026",
+      "matricula": "VA-0002",
+      "status": "READY_FOR_DEMO"
+    }
+  ]
+}

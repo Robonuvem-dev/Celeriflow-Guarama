@@ -17,8 +17,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { OperationalListFrame } from "@/components/app-ui/operational/OperationalListFrame";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
-import type { OperationalColumn } from "@/lib/operational-tables";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE, type OperationalColumn } from "@/lib/operational-tables";
 
 export type ProcessReportItem = {
   id: string;
@@ -72,6 +72,7 @@ export default function ReportsClient({
 }) {
   // 19.67: Menu único com escolha do relatório
   const [selectedReport, setSelectedReport] = useState<ReportType>("geral");
+  const [pagination, setPagination] = useState({ key: "", page: 1 });
 
   // Filtros Gerais e Específicos
   const [filterQuery, setFilterQuery] = useState("");
@@ -162,6 +163,9 @@ export default function ReportsClient({
     filterSubassunto,
   ]);
 
+  const paginationKey = JSON.stringify([selectedReport, filterQuery, filterRequerente, filterNotaFiscal, filterProcInicio, filterProcFim, filterAnoInicio, filterAnoFim, filterDataInicio, filterDataFim, filterStatus, filterProcessType, filterSubject, filterSubassunto]);
+  const page = pagination.key === paginationKey ? Math.min(pagination.page, Math.max(1, Math.ceil(filteredData.length / OPERATIONAL_PAGE_SIZE))) : 1;
+
   // Processo para notificação / comprovante individual
   const activeProcess = useMemo(() => {
     return processes.find((p) => p.id === selectedProcessId) || filteredData[0] || processes[0];
@@ -208,7 +212,7 @@ export default function ReportsClient({
   };
 
   // Colunas da Tabela Geral / Entrada
-  const reportColumns: OperationalColumn[] = [
+  const reportColumns: OperationalColumn[] = ([
     { key: "protocol", label: "Protocolo", initialWidth: 150, minWidth: 120, maxWidth: 220, type: "text", resizable: true },
     { key: "type", label: "Tipo de Processo", initialWidth: 170, minWidth: 130, maxWidth: 250, type: "text", resizable: true },
     { key: "subject", label: "Assunto", initialWidth: 200, minWidth: 150, maxWidth: 300, type: "text", resizable: true },
@@ -216,7 +220,7 @@ export default function ReportsClient({
     { key: "department", label: "Setor Atual", initialWidth: 180, minWidth: 140, maxWidth: 260, type: "text", resizable: true },
     { key: "status", label: "Status", initialWidth: 140, minWidth: 110, maxWidth: 200, type: "status", resizable: true },
     { key: "date", label: "Data Abertura", initialWidth: 130, minWidth: 100, maxWidth: 160, type: "text", resizable: true },
-  ];
+  ] satisfies Omit<OperationalColumn, "sortable" | "details">[]).map(column => ({ ...column, sortable: false, details: "overflow" }));
 
   return (
     <div className="space-y-6">
@@ -415,6 +419,7 @@ export default function ReportsClient({
       {/* CASO 1: RELATÓRIO GERAL (19.82) & CONSULTA DE ENTRADA (19.27) */}
       {(selectedReport === "geral" || selectedReport === "entrada") && (
         <OperationalListFrame
+          pagination={<OperationalPagination page={page} total={filteredData.length} onPageChange={page => setPagination({ key: paginationKey, page })} />}
           label={
             selectedReport === "geral"
               ? "Relatório Geral de Processos (19.82)"
@@ -426,7 +431,7 @@ export default function ReportsClient({
             preferenceId="protocolos.relatorios.geral"
             caption="Listagem de processos protocolados"
             emptyMessage="Nenhum processo encontrado para os critérios de pesquisa informados."
-            rows={filteredData.map((p) => ({
+            rows={filteredData.slice((page - 1) * OPERATIONAL_PAGE_SIZE, page * OPERATIONAL_PAGE_SIZE).map((p) => ({
               id: p.id,
               label: p.protocolNumber,
               values: {

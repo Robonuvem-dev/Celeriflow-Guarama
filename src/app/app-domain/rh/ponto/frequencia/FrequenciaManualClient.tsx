@@ -5,7 +5,8 @@ import { saveManualAttendance } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { OperationalTable } from "@/components/app-ui/operational/OperationalTable";
+import { OperationalTable, OperationalPagination } from "@/components/app-ui/operational/OperationalTable";
+import { OPERATIONAL_PAGE_SIZE } from "@/lib/operational-tables";
 import { rhColumn } from "../../_components/operational-columns";
 import { UserCheck, Plus, FileBarChart2, CheckCircle2, AlertCircle, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
@@ -30,6 +31,8 @@ export function FrequenciaManualClient({
   employeesList: EmployeeFrequenciaItem[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(employeesList.length / OPERATIONAL_PAGE_SIZE)));
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEmpId, setSelectedEmpId] = useState(employeesList[0]?.id || "");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -193,8 +196,9 @@ export function FrequenciaManualClient({
         columns={columns}
         caption="Controle de Frequência de Servidores (Requisito 20.17 e 20.23)"
         emptyMessage="Nenhum servidor encontrado."
-        rows={rows}
+        rows={rows.slice((currentPage - 1) * OPERATIONAL_PAGE_SIZE, currentPage * OPERATIONAL_PAGE_SIZE)}
       />
+      <OperationalPagination page={currentPage} total={rows.length} onPageChange={setPage} />
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- AMBIENTE DEMO: XML DE EXEMPLO, SEM TRANSMISSAO OU ASSINATURA OFICIAL -->
+<pacoteMigracaoDemonstrativa xmlns="urn:celeriflow:esocial:demo:importacao">
+  <origem>
+    <sistema>Sistema Concorrente DEMO</sistema>
+    <tenantId>aurora-das-veredas</tenantId>
+    <dataExportacao>2026-11-01</dataExportacao>
+  </origem>
+  <eventos>
+    <evento Id="DEMO-EXTERNO-001">
+      <tipo>S-2200</tipo>
+      <matricula>VA-0010</matricula>
+      <status>ACEITO</status>
+      <nrRecibo>DEMO-EXTERNAL-001</nrRecibo>
+    </evento>
+    <evento Id="DEMO-EVT-2200-002">
+      <tipo>S-2200</tipo>
+      <matricula>VA-0002</matricula>
+      <status>ACEITO</status>
+      <nrRecibo>DEMO-REC-000005</nrRecibo>
+    </evento>
+    <evento Id="DEMO-EXTERNO-DIVERG-001">
+      <tipo>S-2200</tipo>
+      <matricula>VA-0001</matricula>
+      <status>DIVERGENTE</status>
+      <nrRecibo>DEMO-EXTERNAL-999</nrRecibo>
+    </evento>
+  </eventos>
+</pacoteMigracaoDemonstrativa>

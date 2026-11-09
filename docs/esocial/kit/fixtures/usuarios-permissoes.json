@@ -1,0 +1,50 @@
+{
+  "source": "SIMULATED",
+  "users": [
+    {
+      "id": "demo-admin",
+      "name": "Administrador de Demo",
+      "role": "ESOCIAL_ADMIN",
+      "permissions": [
+        "ESOCIAL_VIEW",
+        "ESOCIAL_PREPARE",
+        "ESOCIAL_VALIDATE",
+        "ESOCIAL_SEND",
+        "ESOCIAL_ADMIN",
+        "ESOCIAL_AUDIT"
+      ]
+    },
+    {
+      "id": "demo-operator",
+      "name": "Operador de RH",
+      "role": "ESOCIAL_SEND",
+      "permissions": [
+        "ESOCIAL_VIEW",
+        "ESOCIAL_PREPARE",
+        "ESOCIAL_VALIDATE",
+        "ESOCIAL_SEND"
+      ]
+    },
+    {
+      "id": "demo-auditor",
+      "name": "Auditor",
+      "role": "ESOCIAL_AUDIT",
+      "permissions": [
+        "ESOCIAL_VIEW",
+        "ESOCIAL_AUDIT"
+      ]
+    }
+  ],
+  "notifications": {
+    "demo-admin": [
+      "ACCEPTED",
+      "ACCEPTED_WITH_WARNING",
+      "REJECTED",
+      "EXCLUDED"
+    ],
+    "demo-operator": [
+      "REJECTED",
+      "PENDING_TOO_LONG"
+    ]
+  }
+}

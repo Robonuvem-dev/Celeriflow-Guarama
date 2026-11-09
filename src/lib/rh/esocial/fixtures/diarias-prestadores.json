@@ -1,0 +1,53 @@
+{
+  "source": "SIMULATED",
+  "competencia": "2026-10",
+  "diarias": [
+    {
+      "id": "DEM-DIARIA-001",
+      "favorecido": "Ana Martins",
+      "matricula": "VA-0001",
+      "valor": 450,
+      "elegibilidade": "ANALISAR_RUBRICA_E_VINCULO",
+      "rubrica": "DIARIA-1650-EXEMPLO",
+      "destino": "Candidato a demonstrativo eSocial se enquadramento confirmado",
+      "sourceUrl": "/rh/diarias/DEM-DIARIA-001"
+    },
+    {
+      "id": "DEM-DIARIA-002",
+      "favorecido": "Fornecedor PJ Demo",
+      "valor": 1200,
+      "elegibilidade": "FORA_DA_FOLHA",
+      "destino": "Nao encaminhar automaticamente ao eSocial",
+      "sourceUrl": "/financeiro/diarias/DEM-DIARIA-002"
+    }
+  ],
+  "prestadores": [
+    {
+      "id": "DEM-FOR-001",
+      "nome": "Maria Prestadora PF",
+      "tipoPessoa": "PF",
+      "relacaoTrabalho": true,
+      "classificacao": "ANALISAR_ESOCIAL",
+      "observacao": "Verificar vinculo, categoria e eventos cabiveis",
+      "sourceUrl": "/compras/fornecedores/DEM-FOR-001"
+    },
+    {
+      "id": "DEM-FOR-002",
+      "nome": "Servico de Manutencao LTDA (DEMO)",
+      "tipoPessoa": "PJ",
+      "relacaoTrabalho": false,
+      "classificacao": "ANALISAR_EFD_REINF",
+      "observacao": "Nao enviar automaticamente ao eSocial",
+      "sourceUrl": "/compras/fornecedores/DEM-FOR-002"
+    },
+    {
+      "id": "DEM-FOR-003",
+      "nome": "Joao Palestrante PF",
+      "tipoPessoa": "PF",
+      "relacaoTrabalho": false,
+      "classificacao": "ANALISAR_EFD_REINF",
+      "observacao": "PF sem relacao de trabalho: verificar R-4010 conforme EFD-Reinf",
+      "sourceUrl": "/compras/fornecedores/DEM-FOR-003"
+    }
+  ]
+}
